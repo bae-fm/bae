@@ -328,11 +328,14 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
             .into_iter()
             .find(|row| row.file.id == file.id)
             .expect("the release's file")
-            .pin
+            .download
     };
     assert_eq!(
         pin_of(inspector_rows_until(manager, &release_id, |_| true).await),
-        Some(bae_views::album_detail::FilePin::Downloading { file: fetched }),
+        Some(bae_views::storage_inspector::FileDownload::Downloading {
+            kind: bae_transfers::DownloadKind::Pin,
+            file: fetched,
+        }),
         "the file reads as downloading by the file coven fetches"
     );
     reading.await.unwrap();

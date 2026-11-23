@@ -46,7 +46,7 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
 
 /// A release's detail lists its files in natural order of their names, case
 /// aside, and the read under it walks the index of each release's files in
-/// that order, with their pins and uploads.
+/// that order, with their downloads and uploads.
 #[tokio::test]
 async fn release_detail_files_are_in_case_insensitive_natural_order() {
     let (db, tmp) = release_detail_db(crate::TEST_SCHEMA).await;
@@ -74,8 +74,8 @@ async fn release_detail_files_are_in_case_insensitive_natural_order() {
         .unwrap();
     assert!(
         plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order"))
-            && !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-        "the detail's files walk the index with their pins and uploads: {plan:?}"
+            && !plan.iter().any(|step| step.contains("TEMP B-TREE") && step.contains("ORDER BY")),
+        "the inspector's files walk the release's order index without sorting: {plan:?}"
     );
 }
 

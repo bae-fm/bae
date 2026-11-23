@@ -1,4 +1,4 @@
-use super::{BridgeDownloadOp, BridgeFile, BridgeOutputOp};
+use super::{BridgeDownloadKind, BridgeDownloadOp, BridgeFile, BridgeOutputOp};
 
 /// What the Storage Manager's inspector shows of the release it is set to.
 /// Mirrors `StorageInspector`.
@@ -12,13 +12,13 @@ pub struct BridgeStorageInspector {
 }
 
 /// One release file in the inspector, beside its upload while one waits,
-/// while the release is pinning, where its pin stands, and what a move found
-/// wrong with its original. Mirrors `StorageInspectorFile`.
+/// where its download stands while the release pins or moves to this device,
+/// and what a move found wrong with its original. Mirrors `StorageInspectorFile`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageInspectorFile {
     pub file: BridgeFile,
     pub upload: Option<BridgeFileUpload>,
-    pub pin: Option<BridgeFilePin>,
+    pub download: Option<BridgeFileDownload>,
     pub problem: Option<BridgeFileProblem>,
 }
 
@@ -31,16 +31,19 @@ pub enum BridgeFileProblem {
     OriginalChanged,
 }
 
-/// Where a pinning release's file stands: kept whole on this device,
-/// downloading now to be kept, or waiting its turn. Mirrors `FilePin`.
+/// Where a release's file stands while the release pins or moves to this
+/// device. Mirrors `FileDownload`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeFilePin {
-    Kept,
-    /// How far it has got is the pin file transfer keyed by `file_id`.
+pub enum BridgeFileDownload {
+    Waiting {
+        kind: BridgeDownloadKind,
+    },
+    /// How far the download has come is the transfer keyed by `file_id`.
     Downloading {
+        kind: BridgeDownloadKind,
         file_id: String,
     },
-    Waiting,
+    Done,
 }
 
 /// A release file's queued upload: which file, whether it is being sent, and

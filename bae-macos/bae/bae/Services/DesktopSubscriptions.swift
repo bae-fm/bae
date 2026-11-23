@@ -281,14 +281,14 @@ final class DesktopSubscriptions {
 
     func start() {
         precondition(folderScans == nil)
-        feeds = [
-            outputStore.percents.feed(from: appHandle),
-            outboxStore.fileShares.feedUploads(from: appHandle),
-            downloadStore.fileShares.feedPins(from: appHandle),
-            downloadStore.moveToThisDeviceTransfers.feed(from: appHandle),
-            importStore.previewPosition.feed(from: appHandle),
-            importStore.importPercents.feed(from: appHandle),
-        ]
+        feeds =
+            [
+                outputStore.percents.feed(from: appHandle),
+                outboxStore.fileShares.feedUploads(from: appHandle),
+                downloadStore.fileShares.feedPins(from: appHandle),
+                importStore.previewPosition.feed(from: appHandle),
+                importStore.importPercents.feed(from: appHandle),
+            ] + downloadStore.feedMovesToThisDevice(from: appHandle)
         let scans = appHandle.subscribeFolderScans()
         importStore.setRaisedScanAlerts = { raised in
             try scans.setRaised(raised: raised)

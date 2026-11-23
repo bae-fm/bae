@@ -189,8 +189,9 @@ non_owner_types = [
     # published.
     "bae_bridge::types::bootstrap::BridgeBootstrapResult",
     "bae_library::bootstrap::JoinedLibrary",
-    # What the outbox feed hands the app: the two streams it writes.
+    # The paired transfer feeds hand the app the streams they write.
     "bae_bridge::keyed_values::BridgeOutboxFeeds",
+    "bae_bridge::keyed_values::BridgeMoveToThisDeviceFeeds",
     # What a call was passed to follow it, if the app shows the call: the
     # app's object, held for the one call, and the call's writer made from it.
     "bae_bridge::screens::closing::ClosingFeed",

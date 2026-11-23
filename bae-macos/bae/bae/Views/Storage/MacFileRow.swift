@@ -3,10 +3,9 @@ import SwiftUI
 
 /// One file in the storage inspector, on one line: a mark for where its
 /// bytes are going, its name and its size. A file at rest, stored or kept,
-/// has no mark; one queued to upload, or waiting to be kept while its
-/// release pins, a dashed circle, its name dimmed; one being sent or
-/// downloaded to be kept a ring that fills as it goes, its name in the
-/// transfer's colour. A file whose original is missing, so that its upload
+/// has no mark; one waiting to upload, pin or move to This Mac has a
+/// dashed circle and a dimmed name. A file uploading or downloading has
+/// a ring that fills as it goes and a name in the transfer's colour. A file whose original is missing, so that its upload
 /// waits for it, has a warning mark; one whose original changed, so that its
 /// move failed, a danger mark. A file waiting on a reason says why in its
 /// tooltip.
@@ -39,9 +38,10 @@ struct MacFileRow: View {
     private enum Place {
         case stored
         case stopped(BridgeFileProblem)
-        case queued(StorageTransferKind)
+        case queuedUpload
+        case queuedDownload(BridgeDownloadKind)
         case sending(fileId: String)
-        case pinning(fileId: String)
+        case downloading(kind: BridgeDownloadKind, fileId: String)
     }
 
     private var place: Place {
@@ -50,14 +50,15 @@ struct MacFileRow: View {
         }
         if let upload = row.upload {
             switch upload.state {
-            case .waiting: return .queued(.upload)
+            case .waiting: return .queuedUpload
             case .uploading: return .sending(fileId: upload.fileId)
             }
         }
-        switch row.pin {
-        case .waiting: return .queued(.pin)
-        case .downloading(let fileId): return .pinning(fileId: fileId)
-        case .kept, nil: return .stored
+        switch row.download {
+        case .waiting(let kind): return .queuedDownload(kind)
+        case .downloading(let kind, let fileId):
+            return .downloading(kind: kind, fileId: fileId)
+        case .done, nil: return .stored
         }
     }
 
@@ -66,17 +67,27 @@ struct MacFileRow: View {
         switch place {
         case .stored: StorageFileMark(state: .stored)
         case .stopped(let problem): StorageFileMark(state: .stopped(problem))
-        case .queued(let kind): StorageFileMark(state: .queued(kind))
-        case .sending(let fileId): StorageSendingFileMark(fileId: fileId)
-        case .pinning(let fileId): StoragePinningFileMark(fileId: fileId)
+        case .queuedUpload:
+            StorageFileMark(
+                state: .queued(
+                    Text(verbatim: BridgeUploadActivity.queued.phaseText)
+                )
+            )
+        case .queuedDownload(let kind):
+            StorageFileMark(state: .queued(kind.queuedFileLabel))
+        case .sending(let fileId):
+            StorageSendingFileMark(fileId: fileId)
+        case .downloading(let kind, let fileId):
+            StorageDownloadingFileMark(kind: kind, fileId: fileId)
         }
     }
 
     private var nameStyle: AnyShapeStyle {
         switch place {
         case .stored, .stopped: AnyShapeStyle(.primary)
-        case .queued: AnyShapeStyle(Theme.macTextSecondary)
-        case .sending, .pinning: AnyShapeStyle(Theme.accent)
+        case .queuedUpload, .queuedDownload:
+            AnyShapeStyle(Theme.macTextSecondary)
+        case .sending, .downloading: AnyShapeStyle(Theme.accent)
         }
     }
 
@@ -102,22 +113,29 @@ private struct StorageSendingFileMark: View {
 
     var body: some View {
         StorageFileMark(
-            state: .moving(.upload, outboxStore.fileShare(forFile: fileId))
+            state: .moving(
+                Text("Uploading"),
+                outboxStore.fileShare(forFile: fileId)
+            )
         )
     }
 }
 
-/// A file being downloaded to be kept's ring, filled each frame from the
-/// file's latest share; SwiftUI hands it only the stream.
-private struct StoragePinningFileMark: View {
+/// A downloading file's ring follows the file's stream for that operation.
+private struct StorageDownloadingFileMark: View {
+    let kind: BridgeDownloadKind
     let fileId: String
     @Environment(DownloadStore.self)
     private var downloadStore
 
     var body: some View {
-        StorageFileMark(
-            state: .moving(.pin, downloadStore.fileShare(forFile: fileId))
-        )
+        let source =
+            switch kind {
+            case .pin: downloadStore.fileShare(forFile: fileId)
+            case .moveToThisDevice:
+                downloadStore.moveFileShares.source(for: fileId)
+            }
+        StorageFileMark(state: .moving(kind.movingFileLabel, source))
     }
 }
 
@@ -125,12 +143,12 @@ private struct StoragePinningFileMark: View {
 /// waiting its turn, a tone's glyph for a file whose original is missing or
 /// changed, a ring filling as far as its transfer has come, which
 /// the ring's own view sets from the file's stream.
-struct StorageFileMark: View {
+private struct StorageFileMark: View {
     enum State {
         case stored
         case stopped(BridgeFileProblem)
-        case queued(StorageTransferKind)
-        case moving(StorageTransferKind, LatestSource<Double>)
+        case queued(Text)
+        case moving(Text, LatestSource<Double>)
     }
 
     let state: State
@@ -143,7 +161,7 @@ struct StorageFileMark: View {
             StatusGlyph(problem.tone)
                 .accessibilityElement()
                 .accessibilityLabel(Text(verbatim: problem.words))
-        case .queued(let kind):
+        case .queued(let label):
             Circle()
                 .inset(by: TransferRingNSView.lineWidth)
                 .stroke(
@@ -154,26 +172,34 @@ struct StorageFileMark: View {
                     )
                 )
                 .accessibilityElement()
-                .accessibilityLabel(queuedLabel(kind))
-        case .moving(let kind, let source):
+                .accessibilityAddTraits(.isImage)
+                .accessibilityLabel(label)
+        case .moving(let label, let source):
             MacProgressRing(source: source)
                 .accessibilityElement()
-                .accessibilityLabel(movingLabel(kind))
+                .accessibilityAddTraits(.isImage)
+                .accessibilityLabel(label)
         }
     }
 
-    /// What the file waits to do: upload, or be pinned.
-    private func queuedLabel(_ kind: StorageTransferKind) -> Text {
-        switch kind {
-        case .upload: Text(verbatim: BridgeUploadActivity.queued.phaseText)
+}
+
+extension BridgeDownloadKind {
+    fileprivate var queuedFileLabel: Text {
+        switch self {
         case .pin: Text("Queued to pin")
+        case .moveToThisDevice: Text("Queued to move to This Mac")
         }
     }
 
-    private func movingLabel(_ kind: StorageTransferKind) -> Text {
-        switch kind {
-        case .upload: Text("Uploading")
+    fileprivate var movingFileLabel: Text {
+        switch self {
         case .pin: Text("Pinning")
+        case .moveToThisDevice:
+            Text(
+                verbatim: BridgeReleaseStorageAction.moveToThisDevice
+                    .transferLabel
+            )
         }
     }
 }

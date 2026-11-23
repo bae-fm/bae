@@ -380,7 +380,7 @@ pub enum StorageFilter {
 }
 
 /// What the Storage Manager's inspector shows of one release, read at once
-/// so its queue entries, its files' pins and its uploads are of one moment.
+/// so its queue entries, its files' downloads and uploads are of one moment.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageInspector {
@@ -389,7 +389,7 @@ pub struct DbStorageInspector {
     /// Its album's title and its files' count and size, which its upload's
     /// row names.
     pub release: DbInspectorRelease,
-    /// The release's files in their order, each with its pin and upload.
+    /// The release's files in their order, each with its download and upload.
     pub files: Vec<DbStorageInspectorFile>,
     /// How many of its files are downloading, waiting and kept while the
     /// download queue pins the release; none otherwise.
@@ -433,15 +433,15 @@ pub struct DbPinCounts {
 }
 
 /// One file of a release as the Storage Manager's inspector reads it: the
-/// file, where this device's pin of it stands (`None` while the download
-/// queue is not pinning its release), its upload while it waits in this
+/// file, where its download stands while the queue pins or moves its
+/// release, its upload while it waits in this
 /// device's upload queue, and the record of the move that found its original
 /// missing or changed.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageInspectorFile {
     pub file: DbFile,
-    pub pin: Option<crate::album_detail::FilePin>,
+    pub download: Option<crate::storage_inspector::FileDownload>,
     pub upload: Option<DbFileUpload>,
     /// The pending record of the move whose upload found this file's
     /// original missing or changed, matched to the file by the original's

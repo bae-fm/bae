@@ -52,10 +52,12 @@ impl AppHandle {
         crate::screens::download_transfers(self.runtime.clone(), self.run_feed())
     }
 
-    /// Write how far each release being moved to this device has come into a stream by
-    /// release id: the bytes of the file coven is downloading into the
-    /// person's folder and of the whole release.
-    pub fn feed_move_to_this_device_transfers(&self) -> Arc<KeyedValueStream> {
+    /// Write the bytes of each release moving to this device and of its
+    /// current file, by release id, and the share of each file, by file id.
+    /// Both streams follow the same read of the active download.
+    pub fn feed_move_to_this_device_transfers(
+        &self,
+    ) -> crate::keyed_values::BridgeMoveToThisDeviceFeeds {
         crate::screens::move_to_this_device_transfers(self.runtime.clone(), self.run_feed())
     }
 }

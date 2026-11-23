@@ -1,7 +1,10 @@
 //! A release's entry in this device's download queue, as every reader of it
 //! shows it: what it does and where it stands.
 
-use rusqlite::Row;
+use rusqlite::{
+    types::{FromSql, FromSqlError, FromSqlResult, ValueRef},
+    Row,
+};
 
 /// What a release's entry in the download queue does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,6 +14,18 @@ pub enum DownloadKind {
     /// Downloads the release's files into the person's folder and makes the
     /// release local.
     MoveToThisDevice,
+}
+
+impl FromSql for DownloadKind {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_str()? {
+            "pin" => Ok(Self::Pin),
+            "move_to_this_device" => Ok(Self::MoveToThisDevice),
+            other => {
+                Err(FromSqlError::Other(format!("download kind {other} names no kind").into()))
+            }
+        }
+    }
 }
 
 /// A release's entry in the download queue: what it does, and where it
@@ -49,18 +64,7 @@ pub fn download_entry_column(row: &Row<'_>) -> rusqlite::Result<Option<DownloadE
     let Some(state) = row.get::<_, Option<String>>(state_column)? else {
         return Ok(None);
     };
-    let kind_column = row.as_ref().column_index("download_kind")?;
-    let kind = match row.get::<_, String>(kind_column)?.as_str() {
-        "pin" => DownloadKind::Pin,
-        "move_to_this_device" => DownloadKind::MoveToThisDevice,
-        other => {
-            return Err(bae_store::read::column_conversion_error(
-                row,
-                kind_column,
-                format!("download kind {other} names no kind"),
-            ))
-        }
-    };
+    let kind = row.get("download_kind")?;
     let step = match state.as_str() {
         "queued" => DownloadStep::Queued,
         "active" => DownloadStep::Running,

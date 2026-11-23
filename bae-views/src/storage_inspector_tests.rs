@@ -1,9 +1,8 @@
 //! The Storage Manager inspector's read of one release.
 
 use super::*;
-use crate::album_detail::FilePin;
 use bae_records::test_fixtures::aggregate_ordering::{
-    insert_files_out_of_natural_order, release_detail_db,
+    insert_files_out_of_natural_order, release_detail_db, FILES_IN_NATURAL_ORDER,
 };
 use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::*;
@@ -37,7 +36,7 @@ fn waiting() -> bae_records::DbReleaseUpload {
     bae_records::DbReleaseUpload { waiting: 1, sending: 0, stored: 0, missing: None }
 }
 
-fn file(id: &str, pin: Option<FilePin>) -> crate::DbStorageInspectorFile {
+fn file(id: &str) -> crate::DbStorageInspectorFile {
     crate::DbStorageInspectorFile {
         file: bae_records::DbFile {
             id: id.to_string(),
@@ -51,7 +50,7 @@ fn file(id: &str, pin: Option<FilePin>) -> crate::DbStorageInspectorFile {
             stored: false,
             created_at: time::UtcDateTime::UNIX_EPOCH,
         },
-        pin,
+        download: None,
         upload: None,
         move_record: None,
     }
@@ -154,9 +153,9 @@ fn original_record(failure: coven::FileSourceFailure, cause: Option<&str>) -> co
 #[test]
 fn a_file_shows_what_its_moves_record_says_of_its_original() {
     let problems = |failure| {
-        let mut stopped = file("stopped", None);
+        let mut stopped = file("stopped");
         stopped.move_record = Some(original_record(failure, None));
-        let whole = file("whole", None);
+        let whole = file("whole");
         shown(
             vec![stopped, whole],
             &ReleaseQueueEntries { download: None, output: None },
@@ -183,7 +182,7 @@ fn a_file_shows_what_its_moves_record_says_of_its_original() {
 /// count and size.
 #[test]
 fn a_failed_move_names_its_file_and_the_error_behind_it() {
-    let mut changed = file("changed", None);
+    let mut changed = file("changed");
     changed.move_record =
         Some(original_record(coven::FileSourceFailure::Changed, Some("size differs")));
     let inspector = StorageInspector::read(crate::DbStorageInspector {
@@ -193,7 +192,7 @@ fn a_failed_move_names_its_file_and_the_error_behind_it() {
             file_count: 9,
             total_size: 356_000_000,
         },
-        files: vec![file("other", None), changed],
+        files: vec![file("other"), changed],
         pins: None,
         upload: None,
         failed_move: Some(crate::DbFailedMove {
@@ -214,12 +213,8 @@ fn a_failed_move_names_its_file_and_the_error_behind_it() {
 
 #[test]
 fn a_release_no_queue_holds_has_no_transfers() {
-    let inspector = shown(
-        vec![file("a", None)],
-        &ReleaseQueueEntries { download: None, output: None },
-        None,
-        None,
-    );
+    let inspector =
+        shown(vec![file("a")], &ReleaseQueueEntries { download: None, output: None }, None, None);
     assert!(inspector.transfers.is_empty());
 }
 
@@ -322,4 +317,28 @@ async fn the_file_details_read_the_file_by_its_id() {
         }
     };
     assert_eq!(read, None, "the library holds no such file");
+}
+
+/// A queued move to this device marks each file of the selected release.
+#[tokio::test]
+async fn a_queued_move_to_this_device_marks_each_file() {
+    let (db, tmp) = release_detail_db(crate::TEST_SCHEMA).await;
+    insert_files_out_of_natural_order(&db, &tmp).await;
+    bae_transfers::Downloads::new(db.clone())
+        .enqueue_all(vec![ReleaseQueueEntry {
+            payload: DownloadRequest::MoveToThisDevice { target_dir: tmp.path().to_owned() },
+            ..download(RELEASE_A)
+        }])
+        .await
+        .unwrap();
+
+    let mut live = crate::LibraryViews::new(db).subscribe_storage_inspector(Some(RELEASE_A.into()));
+    let inspector = live.next_inline().await.unwrap().result.unwrap().unwrap();
+    assert_eq!(
+        inspector.files.iter().map(|file| file.download).collect::<Vec<_>>(),
+        vec![
+            Some(FileDownload::Waiting { kind: DownloadKind::MoveToThisDevice });
+            FILES_IN_NATURAL_ORDER.len()
+        ]
+    );
 }

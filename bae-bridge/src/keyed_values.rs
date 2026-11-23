@@ -309,6 +309,17 @@ pub enum BridgeOutboxFeeds {
     },
 }
 
+/// The release and file streams from one read of moves to this device.
+#[derive(uniffi::Enum)]
+pub enum BridgeMoveToThisDeviceFeeds {
+    Streams {
+        /// The progress of each release moving to this device, by release id.
+        releases: Arc<KeyedValueStream>,
+        /// The share of each file downloading into the chosen folder, by file id.
+        files: Arc<KeyedValueStream>,
+    },
+}
+
 /// The feed's writing of a stream. Dropping it, as the feed ends, empties
 /// the stream: what it held is no longer known to be current.
 pub(crate) struct StreamWriter {

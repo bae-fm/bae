@@ -463,7 +463,8 @@ extension PreviewData {
         uploads: [PreviewReleaseUpload] = defaultUploads,
         selections: [Set<String>: BridgeStorageSelection] = [:],
         unloaded: Bool = false,
-        queues: BridgeStorageQueues? = nil
+        queues: BridgeStorageQueues? = nil,
+        inspectorOverrides: [String: BridgeStorageInspector] = [:]
     ) -> Library {
         let rows = storageRows(rows, uploading: uploads)
         let details = Dictionary(
@@ -477,6 +478,7 @@ extension PreviewData {
             outputs: outputs,
             uploads: uploads
         )
+        .merging(inspectorOverrides) { _, staged in staged }
         let queues =
             queues
             ?? storageQueues(
@@ -666,11 +668,12 @@ extension PreviewData {
         case .queued: (pinning, downloading) = (true, false)
         case .failed, nil: (pinning, downloading) = (false, false)
         }
-        let pin = { (file: BridgeFile) -> BridgeFilePin? in
+        let pin = { (file: BridgeFile) -> BridgeFileDownload? in
             guard pinning else { return nil }
-            if file.isImage { return .kept }
+            if file.isImage { return .done }
             return downloading
-                ? .downloading(fileId: pinningFileId(file.id)) : .waiting
+                ? .downloading(kind: .pin, fileId: pinningFileId(file.id))
+                : .waiting(kind: .pin)
         }
         var transfers: [BridgeStorageInspectorTransfer] = []
         if let download {
@@ -713,7 +716,9 @@ extension PreviewData {
         }
         return BridgeStorageInspector(
             transfers: transfers,
-            files: files.map { inspectorFile($0, upload: upload, pin: pin($0)) }
+            files: files.map {
+                inspectorFile($0, upload: upload, download: pin($0))
+            }
         )
     }
 
@@ -722,12 +727,12 @@ extension PreviewData {
     private static func inspectorFile(
         _ file: BridgeFile,
         upload: PreviewReleaseUpload?,
-        pin: BridgeFilePin?
+        download: BridgeFileDownload?
     ) -> BridgeStorageInspectorFile {
         BridgeStorageInspectorFile(
             file: file,
             upload: upload?.files[file.id],
-            pin: pin,
+            download: download,
             problem: nil
         )
     }

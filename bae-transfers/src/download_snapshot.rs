@@ -94,10 +94,8 @@ impl DownloadRate {
 /// switches the files; no table holds it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MoveToThisDeviceTransferProgress {
-    /// The bytes of the file being downloaded that are down.
-    pub file_bytes_done: u64,
-    /// The file's bytes in all.
-    pub file_bytes_total: u64,
+    /// The current file, once coven starts downloading it.
+    pub file: Option<MoveToThisDeviceFileProgress>,
     /// The bytes of every file of the release that are down.
     pub bytes_done: u64,
     /// The bytes of every file the release downloads.
@@ -107,19 +105,36 @@ pub struct MoveToThisDeviceTransferProgress {
     pub fraction: f64,
 }
 
+/// How far coven has downloaded the current file into the chosen folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MoveToThisDeviceFileProgress {
+    pub file: coven::FileId,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+}
+
+impl MoveToThisDeviceFileProgress {
+    pub fn fraction(self) -> f64 {
+        bae_types::progress::share_done(self.bytes_done, self.bytes_total)
+    }
+}
+
 impl MoveToThisDeviceTransferProgress {
     /// Nothing down yet, of a release of `bytes_total`.
     pub fn begin(bytes_total: u64) -> Self {
-        Self { file_bytes_done: 0, file_bytes_total: 0, bytes_done: 0, bytes_total, fraction: 0.0 }
+        Self { file: None, bytes_done: 0, bytes_total, fraction: 0.0 }
     }
 
     /// The progress coven reports of one step of preparing the copies.
     pub fn of(progress: coven::Progress<coven::DeviceOnlyStep>) -> Self {
-        let coven::DeviceOnlyStep::Downloading { before, all, .. } = progress.step;
+        let coven::DeviceOnlyStep::Downloading { file, before, all } = progress.step;
         let bytes_done = before + progress.done;
         Self {
-            file_bytes_done: progress.done,
-            file_bytes_total: progress.total,
+            file: Some(MoveToThisDeviceFileProgress {
+                file,
+                bytes_done: progress.done,
+                bytes_total: progress.total,
+            }),
             bytes_done,
             bytes_total: all,
             fraction: bae_types::progress::share_done(bytes_done, all),

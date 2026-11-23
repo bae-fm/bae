@@ -513,7 +513,7 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         .subscribe_storage_inspector(Some(cloud.clone()));
 
     // The release as it stands before any pin: unpinned, out of the queue.
-    rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;
+    rows_until(&mut rows, |value| value.files.iter().all(|file| file.download.is_none())).await;
     for round in 0..20 {
         manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
         // The read sends only what changes, so every value after the pin is
@@ -549,19 +549,18 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
 /// queue, and the inspector shows no pin but each file kept.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
-    use bae_views::album_detail::FilePin;
-    use bae_views::storage_inspector::StorageInspectorTransfer;
+    use bae_transfers::DownloadKind;
+    use bae_views::storage_inspector::{FileDownload, StorageInspectorTransfer};
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
     let cloud = uploaded_release(manager, &temp_dir, "cloud", "Album Title B", false).await;
-    inspector_rows_until(manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
-        .await;
 
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
     let pinning = inspector_rows_until(manager, &cloud, |value| !value.transfers.is_empty()).await;
-    assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
+    let waiting = FileDownload::Waiting { kind: DownloadKind::Pin };
+    assert!(pinning.files.iter().all(|file| file.download == Some(waiting)));
     let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
         pinning.transfers.as_slice()
     else {
@@ -578,7 +577,7 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 
     manager.set_downloads_paused(false).await.unwrap();
     let pinned = inspector_rows_until(manager, &cloud, |value| value.transfers.is_empty()).await;
-    assert!(pinned.files.iter().all(|file| file.pin.is_none()));
+    assert!(pinned.files.iter().all(|file| file.download.is_none()));
     assert!(all_files_kept(manager, &cloud).await, "the finished pin kept every file");
 }
 
@@ -596,7 +595,7 @@ async fn a_failed_pin_shows_no_file_pins() {
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
     inspector_rows_until(manager, &cloud, |value| {
-        value.files.iter().all(|file| file.pin.is_some())
+        value.files.iter().all(|file| file.download.is_some())
     })
     .await;
 
@@ -604,7 +603,7 @@ async fn a_failed_pin_shows_no_file_pins() {
         .await
         .unwrap());
     let failed = inspector_rows_until(manager, &cloud, |value| {
-        value.files.iter().all(|file| file.pin.is_none())
+        value.files.iter().all(|file| file.download.is_none())
     })
     .await;
     assert!(matches!(

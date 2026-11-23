@@ -40,8 +40,11 @@ fn a_release_has_come_as_far_as_its_files_before_and_its_file() {
     assert_eq!(
         MoveToThisDeviceTransferProgress::of(step(300, 1_000, 50, 200)),
         MoveToThisDeviceTransferProgress {
-            file_bytes_done: 50,
-            file_bytes_total: 200,
+            file: Some(MoveToThisDeviceFileProgress {
+                file: coven::FileId(uuid::Uuid::from_u128(1)),
+                bytes_done: 50,
+                bytes_total: 200,
+            }),
             bytes_done: 350,
             bytes_total: 1_000,
             fraction: 0.35,

@@ -5855,11 +5855,14 @@ shows the same way: how many of its files are pinning, waiting and pinned,
 again leaving out a count of none; a control that cancels the pin; and while it
 downloads, the bytes it holds of its size and how fast it goes. A file
 downloading shows a ring filling as it comes, and one waiting its turn a
-dashed circle. On the Mac VoiceOver reads a file's mark as the words for where
-the file stands: Queued to upload, Queued to pin, Uploading, Pinning, Waiting
-for a file or Could not move to the cloud. A failed pin says it failed instead,
-its error behind *Details* (§9.6), with a control that retries it (§4.3) and
-one that cancels it.
+dashed circle. While bae moves a release to This Mac, the inspector shows a
+dashed circle for a file waiting its turn and a ring that fills as the file
+downloads. Once coven places the copy, the inspector clears its mark. On the
+Mac, VoiceOver reads the file's mark as Queued to upload, Queued to pin,
+Queued to move to This Mac, Uploading, Pinning, Moving to This Mac…,
+Waiting for a file or Could not move to the cloud. A failed pin says it
+failed instead, its error behind *Details* (§9.6), with a control that retries
+it (§4.3) and one that cancels it.
 Selecting a file shows its details under the list, closed by a button or by
 selecting nothing: its name and the folder it sits in within the release's
 folder, what kind of file it is, its audio format, and its size. A file's kind

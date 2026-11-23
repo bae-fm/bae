@@ -30,6 +30,24 @@ extension ShotScene {
             )
         ),
         fileRow(
+            "mac.component.file-row.queued-to-pin",
+            inspectorFile(
+                "01 Harbor Lights.flac",
+                size: 34_100_000,
+                kind: .audio(format: "FLAC"),
+                download: .waiting(kind: .pin)
+            )
+        ),
+        fileRow(
+            "mac.component.file-row.queued-to-move",
+            inspectorFile(
+                "01 Harbor Lights.flac",
+                size: 34_100_000,
+                kind: .audio(format: "FLAC"),
+                download: .waiting(kind: .moveToThisDevice)
+            )
+        ),
+        fileRow(
             "mac.component.file-row.sending",
             inspectorFile(
                 "01 Harbor Lights.flac",
@@ -48,7 +66,22 @@ extension ShotScene {
                 "01 Harbor Lights.flac",
                 size: 34_100_000,
                 kind: .audio(format: "FLAC"),
-                pin: .downloading(fileId: "01 Harbor Lights.flac")
+                download: .downloading(
+                    kind: .pin,
+                    fileId: "01 Harbor Lights.flac"
+                )
+            )
+        ),
+        fileRow(
+            "mac.component.file-row.moving",
+            inspectorFile(
+                "01 Harbor Lights.flac",
+                size: 34_100_000,
+                kind: .audio(format: "FLAC"),
+                download: .downloading(
+                    kind: .moveToThisDevice,
+                    fileId: "moved-file"
+                )
             )
         ),
         fileRow(
@@ -93,13 +126,13 @@ extension ShotScene {
         size: UInt64,
         kind: BridgeFileKind,
         upload: BridgeFileUpload? = nil,
-        pin: BridgeFilePin? = nil,
+        download: BridgeFileDownload? = nil,
         problem: BridgeFileProblem? = nil
     ) -> BridgeStorageInspectorFile {
         BridgeStorageInspectorFile(
             file: releaseFile(name, size: size, kind: kind),
             upload: upload,
-            pin: pin,
+            download: download,
             problem: problem
         )
     }
@@ -138,7 +171,8 @@ extension ShotScene {
                 DownloadStore(
                     fileShares: .fileShares(
                         holding: ["01 Harbor Lights.flac": 0.4]
-                    )
+                    ),
+                    moveFileShares: .fileShares(holding: ["moved-file": 0.4])
                 )
             )
         }

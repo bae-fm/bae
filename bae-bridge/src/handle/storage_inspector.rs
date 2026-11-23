@@ -54,8 +54,9 @@ impl crate::types::BridgeStorageInspectorTransfer {
 
 impl crate::types::BridgeStorageInspectorFile {
     fn from_core(row: bae_views::storage_inspector::StorageInspectorFile) -> Self {
-        use bae_views::storage_inspector::FileProblem;
-        let bae_views::storage_inspector::StorageInspectorFile { file, upload, pin, problem } = row;
+        use bae_views::storage_inspector::{FileDownload, FileProblem};
+        let bae_views::storage_inspector::StorageInspectorFile { file, upload, download, problem } =
+            row;
         Self {
             file: BridgeFile::from_core(file),
             upload: upload.map(|upload| crate::types::BridgeFileUpload {
@@ -67,12 +68,17 @@ impl crate::types::BridgeStorageInspectorFile {
                 },
                 pending: upload.pending.map(crate::types::BridgePendingWait::from_core),
             }),
-            pin: pin.map(|pin| match pin {
-                bae_views::album_detail::FilePin::Kept => crate::types::BridgeFilePin::Kept,
-                bae_views::album_detail::FilePin::Downloading { file } => {
-                    crate::types::BridgeFilePin::Downloading { file_id: file.to_string() }
+            download: download.map(|download| match download {
+                FileDownload::Waiting { kind } => crate::types::BridgeFileDownload::Waiting {
+                    kind: crate::types::BridgeDownloadKind::from_core(kind),
+                },
+                FileDownload::Downloading { kind, file } => {
+                    crate::types::BridgeFileDownload::Downloading {
+                        kind: crate::types::BridgeDownloadKind::from_core(kind),
+                        file_id: file.to_string(),
+                    }
                 }
-                bae_views::album_detail::FilePin::Waiting => crate::types::BridgeFilePin::Waiting,
+                FileDownload::Done => crate::types::BridgeFileDownload::Done,
             }),
             problem: problem.map(|problem| match problem {
                 FileProblem::OriginalMissing => crate::types::BridgeFileProblem::OriginalMissing,

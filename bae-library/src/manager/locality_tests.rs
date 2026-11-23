@@ -619,25 +619,39 @@ async fn insert_release_without_files(manager: &TestManager) -> String {
     release.id
 }
 
-/// While a release's copies download into the person's folder, the release
-/// is listed with the bytes of the file coven downloads and of the whole
-/// release; once its files have switched it is listed no more.
+/// The inspector follows a move to this device: the file whose copy has
+/// landed, the file still downloading, and the file waiting its turn. The
+/// release's progress names the same current file until the copies switch.
 #[tokio::test]
 async fn a_release_moved_to_this_device_lists_its_bytes_while_its_copies_download() {
+    use bae_transfers::DownloadKind::MoveToThisDevice;
+    use bae_views::storage_inspector::FileDownload;
+
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    let release_id =
-        uploaded_release(manager, &temp_dir, "moved-to-this-device", "Moved to This Device", false)
-            .await;
-    let file = release_files(manager, &release_id).await.remove(0);
+    let release_id = uploaded_release_with_files(
+        manager,
+        &temp_dir,
+        "moved-to-this-device",
+        "Moved to This Device",
+        &[("a.flac", b"first file"), ("b.flac", b"second file"), ("c.flac", b"third file")],
+        false,
+    )
+    .await;
+    let files = release_files(manager, &release_id).await;
+    let file = &files[1];
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
     let coven::FilePlace::Cloud { location, .. } = reference.place() else {
         panic!("the uploaded file is stored");
     };
 
-    // Hold the download one byte into the file's encrypted chunk.
+    let mut inspector = views(manager).subscribe_storage_inspector(Some(release_id.clone()));
+    let read = inspector.next_inline().await.unwrap().result.unwrap().unwrap();
+    assert!(read.files.iter().all(|file| file.download.is_none()));
+
+    // Hold the second download before coven can place its copy.
     let (reached, observed) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_body_at(
@@ -654,14 +668,28 @@ async fn a_release_moved_to_this_device_lists_its_bytes_while_its_copies_downloa
     let mut transfers = manager.watch_download_transfers();
     let folder = temp_dir.create_folder("local");
     manager.move_releases_to_this_device(vec![release_id.clone()], &folder).await.unwrap();
-    observed.await.unwrap();
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, observed)
+        .await
+        .expect("the move reached the second file")
+        .unwrap();
+
+    let read = inspector.next_inline().await.unwrap().result.unwrap().unwrap();
+    assert_eq!(
+        read.files.iter().map(|file| file.download).collect::<Vec<_>>(),
+        [
+            Some(FileDownload::Done),
+            Some(FileDownload::Downloading { kind: MoveToThisDevice, file: file.file }),
+            Some(FileDownload::Waiting { kind: MoveToThisDevice }),
+        ]
+    );
+
     let listed = tokio::time::timeout(
         bae_util::test_channels::HANG_GUARD,
         transfers.until(|transfers| {
             matches!(
                 transfers.get(&release_id),
                 Some(bae_transfers::DownloadTransfer::MoveToThisDevice(progress))
-                    if progress.file_bytes_total > 0
+                    if progress.file.is_some_and(|current| current.file == file.file)
             )
         }),
     )
@@ -672,9 +700,10 @@ async fn a_release_moved_to_this_device_lists_its_bytes_while_its_copies_downloa
     let bae_transfers::DownloadTransfer::MoveToThisDevice(listed) = listed else {
         panic!("a move-to-this-device lists its own progress: {listed:?}");
     };
-    assert!(listed.file_bytes_done < listed.file_bytes_total, "{listed:?}");
+    let current = listed.file.unwrap();
+    assert!(current.bytes_done < current.bytes_total, "{listed:?}");
     assert!(listed.bytes_done < listed.bytes_total, "{listed:?}");
-    assert!(listed.bytes_total >= listed.file_bytes_total, "{listed:?}");
+    assert!(listed.bytes_total >= current.bytes_total, "{listed:?}");
 
     resume.send(()).unwrap();
     tokio::time::timeout(
@@ -685,6 +714,8 @@ async fn a_release_moved_to_this_device_lists_its_bytes_while_its_copies_downloa
     .expect("a release whose files switched is listed no more")
     .unwrap();
     assert!(download_queue_now(manager).await.rows.is_empty());
+    let read = inspector.next_inline().await.unwrap().result.unwrap().unwrap();
+    assert!(read.files.iter().all(|file| file.download.is_none()));
 }
 
 #[tokio::test]

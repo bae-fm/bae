@@ -90,6 +90,55 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
     assert_eq!(local_values.latest(b"local"), None);
 }
 
+/// The move's release progress and the share for its current file update
+/// together. The old file leaves the stream when the next download starts.
+#[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: it builds the streams its test feeds, as the screens module does"
+)]
+fn a_move_feed_holds_only_its_current_file_share() {
+    let release_values = StreamValues::new();
+    let file_values = StreamValues::new();
+    let releases = StreamWriter::new(release_values.clone());
+    let files = StreamWriter::new(file_values.clone());
+    let first = coven::FileId("00000000-0000-4000-8000-000000000001".parse().unwrap());
+    let second = coven::FileId("00000000-0000-4000-8000-000000000002".parse().unwrap());
+    let write = |file, before, done| {
+        let progress = bae_transfers::MoveToThisDeviceTransferProgress::of(coven::Progress {
+            step: coven::DeviceOnlyStep::Downloading { file, before, all: 80 },
+            done,
+            total: 40,
+        });
+        write_move_to_this_device_transfers(
+            &releases,
+            &files,
+            [("release".to_string(), bae_transfers::DownloadTransfer::MoveToThisDevice(progress))]
+                .into(),
+        );
+    };
+
+    write(first, 0, 10);
+    assert_eq!(
+        file_values.latest(first.to_string().as_bytes()),
+        Some(BridgeFastValue::FileShare { fraction: 0.25 })
+    );
+    write(second, 40, 20);
+    assert_eq!(file_values.latest(first.to_string().as_bytes()), None);
+    assert_eq!(
+        file_values.latest(second.to_string().as_bytes()),
+        Some(BridgeFastValue::FileShare { fraction: 0.5 })
+    );
+    assert!(matches!(
+        release_values.latest(b"release"),
+        Some(BridgeFastValue::MoveToThisDevice { progress }) if progress.bytes_done == 60
+    ));
+
+    write_move_to_this_device_transfers(&releases, &files, Default::default());
+    assert_eq!(file_values.latest(second.to_string().as_bytes()), None);
+    assert_eq!(release_values.latest(b"release"), None);
+}
+
 /// Each delivery of the outbox's transfers writes both streams whole: every
 /// release's transfer into the releases' stream, and the total into the
 /// total's. A release the delivery doesn't name leaves its stream, and the

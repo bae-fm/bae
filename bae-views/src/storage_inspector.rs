@@ -1,11 +1,12 @@
 //! The Storage Manager inspector's release: its files, each beside its
-//! upload while one waits, and the release's entry in each transfer queue.
+//! download or upload while one waits, and the release's entry in each
+//! transfer queue.
 
 use super::*;
-use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
+use crate::album_detail::{FileDetail, ReleaseUpload};
 pub use bae_sync_status::FileProblem;
 use bae_sync_status::PendingWait;
-use bae_transfers::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
+use bae_transfers::{DownloadKind, DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 
 /// What the inspector shows of one release, read in core for the release id
 /// it is set to.
@@ -18,15 +19,30 @@ pub struct StorageInspector {
 }
 
 /// One row of the inspector's file list: a release file and its upload,
-/// if one is queued; while the download queue pins the release, where the
-/// file's pin stands; and what is wrong with its original, when a move found
+/// if one is queued; where the file's download stands while the queue pins
+/// or moves the release; and what is wrong with its original, when a move found
 /// it missing or changed.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspectorFile {
     pub file: FileDetail,
     pub upload: Option<StorageInspectorUpload>,
-    pub pin: Option<FilePin>,
+    pub download: Option<FileDownload>,
     pub problem: Option<FileProblem>,
+}
+
+/// A file of a release the download queue pins or moves to this device.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileDownload {
+    Waiting {
+        kind: DownloadKind,
+    },
+    /// How far the download has come is the transfer keyed by this file.
+    Downloading {
+        kind: DownloadKind,
+        file: coven::FileId,
+    },
+    /// The pin holds the file whole or the move has placed its copy.
+    Done,
 }
 
 /// A release file's queued upload as the inspector shows it: which file,
@@ -96,7 +112,7 @@ impl StorageInspector {
                     sending: upload.sending,
                     pending: upload.pending.map(|record| PendingWait::of(&record)),
                 }),
-                pin: file.pin,
+                download: file.download,
                 problem: file
                     .move_record
                     .as_ref()
@@ -172,7 +188,7 @@ fn storage_inspector_transfers(
 mod tests;
 
 /// The release `release_id` as the inspector shows it, `None` when the
-/// library holds no such release: its files with their pins and uploads,
+/// library holds no such release: its files with their downloads and uploads,
 /// what of it waits to upload, and its download and export entries.
 fn storage_inspector_on(
     sql: &SqlReadContext<'_>,
@@ -270,47 +286,52 @@ const STORAGE_FILE: &str = concat!(
     " FROM release_files AS f WHERE f.id = ?1"
 );
 
-/// Where this device's pin of each file of the release `?1` stands while the
-/// download queue pins the release without having failed (kept, downloading,
-/// or waiting), NULL while it doesn't, as the CTE `pins` with each file row's
-/// id. A pin's download lists its file in `coven_downloading` before
-/// `coven_pins` holds a row for it. The CTE is a macro so that the files
-/// statement and the counts statement use the same SQL for each file's pin.
-macro_rules! file_pins {
+/// Each file's phase in the release's queued or active download. A pin
+/// checks coven's pinned and downloading files. A move checks the copies
+/// coven has placed and the one it is downloading into the chosen folder.
+macro_rules! file_downloads {
     () => {
-        "WITH pins AS (SELECT f.id AS file_row, \
-            CASE WHEN queued.kind = 'pin' AND queued.state <> 'failed' THEN \
-                CASE WHEN pin.file IS NOT NULL THEN 'kept' \
-                     WHEN downloading.file IS NOT NULL THEN 'downloading' \
-                     ELSE 'waiting' END END AS pin_state \
+        "WITH file_downloads AS (SELECT f.id AS file_row, queued.kind AS download_kind, \
+            CASE queued.kind \
+                WHEN 'pin' THEN CASE \
+                    WHEN pin.file IS NOT NULL THEN 'done' \
+                    WHEN downloading.file IS NOT NULL THEN 'downloading' \
+                    ELSE 'waiting' END \
+                WHEN 'move_to_this_device' THEN CASE \
+                    WHEN queued.state = 'queued' THEN 'waiting' \
+                    WHEN placed.file IS NOT NULL THEN 'done' \
+                    WHEN copying.file IS NOT NULL THEN 'downloading' \
+                    ELSE 'waiting' END \
+            END AS download_state \
          FROM release_files AS f \
-         LEFT JOIN download_queue AS queued ON queued.release_id = f.release_id \
-         LEFT JOIN coven_pins AS pin ON pin.file = f.file \
-         LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
+         LEFT JOIN download_queue AS queued \
+            ON queued.release_id = f.release_id AND queued.state <> 'failed' \
+         LEFT JOIN coven_pins AS pin ON queued.kind = 'pin' AND pin.file = f.file \
+         LEFT JOIN coven_downloading AS downloading \
+            ON queued.kind = 'pin' AND downloading.file = f.file \
+         LEFT JOIN coven_device_only_placed AS placed \
+            ON queued.kind = 'move_to_this_device' AND placed.file = f.file \
+         LEFT JOIN coven_device_only_downloading AS copying \
+            ON queued.kind = 'move_to_this_device' AND copying.file = f.file \
          WHERE f.release_id = ?1) "
     };
 }
 
-/// A release's files as the inspector shows them, in the order of
-/// `RELEASE_FILES_IN_ORDER`, each with where this device's pin of it stands
-/// while the download queue pins the release (kept, downloading, or waiting)
-/// and its upload while it waits in this device's queue, from coven's `coven_pins`,
-/// `coven_downloading` and `coven_uploads`, each joined by the coven file the
-/// row references, the text of the error behind the upload's record when
-/// coven keeps one (`coven_pending`); and, apart from its upload, the record
-/// of the move whose upload found its original, named by its path, missing or
-/// changed, with the text of the error behind it. A file whose move failed
-/// has no upload. Each file's pin is the one `file_pins!` states.
+/// A release's files in natural filename order, with each file's download,
+/// its queued upload and the error behind its upload record when coven
+/// keeps one. Apart from its upload, the file carries the record of the move
+/// that found its original missing or changed, matched by its path, with
+/// the error behind it.
 pub(crate) const INSPECTOR_FILES: &str = concat!(
-    file_pins!(),
+    file_downloads!(),
     "SELECT ",
     bae_records::release_file_columns!(),
-    ", pins.pin_state AS pin_state, \
+    ", file_downloads.download_kind, file_downloads.download_state, \
         upload.file AS upload_file, upload.sending AS upload_sending, \
         upload.pending AS upload_pending, upload_record.cause AS upload_cause, \
         move_record.record AS move_pending, move_record.cause AS move_cause \
      FROM release_files AS f \
-     JOIN pins ON pins.file_row = f.id \
+     JOIN file_downloads ON file_downloads.file_row = f.id \
      LEFT JOIN coven_uploads AS upload ON upload.file = f.file \
      LEFT JOIN coven_pending AS upload_record \
         ON upload_record.file = f.file AND upload_record.record = upload.pending \
@@ -324,15 +345,15 @@ pub(crate) const INSPECTOR_FILES: &str = concat!(
 );
 
 /// How many of the release's files this device keeps, is downloading and has
-/// yet to download, from each file's pin (`file_pins!`), and whether the
+/// yet to download, from each file's download (`file_downloads!`), and whether the
 /// download queue pins the release, which is when those counts show.
 const PIN_COUNTS: &str = concat!(
-    file_pins!(),
-    "SELECT COALESCE(MAX(pin_state IS NOT NULL), 0) AS pinning, \
-        COUNT(*) FILTER (WHERE pin_state = 'downloading'), \
-        COUNT(*) FILTER (WHERE pin_state = 'waiting'), \
-        COUNT(*) FILTER (WHERE pin_state = 'kept') \
-     FROM pins"
+    file_downloads!(),
+    "SELECT COUNT(*) > 0 AS pinning, \
+        COUNT(*) FILTER (WHERE download_state = 'downloading'), \
+        COUNT(*) FILTER (WHERE download_state = 'waiting'), \
+        COUNT(*) FILTER (WHERE download_state = 'done') \
+     FROM file_downloads WHERE download_kind = 'pin'"
 );
 
 fn pin_counts_on(
@@ -354,12 +375,15 @@ fn inspector_files_on(
 ) -> Result<Vec<DbStorageInspectorFile>, DbError> {
     Ok(sql.query(INSPECTOR_FILES, params![release_id], |row| {
         let file = row_to_file(row)?;
-        let pin = match row.get::<_, Option<String>>("pin_state")?.as_deref() {
-            Some("kept") => Some(crate::album_detail::FilePin::Kept),
+        let download = match row.get::<_, Option<String>>("download_state")?.as_deref() {
+            Some("done") => Some(FileDownload::Done),
             Some("downloading") => {
-                Some(crate::album_detail::FilePin::Downloading { file: file.file })
+                Some(FileDownload::Downloading { kind: row.get("download_kind")?, file: file.file })
             }
-            Some(_) => Some(crate::album_detail::FilePin::Waiting),
+            Some("waiting") => Some(FileDownload::Waiting { kind: row.get("download_kind")? }),
+            Some(state) => {
+                return Err(bae_store::read::column_conversion_error(row, "download_state", state))
+            }
             None => None,
         };
         let upload = match row.get::<_, Option<coven::FileId>>("upload_file")? {
@@ -381,6 +405,6 @@ fn inspector_files_on(
         if let Some(record) = &mut move_record {
             record.cause = row.get("move_cause")?;
         }
-        Ok(DbStorageInspectorFile { file, pin, upload, move_record })
+        Ok(DbStorageInspectorFile { file, download, upload, move_record })
     })?)
 }

@@ -48,6 +48,7 @@ import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeLocalTimeZone
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
+import uniffi.bae_bridge.BridgeMoveToThisDeviceFeeds
 import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePagedList
 import uniffi.bae_bridge.BridgePlayOutcome
@@ -173,7 +174,8 @@ internal open class FakeAppHandle(
 
     override fun feedDownloadTransfers(): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun feedMoveToThisDeviceTransfers(): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedMoveToThisDeviceTransfers(): BridgeMoveToThisDeviceFeeds =
+        BridgeMoveToThisDeviceFeeds.Streams(FakeKeyedValueStream(), FakeKeyedValueStream())
 
     override fun subscribeUploadsPaused(): UploadsPausedSubscription = FakeUploadsPausedSubscription()
 

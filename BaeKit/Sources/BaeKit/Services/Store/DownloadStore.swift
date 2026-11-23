@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The streams of how far each pinning release, each file a pin downloads,
-/// and each release moving to This Mac, has got. The bridge holds each latest value, and the native
+/// The streams of how far each release and file has downloaded during a
+/// pin or move to This Mac. The bridge holds each latest value, and the native
 /// view drawing that release or file reads it once per display frame, so
 /// arriving bytes run no SwiftUI update and no main-thread hop. The queue's
 /// entries are the Storage Manager inspector's, read for one release in core.
@@ -12,6 +12,8 @@ import SwiftUI
 public class DownloadStore {
     /// The latest share of each file being downloaded to keep whole, by file.
     public nonisolated let fileShares: LatestStream<Double>
+    /// The latest share of each file moving to This Mac, by file.
+    public nonisolated let moveFileShares: LatestStream<Double>
     /// The latest progress of each downloading release.
     public nonisolated let releaseProgress:
         LatestStream<BridgeDownloadTransferProgress>
@@ -27,6 +29,7 @@ public class DownloadStore {
     public init(
         downloadsPaused: Bool = false,
         fileShares: LatestStream<Double> = .fileShares(),
+        moveFileShares: LatestStream<Double> = .fileShares(),
         releaseProgress: LatestStream<BridgeDownloadTransferProgress> =
             .downloads(),
         moveToThisDeviceTransfers: LatestStream<
@@ -36,6 +39,7 @@ public class DownloadStore {
     ) {
         self.downloadsPaused = downloadsPaused
         self.fileShares = fileShares
+        self.moveFileShares = moveFileShares
         self.releaseProgress = releaseProgress
         self.moveToThisDeviceTransfers = moveToThisDeviceTransfers
     }

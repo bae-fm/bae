@@ -236,20 +236,6 @@ impl FileDetail {
     }
 }
 
-/// Where this device's pin of a file stands: kept whole on this device,
-/// downloading now to be kept, as coven's `coven_downloading` lists it, or
-/// waiting for the download queue's pin of its release to fetch it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FilePin {
-    Kept,
-    /// How far it has got is its file's transfer, keyed by `file`, the file
-    /// coven downloads.
-    Downloading {
-        file: coven::FileId,
-    },
-    Waiting,
-}
-
 /// One slot in a release's lightbox gallery. Read by id — there is no filesystem
 /// path.
 #[derive(Debug, Clone)]

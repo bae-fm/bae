@@ -35,10 +35,18 @@ mirror_struct! {
     fields: { bytes_done, bytes_total, fraction, throughput_bps },
 }
 
-mirror_struct! {
-    crate::types::BridgeMoveToThisDeviceProgress = bae_transfers::MoveToThisDeviceTransferProgress,
-    from_core: pub(crate) fn,
-    fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total, fraction },
+impl crate::types::BridgeMoveToThisDeviceProgress {
+    pub(crate) fn from_core(progress: bae_transfers::MoveToThisDeviceTransferProgress) -> Self {
+        let (file_bytes_done, file_bytes_total) =
+            progress.file.map_or((0, 0), |file| (file.bytes_done, file.bytes_total));
+        Self {
+            file_bytes_done,
+            file_bytes_total,
+            bytes_done: progress.bytes_done,
+            bytes_total: progress.bytes_total,
+            fraction: progress.fraction,
+        }
+    }
 }
 
 impl crate::types::BridgeDownloadState {

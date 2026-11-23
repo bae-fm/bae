@@ -11,7 +11,9 @@ use std::sync::Arc;
 use bae_app::AppServices;
 use bae_library::CancellationToken;
 
-use crate::keyed_values::{BridgeOutboxFeeds, KeyedValueStream, StreamValues, StreamWriter};
+use crate::keyed_values::{
+    BridgeMoveToThisDeviceFeeds, BridgeOutboxFeeds, KeyedValueStream, StreamValues, StreamWriter,
+};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeError, BridgeFastValue};
 
@@ -281,19 +283,45 @@ pub(crate) fn download_transfers(
     })
 }
 
-/// The stream [`AppHandle::feed_move_to_this_device_transfers`](crate::AppHandle::feed_move_to_this_device_transfers) hands out.
+/// Write the current move's release and file progress under their own keys.
+fn write_move_to_this_device_transfers(
+    releases: &StreamWriter,
+    files: &StreamWriter,
+    transfers: std::collections::BTreeMap<String, bae_transfers::DownloadTransfer>,
+) {
+    files.reset(
+        transfers
+            .values()
+            .filter_map(|transfer| match transfer {
+                bae_transfers::DownloadTransfer::MoveToThisDevice(progress) => {
+                    progress.file.map(|file| {
+                        (
+                            file.file.to_string().into_bytes(),
+                            BridgeFastValue::FileShare { fraction: file.fraction() },
+                        )
+                    })
+                }
+                bae_transfers::DownloadTransfer::Pin(_) => None,
+            })
+            .collect(),
+    );
+    releases.reset(release_transfers_held(transfers, move_to_this_device_value));
+}
+
+/// The pair of streams [`AppHandle::feed_move_to_this_device_transfers`](crate::AppHandle::feed_move_to_this_device_transfers) hands out.
 pub(crate) fn move_to_this_device_transfers(
     runtime: OperationRuntime,
     run: impl RunFeed,
-) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
+) -> BridgeMoveToThisDeviceFeeds {
+    let (releases, files) = feed_pair(runtime, run, move |services, releases, files| {
         let mut transfers = services.watch_download_transfers();
         async move {
             while let Some(downloads) = transfers.next().await {
-                writer.reset(release_transfers_held(downloads, move_to_this_device_value));
+                write_move_to_this_device_transfers(&releases, &files, downloads);
             }
         }
-    })
+    });
+    BridgeMoveToThisDeviceFeeds::Streams { releases, files }
 }
 
 /// The stream [`AppHandle::feed_playback_positions`](crate::AppHandle::feed_playback_positions) hands out.

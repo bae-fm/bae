@@ -4,7 +4,7 @@ use super::*;
 use bae_views::storage_inspector::StorageInspector;
 
 /// The Storage Manager inspector's release as it changes, read for the id
-/// the subscription is set to: its files, each beside its pin and its
+/// the subscription is set to: its files, each beside its download and its
 /// upload while one waits, and its entry in the download, export and
 /// upload queues, all read for this release alone and at once, with the
 /// error behind each upload's record when coven keeps it. A
