@@ -2,6 +2,7 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.playback.AndroidFullPlayer
@@ -45,6 +46,9 @@ class PlaybackBoardShots : BoardShot() {
         }
 }
 
+/** Where the boards pin the full player's sheet, from the top of the screen. */
+private val FULL_PLAYER_TOP = 40.dp
+
 /**
  * The full player as the boards draw it: a sheet over the library, which the scrim dims, with [staging]'s track in the
  * bar behind it and the queue's Up next under the player.
@@ -53,7 +57,7 @@ class PlaybackBoardShots : BoardShot() {
 private fun FullPlayerOverLibrary(
     staging: PlayerStaging,
     volumeRow: @Composable () -> Unit,
-) = SheetScene(behind = { PlayingLibraryScreen(nowPlayingBar = { Bar(staging) }) }) {
+) = SheetScene(top = FULL_PLAYER_TOP, behind = { PlayingLibraryScreen(nowPlayingBar = { Bar(staging) }) }) {
     Covers {
         AndroidFullPlayer(
             track = staging.track,

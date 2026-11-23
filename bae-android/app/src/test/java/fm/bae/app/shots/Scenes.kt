@@ -69,18 +69,19 @@ import java.time.Duration
 
 /**
  * A sheet's body on the sheet's surface, rising from the foot of [behind], which the scrim dims, as a bottom
- * sheet opens over its page. The sheet's own window isn't drawn in a test.
+ * sheet opens over its page; [top] pins a tall one, as in [SheetOverScrim]. The sheet's own window isn't drawn in a test.
  */
 @Composable
 internal fun SheetScene(
     heading: AndroidSheetHeading = AndroidSheetHeading(),
+    top: Dp? = null,
     behind: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ScreenScene {
         Box(modifier = Modifier.fillMaxSize()) {
             behind()
-            SheetOverScrim(heading, content = content)
+            SheetOverScrim(heading, top = top, content = content)
         }
     }
 }
