@@ -16,14 +16,14 @@ import SwiftUI
     public final class ScrimWindow: NSWindow {
         public static let accessibilityIdentifier = "window-scrim"
 
-        private let parent: NSWindow
+        private let covered: NSWindow
         private var observers: [NSObjectProtocol] = []
 
         override public var canBecomeKey: Bool { false }
         override public var canBecomeMain: Bool { false }
 
         public init(over parent: NSWindow) {
-            self.parent = parent
+            covered = parent
             super
                 .init(
                     contentRect: parent.frame,
@@ -56,7 +56,7 @@ import SwiftUI
         }
 
         private func follow() {
-            setFrame(parent.frame, display: false)
+            setFrame(covered.frame, display: false)
         }
 
         override public func sendEvent(_ event: NSEvent) {}
@@ -64,14 +64,14 @@ import SwiftUI
         /// Puts the scrim over its parent.
         public func show() {
             follow()
-            parent.addChildWindow(self, ordered: .above)
+            covered.addChildWindow(self, ordered: .above)
         }
 
         /// Takes the scrim off its parent.
         public func hide() {
             observers.forEach(NotificationCenter.default.removeObserver)
             observers = []
-            parent.removeChildWindow(self)
+            covered.removeChildWindow(self)
             orderOut(nil)
         }
     }
