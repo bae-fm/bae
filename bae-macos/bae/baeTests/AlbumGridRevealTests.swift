@@ -166,7 +166,7 @@ struct AlbumGridRevealTests {
         let recordSection: @Sendable (String?) -> Void = { sectionId in
             requestedSections.withLock { $0.append(sectionId) }
         }
-        let sections = [
+        let sections: [BridgeLibraryBrowseSection] = [
             .fixture(
                 "artist-a",
                 title: "Artist A",

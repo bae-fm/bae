@@ -92,7 +92,7 @@ struct AlbumGridCellsTests {
 
     @Test("artist headings and albums start full rows with one open appearance")
     func groupedLayoutRows() throws {
-        let sections = [
+        let sections: [BridgeLibraryBrowseSection] = [
             .fixture(
                 "artist-a",
                 title: "Artist A",
