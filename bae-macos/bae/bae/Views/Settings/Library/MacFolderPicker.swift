@@ -113,7 +113,8 @@
                     MacNotice(
                         title: String(localized: words.nameTaken),
                         advice: nil,
-                        error: nil
+                        error: nil,
+                        look: .quiet
                     )
                 }
                 if browser.notEmpty != nil {
@@ -123,7 +124,8 @@
                                 "This folder is not empty. Choose an empty folder, or make a new one."
                         ),
                         advice: nil,
-                        error: nil
+                        error: nil,
+                        look: .quiet
                     )
                 }
             }

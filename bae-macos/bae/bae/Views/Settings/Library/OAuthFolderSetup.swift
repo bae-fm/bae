@@ -118,7 +118,7 @@
                         VStack(alignment: .leading, spacing: ThemeSpace.group) {
                             MacFolderPicker(browser: browser, listing: listing)
                             if let error = browser.error {
-                                MacNotice(error: error)
+                                MacNotice(error: error, look: .quiet)
                             }
                         }
                     }
@@ -143,7 +143,7 @@
             .frame(maxWidth: .infinity, alignment: .leading)
         }
 
-        /// The words beside the spinner, by the call running.
+        /// The words over the bar, by the call running.
         var title: LocalizedStringResource {
             switch (work, provider) {
             case (.signingIn, _):
