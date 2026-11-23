@@ -27,7 +27,7 @@ struct MacTransport: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.section) {
-            shuffleButton
+            MacShuffleButton(isOn: shuffled, set: onSetShuffle)
 
             MacIconButton(
                 symbol: "backward.fill",
@@ -53,16 +53,6 @@ struct MacTransport: View {
             else {
                 Self.controlSpace
             }
-        }
-    }
-
-    private var shuffleButton: some View {
-        MacIconButton(
-            symbol: "shuffle",
-            label: shuffled ? "Turn off shuffle" : "Shuffle",
-            active: shuffled
-        ) {
-            onSetShuffle(!shuffled)
         }
     }
 

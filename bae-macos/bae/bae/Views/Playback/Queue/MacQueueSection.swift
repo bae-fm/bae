@@ -53,7 +53,11 @@ struct MacQueueSection: View {
                         clearButton(clear)
                     }
                     if let shuffle = lane.shuffle {
-                        shuffleToggle(shuffle)
+                        MacShuffleButton(
+                            isOn: shuffle.on,
+                            glyph: .small,
+                            set: shuffle.set
+                        )
                     }
                 }
                 // In line with the rows' content, so Clear and shuffle sit
@@ -98,15 +102,4 @@ struct MacQueueSection: View {
         .accessibilityLabel(clear.label)
     }
 
-    /// The context's shuffle toggle; the current track keeps playing.
-    private func shuffleToggle(_ shuffle: Shuffle) -> some View {
-        MacIconButton(
-            symbol: "shuffle",
-            label: shuffle.on ? "Turn off shuffle" : "Shuffle",
-            active: shuffle.on,
-            iconSize: .small
-        ) {
-            shuffle.set(!shuffle.on)
-        }
-    }
 }
