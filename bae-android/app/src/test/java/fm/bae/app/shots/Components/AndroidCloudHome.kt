@@ -1,6 +1,10 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.settings.S3KeyReplacement
 import fm.bae.app.ui.settings.StorageSection
 import org.junit.Test
@@ -23,10 +27,14 @@ class AndroidCloudHomeShots : BoardShot() {
 private fun CloudHome(
     key: String,
     keyLine: S3KeyReplacement.Line? = null,
-) = StorageSection(
-    location = sceneS3,
-    access = BridgeMemberAccess.S3AccessKey(key),
-    keyLine = { keyLine },
-    onReplaceKey = {},
-    onDismissKeyLine = {},
-)
+) = InsideScreenEdges {
+    Box(modifier = Modifier.padding(top = ThemeSpace.related)) {
+        StorageSection(
+            location = sceneS3,
+            access = BridgeMemberAccess.S3AccessKey(key),
+            keyLine = { keyLine },
+            onReplaceKey = {},
+            onDismissKeyLine = {},
+        )
+    }
+}

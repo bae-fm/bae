@@ -6,13 +6,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
@@ -70,14 +68,12 @@ private fun S3KeyLineNotice(
     line: S3KeyReplacement.Line,
     onDismiss: () -> Unit,
 ) {
-    val modifier = Modifier.padding(horizontal = ThemeSpace.edge)
     when (line) {
         is S3KeyReplacement.Line.Saved -> {
             AndroidNotice(
                 title = stringResource(R.string.s3_key_saved),
                 advice = line.oldKey?.let { stringResource(R.string.s3_key_delete_old, it) },
                 error = null,
-                modifier = modifier,
                 tone = StatusTone.INFO,
                 onDismiss = onDismiss,
             )
@@ -88,7 +84,6 @@ private fun S3KeyLineNotice(
                 title = stringResource(R.string.s3_key_refused_title),
                 advice = line.error.line,
                 error = line.error,
-                modifier = modifier,
                 onDismiss = onDismiss,
             )
         }
