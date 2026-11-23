@@ -576,17 +576,17 @@ struct ParentWindowHeight: NSViewRepresentable {
 
     final class HostView: NSView {
         var report: (CGFloat?) -> Void = { _ in }
-        private var resizeWatch: WindowResizeWatch?
+        private var noticeWatch: WindowNoticeWatch?
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            resizeWatch = nil
+            noticeWatch = nil
             guard let parent = window?.sheetParent else {
                 report(nil)
                 return
             }
             report(parent.frame.height)
-            resizeWatch = WindowResizeWatch(of: parent) {
+            noticeWatch = WindowNoticeWatch(of: parent) {
                 [weak self] parent in
                 self?.report(parent.frame.height)
             }

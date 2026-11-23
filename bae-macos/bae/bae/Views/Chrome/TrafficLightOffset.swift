@@ -37,7 +37,7 @@ private struct TrafficLightPositioner: NSViewRepresentable {
         /// Where this view last put each button. A button at another place
         /// is at its usual place, which AppKit put it back to.
         private var placed: [NSWindow.ButtonType: CGPoint] = [:]
-        private var observers: [any NSObjectProtocol] = []
+        private var noticeWatch: WindowNoticeWatch?
 
         init(xOffset: CGFloat, yOffset: CGFloat) {
             self.xOffset = xOffset
@@ -52,36 +52,21 @@ private struct TrafficLightPositioner: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            for observer in observers {
-                NotificationCenter.default.removeObserver(observer)
-            }
-            observers = []
+            noticeWatch = nil
             placed = [:]
-            // Leaving a window stops the observing.
             guard let window else {
                 return
             }
             moveButtons(in: window)
-            observers = [
-                NSWindow.didResizeNotification,
-                NSWindow.didBecomeKeyNotification,
-                NSWindow.didUpdateNotification,
-            ]
-            .map { name in
-                NotificationCenter.default.addObserver(
-                    forName: name,
-                    object: window,
-                    queue: .main
-                ) { [weak self, weak window] _ in
-                    // A notice that arrives as the window goes away has
-                    // nothing to move.
-                    guard let window else {
-                        return
-                    }
-                    MainActor.assumeIsolated {
-                        self?.moveButtons(in: window)
-                    }
-                }
+            noticeWatch = WindowNoticeWatch(
+                of: window,
+                notices: [
+                    NSWindow.didResizeNotification,
+                    NSWindow.didBecomeKeyNotification,
+                    NSWindow.didUpdateNotification,
+                ]
+            ) { [weak self] window in
+                self?.moveButtons(in: window)
             }
         }
 

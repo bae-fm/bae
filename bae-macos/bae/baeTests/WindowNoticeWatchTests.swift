@@ -3,11 +3,11 @@ import Testing
 
 @testable import bae
 
-/// A watch of a window's resizes, which the setup sheet and the traffic light
+/// A watch of a window's notices, which the setup sheet and the traffic light
 /// buttons keep for as long as their view lives.
 @MainActor
-@Suite("WindowResizeWatch")
-struct WindowResizeWatchTests {
+@Suite("WindowNoticeWatch")
+struct WindowNoticeWatchTests {
     private final class Count {
         var resizes = 0
     }
@@ -26,12 +26,29 @@ struct WindowResizeWatchTests {
         let center = NotificationCenter.default
         let window = window()
         let count = Count()
-        let watch = WindowResizeWatch(of: window) { _ in
+        let watch = WindowNoticeWatch(of: window) { _ in
             count.resizes += 1
         }
         center.post(name: NSWindow.didResizeNotification, object: window)
         center.post(name: NSWindow.didResizeNotification, object: window)
         #expect(count.resizes == 2)
+        withExtendedLifetime(watch) {}
+    }
+
+    @Test("a watch runs for the notices it names, and no resize")
+    func runsOnTheNoticesItNames() {
+        let center = NotificationCenter.default
+        let window = window()
+        let count = Count()
+        let watch = WindowNoticeWatch(
+            of: window,
+            notices: [NSWindow.didBecomeKeyNotification]
+        ) { _ in
+            count.resizes += 1
+        }
+        center.post(name: NSWindow.didBecomeKeyNotification, object: window)
+        center.post(name: NSWindow.didResizeNotification, object: window)
+        #expect(count.resizes == 1)
         withExtendedLifetime(watch) {}
     }
 
@@ -42,7 +59,7 @@ struct WindowResizeWatchTests {
         let count = Count()
         // The watch goes out of scope as a closing sheet's views do.
         autoreleasepool {
-            _ = WindowResizeWatch(of: window) { _ in
+            _ = WindowNoticeWatch(of: window) { _ in
                 count.resizes += 1
             }
         }
