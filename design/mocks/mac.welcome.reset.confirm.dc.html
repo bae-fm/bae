@@ -16,7 +16,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacWelcomeWindow" height="600"><div style="position:relative;height:100%;display:flex;flex-direction:column"><x-import component-from-global-scope="Bae.MacNotice" tone="danger" layout="centered" quiet="{{ true }}" title="This device cannot sync." action="Reset from cloud…"></x-import><x-import component-from-global-scope="Bae.MacAlert" title="Reset from cloud?" message="Resetting will discard edits on this device that have not synced."><x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}" size="alert">Reset</x-import><x-import component-from-global-scope="Bae.MacButton" size="alert">Cancel</x-import></x-import></div></x-import>
+<x-import component-from-global-scope="Bae.MacWelcomeWindow" height="600"><div style="position:relative;height:100%;display:flex;flex-direction:column"><x-import component-from-global-scope="Bae.MacNotice" tone="danger" layout="centered" quiet="{{ true }}" title="This device cannot sync" action="Reset from cloud…"></x-import><x-import component-from-global-scope="Bae.MacAlert" title="Reset from cloud?" message="Resetting will discard edits on this device that have not synced."><x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}" size="alert">Reset</x-import><x-import component-from-global-scope="Bae.MacButton" size="alert">Cancel</x-import></x-import></div></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
 class Component extends DCLogic {
