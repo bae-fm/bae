@@ -180592,7 +180592,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hart toevoegen"
+            "value" : "Hartje toevoegen"
           }
         },
         "pl" : {
@@ -180646,7 +180646,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加爱心"
+            "value" : "添加红心"
           }
         },
         "zh-Hant" : {
