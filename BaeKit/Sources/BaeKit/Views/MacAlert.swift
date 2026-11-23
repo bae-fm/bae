@@ -136,6 +136,8 @@
             .padding(.top, ThemeSpace.edge + ThemeSpace.inline)
             .padding([.horizontal, .bottom], ThemeSpace.edge)
             .frame(width: Self.width, alignment: .leading)
+            // The board's alert is a dialog named by its title.
+            .accessibilityPanel(words.title)
             .focusable()
             .focused($focused)
             .focusEffectDisabled()
