@@ -6,6 +6,8 @@ public enum MacButtonKind: Sendable {
     case primary
     /// Any other action: the control fill under the primary text colour.
     case secondary
+    /// A secondary button with the height and corners of the field beside it.
+    case fieldAction
     /// Words with no fill, at the end of a row or beside other text.
     case borderless
     /// Only its label, which the caller draws in its own look (a glyph, a
@@ -194,6 +196,15 @@ extension View {
             buttonStyle(PrimaryButtonStyle().accentFocus())
         case .secondary:
             buttonStyle(SecondaryButtonStyle(tinted: tinted).accentFocus())
+        case .fieldAction:
+            buttonStyle(
+                SecondaryButtonStyle(
+                    cornerRadius: ThemeRadius.field,
+                    height: ThemeSize.field,
+                    tinted: tinted
+                )
+                .accentFocus(cornerRadius: ThemeRadius.field)
+            )
         case .borderless:
             buttonStyle(.macBorderless)
         case .plain, .icon:

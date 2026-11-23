@@ -7,8 +7,12 @@ import SwiftUI
 /// `labelWidth`, the label takes a column of that width and the field fills
 /// the rest of the row.
 struct MacFieldRow<Content: View>: View {
-    private let label: LocalizedStringKey
-    private let labelWidth: CGFloat?
+    private enum LabelPlacement {
+        case visible(LocalizedStringKey, width: CGFloat?)
+        case alignedField
+    }
+
+    private let label: LabelPlacement
     private let content: Content
 
     init(
@@ -16,26 +20,39 @@ struct MacFieldRow<Content: View>: View {
         labelWidth: CGFloat? = nil,
         @ViewBuilder content: () -> Content
     ) {
-        self.label = label
-        self.labelWidth = labelWidth
+        self.label = .visible(label, width: labelWidth)
         self.content = content()
     }
 
+    /// The field stands in for a row's name and shares its text inset.
+    init(@ViewBuilder aligningText content: () -> Content) {
+        self.label = .alignedField
+        self.content = content()
+    }
+
+    @ViewBuilder
     var body: some View {
-        HStack(alignment: .center) {
-            if let labelWidth {
-                Text(label)
-                    .frame(width: labelWidth, alignment: .leading)
-                HStack(alignment: .center, spacing: ThemeSpace.related) {
-                    content
+        switch label {
+        case .alignedField:
+            HStack(spacing: ThemeSpace.related) { content }
+                .padding(.leading, -ThemeSpace.fieldInset)
+                .settingsRowInset(ThemeSpace.compact)
+        case .visible(let title, let width):
+            HStack(alignment: .center) {
+                if let width {
+                    Text(title)
+                        .frame(width: width, alignment: .leading)
+                    HStack(alignment: .center, spacing: ThemeSpace.related) {
+                        content
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            else {
-                Text(label)
-                Spacer(minLength: ThemeSpace.group)
-                HStack(alignment: .center, spacing: ThemeSpace.compact) {
-                    content
+                else {
+                    Text(title)
+                    Spacer(minLength: ThemeSpace.group)
+                    HStack(alignment: .center, spacing: ThemeSpace.compact) {
+                        content
+                    }
                 }
             }
         }

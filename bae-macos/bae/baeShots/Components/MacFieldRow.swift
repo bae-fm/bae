@@ -15,7 +15,7 @@ extension ShotScene {
             ShotBox {
                 MacFieldRow("Name") {
                     nameField
-                    Button("Set up") {}
+                    MacButton("Set up", kind: .fieldAction) {}
                 }
             }
         },
@@ -40,7 +40,7 @@ extension ShotScene {
         component("mac.component.field-row.text-aligned", height: 130) {
             ShotBox {
                 MacRow("Home music") {}
-                MacFieldRow("") { nameField }
+                MacFieldRow(aligningText: { nameField })
             }
         },
     ]

@@ -98,18 +98,19 @@
                         row(folder)
                     }
                     if browser.isNaming {
-                        HStack {
-                            TextField(
-                                "Folder name",
-                                text: $browser.newFolderName
+                        MacFieldRow(aligningText: {
+                            BoxedField(
+                                text: $browser.newFolderName,
+                                focusesOnAppear: true
                             )
-                            .labelsHidden()
-                            .textFieldStyle(.plain)
+                            .accessibilityLabel(Text("Folder name"))
                             .onSubmit { browser.createFolder() }
                             .onExitCommand { browser.stopNaming() }
-                            MacButton("Create") { browser.createFolder() }
-                                .disabled(!browser.canCreateFolder)
-                        }
+                            MacButton("Create", kind: .fieldAction) {
+                                browser.createFolder()
+                            }
+                            .disabled(!browser.canCreateFolder)
+                        })
                     }
                 }
                 if browser.takenName != nil {

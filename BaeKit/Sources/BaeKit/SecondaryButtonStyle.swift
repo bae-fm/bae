@@ -18,20 +18,26 @@ public struct SecondaryButtonStyle: ButtonStyle {
 
     /// The corner radius to draw with in place of the control size's own.
     private let cornerRadius: CGFloat?
+    private let height: CGFloat?
 
     /// Whether the fill is the primary text colour at 12%, so the button
     /// reads on a filled notice of every tone.
     private let tinted: Bool
 
-    public init(cornerRadius: CGFloat? = nil, tinted: Bool = false) {
+    public init(
+        cornerRadius: CGFloat? = nil,
+        height: CGFloat? = nil,
+        tinted: Bool = false
+    ) {
         self.cornerRadius = cornerRadius
+        self.height = height
         self.tinted = tinted
     }
 
     public func makeBody(configuration: Configuration) -> some View {
         Face(
             configuration: configuration,
-            height: metrics.height,
+            height: height ?? metrics.height,
             padding: metrics.padding,
             shape: shape,
             dark: colorScheme == .dark,
