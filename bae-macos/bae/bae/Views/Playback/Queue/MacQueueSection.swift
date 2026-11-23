@@ -18,7 +18,7 @@ struct MacQueueSection: View {
         /// Clear, while the lane holds tracks.
         var clear: Clear?
         /// The shuffle toggle, on the lane that has one.
-        var shuffle: Shuffle?
+        var shuffle: MacShuffleButton.Shuffle?
     }
 
     /// Clear: what it empties, named for the tooltip and VoiceOver, and the
@@ -26,12 +26,6 @@ struct MacQueueSection: View {
     struct Clear {
         let label: String
         let action: () -> Void
-    }
-
-    /// The lane's shuffle: whether it is on, and what sets it.
-    struct Shuffle {
-        let on: Bool
-        let set: (Bool) -> Void
     }
 
     /// `nil` hides the label, for when only one list is visible.
@@ -53,11 +47,7 @@ struct MacQueueSection: View {
                         clearButton(clear)
                     }
                     if let shuffle = lane.shuffle {
-                        MacShuffleButton(
-                            isOn: shuffle.on,
-                            glyph: .small,
-                            set: shuffle.set
-                        )
+                        MacShuffleButton(shuffle: shuffle, glyph: .small)
                     }
                 }
                 // In line with the rows' content, so Clear and shuffle sit

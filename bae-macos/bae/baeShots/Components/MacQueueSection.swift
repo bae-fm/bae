@@ -52,7 +52,7 @@ extension ShotScene {
                                 action: {}
                             ) : nil,
                         shuffle: shuffled.map {
-                            MacQueueSection.Shuffle(on: $0) { _ in }
+                            MacShuffleButton.Shuffle(on: $0) { _ in }
                         }
                     )
                 )

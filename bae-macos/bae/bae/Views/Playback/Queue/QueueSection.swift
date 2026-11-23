@@ -293,7 +293,7 @@ extension QueueSection {
                             action: onClear
                         ) : nil,
                     shuffle: onSetShuffle.map {
-                        MacQueueSection.Shuffle(on: shuffled, set: $0)
+                        MacShuffleButton.Shuffle(on: shuffled, set: $0)
                     }
                 )
             )
