@@ -151,9 +151,10 @@ private fun DrawScope.drawSelectionRing(
 private val SWATCH_SIZE = 36.dp
 private val RING_GAP = 3.dp
 
-/** How far the chosen swatch's ring reaches past its disc. */
-private val RING_OUTSET = 5.dp
 private val RING_WIDTH = 2.dp
+
+/** How far the chosen swatch's ring reaches past its disc. */
+private val RING_OUTSET = RING_GAP + RING_WIDTH
 
 /** A row naming the choice made, which opens a dialog of the choices. */
 @Composable
