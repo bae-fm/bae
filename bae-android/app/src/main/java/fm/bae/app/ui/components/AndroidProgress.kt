@@ -2,8 +2,10 @@ package fm.bae.app.ui.components
 
 import android.content.Context
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.compose.foundation.layout.Arrangement
@@ -60,12 +62,18 @@ internal fun <Step : Any> AndroidProgress(
                     .copy(alpha = ThemeOpacity.tintStrong)
                     .toArgb()
             val text = MaterialTheme.colorScheme.onSurface.toArgb()
-            val size = ThemeText.body.style.fontSize.value
+            val style = ThemeText.body.style
             AndroidView(
                 modifier = Modifier.fillMaxWidth(),
                 factory = { context -> StepProgressView<Step>(context) },
                 update = { view ->
-                    view.applyStyle(accent = accent, track = track, text = text, textSizeSp = size)
+                    view.applyStyle(
+                        accent = accent,
+                        track = track,
+                        text = text,
+                        textSizeSp = style.fontSize.value,
+                        lineHeightSp = style.lineHeight.value,
+                    )
                     view.describe(title, fraction)
                     view.showsBar = bar
                     view.onStepping = { started ->
@@ -120,7 +128,8 @@ internal fun AndroidProgress(
 internal class StepProgressView<Step : Any>(
     context: Context,
 ) : LinearLayout(context) {
-    private val label = TextView(context)
+    private val label = TextView(context).apply { includeFontPadding = false }
+    private val line = FrameLayout(context)
     private val bar = ShareBarView(context)
     private val following = FrameFollowing<Step>(this, ::show)
     private lateinit var title: (Step) -> String
@@ -140,7 +149,15 @@ internal class StepProgressView<Step : Any>(
     init {
         orientation = VERTICAL
         layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        addView(label)
+        line.addView(
+            label,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER_VERTICAL,
+            ),
+        )
+        addView(line, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         val gap =
             TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
@@ -161,10 +178,15 @@ internal class StepProgressView<Step : Any>(
         track: Int,
         text: Int,
         textSizeSp: Float,
+        lineHeightSp: Float,
     ) {
         bar.applyColors(accent = accent, track = track)
         label.setTextColor(text)
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
+        // The words sit centred in a line box of the style's line height, as Text draws them, and the box is what
+        // spaces the bar below.
+        line.minimumHeight =
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, lineHeightSp, resources.displayMetrics).toInt()
     }
 
     /** How a step reads: its name, and how much of it is done, null when it counts nothing; told before [follow]. */
