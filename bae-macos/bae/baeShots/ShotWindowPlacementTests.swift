@@ -80,8 +80,10 @@ struct ShotWindowPlacementTests {
         }
     }
 
-    @Test("reopening reports that the last close could not save the display")
-    func reportsAnUnidentifiedDisplayOnReopen() throws {
+    @Test(
+        "a move that cannot save its display reports the failure and keeps the saved frame"
+    )
+    func reportsAnUnidentifiedDisplayWithoutLosingTheSavedFrame() throws {
         let screen = try #require(NSScreen.screens.first)
         let name = "ShotWindowPlacementTests.\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -108,30 +110,39 @@ struct ShotWindowPlacementTests {
             screens: [screen]
         )
         let size = CGSize(width: 500, height: 320)
-        try autoreleasepool {
+        let saved = try autoreleasepool {
             let first = Self.controller(size: size, placement: placement)
             let window = try #require(first.window)
             first.showWindow(nil)
             window.setFrameOrigin(
-                CGPoint(
+                NSPoint(
+                    x: screen.visibleFrame.minX + 40,
+                    y: screen.visibleFrame.minY + 60
+                )
+            )
+            let goodFrame = window.frame
+            identifiesDisplay = false
+            window.setFrameOrigin(
+                NSPoint(
                     x: screen.visibleFrame.minX + 70,
                     y: screen.visibleFrame.minY + 90
                 )
             )
-            identifiesDisplay = false
+            #expect(window.frame != goodFrame)
+            #expect(reports.withLock { $0 } > 0)
+            #expect(!alerts.isEmpty)
             window.close()
+            return goodFrame
         }
-        let recorded = reports.withLock { $0 }
-        #expect(recorded > 0)
-        #expect(alerts.isEmpty)
 
         identifiesDisplay = true
+        let reportedBeforeReopening = alerts.count
         let reopened = Self.controller(size: size, placement: placement)
         let window = try #require(reopened.window)
         defer { window.close() }
         reopened.showWindow(nil)
-        #expect(alerts.count == 1)
-        #expect(reports.withLock { $0 } == recorded)
+        #expect(window.frame == saved)
+        #expect(alerts.count == reportedBeforeReopening)
     }
 
     private static func controller(

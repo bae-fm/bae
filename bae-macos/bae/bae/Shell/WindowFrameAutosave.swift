@@ -38,23 +38,21 @@ struct WindowFrameAutosave {
             frameLogger.debug("Cannot save \(name) without a display")
             return
         }
-        let saved: SavedFrame
-        if let display = identifyDisplay(screen) {
-            let frame = window.frame.offsetBy(
-                dx: -screen.frame.minX,
-                dy: -screen.frame.minY
-            )
-            saved = .onDisplay(display: display, frame: frame)
-        }
-        else {
-            frameLogger.reportBug(
+        guard let display = identifyDisplay(screen) else {
+            reportBug(
                 operation: "Remember a window's display",
-                detail: "AppKit gave no display identifier for \(name)",
-                to: bugReporter
+                detail: "AppKit gave no display identifier for \(name)"
             )
-            saved = .displayLookupFailed
+            return
         }
-        defaults.set(saved.value, forKey: key)
+        let frame = window.frame.offsetBy(
+            dx: -screen.frame.minX,
+            dy: -screen.frame.minY
+        )
+        defaults.set(
+            ["display": display.uuidString, "frame": NSStringFromRect(frame)],
+            forKey: key
+        )
     }
 
     private func reportBug(operation: String, detail: String) {
@@ -67,18 +65,12 @@ struct WindowFrameAutosave {
         )
     }
 
-    private enum SavedFrame {
-        private static let failureMarker = "displayLookupFailed"
-
-        /// The frame's coordinates are relative to the display.
-        case onDisplay(display: UUID, frame: CGRect)
-        case displayLookupFailed
+    private struct SavedFrame {
+        let display: UUID
+        /// Coordinates relative to the display.
+        let frame: CGRect
 
         init?(value: Any) {
-            if value as? String == Self.failureMarker {
-                self = .displayLookupFailed
-                return
-            }
             guard let fields = value as? [String: String],
                 let id = fields["display"], let display = UUID(uuidString: id),
                 let encoded = fields["frame"]
@@ -88,24 +80,8 @@ struct WindowFrameAutosave {
                 [frame.minX, frame.minY, frame.width, frame.height]
                     .allSatisfy(\.isFinite), !frame.isEmpty
             else { return nil }
-            self = .onDisplay(display: display, frame: frame)
-        }
-
-        var value: Any {
-            switch self {
-            case .onDisplay(let display, let frame):
-                [
-                    "display": display.uuidString,
-                    "frame": NSStringFromRect(frame),
-                ]
-            case .displayLookupFailed:
-                Self.failureMarker
-            }
-        }
-
-        var size: CGSize? {
-            if case .onDisplay(_, let frame) = self { return frame.size }
-            return nil
+            self.display = display
+            self.frame = frame
         }
     }
 
@@ -181,7 +157,7 @@ extension WindowFrameAutosave {
             else {
                 Self.center(
                     window,
-                    size: contentFrameSize ?? saved.size ?? initialSize,
+                    size: contentFrameSize ?? saved.frame.size,
                     on: firstScreen
                 )
             }
@@ -193,29 +169,18 @@ extension WindowFrameAutosave {
             from saved: SavedFrame,
             registered: Bool
         ) -> (frame: CGRect, screen: NSScreen)? {
-            switch saved {
-            case .onDisplay(let display, let frame):
-                if let screen = screen(matching: display) {
-                    return (
-                        frame.offsetBy(
-                            dx: screen.frame.minX,
-                            dy: screen.frame.minY
-                        ), screen
-                    )
-                }
-                frameLogger.debug(
-                    "The saved display for \(autosave.name) is unavailable"
-                )
-            case .displayLookupFailed:
-                // A user may have closed the last window when the save failed.
-                autosave.showError(
-                    .Diagnostic(
-                        category: .internal,
-                        detail:
-                            "bae could not identify the display when it saved \(autosave.name)"
-                    )
+            if let screen = screen(matching: saved.display) {
+                return (
+                    saved.frame.offsetBy(
+                        dx: screen.frame.minX,
+                        dy: screen.frame.minY
+                    ),
+                    screen
                 )
             }
+            frameLogger.debug(
+                "The saved display for \(autosave.name) is unavailable"
+            )
             guard registered, window.setFrameUsingName(autosave.name),
                 let screen = window.screen
             else {

@@ -62,8 +62,15 @@ class HostingWindowController: NSWindowController, NSWindowDelegate {
         fatalError("init(coder:) is not supported")
     }
 
-    func windowWillClose(_ notice: Notification) {
-        saveFrame(from: notice)
+    override func showWindow(_ sender: Any?) {
+        let wasVisible = window?.isVisible == true
+        super.showWindow(sender)
+        if !wasVisible, let window {
+            frameAutosave?.save(window)
+        }
+    }
+
+    func windowWillClose(_: Notification) {
         onClose()
     }
 
@@ -73,6 +80,12 @@ class HostingWindowController: NSWindowController, NSWindowDelegate {
 
     func windowDidEndLiveResize(_ notice: Notification) {
         saveFrame(from: notice)
+    }
+
+    func windowDidResize(_ notice: Notification) {
+        if let window = notice.object as? NSWindow, !window.inLiveResize {
+            frameAutosave?.save(window)
+        }
     }
 
     private func saveFrame(from notice: Notification) {

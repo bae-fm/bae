@@ -5947,9 +5947,9 @@ the previous display is disconnected, macOS fits its saved frame to an
 available display. When macOS has no saved frame, bae centers the window as
 it does on first open.
 
-If macOS cannot identify a window's display when bae saves its position,
-bae reports the failure when the person reopens the window and uses the
-frame macOS saved if it has one.
+If macOS cannot identify the connected display a window is on when bae
+saves its position, bae shows an error in the open window and keeps the
+last position it saved.
 
 On a Mac, Library settings first shows **Name**, with the library's name
 and *Rename…* for an admin or for anyone when the library isn't synced,
