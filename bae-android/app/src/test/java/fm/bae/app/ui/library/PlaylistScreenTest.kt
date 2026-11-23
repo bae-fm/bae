@@ -95,8 +95,8 @@ class PlaylistScreenTest {
             BridgeFixtures.playlistSummary(id = "playlist-1", name = "Late night"),
             entries =
                 listOf(
-                    BridgeFixtures.playlistEntry("position-1", "Harbor Lights", canMoveDown = true),
-                    BridgeFixtures.playlistEntry("position-2", "Copper Sky", canMoveUp = true),
+                    BridgeFixtures.playlistEntry("position-1", "Two Lamps above Brindle Cut", canMoveDown = true),
+                    BridgeFixtures.playlistEntry("position-2", "Footpath past the Tile Kiln", canMoveUp = true),
                 ),
         )
     private val handle = PlayingHandle(detail)
@@ -140,7 +140,7 @@ class PlaylistScreenTest {
     @Test
     fun tappingAnEntryPlaysFromItInOrder() {
         showPage()
-        compose.onNodeWithText("Copper Sky").performClick()
+        compose.onNodeWithText("Footpath past the Tile Kiln").performClick()
         compose.waitUntil(HANG_GUARD_MS) { handle.played.isNotEmpty() }
 
         assertEquals(listOf(Played("playlist-1", "position-2", false)), handle.played)
