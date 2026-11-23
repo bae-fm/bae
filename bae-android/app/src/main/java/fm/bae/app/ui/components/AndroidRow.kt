@@ -22,6 +22,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.SymbolIcons
@@ -29,6 +33,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import androidx.compose.ui.semantics.onClick as semanticsOnClick
 
 /** What a tap on a row does, drawn at its far end: [CHEVRON] opens a page, [EDIT] a dialog that changes the value. */
 internal enum class RowIcon(
@@ -96,51 +101,49 @@ internal fun AndroidRow(
     switch: RowSwitch? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    val accent = MaterialTheme.colorScheme.primary
     val row: @Composable (SwitchControl?) -> Unit = { control ->
-        Row(
-            modifier =
-                modifier.cardRowSurface(
-                    nested = nested,
-                    followed = followed,
-                    place = place,
-                    twoLines = subtitle != null || subtitleContent != null,
-                    selected = selected,
-                    enabled = enabled,
-                    onClick = onClick,
-                    onClickLabel = onClickLabel,
-                    switchAction = control?.action ?: Modifier,
-                ),
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            leadingIcon?.let {
-                Icon(
-                    imageVector = it,
-                    contentDescription = null,
-                    tint = if (action) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(ThemeIcon.large),
-                )
-            }
-            avatar?.let { Avatar(face = it, size = AVATAR_SIZE) }
-            Column(modifier = Modifier.weight(1f)) {
-                Title(title, tag, action = action, destructive = destructive)
-                subtitle?.let { Subtitle(it, tone) }
-                subtitleContent?.invoke()
-            }
-            value?.let {
-                Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            control?.indicator?.invoke()
-            trailing?.invoke(this)
-            icon?.let {
-                Icon(
-                    imageVector = it.image,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(it.size),
-                )
-            }
+        // A row that ends in controls of its own (a ⋮ menu) gives its button to its words alone, so a button
+        // never holds another one; a layer behind the row still takes a tap anywhere on it.
+        val wordsOnly = onClick != null && trailing != null && control == null
+        val content: @Composable RowScope.() -> Unit = {
+            RowContent(
+                title = title,
+                subtitle = subtitle,
+                value = value,
+                tag = tag,
+                icon = icon,
+                subtitleContent = subtitleContent,
+                tone = tone,
+                leadingIcon = leadingIcon,
+                avatar = avatar,
+                action = action,
+                destructive = destructive,
+                words = if (wordsOnly) Modifier.wordsButton(enabled, onClickLabel, onClick) else Modifier,
+                control = control,
+                trailing = trailing,
+            )
+        }
+        val surface =
+            modifier.cardRowSurface(
+                nested = nested,
+                place = place,
+                selected = selected,
+                enabled = enabled,
+                onClick = onClick.takeUnless { wordsOnly },
+                onClickLabel = onClickLabel,
+                switchAction = control?.action ?: Modifier,
+            )
+        val twoLines = subtitle != null || subtitleContent != null
+        val inset = Modifier.rowInset(nested = nested, followed = followed, twoLines = twoLines)
+        if (wordsOnly) {
+            TapLayerRow(surface, inset, enabled, onClick, content)
+        } else {
+            Row(
+                modifier = surface.then(inset),
+                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
+                verticalAlignment = Alignment.CenterVertically,
+                content = content,
+            )
         }
     }
     if (switch == null) {
@@ -150,6 +153,94 @@ internal fun AndroidRow(
             checked = switch.checked,
             onCheckedChange = switch.onChange,
             content = row,
+        )
+    }
+}
+
+/** A row whose button is its words alone: a layer behind [content] takes a tap anywhere on the row. */
+@Composable
+private fun TapLayerRow(
+    surface: Modifier,
+    inset: Modifier,
+    enabled: Boolean,
+    onClick: (() -> Unit)?,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Box(modifier = surface) {
+        Box(
+            modifier =
+                Modifier
+                    .matchParentSize()
+                    .clickable(enabled = enabled, onClick = { onClick?.invoke() })
+                    .semantics { invisibleToUser() },
+        )
+        Row(
+            modifier = inset.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
+    }
+}
+
+/** The button of a row's words: one node, as Compose merges a clickable row, but without the row's controls. */
+private fun Modifier.wordsButton(
+    enabled: Boolean,
+    onClickLabel: String?,
+    onClick: (() -> Unit)?,
+): Modifier =
+    semantics(mergeDescendants = true) {
+        role = Role.Button
+        if (!enabled) disabled()
+        semanticsOnClick(label = onClickLabel) {
+            onClick?.invoke()
+            true
+        }
+    }
+
+/** What a row draws: its lead, its words ([words] makes them the button), its value, controls and icon. */
+@Composable
+private fun RowScope.RowContent(
+    title: String,
+    subtitle: String?,
+    value: String?,
+    tag: String?,
+    icon: RowIcon?,
+    subtitleContent: (@Composable () -> Unit)?,
+    tone: StatusTone?,
+    leadingIcon: ImageVector?,
+    avatar: AvatarFace?,
+    action: Boolean,
+    destructive: Boolean,
+    words: Modifier,
+    control: SwitchControl?,
+    trailing: (@Composable RowScope.() -> Unit)?,
+) {
+    leadingIcon?.let {
+        Icon(
+            imageVector = it,
+            contentDescription = null,
+            tint = if (action) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(ThemeIcon.large),
+        )
+    }
+    avatar?.let { Avatar(face = it, size = AVATAR_SIZE) }
+    Column(modifier = Modifier.weight(1f).then(words)) {
+        Title(title, tag, action = action, destructive = destructive)
+        subtitle?.let { Subtitle(it, tone) }
+        subtitleContent?.invoke()
+    }
+    value?.let {
+        Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    control?.indicator?.invoke()
+    trailing?.invoke(this)
+    icon?.let {
+        Icon(
+            imageVector = it.image,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(it.size),
         )
     }
 }
@@ -180,13 +271,11 @@ private fun Title(
     }
 }
 
-/** The row's divider, fill, dimming, tap, size and padding; [nested] sets it in under the row above. */
+/** The row's fill, dimming and tap; [nested] joins it to the tile above. */
 @Composable
 private fun Modifier.cardRowSurface(
     nested: Boolean,
-    followed: Boolean,
     place: RowPlace?,
-    twoLines: Boolean,
     selected: Boolean,
     enabled: Boolean,
     onClick: (() -> Unit)?,
@@ -194,12 +283,6 @@ private fun Modifier.cardRowSurface(
     switchAction: Modifier,
 ): Modifier {
     val accent = MaterialTheme.colorScheme.primary
-    val minHeight =
-        when {
-            nested || followed -> 0.dp
-            twoLines -> TWO_LINE_HEIGHT
-            else -> ONE_LINE_HEIGHT
-        }
     return this
         .then(if (nested) Modifier.joinsTileAbove() else Modifier)
         .fillMaxWidth()
@@ -223,13 +306,26 @@ private fun Modifier.cardRowSurface(
                 Modifier
             },
         ).then(switchAction)
-        .defaultMinSize(minHeight = minHeight)
-        .padding(
-            start = if (nested) ThemeSpace.edge + ThemeSpace.section else ThemeSpace.edge,
-            top = if (nested) 0.dp else ThemeSpace.group,
-            end = ThemeSpace.edge,
-            bottom = if (followed) ThemeSpace.inline else ThemeSpace.group,
-        )
+}
+
+/** The row's size and padding: [nested] sets it in under the row above, [followed] gives it no minimum height. */
+private fun Modifier.rowInset(
+    nested: Boolean,
+    followed: Boolean,
+    twoLines: Boolean,
+): Modifier {
+    val minHeight =
+        when {
+            nested || followed -> 0.dp
+            twoLines -> TWO_LINE_HEIGHT
+            else -> ONE_LINE_HEIGHT
+        }
+    return defaultMinSize(minHeight = minHeight).padding(
+        start = if (nested) ThemeSpace.edge + ThemeSpace.section else ThemeSpace.edge,
+        top = if (nested) 0.dp else ThemeSpace.group,
+        end = ThemeSpace.edge,
+        bottom = if (followed) ThemeSpace.inline else ThemeSpace.group,
+    )
 }
 
 @Composable
