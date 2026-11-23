@@ -626,6 +626,15 @@ fn produced_keys() -> Vec<String> {
     // a key; a medium or a Discogs detail carries one where it is a word, and
     // is printed as its term where it is a name, a size or a file type.
     keys.extend(bridge_regions().into_iter().map(bridge_region_key));
+    // A country with a short form its language commonly uses is worded
+    // through the catalog.
+    for code in bridge_country_codes() {
+        if let BridgeFactTerm::Worded { label: BridgeTermLabel::Localized { key } } =
+            bridge_area_term(BridgeReleaseArea::Country { code })
+        {
+            keys.push(key);
+        }
+    }
     keys.extend(bridge_release_statuses().into_iter().map(bridge_release_status_key));
     keys.extend(bridge_packagings().into_iter().map(bridge_packaging_key));
     for label in bae_types::pressing::Medium::ALL
