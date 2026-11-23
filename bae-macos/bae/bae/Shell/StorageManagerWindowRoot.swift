@@ -18,6 +18,7 @@ struct StorageManagerWindowRoot: View {
         }
         else {
             StorageManagerNoLibrary()
+                .errorAlert(appDelegate.uiStore)
         }
     }
 }

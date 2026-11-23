@@ -1,6 +1,8 @@
 import AppKit
 import ObjectiveC
 
+@testable import bae
+
 /// The display every scene shown in its window is drawn on: a virtual display
 /// of 1600 by 1200 points at 2 pixels a point, beside whatever displays the
 /// Mac has, which a shot test process adds once and hands to each render. A shot taken from a real display
@@ -41,10 +43,7 @@ final class ShotDisplay {
     }
 
     static func screen(for id: CGDirectDisplayID) -> NSScreen? {
-        NSScreen.screens.first { screen in
-            (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")]
-                as? CGDirectDisplayID) == id
-        }
+        NSScreen.screens.first { $0.displayNumber == id }
     }
 
     /// The process's display, added by the first call and kept until the

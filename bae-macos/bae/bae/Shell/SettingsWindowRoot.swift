@@ -7,37 +7,39 @@ struct SettingsWindowRoot: View {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
 
     var body: some View {
-        if let appService = appDelegate.appService {
-            appService.installEnvironment(
-                MacSettingsWindow(
-                    checkForUpdatesViewModel: checkForUpdatesViewModel,
-                    onResetDevice: {
-                        appDelegate.presentDeviceReset(
-                            libraryId: appService.libraryId
-                        )
-                    },
-                    onRestoreFromCode: {
-                        appDelegate.presentDeviceRestore(
-                            libraryId: appService.libraryId
-                        )
-                    },
-                    onRenameLibrary: { appDelegate.presentRenameLibrary() },
-                    onRemoveLibrary: { appDelegate.closeLibrary() }
+        Group {
+            if let appService = appDelegate.appService {
+                appService.installEnvironment(
+                    MacSettingsWindow(
+                        checkForUpdatesViewModel: checkForUpdatesViewModel,
+                        onResetDevice: {
+                            appDelegate.presentDeviceReset(
+                                libraryId: appService.libraryId
+                            )
+                        },
+                        onRestoreFromCode: {
+                            appDelegate.presentDeviceRestore(
+                                libraryId: appService.libraryId
+                            )
+                        },
+                        onRenameLibrary: { appDelegate.presentRenameLibrary() },
+                        onRemoveLibrary: { appDelegate.closeLibrary() }
+                    )
+                    .onAppear { appService.reportScreen(.settings) }
                 )
-                .errorAlert(appDelegate.uiStore)
-                .onAppear { appService.reportScreen(.settings) }
-            )
+            }
+            else {
+                MacContentUnavailable(
+                    title: "No library loaded",
+                    description: "Open a library first to access settings"
+                )
+                .frame(
+                    width: NoLibraryPlaceholder.width,
+                    height: NoLibraryPlaceholder.height
+                )
+            }
         }
-        else {
-            MacContentUnavailable(
-                title: "No library loaded",
-                description: "Open a library first to access settings"
-            )
-            .frame(
-                width: NoLibraryPlaceholder.width,
-                height: NoLibraryPlaceholder.height
-            )
-        }
+        .errorAlert(appDelegate.uiStore)
     }
 }
 

@@ -17,11 +17,11 @@ class HostingWindowController: NSWindowController, NSWindowDelegate {
         contentSize: CGSize?,
         sizing: NSHostingSizingOptions,
         bridging: NSHostingSceneBridgingOptions,
-        frameAutosave: WindowFrameAutosave? = nil,
+        framePlacement: WindowFrameAutosave.Opening? = nil,
         configureWindow: (NSWindow) -> Void = { _ in },
         onClose: @escaping () -> Void
     ) {
-        self.frameAutosave = frameAutosave
+        frameAutosave = framePlacement?.autosave
         self.onClose = onClose
         let hosting = NSHostingController(rootView: content)
         hosting.sizingOptions = sizing
@@ -47,9 +47,9 @@ class HostingWindowController: NSWindowController, NSWindowDelegate {
         // Its owner lets it go once it closes.
         window.isReleasedWhenClosed = false
         super.init(window: window)
-        if let frameAutosave {
+        if let framePlacement {
             shouldCascadeWindows = false
-            frameAutosave.place(window, contentSized: contentSize == nil)
+            framePlacement.place(window, contentSized: contentSize == nil)
         }
         else {
             window.center()

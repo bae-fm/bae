@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// The app's windows: the primary one, Settings and the Storage Manager.
@@ -36,11 +37,7 @@ extension AppDelegate {
                 // The window has no toolbar: its panes sit in the content's
                 // own sidebar.
                 bridging: [],
-                frameAutosave: .init(
-                    name: "Settings",
-                    firstScreen: mainWindow?.window?.screen,
-                    defaults: .standard
-                ),
+                framePlacement: framePlacement(named: "Settings"),
                 configureWindow: { window in
                     // The title bar shows only the window buttons, over the
                     // sidebar. The title is for the Window menu and VoiceOver.
@@ -64,11 +61,7 @@ extension AppDelegate {
                 contentSize: CGSize(width: 1100, height: 660),
                 sizing: .minSize,
                 bridging: .toolbars,
-                frameAutosave: .init(
-                    name: "Storage Manager",
-                    firstScreen: mainWindow?.window?.screen,
-                    defaults: .standard
-                ),
+                framePlacement: framePlacement(named: "Storage Manager"),
                 configureWindow: {
                     $0.title = String(localized: "Storage manager")
                 },
@@ -76,5 +69,23 @@ extension AppDelegate {
             )
         storageManagerWindow = controller
         controller.showWindow(nil)
+    }
+
+    private func framePlacement(named name: String)
+        -> WindowFrameAutosave.Opening
+    {
+        WindowFrameAutosave.Opening(
+            autosave: .init(
+                name: name,
+                defaults: .standard,
+                bugReporter: CoreBugReporter(),
+                showError: { [weak self] error in
+                    // Placement happens before AppKit shows the new window.
+                    Task { @MainActor in self?.uiStore.showError(error) }
+                }
+            ),
+            preferredScreen: mainWindow?.window?.screen,
+            screens: NSScreen.screens
+        )
     }
 }

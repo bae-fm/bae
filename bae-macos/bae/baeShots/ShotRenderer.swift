@@ -3,6 +3,8 @@ import BaeKit
 import ScreenCaptureKit
 import SwiftUI
 
+@testable import bae
+
 /// Renders a `ShotScene` into a deterministic 2x PNG. The view is hosted in a
 /// window with the requested appearance, laid out, settled, then captured at
 /// a fixed pixel scale regardless of the host machine's display: a scene's
@@ -192,9 +194,7 @@ enum ShotRenderer {
                 // the top edge; the hosting view otherwise keeps the title
                 // bar's height as a safe area and shifts the content down.
                 hosting.safeAreaRegions = []
-                window.styleMask.insert(.fullSizeContentView)
-                window.titlebarAppearsTransparent = true
-                window.titleVisibility = .hidden
+                window.showOnlyWindowButtons()
             }
             // Ordering a window in plays its zoom-in, which the window
             // server's capture can catch partway.

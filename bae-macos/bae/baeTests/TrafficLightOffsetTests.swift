@@ -128,14 +128,12 @@ struct TrafficLightOffsetTests {
             contentRect: CGRect(x: 0, y: 0, width: 900, height: 600),
             styleMask: [
                 .titled, .closable, .miniaturizable, .resizable,
-                .fullSizeContentView,
             ],
             backing: .buffered,
             defer: false
         )
         window.isReleasedWhenClosed = false
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
+        window.showOnlyWindowButtons()
         window.contentView = NSHostingView(rootView: view)
         layOut(window)
         return window
