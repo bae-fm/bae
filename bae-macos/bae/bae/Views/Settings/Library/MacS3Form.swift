@@ -112,6 +112,7 @@ struct MacS3Form: View {
                 }
             }
         }
+        .settingsRowInset(ThemeSpace.compact)
     }
 }
 
