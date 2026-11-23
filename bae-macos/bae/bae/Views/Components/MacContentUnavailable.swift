@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The message of a pane with nothing to show: a title, a line under it where
@@ -36,6 +37,7 @@ struct MacContentUnavailable<Actions: View>: View {
                 title.themeText(.contentTitle)
             } description: {
                 description.themeText(.body)
+                    .foregroundStyle(Theme.textSecondary)
             } actions: {
                 actions()
             }
