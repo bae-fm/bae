@@ -62,6 +62,7 @@
     /// again are the sheet's, in its footer.
     struct MacFolderPicker: View {
         let browser: StorageFolderBrowser
+        let listing: StorageFolderBrowser.Listing
 
         var body: some View {
             @Bindable
@@ -93,15 +94,13 @@
                     }
                 }
                 MacBox {
-                    if let listing = browser.listing {
-                        ForEach(listing.folders, id: \.location) { folder in
-                            row(folder)
-                        }
-                        if listing.folders.isEmpty, !browser.isNaming {
-                            Text(words.empty)
-                                .foregroundStyle(Theme.macTextSecondary)
-                                .frame(maxWidth: .infinity)
-                        }
+                    ForEach(listing.folders, id: \.location) { folder in
+                        row(folder)
+                    }
+                    if listing.folders.isEmpty, !browser.isNaming {
+                        Text(words.empty)
+                            .foregroundStyle(Theme.macTextSecondary)
+                            .frame(maxWidth: .infinity)
                     }
                     if browser.isNaming {
                         HStack {

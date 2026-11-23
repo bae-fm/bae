@@ -27,8 +27,8 @@
 
         var body: some View {
             Group {
-                if browser.listing != nil {
-                    folderChoice()
+                if let listing = browser.listing {
+                    folderChoice(listing)
                 }
                 else {
                     signIn
@@ -82,7 +82,9 @@
             }
         }
 
-        private func folderChoice() -> some View {
+        private func folderChoice(
+            _ listing: StorageFolderBrowser.Listing
+        ) -> some View {
             SetupStep(
                 ready: browser.target != nil && !browser.isNaming,
                 operation: { [cloudSyncSetup, browser] setup in
@@ -109,7 +111,7 @@
                 fields: {
                     ScrollView {
                         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-                            MacFolderPicker(browser: browser)
+                            MacFolderPicker(browser: browser, listing: listing)
                             if let work = browser.working {
                                 FolderBrowserWorkLine(
                                     work: work,
