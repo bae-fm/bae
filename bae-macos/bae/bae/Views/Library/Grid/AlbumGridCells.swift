@@ -4,7 +4,8 @@ import Foundation
 /// One slot of the album grid, which places its slots left to right and top
 /// to bottom, `columnCount` to a row.
 enum AlbumGridCell: Identifiable, Equatable {
-    case heading(sectionId: String, title: String)
+    /// An artist's heading, with the picture and album count of its group.
+    case heading(BridgeLibraryBrowseSection)
     case sectionFiller(sectionId: String, index: Int)
     /// The album at `position` in the list.
     case album(position: Int, albumId: String, sectionId: String? = nil)
@@ -35,7 +36,7 @@ enum AlbumGridCell: Identifiable, Equatable {
 
     var id: Identity {
         switch self {
-        case .heading(let sectionId, _): .heading(sectionId)
+        case .heading(let section): .heading(section.id)
         case .sectionFiller(let sectionId, let index):
             .sectionFiller(sectionId, index)
         case .album(_, let albumId, let sectionId):
@@ -134,7 +135,7 @@ struct AlbumGridLayout: RandomAccessCollection {
         let local = index - group.slots.lowerBound
         guard let heading = group.heading else { return group.cells[local] }
         if local == 0 {
-            return .heading(sectionId: heading.id, title: heading.title)
+            return .heading(heading)
         }
         if local < columnCount || local - columnCount >= group.cells.count {
             return .sectionFiller(sectionId: heading.id, index: local)

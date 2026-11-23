@@ -29,14 +29,14 @@ extension ShotScene {
             BridgeLibraryBrowseSection(
                 id: "artist-slow-orchards",
                 title: "The Slow Orchards",
-                image: nil,
+                image: cover("The Slow Orchards"),
                 firstPosition: 0,
                 albumCount: 3
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-tomas-brell",
                 title: "Tomas Brell",
-                image: nil,
+                image: cover("Tomas Brell"),
                 firstPosition: 3,
                 albumCount: 1
             ),

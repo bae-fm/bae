@@ -146,9 +146,7 @@ struct AlbumGridCellsTests {
             // The detail opens in the second artist's group, under the card
             // opened there.
             let second = try #require(
-                cells.firstIndex(
-                    of: .heading(sectionId: "artist-b", title: "Artist B")
-                )
+                cells.firstIndex { $0.id == .heading("artist-b") }
             )
             #expect(detail > second)
         }

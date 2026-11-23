@@ -433,10 +433,17 @@ extension MacAlbumGrid {
         metrics: AlbumGridMetrics
     ) -> some View {
         switch cell {
-        case .heading(_, let title):
-            MacArtistGroupHeading(name: title)
-                .frame(width: metrics.rowWidth, alignment: .leading)
-                .frame(width: metrics.cardWidth, alignment: .leading)
+        case .heading(let section):
+            MacArtistGroupHeading(
+                name: section.title,
+                picture: section.image,
+                countLabel: BridgeCountLabel(
+                    key: "core.library.album_count",
+                    count: section.albumCount
+                )
+            )
+            .frame(width: metrics.rowWidth, alignment: .leading)
+            .frame(width: metrics.cardWidth, alignment: .leading)
         case .album(let position, let albumId, let sectionId):
             placed(
                 albumCard(
