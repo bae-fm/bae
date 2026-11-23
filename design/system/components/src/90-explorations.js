@@ -44,6 +44,6 @@
       h(Artwork, { title: props.album || props.title, size: 'size-android-row-artwork', radius: 'radius-artwork' }),
       h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-a-librow-title' }, props.title), h('div', { className: 'bae-a-librow-sub' }, props.sub)),
       props.who ? h(Avatar, { name: props.who, size: 24 }) : null,
-      props.trailing ? h('span', { className: 'bae-a-fine bae-muted' }, props.trailing) : null,
+      props.trailing ? h('span', { className: 'bae-a-librow-trail' }, props.trailing) : null,
       props.menu ? h('span', { className: 'bae-a-lrow-more' }, h(AndroidIconButton, { icon: 'more', label: typeof props.menu === 'string' ? props.menu : 'More', tone: 'muted' })) : null);
   }
