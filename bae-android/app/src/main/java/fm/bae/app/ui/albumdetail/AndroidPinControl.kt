@@ -85,6 +85,7 @@ internal fun AndroidPinControl(
                 DownloadProgress(
                     progress,
                     label = stringResource(R.string.pinning),
+                    gap = ThemeSpace.compact,
                     modifier = Modifier.fillMaxWidth(),
                     stopDot = true,
                 )

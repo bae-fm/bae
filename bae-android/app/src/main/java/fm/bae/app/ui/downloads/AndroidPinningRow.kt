@@ -90,7 +90,12 @@ private fun DownloadRowState(
         }
 
         BridgeDownloadState.Active -> {
-            DownloadProgress(progress, label = null)
+            DownloadProgress(
+                progress,
+                label = null,
+                gap = ThemeSpace.line,
+                modifier = Modifier.padding(top = ThemeSpace.inline),
+            )
         }
 
         is BridgeDownloadState.Failed -> {

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -31,8 +32,6 @@ import uniffi.bae_bridge.BridgeDownloadTransferProgress
 
 private const val BAR_HEIGHT_DP = 4f
 private const val BAR_GAP_DP = 4f
-private const val BAR_MARGIN_TOP_DP = 4
-private const val BAR_MARGIN_BOTTOM_DP = 2
 
 /** The range that the bar reports to a screen reader. */
 private const val PERCENT = 100f
@@ -42,13 +41,14 @@ private const val PERCENT = 100f
  * [label] ("Pinning · 120 MB of 300 MB") when there is one, which a View reads
  * from [progress]'s latest value each display frame while the release
  * downloads: arriving bytes recompose nothing. Screen readers name the bar
- * Pinning, and read it as a progress bar of a percent. With [stopDot] the bar ends in a
- * dot, as the album page's bar does.
+ * Pinning, and read it as a progress bar of a percent. [gap] spaces the bar from the line
+ * under it. With [stopDot] the bar ends in a dot, as the album page's bar does.
  */
 @Composable
 internal fun DownloadProgress(
     progress: LatestSource<BridgeDownloadTransferProgress>,
     label: String?,
+    gap: Dp,
     modifier: Modifier = Modifier,
     stopDot: Boolean = false,
 ) {
@@ -62,6 +62,7 @@ internal fun DownloadProgress(
         update = { view ->
             view.applyStyle(accent = accent, text = text, textSizeSp = size, stopDot = stopDot)
             view.name = name
+            view.gap = gap
             view.label = label
             view.follow(progress)
         },
@@ -167,16 +168,18 @@ internal class DownloadProgressView(
             bar.contentDescription = value
         }
 
+    /** The space between the bar and the line under it. */
+    var gap: Dp = Dp.Unspecified
+        set(value) {
+            field = value
+            (bar.layoutParams as LayoutParams).bottomMargin = (value.value * resources.displayMetrics.density).toInt()
+            bar.requestLayout()
+        }
+
     init {
         orientation = VERTICAL
         layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        addView(
-            bar,
-            LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = (BAR_MARGIN_TOP_DP * resources.displayMetrics.density).toInt()
-                bottomMargin = (BAR_MARGIN_BOTTOM_DP * resources.displayMetrics.density).toInt()
-            },
-        )
+        addView(bar, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(bytes)
     }
 
