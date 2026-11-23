@@ -26,25 +26,28 @@ struct FlowLayout: Layout {
         cache: inout Void
     ) {
         let arrangement = arrange(subviews, in: bounds.width)
-        for (subview, position) in zip(subviews, arrangement.positions) {
+        for (index, subview) in subviews.enumerated() {
+            let position = arrangement.positions[index]
             subview.place(
                 at: CGPoint(
                     x: bounds.minX + position.x,
                     y: bounds.minY + position.y
                 ),
-                proposal: .unspecified
+                proposal: ProposedViewSize(arrangement.sizes[index])
             )
         }
     }
 
-    /// Row-wrap the subviews at their ideal sizes; positions are top-aligned
-    /// within each row.
+    /// Row-wrap the subviews at their ideal sizes, each no wider than the
+    /// row, so an item wider than the row wraps inside it, as tall as it is
+    /// at that width; positions are top-aligned within each row.
     private func arrange(
         _ subviews: Subviews,
         in width: CGFloat
-    ) -> (size: CGSize, positions: [CGPoint]) {
+    ) -> Arrangement {
         let rowSpacing = rowSpacing ?? spacing
         var positions: [CGPoint] = []
+        var sizes: [CGSize] = []
         var rowStart = 0
         var cursorX: CGFloat = 0
         var cursorY: CGFloat = 0
@@ -54,13 +57,18 @@ struct FlowLayout: Layout {
         func closeRow(endingBefore index: Int) {
             // Vertically center the row's items within the row height.
             for i in rowStart..<index {
-                let size = subviews[i].sizeThatFits(.unspecified)
-                positions[i].y += (rowHeight - size.height) / 2
+                positions[i].y += (rowHeight - sizes[i].height) / 2
             }
         }
 
         for (index, subview) in subviews.enumerated() {
-            let size = subview.sizeThatFits(.unspecified)
+            let size = subview.sizeThatFits(
+                ProposedViewSize(
+                    width: width.isFinite ? width : nil,
+                    height: nil
+                )
+            )
+            sizes.append(size)
             if cursorX > 0, cursorX + size.width > width {
                 closeRow(endingBefore: index)
                 cursorX = 0
@@ -75,6 +83,18 @@ struct FlowLayout: Layout {
         }
         closeRow(endingBefore: subviews.count)
 
-        return (CGSize(width: maxX, height: cursorY + rowHeight), positions)
+        return Arrangement(
+            size: CGSize(width: maxX, height: cursorY + rowHeight),
+            positions: positions,
+            sizes: sizes
+        )
+    }
+
+    /// Where each subview goes and how big it is there, and the size of all
+    /// of them together.
+    private struct Arrangement {
+        let size: CGSize
+        let positions: [CGPoint]
+        let sizes: [CGSize]
     }
 }
