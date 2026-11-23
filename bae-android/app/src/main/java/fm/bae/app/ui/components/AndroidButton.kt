@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.LocalPrimaryFill
@@ -63,7 +64,7 @@ fun AndroidButton(
             ButtonAlign.TEXT -> modifier.offset(x = -TEXT_BUTTON_PADDING)
             ButtonAlign.FIELD -> modifier.offset(x = FIELD_TEXT_INSET - TEXT_BUTTON_PADDING)
         }
-    val sized = if (large) aligned.height(LARGE_HEIGHT) else aligned
+    val sized = (if (large) aligned.height(LARGE_HEIGHT) else aligned).withoutMinimumWidth()
     val labelled = withIcon(icon, content)
     val toneColor = tone.color()
     when (kind) {
@@ -182,6 +183,17 @@ private fun outlineColor(enabled: Boolean): Color =
         MaterialTheme.colorScheme.onSurfaceVariant
     } else {
         disabledContainer()
+    }
+
+/**
+ * Material gives each button a 58dp minimum width, which makes a short label such as Save or Pair wider than
+ * its padding and words (the board draws no minimum). Material applies its minimum only while the incoming
+ * minimum width is 0, so this asks the button for at least 1px, which leaves every real width unchanged.
+ */
+private fun Modifier.withoutMinimumWidth(): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints.copy(minWidth = maxOf(constraints.minWidth, 1)))
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     }
 
 private val LARGE_HEIGHT = 48.dp
