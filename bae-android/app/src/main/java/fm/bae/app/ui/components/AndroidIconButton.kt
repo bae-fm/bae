@@ -55,25 +55,18 @@ internal fun AndroidIconButton(
     box: Dp? = null,
     tonal: Boolean = false,
 ) {
-    if (tonal) {
-        // The button is the 32dp disc, as the board draws it; Compose takes a press out to 48dp from its centre.
-        AndroidIconButton(
-            onClick = onClick,
-            modifier =
-                modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = ThemeOpacity.tint), CircleShape),
-            enabled = enabled,
-            box = TONAL_DISC,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = tone.color(),
-                modifier = if (glyph != null) Modifier.size(glyph) else Modifier,
-            )
-        }
-        return
-    }
-    AndroidIconButton(onClick = onClick, modifier = modifier, enabled = enabled, box = box) {
+    // A tonal button is the 32dp disc, as the board draws it; Compose takes a press out to 48dp from its centre.
+    AndroidIconButton(
+        onClick = onClick,
+        modifier =
+            if (tonal) {
+                modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = ThemeOpacity.tint), CircleShape)
+            } else {
+                modifier
+            },
+        enabled = enabled,
+        box = if (tonal) TONAL_DISC else box,
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
