@@ -1223,7 +1223,8 @@ an undamaged image, the album title and artist its tags state or else the
 folder's name, and why bae cannot import it, such as
 "2 audio files are damaged" or "More than one file is named Caf\xE9.flac".
 Selecting it opens it the way a Found release opens, read-only: its images,
-then every other file with each damaged one marked and why. Where a release's
+then every other file with each damaged one marked and why. On the Mac, VoiceOver reads a
+damaged file's reason and skips the warning icon before it. Where a release's
 Import would be, the pane states the reason. A playable track in it can still
 be auditioned.
 

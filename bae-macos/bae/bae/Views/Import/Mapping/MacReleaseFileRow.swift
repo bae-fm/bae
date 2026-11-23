@@ -35,6 +35,7 @@ struct MacReleaseFileRow: View {
             if let damage {
                 HStack(spacing: ThemeSpace.inline) {
                     StatusGlyph(.warning)
+                        .accessibilityHidden(true)
                     Text(damage)
                         .themeText(.detail)
                         .foregroundStyle(Theme.warning)
