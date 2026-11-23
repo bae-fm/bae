@@ -44,10 +44,10 @@ private struct SidePausePromptCard: View {
     private var focused: Bool
 
     var body: some View {
-        // The card hangs from the top of the window with nothing dimmed; the
-        // clear layer behind it takes the tap that closes it.
+        // The card hangs from the top of the window over the scrim, which
+        // takes the tap that closes it.
         ZStack(alignment: .top) {
-            Color.clear
+            MacScrim()
                 .contentShape(Rectangle())
                 .onTapGesture { answer(play: false) }
 

@@ -13,7 +13,9 @@ enum OverWindow {
     /// `margin-top` on `bae-m-sheet` and `bae-m-alert`).
     static let hangs: CGFloat = 36
 
-    /// A sheet or an alert, hung from the top edge, centred.
+    /// A sheet, hung from the top edge, centred, over the scrim that dims the
+    /// whole window. The app's sheet is a window of its own, which dims the
+    /// window it hangs from.
     @MainActor
     static func sheet(
         _ dialog: some View,
@@ -21,6 +23,7 @@ enum OverWindow {
     ) -> some View {
         ZStack(alignment: .top) {
             window
+            MacScrim()
             dialog
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .shadow(color: .black.opacity(0.3), radius: 15, y: 5)

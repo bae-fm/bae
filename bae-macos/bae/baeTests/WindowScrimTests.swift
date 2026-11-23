@@ -65,4 +65,50 @@ struct WindowScrimTests {
             )
         }
     }
+
+    @Test("a sheet dims the window it hangs from until it ends")
+    func aSheetDimsItsWindow() async throws {
+        try await SnapshotTestSupport.withHostedWindow(
+            Color.clear,
+            size: NSSize(width: 600, height: 400)
+        ) { window, _ in
+            let sheet = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 300, height: 120),
+                styleMask: [.titled],
+                backing: .buffered,
+                defer: false
+            )
+            sheet.isReleasedWhenClosed = false
+            sheet.contentView = NSHostingView(
+                rootView: MacSheet(
+                    "Sheet title",
+                    width: 300,
+                    content: { Text(verbatim: "Content") },
+                    footer: { EmptyView() }
+                )
+            )
+            #expect(scrims(over: window).isEmpty)
+
+            autoreleasepool { window.beginSheet(sheet, completionHandler: nil) }
+            try await SnapshotTestSupport.untilSheet(on: window, attached: true)
+            #expect(
+                await holds { scrims(over: window).count == 1 },
+                "the sheet dims the window"
+            )
+
+            autoreleasepool {
+                window.endSheet(sheet)
+                sheet.orderOut(nil)
+                sheet.contentView = nil
+            }
+            try await SnapshotTestSupport.untilSheet(
+                on: window,
+                attached: false
+            )
+            #expect(
+                await holds { scrims(over: window).isEmpty },
+                "the scrim goes with the sheet"
+            )
+        }
+    }
 }

@@ -27,8 +27,7 @@ struct MacModal<Content: View>: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Theme.scrim
-                    .ignoresSafeArea()
+                MacScrim()
                     .onTapGesture { onDismiss() }
                 content(geometry.size)
                     .sheetFace()

@@ -123,6 +123,9 @@ struct MacSheet<Content: View, Footer: View>: View {
         )
         .frame(width: width, alignment: .leading)
         .background(Theme.surfaceElevated)
+        // The sheet is a window of its own, so the scrim over the window it
+        // hangs from is drawn from here.
+        .background { SheetScrim() }
         .presentationBackground(.clear)
     }
 }
