@@ -479,7 +479,9 @@ extension ShotScene {
     private static func welcomeSheetStage(_ sheet: some View) -> ShotStage {
         let welcome = welcomeStage(libraries: [])
         return ShotStage(
-            welcome.view.sheet(isPresented: .constant(true)) { sheet },
+            welcome.view.sheet(isPresented: .constant(true)) {
+                sheet.background { DisableSheetAnimation() }
+            },
             isReady: welcome.isReady,
             isDrawn: { host in
                 guard let window = host.window, window.attachedSheet != nil
@@ -625,6 +627,25 @@ extension ShotScene {
                 trailing: (WelcomeWindow.size.width - 420) / 2 - 21,
                 over: window
             )
+        }
+    }
+}
+
+/// Turns off AppKit's sheet animation as SwiftUI puts the content in its window.
+private struct DisableSheetAnimation: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { WindowAnchor() }
+
+    func updateNSView(_: NSView, context: Context) {}
+
+    private final class WindowAnchor: NSView {
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            super.viewWillMove(toWindow: newWindow)
+            guard let newWindow else { return }
+            precondition(
+                !newWindow.isVisible || newWindow.animationBehavior == .none,
+                "The sheet appeared before the shot disabled its animation."
+            )
+            newWindow.animationBehavior = .none
         }
     }
 }
