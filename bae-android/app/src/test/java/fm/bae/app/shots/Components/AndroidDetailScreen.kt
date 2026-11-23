@@ -43,32 +43,37 @@ class AndroidDetailScreenShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentDetailScreenFlush() = component("android.component.detail-screen.flush") { Detail {} }
+    fun androidComponentDetailScreenFlush() = component("android.component.detail-screen.flush") { Detail(padded = false) {} }
 }
 
-/** The detail screen over an album's header, with [actions] in its bar. */
+/**
+ * The detail screen over an album's header, with [actions] in its bar. The header sits in the page's padded column
+ * unless [padded] is false, the flush row, where the page carries its own padding.
+ */
 @Composable
-private fun Detail(actions: @Composable RowScope.() -> Unit) =
-    Images {
-        AndroidDetailScreen(
-            onBack = {},
-            backLabel = stringResource(R.string.back_to_library),
-            nowPlayingBar = { Bar(playing) },
-            modifier = Modifier.height(480.dp),
-            actions = actions,
-        ) {
-            Box(Modifier.padding(ThemeSpace.edge).weight(1f)) {
-                AndroidAlbumHeader(
-                    detail = plainDetail,
-                    cover = PreviewData.imageRef(),
-                    galleryItemCount = 0u,
-                    onShowGallery = {},
-                    onShowWhere = {},
-                    shownRating = { plainDetail.rating },
-                )
-            }
+private fun Detail(
+    padded: Boolean = true,
+    actions: @Composable RowScope.() -> Unit,
+) = Images {
+    AndroidDetailScreen(
+        onBack = {},
+        backLabel = stringResource(R.string.back_to_library),
+        nowPlayingBar = { Bar(playing) },
+        modifier = Modifier.height(480.dp),
+        actions = actions,
+    ) {
+        Box(Modifier.then(if (padded) Modifier.padding(ThemeSpace.edge) else Modifier).weight(1f)) {
+            AndroidAlbumHeader(
+                detail = plainDetail,
+                cover = PreviewData.imageRef(),
+                galleryItemCount = 0u,
+                onShowGallery = {},
+                onShowWhere = {},
+                shownRating = { plainDetail.rating },
+            )
         }
     }
+}
 
 /** Low Tide Hours as the detail screen's preview draws its header: the title, artist and year. */
 private val plainDetail: BridgeAlbumDetail =
