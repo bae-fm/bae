@@ -282,6 +282,9 @@ count, ties going by name and then id. An artist's row, page and search result
 say how many albums credit the artist ("1 album", "3 albums"), in the viewer's
 language.
 
+On macOS, VoiceOver reads each tile's title, artist line and year in that order
+before moving to the next tile.
+
 **Names order in the device's language.** Every list that sorts by a name
 (album titles and artists in the grid, the artist and composer lists, a
 composer's page, the Storage manager's album and artist columns, and the

@@ -83,6 +83,7 @@ struct MacAlbumTile: View {
         .contextMenu {
             AlbumCardMenuItems(menu: menu)
         }
+        .accessibilityElement(children: .contain)
     }
 }
 

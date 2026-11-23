@@ -7,7 +7,7 @@ import Testing
 @Suite("AlbumGridCells")
 struct AlbumGridCellsTests {
     @MainActor
-    @Test("a grouped card names only the artists outside its group")
+    @Test("each grouped card reads its title, other artists and year together")
     func groupedCardCredits() async throws {
         let library = Library(
             handle: AlbumCreditsHandle(rows: groupedCreditRows)
@@ -58,6 +58,10 @@ struct AlbumGridCellsTests {
         let credit = try #require(credits.first?.1)
         #expect(credit.x >= duet.x && credit.x < solo.x)
         #expect(credit.y > duet.y)
+        let tileTexts = [
+            "Duet Album", "Artist B", "2024", "Solo Album", "2023",
+        ]
+        #expect(texts.map(\.0).filter(tileTexts.contains) == tileTexts)
         #expect(!texts.contains { $0.0 == "Artist A and Artist B" })
         #expect(!texts.contains { $0.0 == "Artist A" })
     }
@@ -68,6 +72,7 @@ struct AlbumGridCellsTests {
                 album: makeBridgeAlbum(
                     id: "duet",
                     title: "Duet Album",
+                    year: 2024,
                     artistNames: "Artist A and Artist B"
                 ),
                 primaryReleaseUnplayable: false,
@@ -77,6 +82,7 @@ struct AlbumGridCellsTests {
                 album: makeBridgeAlbum(
                     id: "solo",
                     title: "Solo Album",
+                    year: 2023,
                     artistNames: "Artist A"
                 ),
                 primaryReleaseUnplayable: false,
