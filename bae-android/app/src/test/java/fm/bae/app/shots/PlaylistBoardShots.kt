@@ -3,13 +3,11 @@ package fm.bae.app.shots
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.R
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.library.PlaylistContent
 import fm.bae.app.ui.library.PlaylistEntryActions
@@ -27,22 +25,26 @@ import uniffi.bae_bridge.BridgeSharing
 class PlaylistBoardShots : BoardShot() {
     private val entries =
         lateNightTracks.mapIndexed { index, track ->
-            BridgeFixtures.playlistEntry(
-                "position-$index",
-                track.title,
-                canMoveUp = index > 0,
-                canMoveDown = index < lateNightTracks.lastIndex,
-                artist = track.artist,
-                album = track.album.title,
-                durationMs = track.durationMs,
-            )
+            BridgeFixtures
+                .playlistEntry(
+                    "position-$index",
+                    track.title,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < lateNightTracks.lastIndex,
+                    artist = track.artist,
+                    album = track.album.title,
+                    durationMs = track.durationMs,
+                ).copy(cover = PreviewData.imageRef(track.album.title))
         }
 
     private val detail =
         BridgeFixtures.playlistDetail(
             BridgeFixtures.playlistSummary(name = "Late night", sharing = BridgeSharing.HOUSEHOLD).copy(
                 owner = BridgePersonRef(person = "person-ana", name = "Ana", initials = "A", avatarVersion = null),
-                cover = BridgePlaylistCover.Grid(covers = listOf(null, null, null, null)),
+                cover =
+                    BridgePlaylistCover.Grid(
+                        covers = listOf("Low Tide Hours", "Copper Sky", "Small Hours", "Paper Lanterns").map { PreviewData.imageRef(it) },
+                    ),
             ),
             entries,
         )
@@ -59,7 +61,7 @@ class PlaylistBoardShots : BoardShot() {
 
     @Composable
     private fun Page() {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+        Covers {
             AndroidDetailScreen(
                 onBack = {},
                 backLabel = stringResource(R.string.back_to_library),
