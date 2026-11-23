@@ -238,12 +238,14 @@ extension ShotScene {
     /// "Low Tide Hours" by Mara Quill playing: 1:42 into 5:03, the slider at
     /// 34 percent, and 60 percent of the track held. With `removedFromLibrary`, the
     /// library no longer holds the track. `progress` is where the slider sits,
-    /// as the share of the track.
+    /// as the share of the track. With `waitsOnStorage`, the track is loading
+    /// and waits on a download, so the bar draws the waiting arc.
     @MainActor
     static func boardPlayback(
         removedFromLibrary: Bool = false,
         progress: Double = 102.0 / 303.0,
-        covered: Bool = false
+        covered: Bool = false,
+        waitsOnStorage: Bool = false
     ) -> PlaybackStore {
         let store = PlaybackStore(
             trackPositions: .trackPositions(
@@ -271,28 +273,32 @@ extension ShotScene {
             isMuted: false,
             repeatMode: .off
         )
-        store.apply(
-            .playing(
-                track: BridgeNowPlayingTrack(
-                    track: BridgePlayingTrack(
-                        trackId: "board-track",
-                        durationMs: 303_000
-                    ),
-                    display: removedFromLibrary
-                        ? .removed
-                        : .library(
-                            display: BridgeTrackDisplay(
-                                title: "Low Tide Hours",
-                                artistLine: .named("Mara Quill"),
-                                albumId: "board-0",
-                                releaseId: "rel-board-0",
-                                albumTitle: "Low Tide Hours",
-                                coverImage: covered
-                                    ? cover("Low Tide Hours") : nil
-                            )
-                        )
+        let track = BridgeNowPlayingTrack(
+            track: BridgePlayingTrack(
+                trackId: "board-track",
+                durationMs: 303_000
+            ),
+            display: removedFromLibrary
+                ? .removed
+                : .library(
+                    display: BridgeTrackDisplay(
+                        title: "Low Tide Hours",
+                        artistLine: .named("Mara Quill"),
+                        albumId: "board-0",
+                        releaseId: "rel-board-0",
+                        albumTitle: "Low Tide Hours",
+                        coverImage: covered
+                            ? cover("Low Tide Hours") : nil
+                    )
                 )
-            )
+        )
+        store.apply(
+            waitsOnStorage
+                ? .loading(
+                    track: .prepared(track: track),
+                    waitsOnStorage: true
+                )
+                : .playing(track: track)
         )
         return store
     }

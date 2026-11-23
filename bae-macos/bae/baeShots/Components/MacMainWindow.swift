@@ -6,7 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// `MacMainWindow` around an empty section, where the preview draws a
     /// slot, with "Low Tide Hours" playing 1:42 into 5:03 or nothing played, and
-    /// nothing in the Activity button.
+    /// nothing in the Activity button. With `waitsOnStorage`, the track waits on
+    /// a download and the bar draws the waiting arc.
     static let macMainWindowScenes: [ShotScene] = [
         ShotScene(
             id: "mac.component.main-window.library",
@@ -76,7 +77,7 @@ extension ShotScene {
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: true)
+            mainWindow(section: .library, playing: true, waitsOnStorage: true)
         },
     ]
 
@@ -85,7 +86,8 @@ extension ShotScene {
     @MainActor
     private static func mainWindow(
         section: MainSection,
-        playing: Bool
+        playing: Bool,
+        waitsOnStorage: Bool = false
     ) -> ShotStage {
         let uiStore = storeShowing(section)
         let backing = boardLibraryBacking(uiStore: uiStore)
@@ -94,7 +96,8 @@ extension ShotScene {
                 uiStore: uiStore,
                 backing: backing,
                 playbackStore: playing
-                    ? boardPlayback() : PlaybackStore(),
+                    ? boardPlayback(waitsOnStorage: waitsOnStorage)
+                    : PlaybackStore(),
                 size: CGSize(width: 1100, height: 520),
                 window: AnyView(
                     MacMainWindow(showSidePane: false) {
