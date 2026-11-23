@@ -1,9 +1,6 @@
 package fm.bae.app.ui.components
 
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import fm.bae.app.ui.appearance.SymbolIcons
 
 /**
  * A card whose first row is the [label] (with a [summary] under it), `expand_more` at its end when
@@ -23,13 +20,7 @@ internal fun AndroidDisclosure(
             title = label,
             subtitle = summary,
             onClick = onToggle,
-            trailing = {
-                Icon(
-                    imageVector = if (open) SymbolIcons.ExpandLess else SymbolIcons.ExpandMore,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
+            icon = if (open) RowIcon.EXPAND_LESS else RowIcon.EXPAND_MORE,
         )
         if (open) content()
     }

@@ -35,13 +35,18 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import androidx.compose.ui.semantics.onClick as semanticsOnClick
 
-/** What a tap on a row does, drawn at its far end: [CHEVRON] opens a page, [EDIT] a dialog that changes the value. */
+/**
+ * What a tap on a row does, drawn at its far end: [CHEVRON] opens a page, [EDIT] a dialog that changes the value,
+ * [EXPAND_MORE] shows more rows and [EXPAND_LESS] hides them again.
+ */
 internal enum class RowIcon(
     val image: ImageVector,
     val size: Dp,
 ) {
     CHEVRON(SymbolIcons.ChevronRight, ThemeIcon.large),
     EDIT(SymbolIcons.Edit, ThemeIcon.medium),
+    EXPAND_MORE(SymbolIcons.ExpandMore, ThemeIcon.large),
+    EXPAND_LESS(SymbolIcons.ExpandLess, ThemeIcon.large),
 }
 
 /** Where a row sits in its card. A row given one draws the tile the card would draw behind it. */
