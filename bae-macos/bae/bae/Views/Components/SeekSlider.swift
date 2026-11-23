@@ -72,11 +72,11 @@ class SeekSlider: NSSlider {
     /// Screen readers read the position as a whole percent, 0 to 100, as a
     /// player's seek slider says it.
     override func accessibilityValue() -> Any? {
-        Int((doubleValue * 100).rounded())
+        Int(SliderAccessibilityScale.percent(for: doubleValue))
     }
 
     override func accessibilityMaxValue() -> Any? {
-        100
+        SliderAccessibilityScale.percentRange.upperBound
     }
 
     override func setAccessibilityValue(_ value: Any?) {
@@ -90,7 +90,7 @@ class SeekSlider: NSSlider {
             )
             return
         }
-        doubleValue = max(0, min(1, percent / 100))
+        doubleValue = SliderAccessibilityScale.fraction(for: percent)
         onSeekComplete?(doubleValue)
     }
 
