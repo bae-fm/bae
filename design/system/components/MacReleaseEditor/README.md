@@ -2,7 +2,7 @@
 
 The one editor of a release, in the import pane (a found folder's draft or an imported folder) and in the album's Edit release sheet. The two differ only in the action row, `actions`.
 
-- **`import`:** where the import goes (`to`: This Mac or Cloud, shown when the library has cloud storage, `cloud`) and Import, or Retry import (`retry`). A folder with nothing to import (`blank`) shows neither. The folder's `check` sits in a warning `MacNotice` under that row. When a picked catalog release has no track for some of the folder's audio, the import leaves those files out, and a second warning `MacNotice` under the row names each one (`leftOut`). Its title is Audio left out, its line says how to import the files, and Pick Another Release… opens Search.
+- **`import`:** where the import goes (`to`: This Mac or Cloud, shown when the library has cloud storage, `cloud`) and Import, or Retry import (`retry`). A folder with nothing to import (`blank`) shows neither. The folder's `check` sits in a warning `MacNotice` under that row. When a picked catalog release has no track for some of the folder's audio, the import leaves those files out, and a second warning `MacNotice` under the row names each one (`leftOut`). Its title is Audio left out, its line says how to import the files, and Pick another release… opens Search.
 - **`save`:** Cancel once something changed (`changed`), and Save.
 
 When a save reads an audio file, `reading` shows a spinner and the filename before Cancel and Save. The editor disables both buttons, the cover, Unlink, the Metadata menu and the album pop-up until the read ends.
