@@ -74,7 +74,7 @@ struct MacFileRow: View {
                 )
             )
         case .queuedDownload(let kind):
-            StorageFileMark(state: .queued(kind.queuedFileLabel))
+            StorageFileMark(state: .queued(Text(verbatim: kind.queuedLabel)))
         case .sending(let fileId):
             StorageSendingFileMark(fileId: fileId)
         case .downloading(let kind, let fileId):
@@ -185,13 +185,6 @@ private struct StorageFileMark: View {
 }
 
 extension BridgeDownloadKind {
-    fileprivate var queuedFileLabel: Text {
-        switch self {
-        case .pin: Text("Queued to pin")
-        case .moveToThisDevice: Text("Queued to move to This Mac")
-        }
-    }
-
     fileprivate var movingFileLabel: Text {
         switch self {
         case .pin: Text("Pinning")

@@ -50,14 +50,16 @@ struct MacStorageChip: View {
             }
         case .pinning(.queued):
             if long {
-                StorageWord("Queued to pin")
+                StorageWord(verbatim: BridgeDownloadKind.pin.queuedLabel)
             }
             else {
                 StorageWord("Queued")
             }
         case .movingToThisDevice(.queued):
             if long {
-                StorageWord("Queued to move to This Mac")
+                StorageWord(
+                    verbatim: BridgeDownloadKind.moveToThisDevice.queuedLabel
+                )
             }
             else {
                 StorageWord("Queued")
