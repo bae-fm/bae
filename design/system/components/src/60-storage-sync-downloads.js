@@ -342,10 +342,10 @@
         props.pausable ? h(AndroidIconButton, { icon: props.paused ? 'play' : 'pause', size: 'medium', tonal: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
       h(AndroidProgress, { name: props.label, value: props.progress }));
   }
-  // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open sync settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
+  // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open sync settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
   function AndroidActivity(props) {
     var problems = props.children || props.error || props.attention;
-    // Only the problems' rows start their words on the text edge, past the glyphs; the title, the Needs Attention label and the transfers sit at the sheet's edge.
+    // Only the problems' rows start their words on the text edge, past the glyphs; the title, the Needs attention label and the transfers sit at the sheet's edge.
     var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
     // `held` as on Mac: only the pinning line has Pause or Resume.
     var xfer = function (key, label, count, progress, tap, held) {
@@ -354,7 +354,7 @@
     return h('div', { className: 'bae-a-act' },
       h('div', { className: 'bae-a-act-title' }, 'Activity'),
       // Each problem is a quiet notice, a line between rows.
-      problems ? h('div', { className: 'bae-a-act-block' }, h(AndroidEyebrow, null, 'Needs Attention'),
+      problems ? h('div', { className: 'bae-a-act-block' }, h(AndroidEyebrow, null, 'Needs attention'),
         h('div', { className: 'bae-a-actproblems' }, divided(kids(props.children).concat([
           props.error ? h(AndroidNotice, { key: 'e', quiet: true, dismiss: true, tone: 'danger', title: props.error }) : null,
           props.attention ? h(AndroidNotice, { key: 'f', quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open sync settings', buttons: 'below' }) : null,

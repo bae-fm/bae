@@ -8,7 +8,7 @@ macOS's notice: a tinted box in its tone, the tone's glyph at the top left. It s
 | `title` | What happened. |
 | `subtitle` | What to do about it. |
 | `action` | The primary button's label (Retry). |
-| `quiet` | Drawn as a row: no fill, the screen's text. For a list of problems, such as the Activity panel's Needs Attention. Also inside an alert or dialog, always: a filled box there stands out from everything else in it.|
+| `quiet` | Drawn as a row: no fill, the screen's text. For a list of problems, such as the Activity panel's Needs attention. Also inside an alert or dialog, always: a filled box there stands out from everything else in it.|
 | `secondary` | The secondary button's label: Dismiss, or Details (opens the error's causes in a popup). Secondary comes first, before the primary. |
 | `leave` | Centred only: the label of a button that leaves the screen the notice fills (Cancel), first in the row, where the notice is the screen's only way back: a failed Reset from cloud. |
 | `layout` | `paragraph` (the default) or `centered`: in the middle of the space it's given, the glyph (an outline, in grey) in front of the title, the title in secondary text when it stands alone and in primary over a subtitle, the button's label in secondary text and Details in the accent, centred under it. For a view that failed whole (the album grid, the import list, a composer's page, the lightbox's image), or a part of one (the rest of the queue). |
