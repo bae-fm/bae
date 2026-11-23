@@ -31,6 +31,7 @@ import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
+import fm.bae.app.ui.appearance.withTabularDigits
 import uniffi.bae_bridge.BridgeDeviceStorage
 import uniffi.bae_bridge.BridgeStorageKind
 
@@ -144,7 +145,7 @@ internal fun AndroidUsageKey(segment: StorageUsageSegment) {
     }
 }
 
-private val usageSizeStyle = ThemeText.body.style.copy(fontFeatureSettings = "tnum")
+private val usageSizeStyle = ThemeText.body.style.withTabularDigits()
 
 /**
  * The bar, one rounded piece per kind in proportion to its share; a thin kind still shows, at least
