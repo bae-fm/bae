@@ -5797,7 +5797,7 @@ changes what it shows. A read that fails shows its failure, and the screen
 goes on following the library, unless the library closed or can no longer be
 read or written.
 
-On Android, a moving progress bar holds still when the system turns animations off.
+On Android, moving progress bars and the welcome logo hold still when the system turns animations off.
 
 **Long lists.** The album grid, the artist and composer lists, a composer's
 page, the download queue, the Storage manager, an artist picker's search, the
