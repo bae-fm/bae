@@ -97,7 +97,7 @@ internal fun AndroidMenuEntry(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-            ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
+            ProvideTextStyle(ThemeText.androidLabel.style) {
                 Box(modifier = Modifier.weight(1f, fill = false)) { text() }
             }
         }
