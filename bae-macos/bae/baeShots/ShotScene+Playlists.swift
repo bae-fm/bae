@@ -45,8 +45,8 @@ extension ShotScene {
                             },
                             highlighted: 1
                         )
-                        .padding(.leading, 995)
-                        .padding(.top, 230)
+                        .padding(.leading, 881.5)
+                        .padding(.top, 231)
                     }
                 )
             }
@@ -153,9 +153,11 @@ extension ShotScene {
         if open {
             uiStore.openPlaylist("playlist-late-night")
         }
+        let images = coverStore()
         let backing = boardLibraryBacking(
             uiStore: uiStore,
             albumCount: 6,
+            covered: true,
             playlists: boardPlaylistListing,
             playlistDetails: boardPlaylistDetails
         )
@@ -163,11 +165,12 @@ extension ShotScene {
         let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: (backing.library, backing.session),
-            playbackStore: boardPlayback(),
+            playbackStore: boardPlayback(covered: true),
+            images: images,
             projections: projections,
             size: CGSize(width: 1200, height: 760)
         )
-        return ShotStage(dressed(AnyView(window))) {
+        return ShotStage(dressed(AnyView(window)), images: images) {
             open
                 ? projections.playlist.delivered
                 : projections.playlists.delivered
@@ -207,10 +210,12 @@ extension ShotScene {
         )
     }
 
-    /// A playlist on four different releases, none of which has a cover.
-    private static let fourReleases = BridgePlaylistCover.grid(
-        covers: [nil, nil, nil, nil]
-    )
+    /// A playlist on four different releases, whose covers are the
+    /// placeholder art named after each.
+    private static func fourReleases(_ albums: [String]) -> BridgePlaylistCover
+    {
+        .grid(covers: albums.map { cover($0) })
+    }
 
     static let boardPlaylistListing: [BridgePlaylistSummary] = [
         summary(
@@ -218,28 +223,34 @@ extension ShotScene {
             tracks: 12,
             sharing: .household,
             minutes: 54,
-            cover: fourReleases
+            cover: fourReleases([
+                "Low Tide Hours", "Copper Sky", "Small Hours",
+                "Paper Lanterns",
+            ])
         ),
         summary(
             "Kitchen radio",
             tracks: 40,
             sharing: .household,
             minutes: 168,
-            cover: fourReleases
+            cover: fourReleases([
+                "Copper Sky", "Winter Kitchen", "Glass Harbor",
+                "Field Recordings",
+            ])
         ),
         summary(
             "Running",
             tracks: 18,
             sharing: .private,
             minutes: 72,
-            cover: .single(cover: nil)
+            cover: .single(cover: cover("Small Hours"))
         ),
         summary(
             "For Ana",
             tracks: 9,
             sharing: .private,
             minutes: 38,
-            cover: .single(cover: nil)
+            cover: .single(cover: cover("Glass Harbor"))
         ),
     ]
 
@@ -311,7 +322,7 @@ extension ShotScene {
                         albumTitle: entry.album,
                         releaseId: "release-\(index)",
                         durationClock: entry.clock,
-                        cover: nil,
+                        cover: cover(entry.album),
                         number: UInt64(index + 1),
                         canMoveUp: index > 0,
                         canMoveDown: index < boardEntries.count - 1
