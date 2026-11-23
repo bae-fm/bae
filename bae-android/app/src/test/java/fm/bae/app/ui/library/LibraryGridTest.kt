@@ -3,6 +3,8 @@ package fm.bae.app.ui.library
 import android.app.Application
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -15,6 +17,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -94,11 +97,15 @@ class LibraryGridTest {
     }
 
     @Test
-    fun anUnplayableAlbumStillOpensItsPage() {
+    fun anUnplayableAlbumNamesItsStateAndStillOpensItsPage() {
         var opened: String? = null
         showGrid(AlbumGridLayout.Flat, onSelectAlbum = { opened = it })
 
-        compose.onNodeWithText("Solo Album").performClick()
+        val unplayable = compose.onNodeWithText("Solo Album")
+        val playable = compose.onNodeWithText("Shared Album")
+        assertEquals("Not on this device", unplayable.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+        assertNull(playable.fetchSemanticsNode().config.getOrNull(SemanticsProperties.StateDescription))
+        unplayable.performClick()
         assertEquals("alb-0", opened)
     }
 }
