@@ -60,17 +60,16 @@ internal fun AndroidAlbumHeader(
 ) {
     val album = detail.album
     val context = LocalContext.current
+    val coverSize = Modifier.size(COVER_SIZE)
+    val opensGallery = galleryItemCount > 0u
 
     Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
         Artwork(
             cover = cover,
             cornerRadius = ThemeRadius.cover,
             iconPadding = ThemeSpace.page,
-            modifier =
-                Modifier
-                    .size(COVER_SIZE)
-                    .clickable(enabled = galleryItemCount > 0u, onClick = onShowGallery),
-            contentDescription = album.title,
+            modifier = if (opensGallery) coverSize.clickable(onClick = onShowGallery) else coverSize,
+            contentDescription = album.title.takeIf { opensGallery },
         )
         Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(start = ThemeSpace.edge)) {
             Text(text = album.title, style = ThemeText.hero.style)
