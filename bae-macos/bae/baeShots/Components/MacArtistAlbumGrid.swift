@@ -13,12 +13,25 @@ extension ShotScene {
             images: coverStore()
         ) {
             MacArtistAlbumGrid(albums: [
-                gridAlbum("Low Tide Hours", "Mara Quill", 1992),
-                gridAlbum("Field Recordings", "Mara Quill", 1979),
-                gridAlbum("Northbound", "Mara Quill", 1974),
+                artistAlbum("Low Tide Hours", 1992),
+                artistAlbum("Field Recordings", 1979),
+                artistAlbum("Northbound", 1974),
             ])
             .frame(width: 524, alignment: .leading)
             .environment(UiStore())
         }
     ]
+
+    /// An album of the artist's page, which this Mac can play unless
+    /// `unplayable`.
+    static func artistAlbum(
+        _ title: String,
+        _ year: Int32,
+        unplayable: Bool = false
+    ) -> BridgeArtistAlbum {
+        BridgeArtistAlbum(
+            album: gridAlbum(title, "Mara Quill", year),
+            primaryReleaseUnplayable: unplayable
+        )
+    }
 }

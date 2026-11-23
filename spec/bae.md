@@ -2546,7 +2546,9 @@ the words, and in a sheet that Android's info button opens. The
 sheet is titled *Not on this device* and says that line. On Android the page
 shows no Play, Shuffle, Play next or Add to queue for such a release, and no
 pin control; its upload line, when this device uploads some of its files, stays.
-The album still opens when this device cannot play its primary release.
+The album still opens when this device cannot play its primary release,
+and its tile in the library grid shows dimmed, as does its tile on an
+artist's page on a Mac.
 VoiceOver on a Mac and TalkBack on Android say *Not on this device* for
 such an album. bae names the device
 that alone holds the audio file with the lowest file id among the release's

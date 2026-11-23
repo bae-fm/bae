@@ -317,11 +317,49 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
     assert_eq!(detail.credit_name_count, 1, "the page counts its other names");
     assert_eq!(detail.artist.album_count, 5, "the page takes the artist row's album count");
 
-    let album_ids: Vec<&str> = detail.albums.iter().map(|a| a.id.as_str()).collect();
+    let album_ids: Vec<&str> = detail.albums.iter().map(|a| a.album.id.as_str()).collect();
     assert_eq!(
         album_ids,
         vec![ALBUM_1999, ALBUM_2001_LOWER, ALBUM_2001_UPPER, ALBUM_JUNCTION, ALBUM_NULL,]
     );
+}
+
+/// An artist's page marks an album whose primary release has audio that
+/// another device alone holds, and stops marking it once that device is the
+/// one reading.
+#[test]
+fn artist_detail_follows_the_primary_releases_audio_location() {
+    use bae_records::test_fixtures::storage_listing::import_file;
+    use bae_util::content_type::ContentType::Flac;
+
+    const RELEASE: &str = "5b2f7f4d-1d58-4a1c-9c60-0c0f1c0b7a11";
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let (a, b) = (devices.a(), devices.b());
+        let folder = bae_util::test_files::TestFolder::new();
+        RecordsFixture::new()
+            .artist(ARTIST_A, "Artist Name A")
+            .album(ALBUM_1999, "Album Title 1999", Some(1999), &[ARTIST_A])
+            .release(ALBUM_1999, RELEASE)
+            .write(&test_records(a))
+            .await;
+        devices.converge("SELECT id FROM releases").await;
+        let unplayable = |store: Store| async move {
+            let detail = LibraryViews::new(store)
+                .get_artist_detail(ARTIST_A)
+                .await
+                .unwrap()
+                .expect("the artist has an album");
+            detail.albums.iter().map(|album| album.primary_release_unplayable).collect::<Vec<_>>()
+        };
+        assert_eq!(unplayable(b.clone()).await, vec![false]);
+
+        import_file(a, &folder, RELEASE, "track.flac", Flac).await;
+        devices.converge("SELECT id, release_id, file FROM release_files").await;
+        devices.converge("SELECT id, coordinates FROM coven_files").await;
+
+        assert_eq!(unplayable(b.clone()).await, vec![true]);
+        assert_eq!(unplayable(a.clone()).await, vec![false]);
+    });
 }
 
 /// An artist's page reads its albums in order from the artist page index of

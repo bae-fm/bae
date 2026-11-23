@@ -3,7 +3,7 @@
 //! Its tables and the triggers keeping them are `artist.sql`.
 
 use super::*;
-use crate::album_detail::{AlbumSummary, ArtistDetail};
+use crate::album_detail::{ArtistAlbum, ArtistDetail};
 
 /// The SQL creating this part's tables and triggers.
 pub(super) const SQL: &str = include_str!("artist.sql");
@@ -146,7 +146,7 @@ fn artist_detail_of(raw: DbArtistDetail) -> ArtistDetail {
     ArtistDetail {
         artist: raw.artist,
         credit_names: raw.credit_names,
-        albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
+        albums: raw.albums.into_iter().map(ArtistAlbum::from_raw).collect(),
         credit_name_count: raw.credit_name_count,
     }
 }
@@ -165,7 +165,7 @@ fn find_artist_detail_on(
     let Some(artist) = artist else {
         return Ok(None);
     };
-    let albums = sql.query(&artist_albums_query(), params![artist_id], AlbumSummaryRow::read)?;
+    let albums = sql.query(&artist_albums_query(), params![artist_id], ArtistAlbumRow::read)?;
     let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
         sql,
         artist_id,
@@ -189,20 +189,45 @@ fn find_artist_detail_on(
 /// the read sorts nothing.
 pub(crate) fn artist_albums_query() -> String {
     format!(
-        "{select} \
+        "{select}, primary_storage.audio_elsewhere_device IS NOT NULL AS primary_release_unplayable \
          FROM album_artist_link link \
          JOIN albums a ON a.id = link.album_id \
+         LEFT JOIN release_storage primary_storage ON primary_storage.release_id = {primary} \
          WHERE link.artist_id = ?1 \
          ORDER BY link.year_missing, link.year, link.title_sort_key, link.album_id",
         select = album_summary_select(),
+        primary = album_primary_release_sql(),
     )
+}
+
+/// An album of an artist's page as its row reads it.
+#[derive(Clone, PartialEq)]
+struct ArtistAlbumRow {
+    row: AlbumSummaryRow,
+    primary_release_unplayable: bool,
+}
+
+impl ArtistAlbumRow {
+    fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            row: AlbumSummaryRow::read(row)?,
+            primary_release_unplayable: row.get("primary_release_unplayable")?,
+        })
+    }
+
+    fn process(self) -> Result<DbArtistAlbum, DbError> {
+        Ok(DbArtistAlbum {
+            album: self.row.process()?,
+            primary_release_unplayable: self.primary_release_unplayable,
+        })
+    }
 }
 
 #[derive(Clone, PartialEq)]
 struct ArtistDetailRows {
     artist: DbArtistSummary,
     credit_names: Vec<bae_records::credits::ArtistCreditName>,
-    albums: Vec<AlbumSummaryRow>,
+    albums: Vec<ArtistAlbumRow>,
     credit_name_count: u64,
 }
 
@@ -214,7 +239,7 @@ impl ArtistDetailRows {
             albums: self
                 .albums
                 .into_iter()
-                .map(AlbumSummaryRow::process)
+                .map(ArtistAlbumRow::process)
                 .collect::<Result<_, _>>()?,
             credit_name_count: self.credit_name_count,
         })

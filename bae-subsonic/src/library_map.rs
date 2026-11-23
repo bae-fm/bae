@@ -289,7 +289,7 @@ pub(crate) async fn artist_release_count(
 /// The ids of the releases (Subsonic albums) of an artist's bae albums, in
 /// the order the albums list them.
 pub(crate) fn artist_release_ids(detail: &bae_views::album_detail::ArtistDetail) -> Vec<String> {
-    detail.albums.iter().flat_map(|album| album.release_ids.iter().cloned()).collect()
+    detail.albums.iter().flat_map(|album| album.album.release_ids.iter().cloned()).collect()
 }
 
 /// The `ArtistID3` for an artist row, with a release-count album total. Its

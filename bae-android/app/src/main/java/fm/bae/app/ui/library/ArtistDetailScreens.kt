@@ -104,7 +104,8 @@ private fun ArtistDetailContent(
         }
         if (detail.albumCount > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_albums)) }
-            items(detail.albums, key = { it.id }) { album ->
+            items(detail.albums, key = { it.album.id }) { entry ->
+                val album = entry.album
                 AndroidLibraryRow(
                     title = album.title,
                     subtitle = album.year?.let(context::yearText),
