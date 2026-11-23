@@ -395,6 +395,11 @@ extension ShotScene {
         }
     }
 
+    /// The window a library loads in, at the size the boards draw it: the
+    /// app opens it at the library window's size fitted to the screen, which
+    /// is this or more.
+    private static let loadingSize = MainWindow.minSize
+
     /// What `welcomeWindow` shows, for a scene shown in its window, with
     /// `removals` as the removals the window has under way.
     static func welcomeStage(
