@@ -5798,6 +5798,7 @@ goes on following the library, unless the library closed or can no longer be
 read or written.
 
 On Android, moving progress bars and the welcome logo hold still when the system turns animations off.
+On Android 12L and earlier, they also hold still during Battery Saver.
 
 **Long lists.** The album grid, the artist and composer lists, a composer's
 page, the download queue, the Storage manager, an artist picker's search, the

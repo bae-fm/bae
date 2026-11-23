@@ -1,20 +1,19 @@
 package fm.bae.app.ui.components
 
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.TypedValue
+import android.view.Choreographer
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
-import android.view.animation.LinearInterpolator
 import android.widget.ProgressBar
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
-import fm.bae.app.ui.appearance.observeAndroidAnimatorsEnabled
+import fm.bae.app.ui.appearance.observeAndroidAnimatorScale
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 
@@ -28,7 +27,7 @@ private const val PERCENT = 100f
 private const val GAP_DP = 4f
 
 /** How long the moving bar's piece takes to cross the track. */
-private const val MOVING_MILLIS = 1500L
+private const val CROSSING_NANOS = 1_500_000_000.0
 
 /** The moving bar's piece, as a share of the track's width. */
 private const val MOVING_SHARE = 0.3f
@@ -76,31 +75,42 @@ internal class AndroidProgressBarView(
                 private set
             var stopObservingScale: (() -> Unit)? = null
 
-            private val crossing =
-                ValueAnimator.ofFloat(MOVING_REST_PHASE, MOVING_REST_PHASE + 1f).apply {
-                    duration = MOVING_MILLIS
-                    repeatCount = ValueAnimator.INFINITE
-                    interpolator = LinearInterpolator()
-                    addUpdateListener {
-                        phase = (it.animatedValue as Float) % 1f
-                        onFrame()
-                    }
-                }
+            private val display = Choreographer.getInstance()
+            private val frame = Choreographer.FrameCallback(::advance)
+            private var crossing: Crossing? = null
 
-            fun updateAnimation(enabled: Boolean) {
-                if (enabled) {
-                    if (!crossing.isStarted) crossing.start()
-                } else {
-                    crossing.cancel()
-                    phase = MOVING_REST_PHASE
-                    onFrame()
+            private class Crossing(
+                val scale: Float,
+            ) {
+                private var start: Long? = null
+
+                fun phaseAt(time: Long): Float {
+                    val first = start ?: time.also { start = it }
+                    val crossings = (time - first) / (CROSSING_NANOS * scale)
+                    return ((MOVING_REST_PHASE + crossings) % 1.0).toFloat()
                 }
+            }
+
+            private fun advance(time: Long) {
+                val running = crossing ?: return
+                phase = running.phaseAt(time)
+                onFrame()
+                display.postFrameCallback(frame)
+            }
+
+            fun updateAnimation(scale: Float) {
+                if ((crossing?.scale ?: 0f) == scale) return
+                display.removeFrameCallback(frame)
+                crossing = if (scale > 0f) Crossing(scale) else null
+                phase = MOVING_REST_PHASE
+                onFrame()
+                if (crossing != null) display.postFrameCallback(frame)
             }
 
             fun stop() {
                 stopObservingScale?.invoke()
                 stopObservingScale = null
-                crossing.cancel()
+                updateAnimation(0f)
             }
         }
     }
@@ -168,7 +178,7 @@ internal class AndroidProgressBarView(
     }
 
     private fun observeCrossing(moving: Progress.Moving) {
-        moving.stopObservingScale = observeAndroidAnimatorsEnabled(moving::updateAnimation)
+        moving.stopObservingScale = observeAndroidAnimatorScale(context, moving::updateAnimation)
     }
 
     override fun onMeasure(

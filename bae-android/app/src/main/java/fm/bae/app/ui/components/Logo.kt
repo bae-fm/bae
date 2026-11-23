@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -33,7 +34,7 @@ import androidx.compose.ui.unit.times
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SemanticColors
-import fm.bae.app.ui.appearance.observeAndroidAnimatorsEnabled
+import fm.bae.app.ui.appearance.observeAndroidAnimatorScale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sqrt
@@ -144,9 +145,10 @@ internal fun Logo(
 @Composable
 private fun rememberBobSeconds(bob: Boolean): (() -> Double)? {
     if (!bob) return null
+    val context = LocalContext.current
     var moves by remember { mutableStateOf(false) }
-    DisposableEffect(Unit) {
-        val unsubscribe = observeAndroidAnimatorsEnabled { moves = it }
+    DisposableEffect(context) {
+        val unsubscribe = observeAndroidAnimatorScale(context) { moves = it > 0f }
         onDispose(unsubscribe)
     }
     var millis by remember { mutableLongStateOf(0L) }
