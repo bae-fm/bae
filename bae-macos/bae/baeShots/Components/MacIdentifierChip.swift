@@ -6,7 +6,11 @@ import SwiftUI
 extension ShotScene {
     static let macIdentifierChipScenes: [ShotScene] = [
         identifierChipScene("mac.component.identifier-chip.filled") {
-            MacIdentifierChip(label: "Barcode", value: sampleBarcode) {
+            MacIdentifierChip(
+                label: "Barcode",
+                value: sampleBarcode,
+                onPress: {}
+            ) {
                 EmptyView()
             }
         },
@@ -14,27 +18,37 @@ extension ShotScene {
             MacIdentifierChip(
                 label: "Barcode",
                 value: sampleBarcode,
-                style: .outlined
+                style: .outlined,
+                onPress: {}
             ) { EmptyView() }
         },
         identifierChipScene("mac.component.identifier-chip.struck") {
             MacIdentifierChip(
                 label: "Barcode",
                 value: sampleBarcode,
-                style: .struck
+                style: .struck,
+                onPress: {}
             ) { EmptyView() }
         },
         identifierChipScene("mac.component.identifier-chip.dash") {
             MacIdentifierChip(label: "Barcode")
         },
         identifierChipScene("mac.component.identifier-chip.found") {
-            MacIdentifierChip(label: "Barcode", value: sampleBarcode) {
+            MacIdentifierChip(
+                label: "Barcode",
+                value: sampleBarcode,
+                onPress: {}
+            ) {
                 capsule(.musicBrainz, .found(count: 2, groups: []))
                 capsule(.discogs, .noMatch)
             }
         },
         identifierChipScene("mac.component.identifier-chip.searching") {
-            MacIdentifierChip(label: "Barcode", value: sampleBarcode) {
+            MacIdentifierChip(
+                label: "Barcode",
+                value: sampleBarcode,
+                onPress: {}
+            ) {
                 capsule(.musicBrainz, .found(count: 2, groups: []))
                 capsule(.discogs, .lookingUp)
             }
