@@ -31,9 +31,11 @@
 
 .bae-errdis-panel { position: relative; margin-top: var(--space-line); padding: var(--space-related) calc(var(--space-section) + var(--space-compact)) var(--space-related) calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); background: color-mix(in srgb, black 28%, transparent); }
 [data-theme="light"] .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
-.bae-errdis-chain { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bae-errdis-chain { font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
 /* On macOS Copy shows only under the pointer (or keyboard focus); on Android, with no pointer, it always shows. */
+/* The Mac's error details set mono at its 15pt lines; Android's keep the font's own. */
+.bae-errdis-panel-hover .bae-errdis-chain { line-height: var(--type-mono-line-height); }
 .bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }
 .bae-errdis-panel-hover:hover .bae-errdis-copy, .bae-errdis-panel-hover:focus-within .bae-errdis-copy { opacity: 1; }
 .bae-errdis-panel-android { min-height: var(--size-android-bar-button); box-sizing: border-box; padding-right: calc(var(--size-android-bar-button) + var(--space-inline)); }
