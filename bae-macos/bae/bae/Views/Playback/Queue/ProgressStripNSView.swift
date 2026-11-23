@@ -60,12 +60,23 @@ final class ProgressStripNSView: NSView {
             ),
             // Fixed label slot so the bar doesn't resize as digits change.
             elapsedField.widthAnchor.constraint(equalToConstant: 34),
+            // The text's own height, as the design draws the label, not the
+            // taller box an AppKit label takes.
+            elapsedField.heightAnchor.constraint(
+                equalToConstant: Self.labelHeight(of: elapsedField.font)
+            ),
         ])
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         fatalError()
+    }
+
+    /// The height of one line of `font`, from its top to its bottom.
+    private static func labelHeight(of font: NSFont?) -> CGFloat {
+        guard let font else { return 0 }
+        return (font.ascender - font.descender).rounded()
     }
 
     // MARK: - Position updates
