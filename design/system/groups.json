@@ -490,6 +490,13 @@
         ]
       },
       {
+        "name": "The page",
+        "about": "Android's album page below its bar: its blocks in one padded column.",
+        "components": [
+          "AndroidAlbumDetailContent"
+        ]
+      },
+      {
         "name": "The header",
         "about": "An album's header, each platform's version.",
         "components": [

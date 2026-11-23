@@ -1,6 +1,6 @@
 # AndroidDetailScreen
 
-An album's, artist's or composer's page: the back arrow alone, `menu` for the page's options, the content in a 16dp column (`flush` when its rows carry their own padding, as an artist's page does), the now playing bar.
+An album's, artist's or composer's page: the back arrow alone, `menu` for the page's options, the page's content, which carries its own padding (the album page's is `AndroidAlbumDetailContent`; an artist's rows pad themselves), the now playing bar.
 
 The screen draws a dialog or sheet placed among its content over the whole screen: its scrim covers the bars and the now playing bar too, and a dialog centres on the screen. A board never wraps the screen in a box to position it.
 

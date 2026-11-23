@@ -511,13 +511,19 @@
       split.over);
   }
 
+  // A page about one thing under its back bar. The page's content carries its own padding, as each page's list does in the app (the album's in `AndroidAlbumDetailContent`).
   function AndroidDetailScreen(props) {
     var split = splitOverlays(props.children);
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       h(AndroidTopBar, { back: true, backLabel: props.back ? 'Back to ' + props.back : 'Back to library', more: props.menu ? (props.menuLabel || 'Album options') : null }),
-      h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, split.content),
+      h('main', { className: 'bae-a-libbody' }, split.content),
       h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }),
       split.over);
+  }
+
+  // The album page below its bar: its blocks (the header, the release's controls, the tracks, the credits) in a 16dp column, 8dp apart.
+  function AndroidAlbumDetailContent(props) {
+    return h('div', { className: 'bae-a-albumcontent' }, props.children);
   }
 
   function AndroidAlbumGrid(props) {

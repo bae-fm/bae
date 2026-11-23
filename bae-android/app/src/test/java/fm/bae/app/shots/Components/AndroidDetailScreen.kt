@@ -39,40 +39,32 @@ class AndroidDetailScreenShots : BoardShot() {
                 )
             }
         }
-
-    @Test
-    fun androidComponentDetailScreenFlush() = component("android.component.detail-screen.flush") { Detail(flush = true) {} }
 }
 
-/**
- * The detail screen over an album's header, with [actions] in its bar. The page is the
- * screen's padded column, or [flush] for the flush row.
- */
+/** The detail screen over an album's header, with [actions] in its bar; the page is flush, as every row of the preview. */
 @Composable
-private fun Detail(
-    flush: Boolean = false,
-    actions: @Composable RowScope.() -> Unit,
-) = Images {
-    AndroidDetailScreen(
-        onBack = {},
-        backLabel = stringResource(R.string.back_to_library),
-        nowPlayingBar = { Bar(playing) },
-        modifier = Modifier.height(520.dp),
-        actions = actions,
-        flush = flush,
-    ) {
-        Box(Modifier.weight(1f)) {
-            AndroidAlbumHeader(
-                detail = plainDetail,
-                cover = PreviewData.imageRef(),
-                galleryItemCount = 0u,
-                onShowGallery = {},
-                onShowWhere = {},
-                shownRating = { plainDetail.rating },
-            )
+private fun Detail(actions: @Composable RowScope.() -> Unit) =
+    Images {
+        AndroidDetailScreen(
+            onBack = {},
+            backLabel = stringResource(R.string.back_to_library),
+            nowPlayingBar = { Bar(playing) },
+            modifier = Modifier.height(520.dp),
+            actions = actions,
+            flush = true,
+        ) {
+            Box(Modifier.weight(1f)) {
+                AndroidAlbumHeader(
+                    detail = plainDetail,
+                    cover = PreviewData.imageRef(),
+                    galleryItemCount = 0u,
+                    onShowGallery = {},
+                    onShowWhere = {},
+                    shownRating = { plainDetail.rating },
+                )
+            }
         }
     }
-}
 
 /** Low Tide Hours as the detail screen's preview draws its header: the title, artist and year. */
 private val plainDetail: BridgeAlbumDetail =

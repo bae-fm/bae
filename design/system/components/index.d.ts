@@ -251,8 +251,11 @@ export interface MacQueueRowProps { title: string; artist?: string; album?: stri
 export declare function MacQueueRow(props: MacQueueRowProps): React.ReactElement;
 export interface AndroidLibraryScreenProps extends NowPlayingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; searching?: boolean; search?: string; sync?: 'moving' | 'attention' | 'paused'; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidLibraryScreen(props: AndroidLibraryScreenProps): React.ReactElement;
-export interface AndroidDetailScreenProps extends NowPlayingProps { back?: string; menu?: boolean; menuLabel?: string; flush?: boolean; width?: number; height?: number; children?: React.ReactNode }
+export interface AndroidDetailScreenProps extends NowPlayingProps { back?: string; menu?: boolean; menuLabel?: string; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidDetailScreen(props: AndroidDetailScreenProps): React.ReactElement;
+/** The album page below its bar: its blocks in a 16dp column, 8dp apart. Put it as AndroidDetailScreen's content, with the page's dialogs and sheets beside it. */
+export interface AndroidAlbumDetailContentProps { children?: React.ReactNode }
+export declare function AndroidAlbumDetailContent(props: AndroidAlbumDetailContentProps): React.ReactElement;
 export interface AndroidNowPlayingBarProps { title?: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; casting?: string; castOff?: boolean }
 export declare function AndroidNowPlayingBar(props: AndroidNowPlayingBarProps): React.ReactElement;
 export interface AndroidPlayPauseProps { playing?: boolean; waiting?: boolean; size?: number }
