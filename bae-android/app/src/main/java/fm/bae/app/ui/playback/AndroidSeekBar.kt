@@ -354,6 +354,8 @@ internal class PlaybackProgressView(
             typeface = Typeface.DEFAULT
             fontFeatureSettings = "tnum"
             setTextSize(TypedValue.COMPLEX_UNIT_SP, TIME_LABEL_TEXT_SIZE_SP)
+            // The line is the text's own height, as the board draws it, with no padding for taller glyphs.
+            includeFontPadding = false
             layoutParams =
                 LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
