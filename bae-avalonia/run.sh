@@ -58,17 +58,13 @@ cd "$(dirname "$0")/.."
 REPO="$PWD"
 ./scripts/build-layout.sh
 source scripts/xcode-trees.sh
-for tool in cargo rustc dotnet python3 uniffi-bindgen-cs codesign security install_name_tool otool; do
+for tool in cargo rustc dotnet python3 codesign security install_name_tool otool; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Required command missing: $tool" >&2
         exit 1
     fi
 done
-if [[ "$(uniffi-bindgen-cs --version)" != 'uniffi-bindgen 0.11.0+v0.32.0' ]]; then
-    echo 'Install the C# generator matching this bridge:' >&2
-    echo 'cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked' >&2
-    exit 1
-fi
+BINDGEN="$(scripts/csharp-bindgen.sh --path)"
 case "$(rustc -vV | awk '/^host:/ {print $2}')" in
     aarch64-apple-darwin) RID=osx-arm64 ;;
     x86_64-apple-darwin) RID=osx-x64 ;;
@@ -106,7 +102,7 @@ elif [[ ! -f "$BRIDGE" ]]; then
 fi
 
 BINDINGS="bae-bridge/csharp-bindings-$BINDINGS_EDITION"
-uniffi-bindgen-cs --library "$BRIDGE" --crate bae_bridge --out-dir "$BINDINGS" --no-format
+"$BINDGEN" --library "$BRIDGE" --crate bae_bridge --out-dir "$BINDINGS" --no-format
 rm -rf "$RUN_DIR/publish"
 dotnet publish bae-avalonia/bae-avalonia.csproj \
     --framework net8.0 --configuration "$CONFIG" --runtime "$RID" --self-contained true \

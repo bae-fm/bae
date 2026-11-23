@@ -28,17 +28,13 @@ fi
 cd "$(dirname "$0")/.."
 REPO="$PWD"
 ./scripts/build-layout.sh
-for tool in cargo dotnet python3 uniffi-bindgen-cs; do
+for tool in cargo dotnet python3; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Required command missing: $tool" >&2
         exit 1
     fi
 done
-if [[ "$(uniffi-bindgen-cs --version)" != 'uniffi-bindgen 0.11.0+v0.32.0' ]]; then
-    echo 'Install the C# generator matching this bridge:' >&2
-    echo 'cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked' >&2
-    exit 1
-fi
+BINDGEN="$(scripts/csharp-bindgen.sh --path)"
 export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
 ./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
 
@@ -57,7 +53,7 @@ cp target/debug/libbae_bridge.dylib "$BRIDGE"
 
 BINDINGS="bae-bridge/csharp-bindings-full"
 rm -rf "$BINDINGS"
-uniffi-bindgen-cs --library "$BRIDGE" --crate bae_bridge --out-dir "$BINDINGS" --no-format
+"$BINDGEN" --library "$BRIDGE" --crate bae_bridge --out-dir "$BINDINGS" --no-format
 dotnet build bae-avalonia/bae-avalonia.csproj -c Debug -p:EnforceCodeStyleInBuild=true
 # A `dotnet` on PATH can be a /bin/bash wrapper (Homebrew's is), and macOS
 # strips DYLD_* from what a protected shell launches, so the test host would
