@@ -10,9 +10,9 @@ after the author agrees.
 
 bae is a music library and player for a household. It plays the household's
 own files, describes them with what MusicBrainz and Discogs say about them, and
-keeps one library on every device the household owns. This document explains
-what bae does and why, for someone deciding whether the design is right and for
-someone changing it.
+keeps one library on every device the household owns. The spec explains what
+bae does and says, for someone deciding how bae should behave or changing it.
+The boards and design system describe how the screens look.
 
 bae keeps its data in SQLite and syncs it through
 [coven](https://github.com/bae-fm/coven). This document does not repeat how
@@ -107,10 +107,10 @@ over, logged, takes over when that copy is gone.
 
 The Android app is the full phone app. On iOS, bae-ios holds the phone app's
 start-up and release machinery and one screen; the phone views are rebuilt
-from the Android app later. The screen shows
-the sheep, the bae wordmark, and either the step that stopped the launch with
-its error, or the libraries on this device by name, or why they couldn't be
-read. It opens no library, so nothing in the phone column runs there yet.
+from the Android app later. The screen shows the step that stopped the launch
+and its error, the names of the libraries on this device, or why bae could not
+read them. The iOS app opens no library, so none of the phone features in the
+table run there yet.
 
 ### 1.2 Two editions
 
@@ -143,13 +143,11 @@ country as its ISO 3166-1 code (Appendix H), and the apps show the country's
 name in the device's language wherever they print it. A pressing can be
 printed with more than one barcode (an EAN and a UPC): it keeps every one its
 source states, in order, each product once, and the editor shows one row per
-barcode, each removable, as it does labels. Each list in the editor adds an
-entry with the same Add button, a + before its words: under the last label row
-and the last barcode row, on a line of its own, *Add label* or *Add barcode*
-adds an empty row (with no label or no barcode yet, it sits beside the heading
-alone, and the editor draws no empty row); after the last medium and the last detail, on their line,
-*Add* opens a menu of what can be added. Its
-media are a list of carriers, each with how many of it there are (two CDs, one
+barcode, each removable, as it does labels. *Add label* and *Add barcode*
+each add an empty entry. Before the person adds a label or barcode, the
+editor shows the corresponding button without an empty entry. For media
+and details, *Add* opens a menu of what the person can add. A release's
+media list names each carrier and how many of it there are (two CDs, one
 vinyl record). Its labels are a list of library labels (§2.3), each with the
 catalog number it gives the pressing; a place may state a catalog number
 alone. Its labels, its barcodes and its media are each kept one row per place
@@ -168,18 +166,16 @@ album    Album Title, Artist Name
   release  download                           (Ben's MP3s)
 ```
 
-An album's page heads with these lines, stacked in this order:
-its title, its artist and year (one line on macOS, `Mara Quill · 1992`, and
-two on Android), the edition line, the copy line, then the
-Play button. When the person rated the album, Android ends the year line with
-the rating and macOS shows it after the ⋯ button. The release lines are the three lines that name the selected
-release, wherever bae names a release under its album:
+An album's page shows its title, artist and year, edition and copy, then
+offers Play. The page also shows the person's rating when they have rated
+the album. The release lines name the selected release wherever bae names a
+release under its album:
 
 - The edition line holds what is printed on the release and what a person looks
   up: its own year, each label with the catalog numbers it gives the pressing,
   then its country, such as `2001 · Harbor Records · HR-1042 · US`. Where
-  the album's year shows above the release lines, as on the album page, the
-  edition line leaves out a year that matches it: the 1992 original of a 1992
+  the album's year appears with the release lines, as on the album page, the
+  edition line leaves out a year that matches it. The 1992 original of a 1992
   album reads `Harbor Records · HR-1042 · US` there, and
   `1992 · Harbor Records · HR-1042 · US` in a pressing row. A country shows in the short form
   the person's language commonly uses where one exists (US, UK, EE. UU. in
@@ -194,18 +190,14 @@ A release line with nothing in it is left out. bae's core words the release
 lines, and the Mac and Android apps show the lines core gives, so they read the
 same on both. The import pane's summary of the release a folder holds shows all
 three. The release editor, in the import pane and in the Edit release sheet,
-shows only the audio line under the album's title, artists and year, because
-its fields below define the edition and the copy (*The audio line* below); the
-Edit release sheet's header names the release by its title. Each pressing row
+shows only the audio line with the album's title, artists and year, because
+its fields define the edition and the copy (*The audio line* in §3.8).
+The Edit release sheet names the release by its title. Each pressing row
 of Identify and a typed search shows an edition line (the year, the labels and
 the catalog number, then the country) and a copy line (the media and details).
 
 The person picks which of an album's releases its page shows. The page shows
 the picked release while the album holds it, and the primary release otherwise.
-
-On macOS the album page's track list lays each side or disc out in two
-columns. A side's second column starts after half its tracks, rounded up, when
-the side has more than eight; a shorter side fills the first column alone.
 
 On macOS the person picks several tracks of the album page's track list:
 cmd-click picks or unpicks a row, shift-click picks the rows from the last pick
@@ -214,8 +206,8 @@ tracks from the last pick to the one clicked in the order their release lists
 them, or the clicked track alone when the last pick is not a track of the
 clicked track's release. A pick or a clear that the person makes before a
 shift-click's tracks show as picked cancels that shift-click. The page clears
-the picks when it shows another release or closes. The app tints a picked row
-and marks it as selected for screen readers. A row's menu acts on every pick
+the picks when it shows another release or closes. Screen readers identify
+each picked track as selected. A row's menu acts on every pick
 when the row is among several, and on the row alone otherwise. For several it
 offers *Play N tracks*, *Play next*, *Add to queue* and *Add to playlist*. Each
 action takes the tracks in the order their release lists them (by release, then
@@ -284,11 +276,11 @@ artist, the grid lists an album under each artist its credits show, once per
 artist, the artists in order of sort name (else name) and then id, each
 artist's albums in the grid's sort. Each artist's group carries the artist's
 picture and how many albums it holds, and each album listed in it carries its
-other credits, those besides that artist, printed as a line (none when that
-artist is its only credit). The artist list shows every artist an
-album's credits show, sorted by name or album count, ties going by name and
-then id. Under its name an artist's row, its page and its search result say how
-many albums credit it ("1 album", "3 albums"), in the viewer's language.
+other credits, those besides that artist, when there are any. The artist
+list shows every artist an album's credits show, sorted by name or album
+count, ties going by name and then id. An artist's row, page and search result
+say how many albums credit the artist ("1 album", "3 albums"), in the viewer's
+language.
 
 **Names order in the device's language.** Every list that sorts by a name
 (album titles and artists in the grid, the artist and composer lists, a
@@ -312,37 +304,38 @@ are not synced; every reader of the library file on the device (the app, MCP and
 Subsonic) sees the one order.
 
 **Browsing.** The library shows one view at a time: albums, artists or
-composers. The view's name heads the page, and its menu switches
-views. On macOS the artists and composers views list their rows
-beside the open one's page. At the
-top of the list the heading is full size; as the list scrolls it shrinks into a
-slim bar pinned above it, and a scroll that stops part way leaves it at the
-nearer size. On macOS, VoiceOver reads the view menu by the view's name alone.
-VoiceOver reads the + menu beside the sort as *Add sort criterion*.
-VoiceOver reads a sort pill's direction button as *Ascending* or *Descending*,
-and pressing the button reverses the sort direction.
-On Android, the heading's end holds Search, the Activity
-button (§6.4), ⋮, whose menu gives the view's sort under *Sort by* (the
-fields, the direction, and for albums *Group by artist*), then *Shuffle
-library*, and last the person's menu (below); screen readers name that ⋮ *More
-options*. On Android screen readers name the back arrow of an album, artist, composer or playlist page opened from the library *Back to library* (*Back* when
-opened from another page). On Android an album page's Play sits under its release details, beside the cover, and ⋮, *Album options* to screen readers, sits at the right of the top bar; its menu offers *Shuffle*, *Play next* and *Add to queue*, then after a separator *Rate*, *Pin* or *Unpin* and the album's other items, and after a last separator *Delete album…*. While a pin of the shown release waits, runs or has failed, the page shows it under the release lines, with Cancel and, for a failure, Retry, and the menu offers neither Pin nor Unpin. A card's title or artists, or a row's name, too long
-for its one line ends in "…". On Android the grid grouped by artist opens each
-artist's albums with a header of the artist's round picture, name and album
-count, which opens the artist; the header of the artist being scrolled through
-stays pinned under the heading, as a slim strip of picture and name, until the
-next artist's header pushes it off. A card in a group shows the album's year
-and, when it credits others besides the group's artist, "with" them.
+composers. The view's name identifies its page, and its menu switches views.
+On macOS the artists and composers views show their lists while the selected
+artist or composer is open. On macOS, VoiceOver reads the view menu by the
+view's name alone. VoiceOver reads the menu for adding a sort criterion as
+*Add sort criterion*. VoiceOver reads a criterion's direction button as
+*Ascending* or *Descending*, and pressing the button reverses the direction.
 
-**The person's menu.** The person's picture, or the initials of their name
-(§5.4), ends the top bar: on a Mac at the end of the window's title bar, and on
-Android after ⋮. Screen readers name it *Your menu*. A person with no profile
-shows a plain tile in the picture's place, and until bae has read what the menu
-needs (the library's sync state on a Mac, whether the person is an admin on
-Android) the top bar shows no picture and no menu. It opens a menu of *Add device…* and, for an admin, *Invite
-someone…*, then, after a divider,
-*Playlists* and *History*, and, after another, *Settings…* (on Android *Add
-device*, *Invite someone* for an admin, *Playlists*, *History* and *Settings*).
+On Android, the library offers Search, Activity (§6.4), and a menu named
+*More options* for screen readers. The menu offers *Sort by* (the fields, the
+direction, and for albums *Group by artist*), then *Shuffle library*. The
+person's menu follows these controls. Screen readers name the back button
+of an album, artist, composer or playlist page opened from the library
+*Back to library*, and *Back* when the person opened the page elsewhere.
+The album page offers Play and a menu named *Album options* for screen
+readers. The menu offers *Shuffle*, *Play next*, *Add to queue*, *Rate*,
+*Pin* or *Unpin* and the album's other items, then *Delete album…*. While a
+pin of the shown release waits, runs or has failed, the page shows its
+status and offers Cancel and, after a failure, Retry. The menu offers
+neither Pin nor Unpin during that time. When the album grid groups by
+artist, each group shows the artist's picture, name and album count, and
+the group heading opens the artist. The grid keeps the current group's
+artist identifiable while the person scrolls. Each album in a group shows
+its year and, when it credits others besides the group's artist, "with"
+them.
+
+**The person's menu.** Screen readers name the control *Your menu*. The
+control identifies the person by their picture or initials (§5.4), or
+shows no picture or initials when the person has no profile. The app
+shows no menu until it has read the library's sync state on a Mac or
+whether the person is an admin on Android. The menu offers *Add device…*,
+then *Invite someone…* for an admin, *Playlists*, *History* and
+*Settings…*. Android omits the ellipses from these labels.
 Add device opens the pairing of a new device, as *Add device…* on Your devices
 does; Invite someone opens the invite, as People's *Invite…* does; on a Mac
 whose library has no cloud home yet, *Set up a cloud home…* comes first and
@@ -351,10 +344,9 @@ Add device and Invite someone each open a sheet, titled *Add a device* or
 *Invite someone*, that says the cloud home comes first: "To add a device, set
 up a cloud home first. Your library and music stay on this Mac until you do."
 (an invite says "To invite someone, …"), with
-*Cancel* and *Set up a cloud home…*. On a Mac, Playlists and History open in
-the side pane beside the queue, which a control at its top switches between
-*Queue*, *Playlists* and *History*; on Android each opens as its own screen
-with a back arrow.
+*Cancel* and *Set up a cloud home…*. On a Mac, Playlists and History open
+in the pane that switches between *Queue*, *Playlists* and *History*.
+On Android each opens its own screen with a back control.
 
 A release has tracks, a cover, and the files its tracks play from. Its pressing
 facts are typed values in bae's own vocabulary (Appendix H), read from what the
@@ -515,8 +507,8 @@ it matches is the name the credit prints). The artist page lists the names,
 and renames or removes each in one write with every credit linking it:
 renamed, they print the new name; removed, the artist's own. Adding or
 renaming a name of an artist deleted or merged away meanwhile is refused. The
-artist field of an editor lists each found artist with its other names under it; picking
-one prints the artist by that name. While the field is open, its list shows
+artist field of an editor lists each found artist and their other names.
+Picking a name prints the artist by that name. While the field is open, its list shows
 each artist as it is now, so an artist added, renamed or given another name
 meanwhile shows as it is. Typing a name, or picking an artist for a tag credit that spelled it
 differently, prints the artist's own name.
@@ -556,14 +548,15 @@ writes the credit, so nothing landing in between can make it wrong:
 A credit that matches an artist fills in that artist's missing ids and sort
 name.
 
-The import pane and the release editor show beside each credit of a draft
-the artist these rules name for it now, or that it would be new, or the
-several artists it leaves ambiguous. Each artist field (the album's artists,
-or a track's own) shows at most one badge for all its artists: New when every
-one is new, how many are new, how many library artists its one credit could
-be, or how many of its credits are left to choose. A field whose artists are
-all in the library shows no badge. A picked artist counts as in the library. The badges
-always name the artists that importing or saving the draft would name.
+For each credit of a draft, the import pane and release editor show what
+these rules decide, whether that means an artist in the library, a new artist
+or several possible artists. Each artist field shows one status at most for
+all its credits. The status says *New* when every artist is new. Otherwise
+it gives the number of new artists, the number of possible library artists
+for a single credit, or the number of credits that still need a choice.
+The field shows no status when all its artists are in the library. A picked
+artist counts as in the library. The status reflects what importing or
+saving the draft would name.
 bae stores the answer of these rules for each credit of a candidate's
 draft. The write that adds or changes a credit, or changes an artist the
 rules can name for it, stores the new answer in the same transaction,
@@ -675,8 +668,8 @@ then a record of two sides and a record of one, Disc 1, Side A, Side B, Side C.
 A track on any other medium is on a numbered disc when the release holds more
 than one medium, and the release with one such medium shows its tracks in one
 group with no heading. Each group carries its tracks' playing time. When the
-release has more than one group, each group shows its time beside the release's
-total. Each track carries its own credits (or the album's), the works it
+release has more than one group, the detail shows the groups' times and the
+release's total. Each track carries its own credits (or the album's), the works it
 performs and the stars the person gave it. The detail lists the release's
 images bae can show and the files no track plays from, with the files' count and
 total size.
@@ -690,17 +683,15 @@ tracks it covers; artists who share a role and the same tracks are one row,
 and one artist in two roles is two rows. A row covering every track names no
 tracks. Rows go in the order of their first credit: the release's credits in
 the catalog's order, then each track's by track, then by the credit's order. A
-release with no credit has no row. On macOS the Credits are listed above the
-Works, which show only when a track of the release performs a work, and list
-each work a track performs in the track order, as the
-track's number, the work and its composers, and a click on a work opens its
-page; on Android a line under each track names the works it performs, a tap on it
-opens the work, and the Credits follow the tracks, each row a role at the start and
-its artists at the end, without the tracks each covers.
-On Android a row of chips under the release picker has one chip for each
-catalog that describes the release, and each chip opens its catalog's page. The
-Files after the Credits name each file no track plays from with what kind of
-file it is.
+release with no credit has no row. On macOS Credits precede Works. Works
+appears only when a track performs a work and lists each work in track order,
+with the track's number, the work and its composers. Clicking a work opens
+its page. On Android each track names the works it performs and tapping a
+work opens it. Credits follow the tracks and list each role and its artists
+without naming the tracks the role covers.
+On Android the album page gives each catalog that describes the release a
+control that opens its catalog page. Files follows Credits and names every
+file no track plays from, with its kind.
 On Android the album's menu offers *Set as primary release* above *Delete
 album…* when the album holds more than one release and the release in view is
 not the primary one.
@@ -713,9 +704,8 @@ performs one. An artist who produced, engineered or performed and wrote
 nothing is not on the list. A merged artist's works and credits count under
 the artist it shows as. Each row counts the artist's works, the releases a
 track of which performs one of them, and the unlinked writing credits; the
-list sorts by name, works or releases, ties going by name, then id. Under its name a
-composer's row, its page and its search result say how many works it is
-credited on ("1 work", "3 works"), in the viewer's language.
+list sorts by name, works or releases, ties going by name, then id. A
+composer's row, page and search result say how many works credit the composer ("1 work", "3 works"), in the viewer's language.
 
 **An artist's composer page** lists its works, then its release credits and
 its track credits in every role that none of the works it wrote links, each
@@ -934,7 +924,7 @@ apart. Their answer is marked as theirs, and no later scan overrides it. The
 person can also combine releases from anywhere into one, in an order they
 choose; such a grouping reads exactly those folders. Combining selects the
 release it makes. When a release's files come from several folders, its
-pane lists those folders at the top. A combined release's pane offers Keep as Separate
+pane lists those folders. A combined release's pane offers Keep as Separate
 Releases, which separates it at once, with no confirmation, and selects the
 releases it returns.
 
@@ -1111,12 +1101,10 @@ different things about one file fails the scan.
 
 ### 3.2 The import list
 
-With no watched folder, the Import screen has no list: bae's sheep plays
-there, every few seconds taking in made-up releases or playing on its own,
-above *Add a folder to import music from* with *Import Folder…* and *Add
-Discogs Key…*; with reduced motion asked for, it holds still. Until the
-watched folders have been read, the screen shows a plain surface: a library
-not read yet is not a library without folders.
+With no watched folder, the Import screen shows *Add a folder to import music
+from*, *Import Folder…* and *Add Discogs Key…*. bae honors reduced motion on
+this screen. The screen shows no empty state until bae reads the watched
+folders.
 
 The import list shows every candidate in one of three tabs:
 
@@ -1127,10 +1115,10 @@ The import list shows every candidate in one of three tabs:
 | Skipped | dismissed by the person, or broken |
 
 A tab reads *Nothing here yet* only once its list has been read and holds no
-rows (*No matches* when the filter narrows it to none); until the list has
-first been read, it is a plain surface.
+rows (*No matches* when the filter narrows it to none).
 
-On macOS the Import section is a list beside a pane, and both fit in the main window at its smallest width, 900 points, whatever the selection. The list is 410 to 460 points wide and keeps at least 410, which its four tabs and their counts need on one line. The pane keeps at least what the list leaves, 489 points at that width. Where the pane has less room than its contents need, the identify bar wraps its destination and Import button onto a second line, and the track table scrolls sideways inside the pane.
+On macOS the Import screen keeps the list available while the selected
+candidate is open.
 
 Imported lists first the releases that still have files in coven's upload queue,
 the first queued first, and then the rest in the list's order. Only a
@@ -1155,10 +1143,9 @@ person opens that group. A header offers to read its
 folder as one release (§3.1) when a stored reading of the folder keeps its
 releases apart, or, with nothing stored, when the folder is the nearest one
 above some release that holds two releases or more, counting the releases of
-every tab. While the rows on top are a group's, that group's header stays pinned
-over the top of the list; over a release in no group no header is pinned. The
-pinned header is the top row's own group's, however far above it the header's
-row is, and it leaves with the group's last row as that row scrolls away.
+every tab. While a person scrolls through a group, the list keeps showing
+that group's header until its last row leaves view. The list shows no
+persisting header while the first visible release belongs to no group.
 
 Each Found row is in exactly one state. The first that applies wins:
 
@@ -1187,11 +1174,10 @@ Each Found row is in exactly one state. The first that applies wins:
 11. **Needs you**: the lookup left the answer to the person.
 
 A Found row's title line reads from its draft. A row with no draft, from the
-tags or anywhere else, names its folder. A row with one shows the draft's
-album title and credits, and, while the draft is linked to a catalog's
-pressing or album, an arrow after the title: its facts were read from a
-catalog record. On every other row the arrow is hidden, not removed, so the
-title line keeps its width whichever way the row reads.
+tags or anywhere else, names its folder. A row with a draft shows the
+draft's album title and credits. While the draft links to a catalog's
+pressing or album, the row also indicates that its facts come from a
+catalog record.
 
 A filter narrows Found to one group of these states: needs you, in progress,
 identified, unmatched, or not looked up. Each entry counts the Found rows it
@@ -1204,18 +1190,18 @@ says how many of the tab's rows it keeps of how many it has.
 This device's record of the import is keyed by the folder's hash (§2.7), not
 its path, so a folder moved or renamed after its import stays on Imported. An Imported row
 shows the library release imported from the folder's files as the library
-holds it now — its album's title and credits, each printed as the library
-prints it, its cover, and the arrow of a release a catalog's record describes
-— so retitling the album, editing its credits or merging an artist they name
-changes the row at once. It says nothing more but its release's
-upload: the tab says it is done. Its pane shows that release in the release
-editor (§3.8), with Cancel and Save as its action row and the folder's images
-as its scan read them: the folder holds no draft once imported. While files of the release wait in this device's
-upload queue, the line under its title names the upload's phase, as the
-Storage manager does (§4.2): Uploading while any file is being sent, beside a
-bar of the bytes of the release's whole size stored or sent, or Queued to upload with no
-bar while its files only wait. The row changes as each file starts and
-finishes uploading, and its bar moves as bae sends bytes. The row names the one release imported from those
+holds it now. The row shows the album's title and credits as the library
+prints them, the cover, and whether a catalog record describes the release.
+Retitling the album, editing its credits or merging an artist they name
+changes the row at once. The row shows only the release's upload status.
+The folder has no draft once imported. Its pane shows the release editor
+(§3.8) with *Cancel*, *Save* and the folder's images as the scan read them.
+While files of the release wait in this device's
+upload queue, the row says *Uploading* while any file is moving and shows
+how many bytes of the release bae has stored or sent. While its files only
+wait, the row says *Queued to upload* and shows no progress count. The row
+updates as files start or finish uploading and as bae sends bytes. The row
+names the one release imported from those
 files, which Show in library and a double-click on the row open.
 
 A folder this device didn't import is in Found like any other, whatever another
@@ -1227,9 +1213,9 @@ skip.
 Imported offers no re-import. A second copy comes from importing another folder,
 such as a copy whose modification times changed.
 
-**Skipped.** A broken folder's row looks like a Found row: the folder's own
-cover when an image in it is undamaged, the album title and artist its tags state
-or else the folder's name, and under them why it can't be imported, such as
+**Skipped.** A broken folder's row shows the folder's cover when it has
+an undamaged image, the album title and artist its tags state or else the
+folder's name, and why bae cannot import it, such as
 "2 audio files are damaged" or "More than one file is named Caf\xE9.flac".
 Selecting it opens it the way a Found release opens, read-only: its images,
 then every other file with each damaged one marked and why. Where a release's
@@ -1242,9 +1228,8 @@ show, a fold takes out the selected rows it hides, and a row they hid comes
 back unselected when it is shown again. A row that leaves the list through a
 change to the row itself stays selected: a row that starts importing under
 Identified, a Found row whose import finishes, or a folder the scan no longer
-finds. The list draws no highlight for it while it is hidden, draws it
-selected again if it comes back, and no action applies to it while it is
-hidden. So a selected
+finds. If the row returns, it shows as selected. Actions apply only to
+rows the list shows. A selected
 Found row whose import finishes moves to Imported, but the list stays on Found,
 the row stays selected and its pane stays open, showing the release as
 imported (Imported's pane, above) with its way to open the release in the
@@ -1258,8 +1243,8 @@ folded as it was. With nothing selected, the pane shows nothing selected. A
 bulk action, combining, keeping separate and showing the folders run over the
 selected rows the list shows that offer them, in the order the list shows
 them, and a bulk action names the rows it failed on. While a bulk action runs,
-its bar says how many rows it has done and fills to the share done; until the
-action has counted the rows, the bar moves without a count. A broken folder
+bae reports how many rows it has processed and what share that represents.
+Until bae knows the total, it reports progress without a count. A broken folder
 offers no action, so selected among others it counts toward the selection but
 holds back combining it. Combining selects the release it makes, and keeping a
 release as separate releases selects the releases it returns. Shift-click
@@ -1696,7 +1681,7 @@ A run *picks unattended* only when all of these hold:
 - its tracklist lists as many tracks as the folder holds.
 
 The release a run picks is the lead: the offered release with the lowest
-position. The import list's reason, the check the pane shows beside Import and
+position. The import list's reason, the import pane's check and
 the release the run applies always agree on that pick, or on why the run picks
 none.
 
@@ -1712,14 +1697,12 @@ While the run is out, the pane names in words each thing it still waits on:
 a Disc ID or ISRC still being read from the folder, a catalog still being
 asked about a clue, the title search waiting on the clues, and the artwork
 still being read, which can add barcodes and catalog numbers. The search
-form says the artwork is still being read under the fields its text
-suggests to.
+form reports that bae is still reading the artwork.
 
-The pane's identifier chips list every value they hold: the ISRC chip writes
-every code the files' tags carry, separated by " · " and wrapping inside the
-chip, and its accessibility label reads them all. Catalog numbers the folder's
-text offers that no release confirms are one chip listing every one, each a
-button that puts that number into the run; none is folded behind a count.
+The pane lists every ISRC from the files' tags, separated by " · ", and
+screen readers read them all. The pane lists every catalog number the
+folder's text offers that no release confirms. Each number is a button
+that puts the number into the run, and the pane hides none behind a count.
 
 A pressing's row lists every record's value where its records state a fact
 differently: the year, a catalog number, a barcode, the country, the format.
@@ -1735,9 +1718,9 @@ every artist and every label its records state, each once, `Low Tide Hours /
 Low Tide Hours (Remastered)`: titles, artists and labels that differ only in
 case, accents or punctuation are one. A pressing row shows the release lines
 (§2.1): the edition line `1992 · Harbor Records · HR-1042 · US`, then the copy
-line `CD`. A row whose lead record names a pressing the library already holds shows dimmed and marked In library, on every list of cards (a
-verdict's, a ledger cell's, a typed search's), and the mark comes and goes as
-the library gains and loses the release.
+line `CD`. When a row's lead record names a pressing the library already
+holds, every list that shows that row says *In library*. The label follows
+the library as it gains and loses the release.
 
 When the run doesn't pick, the pane says why: nothing found, several
 pressings, a record that couldn't be read, or a tracklist that couldn't be
@@ -1997,8 +1980,8 @@ Ana clicks Import. bae:
    release files it the same way. The "already in your library" banner
    names every album holding the release, or another release of its album:
    those holding the release first, then oldest first. The banner and the
-   dimmed rows change as the library gains and loses releases. bae stores no
-   library status with an identify verdict or a search result, in flight or
+   *In library* labels change as the library gains and loses releases. bae
+   stores no library status with an identify verdict or a search result, in flight or
    stored.
 7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id, and
@@ -2070,8 +2053,10 @@ filename. On Android the album page's cover opens the gallery only when the
 release has gallery items, and the gallery shows its page counter, with the
 number of items as its total, only when it holds more than one. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
-storage, so the picker says it is saving the cover while it does. On the Mac, an album's cover, and the release editor's, opens
-that picker as the Change cover sheet, on its grid, and the release editor's sheet opens over the editor; a tile there shows its image and its name, since its section's heading says where it comes from, and opens the lightbox. Until the
+storage, so the picker says it is saving the cover while it does. On the Mac,
+an album's cover and the release editor's cover open the *Change cover*
+sheet. Each entry shows its image and name, and its section names its source.
+Choosing an entry opens the lightbox. Until the
 picker fetches the catalogs' covers (below), a draft read from the tags, typed
 in or cleared, or a candidate linked to an album or to nothing, has no
 catalog's covers to offer. The fetch finds the covers of the candidate's link:
@@ -2083,8 +2068,8 @@ tags hold, as the scan read them. When the person saves a draft naming a
 file the scan did not store as an image, an image in another format, or
 artwork the tags do not hold, bae refuses the draft, and the cover stays as
 it was. Dropping one of the folder's images on the pane's cover makes it the
-cover, or bae refuses it by the same rule. The pane shows a plain tile in
-place of a missing cover, with no words and no invitation to add an image.
+cover, or bae refuses it by the same rule. When the cover is missing, the
+pane shows no text or invitation to add an image.
 The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
@@ -2193,43 +2178,41 @@ One editor edits a release, in three places. A Found folder's import pane edits
 the folder's draft (§3.6), and an imported folder's pane and the album detail's
 *Edit release* sheet, which the release menu's one *Edit…* item opens, edit a
 library release. The editor's parts, and what each does, are the same in all
-three places. Only the action row at the editor's top right differs:
+three places. Only the actions differ:
 
 - In a Found folder's pane, the row shows how many tracks nobody has named yet,
   where the import goes and *Import* (§3.7), or *Retry import* after an import
-  failed; a folder with nothing to import shows no Import. The folder's check
-  (§3.5) sits in a warning under the row.
-- In an imported folder's pane and the *Edit release* sheet, the row shows
-  *Cancel* once something changed, and *Save*. The step of a catalog apply,
-  and why the form can't be saved or why its last save failed, sit under the
-  row.
+  failed. A folder with nothing to import offers no Import. The pane shows
+  the folder's check (§3.5) as a warning.
+- In an imported folder's pane and the *Edit release* sheet, the editor offers
+  *Cancel* once something changes and offers *Save*. The editor reports the
+  current step of a catalog apply and says why it cannot save the form or
+  why the last save failed.
 
-**Parts.** From the top, the editor shows *Identify* with *Automatic*, *Search*
-and the ⋯ button that opens the Metadata menu, then the action row; the card,
-which holds the cover beside the album's title, artists and year, the audio
-line and the album picker, then the pressing's fields, and ends with the
+**Parts.** The editor offers *Identify* with *Automatic*, *Search* and a
+Metadata menu, then its actions. The release summary shows the cover, the
+album's title, artists and year, the audio line and the album picker, then
+the pressing's fields, and ends with the
 release's catalog records and *Unlink*; the release's images; the track table;
 and the *Files* list. A part with nothing to show is left out: no audio line
 where nothing read the files, no album picker while a Found folder's draft is
 blank, no records line without records, no images, no table without tracks
 and no Files list without files.
 
-**The audio line.** The card shows the release's audio on one line under the
-album's year: the codec, the sample rate, the bit depth (a lossy codec's
-bitrate in its place) and the channels, in the order a track's audio format
+**The audio line.** The release's audio line lists the codec, sample rate,
+bit depth (the bitrate for a lossy codec) and channels, in the order a track's audio format
 lists them (§2.2), as in `FLAC · 44.1 kHz · 16-bit · Stereo`. The line gives no
 count of files or tracks: the table lists the tracks. A Found folder's pane
 reads the line from the scan's rows, and a library release's editor from the
 release's stored audio.
 
-**The cover.** The cover sits beside the album's title, and a plain tile with
-no words and no invitation to add an image stands in for a missing one. A
-click on it opens the cover picker as the *Change cover* sheet (§3.7), in a
-Found folder's pane only when there is artwork to pick from, and bae writes a
-pick there at once. Dropping one of a Found folder's images on its pane's
+**The cover.** The editor shows no text or invitation when the cover is
+missing. Clicking the cover or its placeholder opens the *Change cover*
+sheet (§3.7). A Found folder's pane opens the picker only when there is
+artwork to pick from, and bae writes a pick there at once. Dropping one of a Found folder's images on its pane's
 cover makes it the cover, or bae refuses it (§3.7).
 
-**The album.** Under the audio line, the album picker shows *Album* and a
+**The album.** The album picker shows *Album* and a
 pop-up of the album the release files under: an album's line is its title and
 its artists, or its title alone for an album that credits no one. Its items are
 that album first, then *New album* while that album is one the library holds
@@ -2251,8 +2234,8 @@ the person picked another. A catalog applied after Unlink links the release to
 that catalog's records.
 
 **Identify.** *Automatic* identifies the release from its files, and *Search*
-opens the typed search (§3.5). Their results replace the card in place, above
-the tracks, until a pick applies one, or *Back* returns to the card. A pick
+opens the typed search (§3.5). Their results replace the release summary
+until a pick applies one or *Back* returns to the summary. A pick
 applies its release at once, with no confirm step, and the editor shows what it
 gave (§3.6). While a library release's editor reads a release from its catalog,
 it names the catalog it reads from, as an import's pick does (§3.5).
@@ -2283,8 +2266,8 @@ release splits across sides names itself again on the next side). A row shows
 the track's place, which the table never edits, its title and artists, which
 edit in place as every artist field does (§2.3), and the length its audio
 measures. Where the release's source lists a length more than three seconds
-apart, that listed length follows the measured one in the warning colour, so
-the row says what disagrees; in a library release's editor, the listed length
+apart, the row follows the measured length with the listed length and flags
+that they differ. In a library release's editor, the listed length
 is the one the library stores for the track, or the one the catalog applied in
 the session lists. A row's source cell names the file the track plays, or, for
 a track a CUE sheet carves out of an image, where the track starts in the image
@@ -2341,10 +2324,9 @@ tracks' ratings, play history and playlist entries.", with *Cancel* and a
 destructive *Save*. A save that deletes only tracks with none of these shows no
 alert.
 
-**Images.** A folder's pane shows the folder's images above the tracks, as its
-scan read them, under a ruled *Images* heading: each JPEG, PNG, GIF or WebP
-image bae can read. On the Mac, a click on one opens the lightbox over the
-folder's images at that image. The lightbox shows the image the person last
+**Images.** Before the tracks, a folder's *Images* section lists the JPEG,
+PNG, GIF and WebP images the scan could read. On the Mac, clicking an image
+opens the folder's lightbox at that image. The lightbox shows the image the person last
 moved to while the folder holds it, otherwise the folder's first image, and its
 arrows move to the images before and after it, wrapping around the ends; a lone
 image has none.
@@ -2361,10 +2343,9 @@ it was on, and each line offers *Choose audio…*. The list holds
 no image bae can show: a JPEG, PNG, GIF or WebP image that bae can read appears
 only among the release's images. An image in another format (a BMP or an SVG,
 for example), and an image in one of those four formats that bae finds damaged,
-stays in the list like any other file no track plays from. The list sits under
-the tracks beneath a ruled *Files* heading, one line per file: its name in
-monospace, its size at the right, a hairline between lines, and a damaged file
-marked with why: *Empty file* for a file that holds no bytes, *No audio bae can
+stays in the list like any other file no track plays from. *Files* follows
+the tracks and shows each file's name and size. The list names the reason
+for each damaged file: *Empty file* for a file that holds no bytes, *No audio bae can
 read* for one that holds no audio bae can play, and in a library release's
 editor, an image the scan found damaged. Every size bae shows, here and
 elsewhere, is in decimal units with at most one decimal and none when whole
@@ -2376,11 +2357,12 @@ else is open, read from wherever this device can get the file and decoded as a
 folder's document is (§3.3).
 
 **While it writes.** Saving, cancelling and picking an album are local and
-show no spinner, their controls disabled until they end, except a save that
-binds a CUE sheet to another of the release's audio files: it reads that file,
-and every other file the sheet's lines then play from, first, and a spinner and
-*Reading <file name>…* sit before *Cancel* and *Save*, which stay disabled
-until the read ends. The cover, Unlink, the Metadata menu and the album
+disable their controls until they end. They show no progress except when
+a save reads audio files. A save that binds a CUE sheet to
+another of the release's audio files first reads that file and every other
+file the sheet's lines then play from. During the read, the editor shows
+*Reading <file name>…* with progress and disables *Cancel* and *Save*.
+The cover, Unlink, the Metadata menu and the album
 pop-up stay disabled too, since a click on any of them would cancel the save.
 
 **A library release's form.** A library release's editor opens with a *form*
@@ -2489,7 +2471,7 @@ device updated is made between the write and the end of its upload. The write
 then goes out together with the change, and the stored file after them: a
 device still on the old app shows neither until it updates, then has the row
 while the file is still on the device that made it, and until the file
-arrives it can't read the image and shows a plain tile where it would be.
+arrives bae shows the image as unavailable.
 The device that made the image shows it at once, read from
 coven's own copy. Until the file is stored, that device's later writes wait
 behind it too, a rating made right after included, which is why a bound file
@@ -2537,13 +2519,13 @@ A release with any audio file on another device only cannot play here. Every
 device shows it, and bae has no setting that hides it. Its album and release
 views show the words *Not on this device* in place of *Play*, and name that
 device, "On Ana's Mac", in the help tag macOS shows when the pointer rests on
-the words, and in a sheet that Android's info button beside them opens. The
+the words, and in a sheet that Android's info button opens. The
 sheet is titled *Not on this device* and says that line. On Android the page
 shows no Play, Shuffle, Play next or Add to queue for such a release, and no
 pin control; its upload line, when this device uploads some of its files, stays.
-The library dims an album's cover and words when this device cannot play its
-primary release. The tile still opens the album's page. VoiceOver on a Mac
-and TalkBack on Android say *Not on this device* for a dimmed tile. bae names the device
+The album still opens when this device cannot play its primary release.
+VoiceOver on a Mac and TalkBack on Android say *Not on this device* for
+such an album. bae names the device
 that alone holds the audio file with the lowest file id among the release's
 audio files that another device alone holds. The views show *Play*
 again once coven records the file in storage, and name the device's new state
@@ -2652,13 +2634,13 @@ Other devices go on showing the release without playing it.
   many files each moves at a time. Downloads are pins and moves-to-this-device, which share one
   queue so they contend for the same downloads; the pause and the limit cover
   both, and nothing else counts or names one as the other. Either
-  pause lasts across restarts, and while either holds, the sidebar says Paused
-  beside Transfers, in a chip, with ↑ for uploads, ↓ for downloads or ⇅ for both. A paused
-  file keeps its place; changes to the library still sync. Neither limits
+  pause lasts across restarts. While either holds, Settings says *Paused*
+  for Transfers and indicates whether uploads, downloads or both are paused.
+  A paused file keeps its place. Changes to the library still sync. Neither pause limits
   speed.
 - **Transfers on Android.** Settings lists Appearance, Library, Playback,
-  Transfers, Storage (§4.7) and About as rows on one card, each opening a page, in the
-  order of the Mac's sidebar. Transfers opens a page with Pin over
+  Transfers, Storage (§4.7) and About. Each opens its own page, in the
+  order of the Mac's settings. Transfers opens a page with Pin over
   Wi-Fi only, the setting above, and Pins at once, how many files are pinned at a time. A phone
   never uploads release files, so Android has no pause.
 
@@ -2676,24 +2658,26 @@ storage — a failed download first, then uploading, then pinning: files
 coming to this device, waiting or downloading in the download queue (§4.3),
 then local, pinned, and in cloud only — or when the release was added, either way, ties going by album
 title, then when the release was added, then id. On macOS the list is a table
-with a column for each of these; a column can be dragged wider or narrower or
-to another place, sized to its header and the rows in view by double-clicking
-the divider after its header, and hidden or shown again from the menu the
-header row opens, except the release column, which always shows. Which
-columns show, their order and their widths are kept across launches. Each column keeps its width beside the inspector, and the table scrolls sideways when the list is narrower than its columns. The date added reads in the platform's own date format, such as Oct 4, 2026. A
+with a column for each of these. The person can drag a column to resize or
+reorder it, double-click its separator to fit its heading and visible rows,
+and hide or show it from the header menu. The release column always shows.
+bae keeps the visible columns, their order and their widths across launches.
+The inspector leaves the column widths intact. The person can scroll to reach
+columns that do not fit. The date added uses the platform's date format, such
+as Oct 4, 2026. A
 release reads as pinned, here and in the album and release details, once this
 device keeps every one of its files whole, and the views change as each pin
 finishes.
 
-At rest, a release's album storage band says where its files are: on one
+At rest, the album page says where a release's files are: on one
 device, or in storage, pinned here or not. Only a
 file in storage is pinned, so no release reads as both on one device and
 pinned.
 
-A release with files waiting to upload shows Uploading, filled as far as its
-bytes have come, in its row and in its album's storage band, or before then
-Queued in its row and Queued to upload in its band (its Imported row in the import
-list shows the phase that makes, §3.2); the
+A release with files waiting to upload shows *Uploading* with its byte
+progress in its row and on its album page. Before the upload starts, the
+row says *Queued* and the album page says *Queued to upload*. The import
+list's Imported row uses the same phase (§3.2). The
 Storage manager's inspector shows how many wait, are being sent and are
 stored, and how many bytes of its whole size are stored or sent. While coven
 sends none of the release's files, the row shows Queued. When a file's
@@ -2701,15 +2685,14 @@ original is missing, the row shows Waiting
 instead, and the inspector says *Waiting for a file*, names the file and offers
 *Restore source file…*, since only restoring it lets the move go on. Its sheet
 says to put the file back where it was imported from, and its *Retry* asks coven
-to retry the upload now; the
-release's storage band shows Queued to upload and, under it, a warning that
-names the file. A pause, the network, a metered network or a retry's time holds
-the whole queue, so it shows once, where the queue shows, never on a release: in
-place of the queue's rate under the list, on the Activity panel's Uploading
-line, and on the phones' Pinning screen. A release's bar fills to its stored
-files' sizes plus, of each file being sent, the share of its encrypted object
-sent so far, whether the file goes in parts or in one request; the Storage
-manager's rings show each file's share. bae shows how fast each release's
+to retry the upload now. The album page says *Queued to upload* and warns
+which file is missing. A pause, the network, a metered connection or a
+retry time holds the whole queue. The reason appears once per queue, in
+place of its rate in Storage Manager, on the Activity panel's Uploading
+line, and on the phones' Pinning screen. bae counts a release's stored
+file sizes and, for each file in flight, the share of its encrypted object
+it has sent, whether the file goes in parts or as one request. The Storage
+Manager shows progress for each file. bae shows how fast each release's
 files go, and every file being sent together, a file sent in one request
 included; no screen shows one file's rate. A file that only waits has no
 rate, and a pause ends every measurement. While its files wait, or a download
@@ -2730,16 +2713,13 @@ entry for it (§4.3, §4.4), a pin or a move-to-this-device, ended in the write
 that changes its files, so the entry and coven's change commit together and the
 release never shows a download its files have finished.
 
-Each row's storage state is the place it sorts by, and the Storage column shows
-it as one word with no icon: Error, first,
-for a pin, a move to the cloud or a move to This Mac that failed; Waiting, for
-an upload held by a missing original; Uploading, filled as far as its bytes
-have come while any file is being sent; Pinning, filled as far as its download
-has come; Moving, filled as far as a move to This Mac's copies have downloaded
-(§4.4); Queued, for an upload, a pin or a move to This Mac that waits its turn;
-Local, Pinned or Cloud at rest. The column draws a chip only for Uploading,
-Pinning and Moving, the states that fill, and draws every other state as a
-plain word, Error in the danger colour and Waiting in the warning colour.
+Each row's storage state is the place it sorts by. The Storage column
+names the state: *Error*, first, for a failed pin or move to the cloud or
+This Mac; *Waiting* for an upload held by a missing original; *Uploading*
+while bae sends files, with byte progress; *Pinning* with download
+progress; *Moving* with download progress for a move to This Mac (§4.4);
+*Queued* for an upload, pin or move that waits its turn; *Local*, *Pinned*
+or *Cloud* at rest.
 The inspector says the rest for the selected
 release: how many files are queued, moving or done, with Cancel; for a failed
 pin, *Could not pin*, and for a failed move to This Mac, *Could not move to
@@ -2755,8 +2735,8 @@ the move); the release stays on this
 device only, its row sorts first beside a failed download, and its Cancel ends
 the move.
 
-Under the list, beside its count and total size, each transfer queue
-holding files waiting or on the move shows while it does: uploads, pins
+The Storage Manager shows each transfer queue while it holds files waiting
+or on the move: uploads, pins
 (§4.3), and exports and saves (§4.6), each with how fast it goes, or in its
 place what holds the whole queue back (Paused, Waiting for network, Waiting for
 Wi-Fi, Retrying at the earliest retry's time, the first that holds), an export
@@ -2799,8 +2779,7 @@ pinned file goes.
 A file downloads when it is first read: a cover when it is first shown, a
 track as it plays. Over budget, the least recently used go first. Covers are
 never pinned; an evicted one is fetched again the next time it is shown.
-Shown large, in the lightbox on the Mac or the gallery on Android, an image
-the app is still loading is named under its spinner.
+The Mac lightbox and Android gallery name the image while it loads.
 
 The download queue holds pins and moves-to-this-device (§4.4) and downloads one release
 at a time. Pins download from a queue that can be paused,
@@ -2814,13 +2793,13 @@ included. The queue takes no entry while the device has no
 usable network, and goes on when it returns; a
 platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
-its rate under the Storage manager's list, on the Activity panel's Pinning
+its rate in Storage Manager, on the Activity panel's Pinning
 and Moving to This Mac lines and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
 nothing of it pinned, and its row sorts first, reading Error, with Could not pin in the inspector; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. The phones' Pinning screen offers Pause
-while the queue holds an entry, and Retry while an entry has failed. Each entry keeps its release's file count and total size from the write that queued it, so its row (on a Mac's transfer queues and Android's Pinning screen) still says "4 files · 120 MB" under *Release no longer in library* once the library has dropped the release and its files. While a release's pin waits, its
+while the queue holds an entry, and Retry while an entry has failed. Each entry keeps its release's file count and total size from the write that queued it, so its row (on a Mac's transfer queues and Android's Pinning screen) still says *Release no longer in library* and "4 files · 120 MB" once the library has dropped the release and its files. While a release's pin waits, its
 storage band offers Cancel pinning in Pin's place, which takes the entry out of
 the queue and removes what it downloaded. A failed download shows on its
 release in Storage Manager, whose *Retry* queues the release's pin again; nothing retries it on its own. A read that fails, as a
@@ -2894,11 +2873,10 @@ folder
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)),
 checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
-is whole and synced. While it downloads, the release's Storage manager row and
-its storage band fill Moving to This Mac… as far as its copies have downloaded, and
-the inspector shows the bytes of the whole release and of the file being
-downloaded, over a bar that fills to the share of the release's bytes
-downloaded, a few times a second as the bytes arrive. Then one
+is whole and synced. While it downloads, the Storage Manager row and the
+album page say *Moving to This Mac…* and show download progress. The inspector
+shows progress for the release and the file downloading, and updates a few
+times a second as bytes arrive. Then one
 write switches every file to Carol's device only, coven recording each copy as
 the file's original there, and takes the release out of the download queue
 (§4.3); no synced row of the release changes. Other devices see the files on Carol's device,
@@ -2975,24 +2953,23 @@ Two ways put a release back on disk, from desktop:
   viewer's language ("FLAC (٢)" in Arabic); names are unique, and two
   formats may write the same thing. The settings add, change and delete one
   format at a time, and bae refuses an added or changed format whose name
-  another has; the edit sheet shows that refusal under the name field. Save as… offers every format, for a track
+  another has. The edit sheet associates that refusal with the name field. Save as… offers every format, for a track
   and for a release, starting with the one last used; its Format menu ends in
-  Edit Formats…, which opens Settings at Save as in front of the panel, which
-  stays open behind it; the menu follows any change made there, and a format
+  Edit Formats…, which opens Settings at Save as and keeps the panel open.
+  The menu follows any change made there, and a format
   added there becomes the choice of every Save as… panel open at that time. A
   panel opened later starts with the format last used. Deleting the format last used makes the
   first format left the last used, in the same write; the only format left
   can't be deleted, and its Delete… is off. The file name field's preview
   ends in the extension of the format Save as… starts with.
   One file name pattern and one folder name pattern serve every format. A
-  pattern is text with values in it, each value one chip in the accent: the person types
-  between the chips (`Artist - Album`), and Delete after a chip or Forward
-  Delete before it takes the whole chip out. The person drags a chip to move
-  it, and VoiceOver reads each chip by its value's name. A value the track or release
-  does not state comes out empty and the text around it stays. Typed text
-  that can't make a name turns the field red with why: text that starts the
-  name with `.`, one of `\ : ? * " < > | /`, or no pattern at all. Until it
-  is fixed, a save is refused, saying why. A file's name is its pattern's
+  pattern combines typed text and values. The person can type between values
+  (`Artist - Album`), delete a whole value with Delete after it or Forward
+  Delete before it, and drag it to move it. VoiceOver reads each value by name.
+  A value the track or release does not state comes out empty and the text
+  around it stays. The field explains why bae refuses a pattern that
+  starts the name with `.`, contains any of `\ : ? * " < > | /`, or is empty.
+  bae refuses a save and gives the reason until the person fixes the pattern. A file's name is its pattern's
   text as typed, spaces and all, with each value filled in and no leading
   `.`, written as a copy-out writes a name (§4.4), so a title
   `Some/Weird:Title` saves as `Some／Weird：Title.flac`; a single track's Save
@@ -3042,9 +3019,9 @@ from wherever they are: the person's own path, the cache, or storage.
 ### 4.7 What a device keeps
 
 Settings → Storage shows what this device keeps for the open library, in bytes
-on disk, as a total and a bar of parts; every other library on the device has
-its own. The parts, in this order, each shown while it holds bytes, Library
-always:
+on disk. Storage shows a total and a breakdown for that library. Each
+category appears only while it holds bytes, except that Library always
+appears. The categories appear in this order.
 
 - **Pinned**: releases kept whole to play offline, and the pins on the way to
   being kept (the partial downloads a stopped pin keeps). Pinned releases don't
@@ -3087,15 +3064,13 @@ reset or a restore in place starts it at 20 GB again.
 installations resets kept on this device, after asking; Storage shows it while
 one is here. The library stays as it is.
 
-On a Mac the Storage pane, after Transfers in Settings, is a box with the total
-and the bar over the parts' legend, then Cache (with Clear cache and Keep up
-to), Pinned (with Ask before unpinning, Appendix C) and, while one is here, From
-before the reset (an Old library row, whose Delete… asks first). Android's Storage page, after
-Transfers in Settings, holds the same in a card and sections: Clear cache and
-Keep up to (a dialog of radio rows) under Cache, the switch under Pinned, and a
-Delete this data row under From before the reset while one is here. Its rows
-follow the measurement as it changes, and a failed measurement
-shows its error in place of the page.
+Storage follows Transfers in Settings on both platforms. After the
+total and breakdown, Cache offers *Clear cache* and *Keep up to*.
+Pinned offers *Ask before unpinning* (Appendix C). While this device
+holds a copy from before a reset, *From before the reset* offers
+*Delete…* for *Old library* on a Mac or *Delete this data* on Android.
+The app updates the page as measurements change. If a measurement fails,
+the page shows the error in place of the measurements.
 
 **Edge cases.**
 
@@ -3195,38 +3170,34 @@ rating, so a rating nobody touched shows as it was when the system changes
 back. *None* hides ratings and keeps them. Sorting by rating under *Heart*
 puts the hearted first and orders nothing by the stars it hides.
 
-On macOS the album's ⋯ menu offers *Rate*, as a track's menu does: a submenu
-whose first item, disabled, is the line of who rated the album, then five stars
-down to one with the person's own checked, then *Clear rating*; a click on a row
-rates the album with that many stars. When the person has
-rated an album, the rating shows read-only after the ⋯ button, on Play's row, as
-the number and one star, "4 ★"; an unrated album
-shows nothing there.
+On macOS an album's options menu offers *Rate*. Its submenu starts with a
+disabled item that names who rated the album, then offers five stars down
+to one with the person's own marked as selected, then *Clear rating*.
+A click rates the album with that many stars. A rated album shows its
+read-only rating as a number and one star, "4 ★". An unrated album shows
+no rating.
 
-On macOS a track's row shows the person's stars for it, and its menu offers
-*Rate*: a submenu of five stars down to one, the person's own checked, then
-*Clear rating*.
+On macOS a track's row shows the person's stars for it. Its *Rate* submenu
+offers five stars down to one, marks the person's own as selected, and ends
+with *Clear rating*.
 
-On Android the album's ⋮ menu offers *Rate*, which opens a bottom sheet titled
-*Rate*: under the title the line of who rated the album (*You*, then each other
-person who did, with their stars) in secondary text, then five stars down to one
-with the person's own checked, then *Clear rating*; a tap on a row rates the
-album with that many stars. When the person has rated an
-album, the end of the year line in its header shows the rating read-only, the
-number and one star, as "1992 · 4 ★"; an unrated album shows nothing there.
+On Android the album's options menu offers *Rate*, which opens a sheet titled
+*Rate*. It lists who rated the album (*You*, then each other person who did,
+with their stars), then five stars down to one, with the person's own marked
+as selected, then *Clear rating*. A tap rates the album with that many stars.
+For a rated album, the page shows a read-only rating as its number and one
+star. An unrated album shows no rating.
 
-Under *Heart*, the album's menu (⋯ on macOS, ⋮ on Android) offers *Heart*,
-or *Remove heart* on an album the person hearted, in place of *Rate*, with no
-submenu or sheet. Above it a line that does nothing names who has a heart on the album,
-*You* first, then each other person by name, with no stars: "You · Ana hearted
-it". Where "4 ★" would show, a hearted album shows one filled heart, read-only,
-and an album the person hasn't hearted shows nothing there. On macOS a track's
-row shows a small heart in place of its stars when the person rated it three
-stars or more, and nothing otherwise, and its menu offers *Heart*, or *Remove
-heart* on a hearted track, in place of *Rate*.
+Under *Heart*, the album's menu offers *Heart* or *Remove heart* in place
+of *Rate*, with no submenu or sheet. A disabled item before that command
+names who hearted the album, *You* first, then each other person by name,
+with no stars: "You · Ana hearted it". A hearted album shows a read-only
+heart. On macOS a track shows a heart in place of its stars when the
+person rated it three stars or more, and nothing otherwise. Its menu
+offers *Heart* or *Remove heart* in place of *Rate*.
 
-Under *None*, the album's and the track's menus have no *Rate*, the album shows
-no rating after ⋯ or the year, and a track's row shows no stars.
+Under *None*, the album and track menus omit *Rate*, and the pages show no
+album or track ratings.
 
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the
@@ -3255,19 +3226,13 @@ bae records plays and syncs them by their audience. Plays show in *History* and
 nowhere else: no page in Settings lists them. *History*, from the person's
 menu, lists the plays this device holds together, newest first, each with when
 it was played and whose it is, under the day they were played, and shows
-everyone's plays or one person's. On a Mac History is a tab of the side pane,
-and the end of its first day's heading names whose plays it shows, *Everyone*
-or a person's name, in the accent with a ⌄, above the column of whose each play
-is, and opens a menu of those choices: *Everyone*, then the library's people,
-this device's person first and the others by name; on Android the same choice
-ends the screen's top bar. On a Mac each play's row is a playlist page's track
-row with the play's time where the track's number would be, hanging left of the
-covers, then the cover, the track's title over its artist, and whose play it
-is at the row's end; the day headings start at the covers' edge. With no
-plays to show, History says *No plays yet*, or *No
-plays from* and the person's name when one person is picked; on a Mac, which
-then has no day heading, the choice sits under that line, so the person can
-always pick again.
+everyone's plays or one person's. On a Mac, History is a tab in the pane
+that also holds Queue and Playlists. Both apps show the selected filter,
+*Everyone* or the person's name. The menu lists *Everyone* first, then this
+device's person and the other people by name. On a Mac, each play shows its
+time, cover, track title, artist and listener. With no plays to show, History
+says *No plays yet*, or *No plays from* and the person's name if the filter
+names one person. The filter remains available when there are no plays.
 
 Each play is its own row, with a fresh id, so a play count is the number of
 rows, never a cell holding a number.
@@ -3311,55 +3276,52 @@ Play, and Shuffle in its ⋯ menu.
 
 The Playlists list shows every playlist the person can see, by name: their
 own and the household ones others made, never another person's private ones
-(those are not on this device). Each shows its picture, then its name over
-its track count and who sees it. The picture is the covers of the first four
-different releases its entries are on, as a 2×2 square; a playlist on fewer
-than four releases shows its first entry's cover, and one with no entries
-shows the missing-art tile. A playlist's page shows its owner, count, length
-and who sees it (on a Mac, only on the person's own playlist), then its tracks in order, each with its credit line (§2.3)
-and release cover, and on Android its album too. On macOS each track also shows its number in the
-playlist, from 1, left of the picture's edge; while a move's write runs, the rows show no number. The Add to playlist menu offers only the person's own
-playlists, and a playlist can be made only once the person has a profile.
+(those are not on this device). Each shows its picture, name, track count
+and who sees it. The picture uses the covers of the first four different
+releases its entries are on. A playlist on fewer than four releases uses
+its first entry's cover. A playlist with no entries has no cover. A
+playlist's page shows its owner, count, length and who sees it (on a Mac,
+only on the person's own playlist), then its tracks in order, each with
+its credit line (§2.3) and release cover, and on Android its album too.
+On macOS each track also shows its playlist number, starting at 1. The
+numbers stay hidden while a move's write runs. The Add to playlist menu
+offers only the person's own playlists. A person can make a playlist
+once they have a profile.
 
 A playlist is made with a name and who sees it, *Only me* or *Everyone*,
 starting on *Only me*; a blank name cannot be made, by the rule that refuses a
-blank library or profile name. On macOS the sheets that make and edit a
-playlist put each label above its control, on one left edge. On macOS the side pane's Playlists tab lists
-the playlists, each with its picture, name, track count and who sees it, and
-a + button at the start of the pane's top, *New playlist…* to screen readers,
-opens the sheet for a new one; clicking a playlist
-opens its page inside the pane, as the playlist made opens, and the window
-keeps the library's view. While a playlist is open, a back button (*Back to
-Playlists* to screen readers) takes the place of the + at the start of the
-pane's top and returns to the list. The page's header is laid out as an
-album page's: the playlist's picture beside its name, on up to two lines, then
-its owner on a line of their own, then its count and length, then Play and
-the ⋯ under them, at the start of the line; then its tracks. The picture is
-as tall as the column of text beside it. The ⋯ menu offers *Shuffle* to
-everyone. On the person's own playlist the count and length end in who sees it,
-a lock for *Only me* or two people for *Everyone*, which screen readers name;
-a playlist someone else shared says nothing about sharing, since it is shared
-to be seen at all. The pane's tabs stay switchable while a playlist is open, and the
-Playlists tab shows the open playlist again when the person comes back to
-it, whether after switching tabs, after closing and reopening the pane, or
-from *Playlists* in the person's menu. Deleting the open playlist returns the pane to the list.
-Dragging tracks onto a playlist in the pane adds them to its end: while they
-are held over it the playlist is drawn in the accent. Dragging tracks or an
-album from the window onto the tracks of the person's own open playlist adds
-them where the person lets go, a line between the rows marking the spot: just
-before or just after the track under the pointer, or, on a playlist with no
-tracks, at its start, the line at the top of its empty list. bae adds them there in one
-write, in the order their release lists them, and when the library lacks any
-of them, or the playlist no longer holds the track beside the spot, bae adds
-none and shows why. The line stays until the write returns.
-On Android the Playlists screen, opened from the person's menu, lists the playlists with a *New playlist* button
-under them, or under *No playlists yet* when there are none, which opens a
-dialog for the name and who sees it, and the playlist made opens; a person
-without a profile sees *Playlists appear once you have a profile* and no
-button. A playlist opens as its own page on Android, with its picture, owner,
-count and, on the person's own playlists, who sees it, then Play under them, and ⋮ at the right of the top bar (*Playlist options* to screen readers), whose menu offers *Shuffle* to everyone and, on the person's own playlists, after a separator *Edit playlist…* and *Delete playlist…*, and its tracks in order, each with
-its credit line and album, a tap on one playing from it; a playlist deleted while
-its page is open says it is not in the library anymore.
+blank library or profile name. On macOS the Playlists pane shows each
+playlist's picture, name, track count and who sees it. Its *New playlist…*
+control opens the sheet for a new one. Choosing or creating a playlist opens
+its page inside the pane and leaves the library view open. While a playlist
+is open, *Back to Playlists* replaces *New playlist…* and returns to the list.
+The page shows the playlist's picture and name, its owner, its count and
+length, Play, the options menu, then its tracks. The menu offers *Shuffle* to
+everyone. On the person's own playlist the page shows who sees it,
+*Only me* or *Everyone*, and screen readers read that choice. A playlist
+someone else shared says nothing about sharing. The pane's tabs stay
+switchable while a playlist is open. The Playlists tab shows the open
+playlist again after the person changes tabs or closes and reopens the pane.
+The person can also return by choosing *Playlists* from their menu.
+Deleting the open playlist returns the pane to the list.
+Dragging tracks onto a playlist in the pane adds them to its end. Dragging
+tracks or an album from the window onto the tracks of the person's own open
+playlist adds them just before or after the track where the person drops them,
+or at the start of an empty playlist. bae indicates the destination during the
+drag and keeps it visible until the write returns. bae adds the tracks in one
+write in release order. If the library lacks any track or the playlist no
+longer holds the track that defines the destination, bae adds none and says why.
+On Android the Playlists screen, opened from the person's menu, lists the
+playlists and then *New playlist*, or shows *No playlists yet* and then *New
+playlist* when there are none. The button opens a dialog for the name and who
+sees it. Creating a playlist opens it. A person without a profile sees
+*Playlists appear once you have a profile* and no button. The playlist page
+shows its picture, owner, count and, for the person's own playlists, who
+sees it, then Play. Its menu, *Playlist options* to screen readers, offers
+*Shuffle* to everyone, then *Edit playlist…* and *Delete playlist…* to the
+owner. The page shows its tracks in order with their credit lines and albums.
+Tapping a track plays from it. If someone deletes the playlist while it is
+open, the page says it is no longer in the library.
 
 On macOS a track's menu offers *Add to playlist* when the person can make
 playlists: a submenu of their own playlists by name, which adds the track to the
@@ -3367,18 +3329,16 @@ end of the one chosen, then *New playlist…*, which opens the sheet holding the
 track.
 
 A playlist's owner changes it from its page; no one else sees these controls.
-The page's options menu (the ⋯ button after Play on macOS, the ⋮ in the top bar on
-Android) offers the owner *Edit playlist…*, which changes its name and who sees it, and
+The page's options menu offers the owner *Edit playlist…*, which changes
+its name and who sees it, and
 *Delete playlist…*, which asks first ("bae will delete this playlist from every
 device. Its tracks stay in the library.") and then deletes it on every device. Saving
 an edit writes the name and who sees it in one write, so a failure changes
 neither and leaves the dialog open with its error. A track's menu on a playlist's page offers Play
 next and Add to queue to everyone, and *Remove from playlist* to the owner. The
-owner reorders the entries by dragging a row: on macOS a line marks the edge
-of the row the dragged copy is over, where the entry goes when the owner lets
-go, and on Android a held row lifts and the rows between make room. Letting go
-moves the entry to just before or just after the entry it now sits by. On
-Android a screen reader also offers *Move up* and *Move down* on each of the
+owner reorders entries by dragging a row. The app indicates where the
+entry will go. Letting go moves it to the chosen place before or after
+another entry. On Android a screen reader also offers *Move up* and *Move down* on each of the
 owner's rows, each a move of one place, except *Move up* on the first entry and
 *Move down* on the last. The row stays where the person let it go until the write returns; then the
 page draws the entries as stored, so a write that fails
@@ -3453,11 +3413,10 @@ history setting.
   language. The people with no profile yet come after them, in the order their
   member ids were made: when the founder created the library, or when an
   inviter created the invite. A removed person's row stays, read-only, and the
-  list does not show them. Each person's row starts with their picture, or the
-  initials of their name, and says their role and how many devices they have,
-  as in *Member · 1 device*; a person with no profile yet has a blank picture
-  and a row that says they have no name yet. Invites are rows of their own
-  (**Open invites**, §5.6).
+  list does not show them. Each person's row shows their picture or initials,
+  their role and how many devices they have, as in *Member · 1 device*. For
+  a person with no profile yet, the row says they have no name yet. Invites
+  have their own rows (**Open invites**, §5.6).
 
 ### 5.5 "Ana rated this"
 
@@ -3483,32 +3442,31 @@ editable by every member.
 | Rename yourself | the person | every device shows the new name on their profile (§5.4) |
 
 **People and devices.** Settings keeps the library's people on a page of their
-own, with two sections. *You* holds the person's picture first: their image,
-or the initials of their name on a tint while they have none. On a Mac,
-*Choose…* opens the system's panel for picking an image, and *Remove*, shown
-while they have a picture, clears it; on Android, tapping the Picture row opens
-the system's photo picker, and a *Remove picture* row in red, shown while they
-have a picture, clears it. A picked image that the phone cannot read shows the
-snackbar "Could not read that picture." Then the person's name, with *Change…*,
-which renames their profile in a sheet that says everyone in the library sees the name
-and keeps the name as typed when the rename fails, with a danger notice,
-"Could not save the name.", and *Details* for the cause, but no retry button,
-since *Save* is the retry; their role, which only an
-admin changes, and from another person's page; their listening history, *Off*,
-*Only me* or *Everyone* (§5.3), with a note, under the box on a Mac and in
-the dialog on Android: "Who sees what you play, or Off to keep no record.
-Applies to new plays; earlier plays keep who could see them." (Android: "A
-change applies to plays from now on; …"); and *Devices*, which opens *Your
-devices*: each of the person's devices, this one reading *This device* with no
-menu since a device leaves by removing the library from it, and each other
-device with a ⋯ menu (⋮ on Android) holding *Remove…*. On a Mac, *Add device…*
-is a plain button under the box, on the right; on Android *Add…* is the last
-row. *People* has one row for each other person, led by their picture or initials,
-with their role and how many devices they have, and the open invites below them; on a Mac an admin's
-*Invite…* is a plain button under the box, on the right, and on Android *Invite*,
-with a +, is the last row of the People card, after the invites. An admin's row opens that person's
-page: their role, with *Make admin* or *Make member*, *Remove from library…* in
-red, and their devices, each with a ⋯ menu (⋮ on Android) holding *Remove…*. A
+own, with two sections. *You* shows the person's picture first, or their
+initials while they have none. On a Mac, *Choose…* opens the system's image
+picker and *Remove* clears a picture. On Android, tapping *Picture* opens the
+system's photo picker and *Remove picture* clears a picture. The removal
+control appears only while the person has a picture. When the phone cannot
+read a picked image, it shows "Could not read that picture." in a snackbar.
+Next, *Change…* lets the person
+rename themselves. The sheet says everyone in the library sees the name.
+When a rename fails, the sheet keeps the name as typed, says "Could not
+save the name." and offers *Details* for the cause. The person can try
+again with *Save*. The page also shows their role, which only an admin
+can change from another person's page. The listening history setting offers
+*Off*, *Only me* or *Everyone* (§5.3). On a Mac the note says "Who sees what
+you play, or Off to keep no record. Applies to new plays; earlier plays keep
+who could see them." On Android the dialog says "A change applies to plays
+from now on; …". *Devices* opens *Your devices*. The list identifies the
+current device as *This device*. Every other device offers *Remove…* in
+its menu. The current device has no menu because removing its library
+takes it out of the library. Your devices offers *Add device…* on
+a Mac and offers *Add…* last on Android. *People* shows each other person's
+picture or initials, role and device count, then the open invites. An admin
+can choose *Invite…* on a Mac or *Invite* on Android, where it comes last.
+Choosing a person opens their page for an admin. The page shows their role
+and devices, offers *Make admin* or *Make member* and *Remove from library…*,
+and offers *Remove…* in each device's menu. A
 member's person rows open nothing: a member has nothing to do there. On Android
 the Name row opens the rename dialog, whose **Save** is off while the name is
 blank, and listening history is chosen from radio
@@ -3581,29 +3539,28 @@ syncing with the cloud and to wait for it to end, with **Try again** and
 **Cancel**. Another person's device
 removed by an admin gets only **OK**: its person does the step.
 
-A new phone's first screen shows bae's sheep and name over "Your music,
-everywhere", with **Scan code** and **Enter code** at its foot: the code says
-what it is for. An invite
+A new phone's first screen shows bae's name and "Your music, everywhere".
+The screen offers **Scan code** and **Enter code**. An invite
 joins someone's library, and the person's own restore code adds this device to
 theirs. An Android phone that holds libraries lists them under **Your libraries**,
 ending in **Add library**, which opens a sheet with **Scan code** and **Enter
 code** in place of the buttons, each library opening on a tap, with a ⋮ menu holding
 **Details…** for a library that opens, and **Remove…** (§6.4). **Details…** shows, in a sheet, the library's sync
 status as this phone last knew it (as on a Mac, below), when it last synced, and
-its provider, account and folder (no *Open in browser*: the Sync page has it). One that has restore codes saved on it lists
-them below those (below). A Mac lists its libraries the same
+its provider, account and folder. The Sync page offers *Open in browser*.
+If the phone holds saved restore codes, it lists them after the libraries.
+A Mac lists its libraries the same
 way under **Your libraries**: a click on one opens it, and its ⋯ button, or a
 right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first. A
-store whose name can't be read is listed beside the others, titled *Library
-that cannot be read* with its store id under the title, and offers Remove
-only. A join or restore that stopped before it finished and whose saved
+store whose name bae cannot read appears in the same list as *Library
+that cannot be read*. The entry shows its store id and offers only Remove. A join or restore that stopped before it finished and whose saved
 settings can't be read can't resume, and coven fails listing the joins and
 restores under way, naming its library, instead of listing none. The first
 screen shows that failure as a row after the libraries, in the same list, even
 when the device holds none: *Unfinished join that cannot be read* with the
-library's id under it and **Discard…**, which asks "Discard the unfinished
+library's id and **Discard…**, which asks "Discard the unfinished
 join?" ("It did not finish, and this Mac cannot read what it saved. Discarding
 removes it from this Mac. The library in the cloud is not touched." on a Mac, "phone" on
 Android) with **Discard** and **Cancel**. **Discard** deletes the unfinished
@@ -3612,8 +3569,8 @@ that can resume goes on; a discard that fails says why where the listing's
 failures show, and the row stays. A join whose request was sent stays pending in the
 library's storage until its invite ends, and the person's saved restore code
 stays. A
-library that fails to open on a Mac shows the failure joined to its row, under
-its name: **Could not open**, with **Details**; when Reset from cloud
+library that fails to open on a Mac shows **Could not open** and **Details**
+in its row. When Reset from cloud
 replaces what failed (bae can't use the library's data on this Mac, such as a
 damaged database file or tables that don't match the app's, and the library
 has storage to load it from), it says "Something is wrong with this library’s
@@ -3621,31 +3578,33 @@ data." and offers **Reset from cloud…**, the reset below, in place of *Retry*.
 A library kept on this Mac only has
 none, so its failure shows **Details** alone, and its row's menu still offers
 **Delete…**. A phone
-that fails to open a library the same way shows a notice in the middle of the
-screen, "The library did not open" over the same sentence, with **Details** and **Reset from
-cloud…** under them, which asks as a device reset does (§6.4). A
-library row shows its name alone otherwise, on a phone and on a Mac: no
-provider line, and nothing for one that never synced. While a removal runs, its
-row shows the step under its name with a spinner in place of the ⋯ (the ⋮ on a
-phone), and the other libraries and adding one are dimmed and can't be used
-until it ends. **Details…** hangs a popover off the ⋯, titled with the library's name, with its sync status as
-this Mac last knew it (**Synced**, or **Unsent changes** while it holds some it
+that fails to open a library the same way says "The library did not open",
+shows the same sentence, and offers **Details** and **Reset from cloud…**.
+The latter asks as a device reset does (§6.4). A library row otherwise shows
+only its name on both platforms. While a removal runs, the row reports the
+current step and offers no menu. The person cannot open another library or
+add a library until the removal ends. **Details…** opens a popover titled
+with the library's name, with its sync status as this Mac last knew it
+(**Synced**, or **Unsent changes** while it holds some it
 never uploaded to its storage; a library kept on this Mac only uploads nothing,
 so it never shows **Unsent changes**), when it last synced, and its provider, account and folder, without *Open in
 browser*, which the Sync page keeps. A
 library that is open shows its live sync status; any other is read as it last
 stood, without opening it, and one that is closing once its close has ended.
 A library stops counting as open as its close begins, even while the app
-still holds it. A Mac's first screen
-shows the sheep and the name over "Your music, everywhere", and offers the same two under **Create new library…**, which asks for the person's name on a step of its own, **Start a new library** (**Your name**, **Cancel** and **Create**, off while the name is blank), before it creates anything, and its File menu offers
-them as **Scan Code…** and **Enter Code…**; the code decides the same way.
-Once it lists libraries, the three are the items of **Add library…** under the
-list. On a Mac, **Enter Code…** opens a sheet over the first screen, titled
+still holds it. A Mac's first screen shows bae's name and "Your music,
+everywhere". It offers **Create new library…**, then the two actions for a
+code. Creating a library first asks for the person's name on its own step,
+**Start a new library** (**Your name**, **Cancel** and **Create**, off while
+the name is blank). The File menu offers **Scan Code…** and **Enter Code…**
+too. The code decides what happens in either case.
+Once the app lists libraries, **Add library…** follows the list and offers
+the three actions. On a Mac, **Enter Code…** opens a sheet over the first screen, titled
 **Enter code**, with one field for a restore code or an invite, **Cancel**, and
 **Continue**, off until the field holds something; **Scan Code…** opens the
-scanner. On both platforms the field is several lines tall and monospaced, and
-shows a typed or pasted code in groups of four with a space between, as Settings
-shows a restore code, and bae reads the code without the spaces. A scanned code starts at once, as an invite does, with no sheet to
+scanner. On both platforms the field shows a typed or pasted code in groups
+of four with a space between, as Settings shows a restore code, and bae
+reads the code without the spaces. A scanned code starts at once, as an invite does, with no sheet to
 confirm it, and a typed code starts when the person chooses **Continue**: the
 person scanned or entered it to add this device, or to join. Only an S3 code
 without the key stops first, to ask for it on a second sheet, **S3 key**, in a
@@ -3663,8 +3622,9 @@ when the person chooses **Restore**, not as it is typed, so a half-typed code
 shows no error; **Restore** is off until the field holds something. A scanned code on Android starts at once, as an invite does, and
 only an S3 code without the key stops first, to ask for it over the access
 key's two fields. A code that doesn't read says so on the code screen, and a
-restore that fails shows its error beside **Add**, to try again. The code screens on both platforms do not show where the library is stored.
-On Android every screen that holds a text field (the join name step, and the screen that asks for the S3 key of a saved code) keeps its fields above the keyboard.
+restore that fails shows its error and offers **Add** again. The code screens on both platforms do not show where the library is stored.
+On Android, text fields remain visible while the keyboard is open, including
+when the person enters a name for a join or the S3 key for a saved code.
 
 **A restore that stops partway.** Just before coven adds the new device to the
 library, the restore records itself on the device: the code, the device's name,
@@ -3726,16 +3686,17 @@ returns to the first screen. A code whose library already has a join under way
 on his phone goes on with that join instead, with no name step, since coven
 refuses a second, different name. He then joins under that name, which coven
 refuses only by its rule for names, and the step says so. His waiting screen
-says "Tell Ana this code" over his confirmation number, with a spinner beside
-"Waiting for Ana to let you in…" (Ana is the name the invite carries as its
-inviter), and under a "Join library" bar on Android. It has no countdown, no
-**Check now** and no date: while it shows, the join checks every 5 seconds
+says "Tell Ana this code", displays the confirmation number, and says
+"Waiting for Ana to let you in…". The text uses the inviter's name from the
+invite. Android titles the screen "Join library". The screen has no
+countdown, **Check now** or date: while it shows, the join checks every 5 seconds
 from the end of its last check, and when it doesn't, on coven's doubling waits
-(a provider's cooldown holds either). Every other state of a running join (opening,
-connecting, loading, registering, committing, an error) is the same step with the library's
-name as its headline, the progress line under it, and **Cancel** while it can cancel. When
+(a provider's cooldown holds either). In other states of a running join
+(opening, connecting, loading, registering, committing or an error), the
+screen shows the library's name and the state. It offers **Cancel**
+while the person can cancel. When
 his request arrives, Ana's laptop shows a dialog titled "Dan wants to join", with the name Dan typed, says "Approve them if their screen shows this code:", and shows
-the same number under it, with **Approve** and **Decline**. On a Mac the sheet also
+the same number and offers **Approve** and **Decline**. On a Mac the sheet also
 has **Close**, and on Android back or a tap outside does the same: it puts the
 request away undecided, and the invite's row opens it again. Ana compares it with
 Dan's screen, or asks him for his number, and approves if it matches. Every
@@ -3762,19 +3723,20 @@ profile on his phone yet; the load that applies it writes the profile, at that
 open or a later one (§5.4).
 
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
-People: the address it shares with (the key's id on S3), marked invited, with a
-chevron that opens the invite's own screen, titled **Invite**. While this device
+People: the address it shares with (the key's id on S3) and its invited
+status. Choosing the row opens a screen titled **Invite**. While this device
 is offline and sync has not yet shared the library with the address, the row
 says "Shares access once online". Once Dan's request is approved, his row is
-his name marked joining, with the address under it, and opens nothing. The rows follow coven's list of this
+his name, address and joining status. The row opens nothing. The rows follow coven's list of this
 device's open invites
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)),
 which coven ends when the invite is approved, declined, cancelled or expires, so
 an expired invite leaves People when its lifetime ends. Only the device that
 made it shows the row, since only that device can act on it. Opening
 the row shows the invite again. While the library is being shared with the
-address, its screen shows a bar and "Sharing the library with dan@example.com…";
-while the sync state says this device is offline, it says that the code shows
+address, the screen says "Sharing the library with dan@example.com…" and
+indicates progress without a count. While the sync state says this device
+is offline, the screen says the code shows
 there once this device is online and the provider has shared the library with
 the address; once the library is shared it shows the code to scan or enter on
 Dan's device, with **Copy code** and **Share**, **Cancel invite** beside
@@ -3875,12 +3837,11 @@ tablet gets the code one of these ways:
   between them, or the same characters run together. The spaces drop before
   the code decodes.
 
-The saved-code list sits on the first screen under Your libraries, titled
-*Saved in iCloud Keychain* on a Mac and *Saved on this device* on an Android
-phone, with a line under it saying what the codes are. Each row ends in a ⋯
-menu (⋮ on Android). The list shows each code under its library's name as Carol's
-devices last saw it (§5.1), over where the library is stored: the provider and
-account. Dropbox and OneDrive show the account's email; S3 shows the S3 storage's name and
+The first screen lists saved codes after Your libraries. The list is titled
+*Saved in iCloud Keychain* on a Mac and *Saved on this device* on Android,
+and explains what the codes are. Each row offers a menu. The list shows
+each library's name as Carol's devices last saw it (§5.1), then its provider
+and account. Dropbox and OneDrive show the account's email; S3 shows the S3 storage's name and
 endpoint; iCloud shows iCloud. Two libraries can share a name, and a rename
 none of her devices has seen yet leaves the old one, so the location is what
 tells them apart. On a Mac a row has a **Restore** button, and the restore screen for a saved code shows both. On
@@ -3907,7 +3868,7 @@ one of her devices saves the code again
 from: saved in an older format or damaged, holding a different library's code
 than the one it's saved under, or, in iCloud Keychain, saved more than once. The list
 still shows it, as a row saying the code can't be used and why, with the
-library's id beside the reason, since the entry has no name to show. Its menu
+library's id and the reason, since the entry has no name to show. Its menu
 holds **Delete…** only, which asks and deletes as for any saved code; there is nothing to
 restore from. One such entry never hides the codes beside it. When one of
 Carol's devices opens the library, or applies a rename to it, it replaces the
@@ -3929,22 +3890,21 @@ scanned: the new device asks for the key
 
 **Adding a device by pairing.** Carol adds a device from **Add device…** (on Android, **Add…**) on Your devices, under People and devices,
 shown only for a library with storage. Pressing it starts a pairing, coven's *pairing code*, which lasts 30
-minutes on her device's clock. Its sheet tells her to scan or enter the
-code on the new device, over the QR code, with **Copy code** and **Share**
-(**Share…** on a Mac), which hand out the code to type; the code's text is not
-shown beside the QR code. On S3 the QR code carries the key her device
+minutes on her device's clock. The sheet tells her to scan or enter the code
+on the new device. The sheet shows the QR code and offers **Copy code** and
+**Share** (**Share…** on a Mac), which hand out the code to type. The sheet
+does not show the typed code. On S3 the QR code carries the key her device
 connects with and the code to type does not, so the new device asks for the key
-only when she types the code. Every QR code bae shows (this one, an invite's,
-the printed restore code) is drawn at the size its module count needs at the
-measured minimum module size (3.43 points on a Mac, the same number in dp on
-Android), so a phone camera can read it, and no screen picks a size of its own.
+only when she types the code. A phone camera can read each QR code that bae
+shows or prints.
 
 The new device's welcome takes the pairing code like any other code, scanned or
-typed, and sends a request that carries the name the device gave itself. Its
-screen says to check that the other device shows the number it shows, then to
-add it there, over that six-digit number with "Waiting for your other device…"
-under it; it checks every 5 seconds while that screen shows, has no countdown
-and no way to check now, and, since its request may be sent, no Cancel. Leaving
+typed, and sends a request that carries the name the device gave itself. The
+screen tells the person to check that the other device shows the same
+six-digit number, then add the new device there. The screen shows the
+number, then "Waiting for your other device…". The app checks every 5
+seconds while that screen shows. The screen offers no countdown or way
+to check now, and no Cancel because the app may have sent the request. Leaving
 the screen ends the pairing and removes the new device's copy. When the
 pairing ends without adding the device, whether Carol declined, the 30 minutes
 passed or her sheet closed, a step says "This code has ended" and to open Add
@@ -3952,10 +3912,10 @@ device on her other device for a new one, with **OK** back to the first screen;
 a code already ended when it is entered ends the same way, before any sign-in.
 
 While her sheet shows the code it follows the pairing. A request replaces the
-code with the sheet "<name> wants to join" under "Add it if its screen shows
-this code:", over the number the new device shows. **Decline** and **Add** (on
-Android, **Decline** in the text colour and **Add** the one coloured button)
-answer it. Once she adds it, the sheet says "Adding <name>…" until the device
+code with a prompt. The prompt says "<name> wants to join" and "Add it if
+its screen shows this code:" and shows the number the new device shows.
+**Decline** and **Add** answer the request. Once she adds it, the sheet says
+"Adding <name>…" until the device
 is in, then says that device's name was added in place of the code, and **Done**
 closes it. A pairing she declines closes the sheet. One that expires says "This code has
 ended" and to choose Add device again for a new one, and one coven refuses
@@ -3971,22 +3931,20 @@ about 24 a minute, only while the sheet is open
 ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
 
 The restore code is shown on the Sync page alone: Settings keeps
-the code there, in a **Restore code**
-section, for the day she loses every device; the Library page has no row for
-it. bae makes it from her keys, on this device, when Settings opens, and
-names what it is doing meanwhile, never with a bare spinner: the sheet says it
-is making a code for her new device, and the section that it is making her
-restore code. It shows masked: its first two groups and its last, the groups
+the code there in **Restore code**, for the day she loses every device.
+bae makes the code from her keys on this device when Settings opens.
+The pairing sheet says bae is making a code for the new device. The
+Restore code section says bae is making her restore code. It shows masked: its first two groups and its last, the groups
 between as dots, the same groups in every app.
 **Show** reveals it in
 groups of four and **Hide** masks it again; **Copy** copies the whole code,
 shown or not; **Print…** on a Mac and **Print** on Android print one page: the
 QR code, the code in groups of four, where the library is stored, the date, and
 how to use and keep the code. The page names no library and holds no S3 key,
-and its QR code holds the code to type. Closing Settings drops the code. A
-caption under it says to print it or keep it in a password manager, and
-nothing about iCloud Keychain or a phone's backup: whether those hold it
-depends on settings bae can't read. On S3 the section also says she will need
+and its QR code holds the code to type. Closing Settings drops the code.
+The section says to print the code or keep it in a password manager.
+The section says nothing about iCloud Keychain or a phone's backup because
+bae cannot read the settings that decide whether they hold the code. On S3 the section also says she will need
 her access key and secret.
 
 **Removing a device.** Ben's old phone is lost. He removes it from his laptop.
@@ -4051,10 +4009,9 @@ library takes all of the S3 storage. coven knows R2 by its endpoint's host and f
 in how to talk to it
 ([coven E.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#e3-s3-settings-and-profiles)).
 When coven refuses a setup, bae says why in plain words, and the form stays as
-typed. A region or endpoint that doesn't match the S3 storage shows its reason under
-Region; S3 storage that isn't there, or that holds other files, under Bucket;
-any other reason at the top of the form, above the fields. The reason
-sits in its field's own row. A
+typed. The form associates a region or endpoint mismatch with Region, and
+missing S3 storage or storage that holds other files with Bucket. The form
+shows other reasons as general errors. A
 refused key reads "This key was not accepted. Check the access key ID and secret
 access key.", and a key the S3 storage doesn't allow reads "This key cannot use this
 S3 storage. Give it read and write access, or use another key."
@@ -4064,15 +4021,15 @@ Android, shows the id of the access key the library records for the person,
 which another of their devices may have replaced, in its Cloud home rows (the
 secret never shows), with **Replace key…** (on Android, **Replace key**).
 Replace key opens the S3 key sheet: *Enter a key that can use this library's S3
-storage.* over Access key ID and Secret access key, with **Cancel** and
+storage.* and offers Access key ID and Secret access key, with **Cancel** and
 **Save**, which stays off until both fields hold text. The welcome's S3 key
 sheet draws the same two fields. **Save** calls coven's one call for a new S3
 key, which checks the key with S3 storage and replaces the one the library uses;
 while it checks, the sheet says *Checking the key…* in place of the fields, with
 only **Cancel**. A key S3 storage refuses keeps the typed text and says *Could
-not use this key* / *S3 storage does not accept this access key.* above the
-fields. Any other failure keeps the typed text too, and says *Could not use
-this key* over why. **Cancel** while bae checks closes the sheet and stops the
+not use this key* / *S3 storage does not accept this access key.* Any other
+failure also keeps the typed text and says *Could not use this key* followed
+by the reason. **Cancel** while bae checks closes the sheet and stops the
 check, and nothing changes; when the check had already passed, bae finishes
 using the key and the page shows the line below. After a save the sheet
 closes, the page shows the new key's id, and a line the person can dismiss
@@ -4085,8 +4042,8 @@ dismisses the line or the page closes ([coven
 §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
 When using the key fails after the sheet closed, because the person cancelled
 once the check had passed or saved another key meanwhile, the library may
-still record the key, so the page's line says *Could not use this key* over
-why, until the person dismisses it.
+still record the key. The page says *Could not use this key* and gives the
+reason until the person dismisses the message.
 The words for the place are always "S3 storage", never "bucket".
 
 **Choosing where, on macOS.** *Set up a cloud home…* opens a sheet that lists the
@@ -4101,8 +4058,8 @@ own to press. Every screen has *Cancel* and no Back: on the list it closes the
 sheet, and on a provider's screen it goes back one screen, to the list. A
 screen that waits says what it waits on, in place of the form: signing in to
 the provider in the browser, with a line saying to finish there and come back,
-reading the folders, or the setup's own step over its bar; only *Cancel*
-stays under it. Setting up is the form's one action, *Set up*. A build that
+reading the folders, or progress for the current setup step. *Cancel*
+remains available while the screen waits. Setting up is the form's one action, *Set up*. A build that
 offers one provider, as baeium offers S3, has no list: the sheet opens on that
 provider's screen, and *Cancel* closes it.
 
@@ -4122,8 +4079,8 @@ checking the location holds nothing but this library on S3, Dropbox and
 OneDrive, detecting the settings on S3, preparing iCloud, reading the account
 on Dropbox and OneDrive, connecting and checking the provider,
 creating the library in the cloud home, or loading with loading's own steps, and
-recording changed access. The apps show the step's name over a bar in place of
-a spinner, counted for loading's steps. Signing in to Dropbox or OneDrive in
+recording changed access. The apps show the step's name and indicate
+progress. They count the progress of loading steps. Signing in to Dropbox or OneDrive in
 the browser, listing the provider's folders, and making a new folder (which
 Dropbox also shares) each say so while they run, on both apps, the last naming
 the folder. On macOS the check of a folder the person chose on Dropbox or
@@ -4167,30 +4124,29 @@ location whose marker is missing or names another library.
 
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the empty folder the library lives in, in one folder picker for both
-providers: a line over the list, the folders to choose from (a chosen one is
-filled in the accent), *New folder…*, *Look again*, and the folder setup found
-holding other files. Only the provider's facts differ. On Dropbox the folder is a shared
-folder, so the household can be invited to it: the list is flat, and a new
-folder is made at the top of the person's Dropbox and shared. On OneDrive any
-folder will do: the list shows where the person is, each folder opens into the
-folders inside it, and a new folder is made in the one shown. On the Mac,
+providers. The picker shows the folders to choose from, marks the choice,
+offers *New folder…* and *Look again*, and identifies the folder if setup
+found it held other files. Only the provider's facts differ. On Dropbox the
+folder is shared so the household can join. The list is flat, and the picker
+creates new folders at the top of the person's Dropbox and shares them.
+On OneDrive, the picker names the current folder, lets the person open
+its subfolders, and creates new folders inside the current one. On the Mac,
 VoiceOver reads each OneDrive folder as a button with the folder's name.
 Pressing it chooses the folder, and *Open folder* opens it. *New folder…*
-shows a name field in the list, its text aligned with the folder names above it,
-and *Create* adds the new folder to the list and chooses it. A name already
+shows a name field, and *Create* adds the new folder to the list and chooses
+it. A name already
 taken there is refused with a line naming it, leaving the list as it was. Set up
 needs a chosen folder, and checks it first: a folder holding anything returns to
 the list, saying the folder isn't empty and to choose an empty one or make a new
 one, and that folder isn't set up until another
 is chosen. The picker moves into a folder only once its folders have loaded; a
-listing that fails leaves it where it was, with the failure, and a top that
-fails to list shows only that. On the Mac *New folder…* and *Look again*, which lists the
-top again after a folder was made or shared elsewhere, sit at the left of the
-sheet's footer, and *Up* at the right of the line that shows where the person
-is. coven holds the sign-in; bae
-never sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an
-app folder: an app folder can't be shared, so a household couldn't be invited to
-it.
+listing that fails leaves the person where they were and shows the failure.
+If the top folder fails to list, the picker shows only the failure. On
+the Mac *Look again* lists the top again after someone makes or shares a
+folder elsewhere, and *Up* goes to the parent folder. coven holds the sign-in.
+bae never sees its tokens. bae's Dropbox app has access to the whole
+Dropbox because the household needs a shareable folder and Dropbox does not
+share app folders.
 
 **The folder in Settings.** Every connection to a Dropbox shared folder or a
 OneDrive folder reads the folder's name and web address as the signed-in
@@ -4265,54 +4221,48 @@ survives, and of two edits to one column the later wins
 Sync runs in the background. A library opens and plays from its own copy
 whether or not storage is reachable.
 
-**The Activity button.** Sync takes one small control in the window's
-title bar on macOS and in the library's top bar on Android, never a
-bar across the content. While bytes move it is a spinner: files this device
-is sending, or offline copies downloading. While a problem the person hasn't dismissed is
-listed in the Activity panel, it shows a small warning symbol, beside the
-spinner when both hold; with every problem dismissed it goes back to its usual look. While a
-queue is held and no bytes move, it is a pause symbol in the spinner's place,
-so the hold stays in reach: a queue is held while its line in the Activity
-panel shows what holds it in place of its count, whatever holds it (Paused,
-Waiting for network, Waiting for Wi-Fi, Retrying at its time). A held queue
-with no line, no release waiting in it, doesn't show it. With none of these it
-is absent. A pass alone doesn't spin it: an idle library runs one
-every half minute, and the button would blink for nothing.
+**The Activity button.** The button indicates when this device is sending
+files or downloading offline copies. It also indicates any problem the person
+has not dismissed from the Activity panel, even when files are moving.
+Dismissing every problem clears that indication. When no bytes move, the
+button indicates a held queue that has at least one waiting release. A queue
+is held while the Activity panel shows *Paused*, *Waiting for network*,
+*Waiting for Wi-Fi* or its retry time in place of its count. The button is
+absent when none of these conditions holds. A sync pass alone does not make
+the button appear.
 
-Clicking it opens the Activity panel, a popover on macOS and a sheet on the
-phones, updating as it changes. It shows the same sync status as the Sync page
-(below), and what the upload and download queues hold. What needs the person
-comes first, under *Needs
-attention*, one row each, a line between rows: the app's own problems (the
-sign-in settings it can't read; on macOS a library that failed to open while
-another stays open), each its title alone, saying what failed; a failure to read sync's state;
-sync's failure, with *Open sync settings*, which closes the panel and opens the
-Sync page. A file that can't move shows where the person can retry or cancel it, on
+Clicking the button opens the Activity panel, a popover on macOS and a sheet
+on phones. The panel follows the Sync page's status and shows what the
+upload and download queues hold. *Needs attention*
+comes first, with one entry per problem. The app lists sign-in settings it
+can't read and, on macOS, a library that failed to open while another stays
+open. Each entry gives the title of the problem. The panel also lists a failure
+to read the sync state and any sync failure. A sync failure offers *Open sync
+settings*, which closes the panel and opens the Sync page. A file that can't move shows where the person can retry or cancel it, on
 its release in Storage Manager, and a change that can't go out shows in its
 change box, which offers *Dismiss* once the change has ended and no retry,
 never in the panel. Nothing in the panel retries. A row shows no
 error: clicking it closes the panel and opens the alert with what to do and the
 causes (§9.6); on Android a tap closes the sheet and opens a dialog with the
-same words and causes. Each problem has an × that takes it out of the panel,
-without fixing it: it still shows where it is fixed, and a problem that leaves
-the list and comes back shows again. While a library is open these problems show
-only there. Then, under a *Transfers* label, one row per thing moving, each its
-words, how far it has got and a bar, with no icon: Syncing changes, while
-coven's sync state says Syncing (a pass receiving or sending, a file a write
-waits for uploading, or the next pass's turn with nothing holding it), with no
-count, so its bar moves; Uploading ("1 of 2 releases"); Pinning ("1 of 3
-releases"), which on the phones opens the Pinning screen; and on the desktop
-Moving to This Mac on a line of its own ("0 of 1 release"): a
-move-to-this-device changes where files live for every device, while a pin only
-keeps a copy on this one. Every count is in releases, a release done once all
-its files are, and every bar is filled by the bytes of the batch done (for
-uploads, the bytes the providers confirmed), each release counting its size: a
-done release all of it, an upload its stored files and its files' shares on the
-way, the pin or move-to-this-device downloading its share. Each bar moves as
-its transfers move, and a finished file or release counts as done once bae
-records it stored. A release
-removed from the library counts none of its bytes. A bar moves while a release's
-files transfer and its count waits. A batch is everything the queue has held
+same words and causes. Each problem offers dismissal without fixing it. The
+problem still shows where the person can fix it, and a problem that leaves
+the list and comes back shows again. While a library is open these problems
+show only there. Then *Transfers* lists each operation and its progress.
+Syncing changes shows without a count while coven's sync state says Syncing
+(a pass receiving or sending, a file a write waits for uploading, or the
+next pass's turn with nothing holding it). Uploading ("1 of 2 releases")
+comes next, then Pinning ("1 of 3 releases"), which opens the Pinning screen
+on phones. The desktop also shows Moving to This Mac ("0 of 1 release").
+A move to this device changes where files live for every device. A pin only
+keeps a copy on this one. Every count is in releases. bae counts a release
+as done once all its files are done. Progress counts bytes transferred
+(for uploads, the bytes the providers confirmed). A completed release
+contributes its full size, an upload contributes its stored files and the
+shares of its files on the way, and a pin or move-to-this-device contributes
+the share downloaded. bae updates progress as transfers move and counts a
+finished file or release as done once it records the file or release as
+stored. A release removed from the library contributes no bytes. Progress
+updates while files transfer, before the count changes. A batch is everything the queue has held
 since it was last empty, so a count only grows, and it starts over once the
 queue empties. Pinning and Moving to This Mac share the download queue but each
 counts its own batch: the releases queued to pin, or to make local, since none
@@ -4325,21 +4275,18 @@ stands in place of its count, as on the Storage manager's list (§4.2): the
 upload line shows Paused while sync isn't running too. On the desktop each
 queue's line ends in Pause, or Resume while the person paused that queue;
 pinning and moving to This Mac are one queue, as in Transfers settings, so
-their lines pause and resume together. Under the
-lines, *Open storage manager* opens the Storage manager. On the phones the
+their lines pause and resume together. After the transfer entries,
+*Open storage manager* opens the Storage Manager. On the phones the
 Pinning line ends in Pause or Resume too, and opens the Pinning screen. With
 nothing to show it says everything is up to date. The panel doesn't offer *Retry
 now*: the Sync page's fix does.
 
-**The Sync page.** Sync has a page of its own, off the Library page. Its top
-is one block: *Status* with the state in words, then a line that says what
-happened, then a second line that says what to do, then the button that does
-it, each only when the state has one; on the Mac the button is a primary
-button. On the Mac a state in a color (green, amber or red) has a dot before
-its words, here and on the Library page's Sync row, and gray has none. *Last
-synced* follows the button, in the same box on the Mac. *Last synced* shows
-under a state that is a problem, amber or red, and never under Synced.
-Under the block are the library's storage rows (§6.2).
+**The Sync page.** The Library page's *Sync* control opens Sync. The Sync page shows
+*Status*, the state in words, what happened, what to do, and the button
+that does it, in that order. The page leaves out anything the state does
+not have. For states listed below under waits or failures, *Last synced*
+follows the status and any action. The library's storage settings (§6.2)
+follow the status.
 coven gives the state
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 and when several hold the first of these shows: Not synced, Removed from the
@@ -4356,7 +4303,7 @@ Dropbox, and OneDrive and iCloud read the same with their own names. An S3
 library reads *your S3 service* in place of the provider's name and *S3
 storage* where the line names the place the library is kept.
 
-- **Gray.**
+- **Ordinary sync states.**
   - Not synced, on the Mac only, since a phone joins a library and never
     makes one: *This library is only on this Mac.* / *Set up a cloud home to
     invite people and use it from your other devices.*, with *Set up a cloud
@@ -4369,9 +4316,9 @@ storage* where the line names the place the library is kept.
     changes from your other devices.* while a pass applies incoming changes, and
     *Sending your changes.* while a change goes out or waits next in line, with
     any cover, artist image or profile picture it names.
-- **Green.** Synced, with a dot: *Your library is up to date.* Synced means
-  data and files both: a file still uploading is Syncing….
-- **Amber.**
+  - Synced: *Your library is up to date.* Synced covers data and files.
+    A file still uploading is Syncing….
+- **Waits and warnings.**
   - Waiting to sync while the provider asked bae to wait: *Dropbox asked bae
     to slow down.* / *Resuming in 42 seconds.*, the seconds counting down.
   - Waiting to sync after a failure that clears by itself, a network error or
@@ -4406,7 +4353,7 @@ storage* where the line names the place the library is kept.
     *Replace key…* (§6.2). The page keeps showing the recorded key's id, and a
     saved key shows the same line about deleting the old one.
   - A sign-in that expired reads the same as none saved.
-- **Red.**
+- **Failures.**
   - Removed from the library, when an admin removed this device: *An admin
     removed this Mac from the library, so it no longer syncs.* / *To reconnect,
     add this Mac from one of your other devices.*; when an admin removed the
@@ -4459,8 +4406,8 @@ The page never says "Sync stopped", "Checking sync…" or "Disconnect". Until
 the status is first read it shows nothing in the block, and if it can't be
 read the block says "Could not read sync status", with *bae could not read
 this library’s sync status.* / *Restart bae.* The Library page's Sync row shows the state only, and the
-Library row in Android's settings and the Library item in the Mac's settings
-sidebar show it only while it is amber or red.
+Library row in Android Settings and the Library item in Mac Settings show
+the state only for the waits and failures listed above.
 
 The Sync page lists no pending records: the page's status says what stops sync,
 a file's upload, pin, download or move shows on its release in Storage Manager,
@@ -4501,9 +4448,9 @@ coven records on the Mac only until the last of the album's files is stored
 and one write switches them all to storage. Until then the phone can't read
 the files, and can't tell an upload still running on the Mac from a release
 the Mac keeps local: either way the release reads as on Ana's Mac (§4.2), and
-a picture whose file isn't readable here shows a plain tile in its place, as
-a picture still loading does, with no spinner. No
-album or track is marked as on its way. No device waits for another's upload,
+a picture this device cannot read appears as missing, as does a picture
+that is still loading. bae does not report progress for the picture or
+mark an album or track as on its way. No device waits for another's upload,
 and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.
 
@@ -4618,9 +4565,9 @@ it has. While Android removes a release's download, its control says so.
   fails again waits longer. Provider cooldowns, failures that never retry,
   and waits for the person's own action hold. bae's own triggers, such as
   opening a library, only ask for a pass.
-- **How the retry went.** The pull's spinner stays until the first pass after
-  the retry ends, however long that takes; there is no timer. Under it, the
-  Sync page says what sync is doing meanwhile. A pass already
+- **How the retry went.** The Sync page indicates that the retry is in
+  progress until the first pass after the request ends, however long that
+  takes. The page also says what sync is doing during the wait. A pass already
   running when the person pulls doesn't count: it read the store before they
   asked, so the next one answers. If the retry didn't sync, the reason shows
   once it's known: on Android a snackbar, whose *Retry* asks again. The reason
@@ -4659,8 +4606,7 @@ storage to load the library from, beside the failure, where the app shows it
 that bae will discard edits on this device that haven't synced. bae warned
 the person before they chose, so bae shows nothing after; bae doesn't
 present coven's reset notice. When sync
-finds another installation, the screen says why in the middle of the window
-and offers *Reset from cloud…*. Either way, *Reset from cloud…* opens an
+finds another installation, the screen says why and offers *Reset from cloud…*. Either way, *Reset from cloud…* opens an
 alert (a dialog on Android), titled "Reset from cloud?", which gives the
 warning, with *Reset* and *Cancel*. Leaving the
 screen without resetting, by *Cancel* on a Mac or Back on Android, returns to
@@ -4764,12 +4710,11 @@ fail, saying the laptop left the library and its files are still on it.
   and neither platform's Settings removes the library. On a Mac, a library that
   doesn't sync offers *Delete* in place of *Remove*. Neither platform
   asks the person to unlock the device first: the confirmation is the only step.
-  *Remove* loses nothing (the library stays in the cloud), so it is the
-  confirmation's accent button, the Mac alert's default; only *Delete* is red.
+  *Remove* leaves the library in the cloud and is the Mac alert's default.
   On Android's first screen no library is open, so a library that opens is
-  opened to count what it hasn't sent and again to leave its store, its row
-  showing each step under its name, with a spinner in place of the ⋮, and a
-  library that can't open is removed without opening, as on a Mac. A removal that fails, or the count
+  opened to count what it hasn't sent and again to leave its store. Its row
+  shows each step and offers no menu during removal. Android can remove a
+  library that cannot open, as on a Mac. A removal that fails, or the count
   before it, shows an alert on a Mac and a dialog on Android, "Could not remove
   “Household”", with the error's line, *Retry* and *Cancel*: *Retry* counts and
   asks again, or runs again the removal the person confirmed, and the row goes
@@ -4787,12 +4732,11 @@ fail, saying the laptop left the library and its files are still on it.
   starts: stopping
   the desktop's servers, playback, and identification and import, ending the
   library's background work, leaving the library, then deleting this device's
-  files. For the open library the apps show the step's name on the screen they wait on. For a
-  library that isn't open, its row shows the step's name, as words with no bar,
-  under the library's name, with a spinner in place of the ⋯ or ⋮: the open's
-  steps while it is opened to count, then the removal's, or the removal's from
-  the start for one that can't open, whose removal reports leaving it and
-  deleting its files.
+  files. For an open library, the apps name each step on the waiting screen.
+  For a closed library, the row names each step and offers no menu while the
+  removal runs. The row names the steps for opening to count changes, then
+  the steps for removal. For a library that cannot open, the row reports only
+  leaving the library and deleting its files.
 - **A library that can't open.** A library whose settings or name can't be read, or
   whose reset or restore stopped partway, can't be opened to count what it
   hasn't sent, nor to leave. Its confirmation says it can't be opened, so any
@@ -4807,8 +4751,8 @@ fail, saying the laptop left the library and its files are still on it.
 - **A leaving that stops partway.** Once the device's leaving is under way
   in storage, coven's delete only goes forward: if it fails there, as when
   storage refuses the answer, the library stays on the list as being
-  removed, with "Removing this library from this device did not finish."
-  under its name, and coven refuses to open it. Its row offers *Finish
+  removed and says "Removing this library from this device did not finish."
+  coven refuses to open it. Its row offers *Finish
   removing* in place of *Open*: coven opens the library and goes on as the
   removal would, publishing the leaving if it hadn't, and bae's files and
   the record follow as in any removal, its steps shown on the row as a
@@ -4832,9 +4776,9 @@ fail, saying the laptop left the library and its files are still on it.
   can get past the failure (G.1), and opens no library while it shows.
   That library already left its store, so it offers no *Reset from cloud…*.
   *Retry* deletes only what is left on this device; it never tries to leave
-  again. While it runs, it shows finishing each earlier removal as a step over
-  a bar, counted by removal; until the first step, it names its work,
-  removing the library, under a spinner. A record whose store coven still
+  again. While it runs, the screen reports progress through earlier removals,
+  counted by removal. Before the first step, the screen says it is removing
+  the library. A record whose store coven still
   lists stopped before the delete: it is cleared, and bae says the library is
   still on this device, with nothing to retry.
 - **The restore code stays.** The restore code and S3 key coven saved in iCloud
@@ -4880,11 +4824,10 @@ When track 3 ends, Up next drains first, then the release continues at track
 card, Android's full player and the system's media controls show it, with its
 title, artists and cover, so the app shows a track at every moment of a track
 change.
-The speaker mark on an album's track list is on the track loading, and Go to
-Now Playing opens its album. On a Mac each queued track's row is a playlist
-page's track row with no number: its cover, its title over its artists, and
-its length at the end, where Remove from queue joins it while the pointer is
-over the row.
+The album's track list identifies the track loading, and Go to Now Playing
+opens its album. On a Mac each queued track shows its cover, title, artists
+and length, with no number. Remove from queue appears while the pointer is
+over its row.
 
 What's playing from is a release, several releases in the order chosen, a
 list of tracks in the order it was sent, or the whole library. The queue's
@@ -4971,11 +4914,9 @@ tracks, the queue screen shows its error in place of the rows until it can
 read them again.
 
 Dragging a row in the queue sends nothing until it is dropped: the drop is the
-one reorder, however many rows the held row passed. While it is held, the Mac
-draws a line over the gap where it will land and no row moves, as Mac lists
-show a drop (no line over a gap that leaves it where it is); Android's held row
-follows the finger and the other rows slide apart around an open slot where it
-will land.
+one reorder, however many rows the held row passed. While the person drags,
+the queue indicates where the entry will land. On a Mac it gives no indication
+if the entry would stay where it is.
 
 The queue screens keep a row dragged to a new place there until its move
 returns, so it never jumps back while the move is on its way. When the move
@@ -5033,9 +4974,9 @@ short silence.
 There is an optional pause between sides or discs. Ben plays his 2×LP rip.
 When side A ends, playback pauses and shows "Side A ended"; he presses Play,
 or Next, to start side B. A CD box set pauses between discs the same way. On
-the Mac the prompt is a card hanging from the top of the window with nothing
-dimmed, and the now-playing bar keeps the artist under the title while it is
-open; once it is closed, the bar's second line says "Side A ended".
+the Mac the now-playing bar keeps showing the artist while the prompt
+is open. Once the prompt closes, the bar says "Side A ended" in place of
+the artist.
 
 - **When it pauses.** Only between two tracks of one release, on different
   sides, while playing that release in order. Up next entries and a shuffled
@@ -5053,10 +4994,9 @@ open; once it is closed, the bar's second line says "Side A ended".
   where to turn it back on: Settings › Playback.
 - **Settings.** Pausing is on by default: a side break is part of how the
   record was made. Turning it on also catches a crossing already prepared.
-  Playback settings show it as *Pause between sides and discs*, with
-  *Resume automatically* (Never, or after 5, 15, 30, 45 or 60 seconds)
-  joined under it with no divider: the two read as one setting, so neither
-  needs a note. While pausing is off the row shows dimmed and does nothing.
+  Playback settings show *Pause between sides and discs*, then *Resume
+  automatically* (Never, or after 5, 15, 30, 45 or 60 seconds). The app
+  disables *Resume automatically* while pausing is off.
 
 ### 7.4 Pregaps
 
@@ -5119,17 +5059,14 @@ window its decode reads first.
 The seek bar never leaves the player. On a Mac, VoiceOver reads the window's
 content before the player. In the player it reads the track, the transport, the
 seek bar, then Play on, Queue, Mute and Volume when those controls are present.
-Under the played part the seek bar draws, in a lighter fill, the parts of the playing track whose bytes its file's buffer
-holds, range by range: each byte range the buffer holds, cut to the track's
-own bytes, is placed in the track by the track's first and last byte and its
-scrub points (§3.7), with the bytes between two of them spread evenly over
-the time between. The fill grows as windows arrive, before and after the
-first sound; a track whose bytes are all held fills from its start to its
-end. What the buffer drops behind the playhead leaves the fill too, under
-the played part, so after a seek back past it the dropped stretch shows as a
-gap until the fill fetches it again. A track a receiver plays (§7.7),
-or one whose length is unknown, has no fill. Android's full player draws a taller
-line with an upright thumb and no fill at all.
+On a Mac, the seek bar shows which ranges of the current track its file's
+buffer holds. bae maps each buffered byte range to the track's timeline using
+its first and last bytes and its scrub points (§3.7), and spreads the bytes
+between two points evenly over the time between them. The bar updates as
+windows arrive, before and after the first sound. bae stops showing any
+range the buffer drops, including behind the playhead, until the buffer
+gets it again. The bar shows no buffered ranges for a track a receiver plays (§7.7) or a track of
+unknown length. Android's full player shows no buffered ranges.
 
 While the person drags a seek bar, on every platform and in every bar (the
 now-playing bar, the full player, the import preview's), the position time it
@@ -5261,18 +5198,17 @@ device in that prompt.
 A receiver that asks for a PIN or a password does not fail
 playing on it: bae asks the person for the code in a sheet (macOS) or a dialog
 (Android), and playback on it goes on when the receiver accepts the code. On macOS the
-sheet sits on the main window, since the connection is the app's. On
-Android the dialog sits over the Play on picker or the Playback settings, whichever is
-open, and otherwise over the app. Closing the picker or the settings leaves it
-open. Cancel closes it, plays nothing, and leaves the receiver showing its PIN
+app presents the sheet even after the picker or settings closes. On
+Android the app shows the dialog from the Play on picker or Playback
+settings if one is open, and elsewhere in the app otherwise. Closing the
+picker or settings leaves the dialog open. Cancel closes it, plays nothing, and leaves the receiver showing its PIN
 until the receiver ends it.
 
-The sheet is titled Pair with and the receiver's name, with a line under the
-title that says why it asks and what to enter, a field, Cancel and Pair.
-A PIN field has one box for each digit, as many as the receiver's PIN has,
-takes digits only, and keeps leading zeros.
-A password field shows dots. Pair stays off until the PIN has all its digits, or
-the password has a character. The lines under the title are:
+The sheet's title gives *Pair with* and the receiver's name. The sheet
+says why it asks and what to enter, and offers a field, Cancel and Pair. A PIN field accepts
+only digits, keeps leading zeros and takes the number of digits the
+receiver requires. The password field masks its text. Pair stays off until
+the PIN has all its digits or the password has a character.
 
 - first pairing: "Enter the PIN it shows."
 - a receiver that asks for a PIN every time: "Kitchen asks for a PIN every
@@ -5282,17 +5218,15 @@ the password has a character. The lines under the title are:
   says "Kitchen no longer knows this device. Enter the password set on it."
 - a password receiver: "Enter the password set on it."
 
-A wrong code keeps the sheet open, with the digits as typed, every box and the
-line under them in red, and the line under the title changed to "Enter the PIN
-it shows now." under "That PIN did not match." (a password says "That
-password did not work." under its field), since a wrong PIN makes the receiver
-show a new one. bae never tries again by itself. While bae pairs, the field is
-off, "Pairing…" shows under it with a spinner, Pair is off and Cancel still
-works. When the receiver answers a wrong code with a wait before the next
-try, the sheet takes the next code at once, and bae sends it when the wait
-ends, with "Pairing…" showing until then. bae refuses a code of the wrong
-shape before it connects, with "Enter the 4-digit PIN." or "Enter the
-password." under the field.
+A wrong code keeps the sheet open and preserves the typed digits. The
+sheet says "That PIN did not match." and "Enter the PIN it shows now.",
+since a wrong PIN makes the receiver show a new one. For a password it says
+"That password did not work." bae never tries again by itself. While bae
+pairs, the sheet says "Pairing…" and disables the field and Pair. Cancel
+still works. When the receiver answers a wrong code with a wait before the
+next try, the sheet takes the next code at once and says "Pairing…" until
+bae sends it when the wait ends. bae refuses a code of the wrong shape
+before it connects and says "Enter the 4-digit PIN." or "Enter the password."
 
 A receiver that asks its owner to accept the connection, as a Mac set to allow
 AirPlay for anyone on its network does, holds bae's first request on a
@@ -5432,15 +5366,13 @@ found it at. The model is the Cast `md` record, the AirPlay `model` record
 states none has none. The address is the IP address a Cast or AirPlay service
 resolved to, or the host a UPnP description was fetched from. Once the person
 picks a receiver, the picker or the settings name it while bae connects, until
-playback on it starts or fails: the receiver's own row shows a spinner at its
-end and says "Connecting…" in place of its kind. Once an AirPlay 2 receiver has
-held bae's request for 5 seconds while its owner decides whether to accept it,
-the row says "Accept on Kitchen…" instead, until the receiver answers (see
-Pairing). macOS sets both lines in italic. On macOS the connection is the
-app's, not the picker's or the settings': both name it, so does the Play on
-button's tooltip ("Connecting to Kitchen…", then "Accept on Kitchen…"), and
-closing either leaves it connecting; a failure says why in an alert,
-wherever the person is. A connection that succeeds closes the picker that started
+playback on it starts or fails. The receiver's row says "Connecting…" in
+place of its kind. Once an AirPlay 2 receiver has held bae's request for
+5 seconds while its owner decides whether to accept it, the row says
+"Accept on Kitchen…" until the receiver answers (see Pairing). On macOS the picker and Settings both follow the app's connection. The
+Play on button's tooltip also reports it ("Connecting to Kitchen…", then
+"Accept on Kitchen…"). Closing the picker or Settings leaves the app
+connecting, and a failure shows an alert wherever the person is. A connection that succeeds closes the picker that started
 it, never one opened after. On Android it is the open library's too: closing the
 picker or the settings leaves it connecting, both name it, and a failure
 says why in the picker while it is open and in a snackbar otherwise. A connection that
@@ -5463,17 +5395,16 @@ group holds the switch Play on other devices with its help text, "Scan for Cast,
 AirPlay, and UPnP receivers on your network.", and, while the switch is on, each
 receiver found, with its name and kind (Chromecast, AirPlay or UPnP), and below
 them Convert to, which sets the format of tracks a receiver can't play as they
-are. The receivers are the picker's
-rows and work the same: picking one plays on it, and the one playing says
-Playing in place of its kind. Each row ends in a ⋮ menu (⋯ on macOS) holding
-Details…, and Disconnect on the receiver playing. Details is a sheet on
-Android and a popover off the ⋯ on macOS, titled with the receiver's name and
+are. Picking a receiver plays on it, as in the picker. While a receiver
+plays, its row says Playing in place of its kind. Each receiver's menu offers
+*Details…* and offers *Disconnect* for the one playing. Details opens a
+sheet on Android and a popover on macOS, titled with the receiver's name and
 showing its Type, its Model, left out when it states none, and its Address; it
 shows no status, since the row already says Playing. The picker shows each
 receiver once the same way, with no separate row for the connection under way, and
 keeps Disconnect on the row of the receiver playing, with no menu on any row.
-Until the first answers it shows a spinner and says it is looking; there is no
-end state, since the search runs for as long as the settings are open.
+The picker reports that it is looking until it gets the first answers.
+The search has no end state while the settings are open.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
@@ -5654,26 +5585,26 @@ connects to his laptop, lists the artists, opens an album and plays it.
   has none and starts when it has one again. A network with no address is
   offered only while it is the one chosen, marked not connected. The default
   port is 4533.
-- **Settings.** The switch is what the person wants; the line under it is
-  what is happening, as it changes: running, or not running and why, shown
-  where it is fixed. While it runs, Available on shows the address an app
-  connects to (`localhost` on this machine only; each network's own address,
-  never `0.0.0.0`), as one line that can be copied. Its pop-up names the
+- **Settings.** The switch sets whether the person wants Subsonic to run.
+  Settings reports whether it is running and, if not, why. While the server
+  runs, *Available on* shows the address an app connects to and lets the
+  person copy it. The address is `localhost` for this machine only or the
+  network's own address. The app never shows `0.0.0.0`. Its pop-up names the
   network alone when closed ("Wi-Fi") and with its address in its menu. Why it isn't running: a
-  missing username or password at its field, a port another app holds at the
-  port, a network with no address on the line itself, any other failure
-  under the switch. The
+  missing username or password goes with its field, an occupied port goes
+  with the port, and a network with no address is a network status.
+  Other failures appear as general server errors. The
   server starts as soon as nothing stands in its way; the switch stays on.
   While another program holds the port, bae tries it again every second, so
   the server starts when that program lets go, with no change to a setting.
   Each field saves on its own when the person presses Return or leaves it; a
   port or network change restarts the server at its new address, and a
   username or password change applies to the next sign-in.
-  On but not running, it also shows outside Settings: a mark on the
-  Subsonic pane in Settings' sidebar, and a row under *Needs attention* in
-  the Activity panel that opens this pane. Both read as a warning, or as
-  danger when the server could not start for a reason of its own. The row's
-  × takes it out of the panel until the server has run and stopped again.
+  While Subsonic is on but the server is stopped, Settings indicates the
+  problem for Subsonic. An entry under *Needs attention* in Activity opens
+  Subsonic settings. Both distinguish a server that could not start because
+  of its own failure from a warning. The person can dismiss the entry from
+  Activity until the server has run and stopped again.
 - **Ids** carry their kind: `ar-` an artist, `al-` a release, `tr-` a track. A
   cover's id adds a version, so a client caching art fetches a new cover.
 - **Out of scope.** Playlists, stars and ratings, play counts, podcasts,
@@ -5733,15 +5664,14 @@ rebuilds the indexes they changed. An open reports each of these steps as it
 runs, with how much of it is done: first rebuilding, counted in rebuilds, then
 migrating, counted in migrations, at most four times a second within a step
 ([coven E1](https://github.com/bae-fm/coven/blob/main/spec/api.md#e1-opening)).
-An open with neither step reports nothing. Wherever such an open runs, the
-apps show the step's name over a bar of how much of it is done in place of the
-spinner: the screen a library opens or switches on, the restore over this
-device's copy, and, on the Mac, the row of a library that isn't open while
-removing it counts what it would lose. Between steps, and through an open that
-runs none, the screen names what it waits on under its spinner, never a bare
-spinner: finding this device's libraries at launch, opening the library, and
-on the Mac setting one up, closing it, removing it, or resetting from cloud; a
-reset before it first reports where it stands says "Resetting from cloud…".
+An open with neither step reports no step progress. The apps show each
+step and how far it has come while opening or switching libraries,
+restoring over this device's copy, and, on the Mac, counting what removing
+a closed library would lose. During a wait the app names what it is doing.
+At launch it can be finding the device's libraries or opening the library.
+On the Mac it can also be setting a library up, closing it, removing it or
+resetting from cloud. A reset says "Resetting from cloud…" until it first
+reports a step.
 
 **How far a setup has come.** Creating a library, a restore and a join each
 report their steps the same way: a restore or a join reports where it stands
@@ -5751,11 +5681,10 @@ reports its one step. The debug Mac app's dev reset reports finishing earlier
 removals, removing each library on this device (counted by library), deleting
 their saved restore codes (counted by code), deleting this device's pairings
 with speakers, deleting bae's files on this device, creating the profile's
-library, setting it up, and connecting it to its storage, and the first step
-that fails stops it. The apps show the step's
-name over a bar, never a bare spinner: the bar fills as the step's units are
-done, and moves without a count for a step of no units and for each step of a
-storage setup other than loading.
+library, setting it up, and connecting it to its storage. The first step
+that fails stops it. The apps show the step's name and how much of it is
+done. The app indicates progress without a count for a step with no units
+and for each storage setup step other than loading.
 
 A restore, a join and a device reset load the library from storage, and say
 where they stand state by state: a new installation's database opening, then
@@ -5772,8 +5701,8 @@ none for them; downloading each saved copy, the one every member reads and
 then each circle's, counted in bytes; writing the copies into the library
 here, counted in tables; applying the changes saved with them, then
 downloading and applying the changes made since, counted in changes. A step
-runs only when it has work. The apps show each step's name over its bar on
-the restore and join screens, and on the screen a reset loads on. Registering
+runs only when it has work. The apps name each step and show its progress
+when restoring, joining or resetting. Registering
 and finishing have no count, since how much the registration reads isn't
 known until it has read it: the apps name each as they name connecting, and a
 join that has found its approval can no longer be cancelled. A restore can be
@@ -5785,10 +5714,9 @@ servers, identification, import and sync, and then the library's store. A
 close the app shows reports each step as it starts: stopping the desktop's
 servers, stopping playback, stopping identification and import, stopping sync
 once its running pass ends, ending the library's background work, and closing
-the store. The apps show the step's name while it runs: on the Mac over a
-moving bar on the loading screen, on Android over one on its own screen.
-Before the first step, and between steps, both screens name what they wait
-on, closing or removing the library, under a spinner. That covers closing a
+the store. The apps name each step and indicate progress while it runs.
+Before and between steps, both apps say what they are waiting for: closing
+or removing the library. That covers closing a
 library, the close before restoring or resetting this device's copy, and, on
 Android, the close of the library a newly opened one replaces. Quitting the
 Mac app, and the close after a removal or a failed open, show nothing. A step
@@ -5814,15 +5742,15 @@ screen, the list keeps the top row on screen where it was. When another order,
 a reopen or a jump changes the list, the list keeps drawing the rows it has
 until the new rows arrive, so the screen never empties.
 
-The album grid draws an open album's detail under the row that holds its card:
-the card the person opened, in its artist's group when the grid groups by
-artist, else the album's first card, which the grid also uses once the
-artist's group no longer holds the album. A write that moves the card, such as
-a new title under a title sort, moves the detail with it. Revealing an album
-opens it and scrolls to that card, and a write that moves the card while the
-reveal waits sends the reveal to the card's new place. Revealing a track, as a
-track in search results or Go to Now Playing does, then scrolls the track's row
-in the album's open detail into view and flashes the row.
+The album grid keeps an open album's detail associated with the entry the
+person opened. When the grid groups by artist, the association uses that
+artist's group. The grid uses the album's first entry if there is no grouping
+or the group no longer holds the album. A write that moves the entry, such as
+a new title under a title sort, keeps the detail with it. Revealing an album
+opens it and scrolls to the associated entry. A write that moves the entry while
+the reveal waits sends the reveal to its new place. Revealing a track from
+search or Go to Now Playing also scrolls that track into view within the album
+and calls attention to it.
 
 The artist picker's search puts the artists whose id or name the text matches
 exactly first, then those whose name starts with it, then the rest, by name
@@ -5842,29 +5770,27 @@ leaves the inspector and the actions' targets as it leaves the list, including
 while an action's confirmation or folder prompt is open.
 
 **The Storage manager's inspector** shows the release's files and its entries
-in the download, export and upload queues, as they stand together. It shows
-nothing of a whole queue, which the list's footer pauses (§4.2). Its upload
-shows how many of its files are uploading, queued and stored, leaving out a
-count of none, so a release with nothing being sent reads only what waits and
-what is stored; a control that cancels it; and while files are sent, the bytes
-of its size stored or sent and how fast they go. Each file is one line, its
-name and size after a mark: none for a file at rest, a dashed circle for one
-waiting its turn, a ring filling as it is sent; a file waiting on a reason
-says why when the pointer rests on it. While the release pins, its download
-shows the same way: how many of its files are pinning, waiting and pinned,
-again leaving out a count of none; a control that cancels the pin; and while it
-downloads, the bytes it holds of its size and how fast it goes. A file
-downloading shows a ring filling as it comes, and one waiting its turn a
-dashed circle. While bae moves a release to This Mac, the inspector shows a
-dashed circle for a file waiting its turn and a ring that fills as the file
-downloads. Once coven places the copy, the inspector clears its mark. On the
-Mac, VoiceOver reads the file's mark as Queued to upload, Queued to pin,
-Queued to move to This Mac, Uploading, Pinning, Moving to This Mac…,
-Waiting for a file or Could not move to the cloud. A failed pin says it
-failed instead, its error behind *Details* (§9.6), with a control that retries
-it (§4.3) and one that cancels it.
-Selecting a file shows its details under the list, closed by a button or by
-selecting nothing: its name and the folder it sits in within the release's
+in the download, export and upload queues as they stand together. The
+Storage Manager's queue controls apply to the whole queue (§4.2). For an
+upload, the inspector counts files uploading, queued and stored, omits
+zero counts and offers cancellation. While files are moving, it shows
+the bytes stored or sent and their rate. Each file shows its name and
+size, and whether it is waiting or moving. A moving file shows its byte
+progress. When a file waits on a reason, pointing at it shows why. While a
+pin runs, the inspector counts files pinning, waiting and pinned, omits
+zero counts and offers cancellation. During the download, the inspector
+shows how many bytes the release holds and how fast they arrive. Each
+waiting file indicates it is queued, and each downloading file shows
+its progress. During a move to This Mac, the inspector indicates when each
+file is waiting or downloading and shows download progress. The status
+clears once coven places the copy. On the Mac, VoiceOver reads each file's
+status as Queued to upload, Queued to pin, Queued to move to This Mac,
+Uploading, Pinning, Moving to This Mac…, Waiting for a file or Could not
+move to the cloud. For a failed pin, the inspector says the pin failed
+and offers *Details* (§9.6), retry (§4.3) and cancellation.
+
+Selecting a file shows its details. A button closes the details, as does
+clearing the selection. The inspector shows the file's name and folder within the release's
 folder, what kind of file it is, its audio format, and its size. A file's kind
 comes from the role and document kind its import stored (§2.2): a CUE sheet,
 parsed or not, a rip log, an AccurateRip report, a playlist, text, or a
@@ -5906,7 +5832,7 @@ reported as a bug, so the row, the audio and the screens agree.
 
 Each command that puts tracks into Up next (add to queue, play next, add a
 release, insert) adds only the tracks the library holds, and the screen that
-sent the command shows how many it added: the queue button's badge on macOS, a
+sent the command shows how many it added, on the queue button on macOS or in a
 snackbar on Android. When an add puts no tracks in, no screen shows a count,
 and only the screen that sent an add shows its count.
 
@@ -5956,35 +5882,30 @@ This device's settings for the library are the `preferences` row. Each change
 edits the stored row in one write, and every screen follows it with no
 restart. Appendix C lists the settings.
 
-On a Mac, Library settings starts with two rows. **Name** shows the library's name,
-with *Rename…* for an admin, or for anyone when the library isn't synced, and
-**Library folder** has *Show in Finder*. For a library with storage, two
-rows follow, **Sync** and **People and devices**, each
-opening its page and showing where it stands: Sync the state of the sync,
-with its dot in the state's color, People and devices "2 people · 3
-devices". A library with no storage has one row in place of those two,
-**Sync** saying "Not synced", with a chevron, *Set up a cloud home…* and a note that the library
-is only on this Mac. VoiceOver reads the label and its note as one button, the
-status as text, and *Set up a cloud home…* as a separate button. Removing the
-library is not in Settings; it is on the first screen's list (§6.4).
+On a Mac, Library settings first shows **Name**, with the library's name
+and *Rename…* for an admin or for anyone when the library isn't synced,
+then **Library folder**, with *Show in Finder*. With storage, **Sync** and
+**People and devices** follow and open their own pages. Sync shows the
+sync state. People and devices shows the counts, as in "2 people · 3
+devices". For a library with no storage, **Sync** says "Not synced",
+explains that the library is only on this Mac, and offers *Set up a cloud
+home…*. VoiceOver reads the label and the explanation as one button, the
+status as text, and *Set up a cloud home…* as a separate button. The first
+screen's library list offers removal (§6.4).
 
-For an admin, a **Ratings** section follows, with an **Albums** and a
-**Tracks** pop-up, each *Stars*, *Heart* or *None*, and the note "Applies to
-everyone in this library". A member's Library settings shows the same section
-with each system as a plain value, as the **Name** row shows the name, and no
-pop-up.
+For an admin, **Ratings** follows with **Albums** and **Tracks** pop-ups,
+each offering *Stars*, *Heart* and *None*. The section says "Applies to
+everyone in this library". A member can read each system and the note without changing the system.
 
-On Android, Settings has one **Library** row that opens the Library page. Its
-card holds **Name**, with an edit mark and *Rename* for an admin, **Sync**
-with the same state, and **People and devices**: a phone's library always has
-storage. Each row opens its page. Settings keeps the switch to
-another library on this device under the Library row.
+On Android, **Library** in Settings opens the Library page. The page offers
+**Name**, with *Rename* for an admin, **Sync**, with its state, and
+**People and devices**. A phone's library always has storage. Each item
+opens its page. Settings offers switching to another library after Library.
 
-For an admin, the Library page has a **Ratings** card under it, with an
-**Albums** and a **Tracks** row, each showing its system and opening *Stars*,
-*Heart* or *None*, and the note "Applies to everyone in this library". A
-member's Library page shows the same card with each system as a plain value,
-and its rows open nothing.
+**Ratings** follows on the Library page. For an admin, **Albums** and
+**Tracks** show the current system and open the choices *Stars*, *Heart*
+and *None*. The section says "Applies to everyone in this library". A
+member can read each system and the note. The choices stay closed.
 
 ### 9.6 Errors
 
@@ -5995,20 +5916,15 @@ network, unlock the keyring, wait for an identification. Appendix G lists them.
 
 An app offers the detail only when it says something the category's line
 doesn't: a path, an underlying cause, the provider's or the network's own
-message. A notice never shows the detail: a notice shows the category's line,
-or a title the app words for what failed with what to do under it, and its
-*Details* opens the causes one a line, led by the category's line when the
-notice didn't show it, with a button that copies them whole: in an alert on
-macOS and a dialog on Android. The Mac's alerts, these and every confirmation,
-are bae's own and not the system's: no app icon, an elevated face with 20
-point corners hung 36 points below the window's top edge, the title in bold,
-the message small and secondary under it, and bae's buttons below. The alert
-sits over the frontmost window, or over the sheet open on it, and nothing
-below it can be reached while it is up, by pointer, keyboard or VoiceOver.
-bae's alert draws in that window's tone, accent and light or dark appearance,
-and follows them when they change while the alert is up. The first button
-listed is the default, drawn in the accent unless it removes something, which
-draws red; Return presses it and Escape presses Cancel. A category whose line
+message. A notice shows the category's line or gives the failure a title
+and says what to do. To see the causes, the person chooses *Details*.
+The details start with the category's line if the notice omitted it.
+The person can copy all the causes at once.
+Mac alerts and Android dialogs show the causes. On a Mac the app's alerts
+and confirmations block pointer, keyboard and VoiceOver access to the
+frontmost window or its open sheet until the person dismisses the alert.
+The first button is the default. Return presses it and Escape presses
+Cancel. A category whose line
 names the whole fault, with the counts, discs or folder it carries, shows the
 line alone, since its detail is the same sentence again in English.
 
@@ -6032,14 +5948,11 @@ when a folder or a file under it can't be read, as deleting fails when it
 finishes a library's recorded deletion, and as a bug, "Something went wrong",
 when coven's work for it panicked.
 
-What launch finds wrong without stopping the app is kept apart from those
-failures for the whole run: sign-in settings bae can't read. It shows beside
-whatever opens or fails later, so a library that opens doesn't hide it and a
-later failure doesn't replace it. On macOS, while a library is open, it shows
-in the Activity panel (§6.4) and nowhere else in the window; on the welcome it
-shows in the welcome's content. On Android, while a library is open it shows in the Activity sheet
-and nowhere else on its screens; on its screens without an open library it
-shows at their top. A keychain that won't open stops the launch, since
+When bae cannot read sign-in settings at launch, the problem stays visible
+through the run even if the library opens or another failure occurs.
+While a library is open, the problem appears only in Activity (§6.4).
+When no library is open, it appears on the Mac's welcome screen or
+Android's screens for opening a library. A keychain that won't open stops the launch, since
 listing, opening and removing libraries all need it. On Linux the keychain is
 the desktop's secret service.
 
@@ -6509,9 +6422,9 @@ Replay gain has no control in the apps.
 | `side_pause_countdown_seconds` | none | when such a pause ends on its own: 5, 15, 30, 45 or 60 seconds, or none to wait for Play |
 | `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage at the default, since the row is in the store being read; the library opens at the row's limits |
 | `show_remaining_time` | off | the seek bar counts down |
-| `library_full_width` | off | the library page spans the window |
+| `library_full_width` | off | the library width preference |
 | `ask_before_unpinning` | on | Unpin asks first; the dialog's Don't show this again turns it off, Settings → Storage turns it back on |
-| `import_destination` | cloud | where an import goes: this device or the cloud; one choice, offered as a pop-up on the import card, on the bulk pane's Import row and as Import to in Settings, which dims while automatic import is off; with no cloud storage in the library, an import stays on this device whatever it says, and the pop-up is not shown |
+| `import_destination` | cloud | where an import goes: this device or the cloud. The import editor and bulk import both offer this choice. Settings offers it as Import to and disables it while automatic import is off. With no cloud storage, imports stay on this device and the app hides the choice. |
 | `identify_automatically` | on | identifying found releases on their own |
 | `import_when_identified` | off | importing what any run picks unattended |
 | `ask_musicbrainz`, `ask_discogs` | both on | which catalogs are asked |
@@ -6536,58 +6449,44 @@ the folder pattern's are artist, album, album year, release year, label and
 catalog number. Settings → Save as edits both under Names, and a save keeps
 the patterns it was queued with.
 
-Platform settings, such as the appearance and restoring playback on launch,
-live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then
-Accent, so named in every locale; Accent names the chosen colour under its
-title, as Theme and Tone show theirs. The apps start with the System theme, the
-Plum tone and the Pink accent. The accents are Blue, Orchid, Pink, Lime, Mint
-and Sky, in that order, each named in every locale; a stored accent the app
-doesn't have reads as Pink. bae draws the bars, rings and chips of uploads and
-pins, and the glyph of an info notice, in the chosen accent. On the Mac the
-chosen Settings pane is drawn in the chosen accent's selection colour, and so
-is the highlighted item
-of every menu and pop-up bae draws: a raised face with a hairline edge, the
-chosen item of a pop-up checked, its round chevron button in the control fill.
-Those menus open over or under what opened them, or at the click for a context
-menu; the arrows, Return, Escape and typed letters move through them, a click
-outside closes them, and VoiceOver reads them as menus. VoiceOver reads each
-control that opens one of them as a pop-up that opens a menu, and pressing it
-opens the menu. When a placeholder names a boxed text field on the Mac,
-VoiceOver focuses the whole box, including its padding. The Mac's popovers (the
-Play on picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
-colour with a hairline edge and macOS's arrow. Mac sheets use the raised colour
-for the window's tone and appearance. On the Mac a symbol
-that a control or the words beside it already name (the ⓘ, a close or remove
-cross, the folder, speaker or arrow beside a name) is hidden from VoiceOver; a
-symbol that says something nothing else says is read as that: the speaker on the
-playing track as Now playing, a failed lookup's mark as Failed. On the Mac
-VoiceOver reads each progress bar and spinner by the words beside it ("Pinning",
-"Finding your libraries…"), and reads a spinner with no words beside it as
-Loading. On Android TalkBack reads each progress bar, the pin bar included, as a
-progress bar named by the words beside it, with its percent. The parts macOS draws itself, such as the menu bar's menus and the save
-panel's Format pop-up, take the Pink accent the app declares, as long as the
-Mac's own accent is Multicolor, and the person's Mac accent otherwise; they do
-not follow the accent chosen here. Checkboxes, switches, sliders, radio buttons,
-the keyboard focus ring, selected text in fields and a list's or table's
-selected row show the chosen accent and never the Mac's own accent colour. On
-the Mac Theme and Tone are pop-up buttons; on Android the Appearance page has no
-heading over its card, the top bar names it. Android's Settings rows each say
-where that setting stands under their title: Appearance's theme, tone and
-accent, the library's name and its sync state, which of pausing between sides,
-restoring on launch and playing on other devices are on, how many pins run at once, the total this phone
-keeps for the library (§4.7, "3.9 GB on this phone", nothing until the first
-measurement), and the version. The Mac's Settings is one
-window with no title bar: its panes' names, as text alone, down a sidebar that
-holds the window's buttons at its top, inset 12 points from the panel's top left
-corner, and each pane's title in bold at the top left of the pane. A page inside
-a pane puts a round button, 24 points across and named "Back to" and the page it
-goes back to, before its title. The Settings window opens on Appearance, the
-first pane. The sidebar names the sync state beside Library only while it is
-amber or red, with a sign-out saying only Signed out, and Offline beside
-Subsonic while it is on and not running, each as a chip tinted in its tone.
-About shows the bae logo, the sheep over the word,
-96 points wide and still, over the version: Android's Version is a row on a
-card, the Mac's a line with Check for updates….
+Platform settings, such as Appearance and restoring playback on launch,
+live in each app. Appearance offers Theme (System, Light, Dark), then Tone,
+then Accent. Each control shows the current value. The apps start with the
+System theme, Plum tone and Pink accent. Accent offers Blue, Orchid, Pink,
+Lime, Mint and Sky, in that order. Every locale uses the labels Theme, Tone
+and Accent and names each accent. The app uses Pink when it cannot find the
+stored accent. On the Mac, Theme and Tone are pop-up buttons. Changing the
+app's Accent leaves system controls such as the menu bar and the save
+panel's Format pop-up as they were.
+
+On the Mac, the app indicates which item a pop-up currently selects.
+People can use arrow keys, Return, Escape and typed letters in menus.
+Clicking outside a menu closes it. A context click opens the menu for
+the item clicked. VoiceOver identifies menus and reads a control that
+opens one as a pop-up that opens a menu. Pressing the pop-up opens the menu. When a placeholder names a
+text field, VoiceOver focuses the whole field. VoiceOver skips an icon
+whose control or nearby words already name its meaning. When an icon
+alone conveys a state, VoiceOver reads the state, such as *Now playing*
+or *Failed*. VoiceOver names progress bars and spinners by their labels,
+such as *Pinning* and *Finding your libraries…*, and reads *Loading*
+for an unnamed spinner. On Android, TalkBack reads the labels and
+percentages of progress bars, including pin progress.
+
+Android Settings shows the current theme, tone and accent, the library
+name and sync state, whether pausing between sides, restoring playback on
+launch and playing on other devices are on, the number of simultaneous
+pins, the space this phone uses for the library, and the version. The
+space appears only after the first measurement, as in "3.9 GB on this
+phone" (§4.7).
+
+Mac Settings opens one window on Appearance, its first pane. From a
+page inside a pane, the back button returns to the previous page and
+has the accessibility name "Back to" followed by that page's name.
+Settings shows the sync state for Library only for the waits and failures
+in §6.4, and says only *Signed out* for a sign-out. Subsonic says
+*Offline* when the setting is on and the server is not running. About
+shows the version on both platforms, labeled *Version* on Android,
+and offers *Check for updates…* on the Mac.
 
 ---
 
@@ -6704,7 +6603,7 @@ These show their line alone, without the detail (§9.6): `SyncUpdateRequired`,
 `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`,
 `ReplacementUnfinished`, `RestoreRegistered`, `MemberKeysReplaced`,
 `StorageSetupFinishing`, `DeletionUnfinished` and `DeletionSignInRequired`.
-Every other category shows its detail under its line.
+Every other category offers its detail with its message.
 
 An error offers *Retry* only when making the same call again can get past
 it (§9.6): `DatabaseBusy`, `CandidateBeingIdentified`,
