@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import BaeKit
 import Foundation
 import SwiftUI
@@ -293,6 +294,75 @@ struct ImportSettingsTabTests {
                 $0.placeholderString
                     == String(localized: "Your free Discogs key")
             }
+    }
+}
+
+extension ImportSettingsTabTests {
+    @Test("the import destination control dims with its row")
+    func importDestinationDimsWithItsRow() async throws {
+        let enabled = try await importDestinationFillContrast(
+            automaticImport: true
+        )
+        let disabled = try await importDestinationFillContrast(
+            automaticImport: false
+        )
+
+        try #require(enabled > 0.02)
+        // A disabled pop-up contributes 40% opacity. Its disabled nested row
+        // multiplies that by 45%, bringing the result well below 30%.
+        #expect(disabled < enabled * 0.30)
+    }
+
+    private func importDestinationFillContrast(
+        automaticImport: Bool
+    ) async throws -> CGFloat {
+        try await SnapshotTestSupport.withHostedWindow(
+            tab(
+                recorder: ImportSettingRecorder(),
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    importWhenIdentified: automaticImport,
+                    storage: PreviewData.previewStorage
+                )
+            )
+            .appearance(mode: .dark, accent: .standard, tone: .midnight),
+            size: Self.size
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let tree = try AccessibilityTree.read(
+                of: window,
+                subject: "Import settings"
+            )
+            let popUp = try #require(
+                tree.nodes.first {
+                    $0.role == kAXPopUpButtonRole
+                        && $0.controlName == "Import to"
+                }
+            )
+            let bitmap = try #require(
+                host.bitmapImageRepForCachingDisplay(in: host.bounds)
+            )
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+
+            let y = Int(
+                (popUp.y + popUp.height / 2) * CGFloat(bitmap.pixelsHigh)
+                    / host.bounds.height
+            )
+            func red(at x: CGFloat) throws -> CGFloat {
+                let pixel = Int(
+                    x * CGFloat(bitmap.pixelsWide) / host.bounds.width
+                )
+                let color = try #require(
+                    bitmap.colorAt(x: pixel, y: y)?.usingColorSpace(.sRGB)
+                )
+                return color.redComponent
+            }
+            // The round pop-up button sits at the right edge of the control.
+            // Sample its fill outside the glyph, and the row before the control.
+            return try abs(
+                red(at: popUp.x + popUp.width - 4) - red(at: popUp.x - 4)
+            )
+        }
     }
 }
 
