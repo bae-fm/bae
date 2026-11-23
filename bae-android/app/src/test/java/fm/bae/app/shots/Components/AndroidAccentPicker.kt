@@ -15,9 +15,12 @@ class AndroidAccentPickerShots : BoardShot() {
     @Test
     fun androidComponentAccentPickerResting() =
         component("android.component.accent-picker.resting") {
-            AndroidCard {
-                Box(Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
-                    AndroidAccentPicker(AccentChoice.PINK) {}
+            // The board's card carries its own margin: 16 at the sides and 8 above.
+            Box(Modifier.padding(start = ThemeSpace.edge, top = ThemeSpace.related, end = ThemeSpace.edge)) {
+                AndroidCard {
+                    Box(Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
+                        AndroidAccentPicker(AccentChoice.PINK) {}
+                    }
                 }
             }
         }
