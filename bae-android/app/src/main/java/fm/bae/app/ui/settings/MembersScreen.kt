@@ -415,6 +415,7 @@ internal fun RefusedInviteRow(
     val context = LocalContext.current
     AndroidRow(
         title = refused.address,
+        avatar = AvatarFace(refused.addressInitials, picture = null),
         subtitle =
             stringResource(
                 R.string.members_invite_refused,

@@ -3802,11 +3802,11 @@ leaving him half joined.
 
 An invite a sharing refusal ended leaves coven's open invites, and coven keeps
 the operation's outcome until Ana's laptop acknowledges it. People shows a
-notice in the invite's place: the address it was to share with, "Could not
-invite:" and what went wrong and what to fix ("Dropbox has no account for it";
-"your Dropbox email is not verified. Verify it, then invite them again"), and
-**Dismiss**. The notice stays until she dismisses it, in its place among the
-rows by when the invite was made. **Dismiss** is one local write that
+notice in the invite's place with the address, its initials and **Dismiss**.
+After "Could not invite:" the notice says what went wrong and what to fix,
+such as "Dropbox has no account for it" or "your Dropbox email is not verified.
+Verify it, then invite them again". The notice keeps the invite's place in the
+list until Ana dismisses it. **Dismiss** is one local write that
 acknowledges the outcome to coven, so the notice leaves the list in that
 write.
 
