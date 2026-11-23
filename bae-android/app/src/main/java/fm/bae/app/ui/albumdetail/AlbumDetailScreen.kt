@@ -355,9 +355,9 @@ internal fun AlbumDetailContent(
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
+    shownRating: () -> BridgeAlbumRating,
     catalogName: (BridgeCatalog) -> String = ::bridgeCatalogName,
     audioChannelsKey: (Long) -> String? = ::bridgeAudioChannelsKey,
-    shownRating: () -> BridgeAlbumRating = { detail.rating },
 ) {
     val context = LocalContext.current
     val shown = detail.shownRelease

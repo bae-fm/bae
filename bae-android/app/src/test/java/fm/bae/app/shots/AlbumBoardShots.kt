@@ -374,6 +374,7 @@ private fun AlbumPageContent(
                         onSelectWork = {},
                     ),
                 releaseDownloadControl = {},
+                shownRating = { detail.rating },
                 catalogName = catalogName,
                 audioChannelsKey = { "core.audio.channels.stereo" },
             )

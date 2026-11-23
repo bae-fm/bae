@@ -64,6 +64,7 @@ private fun Detail(actions: @Composable RowScope.() -> Unit) =
                     galleryItemCount = 0u,
                     onShowGallery = {},
                     onShowWhere = {},
+                    shownRating = { plainDetail.rating },
                 )
             }
         }

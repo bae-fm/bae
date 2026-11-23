@@ -89,6 +89,7 @@ private fun Header(
         galleryItemCount = 0u,
         onShowGallery = {},
         onShowWhere = {},
+        shownRating = { detail.rating },
         actions = actions,
     )
 }

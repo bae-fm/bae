@@ -57,7 +57,7 @@ internal fun AndroidAlbumHeader(
     galleryItemCount: UInt,
     onShowGallery: () -> Unit,
     onShowWhere: () -> Unit,
-    shownRating: () -> BridgeAlbumRating = { detail.rating },
+    shownRating: () -> BridgeAlbumRating,
     actions: @Composable () -> Unit = {},
 ) {
     val album = detail.album
