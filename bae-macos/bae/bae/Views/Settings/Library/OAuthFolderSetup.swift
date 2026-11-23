@@ -123,6 +123,7 @@
                         }
                     }
                     .fitsItsContent()
+                    .padding(.bottom, ThemeSpace.related + ThemeSpace.line)
                 }
             )
         }

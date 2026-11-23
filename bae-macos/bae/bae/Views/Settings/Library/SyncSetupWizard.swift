@@ -166,7 +166,7 @@ struct SyncSetupWizard: View {
                     }
                 }
             }
-            .formStyle(.settingsInSheet)
+            .formStyle(.settingsBoxInSheet)
             .fitsItsContent()
 
             MacSheetFooter {

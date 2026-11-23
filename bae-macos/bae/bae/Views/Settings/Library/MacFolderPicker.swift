@@ -68,28 +68,24 @@
             @Bindable
             var browser = browser
             let words = browser.provider.words
-            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
+            VStack(
+                alignment: .leading,
+                spacing: ThemeSpace.related + ThemeSpace.line
+            ) {
                 Text(words.heading)
                     .themeText(.body)
                     .foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if browser.nests {
                     HStack {
-                        Text(
-                            browser.pathNames.dropFirst()
-                                .reduce(
-                                    browser.pathNames.first ?? ""
-                                ) { path, name in
-                                    String(localized: "\(path) › \(name)")
-                                }
-                        )
-                        .themeText(.body)
+                        trail
                         Spacer()
                         if browser.canOpenParent {
                             MacButton("Up", kind: .borderless) {
                                 browser.openParent()
                             }
-                            .disabled(browser.isWorking)
+                            .neutral()
+                            .disabled(browser.isWorking || browser.isNaming)
                         }
                     }
                 }
@@ -131,6 +127,16 @@
                     )
                 }
             }
+        }
+
+        /// Where the person is: the folders above in secondary text, the one
+        /// open in primary.
+        private var trail: Text {
+            let names = browser.pathNames
+            let above = names.dropLast().map { "\($0) › " }.joined()
+            return Text(verbatim: above).foregroundStyle(Theme.textSecondary)
+                + Text(verbatim: names.last ?? "")
+                .foregroundStyle(Theme.textPrimary)
         }
 
         /// A folder row: tapping chooses it, and where folders open into

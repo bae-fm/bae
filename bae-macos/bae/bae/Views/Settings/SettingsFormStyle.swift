@@ -7,13 +7,22 @@ extension FormStyle where Self == SettingsFormStyle {
     static var settings: SettingsFormStyle { SettingsFormStyle() }
 
     /// The settings form inside a sheet, which has its own margin at the
-    /// sides and between its parts: a section keeps the space the boards put
-    /// over it, even the first, and the form ends the 10 points that a
-    /// sheet's parts have between them above what follows.
+    /// sides and between its parts: a section under a title keeps the space
+    /// the boards put over it, even the first, and the form ends the 10
+    /// points that a sheet's parts have between them above what follows.
     static var settingsInSheet: SettingsFormStyle {
         SettingsFormStyle(
             sideInset: 0,
             topInset: RowMetrics.sectionGap,
+            bottomInset: ThemeSpace.related + ThemeSpace.line
+        )
+    }
+
+    /// The settings form inside a sheet for a box with no title, which the
+    /// boards place 10 points under what is above it, as a sheet's parts are.
+    static var settingsBoxInSheet: SettingsFormStyle {
+        SettingsFormStyle(
+            sideInset: 0,
             bottomInset: ThemeSpace.related + ThemeSpace.line
         )
     }

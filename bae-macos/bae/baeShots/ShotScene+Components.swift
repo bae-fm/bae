@@ -272,7 +272,7 @@ struct ShotForm<Content: View>: View {
 
     var body: some View {
         Form { content }
-            .formStyle(.settingsWithoutMargin)
+            .formStyle(SettingsFormStyle(sideInset: 0))
             .scrollDisabled(true)
     }
 }
