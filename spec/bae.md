@@ -3805,8 +3805,9 @@ the operation's outcome until Ana's laptop acknowledges it. People shows a
 notice in the invite's place with the address, its initials and **Dismiss**.
 After "Could not invite:" the notice says what went wrong and what to fix,
 such as "Dropbox has no account for it" or "your Dropbox email is not verified.
-Verify it, then invite them again". The notice keeps the invite's place in the
-list until Ana dismisses it. **Dismiss** is one local write that
+Verify it, then invite them again". People lists open invites and notices in
+the order Ana made the invites. Each notice stays until Ana dismisses it.
+**Dismiss** is one local write that
 acknowledges the outcome to coven, so the notice leaves the list in that
 write.
 
