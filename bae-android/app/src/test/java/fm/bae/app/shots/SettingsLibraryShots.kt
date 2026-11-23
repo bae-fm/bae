@@ -19,11 +19,11 @@ class SettingsLibraryShots : BoardShot() {
     @Test
     fun androidSettingsLibraryMember() = shot("android.settings.library.member") { ScreenScene { Library(canChange = false) } }
 
-    /** The rename dialog, with the new name typed, over the Library page before its Ratings read returns. */
+    /** The rename dialog, with the new name typed, over the Library page. */
     @Test
     fun androidSettingsLibraryRename() =
         shot("android.settings.library.rename") {
-            InPlaceDialogScene(behind = { Library(ratings = false) }, keyboardUp = true) {
+            InPlaceDialogScene(behind = { Library() }, keyboardUp = true) {
                 renameLibraryParts(
                     draft = "Our music",
                     error = null,
@@ -35,26 +35,20 @@ class SettingsLibraryShots : BoardShot() {
             }
         }
 
-    /** The Library page after the rename, before its Ratings read returns. */
+    /** The Library page after the rename. */
     @Test
-    fun androidSettingsLibraryRenamed() =
-        shot("android.settings.library.renamed") {
-            ScreenScene { Library(name = "Our music", ratings = false) }
-        }
+    fun androidSettingsLibraryRenamed() = shot("android.settings.library.renamed") { ScreenScene { Library(name = "Our music") } }
 
-    /** The Library page while the cloud is full, before its Ratings read returns. */
+    /** The Library page while the cloud is full. */
     @Test
     fun androidSettingsLibrarySyncProblem() =
-        shot("android.settings.library.sync-problem") {
-            ScreenScene { Library(sync = SyncRowSummary("Cloud full", StatusTone.DANGER), ratings = false) }
-        }
+        shot("android.settings.library.sync-problem") { ScreenScene { Library(sync = SyncRowSummary("Cloud full", StatusTone.DANGER)) } }
 }
 
 @Composable
 private fun Library(
     name: String = "Home music",
     canChange: Boolean = true,
-    ratings: Boolean = true,
     sync: SyncRowSummary = SyncRowSummary("Synced", StatusTone.SUCCESS),
 ) = AndroidSettingsLibrary(
     name = name,
@@ -65,11 +59,7 @@ private fun Library(
     adminChanges = null,
     onDismissChange = {},
     ratingSystems = {
-        if (ratings) {
-            BridgeRatingSystems(albums = BridgeRatingSystem.STARS, tracks = BridgeRatingSystem.HEART, canChange = canChange)
-        } else {
-            null
-        }
+        BridgeRatingSystems(albums = BridgeRatingSystem.STARS, tracks = BridgeRatingSystem.HEART, canChange = canChange)
     },
     onChangeRatingSystem = { _, _ -> },
     onBack = {},
