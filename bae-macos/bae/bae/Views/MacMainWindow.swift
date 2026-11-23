@@ -26,12 +26,17 @@ struct MacMainWindow<
     let nowPlayingBar: () -> NowPlayingBar
 
     var body: some View {
+        // SwiftUI reads accessibility elements top to bottom, which would read
+        // the side pane's tabs before the library heading above them. The
+        // boards read the title bar, the content, the side pane, then the bar.
         VStack(spacing: 0) {
             titleBar()
+                .accessibilitySortPriority(2)
 
             HStack(spacing: 0) {
                 content()
                     .frame(maxWidth: .infinity)
+                    .accessibilitySortPriority(1)
 
                 // Docked so the content reflows beside it during drags.
                 if showSidePane {
