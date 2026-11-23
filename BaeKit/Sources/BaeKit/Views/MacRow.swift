@@ -155,7 +155,6 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                 .placesItselfInRow()
         case .label(let chevron, let action)?:
             displayRow(chevron: chevron, labelAction: action)
-                .accessibilityElement(children: .contain)
         case .removes(let action)?:
             Button(role: .destructive, action: action) {
                 rowWithPlacement(chevron: false).foregroundStyle(Theme.danger)
@@ -163,12 +162,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
             .buttonStyle(.accentPlain)
             .placesItselfInRow()
         case nil:
-            // The row reads its name, and the note under it, before the
-            // controls at its end: VoiceOver orders a window's elements by
-            // where they are, and a control centred on two lines sits
-            // between them.
             displayRow(chevron: false)
-                .accessibilityElement(children: .contain)
         }
     }
 
@@ -198,7 +192,10 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                 .placesItselfInRow()
         }
         else {
+            // VoiceOver reads the name and note before the controls at the
+            // row's end, even when a control is centred between two lines.
             row(chevron: chevron, labelAction: labelAction)
+                .accessibilityElement(children: .contain)
         }
     }
 
