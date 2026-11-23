@@ -28,8 +28,8 @@ struct MacSheet<Content: View, Footer: View>: View {
                 message: message.map { Text($0) }
             ),
             width: width,
-            content: content(),
-            footer: footer()
+            content: content,
+            footer: footer
         )
     }
 
@@ -48,8 +48,8 @@ struct MacSheet<Content: View, Footer: View>: View {
                 message: message.map { Text($0) }
             ),
             width: width,
-            content: content(),
-            footer: footer()
+            content: content,
+            footer: footer
         )
     }
 
@@ -65,8 +65,8 @@ struct MacSheet<Content: View, Footer: View>: View {
         self.init(
             header: Header(title: title, message: message),
             width: width,
-            content: content(),
-            footer: footer()
+            content: content,
+            footer: footer
         )
     }
 
@@ -79,21 +79,21 @@ struct MacSheet<Content: View, Footer: View>: View {
         self.init(
             header: nil,
             width: width,
-            content: content(),
-            footer: footer()
+            content: content,
+            footer: footer
         )
     }
 
     private init(
         header: Header?,
         width: CGFloat,
-        content: Content,
-        footer: Footer
+        content: () -> Content,
+        footer: () -> Footer
     ) {
         self.header = header
         self.width = width
-        self.content = content
-        self.footer = footer
+        self.content = content()
+        self.footer = footer()
     }
 
     var body: some View {
