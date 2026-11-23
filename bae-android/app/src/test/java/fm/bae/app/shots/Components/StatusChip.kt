@@ -11,7 +11,7 @@ class StatusChipShots : BoardShot() {
 
     @Test
     fun androidComponentStatusChipAccent() =
-        component("android.component.status-chip.accent") { StatusChip("Synced", tone = StatusTone.INFO) }
+        component("android.component.status-chip.accent") { StatusChip("Synced", tone = StatusTone.ACCENT) }
 
     @Test
     fun androidComponentStatusChipInfo() = component("android.component.status-chip.info") { StatusChip("Synced", tone = StatusTone.INFO) }
