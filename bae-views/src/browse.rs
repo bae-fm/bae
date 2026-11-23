@@ -23,10 +23,7 @@ impl LibraryBrowseSection {
     /// The line under the artist's name in its group's heading: how many
     /// albums credit it, as in the artist list.
     pub fn count_line(&self) -> bae_types::count_label::CountLabel {
-        bae_types::count_label::CountLabel {
-            key: "core.library.album_count".to_string(),
-            count: self.album_count,
-        }
+        bae_types::count_label::CountLabel::album_count(self.album_count)
     }
 }
 
