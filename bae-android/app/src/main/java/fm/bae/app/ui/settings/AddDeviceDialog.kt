@@ -287,15 +287,11 @@ private fun AddDeviceBody(
     ) {
         when {
             face is AddDeviceFace.Added -> {
-                BodyLine(stringResource(R.string.add_device_added, face.name))
+                AddDeviceOutcome(stringResource(R.string.add_device_added, face.name))
             }
 
             face is AddDeviceFace.Expired || face is AddDeviceFace.Forgotten -> {
-                Text(
-                    text = stringResource(R.string.pair_ended_title),
-                    style = ThemeText.androidBodyLarge.style,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                AddDeviceOutcome(stringResource(R.string.pair_ended_title))
                 Text(
                     text = stringResource(R.string.add_device_ended_text),
                     style = ThemeText.body.style,
@@ -304,7 +300,11 @@ private fun AddDeviceBody(
             }
 
             face is AddDeviceFace.Refused -> {
-                BodyLine(stringResource(R.string.add_device_refused))
+                Text(
+                    text = stringResource(R.string.add_device_refused),
+                    style = ThemeText.body.style,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
 
             face is AddDeviceFace.Adding -> {
@@ -333,6 +333,10 @@ private fun AddDeviceBody(
 }
 
 @Composable
-private fun BodyLine(text: String) {
-    Text(text = text, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurface)
+private fun AddDeviceOutcome(text: String) {
+    Text(
+        text = text,
+        style = ThemeText.androidBodyLarge.style.copy(lineHeight = ThemeText.body.style.lineHeight),
+        color = MaterialTheme.colorScheme.onSurface,
+    )
 }
