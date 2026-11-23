@@ -485,6 +485,8 @@ extension AccessibilityTree {
 }
 
 extension AccessibilityTree.Node {
+    var controlName: String? { title ?? description }
+
     /// The centre of the element's frame in the window's coordinates.
     @MainActor
     func center(in window: NSWindow) -> NSPoint {

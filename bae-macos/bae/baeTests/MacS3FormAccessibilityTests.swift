@@ -40,14 +40,14 @@ struct MacS3FormAccessibilityTests {
             )
             let controls = tree.nodes.filter { $0.role == kAXTextFieldRole }
             #expect(
-                controls.map { $0.title ?? $0.description } == [
+                controls.map(\.controlName) == [
                     "Endpoint", "Region", "Bucket", "Access key ID",
                     "Secret access key",
                 ]
             )
             let region = try #require(
                 controls.first {
-                    ($0.title ?? $0.description) == "Region"
+                    $0.controlName == "Region"
                 }
             )
             let row = try #require(region.parent)

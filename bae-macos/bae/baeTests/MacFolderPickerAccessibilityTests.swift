@@ -48,7 +48,7 @@
                     subject: subject
                 )
                 let nodes = tree.nodes.filter { $0.role == kAXButtonRole }
-                #expect(nodes.map { $0.title ?? $0.description } == ["Music"])
+                #expect(nodes.map(\.controlName) == ["Music"])
                 let node = try #require(nodes.first)
 
                 let buttons = try AccessibilityTree.elements(
@@ -67,7 +67,7 @@
                         .nodes
                         .contains {
                             $0.role == kAXButtonRole
-                                && ($0.title ?? $0.description) == "Music"
+                                && $0.controlName == "Music"
                                 && $0.selected == true
                         }
                 }
