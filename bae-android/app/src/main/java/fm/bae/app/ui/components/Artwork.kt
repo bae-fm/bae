@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -34,6 +35,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SymbolIcons
+import fm.bae.app.ui.appearance.ThemeOpacity
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeImageRef
 
@@ -57,7 +59,7 @@ private sealed interface SlotState {
 /**
  * Album cover clipped to a rounded square, a plain tile when there is none, or a
  * broken-image tile to tap to retry when it couldn't be loaded; [modifier] sets
- * the size.
+ * the size. [dimmed] fades the cover for an unavailable album.
  */
 @Composable
 fun Artwork(
@@ -66,6 +68,7 @@ fun Artwork(
     iconPadding: Dp,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
+    dimmed: Boolean = false,
 ) {
     ImageSlot(
         content = cover?.let { ImageContent.LibraryImage(it) },
@@ -73,6 +76,7 @@ fun Artwork(
         iconPadding = iconPadding,
         modifier = modifier,
         contentDescription = contentDescription,
+        dimmed = dimmed,
     )
 }
 
@@ -87,10 +91,14 @@ fun ImageSlot(
     iconPadding: Dp,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
+    dimmed: Boolean = false,
 ) {
     val store = LocalImageStore.current
     BoxWithConstraints(
-        modifier = modifier.clip(RoundedCornerShape(cornerRadius)),
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(cornerRadius))
+                .alpha(if (dimmed) ThemeOpacity.dimmed else 1f),
         contentAlignment = Alignment.Center,
     ) {
         val size = DecodeSize.FitTo(boundedPixelSize(constraints))

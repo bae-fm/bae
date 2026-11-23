@@ -36,28 +36,31 @@ internal fun AndroidAlbumTile(
     modifier: Modifier = Modifier,
 ) {
     val unavailable = if (unplayable) stringResource(R.string.release_not_on_this_device) else null
+    val textModifier = if (unplayable) Modifier.alpha(ThemeOpacity.dimmed) else Modifier
     Column(
         modifier =
             modifier
                 .clickable(role = Role.Button, onClick = onClick)
-                .semantics { unavailable?.let { stateDescription = it } }
-                .alpha(if (unplayable) ThemeOpacity.dimmed else 1f),
+                .semantics { unavailable?.let { stateDescription = it } },
     ) {
         Artwork(
             cover = cover,
             cornerRadius = ThemeRadius.cover,
             iconPadding = 40.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            dimmed = unplayable,
         )
         Spacer(modifier = Modifier.height(ThemeSpace.compact))
         Text(
             text = title,
+            modifier = textModifier,
             style = ThemeText.rowTitle.style,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = line,
+            modifier = textModifier,
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
