@@ -30,18 +30,6 @@ pub struct MappingTable {
     pub untitled_track_count: u32,
 }
 
-impl MappingTable {
-    /// How long the table's tracks play together, in milliseconds.
-    pub fn track_length_ms(&self) -> u64 {
-        self.track_sides
-            .iter()
-            .flatten()
-            .flat_map(crate::track_table::TrackTableSide::rows)
-            .map(|row| row.length_ms)
-            .sum()
-    }
-}
-
 /// One row in the files section of the mapping table.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MappingFileRow {

@@ -254,6 +254,7 @@ SELECT json_object(
                    WHERE f.relative_path IN (SELECT file_id FROM unplayed_files)), '[]')),
     'untitled', (SELECT COUNT(*) FILTER (WHERE bae_trim(title) = '') FROM rows),
     'tracks', (SELECT COUNT(*) FROM rows),
+    'length_ms', (SELECT COALESCE(SUM(unit_ms), 0) FROM rows),
     'units', (SELECT COUNT(*) FROM scan_candidate_unit
               WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key))",
         track = crate::tables::import_state::track_json_sql(),
@@ -475,6 +476,8 @@ struct Document {
     files: Option<Vec<CarriedJson>>,
     untitled: u32,
     tracks: u32,
+    /// How long the draft's tracks play together, in milliseconds.
+    length_ms: u64,
     units: u32,
 }
 
@@ -488,12 +491,20 @@ pub(super) fn load_mapping_rows_on(
     Ok(MappingRows { document })
 }
 
+/// The mapping statement's document, read: the mapping table, and how long
+/// its tracks play together.
+pub(super) struct MappingRead {
+    pub(super) table: MappingTable,
+    /// The sum of the tracks' lengths, in milliseconds.
+    pub(super) track_length_ms: u64,
+}
+
 impl MappingRows {
     /// The mapping table over the draft's tracks. Refuses a draft whose
     /// tracks are not the folder's audio units in order: every write that
     /// changes the folder's files rebuilds the draft, so a mismatch is a
     /// stored state that contradicts itself.
-    pub(super) fn table(&self) -> Result<MappingTable, ImportError> {
+    pub(super) fn read(&self) -> Result<MappingRead, ImportError> {
         let internal = |detail: String| ImportError::Internal { detail };
         let document: Document = serde_json::from_str(&self.document)
             .map_err(|error| internal(format!("the mapping statement's document: {error}")))?;
@@ -511,7 +522,7 @@ impl MappingRows {
             .files
             .map(|files| files.into_iter().map(carried_row).collect::<Result<Vec<_>, _>>())
             .transpose()?;
-        Ok(MappingTable {
+        let table = MappingTable {
             images: document.images.map(|images| {
                 images
                     .into_iter()
@@ -530,7 +541,8 @@ impl MappingRows {
             files,
             track_count: document.tracks,
             untitled_track_count: document.untitled,
-        })
+        };
+        Ok(MappingRead { table, track_length_ms: document.length_ms })
     }
 }
 
@@ -718,6 +730,7 @@ impl crate::tables::ImportTables {
             .read(move |sql| load_mapping_rows_on(&sql, &key))
             .await
             .expect("the rows are read")
-            .table()
+            .read()
+            .map(|read| read.table)
     }
 }

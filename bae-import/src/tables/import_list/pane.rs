@@ -280,7 +280,8 @@ impl CandidateDetailRows {
                     album,
                     cover,
                 } = *draft;
-                let mapping = mapping.table()?;
+                let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
+                    mapping.read()?;
                 ProjectedStage::Drafting(Box::new(DraftProjection {
                     metadata_provenance: current
                         .as_ref()
@@ -297,6 +298,7 @@ impl CandidateDetailRows {
                     draft_valid: pane_rows.draft_valid,
                     album_artists,
                     mapping,
+                    track_length_ms,
                     cover,
                     lookup_choices,
                     failure: pane_rows.failure,

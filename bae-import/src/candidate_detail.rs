@@ -93,6 +93,9 @@ pub struct DraftProjection {
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
+    /// How long the mapping's tracks play together, in milliseconds, as the
+    /// mapping statement sums them.
+    pub track_length_ms: u64,
     /// The cover this candidate commits with: its selection, the picked
     /// release's default, or the folder's default image.
     pub cover: Option<CoverChoice>,
@@ -222,6 +225,7 @@ impl ImportCandidateDetailProjection {
                     draft_valid,
                     album_artists,
                     mapping,
+                    track_length_ms,
                     cover,
                     lookup_choices,
                     failure,
@@ -286,7 +290,7 @@ impl ImportCandidateDetailProjection {
                             metadata_provenance,
                             Some(MetadataProvenance::FileMetadata)
                         ))
-                        .then(|| metadata_draft.pressing.release_lines(mapping.track_length_ms())),
+                        .then(|| metadata_draft.pressing.release_lines(track_length_ms)),
                         metadata_draft,
                         album_artists,
                         metadata_draft_is_blank: draft_blank,

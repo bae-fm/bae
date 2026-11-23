@@ -110,8 +110,9 @@ async fn pane_draft(
         .clone()
 }
 
-/// The pane counts the tracks and summarizes the audio of the files the scan
-/// stored, and the cover picker lists the folder's images it can show.
+/// The pane counts the tracks, totals their length and summarizes the audio
+/// of the files the scan stored, and the cover picker lists the folder's
+/// images it can show.
 #[tokio::test]
 async fn the_pane_counts_and_summarizes_the_folder_s_files() {
     use crate::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
@@ -161,6 +162,8 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
 
     let files = &detail.files;
     assert_eq!(files.track_count, 2);
+    // The mapping statement sums the two five-second tracks.
+    assert_eq!(pane_draft(&db, &candidate).await.track_length_ms, 10_000);
     assert_eq!(
         files.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Uniform {
