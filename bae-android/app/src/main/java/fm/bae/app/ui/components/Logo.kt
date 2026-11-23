@@ -1,6 +1,5 @@
 package fm.bae.app.ui.components
 
-import android.animation.ValueAnimator
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -10,9 +9,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.times
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SemanticColors
+import fm.bae.app.ui.appearance.observeAndroidAnimatorsEnabled
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sqrt
@@ -141,10 +143,16 @@ internal fun Logo(
  */
 @Composable
 private fun rememberBobSeconds(bob: Boolean): (() -> Double)? {
-    val moves = bob && ValueAnimator.areAnimatorsEnabled()
+    if (!bob) return null
+    var moves by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        val unsubscribe = observeAndroidAnimatorsEnabled { moves = it }
+        onDispose(unsubscribe)
+    }
     var millis by remember { mutableLongStateOf(0L) }
     LaunchedEffect(moves) {
         if (!moves) return@LaunchedEffect
+        millis = 0L
         val start = withInfiniteAnimationFrameMillis { it }
         while (true) {
             withInfiniteAnimationFrameMillis { millis = it - start }
