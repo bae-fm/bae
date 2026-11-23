@@ -6,6 +6,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLibraryNameSubscription
+import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,7 +30,7 @@ import uniffi.bae_bridge.LibraryNameSubscription
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
-class SettingsLibraryModelTest {
+class SettingsReadTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     /**
@@ -46,45 +47,45 @@ class SettingsLibraryModelTest {
     @Test
     fun aFailedNameSubscriptionIsAFailureAndRetrySubscribesAgain() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        val read = libraryNameRead(handle)
 
-        model.watchName()
+        read.watch()
         handle.names
             .last()
             .pulls
             .fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(LibraryNameRead.Failed(DisplayError("couldn't reach the cloud")), model.name)
+        assertEquals(SettingsReadState.Failed(DisplayError("couldn't reach the cloud")), read.state)
 
-        model.watchName()
+        read.watch()
         handle.names
             .last()
             .pulls
             .deliver("Household")
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(LibraryNameRead.Named("Household"), model.name)
+        assertEquals(SettingsReadState.Loaded("Household"), read.state)
         assertEquals(2, handle.names.size)
     }
 
     @Test
     fun aReplacedNameSubscriptionCannotOverwriteItsReplacement() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
-        model.watchName()
+        val read = libraryNameRead(handle)
+        read.watch()
         val replaced = handle.names.last().pulls
-        model.watchName()
+        read.watch()
 
         replaced.fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(LibraryNameRead.Loading, model.name)
+        assertEquals(SettingsReadState.Loading, read.state)
     }
 
     @Test
     fun aCancelledNameSubscriptionLeavesTheNameAsItWas() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
-        model.watchName()
+        val read = libraryNameRead(handle)
+        read.watch()
         handle.names
             .last()
             .pulls
@@ -97,8 +98,13 @@ class SettingsLibraryModelTest {
             .fail(BridgeException.Cancelled())
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(LibraryNameRead.Named("Household"), model.name)
+        assertEquals(SettingsReadState.Loaded("Household"), read.state)
     }
+
+    private fun libraryNameRead(handle: SettingsHandle) =
+        SettingsRead("the library's name", TestErrorDisplays, scope) {
+            handle.subscribeLibraryName().let { pulled(it::next, it::cancel) }
+        }
 
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 

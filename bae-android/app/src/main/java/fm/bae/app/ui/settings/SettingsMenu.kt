@@ -98,7 +98,7 @@ internal fun SettingsMenu(
 @Composable
 internal fun rememberSettingsSummaries(
     config: BridgeConfig,
-    libraryName: LibraryNameRead,
+    libraryName: String?,
     sync: SyncRowSummary,
     deviceStorage: LiveValue<BridgeDeviceStorage>?,
 ): SettingsSummaries {
@@ -117,7 +117,7 @@ internal fun rememberSettingsSummaries(
     return SettingsSummaries(
         appearance = appearanceWords.joinToString(separator) { resources.getString(it) },
         library =
-            listOfNotNull((libraryName as? LibraryNameRead.Named)?.name, sync.text)
+            listOfNotNull(libraryName, sync.text)
                 .joinToString(separator)
                 .ifEmpty { null },
         playback =

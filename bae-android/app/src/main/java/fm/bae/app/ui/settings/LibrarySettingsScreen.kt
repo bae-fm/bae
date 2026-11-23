@@ -53,7 +53,8 @@ internal fun LibrarySettingsScreen(
     onPush: (LibraryDestination) -> Unit,
 ) {
     val scope = rememberScreenScope()
-    val model = rememberSettingsLibraryModel(session)
+    val libraryName = rememberLibraryNameRead(session)
+    val ratingSystems = rememberRatingSystemsRead(session)
     val members = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
     DisposableEffect(members) { onDispose(members.subscribe()) }
     LaunchedEffect(members) { members.adminChanges.show(BridgeAdminChangePlace.Library) }
@@ -66,7 +67,7 @@ internal fun LibrarySettingsScreen(
         if (!hasStorage) bugs.reportShownInPlace("show a library's storage", LibraryWithoutStorage())
     }
     var renaming by remember { mutableStateOf(false) }
-    val name = (model.name as? LibraryNameRead.Named)?.name
+    val name = libraryName.value
     AndroidSettingsLibrary(
         name = name,
         canChange = members.selfIsAdmin,
@@ -78,7 +79,7 @@ internal fun LibrarySettingsScreen(
         onDismissChange = { change ->
             members.perform("dismiss an admin change") { session.appHandle.acknowledgeAdminChange(change.operation) }
         },
-        ratingSystems = { (model.ratingSystems as? RatingSystemsRead.Loaded)?.systems },
+        ratingSystems = { ratingSystems.value },
         onChangeRatingSystem = { items, system ->
             session.messages.performAndWait("set the rating system") {
                 session.appHandle.setRatingSystem(items, system)
@@ -90,7 +91,7 @@ internal fun LibrarySettingsScreen(
         onOpenPeople = { onPush(LibraryDestination.Members()) },
     ) {
         if (!hasStorage) SomethingWentWrongNotice()
-        LibraryNameFailures(model = model, members = members)
+        LibraryReadFailures(libraryName, ratingSystems, members)
     }
     if (renaming && name != null) {
         RenameLibraryDialog(session = session, current = name, onDismiss = { renaming = false })
@@ -162,13 +163,16 @@ internal fun AndroidSettingsLibrary(
 
 /** Shows why the screen could not read the name, the rating systems or the people, each with Retry. */
 @Composable
-private fun LibraryNameFailures(
-    model: SettingsLibraryModel,
+private fun LibraryReadFailures(
+    libraryName: SettingsRead<String>,
+    ratingSystems: SettingsRead<BridgeRatingSystems>,
     members: MembersModel,
 ) {
-    (model.name as? LibraryNameRead.Failed)?.let { ReadFailure(error = it.error, onRetry = model::watchName) }
-    (model.ratingSystems as? RatingSystemsRead.Failed)?.let {
-        ReadFailure(error = it.error, onRetry = model::watchRatingSystems)
+    (libraryName.state as? SettingsReadState.Failed)?.let {
+        ReadFailure(error = it.error, onRetry = libraryName::watch)
+    }
+    (ratingSystems.state as? SettingsReadState.Failed)?.let {
+        ReadFailure(error = it.error, onRetry = ratingSystems::watch)
     }
     (members.people as? PeopleRead.Failed)?.let { ReadFailure(error = it.error, onRetry = members::retry) }
 }
