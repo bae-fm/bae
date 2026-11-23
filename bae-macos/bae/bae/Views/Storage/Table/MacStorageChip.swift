@@ -49,21 +49,9 @@ struct MacStorageChip: View {
                 StorageWord("Queued")
             }
         case .pinning(.queued):
-            if long {
-                StorageWord(verbatim: BridgeDownloadKind.pin.queuedLabel)
-            }
-            else {
-                StorageWord("Queued")
-            }
+            queuedDownload(.pin)
         case .movingToThisDevice(.queued):
-            if long {
-                StorageWord(
-                    verbatim: BridgeDownloadKind.moveToThisDevice.queuedLabel
-                )
-            }
-            else {
-                StorageWord("Queued")
-            }
+            queuedDownload(.moveToThisDevice)
         case .pinning(.running):
             StoragePinningChipContainer(releaseId: release.id)
         case .movingToThisDevice(.running):
@@ -82,6 +70,16 @@ struct MacStorageChip: View {
             StorageWord("Pinned")
         case .inStorage:
             StorageWord("Cloud")
+        }
+    }
+
+    @ViewBuilder
+    private func queuedDownload(_ kind: BridgeDownloadKind) -> some View {
+        if long {
+            StorageWord(verbatim: kind.queuedLabel)
+        }
+        else {
+            StorageWord("Queued")
         }
     }
 }
