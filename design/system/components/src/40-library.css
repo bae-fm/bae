@@ -265,7 +265,9 @@
 .bae-m-sidepause-count { font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); font-variant-numeric: tabular-nums; }
 .bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: var(--space-related); padding-top: var(--space-related); }
 .bae-m-castpop { color: var(--text-primary); display: flex; flex-direction: column; gap: var(--space-compact); padding: var(--space-compact) var(--space-inline) var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+/* The header is the eyebrow alone, with no space under it but the list's gap, as in the app. */
 .bae-m-castpop-head { padding: var(--space-group) var(--space-group) 0; }
+.bae-m-castpop-head > .bae-m-eyebrow { padding-bottom: 0; }
 .bae-m-castpop-none { padding: var(--space-compact) var(--space-group); color: var(--text-secondary); }
 /* A receiver row: a box row's inset around MacItem, which spans it, so Disconnect sits at the right edge. */
 .bae-m-castrow { padding: calc(var(--space-related) + var(--space-line)) var(--space-group); }
