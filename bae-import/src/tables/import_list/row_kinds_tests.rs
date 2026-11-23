@@ -269,12 +269,15 @@ async fn a_window_reads_imported_rows_in_statements_its_size_does_not_change() {
 async fn an_imported_row_shows_its_upload_waiting_whatever_the_window_holds() {
     let lib = library_of(Kind::Imported, 3).await;
     let (read, _) = read_window(&lib, Kind::Imported, 3).await;
-    for row in window_rows(&read) {
+    for (item, _) in &read.rows {
+        let crate::ImportListItem::Candidate { row, live, .. } = item else {
+            panic!("the window holds imported candidates");
+        };
         assert_eq!(
-            row.upload,
-            Some(bae_records::UploadProgress { queued: 1, uploading: 0 }),
+            row.state_line(live),
+            Some(crate::triage::TriageStateLine::QueuedToUpload),
             "{}",
-            display_path(&row)
+            display_path(row)
         );
     }
 }

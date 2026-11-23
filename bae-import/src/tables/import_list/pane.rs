@@ -281,7 +281,7 @@ impl CandidateDetailRows {
                     cover,
                 } = *draft;
                 let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
-                    mapping.read()?;
+                    mapping.read(album_artists.is_some())?;
                 ProjectedStage::Drafting(Box::new(DraftProjection {
                     metadata_provenance: current
                         .as_ref()

@@ -15,7 +15,7 @@ struct InvalidCandidateRow: View {
         ImportListRowLayout(
             coverContent: invalid.cover.map(ImageContent.init(bridge:))
         ) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 if let tags = invalid.tags {
                     MacImportReleaseSummary(
                         summary: ImportReleaseSummary(tags: tags),
@@ -31,6 +31,7 @@ struct InvalidCandidateRow: View {
                     .cutLine(.prose)
             }
         }
+        .frame(minHeight: ImportCandidateTableLayout.height(for: invalid))
         .contentShape(Rectangle())
         .help(invalid.reason.localizedText)
         .macContextMenu {

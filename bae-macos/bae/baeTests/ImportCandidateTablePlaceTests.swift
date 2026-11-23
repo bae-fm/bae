@@ -542,7 +542,7 @@ extension ImportCandidateTablePlaceTests {
                 metadataSummary: nil,
                 cover: nil,
                 importStatus: nil,
-                upload: nil,
+                stateLine: nil,
                 metadataProvenance: nil,
                 reading: .unidentified
             ),

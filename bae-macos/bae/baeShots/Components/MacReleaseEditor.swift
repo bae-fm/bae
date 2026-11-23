@@ -245,6 +245,7 @@ extension ShotScene {
             if content == .blank {
                 row.track.title = ""
                 row.track.artistAssignments = .explicit(assignments: [])
+                row.showsAlbumArtist = false
             }
             return row
         }

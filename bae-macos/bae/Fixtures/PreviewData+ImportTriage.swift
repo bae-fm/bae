@@ -15,7 +15,7 @@ extension PreviewData {
         metadataSummary: BridgeTriageMetadataSummary? = nil,
         cover: BridgeCoverImageSource? = nil,
         importStatus: BridgeTriageImportStatus? = nil,
-        upload: BridgeUploadProgress? = nil,
+        stateLine: BridgeTriageStateLine? = nil,
         metadataProvenance: BridgeMetadataProvenance? = nil,
         reading: BridgeTriageReading = .unidentified,
         live: BridgeCandidateLiveState = triageLive([])
@@ -30,7 +30,7 @@ extension PreviewData {
             metadataSummary: metadataSummary,
             cover: cover,
             importStatus: importStatus,
-            upload: upload,
+            stateLine: stateLine,
             metadataProvenance: metadataProvenance,
             reading: reading
         )
@@ -164,7 +164,7 @@ extension PreviewData {
         placement: .pending,
         metadataSummary: BridgeTriageMetadataSummary(
             albumTitle: "Album Title Twelve",
-            albumArtists: .named("Artist Name")
+            artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
         metadataProvenance: .fileMetadata,
@@ -189,7 +189,7 @@ extension PreviewData {
         placement: .pending,
         metadataSummary: BridgeTriageMetadataSummary(
             albumTitle: "Album Title Thirteen",
-            albumArtists: .named("Artist Name")
+            artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
         metadataProvenance: .externalRelease(
@@ -207,7 +207,7 @@ extension PreviewData {
         placement: .pending,
         metadataSummary: BridgeTriageMetadataSummary(
             albumTitle: "Album Title Fourteen",
-            albumArtists: .named("Artist Name")
+            artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
         metadataProvenance: .externalRelease(
@@ -304,6 +304,7 @@ extension PreviewData {
         for: importTabImportingCandidate,
         placement: .pending,
         metadataSummary: nil,
+        stateLine: .importing(step: .running(phase: .measuringLoudness)),
         live: triageLive(
             [],
             importStep: .running(phase: .measuringLoudness)
@@ -324,7 +325,7 @@ extension PreviewData {
         placement: .done,
         metadataSummary: BridgeTriageMetadataSummary(
             albumTitle: "Album Title Sixteen",
-            albumArtists: .named("Artist Name")
+            artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
         importStatus: .complete(
@@ -349,7 +350,7 @@ extension PreviewData {
         placement: .done,
         metadataSummary: BridgeTriageMetadataSummary(
             albumTitle: "Album Title",
-            albumArtists: .named("Artist Name")
+            artistLine: .named("Artist Name")
         ),
         importStatus: .complete(
             release: BridgeImportedRelease(

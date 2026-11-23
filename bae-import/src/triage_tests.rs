@@ -24,10 +24,7 @@ fn a_person_s_draft_states_no_folder_check() {
 }
 
 fn a_draft() -> TriageMetadataSummary {
-    TriageMetadataSummary {
-        album_title: "Album Title".to_string(),
-        album_artists: bae_types::credits::CreditLine::default(),
-    }
+    TriageMetadataSummary { album_title: "Album Title".to_string(), artist_line: None }
 }
 
 /// The records a pick's documents describe a release in, as the reader

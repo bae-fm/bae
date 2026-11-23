@@ -527,6 +527,7 @@ mod conversion_roundtrip {
                         length_ms: 123_000,
                         listed_length_ms: Some(130_000),
                         artists: None,
+                        shows_album_artist: false,
                     })],
                 }]),
                 files: None,
@@ -566,6 +567,7 @@ mod conversion_roundtrip {
             };
             assert_eq!(row.track.title, "Track Title");
             assert_eq!(row.track.id, "track-id");
+            assert!(!row.shows_album_artist);
             assert!(matches!(row.audition, BridgeTrackAudition::LibraryTrack));
             assert_eq!(row.source, BridgeTrackSource::File { name: "source.flac".to_string() });
             assert!(bridge.files.is_none());

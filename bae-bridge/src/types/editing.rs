@@ -427,6 +427,8 @@ pub struct BridgeTrackTableRow {
     /// The track's own artists, each with how it stands to the library;
     /// `None` when the track takes its album's artists or names none.
     pub artists: Option<BridgeArtistField>,
+    /// The artist field reads “Album artist”.
+    pub shows_album_artist: bool,
 }
 
 /// What a row's source cell names. Mirror of bae-import's `TrackSource`.

@@ -81,21 +81,23 @@ extension ShotScene {
         title: String? = nil,
         artist: String? = nil,
         record: String? = nil,
-        live: BridgeCandidateLiveState
+        live: BridgeCandidateLiveState,
+        stateLine: BridgeTriageStateLine? = nil
     ) throws -> BridgeTriageRow {
         PreviewData.boardRow(
             folder,
             summary: title.map {
                 BridgeTriageMetadataSummary(
                     albumTitle: $0,
-                    albumArtists: .named(artist ?? "")
+                    artistLine: artist.map { .named($0) }
                 )
             },
             record: record,
             cover: try title.map {
                 .local(file: try BoardArtwork.scannedFile(named: $0))
             },
-            live: live
+            live: live,
+            stateLine: stateLine
         )
     }
 
@@ -119,7 +121,7 @@ extension ShotScene {
             .lowTideHours,
             summary: BridgeTriageMetadataSummary(
                 albumTitle: "Low Tide Hours",
-                albumArtists: .named("Mara Quill")
+                artistLine: .named("Mara Quill")
             ),
             record: "component-low-tide-hours",
             cover: .local(file: try PreviewData.lowTideHoursCover().file),
@@ -128,21 +130,21 @@ extension ShotScene {
             importStatus: .complete(
                 release: PreviewData.boardImported(.lowTideHours)
             ),
-            upload: BridgeUploadProgress(
-                queued: 0,
-                uploading: 1,
-                activity: .uploading
+            stateLine: .uploading(
+                releaseId: PreviewData.boardImported(.lowTideHours).releaseId
             )
         )
     }
 
     private static func northboundRow() throws -> BridgeTriageRow {
-        try listRow(
+        let standing = PreviewData.NorthboundStanding.importing
+        return try listRow(
             .northbound,
             title: "Northbound",
             artist: "Mara Quill",
             record: "component-northbound",
-            live: PreviewData.northboundImportingLive
+            live: standing.live,
+            stateLine: standing.stateLine
         )
     }
 
@@ -187,13 +189,7 @@ extension ShotScene {
                 .untitled07,
                 live: PreviewData.needsYou(.nothingToLookUp)
             ),
-            try listRow(
-                .northbound,
-                title: "Northbound",
-                artist: "Mara Quill",
-                record: "component-northbound",
-                live: PreviewData.northboundImportingLive
-            ),
+            try northboundRow(),
             try listRow(
                 .smallHours,
                 title: "Small Hours",

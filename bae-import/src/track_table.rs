@@ -68,6 +68,8 @@ pub struct TrackTableRow {
     /// the read that returned the row found them; `None` when the track
     /// takes its album's artists or names none.
     pub artists: Option<crate::ArtistField>,
+    /// The track takes its album's artists and the album names at least one.
+    pub shows_album_artist: bool,
 }
 
 /// What a row's source cell names.

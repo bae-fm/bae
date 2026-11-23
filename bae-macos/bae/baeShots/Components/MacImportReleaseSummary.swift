@@ -82,7 +82,11 @@ extension ShotScene {
                     : PreviewData.releaseLines(of: edit, minutes: minutes),
                 mapping: BridgeMappingTable(
                     images: [],
-                    trackSides: PreviewData.boardTrackSides(tracks, edit: edit),
+                    trackSides: PreviewData.boardTrackSides(
+                        tracks,
+                        edit: edit,
+                        showsAlbumArtist: true
+                    ),
                     files: [],
                     untitledTrackCount: 0
                 )

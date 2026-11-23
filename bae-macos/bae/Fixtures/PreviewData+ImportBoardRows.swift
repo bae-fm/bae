@@ -24,7 +24,7 @@ extension PreviewData {
         placement: BridgeTriagePlacement = .pending,
         live: BridgeCandidateLiveState = triageLive(boardDraftActions),
         importStatus: BridgeTriageImportStatus? = nil,
-        upload: BridgeUploadProgress? = nil
+        stateLine: BridgeTriageStateLine? = nil
     ) -> BridgeTriageRow {
         triageRow(
             for: boardCandidate(folder),
@@ -32,7 +32,7 @@ extension PreviewData {
             metadataSummary: summary,
             cover: cover,
             importStatus: importStatus,
-            upload: upload,
+            stateLine: stateLine,
             metadataProvenance: record.map {
                 .externalRelease(
                     record: BridgeLookupRef(catalog: .musicBrainz, key: $0)
@@ -61,23 +61,29 @@ extension PreviewData {
         )
     }
 
-    /// Northbound's row while its import runs, measuring loudness.
-    static let northboundImportingLive = triageLive(
-        [],
-        importStep: .running(phase: .measuringLoudness)
-    )
-
     /// How Northbound stands in the Found tab: running its import, or
     /// identified and waiting.
     enum NorthboundStanding {
         case importing
         case identified
 
+        private static let importingStep = BridgeImportStep.running(
+            phase: .measuringLoudness
+        )
+
         var live: BridgeCandidateLiveState {
             switch self {
-            case .importing: PreviewData.northboundImportingLive
+            case .importing:
+                PreviewData.triageLive([], importStep: Self.importingStep)
             case .identified:
                 PreviewData.triageLive(PreviewData.boardDraftActions)
+            }
+        }
+
+        var stateLine: BridgeTriageStateLine? {
+            switch self {
+            case .importing: .importing(step: Self.importingStep)
+            case .identified: nil
             }
         }
     }
@@ -89,12 +95,12 @@ extension PreviewData {
 
     /// The Found tab's rows as the boards list them.
     static func foundItems(
-        northboundLive: BridgeCandidateLiveState,
+        northbound: NorthboundStanding,
         images: FoundBoardImages
     ) -> [BridgeImportListItem] {
         groupItems(cover: images.fieldRecordings.image)
             + lookupItems(images: images.lookup)
-            + importItems(northboundLive: northboundLive, images: images)
+            + importItems(northbound: northbound, images: images)
     }
 
     /// Field Recordings' two discs, listed under their folder's header.
@@ -113,7 +119,7 @@ extension PreviewData {
                     .fieldRecordings,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Field Recordings",
-                        albumArtists: .named("Mara Quill")
+                        artistLine: .named("Mara Quill")
                     ),
                     record: "board-field-recordings",
                     cover: cover
@@ -158,7 +164,7 @@ extension PreviewData {
                     .smallHours,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Small Hours",
-                        albumArtists: .named("Tomas Brell")
+                        artistLine: .named("Tomas Brell")
                     ),
                     cover: .local(file: images.smallHours),
                     live: triageLive(
@@ -184,7 +190,7 @@ extension PreviewData {
             .lowTideHours,
             summary: BridgeTriageMetadataSummary(
                 albumTitle: "Low Tide Hours",
-                albumArtists: .named("Mara Quill")
+                artistLine: .named("Mara Quill")
             ),
             record: "board-low-tide-hours",
             cover: .local(file: cover),
@@ -200,7 +206,7 @@ extension PreviewData {
             folder.folder,
             summary: BridgeTriageMetadataSummary(
                 albumTitle: folder.album,
-                albumArtists: .named(folder.artist)
+                artistLine: .named(folder.artist)
             ),
             cover: .local(file: cover),
             live: needsYou(.notFound)
@@ -209,7 +215,7 @@ extension PreviewData {
 
     /// Northbound and the other rows whose imports are queued or failed.
     static func importItems(
-        northboundLive: BridgeCandidateLiveState,
+        northbound: NorthboundStanding,
         images: FoundBoardImages
     ) -> [BridgeImportListItem] {
         let northboundRow = boardRow(
@@ -217,7 +223,8 @@ extension PreviewData {
             summary: northboundSummary,
             record: "board-northbound",
             cover: .local(file: images.northbound.file),
-            live: northboundLive
+            live: northbound.live,
+            stateLine: northbound.stateLine
         )
         return [
             candidateItem(northboundRow),
@@ -226,7 +233,7 @@ extension PreviewData {
                     .saltAndCedar,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Salt and Cedar",
-                        albumArtists: .named("The Slow Orchards")
+                        artistLine: .named("The Slow Orchards")
                     ),
                     record: "board-salt-and-cedar",
                     cover: .local(file: images.saltAndCedar),
@@ -244,7 +251,7 @@ extension PreviewData {
             .paperLanterns,
             summary: BridgeTriageMetadataSummary(
                 albumTitle: "Paper Lanterns",
-                albumArtists: .named("The Slow Orchards")
+                artistLine: .named("The Slow Orchards")
             ),
             cover: .local(file: cover),
             placement: .failed,
@@ -280,7 +287,7 @@ extension PreviewData {
         _ folder: BoardFolder,
         summary: BridgeTriageMetadataSummary,
         cover: BridgeFileVersion,
-        upload: BridgeUploadProgress? = nil
+        stateLine: BridgeTriageStateLine? = nil
     ) -> BridgeImportListItem {
         candidateItem(
             boardRow(
@@ -291,7 +298,7 @@ extension PreviewData {
                 placement: .done,
                 live: triageLive([.revealFolder]),
                 importStatus: .complete(release: boardImported(folder)),
-                upload: upload
+                stateLine: stateLine
             )
         )
     }

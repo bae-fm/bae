@@ -198,7 +198,7 @@ extension PreviewData {
     static let northboundArtist = "Mara Quill"
     static let northboundSummary = BridgeTriageMetadataSummary(
         albumTitle: northboundTitle,
-        albumArtists: .named(northboundArtist)
+        artistLine: .named(northboundArtist)
     )
 
     static func northboundCover() throws -> BridgeMappingImage {
@@ -312,7 +312,8 @@ extension PreviewData {
     /// `tracks`, each file the track `edit` puts on it, in one flat side.
     static func boardTrackSides(
         _ tracks: [BoardTrack],
-        edit: BridgeRawReleaseEdit
+        edit: BridgeRawReleaseEdit,
+        showsAlbumArtist: Bool
     ) -> [BridgeTrackTableSide] {
         [
             BridgeTrackTableSide(
@@ -325,7 +326,8 @@ extension PreviewData {
                                 source: .file(name: track.file),
                                 audition: wholeFile(track.file),
                                 position: "\(index + 1)",
-                                lengthMs: track.durationMs
+                                lengthMs: track.durationMs,
+                                showsAlbumArtist: showsAlbumArtist
                             )
                         )
                     }
@@ -342,7 +344,8 @@ extension PreviewData {
             images: images.gallery,
             trackSides: boardTrackSides(
                 northboundTracks,
-                edit: northboundEdit()
+                edit: northboundEdit(),
+                showsAlbumArtist: true
             ),
             files: carriedBoardFiles.map { .file(file: $0) },
             untitledTrackCount: 0

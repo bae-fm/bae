@@ -7,8 +7,28 @@ import SwiftUI
 enum ImportCandidateTableLayout {
     /// The height of a row without a full text stack, including a row
     /// whose page is still loading.
-    static let rowHeight =
-        MacImportRow.coverPointSize + 2 * ThemeSpace.compact
+    static let rowHeight = MacImportRow.coverPointSize + verticalPadding
+
+    private static let verticalPadding = 2 * ThemeSpace.compact
+    private static let threeLineRowHeight = 50 + verticalPadding
+
+    static func height(for row: BridgeTriageRow) -> CGFloat {
+        height(
+            hasArtistLine: row.metadataSummary?.artistLine != nil,
+            hasStateLine: row.stateLine != nil
+        )
+    }
+
+    static func height(for row: BridgeInvalidCandidate) -> CGFloat {
+        height(hasArtistLine: row.tags?.artist != nil, hasStateLine: true)
+    }
+
+    private static func height(
+        hasArtistLine: Bool,
+        hasStateLine: Bool
+    ) -> CGFloat {
+        hasArtistLine && hasStateLine ? threeLineRowHeight : rowHeight
+    }
     /// A folder group's header row: the gap above its group, the 13 pt name's
     /// 16 pt line, and the gap below it.
     static let headerPadding = EdgeInsets(

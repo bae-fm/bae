@@ -71,15 +71,18 @@ fn lay_out_on_discs(
             sheet.side_choices.clone_from(&choices);
         }
     }
-    lay_out_tracks(tracks.into_iter().map(ReleaseEditTableRow::Track).collect())
+    lay_out_tracks(tracks.into_iter().map(ReleaseEditTableRow::Track).collect(), true)
 }
 
 #[test]
 fn a_side_no_track_sits_on_keeps_its_heading_with_no_run() {
-    let sides = lay_out_tracks(vec![
-        ReleaseEditTableRow::EmptySide(TrackSide::Disc { disc: 1 }),
-        ReleaseEditTableRow::Track(context(TrackSide::Disc { disc: 2 }, "t", "f", None)),
-    ]);
+    let sides = lay_out_tracks(
+        vec![
+            ReleaseEditTableRow::EmptySide(TrackSide::Disc { disc: 1 }),
+            ReleaseEditTableRow::Track(context(TrackSide::Disc { disc: 2 }, "t", "f", None)),
+        ],
+        false,
+    );
     assert_eq!(
         sides.iter().map(|side| (side.side.clone(), side.runs.len())).collect::<Vec<_>>(),
         [(TrackSide::Disc { disc: 1 }, 0), (TrackSide::Disc { disc: 2 }, 1)]
@@ -123,6 +126,7 @@ fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet() {
 
     assert_eq!(sides.iter().map(|side| &side.side).collect::<Vec<_>>(), [&side("A"), &side("B")]);
     assert_eq!(runs(&sides[0]), [(Some("first"), vec!["a1", "a2"]), (None, vec!["a3"])]);
+    assert!(sides[0].rows().all(|row| row.shows_album_artist));
     assert_eq!(runs(&sides[1]), [(Some("second"), vec!["b1", "b2"]), (Some("third"), vec!["b3"])]);
 }
 

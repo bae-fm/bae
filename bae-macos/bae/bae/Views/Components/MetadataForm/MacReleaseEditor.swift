@@ -44,7 +44,6 @@ struct MacReleaseEditor<Search: View>: View {
             if let sides = tracks.sides {
                 MacImportTable(
                     sides: sides,
-                    hasAlbumArtists: card.albumArtists != nil,
                     previewingTarget: tracks.previewingTarget,
                     actions: tracks.actions,
                     editingCommands: editingCommands

@@ -488,7 +488,7 @@ impl MappingRows {
     /// tracks are not the folder's audio units in order: every write that
     /// changes the folder's files rebuilds the draft, so a mismatch is a
     /// stored state that contradicts itself.
-    pub(super) fn read(&self) -> Result<MappingRead, ImportError> {
+    pub(super) fn read(&self, has_album_artists: bool) -> Result<MappingRead, ImportError> {
         let internal = |detail: String| ImportError::Internal { detail };
         let document: Document = serde_json::from_str(&self.document)
             .map_err(|error| internal(format!("the mapping statement's document: {error}")))?;
@@ -500,7 +500,9 @@ impl MappingRows {
         }
         let track_sides = document
             .sides
-            .map(|sides| sides.into_iter().map(track_side).collect::<Result<Vec<_>, _>>())
+            .map(|sides| {
+                sides.into_iter().map(|side| track_side(side, has_album_artists)).collect()
+            })
             .transpose()?;
         let files = document
             .files
@@ -532,7 +534,7 @@ impl MappingRows {
 
 /// One side of the track table, its runs of loose tracks and of the tracks
 /// a sheet carves, each row at its place on the side.
-fn track_side(side: SideJson) -> Result<TrackTableSide, ImportError> {
+fn track_side(side: SideJson, has_album_artists: bool) -> Result<TrackTableSide, ImportError> {
     let unplaced =
         |reason: String| ImportError::Internal { detail: format!("a track side: {reason}") };
     let mut runs = Vec::new();
@@ -542,7 +544,7 @@ fn track_side(side: SideJson) -> Result<TrackTableSide, ImportError> {
             let position =
                 bae_records::records::track_position_of(&side.kind, side.ordinal, row.number)
                     .map_err(unplaced)?;
-            rows.push(table_row(row, position.text())?);
+            rows.push(table_row(row, position.text(), has_album_artists)?);
         }
         match run.sheet {
             Some(sheet) => runs.push(TrackTableRun::Sheet { sheet: sheet_group(sheet)?, rows }),
@@ -673,7 +675,11 @@ fn reference_options(reference: ReferenceJson) -> Result<SheetReferenceOptions, 
     })
 }
 
-fn table_row(row: RowJson, position: String) -> Result<TrackTableRow, ImportError> {
+fn table_row(
+    row: RowJson,
+    position: String,
+    has_album_artists: bool,
+) -> Result<TrackTableRow, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
     let track = row.track.track()?;
     if !row.matches {
@@ -694,8 +700,10 @@ fn table_row(row: RowJson, position: String) -> Result<TrackTableRow, ImportErro
             bae_track_audio::PreviewTarget::sample_range(audio.path, start, end),
         ),
     };
+    let track = track.edit.as_edit();
     Ok(TrackTableRow {
-        track: track.edit.as_edit(),
+        shows_album_artist: track.artist_assignments.shows_album_artist(has_album_artists),
+        track,
         source,
         audition: TrackAudition::Preview(audition),
         position,
@@ -713,11 +721,20 @@ impl crate::tables::ImportTables {
         key: &crate::CandidateKey,
     ) -> Result<MappingTable, ImportError> {
         let key = key.clone();
-        self.store
-            .read(move |sql| load_mapping_rows_on(&sql, &key))
+        let (mapping, has_album_artists) = self
+            .store
+            .read(move |sql| {
+                let mapping = load_mapping_rows_on(&sql, &key)?;
+                let album_artists = super::artist_standings::album_artist_field_on(
+                    &sql,
+                    super::artist_standings::CreditSource::Candidate(
+                        crate::tables::import_state::OneCandidate::Scanned(&key),
+                    ),
+                )?;
+                Ok::<_, DbError>((mapping, album_artists.is_some()))
+            })
             .await
-            .expect("the rows are read")
-            .read()
-            .map(|read| read.table)
+            .expect("the rows are read");
+        mapping.read(has_album_artists).map(|read| read.table)
     }
 }

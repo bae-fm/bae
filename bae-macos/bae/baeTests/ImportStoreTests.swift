@@ -61,7 +61,7 @@ func identifiedRow(
         metadataSummary: metadataSummary,
         cover: cover,
         importStatus: nil,
-        upload: nil,
+        stateLine: nil,
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(catalog: .musicBrainz, key: "rel-\(path)")
         ),
@@ -326,7 +326,7 @@ struct ImportStoreSidebarCoverTests {
                 title: "Subject",
                 metadataSummary: BridgeTriageMetadataSummary(
                     albumTitle: "Applied Draft",
-                    albumArtists: BridgeCreditLine(names: [])
+                    artistLine: nil
                 ),
                 cover: choice.image
             )

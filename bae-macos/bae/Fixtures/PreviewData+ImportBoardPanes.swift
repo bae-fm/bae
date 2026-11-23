@@ -242,7 +242,11 @@ extension PreviewData {
             edit: edit,
             mapping: BridgeMappingTable(
                 images: [cover],
-                trackSides: boardTrackSides(tracks, edit: edit),
+                trackSides: boardTrackSides(
+                    tracks,
+                    edit: edit,
+                    showsAlbumArtist: true
+                ),
                 files: lowTideHoursFiles.map { .file(file: $0) },
                 untitledTrackCount: 0
             ),
@@ -287,7 +291,11 @@ extension PreviewData {
             edit: edit,
             mapping: BridgeMappingTable(
                 images: [],
-                trackSides: boardTrackSides(untitledTracks, edit: edit),
+                trackSides: boardTrackSides(
+                    untitledTracks,
+                    edit: edit,
+                    showsAlbumArtist: false
+                ),
                 files: [],
                 untitledTrackCount: UInt32(untitledTracks.count)
             ),
@@ -566,7 +574,11 @@ extension PreviewData {
             edit: edit,
             mapping: BridgeMappingTable(
                 images: [image],
-                trackSides: boardTrackSides(notFoundTracks, edit: edit),
+                trackSides: boardTrackSides(
+                    notFoundTracks,
+                    edit: edit,
+                    showsAlbumArtist: true
+                ),
                 files: [],
                 untitledTrackCount: 0
             ),

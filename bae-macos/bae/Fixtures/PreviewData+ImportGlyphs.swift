@@ -12,7 +12,7 @@ extension PreviewData {
 
     private static let glyphSummary = BridgeTriageMetadataSummary(
         albumTitle: "Album Title Fifteen",
-        albumArtists: .named("Artist Name")
+        artistLine: .named("Artist Name")
     )
 
     /// A settled row whose draft was read from a record, or was not.

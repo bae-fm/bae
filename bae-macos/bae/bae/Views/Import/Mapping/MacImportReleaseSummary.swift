@@ -54,9 +54,7 @@ struct ImportReleaseSummary {
         title =
             summary.albumTitle.isEmpty
             ? Self.placeholderTitle : summary.albumTitle
-        artist =
-            summary.albumArtists.names.isEmpty
-            ? nil : summary.albumArtists.text
+        artist = summary.artistLine?.text
         editionLine = ""
         copyLine = ""
         sourceAudio = nil

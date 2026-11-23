@@ -209,6 +209,7 @@ impl BridgeTrackTableRow {
             length_ms,
             listed_length_ms,
             artists,
+            shows_album_artist,
         } = row;
         BridgeTrackTableRow {
             track: BridgeRawTrackEdit::from_core(track),
@@ -229,6 +230,7 @@ impl BridgeTrackTableRow {
             length: BridgeDurationClock::of_length(length_ms),
             listed_length: listed_length_ms.map(BridgeDurationClock::of_length),
             artists: artists.map(BridgeArtistField::from_core),
+            shows_album_artist,
         }
     }
 }

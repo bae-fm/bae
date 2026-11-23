@@ -1123,7 +1123,8 @@ A tab reads *Nothing here yet* only once its list has been read and holds no
 rows (*No matches* when the filter narrows it to none).
 
 On macOS the Import screen keeps the list available while the selected
-candidate is open.
+candidate is open. A list row grows to fit all three lines when it shows a
+title, artist and status.
 
 Imported lists first the releases that still have files in coven's upload queue,
 the first queued first, and then the rest in the list's order. Only a

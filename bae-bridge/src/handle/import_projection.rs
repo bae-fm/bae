@@ -240,6 +240,7 @@ impl crate::types::BridgeTriageRow {
         row: bae_import::TriageRow,
         live: bae_import::CandidateLiveState,
     ) -> Self {
+        let state_line = row.state_line(&live).map(crate::types::BridgeTriageStateLine::from_core);
         let bae_import::TriageRow {
             candidate_key,
             folder_name,
@@ -249,7 +250,7 @@ impl crate::types::BridgeTriageRow {
             metadata_summary,
             cover,
             import_status,
-            upload,
+            upload: _,
             metadata_provenance,
             // The row's reading names the linked release's records.
             release_link: _,
@@ -266,7 +267,7 @@ impl crate::types::BridgeTriageRow {
                 .map(crate::types::BridgeTriageMetadataSummary::from_core),
             cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
-            upload: upload.map(crate::types::BridgeUploadProgress::from_core),
+            state_line,
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),
@@ -425,7 +426,18 @@ mirror_struct! {
     from_core: fn,
     fields: {
         album_title,
-        album_artists: (crate::types::BridgeCreditLine),
+        artist_line: (opt crate::types::BridgeCreditLine),
+    },
+}
+
+mirror_enum! {
+    crate::types::BridgeTriageStateLine = bae_import::triage::TriageStateLine,
+    from_core: fn,
+    variants: {
+        Importing { step: (crate::types::BridgeImportStep) },
+        Uploading { release_id },
+        QueuedToUpload,
+        Error { detail },
     },
 }
 

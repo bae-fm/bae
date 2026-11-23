@@ -64,21 +64,28 @@ pub enum IdentificationStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriageMetadataSummary {
     pub album_title: String,
-    /// The album credits.
-    pub album_artists: bae_types::credits::CreditLine,
+    /// The album credits, when the row has an artist line.
+    pub artist_line: Option<bae_types::credits::CreditLine>,
 }
 
 impl TriageMetadataSummary {
+    pub(crate) fn new(
+        album_title: String,
+        credits: Option<bae_types::credits::CreditLine>,
+    ) -> Self {
+        Self { album_title, artist_line: credits.filter(|credits| !credits.is_empty()) }
+    }
+
     /// `None` for a blank draft of a candidate that is `answered` by nothing:
     /// no draft read from anywhere and no release link.
     pub(crate) fn of(draft: &crate::RawReleaseEdit, answered: bool) -> Option<Self> {
         if draft.is_blank() && !answered {
             return None;
         }
-        Some(Self {
-            album_title: draft.album_title.clone(),
-            album_artists: crate::credited_line(&draft.album_artist_assignments),
-        })
+        Some(Self::new(
+            draft.album_title.clone(),
+            Some(crate::credited_line(&draft.album_artist_assignments)),
+        ))
     }
 }
 
@@ -162,6 +169,41 @@ pub struct TriageRow {
     /// records.
     pub release_link: Option<ReleaseLink>,
     pub reading: TriageReading,
+}
+
+impl TriageRow {
+    /// The line under the row's title and credits, if it has one.
+    pub fn state_line(&self, live: &CandidateLiveState) -> Option<TriageStateLine> {
+        match live.facts.import {
+            // The row shows a wait mark in its trailing column.
+            Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)) => return None,
+            Some(step) => return Some(TriageStateLine::Importing { step }),
+            None => {}
+        }
+        if let Some(TriageImportStatus::Complete { release }) = &self.import_status {
+            return self.upload.as_ref().map(|upload| match upload.activity() {
+                bae_records::UploadActivity::Uploading => {
+                    TriageStateLine::Uploading { release_id: release.release_id.clone() }
+                }
+                bae_records::UploadActivity::Queued => TriageStateLine::QueuedToUpload,
+            });
+        }
+        match &live.standing {
+            Some(PendingStanding::Error { failure }) => {
+                Some(TriageStateLine::Error { detail: failure.detail.clone() })
+            }
+            _ => None,
+        }
+    }
+}
+
+/// What a candidate row says below its title and credits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TriageStateLine {
+    Importing { step: crate::ImportStep },
+    Uploading { release_id: String },
+    QueuedToUpload,
+    Error { detail: String },
 }
 
 /// A folder that failed validation, as its row under Skipped and the pane

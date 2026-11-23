@@ -264,7 +264,8 @@ extension ShotScene {
         seconds: UInt64,
         artists: BridgeTrackArtistAssignments = .albumArtists,
         ownArtists: BridgeArtistField? = nil,
-        listedSeconds: UInt64? = nil
+        listedSeconds: UInt64? = nil,
+        showsAlbumArtist: Bool = true
     ) -> BridgeTrackTableRow {
         BridgeTrackTableRow(
             track: BridgeRawTrackEdit(
@@ -280,7 +281,8 @@ extension ShotScene {
             listedLength: listedSeconds.map {
                 BridgeDurationClock.length(ms: $0 * 1_000)
             },
-            artists: ownArtists
+            artists: ownArtists,
+            showsAlbumArtist: showsAlbumArtist
         )
     }
 

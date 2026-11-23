@@ -27,7 +27,7 @@ struct ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: pairedMapping,
-                hasAlbumArtists: true,
+
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -76,7 +76,7 @@ struct ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: pairedMapping,
-                hasAlbumArtists: true,
+
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -171,7 +171,7 @@ struct ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: mapping,
-                hasAlbumArtists: true,
+
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -346,7 +346,8 @@ extension ImportMappingTracksLayoutTests {
             position: "1",
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
-            artists: trackArtists
+            artists: trackArtists,
+            showsAlbumArtist: false
         )
     }
 
@@ -418,7 +419,8 @@ extension ImportMappingTracksLayoutTests {
             position: String(number),
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
-            artists: trackArtists
+            artists: trackArtists,
+            showsAlbumArtist: false
         )
     }
 
@@ -435,7 +437,7 @@ extension ImportMappingTracksLayoutTests {
         return try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: pairedMapping,
-                hasAlbumArtists: true,
+
                 columns: columns,
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),

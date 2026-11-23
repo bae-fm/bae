@@ -22,8 +22,8 @@ struct DoneRowTests {
         var found = done
         found.placement = .pending
         found.importStatus = nil
-        #expect(row(done).statusLine == nil)
-        #expect(row(found).statusLine == nil)
+        #expect(done.stateLine == nil, "nothing of the release waits to upload")
+        #expect(found.stateLine == nil)
         #expect(
             ImportReleaseSummary(row: done)?.title
                 == ImportReleaseSummary(row: found)?.title
@@ -32,7 +32,6 @@ struct DoneRowTests {
             ImportReleaseSummary(row: done)?.artist
                 == ImportReleaseSummary(row: found)?.artist
         )
-        #expect(done.upload == nil, "nothing of the release waits to upload")
     }
 
     @Test("a Done row names the release imported from it")
@@ -47,7 +46,19 @@ struct DoneRowTests {
         #expect(PreviewData.triageRowPrefilledFromTags.importedRelease == nil)
     }
 
-    private func row(_ row: BridgeTriageRow) -> MacImportRow {
-        MacImportRow(row: row, coverContent: nil, isGroupMember: false)
+    @Test(
+        "a row with an artist and a status reserves room for both",
+        arguments: [
+            BridgeTriageStateLine.queuedToUpload,
+            .error(detail: "Failed to store a lookup result"),
+        ]
+    )
+    func rowsWithStatusReserveRoom(state: BridgeTriageStateLine) {
+        var row = PreviewData.triageRowDoneImported
+        let heightWithoutStatus = ImportCandidateTableLayout.height(for: row)
+        row.stateLine = state
+        #expect(
+            ImportCandidateTableLayout.height(for: row) > heightWithoutStatus
+        )
     }
 }

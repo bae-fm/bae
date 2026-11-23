@@ -141,7 +141,7 @@ struct ReleaseEditorTests {
             ScrollView {
                 MacImportTable(
                     sides: release.draft.sides ?? [],
-                    hasAlbumArtists: release.draft.albumArtists != nil,
+
                     previewingTarget: nil,
                     actions: ReleaseTrackTableActions(
                         sheetCaption: SheetCaptionActions(

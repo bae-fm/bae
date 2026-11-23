@@ -367,11 +367,10 @@ fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) 
 fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
     use crate::tables::import_state::failure_rows::failure_reason_from_row;
     let summary = match row.get::<_, Option<bool>>(2)? {
-        Some(true) => Some(TriageMetadataSummary {
-            album_title: row.get(3)?,
-            album_artists: crate::tables::stored_credits::line_column(row, "shown_credits")?
-                .unwrap_or_default(),
-        }),
+        Some(true) => Some(TriageMetadataSummary::new(
+            row.get(3)?,
+            crate::tables::stored_credits::line_column(row, "shown_credits")?,
+        )),
         Some(false) | None => None,
     };
     let failed: bool = row.get("failed")?;

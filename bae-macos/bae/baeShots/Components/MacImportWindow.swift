@@ -93,7 +93,7 @@ extension ShotScene {
                     .lowTideHours,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Low Tide Hours",
-                        albumArtists: .named("Mara Quill")
+                        artistLine: .named("Mara Quill")
                     ),
                     record: "board-low-tide-hours",
                     cover: .local(file: lowTideHoursCover)

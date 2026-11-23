@@ -68,8 +68,7 @@ extension PreviewData {
         in store: ImportStore
     ) throws -> ([BridgeImportListItem], ImportSelection) {
         let images = try FoundBoardImages()
-        let northboundLive = northbound.live
-        let items = foundItems(northboundLive: northboundLive, images: images)
+        let items = foundItems(northbound: northbound, images: images)
         guard let pane else {
             return (items, ImportSelection())
         }
@@ -79,7 +78,7 @@ extension PreviewData {
             let gallery = try northboundImages(cover: images.northbound)
             fixture = northboundDraftCandidate(
                 images: gallery,
-                live: northboundLive
+                live: northbound.live
             )
         case .lowTideHours:
             fixture = lowTideHoursCandidate(cover: images.lookup.lowTideHours)
@@ -247,7 +246,7 @@ extension PreviewData {
         case .several:
             store.identificationProgress = (identified: 4, total: 10)
             items = foundItems(
-                northboundLive: northboundImportingLive,
+                northbound: .importing,
                 images: try FoundBoardImages()
             )
             selection = boardSeveralSelection
@@ -276,21 +275,21 @@ extension PreviewData {
                 .driftwood,
                 .init(
                     albumTitle: "Driftwood",
-                    albumArtists: .named("Mara Quill")
+                    artistLine: .named("Mara Quill")
                 )
             ),
             (
                 .glassHarbor,
                 .init(
                     albumTitle: "Glass Harbor",
-                    albumArtists: .named("Ines Varga Trio")
+                    artistLine: .named("Ines Varga Trio")
                 )
             ),
             (
                 .lateArrivals,
                 .init(
                     albumTitle: "Late Arrivals",
-                    albumArtists: .named("The Slow Orchards")
+                    artistLine: .named("The Slow Orchards")
                 )
             ),
         ]
@@ -304,10 +303,8 @@ extension PreviewData {
             .northbound,
             summary: northboundSummary,
             cover: cover.file,
-            upload: BridgeUploadProgress(
-                queued: 0,
-                uploading: 1,
-                activity: .uploading
+            stateLine: .uploading(
+                releaseId: boardImported(.northbound).releaseId
             )
         )
         let selection = selectBoardCandidate(

@@ -64,7 +64,8 @@ extension MappingFixtures {
                 position: position,
                 length: BridgeDurationClock.length(ms: lengthMs),
                 listedLength: nil,
-                artists: nil
+                artists: nil,
+                showsAlbumArtist: true
             )
         )
     }
@@ -261,7 +262,8 @@ extension MappingFixtures {
                 ms: UInt64(200_000 + index * 1000)
             ),
             listedLength: nil,
-            artists: nil
+            artists: nil,
+            showsAlbumArtist: true
         )
     }
 

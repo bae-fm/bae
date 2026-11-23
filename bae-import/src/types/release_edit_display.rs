@@ -52,8 +52,13 @@ pub(crate) struct ReleaseEditTrackRow {
 impl ReleaseEditTrackRow {
     /// The table's row of this track, naming `source` in its source cell,
     /// which plays the library's release from it.
-    fn table_row(self, source: crate::TrackSource) -> crate::TrackTableRow {
+    fn table_row(
+        self,
+        source: crate::TrackSource,
+        has_album_artists: bool,
+    ) -> crate::TrackTableRow {
         crate::TrackTableRow {
+            shows_album_artist: self.edit.artist_assignments.shows_album_artist(has_album_artists),
             track: self.edit,
             source,
             audition: self.audition,
@@ -80,7 +85,10 @@ pub(crate) enum ReleaseEditTableRow {
 /// sheet's caption. Each other track is a run of its own. A side no track
 /// sits on has no run.
 #[cfg(desktop)]
-pub(crate) fn lay_out_tracks(entries: Vec<ReleaseEditTableRow>) -> Vec<crate::TrackTableSide> {
+pub(crate) fn lay_out_tracks(
+    entries: Vec<ReleaseEditTableRow>,
+    has_album_artists: bool,
+) -> Vec<crate::TrackTableSide> {
     let rows: Vec<&ReleaseEditTrackRow> = entries
         .iter()
         .filter_map(|entry| match entry {
@@ -105,12 +113,12 @@ pub(crate) fn lay_out_tracks(entries: Vec<ReleaseEditTableRow>) -> Vec<crate::Tr
         let Some(sheet_id) = row.context.sheet.as_ref().map(|sheet| sheet.file_id.clone()) else {
             let name = row.context.source.name.clone();
             side.runs.push(crate::TrackTableRun::Track(
-                row.table_row(crate::TrackSource::File { name }),
+                row.table_row(crate::TrackSource::File { name }, has_album_artists),
             ));
             continue;
         };
         let start_ms = row.context.start_ms;
-        let row = row.table_row(crate::TrackSource::SheetSlice { start_ms });
+        let row = row.table_row(crate::TrackSource::SheetSlice { start_ms }, has_album_artists);
         match side.runs.last_mut() {
             Some(crate::TrackTableRun::Sheet { sheet, rows }) if sheet.sheet_id == sheet_id => {
                 rows.push(row)

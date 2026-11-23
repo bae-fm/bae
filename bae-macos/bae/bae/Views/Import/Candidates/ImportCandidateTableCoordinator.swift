@@ -332,8 +332,10 @@ extension ImportCandidateTableCoordinator {
         switch item(at: row) {
         case .groupHeader: ImportCandidateTableLayout.headerRowHeight
         case .candidate(_, let candidate, _):
-            MacImportRow.height(for: candidate)
-        case .invalid, nil: ImportCandidateTableLayout.rowHeight
+            ImportCandidateTableLayout.height(for: candidate)
+        case .invalid(_, let candidate):
+            ImportCandidateTableLayout.height(for: candidate)
+        case nil: ImportCandidateTableLayout.rowHeight
         }
     }
 
