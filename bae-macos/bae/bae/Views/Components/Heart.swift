@@ -15,6 +15,7 @@ struct Heart: View {
             .frame(width: size, height: size)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(String(localized: "Hearted"))
+            .accessibilityAddTraits(.isImage)
             .accessibilityHidden(!on)
     }
 }

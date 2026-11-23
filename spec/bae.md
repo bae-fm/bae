@@ -3215,7 +3215,8 @@ of *Rate*, with no submenu or sheet. A disabled item before that command
 names who hearted the album, *You* first, then each other person by name,
 with no stars: "You · Ana hearted it". A hearted album shows a read-only
 heart. On macOS a track shows a heart in place of its stars when the
-person rated it three stars or more, and nothing otherwise. Its menu
+person rated it three stars or more, and nothing otherwise. On the Mac,
+VoiceOver reads a shown heart as an image named *Hearted*. Its menu
 offers *Add heart* or *Remove heart* in place of *Rate*.
 
 Under *None*, the album and track menus omit *Rate*, and the pages show no
