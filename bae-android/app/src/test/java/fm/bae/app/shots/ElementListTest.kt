@@ -127,35 +127,40 @@ class ElementListTest : BoardShot() {
     }
 
     @Test
-    fun aMergedNodeOfTwoTextsSpansBothTexts() {
+    fun aMergedNodeOfTwoTextsKeepsItsReadingAndListsEachTextAsItsChild() {
         compose.settle {
             Column(modifier = Modifier.clickable {}) {
-                Text("Name", fontSize = 16.sp)
+                Text("Name", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text("Kind", fontSize = 14.sp)
             }
         }
         val root = compose.onRoot().fetchSemanticsNode()
-        val merged =
+        val elements =
             ElementList
                 .of("android.test.merged", root, unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode())
                 .getJSONArray("elements")
                 .objects()
-                .single { it.optString("label") == "Name Kind" }
-        val name = unmergedBox("Name")
-        val kind = unmergedBox("Kind")
-        val box = merged.getJSONObject("bounds")
-        assertEquals(name.getDouble("y"), box.getDouble("y"), TOLERANCE)
-        assertEquals(kind.getDouble("y") + kind.getDouble("height"), box.getDouble("y") + box.getDouble("height"), TOLERANCE)
-    }
+        val merged = elements.single { it.optString("label") == "Name Kind" }
+        // The merged node is what TalkBack reads and taps: one node of both texts that is no visible text itself.
+        assertEquals("other", merged.getString("role"))
+        assertFalse(merged.has("text"))
+        val mergedIndex = elements.indexOf(merged)
 
-    /** The box the list gives the text [label] of the unmerged tree, which a node of one text holds. */
-    private fun unmergedBox(label: String): JSONObject =
-        ElementList
-            .of("android.test.unmerged", compose.onRoot(useUnmergedTree = true).fetchSemanticsNode())
-            .getJSONArray("elements")
-            .objects()
-            .single { it.optString("label") == label }
-            .getJSONObject("bounds")
+        val name = elements.single { it.optString("label") == "Name" }
+        val kind = elements.single { it.optString("label") == "Kind" }
+        assertEquals("text", name.getString("role"))
+        assertEquals("text", kind.getString("role"))
+        assertEquals(mergedIndex, name.getInt("parent"))
+        assertEquals(mergedIndex, kind.getInt("parent"))
+        assertTrue(elements.indexOf(name) < elements.indexOf(kind))
+        assertEquals(16.0, name.getJSONObject("text").getDouble("size"), 0.0)
+        assertEquals(700, name.getJSONObject("text").getInt("weight"))
+        assertEquals(14.0, kind.getJSONObject("text").getDouble("size"), 0.0)
+
+        val box = merged.getJSONObject("bounds")
+        assertTrue(name.getJSONObject("bounds").getDouble("height") < box.getDouble("height"))
+        assertTrue(kind.getJSONObject("bounds").getDouble("y") > name.getJSONObject("bounds").getDouble("y"))
+    }
 
     @Test
     fun aLeafWithOnlyADescriptionIsAnImageUnlessClickable() {
@@ -210,10 +215,6 @@ class ElementListTest : BoardShot() {
         val slider = named.single { it.getString("label") == "Position" }
         assertTrue(slider.isNull("parent"))
         assertEquals("35", slider.getString("value"))
-    }
-
-    private companion object {
-        const val TOLERANCE = 0.2
     }
 
     private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }

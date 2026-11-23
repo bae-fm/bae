@@ -19,8 +19,9 @@ import kotlin.math.roundToInt
 /**
  * The element list a shot writes beside its PNG as `<board>@android.json`: what Compose's merged
  * semantics tree holds, in the tree's order, in dp from the shot's top-left. This is the only
- * writer; every shot goes through [of]. A merged node of several texts is boxed from the texts the unmerged tree
- * holds, since the merged node keeps only the first text's layout.
+ * writer; every shot goes through [of]. A merged node of several texts (a clickable row of a title, a credit and a
+ * duration) is listed as the one node TalkBack reads and taps, labelled with its texts, and holds one text element
+ * for each visible text the unmerged tree holds, since the merged node keeps only the first text's layout.
  */
 internal object ElementList {
     private const val PLATFORM = "android"
@@ -53,6 +54,7 @@ internal object ElementList {
         ) {
             val here = Listed(element(node, density, unmerged), parent)
             listed.add(here)
+            mergedTexts(node, unmerged).forEach { listed.add(Listed(element(it, density, unmerged), here)) }
             // The list visits a node's children in traversal order, the order TalkBack reads them in, not the order
             // Compose draws them in.
             inTraversalOrder(node.children).forEach { visit(it, here) }
@@ -143,15 +145,16 @@ internal object ElementList {
         val editable = config.getOrNull(SemanticsProperties.EditableText)
         val texts = config.getOrNull(SemanticsProperties.Text)
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
-        val kind = kind(config, role, editable != null, texts != null, description != null && node.children.isEmpty())
+        val ownText = texts != null && mergedTexts(node, unmerged).isEmpty()
+        val kind = kind(config, role, editable != null, ownText, description != null && node.children.isEmpty())
         // The box the node draws, not the 48 dp touch target Compose grows around a smaller one: a board draws the
         // box, and TouchTargetTest checks the touch target. It is the whole box, also where it reaches past the
         // shot's frame, as a board's box does.
-        val bounds = if (kind == "text") textBox(node, unmerged) else node.wholeBox()
+        val bounds = if (kind == "text") textBox(node) else node.wholeBox()
         val out =
             JSONObject()
                 .put("role", kind)
-                .put("native", role?.toString() ?: native(editable != null, texts != null, config))
+                .put("native", role?.toString() ?: native(editable != null, ownText, config))
                 // TalkBack names a node by its content description when it has one, over the text it holds.
                 .put("label", orNull(description?.joinToString(" ") ?: texts?.joinToString(" ") { it.text }))
                 .put("value", orNull(value(config, editable?.text)))
@@ -170,22 +173,26 @@ internal object ElementList {
     }
 
     /**
-     * A text node's box as a browser reports a text's: vertically from the first line's ascent to the last line's
-     * descent, inside the line boxes whose height only spaces the lines. Compose's node box is the line boxes. A node
-     * that merges several texts (a clickable row of a name and a kind) is the box around those texts, as the board's
-     * block of them is, not the row that holds them.
+     * The visible texts a merged node of several texts holds, each as the unmerged tree's node of one text, in the
+     * tree's order. Empty for a node of one text or none, and for a node whose unmerged texts do not read as its own.
      */
-    private fun textBox(
+    private fun mergedTexts(
         node: SemanticsNode,
         unmerged: SemanticsNode,
-    ): Rect {
-        val words = node.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
+    ): List<SemanticsNode> {
+        val words = node.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text } ?: return emptyList()
         val parts = textsUnder(find(unmerged, node.id) ?: node)
-        val holders = if (parts.joinToString(" ") { it.first } == words) parts.map { it.second } else listOf(node)
-        val boxes = holders.mapNotNull { text -> glyphBox(text.config, text.wholeBox())?.let { text.wholeBox() to it } }
-        if (boxes.isEmpty()) return node.wholeBox()
-        val box = if (holders.size > 1) boxes.map { it.first }.reduce { all, next -> all.expandedTo(next) } else node.wholeBox()
-        return Rect(box.left, boxes.minOf { it.second.first }, box.right, boxes.maxOf { it.second.second })
+        return if (parts.size > 1 && parts.joinToString(" ") { it.first } == words) parts.map { it.second } else emptyList()
+    }
+
+    /**
+     * A text node's box as a browser reports a text's: vertically from the first line's ascent to the last line's
+     * descent, inside the line boxes whose height only spaces the lines. Compose's node box is the line boxes.
+     */
+    private fun textBox(node: SemanticsNode): Rect {
+        val box = node.wholeBox()
+        val glyphs = glyphBox(node.config, box) ?: return box
+        return Rect(box.left, glyphs.first, box.right, glyphs.second)
     }
 
     /**
@@ -193,8 +200,6 @@ internal object ElementList {
      * which cuts an element that reaches past the shot's frame.
      */
     private fun SemanticsNode.wholeBox(): Rect = if (layoutInfo.isPlaced) Rect(positionInRoot, size.toSize()) else Rect.Zero
-
-    private fun Rect.expandedTo(other: Rect) = Rect(minOf(left, other.left), top, maxOf(right, other.right), bottom)
 
     /** The node of [id] at or under [from]. */
     private fun find(
