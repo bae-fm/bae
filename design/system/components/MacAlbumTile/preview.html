@@ -7,7 +7,8 @@
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  // Each grid is as wide as the preview's wide column, 842pt, as the tile's shot lays it out, so each tile takes a sixth of it and the page scrolls sideways in a narrow column instead of squeezing the tile.
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell bae-preview-cell-fit' }, h('div', { style: { width: 842, flex: 'none' } }, c))); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Resting', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, {})))),

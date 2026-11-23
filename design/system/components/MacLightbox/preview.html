@@ -7,14 +7,15 @@
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  // Each lightbox fills an 800 by 640pt area, as its shot draws it, so the image fits between the arrows and the page scrolls sideways in a narrow column instead of squeezing the lightbox.
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell bae-preview-cell-fit' }, h('div', { style: { position: 'relative', width: 800, height: 640, flex: 'none' } }, c))); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Resting', h('div', { style: { position: 'relative', height: 640 } }, h(B.MacLightbox, {}))),
-    W('Browse', h('div', { style: { position: 'relative', height: 640 } }, h(B.MacLightbox, { browse: true }))),
-    W('Loading', h('div', { style: { position: 'relative', height: 640 } }, h(B.MacLightbox, { state: 'loading' }))),
-    W('Failed', h('div', { style: { position: 'relative', height: 640 } }, h(B.MacLightbox, { state: 'failed' }))),
-    W('One image', h('div', { style: { position: 'relative', height: 640 } }, h(B.MacLightbox, { images: 'Low Tide Hours' })))));
+    W('Resting', h(B.MacLightbox, {})),
+    W('Browse', h(B.MacLightbox, { browse: true })),
+    W('Loading', h(B.MacLightbox, { state: 'loading' })),
+    W('Failed', h(B.MacLightbox, { state: 'failed' })),
+    W('One image', h(B.MacLightbox, { images: 'Low Tide Hours' }))));
 </script>
 </body>
 </html>
