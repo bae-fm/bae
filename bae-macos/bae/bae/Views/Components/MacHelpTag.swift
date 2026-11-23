@@ -21,9 +21,15 @@ struct MacHelpTag<Content: View>: View {
             .help(text)
             .overlay(alignment: .bottomLeading) {
                 if showing {
-                    tag
-                        .padding(.leading, Self.inset)
-                        .alignmentGuide(.bottom) { $0[.top] - Self.gap }
+                    // A line along the control's bottom edge, which the tag
+                    // hangs from.
+                    Color.clear
+                        .frame(height: 0)
+                        .overlay(alignment: .topLeading) {
+                            tag
+                                .padding(.leading, Self.inset)
+                                .padding(.top, Self.gap)
+                        }
                 }
             }
     }
