@@ -18,11 +18,11 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.releasesDoneText
 import fm.bae.app.ui.appearance.SymbolIcons
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidIconButton
-import fm.bae.app.ui.components.IconTone
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -127,7 +127,7 @@ internal fun PausePinning(
         icon = if (paused) SymbolIcons.PlayArrow else SymbolIcons.Pause,
         contentDescription = stringResource(if (paused) R.string.resume else R.string.pause),
         onClick = onClick,
-        tone = IconTone.ACCENT,
+        glyph = ThemeIcon.medium,
         tonal = true,
     )
 }

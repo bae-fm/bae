@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
 
 /** The colour of an [AndroidIconButton]'s glyph. */
@@ -69,7 +68,7 @@ internal fun AndroidIconButton(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = tone.color(),
-                modifier = Modifier.size(glyph ?: ThemeIcon.medium),
+                modifier = if (glyph != null) Modifier.size(glyph) else Modifier,
             )
         }
         return
