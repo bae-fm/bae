@@ -48,6 +48,7 @@ internal fun ArtistDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+        flush = true,
     ) {
         when (val answer = query) {
             is LiveQueryState.Failed -> {

@@ -3,7 +3,6 @@ package fm.bae.app.shots
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -16,7 +15,6 @@ import fm.bae.app.ui.albumdetail.AlbumRatingAction
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.albumdetail.PinMenuItem
 import fm.bae.app.ui.albumdetail.PlayMenuActions
-import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -43,16 +41,16 @@ class AndroidDetailScreenShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentDetailScreenFlush() = component("android.component.detail-screen.flush") { Detail(padded = false) {} }
+    fun androidComponentDetailScreenFlush() = component("android.component.detail-screen.flush") { Detail(flush = true) {} }
 }
 
 /**
- * The detail screen over an album's header, with [actions] in its bar. The header sits in the page's padded column
- * unless [padded] is false, the flush row, where the page carries its own padding.
+ * The detail screen over an album's header, with [actions] in its bar. The page is the
+ * screen's padded column, or [flush] for the flush row.
  */
 @Composable
 private fun Detail(
-    padded: Boolean = true,
+    flush: Boolean = false,
     actions: @Composable RowScope.() -> Unit,
 ) = Images {
     AndroidDetailScreen(

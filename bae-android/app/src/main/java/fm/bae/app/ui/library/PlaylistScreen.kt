@@ -82,6 +82,7 @@ internal fun PlaylistScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+        flush = true,
         actions = { if (detail != null) PlaylistBarMenu(session, detail.summary, deletion) { editing = true } },
     ) {
         PageDeletionShown(deletion) { playlist, onConfirm, onDismiss ->

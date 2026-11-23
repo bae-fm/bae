@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +33,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.audioLineText
@@ -46,13 +45,9 @@ import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
-import fm.bae.app.ui.components.AndroidContentUnavailable
-import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletion
 import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.rememberPageDeletion
-import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.library.TrackPlaylistAdd
 import fm.bae.app.ui.library.TrackPlaylistAddShown
@@ -137,6 +132,7 @@ fun AlbumDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+        flush = true,
         actions = {
             if (loaded != null) {
                 AlbumBarActions(
@@ -156,15 +152,22 @@ fun AlbumDetailScreen(
         if (rating && stars != null && loaded != null) {
             AlbumRatingSheet(rating = stars, onRate = loaded.callbacks.onRateAlbum, onDismiss = { rating = false })
         }
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (loaded == null) {
-                AlbumDetailPlaceholderBox(
-                    placeholder = albumDetailPlaceholder(query, loadError),
-                    onRetry = session.libraryQueries.album::retry,
-                )
-            } else {
-                AlbumLoaded(session, loaded)
-            }
+        AlbumPageBody(session, loaded, albumDetailPlaceholder(query, loadError))
+    }
+}
+
+/** The album page below its bar: the [loaded] album, or the [placeholder] while there is none. */
+@Composable
+private fun ColumnScope.AlbumPageBody(
+    session: OpenLibrary,
+    loaded: LoadedAlbum?,
+    placeholder: AlbumDetailPlaceholder,
+) {
+    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        if (loaded == null) {
+            AlbumDetailPlaceholderBox(placeholder = placeholder, onRetry = session.libraryQueries.album::retry)
+        } else {
+            AlbumLoaded(session, loaded)
         }
     }
 }
@@ -221,57 +224,6 @@ private fun AlbumPageOverlays(
     PageDeletionShown(deletion) { _, onConfirm, onDismiss -> DeleteAlbumDialog(onConfirm, onDismiss) }
     ReleaseUnpinShown(unpin)
     TrackPlaylistAddShown(session, adding)
-}
-
-/** What the album page shows while it has no album to draw. */
-internal sealed interface AlbumDetailPlaceholder {
-    data object Loading : AlbumDetailPlaceholder
-
-    /** The read failed; Retry reads it again. */
-    data class Failed(
-        val error: DisplayError,
-    ) : AlbumDetailPlaceholder
-
-    /** The read answered that no such album exists: it was deleted, here or on another device. */
-    data object NotInLibrary : AlbumDetailPlaceholder
-}
-
-/** The placeholder for [query] while it holds no album, given its failure as [loadError]. */
-internal fun albumDetailPlaceholder(
-    query: LiveQueryState<BridgeAlbumDetail?>,
-    loadError: DisplayError?,
-): AlbumDetailPlaceholder =
-    when {
-        loadError != null -> AlbumDetailPlaceholder.Failed(loadError)
-        query is LiveQueryState.Answered && query.value == null -> AlbumDetailPlaceholder.NotInLibrary
-        else -> AlbumDetailPlaceholder.Loading
-    }
-
-/** A deleted album says so, with the top bar's back as the way out, like a missing artist or composer. */
-@Composable
-private fun BoxScope.AlbumDetailPlaceholderBox(
-    placeholder: AlbumDetailPlaceholder,
-    onRetry: () -> Unit,
-) {
-    when (placeholder) {
-        is AlbumDetailPlaceholder.Failed -> {
-            AndroidNotice(
-                error = placeholder.error,
-                look = NoticeLook.CENTERED,
-                action = placeholder.error.retryAction(onClick = onRetry),
-            )
-        }
-
-        AlbumDetailPlaceholder.NotInLibrary -> {
-            AndroidContentUnavailable(
-                message = stringResource(R.string.album_not_in_library),
-                modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-            )
-        }
-
-        // The album is a local read; nothing shows until it lands.
-        AlbumDetailPlaceholder.Loading -> {}
-    }
 }
 
 /** The page's commands, each run in the session, which shows a failure as a message. */
