@@ -253,7 +253,8 @@
       h('span', { className: cx('bae-m-track-stars', !shown && 'bae-m-track-stars-none'), 'aria-hidden': !shown || null }, heart ? h(Heart, { on: true, size: 10 }) : h(Stars, { value: n, size: 10 })));
   }
 
-  function MacEyebrow(props) { return h('div', { className: 'bae-m-eyebrow' }, props.children); }
+  // `flush`: no space above or below, for a stack that spaces it, as the Play on popover's header.
+  function MacEyebrow(props) { return h('div', { className: cx('bae-m-eyebrow', props.flush && 'bae-m-eyebrow-flush') }, props.children); }
 
   // `options`: the page's ⋯ button at the right with these actions in its menu, as an album's options button; `optionsOpen` draws the menu open, `highlighted` the item under the pointer.
   function MacDetailHeader(props) {
