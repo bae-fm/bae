@@ -14,6 +14,8 @@ class AndroidContentUnavailableShots : BoardShot() {
     fun androidComponentContentUnavailableDefault() =
         component("android.component.content-unavailable.default") {
             // The preview's box, 412 by 140, in which the library pages' placeholder centres the line.
-            Box(Modifier.size(412.dp, 140.dp)) { ListPlaceholder { AndroidContentUnavailable("No plays yet") } }
+            InsidePreviewPage {
+                Box(Modifier.size(412.dp, 140.dp)) { ListPlaceholder { AndroidContentUnavailable("No plays yet") } }
+            }
         }
 }

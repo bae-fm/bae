@@ -15,13 +15,14 @@ class AndroidNoteShots : BoardShot() {
     @Test
     fun androidComponentNoteDefault() =
         component("android.component.note.default") {
-            // The board's card carries its own margin: 16 at the sides and 8 above.
-            Column(
-                modifier = Modifier.padding(start = ThemeSpace.edge, top = ThemeSpace.related, end = ThemeSpace.edge),
-                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                AndroidCard { AndroidRow(title = "Restore code", subtitle = "Shown") }
-                AndroidNote("Anyone with this code can open the library.")
+            InsidePreviewPage {
+                Column(
+                    modifier = Modifier.padding(start = ThemeSpace.edge, top = ThemeSpace.related, end = ThemeSpace.edge),
+                    verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+                ) {
+                    AndroidCard { AndroidRow(title = "Restore code", subtitle = "Shown") }
+                    AndroidNote("Anyone with this code can open the library.", modifier = Modifier.padding(top = ThemeSpace.related))
+                }
             }
         }
 }

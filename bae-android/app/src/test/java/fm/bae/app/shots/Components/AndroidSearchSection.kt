@@ -8,6 +8,6 @@ class AndroidSearchSectionShots : BoardShot() {
     @Test
     fun androidComponentSearchSectionDefault() =
         component("android.component.search-section.default") {
-            AndroidSearchSection("Albums")
+            InsidePreviewPage { AndroidSearchSection("Albums") }
         }
 }

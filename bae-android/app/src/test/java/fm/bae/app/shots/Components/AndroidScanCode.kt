@@ -8,7 +8,9 @@ class AndroidScanCodeShots : BoardShot() {
     @Test
     fun androidComponentScanCodeDefault() =
         component("android.component.scan-code.default") {
-            AndroidScanCode(instruction = "Scan the QR code on their device, or share the code.", qr = INVITE_CODE, code = INVITE_CODE)
+            InsidePreviewPage {
+                AndroidScanCode(instruction = "Scan the QR code on their device, or share the code.", qr = INVITE_CODE, code = INVITE_CODE)
+            }
         }
 }
 

@@ -173,6 +173,12 @@ internal fun InsideScreenEdges(content: @Composable () -> Unit) {
     Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge)) { content() }
 }
 
+/** The page inset around an Android component preview that has no named rows. */
+@Composable
+internal fun InsidePreviewPage(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.padding(ThemeSpace.edge)) { content() }
+}
+
 /** A screen of its own, on the screen's background, in the look [appearance] gives (the boards' by default). */
 @Composable
 internal fun ScreenScene(

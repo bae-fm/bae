@@ -6,5 +6,5 @@ import org.junit.Test
 /** The component shots of `AndroidEyebrow`, one for each row of its preview. */
 class AndroidEyebrowShots : BoardShot() {
     @Test
-    fun androidComponentEyebrowDefault() = component("android.component.eyebrow.default") { AndroidEyebrow("Side A") }
+    fun androidComponentEyebrowDefault() = component("android.component.eyebrow.default") { InsidePreviewPage { AndroidEyebrow("Side A") } }
 }
