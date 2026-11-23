@@ -58,15 +58,12 @@ extension ShotScene {
     /// with a change made, so the editor offers Cancel and Save, and the rip
     /// log its folder carried.
     private static var editedRelease: PreviewReleaseEdit {
-        var release = PreviewData.northboundRelease()
+        var release = PreviewData.northboundRelease(
+            cover: cover(editedReleaseId)
+        )
         release.draft.files = PreviewData.carriedBoardFiles.map {
             .file(file: $0)
         }
-        release.draft.cover = BridgeImageRef(
-            id: editedReleaseId,
-            version: "1",
-            imageType: .cover
-        )
         release.draft.changed = true
         return release
     }

@@ -64,9 +64,10 @@ extension PreviewData {
         )
     }
 
-    /// An image store that loads fixture images from their local paths.
+    /// An image store that loads library covers and the images the scan read.
     static func artImageStore() -> ImageStore {
         ImageStore(
+            fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) },
             fetchRemoteImage: { image, _ in
                 try Data(contentsOf: URL(fileURLWithPath: image.url))
             }

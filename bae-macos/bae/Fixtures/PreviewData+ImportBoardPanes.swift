@@ -76,10 +76,10 @@ extension PreviewData {
     /// What the library holds for the imported Northbound, as its editor
     /// opens on it: the form's values, and the draft with each track beside
     /// the file it plays from and the files no track plays.
-    static func northboundRelease() -> PreviewReleaseEdit {
+    static func northboundRelease(cover: BridgeImageRef) -> PreviewReleaseEdit {
         let edit = northboundEdit()
         let draft = BridgeReleaseEditDraft(
-            cover: nil,
+            cover: cover,
             sourceAudio: .uniform(
                 descriptor: BridgeSourceAudioDescriptor(
                     layout: .file,
