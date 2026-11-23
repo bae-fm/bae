@@ -152,14 +152,8 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         isEnabled || options.isNested ? 1 : ThemeOpacity.off
     }
 
-    @ViewBuilder
     private var rowAppearance: some View {
-        if let selection = options.selection {
-            rowControl.macSelection(selection, in: Rectangle())
-        }
-        else {
-            rowControl
-        }
+        rowControl
     }
 
     @ViewBuilder
@@ -207,8 +201,11 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         chevron: Bool,
         labelAction: (() -> Void)? = nil
     ) -> some View {
-        if options.selection != nil {
+        if let selection = options.selection {
+            // The fill goes inside the placement's space, so it reaches the
+            // row's edges and the box adds no space of its own.
             rowWithPlacement(chevron: chevron, labelAction: labelAction)
+                .macSelection(selection, in: Rectangle())
                 .placesItselfInRow()
         }
         else {
