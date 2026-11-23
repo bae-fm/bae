@@ -52,6 +52,17 @@ extension ShotScene {
                 )
             )
         ),
+        releaseFieldsScene(
+            "mac.component.release-fields.off",
+            release(
+                pressing: pressing(
+                    barcode: "0 41234 56789 2",
+                    packaging: .jewelCase,
+                    details: [.remastered]
+                )
+            ),
+            disabled: true
+        ),
     ]
 
     /// The release Low Tide Hours by Mara Quill with the pressing `pressing`.
@@ -69,7 +80,8 @@ extension ShotScene {
 
     private static func releaseFieldsScene(
         _ id: String,
-        _ values: BridgeRawReleaseEdit
+        _ values: BridgeRawReleaseEdit,
+        disabled: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -84,6 +96,7 @@ extension ShotScene {
                     editingCommands: EditingCommitCommands()
                 )
                 .frame(width: 560, alignment: .leading)
+                .disabled(disabled)
             )
         }
     }
