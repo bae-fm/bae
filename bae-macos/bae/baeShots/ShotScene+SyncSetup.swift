@@ -457,6 +457,19 @@ extension ShotScene {
         zone: "zone"
     )
 
+    /// How this Mac reaches `storage`: the key an S3 library records, which
+    /// the Sync page shows by its id.
+    private static func access(
+        _ storage: BridgeStorageLocation
+    ) -> BridgeMemberAccess? {
+        if case .s3 = storage {
+            .s3AccessKey(accessKeyId: "AKIA4EXAMPLEOLD")
+        }
+        else {
+            nil
+        }
+    }
+
     /// The sync status line of a library whose setup just ended.
     private static let syncing = BridgeSyncShown(
         status: .syncing,
@@ -476,7 +489,10 @@ extension ShotScene {
         _ staging: SyncSetupWizardStaging,
         connected: BridgeStorageLocation? = nil
     ) -> ShotStage {
-        let fixture = LibrarySettingsTabPreviewFixture(storage: connected)
+        let fixture = LibrarySettingsTabPreviewFixture(
+            storage: connected,
+            storageAccess: connected.flatMap(access)
+        )
         let wizard = SyncSetupWizard(staging: staging)
             .environment(PreviewData.previewSync())
             .environment(fixture.configStore)
@@ -525,7 +541,10 @@ extension ShotScene {
             SettingsWindowShot(
                 shown: syncing,
                 page: syncSettingsPagePreview(
-                    LibrarySettingsTabPreviewFixture(storage: storage),
+                    LibrarySettingsTabPreviewFixture(
+                        storage: storage,
+                        storageAccess: access(storage)
+                    ),
                     shown: syncing
                 )
             )

@@ -166,7 +166,7 @@ struct SyncSetupWizard: View {
                     }
                 }
             }
-            .formStyle(.settingsWithoutMargin)
+            .formStyle(.settingsInSheet)
             .fitsItsContent()
 
             MacSheetFooter {
@@ -178,8 +178,6 @@ struct SyncSetupWizard: View {
                 }
                 .keyboardShortcut(.defaultAction)
             }
-            .padding(.horizontal)
-            .padding(.bottom, ThemeSpace.section)
         }
     }
 
@@ -282,21 +280,31 @@ private struct RestoreCodeStep: View {
 
     @Environment(Sync.self)
     private var sync
+    @Environment(ConfigStore.self)
+    private var configStore
 
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                MacRestoreCode(reveal: reveal)
+                MacRestoreCode(
+                    reveal: reveal,
+                    onPrint: configStore.storage.map { location in
+                        { code in
+                            RestoreCodePrinting.print(
+                                code: code,
+                                location: location.accountLine
+                            )
+                        }
+                    }
+                )
             }
-            .formStyle(.settingsWithoutMargin)
+            .formStyle(.settingsInSheet)
             .fitsItsContent()
 
             MacSheetFooter {
                 MacButton("Done", kind: .primary) { onDone() }
                     .keyboardShortcut(.defaultAction)
             }
-            .padding(.horizontal)
-            .padding(.bottom, ThemeSpace.section)
         }
         // The code is made as this screen opens, unless a shot
         // already holds one.
@@ -405,14 +413,15 @@ struct SetupStep<Fields: View, Leading: View>: View {
         VStack(spacing: 0) {
             if run.isRunning {
                 StorageSetupRunLine(run: run, checkedFolder: checkedFolder)
-                    .padding()
+                    .padding(.bottom, ThemeSpace.related + ThemeSpace.line)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             else {
                 if let error {
-                    MacNotice(error: error)
-                        .padding(.horizontal, ThemeSpace.section)
-                        .padding(.top, ThemeSpace.section)
+                    // A sheet's notice is a quiet row, as the design system
+                    // draws one inside a dialog.
+                    MacNotice(error: error, look: .quiet)
+                        .padding(.bottom, ThemeSpace.related + ThemeSpace.line)
                 }
                 fields
             }
@@ -432,7 +441,6 @@ struct SetupStep<Fields: View, Leading: View>: View {
                     }
                 }
             )
-            .padding(.bottom, ThemeSpace.section)
         }
         .onDisappear { run.leave() }
     }

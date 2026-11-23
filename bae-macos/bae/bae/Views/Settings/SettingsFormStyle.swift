@@ -6,10 +6,16 @@ extension FormStyle where Self == SettingsFormStyle {
     /// surface colour under its heading, with its footer below.
     static var settings: SettingsFormStyle { SettingsFormStyle() }
 
-    /// The settings form without the page margin a pane puts at its sides,
-    /// for a form that a component's frame holds.
-    static var settingsWithoutMargin: SettingsFormStyle {
-        SettingsFormStyle(sideInset: 0)
+    /// The settings form inside a sheet, which has its own margin at the
+    /// sides and between its parts: a section keeps the space the boards put
+    /// over it, even the first, and the form ends the 10 points that a
+    /// sheet's parts have between them above what follows.
+    static var settingsInSheet: SettingsFormStyle {
+        SettingsFormStyle(
+            sideInset: 0,
+            topInset: RowMetrics.sectionGap,
+            bottomInset: ThemeSpace.related + ThemeSpace.line
+        )
     }
 }
 
@@ -25,6 +31,10 @@ extension FormStyle where Self == SettingsFormStyle {
 struct SettingsFormStyle: FormStyle {
     /// The page margin at each side of the sections.
     var sideInset = SettingsPaneMetrics.sideInset
+    /// The space above the first section.
+    var topInset: CGFloat = 0
+    /// The space below the last section.
+    var bottomInset = SettingsPaneMetrics.topInset
 
     func makeBody(configuration: Configuration) -> some View {
         ScrollView {
@@ -43,7 +53,8 @@ struct SettingsFormStyle: FormStyle {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, sideInset)
-            .padding(.bottom, SettingsPaneMetrics.topInset)
+            .padding(.top, topInset)
+            .padding(.bottom, bottomInset)
         }
         .settingsRowControls()
     }

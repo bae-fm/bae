@@ -27,7 +27,10 @@
 
         var body: some View {
             Group {
-                if let listing = browser.listing {
+                if let work = browser.working {
+                    working(work)
+                }
+                else if let listing = browser.listing {
                     folderChoice(listing)
                 }
                 else {
@@ -37,46 +40,48 @@
             .onDisappear { browser.cancel() }
         }
 
-        /// The browser opens as the screen does, on the Continue that chose
-        /// the provider; the screen waits for the sign-in, and a failed one
-        /// is tried again from here.
-        private var signIn: some View {
-            VStack(spacing: 0) {
+        /// A provider call runs: its name over a bar, with only Cancel under
+        /// it, as the screen of a setup step runs.
+        private func working(_ work: StorageFolderBrowser.Work) -> some View {
+            VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                    if let work = browser.working {
-                        FolderBrowserWorkLine(
-                            work: work,
-                            provider: browser.provider
+                    FolderBrowserWorkLine(
+                        work: work,
+                        provider: browser.provider
+                    )
+                    if work == .signingIn {
+                        Text(
+                            "Finish signing in in the browser window that opened, then come back here."
                         )
-                        if work == .signingIn {
-                            Text(
-                                "Finish signing in in the browser window that opened, then come back here."
-                            )
-                            .themeText(.detail)
-                            .foregroundStyle(Theme.textSecondary)
-                        }
-                    }
-                    if let error = browser.error {
-                        MacNotice(error: error)
+                        .themeText(.detail)
+                        .foregroundStyle(Theme.textSecondary)
                     }
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer(minLength: 0)
+                .padding(.bottom, ThemeSpace.related + ThemeSpace.line)
                 MacSheetFooter {
                     MacButton("Cancel") { leave() }
-                    if !browser.isWorking {
-                        MacButton("Sign in…", kind: .primary) {
-                            browser.signIn()
-                        }
-                        .keyboardShortcut(.defaultAction)
-                    }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, ThemeSpace.section)
+            }
+        }
+
+        /// The browser opens as the screen does, on the Continue that chose
+        /// the provider; a failed sign-in is tried again from here.
+        private var signIn: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                if let error = browser.error {
+                    MacNotice(error: error, look: .quiet)
+                        .padding(.bottom, ThemeSpace.related + ThemeSpace.line)
+                }
+                MacSheetFooter {
+                    MacButton("Cancel") { leave() }
+                    MacButton("Sign in…", kind: .primary) {
+                        browser.signIn()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
             }
             .onAppear {
-                if !browser.isWorking && browser.error == nil {
+                if browser.error == nil {
                     browser.signIn()
                 }
             }
@@ -103,21 +108,15 @@
                 leading: {
                     HStack(spacing: ThemeSpace.related) {
                         MacButton("New folder…") { browser.startNaming() }
-                            .disabled(browser.isNaming || browser.isWorking)
+                            .disabled(browser.isNaming)
                         MacButton("Look again") { browser.lookAgain() }
-                            .disabled(browser.isNaming || browser.isWorking)
+                            .disabled(browser.isNaming)
                     }
                 },
                 fields: {
                     ScrollView {
                         VStack(alignment: .leading, spacing: ThemeSpace.group) {
                             MacFolderPicker(browser: browser, listing: listing)
-                            if let work = browser.working {
-                                FolderBrowserWorkLine(
-                                    work: work,
-                                    provider: browser.provider
-                                )
-                            }
                             if let error = browser.error {
                                 MacNotice(error: error)
                             }
@@ -129,15 +128,18 @@
         }
     }
 
-    /// The provider call folder choice is running, named beside its spinner: the
-    /// person signing in, the provider listing folders, or OneDrive making one.
+    /// The provider call folder choice is running, named over a bar: the
+    /// person signing in, the provider listing folders, or a folder being made.
     struct FolderBrowserWorkLine: View {
         let work: StorageFolderBrowser.Work
         let provider: StorageFolderBrowser.Provider
 
         var body: some View {
-            MacSpinner(Text(title))
-                .frame(maxWidth: .infinity, alignment: .leading)
+            MacProgress(
+                title: String(localized: title),
+                bar: ProgressTrackBar(progress: nil)
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
 
         /// The words beside the spinner, by the call running.

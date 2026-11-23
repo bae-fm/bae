@@ -79,7 +79,7 @@ struct MacS3Form: View {
                         )
                     }
                 }
-                .formStyle(.settingsWithoutMargin)
+                .formStyle(.settingsInSheet)
                 .fitsItsContent()
             }
         )

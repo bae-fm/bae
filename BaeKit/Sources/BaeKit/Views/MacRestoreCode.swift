@@ -35,7 +35,7 @@ public struct MacRestoreCode: View {
     }
 
     public var body: some View {
-        MacSection("Restore code") {
+        MacSection {
             switch reveal.state {
             case .closed:
                 EmptyView()
@@ -44,12 +44,19 @@ public struct MacRestoreCode: View {
                     .frame(maxWidth: .infinity)
             case .masked(let share):
                 codeRow(share, shown: false)
-                caption
             case .shown(let share):
                 codeRow(share, shown: true)
-                caption
             case .failed(let error):
                 MacNotice(error: error)
+            }
+        } header: {
+            Text("Restore code")
+        } footer: {
+            switch reveal.state {
+            case .masked, .shown:
+                caption
+            case .closed, .loading, .failed:
+                EmptyView()
             }
         }
     }
@@ -62,6 +69,12 @@ public struct MacRestoreCode: View {
                 Text(share.code)
                     .themeText(.mono)
                     .textSelection(.enabled)
+                    // A selectable text draws a second text of the same
+                    // words inside its own; the code is one text to
+                    // VoiceOver.
+                    .accessibilityRepresentation {
+                        Text(share.code)
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             else {
