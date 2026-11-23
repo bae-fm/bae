@@ -10,29 +10,60 @@ import Testing
 final class BoardArtwork {
     private static let bundle = Bundle(for: BoardArtwork.self)
 
-    static func bundledURL(named name: String) -> URL? {
-        bundle.url(
-            forResource: name,
-            withExtension: "png",
-            subdirectory: "Artwork"
-        )
+    private static func requireURL(_ name: String, extension ext: String) throws
+        -> URL
+    {
+        guard
+            let file = bundle.url(
+                forResource: name,
+                withExtension: ext,
+                subdirectory: "Artwork"
+            )
+        else {
+            throw CocoaError(
+                .fileNoSuchFile,
+                userInfo: [
+                    NSFilePathErrorKey: bundle.bundlePath + "/Artwork/" + name
+                        + "." + ext
+                ]
+            )
+        }
+        return file
     }
 
-    /// Load the board's PNG when it supplies one. Other titles use its procedural gradient.
+    private static let titles = Result {
+        let catalog = try Data(
+            contentsOf: requireURL("titles", extension: "json")
+        )
+        return try JSONDecoder().decode(Set<String>.self, from: catalog)
+    }
+
+    /// A named board picture comes from the catalog. The board draws other names as gradients.
+    private static func bundledURL(named name: String) throws -> URL? {
+        guard try titles.get().contains(name) else { return nil }
+        return try requireURL(name, extension: "png")
+    }
+
     static func data(named name: String) throws -> Data {
-        if let file = bundledURL(named: name) {
+        if let file = try bundledURL(named: name) {
             return try Data(contentsOf: file)
         }
-        try #require(
-            hasBundledPictures,
-            "Missing artwork in \(bundle.bundleURL.path)"
-        )
         return gradient(named: name)
     }
 
-    private static let hasBundledPictures =
-        bundle.urls(forResourcesWithExtension: "png", subdirectory: "Artwork")?
-        .isEmpty == false
+    /// The folder scan's local image. A packaging failure fails the capture which asks for it.
+    static func scannedFile(named name: String) -> BridgeFileVersion? {
+        do {
+            let url =
+                try bundledURL(named: name)
+                ?? URL(fileURLWithPath: PreviewData.previewArtPath(name))
+            return try PreviewData.artVersion(at: url)
+        }
+        catch {
+            Issue.record(error)
+            return nil
+        }
+    }
 
     fileprivate static func gradient(named name: String) -> Data {
         let side: CGFloat = 600
@@ -82,11 +113,8 @@ final class BoardArtwork {
 }
 
 extension PreviewData {
-    /// The bundled cover for a named album, or a temporary PNG for other fixture images.
+    /// A temporary PNG for a fixture that supplies its own image name.
     static func previewArtPath(_ name: String) -> String {
-        if let file = BoardArtwork.bundledURL(named: name) {
-            return file.path
-        }
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("bae-preview-art", isDirectory: true)
         let data = BoardArtwork.gradient(named: name)
@@ -116,19 +144,25 @@ extension PreviewData {
     /// `previewArtPath`'s file at the version on disk, as core's scan
     /// reports a folder's image.
     static func previewArtFile(_ name: String) -> BridgeFileVersion {
-        let path = previewArtPath(name)
-        // Crash with the reason rather than draw failure placeholders.
         // swiftlint:disable:next force_try
-        let attributes = try! FileManager.default.attributesOfItem(
-            atPath: path
+        return try! artVersion(at: URL(fileURLWithPath: previewArtPath(name)))
+    }
+
+    fileprivate static func artVersion(at url: URL) throws -> BridgeFileVersion
+    {
+        let attributes = try FileManager.default.attributesOfItem(
+            atPath: url.path
         )
         guard let size = attributes[.size] as? UInt64,
             let modified = attributes[.modificationDate] as? Date
         else {
-            preconditionFailure("placeholder art has a size and a date")
+            throw CocoaError(
+                .fileReadCorruptFile,
+                userInfo: [NSURLErrorKey: url]
+            )
         }
         return BridgeFileVersion(
-            path: URL(fileURLWithPath: path).pathBytes,
+            path: url.pathBytes,
             size: size,
             modifiedAtNs: Int64(
                 (modified.timeIntervalSince1970 * 1_000_000_000).rounded()
@@ -136,8 +170,7 @@ extension PreviewData {
         )
     }
 
-    /// An image store that serves fixture "URLs", which are paths to
-    /// generated placeholder art, from disk.
+    /// An image store that loads fixture images from their local paths.
     static func artImageStore() -> ImageStore {
         ImageStore(
             fetchRemoteImage: { image, _ in

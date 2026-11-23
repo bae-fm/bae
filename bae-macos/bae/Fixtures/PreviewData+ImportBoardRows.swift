@@ -29,7 +29,11 @@ extension PreviewData {
             for: boardCandidate(folder),
             placement: placement,
             metadataSummary: summary,
-            cover: summary.map { .local(file: previewArtFile($0.albumTitle)) },
+            cover:
+                summary.flatMap {
+                    BoardArtwork.scannedFile(named: $0.albumTitle)
+                }
+                .map { .local(file: $0) },
             importStatus: importStatus,
             upload: upload,
             metadataProvenance: record.map {
@@ -318,7 +322,8 @@ extension PreviewData {
             albumTitle: "Harbor Waltz",
             artist: .named("Ada Lindqvist")
         ),
-        cover: .local(file: previewArtFile("Glass Harbor"))
+        cover: BoardArtwork.scannedFile(named: "Glass Harbor")
+            .map { .local(file: $0) }
     )
 
     /// The Skipped tab's rows as the board lists them.

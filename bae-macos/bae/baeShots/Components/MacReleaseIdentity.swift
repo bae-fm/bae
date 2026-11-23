@@ -128,9 +128,8 @@ extension ShotScene {
     {
         ReleaseCoverWell(
             coverContent: cover
-                ? ImageContent.localFile(
-                    PreviewData.previewArtFile("Low Tide Hours")
-                )
+                ? BoardArtwork.scannedFile(named: "Low Tide Hours")
+                    .map(ImageContent.localFile)
                 : nil,
             onEditCover: cover ? {} : nil,
             onDropImage: nil

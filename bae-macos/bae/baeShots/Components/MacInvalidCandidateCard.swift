@@ -47,7 +47,8 @@ extension ShotScene {
                     artist: .named("Mara Quill")
                 ) : nil,
             cover: tagged
-                ? .local(file: PreviewData.previewArtFile("Low Tide Hours"))
+                ? BoardArtwork.scannedFile(named: "Low Tide Hours")
+                    .map { .local(file: $0) }
                 : nil
         )
     }

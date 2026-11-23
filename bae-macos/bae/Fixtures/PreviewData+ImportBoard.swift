@@ -150,8 +150,9 @@ extension PreviewData {
     }
 
     /// The folder's image file `name`, drawn as the artwork `art`.
-    static func boardImage(_ name: String, art: String) -> BridgeMappingImage {
-        BridgeMappingImage(fileId: name, name: name, file: previewArtFile(art))
+    static func boardImage(_ name: String, art: String) -> BridgeMappingImage? {
+        BoardArtwork.scannedFile(named: art)
+            .map { BridgeMappingImage(fileId: name, name: name, file: $0) }
     }
 
     /// Northbound's folder images: its front cover and its back.
@@ -159,12 +160,16 @@ extension PreviewData {
         boardImage("cover.jpg", art: "Northbound"),
         boardImage("back.jpg", art: "Northbound back"),
     ]
+    .compactMap { $0 }
 
-    static func boardCover(_ name: String) -> BridgeCoverChoice {
-        BridgeCoverChoice(
-            selection: .releaseImage(fileId: "\(name).jpg"),
-            image: .local(file: previewArtFile(name))
-        )
+    static func boardCover(_ name: String) -> BridgeCoverChoice? {
+        BoardArtwork.scannedFile(named: name)
+            .map { file in
+                BridgeCoverChoice(
+                    selection: .releaseImage(fileId: "\(name).jpg"),
+                    image: .local(file: file)
+                )
+            }
     }
 
     // MARK: - Artists

@@ -229,7 +229,8 @@ extension PreviewData {
             releaseLink: boardLink("board-low-tide-hours"),
             edit: edit,
             mapping: BridgeMappingTable(
-                images: [boardImage("cover.jpg", art: "Low Tide Hours")],
+                images: boardImage("cover.jpg", art: "Low Tide Hours")
+                    .map { [$0] } ?? [],
                 trackSides: boardTrackSides(tracks, edit: edit),
                 files: lowTideHoursFiles.map { .file(file: $0) },
                 untitledTrackCount: 0
@@ -687,7 +688,8 @@ extension PreviewData {
     /// files, two of its audio files damaged.
     static let boardHarborWaltzDetail = BridgeInvalidCandidateDetail(
         candidate: boardHarborWaltz,
-        images: [boardImage("folder.jpg", art: "Glass Harbor")],
+        images: boardImage("folder.jpg", art: "Glass Harbor").map { [$0] }
+            ?? [],
         files: [
             mappingFile(
                 previewFile(
