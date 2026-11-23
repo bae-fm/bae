@@ -88,9 +88,8 @@ pub(crate) fn album_window_statement(
     seek: &Seek,
 ) -> String {
     let primary = album_primary_release_sql();
-    let album = album_summary_columns_for_primary("primary_release.id");
-    let availability = "(SELECT audio_elsewhere_device IS NOT NULL FROM release_storage \
-                        WHERE release_id = primary_release.id)";
+    let album = album_summary_columns_for_primary("primary_storage.release_id");
+    let availability = "primary_storage.audio_elsewhere_device IS NOT NULL";
     if !seek.by_offset() {
         let listing = if group_by_artist {
             "CROSS JOIN album_listing listing ON listing.album_id = link.album_id"
@@ -101,7 +100,7 @@ pub(crate) fn album_window_statement(
             "SELECT {album}, {beside} AS credited_with, {availability} AS primary_release_unplayable, {keys} \
              {tables} {listing} \
              JOIN albums a ON a.id = listing.album_id \
-             LEFT JOIN releases primary_release ON primary_release.id = {primary} \
+             LEFT JOIN release_storage primary_storage ON primary_storage.release_id = {primary} \
              WHERE {condition} \
              ORDER BY {ordering} {limit}",
             beside = album_credits_beside_sql(group_by_artist),
@@ -131,7 +130,7 @@ pub(crate) fn album_window_statement(
                ORDER BY {ordering} {limit}) picked \
          {picked_ids} \
          JOIN albums a ON a.id = picked.picked_album_id \
-         LEFT JOIN releases primary_release ON primary_release.id = {primary} \
+         LEFT JOIN release_storage primary_storage ON primary_storage.release_id = {primary} \
          ORDER BY {ordering}",
         beside = album_credits_beside_sql(group_by_artist),
         tables = album_order_tables(group_by_artist),
