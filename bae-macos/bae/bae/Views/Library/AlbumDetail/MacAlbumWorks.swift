@@ -28,6 +28,7 @@ struct MacAlbumWorks: View {
                                 )
                             Button(work.title) { onOpenWork(work.workId) }
                                 .buttonStyle(.accentPlain)
+                                .foregroundStyle(Theme.accent)
                             Text(
                                 verbatim: FactList.glyph + " "
                                     + (work.composerNames ?? "")
