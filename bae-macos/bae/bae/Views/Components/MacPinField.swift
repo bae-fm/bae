@@ -39,6 +39,9 @@ struct MacPinField: View {
                 }
             }
             .accessibilityHidden(true)
+            // The field is as wide as the line it sits on, so a click beside
+            // the boxes gives it the keyboard too.
+            .frame(maxWidth: .infinity, alignment: .leading)
             .overlay {
                 PinEditor(
                     text: $value,
@@ -86,9 +89,9 @@ struct MacPinField: View {
     }
 }
 
-/// The text field a PIN is typed into: as large as the boxes it lies over and
-/// not drawn, so a click on any box gives it the keyboard and the boxes show
-/// what it holds. It drops anything but digits and stops at `digits`.
+/// The text field a PIN is typed into: as large as the line of boxes it lies
+/// over and not drawn, so a click on any box gives it the keyboard and the
+/// boxes show what it holds. It drops anything but digits and stops at `digits`.
 private struct PinEditor: NSViewRepresentable {
     @Binding
     var text: String
@@ -138,7 +141,7 @@ private struct PinEditor: NSViewRepresentable {
         }
     }
 
-    /// Exactly the boxes' size.
+    /// Exactly the size of the line of boxes.
     func sizeThatFits(
         _ proposal: ProposedViewSize,
         nsView: EditingTextField,
