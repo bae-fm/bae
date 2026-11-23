@@ -19,8 +19,12 @@ private struct ThemeTextLine: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
             if let line = text.macOSLine {
+                // SwiftUI lays a line out at its font's natural height
+                // rounded up, so the spacing added to it makes up the rest.
                 content
-                    .lineSpacing(max(0, line - text.nsFont.naturalLineHeight))
+                    .lineSpacing(
+                        max(0, line - ceil(text.nsFont.naturalLineHeight))
+                    )
                     .frame(minHeight: line)
             }
             else {
