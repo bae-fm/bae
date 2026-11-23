@@ -418,7 +418,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
     let cover = bae_records::cover_ref(&primary_release_id, raw.primary_cover_version);
     let mut releases: Vec<crate::album_detail::ReleaseDetail> =
         Vec::with_capacity(raw.releases.len());
-    for ReleaseDetailRead { detail, download, actions } in raw.releases {
+    for ReleaseDetailRead { detail, download, actions, tracks_rating_system } in raw.releases {
         let ctx = crate::album_detail::ReleaseResolveCtx {
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
@@ -429,7 +429,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
             download,
             actions,
             &ctx,
-            raw.rating_systems.tracks,
+            tracks_rating_system,
         ));
     }
 
@@ -447,7 +447,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
         shows_release_choices: raw.shows_release_choices,
         primary_release_id,
         cover,
-        rating: crate::album_detail::AlbumRating::of(raw.rating_systems.albums, raw.ratings),
+        rating: crate::album_detail::AlbumRating::of(raw.album_rating_system, raw.ratings),
     }
 }
 
@@ -691,21 +691,19 @@ fn find_album_detail_on(
     album_id: &str,
     chosen_release_id: Option<&str>,
 ) -> Result<Option<AlbumDetailRows>, DbError> {
-    let Some(album) = find_album_by_id_on(sql, album_id)? else {
-        return Ok(None);
-    };
-    let artists = get_artists_for_album_on(sql, album_id)?;
     let releases = build_album_release_details_on(sql, album_id)?;
     if releases.is_empty() {
         return Ok(None);
     }
     // The shown release is the chosen one when the album holds it, else the
     // first in the album's order, which is the primary release.
-    let (primary_release_id, primary_cover_version, shows_release_choices, shown_release_index): (
-        String,
-        Option<String>,
-        bool,
-        u32,
+    let (
+        album,
+        (album_rating_system, ratings),
+        primary_release_id,
+        primary_cover_version,
+        shows_release_choices,
+        shown_release_index,
     ) = sql.query_row(
         &format!(
             "SELECT {primary}, {cover}, \
@@ -713,20 +711,30 @@ fn find_album_detail_on(
                     (SELECT place FROM ( \
                         SELECT id, ROW_NUMBER() OVER (ORDER BY album_order, id) - 1 AS place \
                         FROM releases WHERE album_id = a.id \
-                     ) ORDER BY id IS ?2 DESC, place LIMIT 1) \
-             FROM albums a WHERE a.id = ?1",
+                     ) ORDER BY id IS ?2 DESC, place LIMIT 1), \
+                    a.*, ratings.* \
+             FROM albums a LEFT JOIN ({ratings}) AS ratings ON 1 WHERE a.id = ?1",
             primary = album_primary_release_sql(),
             cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
+            ratings = bae_people::people::album_ratings_sql(),
         ),
         params![album_id, chosen_release_id],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        |row| {
+            Ok((
+                row_to_album(row)?,
+                bae_people::people::album_ratings_row(row)?,
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+            ))
+        },
     )?;
-    let (rating_systems, ratings) = bae_people::people::album_ratings_on(sql, album_id)?;
     Ok(Some(AlbumDetailRows {
         ratings,
-        rating_systems,
+        album_rating_system,
         album,
-        artists,
+        artists: get_artists_for_album_on(sql, album_id)?,
         releases,
         shown_release_index,
         shows_release_choices,
@@ -745,7 +753,7 @@ struct AlbumDetailRows {
     primary_release_id: String,
     primary_cover_version: Option<String>,
     ratings: bae_people::collections::AlbumRatings,
-    rating_systems: bae_people::people::RatingSystems,
+    album_rating_system: bae_people::people::RatingSystem,
 }
 
 impl AlbumDetailRows {
@@ -760,7 +768,7 @@ impl AlbumDetailRows {
             primary_release_id: self.primary_release_id,
             primary_cover_version: self.primary_cover_version,
             ratings: self.ratings,
-            rating_systems: self.rating_systems,
+            album_rating_system: self.album_rating_system,
         }
     }
 }

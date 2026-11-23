@@ -103,10 +103,10 @@ pub struct DbAlbumDetail {
     pub primary_release_id: String,
     /// The version of that release's cover; `None` when it has none.
     pub primary_cover_version: Option<String>,
-    /// The album's ratings, and whether this person can rate.
+    /// The ratings visible under the album's rating system.
     pub ratings: bae_people::collections::AlbumRatings,
-    /// How the library shows the ratings of albums and of tracks.
-    pub rating_systems: bae_people::people::RatingSystems,
+    /// How the library shows the ratings of albums.
+    pub album_rating_system: bae_people::people::RatingSystem,
 }
 
 /// One row of the album grid: an album, listed once when the grid is flat and
@@ -471,4 +471,5 @@ pub struct ReleaseDetailRead {
     pub detail: DbReleaseDetail,
     pub download: Option<bae_transfers::DownloadEntry>,
     pub actions: crate::DbStorageActions,
+    pub tracks_rating_system: bae_people::people::RatingSystem,
 }

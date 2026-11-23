@@ -1,4 +1,4 @@
-use super::rating_systems::{rating_systems_row, MIN_HEART_STARS};
+use super::rating_systems::MIN_HEART_STARS;
 use super::*;
 #[cfg(any(test, feature = "test-utils"))]
 use crate::collections::Rating;
@@ -316,17 +316,17 @@ fn own_member_sql() -> String {
     )
 }
 
-/// The rating systems and the album `?1`'s ratings that its system shows.
+/// The rating system for albums and the album `?1`'s ratings that it shows.
 /// SQLite finds the album's ratings through `ratings_album`, and names
 /// other raters by name then id.
-pub(super) fn album_ratings_sql() -> String {
+pub fn album_ratings_sql() -> String {
     format!(
         "WITH album AS ( \
-             SELECT ?1 AS id, albums, tracks, \
+             SELECT ?1 AS id, albums, \
                     CASE albums WHEN '{stars}' THEN 1 WHEN '{heart}' THEN {minimum_heart} END AS minimum \
-             FROM rating_systems WHERE id = 'library' \
+             FROM ({RATING_SYSTEMS_SQL}) AS systems \
          ), shown AS MATERIALIZED ( \
-             SELECT album.albums, album.tracks, \
+             SELECT album.albums, \
                     (SELECT r.stars FROM ratings AS r \
                      WHERE r.album_id = album.id AND r.person_id = own.member \
                        AND r.stars >= album.minimum) AS mine, \
@@ -356,24 +356,19 @@ pub fn own_track_stars_sql(track_alias: &str) -> String {
     )
 }
 
-/// The library's rating systems and what the album's page shows of its ratings.
-pub fn album_ratings_on(
-    sql: &SqlReadContext<'_>,
-    album_id: &str,
-) -> rusqlite::Result<(RatingSystems, AlbumRatings)> {
-    sql.query_row(&album_ratings_sql(), [album_id], |row| {
-        let stars_of = |value: i64| crate::collections::stars_from_sql(value);
-        let others: Vec<StoredRating> = bae_store::read::json_column(row, "others")?;
-        let ratings = AlbumRatings {
-            mine: row.get::<_, Option<i64>>("mine")?.map(stars_of).transpose()?,
-            others: others
-                .into_iter()
-                .map(|other| Ok(OtherRating { name: other.name, stars: stars_of(other.stars)? }))
-                .collect::<rusqlite::Result<_>>()?,
-            has_raters: row.get("has_raters")?,
-        };
-        Ok((rating_systems_row(row)?, ratings))
-    })
+/// Read the rating system and ratings that [`album_ratings_sql`] selects.
+pub fn album_ratings_row(row: &Row<'_>) -> rusqlite::Result<(RatingSystem, AlbumRatings)> {
+    let stars_of = crate::collections::stars_from_sql;
+    let others: Vec<StoredRating> = bae_store::read::json_column(row, "others")?;
+    let ratings = AlbumRatings {
+        mine: row.get::<_, Option<i64>>("mine")?.map(stars_of).transpose()?,
+        others: others
+            .into_iter()
+            .map(|other| Ok(OtherRating { name: other.name, stars: stars_of(other.stars)? }))
+            .collect::<rusqlite::Result<_>>()?,
+        has_raters: row.get("has_raters")?,
+    };
+    Ok((bae_store::read::parsed_column(row, "albums")?, ratings))
 }
 
 /// One other person's rating as [`album_ratings_sql`] writes it into its

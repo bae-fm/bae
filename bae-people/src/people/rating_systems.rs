@@ -110,13 +110,8 @@ pub(crate) fn write_first_rating_systems(sql: &coven::MemberWrite<'_>) -> rusqli
 }
 
 /// The library's one `rating_systems` row.
-const RATING_SYSTEMS_SQL: &str = "SELECT albums, tracks FROM rating_systems WHERE id = 'library'";
-
-/// How the library shows ratings, read inside a screen's own read, so the
-/// screen's rows and the system that draws them come from one query.
-pub fn rating_systems_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<RatingSystems> {
-    sql.query_row(RATING_SYSTEMS_SQL, [], rating_systems_row)
-}
+pub const RATING_SYSTEMS_SQL: &str =
+    "SELECT albums, tracks FROM rating_systems WHERE id = 'library'";
 
 pub(super) const MIN_HEART_STARS: Stars = Stars::Three;
 
@@ -126,7 +121,7 @@ pub fn is_heart(stars: Stars) -> bool {
     stars as i64 >= MIN_HEART_STARS as i64
 }
 
-pub(super) fn rating_systems_row(row: &Row<'_>) -> rusqlite::Result<RatingSystems> {
+fn rating_systems_row(row: &Row<'_>) -> rusqlite::Result<RatingSystems> {
     Ok(RatingSystems {
         albums: bae_store::read::parsed_column(row, "albums")?,
         tracks: bae_store::read::parsed_column(row, "tracks")?,

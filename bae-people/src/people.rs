@@ -8,7 +8,7 @@ use std::sync::Arc;
 use time::UtcDateTime;
 
 mod collections;
-pub use collections::{album_ratings_on, own_track_stars_sql};
+pub use collections::{album_ratings_row, album_ratings_sql, own_track_stars_sql};
 mod history;
 mod initials;
 pub use initials::initials;
@@ -18,8 +18,8 @@ mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
 mod rating_systems;
 pub use rating_systems::{
-    is_heart, rating_systems_on, RatedItems, RatingSystem, RatingSystemError, RatingSystems,
-    RatingSystemsSettings,
+    is_heart, RatedItems, RatingSystem, RatingSystemError, RatingSystems, RatingSystemsSettings,
+    RATING_SYSTEMS_SQL,
 };
 
 /// The SQL functions the people's reads name: the key lists of names order by.

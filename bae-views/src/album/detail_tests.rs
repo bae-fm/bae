@@ -7,9 +7,9 @@ use bae_records::test_fixtures::live_query::*;
 use bae_records::test_fixtures::*;
 use bae_util::test_channels::HANG_GUARD;
 
-/// An album's page reads its album, its artists, every release with all its
-/// parts, the primary release and the person's ratings: five statements,
-/// whatever number of releases the album has.
+/// An album's page reads its releases with their track ratings, its album
+/// with its ratings and release choices, and its artist credits. The three
+/// statements hold for any number of releases.
 #[tokio::test]
 async fn album_detail_reads_every_release_in_one_statement() {
     let (db, _temp) =
@@ -23,7 +23,7 @@ async fn album_detail_reads_every_release_in_one_statement() {
     assert_eq!(detail.releases.len(), 3, "the album has three releases");
     assert!(detail.shows_release_choices, "an album of three releases offers a choice");
     let statements = log.take();
-    assert_eq!(statements.len(), 5, "{} statements", statements.len());
+    assert_eq!(statements.len(), 3, "{} statements", statements.len());
 }
 
 /// An album of one release offers no choice between releases.

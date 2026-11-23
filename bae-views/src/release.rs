@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::album_detail::{ReleaseDetail, ReleaseResolveCtx};
+use bae_people::people::{RatingSystem, RATING_SYSTEMS_SQL};
 
 impl LibraryViews {
     /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
@@ -99,7 +100,6 @@ pub(crate) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseContextRows>, DbError> {
-    let tracks_rating_system = bae_people::people::rating_systems_on(sql)?.tracks;
     Ok(release_detail_rows_on(
         sql,
         release_id,
@@ -109,25 +109,23 @@ pub(crate) fn find_release_detail_context_on(
              (SELECT a.is_compilation FROM albums a WHERE a.id = rel.album_id) \
                  AS album_is_compilation, \
              (SELECT a.year FROM albums a WHERE a.id = rel.album_id) AS album_year",
-            release_standing_columns()
+            release_detail_columns()
         ),
         release_context_columns,
     )?
-    .map(|(rows, ((download, actions), is_compilation, album_year))| ReleaseContextRows {
-        detail: ReleaseDetailRows { rows, download, actions },
+    .map(|(rows, (columns, is_compilation, album_year))| ReleaseContextRows {
+        detail: ReleaseDetailRows { rows, columns },
         is_compilation,
         album_year,
-        tracks_rating_system,
     }))
 }
 
 /// The columns of [`find_release_detail_context_on`]'s statement beside the
-/// release's rows: its entry in the download queue, the storage actions it
-/// offers, and its album's compilation flag and year.
+/// release's rows and its album's compilation flag and year.
 fn release_context_columns(
     row: &Row<'_>,
-) -> rusqlite::Result<(ReleaseStanding, bool, Option<i32>)> {
-    Ok((release_standing(row)?, row.get("album_is_compilation")?, row.get("album_year")?))
+) -> rusqlite::Result<(ReleaseDetailColumns, bool, Option<i32>)> {
+    Ok((ReleaseDetailColumns::read(row)?, row.get("album_is_compilation")?, row.get("album_year")?))
 }
 
 #[derive(Clone, PartialEq)]
@@ -135,39 +133,48 @@ pub(crate) struct ReleaseContextRows {
     detail: ReleaseDetailRows,
     is_compilation: bool,
     album_year: Option<i32>,
-    tracks_rating_system: bae_people::people::RatingSystem,
 }
 
 impl ReleaseContextRows {
     pub(crate) fn process(self) -> ReleaseDetailContext {
-        let ReleaseDetailRead { detail, download, actions } = self.detail.process();
+        let ReleaseDetailRead { detail, download, actions, tracks_rating_system } =
+            self.detail.process();
         ReleaseDetailContext {
             detail,
             download,
             actions,
             is_compilation: self.is_compilation,
             album_year: self.album_year,
-            tracks_rating_system: self.tracks_rating_system,
+            tracks_rating_system,
         }
     }
 }
 
 /// The columns beside a release `rel`'s detail rows: its entry in the
-/// download queue and the storage actions it offers.
-fn release_standing_columns() -> String {
+/// download queue, its storage actions and how its track ratings show.
+fn release_detail_columns() -> String {
     format!(
-        "{}, {}",
+        "{}, {}, (SELECT tracks FROM ({RATING_SYSTEMS_SQL})) AS tracks_rating_system",
         bae_transfers::download_entry_sql("rel.id"),
         crate::storage_actions::storage_action_columns("rel.id")
     )
 }
 
-type ReleaseStanding = (Option<bae_transfers::DownloadEntry>, crate::DbStorageActions);
+#[derive(Clone, PartialEq)]
+struct ReleaseDetailColumns {
+    download: Option<bae_transfers::DownloadEntry>,
+    actions: crate::DbStorageActions,
+    tracks_rating_system: RatingSystem,
+}
 
-/// The release's download queue entry and storage actions, as
-/// [`release_standing_columns`] read them.
-fn release_standing(row: &Row<'_>) -> rusqlite::Result<ReleaseStanding> {
-    Ok((bae_transfers::download_entry_column(row)?, crate::DbStorageActions::of_row(row)?))
+impl ReleaseDetailColumns {
+    fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            download: bae_transfers::download_entry_column(row)?,
+            actions: crate::DbStorageActions::of_row(row)?,
+            tracks_rating_system: bae_store::read::parsed_column(row, "tracks_rating_system")?,
+        })
+    }
 }
 
 /// The release's rows as its detail reads them, beside its entry in the
@@ -181,8 +188,8 @@ pub(crate) fn build_release_detail_on(
 }
 
 /// The detail rows of each release of the album `album_id`, in the album's
-/// order, each beside its entry in the download queue and its storage
-/// actions, in one statement.
+/// order, with each release's download entry, storage actions and track
+/// rating system, in one statement.
 pub(crate) fn build_album_release_details_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
@@ -191,27 +198,27 @@ pub(crate) fn build_album_release_details_on(
         sql,
         bae_records::records::ReleaseSet::OfAlbum(album_id),
         &bae_people::people::own_track_stars_sql("track"),
-        &release_standing_columns(),
-        release_standing,
+        &release_detail_columns(),
+        ReleaseDetailColumns::read,
     )?
     .into_iter()
-    .map(|(rows, (download, actions))| ReleaseDetailRows { rows, download, actions })
+    .map(|(rows, columns)| ReleaseDetailRows { rows, columns })
     .collect())
 }
 
 #[derive(Clone, PartialEq)]
 pub(crate) struct ReleaseDetailRows {
     rows: DbReleaseDetailRows,
-    download: Option<bae_transfers::DownloadEntry>,
-    actions: crate::DbStorageActions,
+    columns: ReleaseDetailColumns,
 }
 
 impl ReleaseDetailRows {
     pub(crate) fn process(self) -> ReleaseDetailRead {
         ReleaseDetailRead {
             detail: self.rows.process(),
-            download: self.download,
-            actions: self.actions,
+            download: self.columns.download,
+            actions: self.columns.actions,
+            tracks_rating_system: self.columns.tracks_rating_system,
         }
     }
 }
