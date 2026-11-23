@@ -128,10 +128,10 @@ internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
     mainClock.advanceTimeBy(SETTLE_MILLIS)
 }
 
-/** 411 by 914 dp at 420 dpi (2.625 pixels to the dp), dark. */
+/** 412 by 916 dp at 420 dpi (2.625 pixels to the dp), dark. */
 private val PHONE_WIDTH = 412.dp
 
-internal const val PHONE_QUALIFIERS = "w411dp-h914dp-night-420dpi"
+internal const val PHONE_QUALIFIERS = "w412dp-h916dp-night-420dpi"
 private const val SETTLE_MILLIS = 100L
 private const val JSON_INDENT = 2
 

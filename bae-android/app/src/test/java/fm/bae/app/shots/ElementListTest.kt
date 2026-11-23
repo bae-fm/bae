@@ -76,8 +76,8 @@ class ElementListTest : BoardShot() {
         assertEquals("android.test.known", list.getString("board"))
         assertEquals("android", list.getString("platform"))
         assertEquals(2.625, list.getDouble("scale"), 0.0)
-        assertEquals(411.0, list.getJSONObject("size").getDouble("width"), 1.0)
-        assertEquals(914.0, list.getJSONObject("size").getDouble("height"), 1.0)
+        assertEquals(412.0, list.getJSONObject("size").getDouble("width"), 1.0)
+        assertEquals(916.0, list.getJSONObject("size").getDouble("height"), 1.0)
         val elements = list.getJSONArray("elements").objects()
 
         val group = elements.single { it.optString("label") == "Group" }
