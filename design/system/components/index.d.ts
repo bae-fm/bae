@@ -115,7 +115,7 @@ export declare function MacNote(props: MacNoteProps): React.ReactElement;
 // ---- Android ----
 
 /** A screen: the top bar with Back and the title, then the content. A screen without a title has no top bar. The screen draws an AndroidDialog or AndroidSheet among its children last, over the whole screen. */
-export interface AndroidScreenProps { title?: string; back?: boolean; keyboard?: boolean; width?: number; height?: number; children?: React.ReactNode }
+export interface AndroidScreenProps { title?: string; back?: boolean; backLabel?: string; keyboard?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidScreen(props: AndroidScreenProps): React.ReactElement;
 
 /** A label in capitals over the card that follows. */
@@ -147,7 +147,7 @@ export interface MacReleaseFilesProps { /** "name|size[|kind]", comma-separated;
 export declare function MacReleaseFiles(props: MacReleaseFilesProps): React.ReactElement;
 export interface AndroidKeyboardProps {}
 export declare function AndroidKeyboard(props: AndroidKeyboardProps): React.ReactElement;
-export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | 'text'; label?: string; large?: boolean; icon?: string; alignTo?: 'text' | 'field'; destructive?: boolean; neutral?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | 'text'; label?: string; large?: boolean; icon?: string; alignTo?: 'text' | 'field'; destructive?: boolean; neutral?: boolean; off?: boolean; name?: string; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
 /** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. tone colours the glyph (secondary text, the accent, or the warning); box sets the touch box's side when it isn't 48. */
@@ -320,7 +320,7 @@ export declare function MacCastPopover(props: MacCastPopoverProps): React.ReactE
 export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; /** The words of a wait on this receiver, such as Connecting…: a spinner at the row's end and the words in place of its kind. */ waiting?: string }
 export declare function MacCastRow(props: MacCastRowProps): React.ReactElement;
 export declare function AndroidSheet(props: { top?: number; title?: string; /** One sentence of secondary text under the title. */ note?: string; children?: React.ReactNode }): React.ReactElement;
-export interface AndroidQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
+export interface AndroidQueueSectionProps { title: string; clear?: string; shuffle?: boolean }
 export declare function AndroidQueueSection(props: AndroidQueueSectionProps): React.ReactElement;
 export interface AndroidQueueRowProps { title: string; artist?: string; album?: string; duration?: string; current?: boolean; dragging?: boolean }
 export declare function AndroidQueueRow(props: AndroidQueueRowProps): React.ReactElement;

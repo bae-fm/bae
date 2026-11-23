@@ -10,7 +10,7 @@
     return { content: content, over: over };
   }
 
-  // A screen's bar, 64dp on the page's own colour: the back button (`back`), the title, and `menu`, a choice that applies to the whole screen (History's whose plays), at the bar's end, opening a menu of its choices.
+  // A screen's bar, 64dp on the page's own colour: the back button (`back`), named Back, or `backLabel` where it names where it goes (Back to library on a screen opened from the library), the title, and `menu`, a choice that applies to the whole screen (History's whose plays), at the bar's end, opening a menu of its choices.
   function AndroidTopBar(props) {
     return h('header', { className: 'bae-a-topbar' },
       props.back ? h(AndroidIconButton, { icon: 'back', label: props.backLabel || 'Back' }) : null,
@@ -22,7 +22,7 @@
   function AndroidScreen(props) {
     var split = splitOverlays(props.children);
     var top = [
-      props.title ? h(AndroidTopBar, { key: 'top', title: props.title, back: props.back, menu: props.menu }) : null,
+      props.title ? h(AndroidTopBar, { key: 'top', title: props.title, back: props.back, backLabel: props.backLabel, menu: props.menu }) : null,
       h('main', { key: 'main', className: 'bae-a-main' }, split.content),
       split.over.length ? h(React.Fragment, { key: 'over' }, split.over) : null];
     // keyboard: a field has focus, so the keyboard is up and the screen, a dialog over it included, fits in the space above it.
@@ -93,7 +93,8 @@
 
   function AndroidButton(props) {
     var kind = props.kind || 'filled';
-    return h('button', { type: 'button', disabled: !!props.off, onClick: props.onClick,
+    // `name`: the button's accessible name, where its words leave out what it acts on (a queue lane's Clear).
+    return h('button', { type: 'button', disabled: !!props.off, onClick: props.onClick, 'aria-label': props.name,
       className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.icon && 'bae-a-btn-icon', props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.neutral && 'bae-a-btn-neutral', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
       // `icon`: a glyph before the words, as the album page's Pin and Unpin.
       props.icon ? h(Glyph, { name: props.icon, size: 'medium' }) : null,

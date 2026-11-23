@@ -471,10 +471,10 @@
       h(AndroidSeekBar, { held: props.held, elapsed: props.elapsed, duration: props.duration }));
   }
 
-  // The library header while searching: back, and the search field with what was typed (`search`) and its clear button, or the prompt.
+  // The library header while searching: Close search, and the search field with what was typed (`search`) and its Clear search button, or the prompt.
   function AndroidSearchBar(props) {
-    return h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }),
-      h('div', { className: 'bae-a-searchfield' }, h('span', { className: props.search ? null : 'bae-a-search-prompt' }, props.search || 'Search albums, tracks, composers, and works'), props.search ? h(Glyph, { name: 'close', size: 'medium' }) : null));
+    return h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Close search' }),
+      h('div', { className: 'bae-a-searchfield' }, h('span', { className: props.search ? null : 'bae-a-search-prompt' }, props.search || 'Search albums, tracks, composers, and works'), props.search ? h(AndroidInlineIconButton, { icon: 'close', label: 'Clear search' }) : null));
   }
 
   // The Activity button, by what the sync queue does (`state`): moving spins, attention shows the warning mark, and paused (a queue held with nothing moving) shows a pause symbol so the hold can be seen. With nothing moving or held there is no button.

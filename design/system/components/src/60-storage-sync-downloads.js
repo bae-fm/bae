@@ -342,7 +342,7 @@
         props.pausable ? h(AndroidIconButton, { icon: props.paused ? 'play' : 'pause', size: 'medium', tonal: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
       h(AndroidProgress, { name: props.label, value: props.progress }));
   }
-  // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open Sync Settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
+  // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open sync settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
   function AndroidActivity(props) {
     var problems = props.children || props.error || props.attention;
     // Only the problems' rows start their words on the text edge, past the glyphs; the title, the Needs Attention label and the transfers sit at the sheet's edge.
@@ -357,7 +357,7 @@
       problems ? h('div', { className: 'bae-a-act-block' }, h(AndroidEyebrow, null, 'Needs Attention'),
         h('div', { className: 'bae-a-actproblems' }, divided(kids(props.children).concat([
           props.error ? h(AndroidNotice, { key: 'e', quiet: true, dismiss: true, tone: 'danger', title: props.error }) : null,
-          props.attention ? h(AndroidNotice, { key: 'f', quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open Sync Settings', buttons: 'below' }) : null,
+          props.attention ? h(AndroidNotice, { key: 'f', quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open sync settings', buttons: 'below' }) : null,
           props.attention && props.record ? h('div', { key: 'r' }, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { quiet: true, tone: 'neutral', title: props.reason })) : null].filter(Boolean))))) : null,
       // As on Mac: Transfers is its own labelled group; each transfer is its words, how far it has got, and a bar; the pinning line opens the Pinning screen.
       props.syncing || props.uploads || props.pins ? h(AndroidEyebrow, null, 'Transfers') : null,

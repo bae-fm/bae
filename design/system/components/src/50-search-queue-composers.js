@@ -124,9 +124,10 @@
   function AndroidSheet(props) {
     return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle', role: 'button', 'aria-label': 'Drag handle' }), props.title ? h('h2', { className: 'bae-a-sheet-title' }, props.title) : null, props.note ? h('p', { className: 'bae-a-sheet-note' }, props.note) : null, props.children ? h('div', { className: 'bae-a-sheet-body' }, props.children) : null));
   }
+  // A queue lane's heading; `clear` names its Clear button for the lane it clears (Clear up next, Clear playing from), as MacQueueSection's.
   function AndroidQueueSection(props) {
     return h('div', { className: 'bae-a-queuelabel' }, h('span', { className: 'bae-a-eyebrow', style: { paddingTop: 0, flex: 1 } }, props.title),
-      props.clear ? h(AndroidButton, { kind: 'text' }, 'Clear') : null,
+      props.clear ? h(AndroidButton, { kind: 'text', name: props.clear }, 'Clear') : null,
       props.shuffle != null ? h(AndroidIconButton, { icon: 'shuffle', label: props.shuffle ? 'Turn off shuffle' : 'Shuffle', size: 'medium', tone: props.shuffle ? 'accent' : 'muted' }) : null);
   }
   function AndroidQueueRow(props) {

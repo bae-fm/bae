@@ -1,6 +1,6 @@
 # AndroidScreen
 
-Holds `AndroidSection`s over `AndroidCard`s under the screen's bar (`AndroidTopBar`: `title`, `back`, `menu`).
+Holds `AndroidSection`s over `AndroidCard`s under the screen's bar (`AndroidTopBar`: `title`, `back`, `backLabel`, `menu`). The back arrow is named Back, or Back to library (`backLabel`) on a screen the library opened, such as History or Playlists.
 
 The screen draws a dialog or sheet placed among its content over the whole screen: its scrim covers the bars and the now playing bar too, and a dialog centres on the screen. A board never wraps the screen in a box to position it.
 
