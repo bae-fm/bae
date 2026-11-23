@@ -5106,7 +5106,8 @@ While the person waits on a track to start, or on a seek to land, and one
 of the playing track's reads fetches from storage, an arc turns around the
 play/pause control. Reading ahead while the track plays, a preload of the
 next track, and a load this device serves from its own copy or the cache show
-no arc. The playing track's reads, in every file it plays from (a pregap at
+no arc. VoiceOver and TalkBack read the arc as *Downloading the track…*.
+The playing track's reads, in every file it plays from (a pregap at
 the end of the file before included), go ahead of a preload's, which waits
 while one of them is fetching. The control itself shows pause while a track loads to play, and a
 press lands the load paused. A track makes no sound while it loads: it starts

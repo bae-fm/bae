@@ -119,9 +119,9 @@
   }
 
   function MacPlayPause(props) {
-    // A button named by what it does, as the app's: the arc around it while the track waits on storage is drawing only, with no words of its own.
+    // A button named by what it does, as the app's. The arc around it while the track waits on storage is a progress indicator that VoiceOver reads as Downloading the track….
     return h('button', { type: 'button', className: 'bae-m-playpause', 'aria-label': props.playing ? 'Pause' : 'Play' },
-      props.waiting ? h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', 'aria-hidden': true }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
+      props.waiting ? h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', role: 'progressbar', 'aria-label': 'Downloading the track…' }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
       h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'large' }));
   }
 

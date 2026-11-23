@@ -12,7 +12,7 @@
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Playing', h(B.MacNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' })),
-    W('Waiting on the cloud', h(B.MacNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', waiting: true, held: 0.04, elapsed: '0:05', duration: '5:03' })),
+    W('Waiting on the cloud', h(B.MacNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, waiting: true, held: 0.04, elapsed: '0:05', duration: '5:03' })),
     W('Nothing played', h(B.MacNowPlayingBar, {})),
     W('No cover', h(B.MacNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, { noCover: true }))),
     W('Casting', h(B.MacNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, { casting: 'Living Room' }))),
