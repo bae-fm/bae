@@ -221,7 +221,7 @@ internal val playingNorthbound =
     PlayerStaging(
         elapsedSeconds = 88,
         held = listOf(BridgeTrackSpan(0.0, 0.3)),
-        track = northboundTrack(title = "Northbound"),
+        track = northboundTrack(title = "Northbound", cover = PreviewData.imageRef("Northbound")),
         durationSeconds = 291,
     )
 

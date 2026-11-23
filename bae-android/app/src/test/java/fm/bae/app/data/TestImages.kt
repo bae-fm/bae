@@ -1,6 +1,10 @@
 package fm.bae.app.data
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import java.io.ByteArrayOutputStream
 import kotlin.random.Random
 
@@ -22,6 +26,19 @@ object TestImages {
         height: Int = width,
         seed: Int = 1,
     ): ByteArray = encode(noise(width, height, seed), Bitmap.CompressFormat.JPEG)
+
+    /** A square with a diagonal gradient from its top left to its bottom right. */
+    fun gradientPng(
+        size: Int,
+        topLeft: Int,
+        bottomRight: Int,
+    ): ByteArray {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val edge = size.toFloat()
+        val gradient = LinearGradient(0f, 0f, edge, edge, topLeft, bottomRight, Shader.TileMode.CLAMP)
+        Canvas(bitmap).drawPaint(Paint().apply { shader = gradient })
+        return encode(bitmap, Bitmap.CompressFormat.PNG)
+    }
 
     /**
      * A square whose quadrants are flat [colors] — top left, top right, bottom

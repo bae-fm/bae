@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.TestImages
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
@@ -357,20 +358,29 @@ internal fun OnTheBackdrop(content: @Composable () -> Unit) = Row(modifier = Mod
 internal fun Images(content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved(), content = content)
 
-/** [content] with the artwork files that the boards draw, named by their image IDs. */
+/** [content] with the artwork that the boards draw, named by its image ID. */
 @Composable
 internal fun Covers(content: @Composable () -> Unit) =
     CompositionLocalProvider(
         LocalImageStore provides
             ImageStore(
                 fetchLibraryImageBytes = { ref ->
-                    val resource =
-                        requireNotNull(BoardShot::class.java.getResourceAsStream("/${ref.id}.png")) {
-                            "No board artwork for ${ref.id}"
-                        }
-                    resource.use { it.readBytes() }
+                    if (ref.id == "Northbound") {
+                        northboundCover
+                    } else {
+                        val resource =
+                            requireNotNull(BoardShot::class.java.getResourceAsStream("/${ref.id}.png")) {
+                                "No board artwork for ${ref.id}"
+                            }
+                        resource.use { it.readBytes() }
+                    }
                 },
                 dispatcher = Dispatchers.Unconfined,
             ),
         content = content,
     )
+
+/** The board's fallback artwork for Northbound, with its green and teal endpoints. */
+private val northboundCover by lazy {
+    TestImages.gradientPng(size = 256, topLeft = 0xFF51B861.toInt(), bottomRight = 0xFF215957.toInt())
+}
