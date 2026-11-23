@@ -84,12 +84,8 @@ struct DeviceResetView: View {
         ) {
             VStack(spacing: ThemeSpace.section) {
                 if let error {
-                    MacNotice(
-                        title: error.step.title,
-                        advice: error.step.advice,
-                        error: error.error
-                    )
-                    .frame(maxWidth: WelcomeLayout.columnWidth)
+                    MacNotice(error: error.error)
+                        .frame(maxWidth: WelcomeLayout.columnWidth)
                 }
                 MacStepActions {
                     MacButton("Cancel", action: onCancel)
