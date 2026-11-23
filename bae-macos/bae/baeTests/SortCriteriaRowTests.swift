@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import BaeKit
 import SwiftUI
 import Testing
@@ -68,15 +69,21 @@ struct SortCriteriaRowTests {
     /// The pill's field is drawn as its menu button's label and listed in the
     /// menu it opens, so assert that menu still lists its field.
     @MainActor
-    @Test("the pill draws its field")
-    func thePillDrawsItsField() async throws {
+    @Test(
+        "the pill names its field and current direction",
+        .serialized,
+        arguments: [BridgeSortDirection.ascending, .descending]
+    )
+    func thePillNamesItsFieldAndDirection(
+        direction: BridgeSortDirection
+    ) async throws {
         let size = NSSize(width: 240, height: 44)
         try await SnapshotTestSupport.withHostedWindow(
             MacSortPill(
                 criterion: .constant(
                     BridgeSortCriterion(
                         field: .dateAdded,
-                        direction: .descending
+                        direction: direction
                     )
                 ),
                 takenFields: [],
@@ -86,12 +93,23 @@ struct SortCriteriaRowTests {
             )
             .frame(width: size.width, height: size.height),
             size: size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
             let menu = try #require(HostedMenus.controls(in: host).first)
             let field = String(localized: BridgeSortField.dateAdded.displayName)
             let titles = try #require(try HostedMenus.titles(of: menu))
             #expect(titles.contains(field), "the menu lists \(titles)")
+            let tree = try AccessibilityTree.read(
+                of: window,
+                subject: "the sort pill"
+            )
+            let label = direction == .ascending ? "Ascending" : "Descending"
+            #expect(
+                tree.nodes.contains {
+                    $0.role == kAXButtonRole
+                        && ($0.description == label || $0.title == label)
+                }
+            )
         }
     }
 }
