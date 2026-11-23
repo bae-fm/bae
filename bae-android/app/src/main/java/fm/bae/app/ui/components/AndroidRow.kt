@@ -104,7 +104,7 @@ internal fun AndroidRow(
     val row: @Composable (SwitchControl?) -> Unit = { control ->
         // A row that ends in controls of its own (a ⋮ menu) gives its button to its words alone, so a button
         // never holds another one; a layer behind the row still takes a tap anywhere on it.
-        val wordsOnly = onClick != null && trailing != null && control == null
+        val wordsTap = onClick.takeIf { trailing != null && control == null }
         val content: @Composable RowScope.() -> Unit = {
             RowContent(
                 title = title,
@@ -118,7 +118,7 @@ internal fun AndroidRow(
                 avatar = avatar,
                 action = action,
                 destructive = destructive,
-                words = if (wordsOnly) Modifier.wordsButton(enabled, onClickLabel, onClick) else Modifier,
+                words = wordsTap?.let { Modifier.wordsButton(enabled, onClickLabel, it) } ?: Modifier,
                 control = control,
                 trailing = trailing,
             )
@@ -129,14 +129,14 @@ internal fun AndroidRow(
                 place = place,
                 selected = selected,
                 enabled = enabled,
-                onClick = onClick.takeUnless { wordsOnly },
+                onClick = onClick.takeIf { wordsTap == null },
                 onClickLabel = onClickLabel,
                 switchAction = control?.action ?: Modifier,
             )
         val twoLines = subtitle != null || subtitleContent != null
         val inset = Modifier.rowInset(nested = nested, followed = followed, twoLines = twoLines)
-        if (wordsOnly) {
-            TapLayerRow(surface, inset, enabled, onClick, content)
+        if (wordsTap != null) {
+            TapLayerRow(surface, inset, enabled, wordsTap, content)
         } else {
             Row(
                 modifier = surface.then(inset),
@@ -163,7 +163,7 @@ private fun TapLayerRow(
     surface: Modifier,
     inset: Modifier,
     enabled: Boolean,
-    onClick: (() -> Unit)?,
+    onClick: () -> Unit,
     content: @Composable RowScope.() -> Unit,
 ) {
     Box(modifier = surface) {
@@ -171,7 +171,7 @@ private fun TapLayerRow(
             modifier =
                 Modifier
                     .matchParentSize()
-                    .clickable(enabled = enabled, onClick = { onClick?.invoke() })
+                    .clickable(enabled = enabled, onClick = onClick)
                     .semantics { invisibleToUser() },
         )
         Row(
@@ -187,13 +187,13 @@ private fun TapLayerRow(
 private fun Modifier.wordsButton(
     enabled: Boolean,
     onClickLabel: String?,
-    onClick: (() -> Unit)?,
+    onClick: () -> Unit,
 ): Modifier =
     semantics(mergeDescendants = true) {
         role = Role.Button
         if (!enabled) disabled()
         semanticsOnClick(label = onClickLabel) {
-            onClick?.invoke()
+            onClick()
             true
         }
     }
