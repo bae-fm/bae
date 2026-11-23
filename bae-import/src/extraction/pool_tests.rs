@@ -68,3 +68,30 @@ fn classify_falls_back_when_no_cluster_clears_threshold() {
     let (_, free_text) = classify_pool(lines, &[]);
     assert!(!free_text.is_empty(), "expected fallback top-N pool");
 }
+
+/// A number that several sources print, one CUE sheet to each disc, a tag, a
+/// file name and the artwork, is offered once.
+#[test]
+fn a_number_several_sources_print_is_offered_once() {
+    let lines = vec![
+        SourcedLine::new(
+            Source::CueField { file_id: "CD1/Disc.cue".to_string() },
+            "KBOX3555A".to_string(),
+        ),
+        SourcedLine::new(
+            Source::CueField { file_id: "CD2/Disc.cue".to_string() },
+            "KBOX3555B".to_string(),
+        ),
+        SourcedLine::new(
+            Source::CueField { file_id: "CD3/Disc.cue".to_string() },
+            "KBOX3555C".to_string(),
+        ),
+        path_line("KBOX3555B"),
+        artwork_line("/back.jpg", "KBOX3555B"),
+        artwork_line("/back.jpg", "P 2007 KBOX3555C"),
+        artwork_line("/inlay.jpg", "KBOX3555C"),
+        SourcedLine::new(Source::PathComponent, "KBOX3555C".to_string()),
+    ];
+    let (catalogs, _) = classify_pool(lines, &["KBOX3555C"]);
+    assert_eq!(catalogs, vec!["KBOX3555A", "KBOX3555B", "KBOX3555C"]);
+}
