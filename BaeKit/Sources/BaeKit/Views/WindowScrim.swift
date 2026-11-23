@@ -14,9 +14,7 @@ import SwiftUI
     /// window, so the scrim's colour is what takes them.
     @MainActor
     public final class ScrimWindow: NSWindow {
-        public static let accessibilityIdentifier = "window-scrim"
-
-        private let covered: NSWindow
+        private weak var covered: NSWindow?
         private var observers: [NSObjectProtocol] = []
 
         override public var canBecomeKey: Bool { false }
@@ -39,7 +37,6 @@ import SwiftUI
             ignoresMouseEvents = false
             contentView = ScrimView()
             setAccessibilityElement(false)
-            setAccessibilityIdentifier(Self.accessibilityIdentifier)
             for name in [
                 NSWindow.didResizeNotification, NSWindow.didMoveNotification,
             ] {
@@ -56,6 +53,7 @@ import SwiftUI
         }
 
         private func follow() {
+            guard let covered else { return }
             setFrame(covered.frame, display: false)
         }
 
@@ -64,14 +62,14 @@ import SwiftUI
         /// Puts the scrim over its parent.
         public func show() {
             follow()
-            covered.addChildWindow(self, ordered: .above)
+            covered?.addChildWindow(self, ordered: .above)
         }
 
         /// Takes the scrim off its parent.
         public func hide() {
             observers.forEach(NotificationCenter.default.removeObserver)
             observers = []
-            covered.removeChildWindow(self)
+            covered?.removeChildWindow(self)
             orderOut(nil)
         }
     }

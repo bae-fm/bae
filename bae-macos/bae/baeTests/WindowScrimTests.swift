@@ -14,10 +14,7 @@ struct WindowScrimTests {
     private func scrims(over window: NSWindow) -> [NSWindow] {
         autoreleasepool {
             (window.childWindows ?? [])
-                .filter {
-                    $0.accessibilityIdentifier()
-                        == ScrimWindow.accessibilityIdentifier
-                }
+                .filter { $0 is ScrimWindow }
         }
     }
 
