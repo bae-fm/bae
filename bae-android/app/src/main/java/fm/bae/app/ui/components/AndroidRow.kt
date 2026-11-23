@@ -39,6 +39,17 @@ internal enum class RowIcon(
     EDIT(SymbolIcons.Edit, ThemeIcon.medium),
 }
 
+/** Where a row sits in its card. A row given one draws the tile the card would draw behind it. */
+internal enum class RowPlace(
+    val top: Boolean,
+    val bottom: Boolean,
+) {
+    FIRST(top = true, bottom = false),
+    MIDDLE(top = false, bottom = false),
+    LAST(top = false, bottom = true),
+    ALONE(top = true, bottom = true),
+}
+
 /** A row's switch: whether it is [checked], and what a tap anywhere on the row does, [onChange]. */
 internal class RowSwitch(
     val checked: Boolean,
@@ -56,7 +67,8 @@ internal class RowSwitch(
  * [subtitleContent] draws the line itself where its words change as the row runs. A [nested] row is a
  * setting that belongs to the switch row above it: joined to it in one tile and set in. A row that is
  * [followed] by lines of its own tile (a status with its cause under it) has no minimum height and only 4dp
- * below. A row that is not [enabled] shows dimmed and does nothing. A row with an [onClick] opens or changes something,
+ * below. A row with a [place] draws the card's tile for that place behind itself.
+ * A row that is not [enabled] shows dimmed and does nothing. A row with an [onClick] opens or changes something,
  * which [onClickLabel] names for screen readers. A row with a [switch] is a setting turned on or off:
  * the whole row toggles, its title names the switch, and the switch is drawn at the far end.
  */
@@ -77,6 +89,7 @@ internal fun AndroidRow(
     selected: Boolean = false,
     nested: Boolean = false,
     followed: Boolean = false,
+    place: RowPlace? = null,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
@@ -90,6 +103,7 @@ internal fun AndroidRow(
                 modifier.cardRowSurface(
                     nested = nested,
                     followed = followed,
+                    place = place,
                     twoLines = subtitle != null || subtitleContent != null,
                     selected = selected,
                     enabled = enabled,
@@ -171,6 +185,7 @@ private fun Title(
 private fun Modifier.cardRowSurface(
     nested: Boolean,
     followed: Boolean,
+    place: RowPlace?,
     twoLines: Boolean,
     selected: Boolean,
     enabled: Boolean,
@@ -188,7 +203,13 @@ private fun Modifier.cardRowSurface(
     return this
         .then(if (nested) Modifier.joinsTileAbove() else Modifier)
         .fillMaxWidth()
-        .alpha(if (enabled) 1f else DISABLED_ALPHA)
+        .then(
+            if (place != null) {
+                Modifier.background(MaterialTheme.colorScheme.surfaceContainer, tileShape(place.top, place.bottom))
+            } else {
+                Modifier
+            },
+        ).alpha(if (enabled) 1f else DISABLED_ALPHA)
         .background(if (selected) accent.copy(alpha = ThemeOpacity.tint) else Color.Transparent)
         .then(
             if (onClick != null) {

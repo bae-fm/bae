@@ -1,17 +1,14 @@
 package fm.bae.app.shots
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.RowIcon
+import fm.bae.app.ui.components.RowPlace
 import fm.bae.app.ui.components.RowSwitch
 import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
@@ -123,10 +120,7 @@ class AndroidRowShots : BoardShot() {
     @Test
     fun androidComponentRowPlaceMiddle() =
         component("android.component.row.place-middle") {
-            AndroidRow(
-                title = "Sync",
-                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(4.dp)),
-            )
+            AndroidRow(title = "Sync", place = RowPlace.MIDDLE)
         }
 
     @Test

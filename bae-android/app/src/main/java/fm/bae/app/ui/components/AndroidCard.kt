@@ -116,7 +116,7 @@ private data class Tile(
 )
 
 /** The corners of a child at the group's [top] or [bottom], rounded as the tile behind it is. */
-private fun tileShape(
+internal fun tileShape(
     top: Boolean,
     bottom: Boolean,
 ): RoundedCornerShape {
