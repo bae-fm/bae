@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import os.log
 
 /// Release-level mutations and the cover lookups the editor needs.
 /// Covers cover changes, pinning, deleting a release or a whole album,
@@ -279,8 +280,23 @@ final class HeldReleaseEditForm {
     }
 
     func setSheetPlace(_ sheet: String, place: BridgeSheetPlace) throws {
-        _ = try change {
-            try $0.withSheetPlace(sheetFileId: sheet, place: place)
+        do {
+            _ = try change {
+                try $0.withSheetPlace(sheetFileId: sheet, place: place)
+            }
+        }
+        catch {
+            if case .Diagnostic(.internal, let detail) = error as? BridgeError {
+                baeAppLogger.error(
+                    "Picking a CUE sheet's place failed: \(detail)"
+                )
+                CoreBugReporter()
+                    .report(
+                        operation: "pick a CUE sheet's place",
+                        detail: detail
+                    )
+            }
+            throw error
         }
     }
 
