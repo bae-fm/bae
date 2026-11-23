@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -36,9 +37,11 @@ internal fun AndroidRadio(
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = checked, onClick = null)
+        // Material pads its 20dp ring by 2dp each side; the 20dp box draws the ring edge to edge, as the board does.
+        RadioButton(selected = checked, onClick = null, modifier = Modifier.requiredSize(RING_SIZE))
         Text(text = label, style = ThemeText.androidRowTitle.style, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
 private val MIN_HEIGHT = 48.dp
+private val RING_SIZE = 20.dp

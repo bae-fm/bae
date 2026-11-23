@@ -1,7 +1,7 @@
 package fm.bae.app.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,7 +53,7 @@ internal fun listeningHistoryParts(
     DialogParts(
         title = stringResource(R.string.settings_history),
         content = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
                 BridgeHistorySharing.entries.forEach { choice ->
                     AndroidRadio(
                         label = stringResource(choice.labelRes()),
@@ -65,7 +65,6 @@ internal fun listeningHistoryParts(
                     stringResource(R.string.settings_history_note),
                     style = ThemeText.body.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = ThemeSpace.related),
                 )
             }
         },
