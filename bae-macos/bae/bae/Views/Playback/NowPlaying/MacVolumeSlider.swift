@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import OSLog
 import SwiftUI
 
 /// The volume at the end of the now playing bar: mute and a knobless slider,
@@ -72,6 +73,8 @@ struct MacVolumeSlider: View {
             ? "speaker.wave.1.fill" : "speaker.wave.2.fill"
     }
 }
+
+private let volumeSliderLogger = Logger.bae("MacVolumeSlider")
 
 /// A knobless volume slider. During a click or drag it shows the level under
 /// the pointer and reports each one through `onDrag`. The slider sets the
@@ -188,7 +191,9 @@ private struct VolumeAccessibilityElement: NSViewRepresentable {
 
         override func isAccessibilityElement() -> Bool { true }
         override func accessibilityRole() -> NSAccessibility.Role? { .slider }
-        override func accessibilityLabel() -> String? { "Volume" }
+        override func accessibilityLabel() -> String? {
+            String(localized: "Volume")
+        }
         override func accessibilityValue() -> Any? { Int(percent) }
         override func accessibilityMinValue() -> Any? {
             AccessibilityPercentage.range.lowerBound
@@ -197,7 +202,12 @@ private struct VolumeAccessibilityElement: NSViewRepresentable {
             AccessibilityPercentage.range.upperBound
         }
         override func setAccessibilityValue(_ value: Any?) {
-            guard let value = (value as? NSNumber)?.doubleValue else { return }
+            guard let value = (value as? NSNumber)?.doubleValue else {
+                volumeSliderLogger.error(
+                    "Ignored a volume that is no number: \(String(describing: value))"
+                )
+                return
+            }
             set(value)
         }
         override func accessibilityPerformIncrement() -> Bool {
