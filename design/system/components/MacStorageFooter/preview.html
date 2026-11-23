@@ -10,9 +10,9 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Releases only', h(B.MacStorageFooter, { releases: '12 releases', total: '4.4 GB' })),
-    W('Queues moving', h(B.MacStorageFooter, { releases: '12 releases', total: '4.4 GB', uploads: '6.4 MB/s', pins: '3.1 MB/s', exports: '42%' })),
-    W('Queues held', h(B.MacStorageFooter, { releases: '12 releases', total: '4.4 GB', uploads: '6.4 MB/s', uploadsWait: 'Waiting for network', pins: '3.1 MB/s', pinsWait: 'Paused' }))));
+    W('Releases only', h(B.MacStorageFooter, { releases: '12 releases', total: '4.8 GB' })),
+    W('Queues moving', h(B.MacStorageFooter, { releases: '12 releases', total: '4.8 GB', uploads: '6.4 MB/s', pins: '3.1 MB/s', exports: '42%' })),
+    W('Queues held', h(B.MacStorageFooter, { releases: '12 releases', total: '4.8 GB', uploads: '6.4 MB/s', uploadsWait: 'Waiting for network', pins: '3.1 MB/s', pinsWait: 'Paused' }))));
 </script>
 </body>
 </html>
