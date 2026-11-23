@@ -35,7 +35,6 @@ import uniffi.bae_bridge.BridgeAudioFormat
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeCreditRow
-import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeFileKind
 import uniffi.bae_bridge.BridgeHearter
@@ -224,9 +223,10 @@ internal fun boardAlbum(
             "Night Ferry" to 276,
             "Slow Morning" to 622,
         ).take(trackCount).mapIndexed { index, (title, seconds) ->
+            val durationMs = seconds.toULong() * 1_000uL
             PreviewData.track("trk-${index + 1}", title, index + 1).copy(
-                durationMs = seconds.toULong() * 1_000uL,
-                durationClock = BridgeDurationClock(false, null, (seconds / 60).toUInt(), (seconds % 60).toUInt()),
+                durationMs = durationMs,
+                durationClock = PreviewData.durationClock(durationMs),
             )
         }
     val album = PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill")
