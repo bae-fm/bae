@@ -1,9 +1,7 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -13,7 +11,6 @@ import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -44,8 +41,8 @@ internal enum class IconTone {
 /**
  * An icon button: [icon] in [tone], at [glyph] when given, else the icon's own size. [box] gives the
  * button that side instead of the usual 48dp, as a bar or the full player draws it; Compose still
- * takes a press up to 48dp from its centre. [tonal] draws the glyph in [tone] on a 32dp disc tinted with the
- * accent, for a control inside a line, with the usual 48dp touch area around it.
+ * takes a press up to 48dp from its centre. [tonal] makes the button a 32dp disc tinted with the accent, with the
+ * glyph in [tone], for a control inside a line.
  */
 @Composable
 internal fun AndroidIconButton(
@@ -60,26 +57,20 @@ internal fun AndroidIconButton(
     tonal: Boolean = false,
 ) {
     if (tonal) {
-        IconButton(
+        // The button is the 32dp disc, as the board draws it; Compose takes a press out to 48dp from its centre.
+        AndroidIconButton(
             onClick = onClick,
-            modifier = modifier.size(TONAL_DISC).wrapContentSize(unbounded = true),
+            modifier =
+                modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = ThemeOpacity.tint), CircleShape),
             enabled = enabled,
+            box = TONAL_DISC,
         ) {
-            val tint = tone.color()
-            Box(
-                modifier =
-                    Modifier
-                        .size(TONAL_DISC)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = ThemeOpacity.tint), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = contentDescription,
-                    tint = tint,
-                    modifier = Modifier.size(glyph ?: ThemeIcon.medium),
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = tone.color(),
+                modifier = Modifier.size(glyph ?: ThemeIcon.medium),
+            )
         }
         return
     }
