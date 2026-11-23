@@ -18,7 +18,7 @@ struct AboutSettingsTab: View {
                 "CFBundleShortVersionString"
             ] as? String {
                 Text("Version \(version)")
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             if let commit = Bundle.main.infoDictionary?["BaeGitCommit"]
                 as? String

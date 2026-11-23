@@ -67,7 +67,7 @@ struct MacListRow: View {
                 Text(text)
                     .themeText(.detail)
                     .monospacedDigit()
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
                     .frame(
                         width: leading.width,
@@ -96,7 +96,7 @@ struct MacListRow: View {
                     .lineLimit(1)
                 Text(subtitle)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,7 +110,7 @@ struct MacListRow: View {
                 Text(duration)
                     .themeText(.detail)
                     .monospacedDigit()
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .frame(width: Self.durationWidth, alignment: .trailing)
                     .accessibilitySortPriority(-2)
             }

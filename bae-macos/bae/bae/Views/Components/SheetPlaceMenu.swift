@@ -43,7 +43,7 @@ struct SheetPlaceMenu: View {
                     .themeText(.strong)
                 Image(systemName: "chevron.down")
                     .themeIcon(.small)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             .padding(.horizontal, ThemeSpace.compact)
             .padding(.vertical, ThemeSpace.line)

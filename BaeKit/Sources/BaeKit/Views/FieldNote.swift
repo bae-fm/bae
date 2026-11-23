@@ -15,10 +15,10 @@
     private enum FieldNote {
         static let color = Color(
             nsColor: NSColor(name: nil) { appearance in
-                var mixed = NSColor(Theme.macTextSecondary)
+                var mixed = NSColor(Theme.textSecondary)
                 appearance.performAsCurrentDrawingAppearance {
                     mixed = halfway(
-                        NSColor(Theme.macTextSecondary),
+                        NSColor(Theme.textSecondary),
                         NSColor(Theme.textTertiary)
                     )
                 }

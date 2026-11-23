@@ -81,7 +81,7 @@ struct MacBox<Content: View>: View {
         Group(subviews: content) { rows in
             if let empty, rows.isEmpty {
                 Text(empty)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 108)
                     .card()
             }
@@ -97,7 +97,7 @@ struct MacBox<Content: View>: View {
 extension View {
     func settingsSectionTitle() -> some View {
         themeText(.strong)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .padding(.horizontal, ThemeSpace.inline)
             .padding(.bottom, ThemeSpace.compact)
     }

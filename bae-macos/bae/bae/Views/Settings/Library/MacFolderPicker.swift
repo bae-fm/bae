@@ -71,7 +71,7 @@
             VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 Text(words.heading)
                     .themeText(.body)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if browser.nests {
                     HStack {

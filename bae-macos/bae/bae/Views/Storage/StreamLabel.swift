@@ -32,7 +32,7 @@ final class StreamLabelNSView: NSTextField {
         drawsBackground = false
         alignment = .left
         lineBreakMode = .byClipping
-        textColor = NSColor(Theme.macTextSecondary)
+        textColor = NSColor(Theme.textSecondary)
         font = NSFont.monospacedDigitSystemFont(
             ofSize: ThemeText.body.nsFont.pointSize,
             weight: ThemeText.body.nsWeight

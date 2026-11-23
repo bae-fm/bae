@@ -28,7 +28,7 @@ struct MacReleaseCard: View {
                 if !attribution.isEmpty {
                     Text(attribution)
                         .themeText(.body)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .cutLine(.prose)
                 }
                 ForEach(Array(group.sources.enumerated()), id: \.offset) {
@@ -40,7 +40,7 @@ struct MacReleaseCard: View {
                             "Could not read this album’s links on \(name); it may also be listed separately."
                         )
                         .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                     }
                 }
             }
@@ -86,7 +86,7 @@ struct AlbumSourceLink: View {
                         .foregroundStyle(Theme.textTertiary)
                 }
                 .themeText(.chip)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             }
             .buttonStyle(.accentPlain)
             .help(String(localized: "Open this album on \(name)"))
@@ -94,7 +94,7 @@ struct AlbumSourceLink: View {
         else {
             Text(name)
                 .themeText(.chip)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
         }
     }
 }

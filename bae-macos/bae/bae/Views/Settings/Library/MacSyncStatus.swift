@@ -92,7 +92,7 @@ private struct SyncCauseText: View {
     var body: some View {
         Text(text)
             .themeText(.detail)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
     }
 }
 

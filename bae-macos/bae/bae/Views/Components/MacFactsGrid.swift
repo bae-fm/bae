@@ -66,7 +66,7 @@ struct MacFact<Value: View>: View {
     var body: some View {
         GridRow {
             label
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .frame(width: labelWidth, alignment: .leading)
             value()
                 .textSelection(.enabled)

@@ -28,7 +28,7 @@ struct RestoreFileSheet: View {
                 "Put the file back where it was when it was imported, then retry."
             )
             .themeText(.body)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             if let detail {
                 Text(detail)
                     .themeText(.mono)

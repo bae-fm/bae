@@ -68,7 +68,7 @@ extension ShotScene {
                 )
                 .themeText(.body)
                 .foregroundStyle(
-                    secondary ? Theme.macTextSecondary : Theme.textPrimary
+                    secondary ? Theme.textSecondary : Theme.textPrimary
                 )
                 .frame(width: column ? 240 : 284, alignment: .leading)
             )

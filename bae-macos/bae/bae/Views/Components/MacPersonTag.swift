@@ -19,6 +19,6 @@ struct MacPersonTag: View {
                 .themeText(strong ? .strong : .detail)
                 .lineLimit(1)
         }
-        .foregroundStyle(Theme.macTextSecondary)
+        .foregroundStyle(Theme.textSecondary)
     }
 }

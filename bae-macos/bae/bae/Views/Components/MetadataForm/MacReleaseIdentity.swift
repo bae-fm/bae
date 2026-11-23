@@ -49,7 +49,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 },
             )
             .themeText(.body)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             // The album's original year; the pressing's year is under Release.
             MacInlineField(
                 placeholder: String(localized: "Album year"),

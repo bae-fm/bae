@@ -40,7 +40,7 @@ private struct ReleaseRecordLink: View {
                 .imageScale(.small)
         }
         .themeText(.chip)
-        .foregroundStyle(Theme.macTextSecondary)
+        .foregroundStyle(Theme.textSecondary)
         .fixedSize()
     }
 }

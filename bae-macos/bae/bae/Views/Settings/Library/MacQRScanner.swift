@@ -62,7 +62,7 @@ struct MacQRScanner: View {
     private func placeholder(_ message: String) -> some View {
         Text(message)
             .themeText(.body)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.well)

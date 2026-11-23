@@ -207,7 +207,7 @@ private struct ArtistAssignmentsEditor: View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Text("Which one?")
                 .themeText(.detail)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             ForEach(choices, id: \.artistId) { choice in
                 Button {
                     var next = assignments

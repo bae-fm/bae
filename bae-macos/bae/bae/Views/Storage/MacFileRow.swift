@@ -86,7 +86,7 @@ struct MacFileRow: View {
         switch place {
         case .stored, .stopped: AnyShapeStyle(.primary)
         case .queuedUpload, .queuedDownload:
-            AnyShapeStyle(Theme.macTextSecondary)
+            AnyShapeStyle(Theme.textSecondary)
         case .sending, .downloading: AnyShapeStyle(Theme.accent)
         }
     }
@@ -165,7 +165,7 @@ private struct StorageFileMark: View {
             Circle()
                 .inset(by: TransferRingNSView.lineWidth)
                 .stroke(
-                    Theme.macTextSecondary,
+                    Theme.textSecondary,
                     style: StrokeStyle(
                         lineWidth: TransferRingNSView.lineWidth,
                         dash: [2, 2]

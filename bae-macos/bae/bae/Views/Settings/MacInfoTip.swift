@@ -16,7 +16,7 @@ struct MacInfoTip<Content: View>: View {
             isShowing = true
         } label: {
             Image(systemName: "info.circle")
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
         }
         .buttonStyle(.accentPlain)
         .accessibilityLabel(Text(label))
@@ -25,7 +25,7 @@ struct MacInfoTip<Content: View>: View {
                 content
             }
             .themeText(.body)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .frame(width: 280, alignment: .leading)
             .padding(ThemeSpace.edge)
         }

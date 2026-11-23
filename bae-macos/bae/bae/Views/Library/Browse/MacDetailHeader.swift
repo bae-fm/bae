@@ -22,7 +22,7 @@ struct MacDetailHeader<Summary: BrowseSummaryDisplay>: View {
                     .lineLimit(2)
                 Text(summary.countText)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
     }

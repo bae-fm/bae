@@ -17,7 +17,7 @@ struct RecordArrow: View {
                 width: ThemeIcon.medium.size,
                 height: ThemeIcon.medium.size
             )
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .accessibilityIdentifier("identified-glyph")
             .accessibilityLabel(localizedCoreString("core.identity.identified"))
             .opacity(readFromRecord ? 1 : 0)

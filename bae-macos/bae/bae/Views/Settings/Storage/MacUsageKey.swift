@@ -13,7 +13,7 @@ struct MacUsageKey: View {
                 .fill(color)
                 .frame(width: 8, height: 8)
             Text(verbatim: title)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             Text(verbatim: size)
                 .monospacedDigit()
         }

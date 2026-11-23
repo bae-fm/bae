@@ -87,7 +87,7 @@ struct FindOnlineSectionHeader: View {
                 Image(systemName: isOpen ? "chevron.down" : "chevron.forward")
                     .themeIcon(.small)
                     .foregroundStyle(
-                        dimmed ? Theme.textTertiary : Theme.macTextSecondary
+                        dimmed ? Theme.textTertiary : Theme.textSecondary
                     )
                     .frame(width: ThemeIcon.small.size)
                 MacEyebrow(section == .automatic ? "Automatic" : "Search")
@@ -125,7 +125,7 @@ struct FindOnlineSectionGlyphView: View {
             case .queued:
                 Image(systemName: "clock")
                     .themeIcon(.small)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             case .working:
                 MacSpinner()
             case .empty:

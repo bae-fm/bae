@@ -122,7 +122,7 @@ struct MacIconButton: View {
             actionButton(role: role, action: action)
         case .menu(let items, let isOpen):
             MacButton(kind: .plain, isOpen: isOpen, menu: items) {
-                glyph.foregroundStyle(Theme.macTextSecondary)
+                glyph.foregroundStyle(Theme.textSecondary)
             }
             .help(help ?? label)
             .accessibilityLabel(label)
@@ -157,7 +157,7 @@ struct MacIconButton: View {
                 )
             case .borderless:
                 button
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .buttonStyle(.accentBorderless)
             }
         }

@@ -208,7 +208,7 @@ struct ReleaseFactsLine: View {
                     factsText
                     Image(systemName: "arrow.up.right")
                         .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .allowsHitTesting(false)
                         .accessibilityLabel(
                             localizedCoreString("core.identity.identified")

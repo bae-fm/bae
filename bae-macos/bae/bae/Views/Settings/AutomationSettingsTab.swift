@@ -133,7 +133,7 @@ struct AutomationSettingsContent: View {
                 case .feedback(let text):
                     Text(text)
                         .themeText(.body)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 case .error(let failure):
                     MacNotice(error: failure)
                 case nil:
@@ -329,13 +329,13 @@ extension AutomationSettingsContent {
                 switch status {
                 case .disabled:
                     Text("Disabled")
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 case .running(let url):
                     Text(url)
                         .textSelection(.enabled)
                 case .error:
                     Text("Not running")
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 MacButton("Refresh", action: refreshStatus)
                     .disabled(isWorking)

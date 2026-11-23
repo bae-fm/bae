@@ -158,7 +158,7 @@ private struct AlbumCardStack<Art: View>: View {
             if let artistNames {
                 Text(artistNames)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
                     .opacity(textOpacity)
             }

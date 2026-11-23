@@ -52,14 +52,14 @@ struct MacBulkActionRow: View {
             Image(systemName: offer.action.symbol)
                 .themeIcon(ImportBulkActionRowMetrics.icon)
                 .foregroundStyle(
-                    isConstructive ? Theme.accent : Theme.macTextSecondary
+                    isConstructive ? Theme.accent : Theme.textSecondary
                 )
                 .frame(width: ImportBulkActionRowMetrics.iconWidth)
             Text(verbatim: offer.action.label)
                 .themeText(isConstructive ? .strong : .body)
                 .foregroundStyle(
                     isConstructive
-                        ? Theme.textPrimary : Theme.macTextSecondary
+                        ? Theme.textPrimary : Theme.textSecondary
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

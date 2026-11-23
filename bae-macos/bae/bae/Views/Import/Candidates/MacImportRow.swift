@@ -127,7 +127,7 @@ struct MacImportRow: View {
             else if let statusLine {
                 Text(statusLine)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .cutLine(.prose)
             }
         }
@@ -160,7 +160,7 @@ private struct DoneRowUploadLineContainer: View {
         }
         else {
             Text(verbatim: phase)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
         }
     }
@@ -217,7 +217,7 @@ extension MacImportRow {
         switch step {
         case .queued:
             let waiting = String(localized: "Queued to identify")
-            trailingIcon("clock", tint: Theme.macTextSecondary)
+            trailingIcon("clock", tint: Theme.textSecondary)
                 .help(waiting)
                 .accessibilityLabel(waiting)
         case .running:

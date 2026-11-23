@@ -21,7 +21,7 @@ struct MacAlbumWorks: View {
                             Text(verbatim: track.positionText)
                                 .themeText(.detail)
                                 .monospacedDigit()
-                                .foregroundStyle(Theme.macTextSecondary)
+                                .foregroundStyle(Theme.textSecondary)
                                 .frame(
                                     width: Self.numberWidth,
                                     alignment: .leading
@@ -32,7 +32,7 @@ struct MacAlbumWorks: View {
                                 verbatim: FactList.glyph + " "
                                     + (work.composerNames ?? "")
                             )
-                            .foregroundStyle(Theme.macTextSecondary)
+                            .foregroundStyle(Theme.textSecondary)
                             .opacity(work.composerNames == nil ? 0 : 1)
                             .accessibilityHidden(work.composerNames == nil)
                         }

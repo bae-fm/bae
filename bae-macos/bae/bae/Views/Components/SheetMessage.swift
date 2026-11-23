@@ -13,7 +13,7 @@ struct SheetMessage: View {
     var body: some View {
         text
             .themeText(.body)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 }

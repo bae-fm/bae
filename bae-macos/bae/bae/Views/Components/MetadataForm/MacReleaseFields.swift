@@ -218,7 +218,7 @@ struct MacReleaseFields: View {
     private func rowLabel(_ label: String) -> some View {
         Text(label)
             .themeText(.detail)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .lineLimit(1)
             .frame(width: Self.labelWidth, alignment: .trailing)
     }

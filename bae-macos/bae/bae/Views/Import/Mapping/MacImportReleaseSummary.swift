@@ -117,7 +117,7 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
                 .themeText(style.titleText)
                 .foregroundStyle(
                     summary.titleIsPlaceholder
-                        ? Theme.macTextSecondary : Theme.textPrimary
+                        ? Theme.textSecondary : Theme.textPrimary
                 )
                 .cutLine(.prose)
             titleAccessory()
@@ -130,7 +130,7 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
         if let artist = summary.artist {
             Text(artist)
                 .themeText(style.artistText)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .cutLine(.prose)
         }
     }

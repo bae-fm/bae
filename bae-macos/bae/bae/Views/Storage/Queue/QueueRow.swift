@@ -36,7 +36,7 @@ struct QueueRow<Content: View, Below: View>: View {
             MacItem {
                 Image(systemName: icon)
                     .font(.system(size: ThemeSize.lead))
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .accessibilityHidden(true)
             } content: {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {

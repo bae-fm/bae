@@ -26,7 +26,7 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
                         ? "arrow.up" : "arrow.down"
                 )
                 .themeIcon(.small)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             }
             .buttonStyle(.accentPlain)
             .accessibilityLabel(
@@ -38,7 +38,7 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
                 Button(action: onRemove) {
                     Image(systemName: "xmark")
                         .themeIcon(.badge)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 .buttonStyle(.accentPlain)
                 .accessibilityLabel(Text("Remove sort criterion"))
@@ -74,7 +74,7 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
                 + Text(verbatim: " ")
                 + Text(Image(systemName: "chevron.down"))
                 .font(ThemeIcon.badge.font)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
         }
         .fixedSize()
         .accessibilityLabel(Text(criterion.field.displayName))

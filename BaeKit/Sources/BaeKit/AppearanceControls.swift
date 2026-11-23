@@ -64,7 +64,7 @@ public struct AppearanceControls: View {
                 Text("Accent", tableName: "Appearance", bundle: .module)
                 Text(preferences.accent.title)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             Spacer(minLength: 0)
             MacAccentPicker(

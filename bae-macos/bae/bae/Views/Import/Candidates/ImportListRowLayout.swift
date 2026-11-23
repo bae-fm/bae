@@ -56,7 +56,7 @@ struct ImportFolderNameLine<Accessory: View>: View {
         HStack(spacing: ThemeSpace.compact) {
             Image(systemName: "folder")
                 .themeIcon(.medium)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .accessibilityHidden(true)
             Text(folderName)
                 .themeText(.mono)

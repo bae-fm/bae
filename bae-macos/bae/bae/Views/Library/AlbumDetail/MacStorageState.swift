@@ -18,6 +18,6 @@ struct MacStorageState: View {
             }
         }
         .themeText(.body)
-        .foregroundStyle(Theme.macTextSecondary)
+        .foregroundStyle(Theme.textSecondary)
     }
 }

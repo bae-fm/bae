@@ -45,7 +45,7 @@ struct MacCoverPreview: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(verbatim: cover.sourceLabel)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
                     Button {
                         onFocus(focus.neighbors?.previous)
@@ -55,7 +55,7 @@ struct MacCoverPreview: View {
                     .accessibilityLabel(Text("Previous image"))
                     Text("\(Int(focus.position) + 1) of \(content.total)")
                         .monospacedDigit()
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                     Button {
                         onFocus(focus.neighbors?.next)
                     } label: {

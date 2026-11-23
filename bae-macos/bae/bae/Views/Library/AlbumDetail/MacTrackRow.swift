@@ -74,7 +74,7 @@ struct MacTrackRow: View {
                 if let artist {
                     Text(artist)
                         .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                 }
             }
@@ -82,7 +82,7 @@ struct MacTrackRow: View {
             Text(track.durationLabel)
                 .themeText(.detail)
                 .monospacedDigit()
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
         }
         .padding(.horizontal, ThemeSpace.related)
         .frame(maxHeight: .infinity)

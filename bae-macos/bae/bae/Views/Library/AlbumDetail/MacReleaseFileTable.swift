@@ -106,7 +106,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
                 string: title,
                 attributes: [
                     .font: ThemeText.detail.nsFont,
-                    .foregroundColor: NSColor(Theme.macTextSecondary),
+                    .foregroundColor: NSColor(Theme.textSecondary),
                 ]
             )
             column.isEditable = false
@@ -132,13 +132,13 @@ struct MacReleaseFileTable: NSViewRepresentable {
             case .audio:
                 if let format = file.audioFormat {
                     Text(format.text)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                 }
             case .sortable(.size):
                 Text(file.fileSizeText)
                     .monospacedDigit()
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             case .sortable(.kind):
                 Text(file.contentType)
                     .foregroundStyle(Theme.textTertiary)

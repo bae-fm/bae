@@ -167,7 +167,7 @@ struct MacWelcomeHome: View {
                 Text("Your music, everywhere")
                     .themeText(.heading)
                     .fontWeight(.regular)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             LaunchProblemNotices(launchProblems)
                 .frame(maxWidth: WelcomeLayout.columnWidth)

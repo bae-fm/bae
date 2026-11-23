@@ -86,7 +86,7 @@ private struct AdminChangeRow: View {
             if let why {
                 Text(why)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
         .padding(.vertical, ThemeSpace.line)

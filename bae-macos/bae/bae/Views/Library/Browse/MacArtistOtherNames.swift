@@ -18,7 +18,7 @@ struct MacArtistOtherNames: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text("Also credited as")
                 .themeText(.detail)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             ForEach(names, id: \.credit.key) { name in
                 ArtistCreditNameRow(
                     name: name,

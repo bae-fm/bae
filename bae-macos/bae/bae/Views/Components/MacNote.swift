@@ -22,7 +22,7 @@ extension View {
     /// labels start, with `above` of space over it.
     func noteText(above: CGFloat) -> some View {
         themeText(.detail)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .padding(.horizontal, RowMetrics.inset)
             .padding(.top, above)
             .fixedSize(horizontal: false, vertical: true)

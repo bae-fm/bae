@@ -404,7 +404,7 @@ struct LookupReleaseLine: View {
                         )
                     )
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
                 }
                 ForEach(

@@ -60,7 +60,7 @@ struct MacFailedTransferRow: View {
                 Text(detail)
                     .themeText(.detail)
                     .monospacedDigit()
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
         } below: {
             notice

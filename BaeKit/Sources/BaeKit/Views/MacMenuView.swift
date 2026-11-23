@@ -130,7 +130,7 @@
             case .header(let title):
                 Text(title)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .padding(.leading, ThemeSpace.related)
                     .frame(
                         maxWidth: .infinity,

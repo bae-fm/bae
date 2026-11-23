@@ -139,7 +139,7 @@ struct MacCastRow: View {
             Image(systemName: icon)
                 .themeIcon(.medium)
                 .foregroundStyle(
-                    casting ? Theme.accent : Theme.macTextSecondary
+                    casting ? Theme.accent : Theme.textSecondary
                 )
                 .accessibilityHidden(true)
         } content: {
@@ -152,7 +152,7 @@ struct MacCastRow: View {
                     Text(verbatim: waitWords(wait))
                         .themeText(.detail)
                         .italic()
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 else if casting {
                     Text(
@@ -169,7 +169,7 @@ struct MacCastRow: View {
                 else {
                     Text(verbatim: receiver.kind.productName)
                         .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
             // Read before the row's end in a row read in its own order.

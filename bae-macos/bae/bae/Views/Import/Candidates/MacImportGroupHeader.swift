@@ -21,7 +21,7 @@ struct MacImportGroupHeader: View {
                     .frame(width: ImportListHierarchyLayout.headerChevron.size)
                 Text(group.name)
                     .themeText(.strong)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .cutLine(.fileName)
                 Spacer(minLength: 0)
             }

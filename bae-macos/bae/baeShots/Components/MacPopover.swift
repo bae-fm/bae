@@ -31,7 +31,7 @@ extension ShotScene {
                         .themeText(.strong)
                     Text("Playing on this speaker.")
                         .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(padded ? ThemeSpace.group : 0)
                 .frame(width: 220, alignment: .leading)

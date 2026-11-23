@@ -25,7 +25,7 @@ struct PreviewOverlay: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .themeIcon(.medium)
-                                .foregroundStyle(Theme.macTextSecondary)
+                                .foregroundStyle(Theme.textSecondary)
                         }
                         .buttonStyle(.accentPlain)
                         .accessibilityLabel("Close")

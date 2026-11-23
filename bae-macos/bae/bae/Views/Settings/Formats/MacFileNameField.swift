@@ -124,7 +124,7 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
         return FlowLayout(spacing: ThemeSpace.compact) {
             Text("Add:")
                 .themeText(.detail)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .accessibilitySortPriority(Double(values.count + 1))
             ForEach(Array(values.enumerated()), id: \.element) { index, value in
                 Button(value.label) {

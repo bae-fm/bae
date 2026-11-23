@@ -308,7 +308,7 @@ private struct ReleaseEditorCardView: View {
             if card.pressingUnknown {
                 Text("Pressing unknown")
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .fixedSize()
             }
             Spacer(minLength: ThemeSpace.group)

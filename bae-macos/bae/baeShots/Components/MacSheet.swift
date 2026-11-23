@@ -14,7 +14,7 @@ extension ShotScene {
             OverWindow.sheet(
                 MacSheet("Set up a cloud home", width: 460) {
                     Text(verbatim: "Content")
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .padding(ThemeSpace.group)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .overlay {
@@ -40,7 +40,7 @@ extension ShotScene {
         {
             MacSheet("Set up sync", width: 460) {
                 Text(verbatim: "Content")
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .padding(ThemeSpace.group)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } footer: {

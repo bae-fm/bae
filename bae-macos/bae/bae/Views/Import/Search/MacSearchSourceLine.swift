@@ -43,7 +43,7 @@ struct MacSearchSourceLine: View {
             }
         }
         .themeText(.detail)
-        .foregroundStyle(Theme.macTextSecondary)
+        .foregroundStyle(Theme.textSecondary)
         .padding(.leading, ThemeSpace.group)
     }
 }

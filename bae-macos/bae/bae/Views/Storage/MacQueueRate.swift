@@ -29,7 +29,7 @@ struct MacQueueRate<Progress: View>: View {
             QueuePauseButton(queue: queue, paused: paused, placement: .footer)
         }
         .lineLimit(1)
-        .foregroundStyle(Theme.macTextSecondary)
+        .foregroundStyle(Theme.textSecondary)
         .themeText(.body)
         // A narrow table keeps each queue's rate whole on one line; the
         // release count and total give way instead.

@@ -30,7 +30,7 @@ struct MacTransferLine: View {
                 HStack(spacing: ThemeSpace.compact) {
                     if let count {
                         Text(count)
-                            .foregroundStyle(Theme.macTextSecondary)
+                            .foregroundStyle(Theme.textSecondary)
                             .monospacedDigit()
                     }
                     if let queue {

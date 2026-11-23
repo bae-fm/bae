@@ -66,7 +66,7 @@ extension ShotScene {
                         }
                     }
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 }
             }
         }

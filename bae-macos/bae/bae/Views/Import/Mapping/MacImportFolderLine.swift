@@ -41,7 +41,7 @@ struct MacImportFolderLine: View {
             } label: {
                 Image(systemName: "folder")
                     .themeIcon(.medium)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             .buttonStyle(.accentPlain)
             .help("Reveal in Finder")

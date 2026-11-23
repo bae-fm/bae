@@ -109,7 +109,7 @@ public struct MacButton<Label: View>: View {
     private var iconOrLabel: some View {
         if kind == .icon {
             label.themeIcon(.small)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
                 .accessibilityRemoveTraits(.isSelected)
@@ -167,7 +167,7 @@ private struct MacButtonLook: ViewModifier {
         case .destructive:
             content.foregroundStyle(Theme.danger)
         case .muted(let onStage):
-            let color = onStage ? Theme.onFillSecondary : Theme.macTextSecondary
+            let color = onStage ? Theme.onFillSecondary : Theme.textSecondary
             content.foregroundStyle(color)
         }
     }

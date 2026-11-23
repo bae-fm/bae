@@ -18,7 +18,7 @@ struct ImportActivityIndicator: View {
         } label: {
             Image(systemName: "square.and.arrow.down")
                 .themeIcon(ImportFilterBarLayout.glyph)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .filterBarControl()
         }
         .buttonStyle(.accentPlain)
@@ -31,7 +31,7 @@ struct ImportActivityIndicator: View {
                     Spacer(minLength: ThemeSpace.group)
                     Text(verbatim: count.formatted())
                         .monospacedDigit()
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 MacButton("Cancel all") {
                     detailsShown = false

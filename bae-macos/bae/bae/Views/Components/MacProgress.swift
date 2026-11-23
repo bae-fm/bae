@@ -125,7 +125,7 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
             label.textColor = NSColor(Theme.textPrimary)
         case .note:
             label.font = ThemeText.detail.nsFont
-            label.textColor = NSColor(Theme.macTextSecondary)
+            label.textColor = NSColor(Theme.textSecondary)
         }
         label.lineBreakMode = .byTruncatingTail
         stack.orientation = .vertical

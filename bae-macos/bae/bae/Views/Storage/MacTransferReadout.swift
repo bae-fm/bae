@@ -71,7 +71,7 @@ final class TransferReadoutNSView: NSView {
         )
         for field in [bytesField, rateField] {
             field.font = font
-            field.textColor = NSColor(Theme.macTextSecondary)
+            field.textColor = NSColor(Theme.textSecondary)
             field.lineBreakMode = .byTruncatingTail
             field.translatesAutoresizingMaskIntoConstraints = false
         }

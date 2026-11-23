@@ -36,7 +36,7 @@ public struct MacSpinner: View {
             if let words {
                 words
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
     }

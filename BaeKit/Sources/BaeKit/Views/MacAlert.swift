@@ -117,7 +117,7 @@
                 if let message = words.message {
                     message
                         .themeText(.alertMessage)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let details = words.details {

@@ -48,7 +48,7 @@ private struct SectionPills: View {
             Text(verbatim: title)
                 .themeText(.strong)
                 .foregroundStyle(
-                    active ? Theme.textPrimary : Theme.macTextSecondary
+                    active ? Theme.textPrimary : Theme.textSecondary
                 )
                 .padding(.horizontal, ThemeSpace.edge)
                 .padding(.vertical, ThemeSpace.compact)

@@ -173,7 +173,7 @@ struct AddDeviceSheetContent: View {
                     .themeText(.body)
                 Text("Choose Add device again for a new one.")
                     .themeText(.body)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
         case .refused:
             Text(

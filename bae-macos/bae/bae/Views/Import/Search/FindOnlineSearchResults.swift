@@ -30,7 +30,7 @@ struct FindOnlineSearchResults: View {
                         .accessibilityHidden(true)
                 }
                 .themeText(.body)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .padding(.horizontal, ThemeSpace.group)
                 .padding(.top, ThemeSpace.group)
             }
@@ -59,7 +59,7 @@ struct FindOnlineSearchResults: View {
         if search.status == .noMatches {
             Text("No matches. Try different terms.")
                 .themeText(.body)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
         }
     }
 

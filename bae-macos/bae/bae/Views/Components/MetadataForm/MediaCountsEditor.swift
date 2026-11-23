@@ -66,7 +66,7 @@ private struct MediumCountRow: View {
             Text(name)
             Text("\u{00D7}\(Int(counted.count))")
                 .monospacedDigit()
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             MacStepper(
                 label: String(localized: "Number of \(name)"),
                 value: Binding(

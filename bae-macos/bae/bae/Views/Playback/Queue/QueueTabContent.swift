@@ -260,7 +260,7 @@ struct QueueTabContent: View {
                 targetSize: ThemeSize.hitTarget,
                 onToggle: onPlayPause
             )
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .background(
                 Theme.hover,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.control)
@@ -304,7 +304,7 @@ struct QueueTabContent: View {
             if let artist = nowPlaying.artist {
                 Text(artist)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
             ProgressStripRepresentable(position: nowPlaying.position)

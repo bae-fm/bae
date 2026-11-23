@@ -61,7 +61,7 @@ struct MacStorageFooter: View {
             }
         }
         .lineLimit(1)
-        .foregroundStyle(Theme.macTextSecondary)
+        .foregroundStyle(Theme.textSecondary)
         .themeText(.body)
         .padding(.horizontal)
         .padding(.vertical, ThemeSpace.related)

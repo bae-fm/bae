@@ -37,7 +37,7 @@ struct LibraryModeHeading: View {
                 .font(.system(size: chevronSize, weight: .bold))
                 // Centered on the heading's cap height.
                 .baselineOffset(size * Self.chevronLift)
-                .foregroundColor(Theme.macTextSecondary))
+                .foregroundColor(Theme.textSecondary))
                 .contentTransition(.interpolate)
         }
         .fixedSize()

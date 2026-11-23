@@ -13,7 +13,7 @@ struct MacImportEmptyState: View {
                 .padding(.bottom, ThemeSpace.section - ThemeSpace.group)
             Text("Add a folder to import music from")
                 .themeText(.body)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             HStack(spacing: ThemeSpace.related) {
                 MacButton("Import folder…") {
                     uiStore.setImportFolderPickerPresented(true)

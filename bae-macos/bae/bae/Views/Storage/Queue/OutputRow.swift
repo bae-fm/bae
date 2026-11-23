@@ -36,7 +36,7 @@ struct OutputRow: View {
             Text(verbatim: FactList.joined([filesText, presetName]))
                 .themeText(.detail)
                 .monospacedDigit()
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
 
             stateChip
         } below: {

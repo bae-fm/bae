@@ -75,14 +75,14 @@ struct MacSearchField: View {
     private var glyphColor: Color {
         switch kind {
         case .search: Theme.textTertiary
-        case .filter: Theme.macTextSecondary
+        case .filter: Theme.textSecondary
         case .inline: Theme.textTertiary
         }
     }
 
     /// The colour of the text typed: a filter's is secondary.
     private var textColor: Color {
-        kind == .filter ? Theme.macTextSecondary : Theme.textPrimary
+        kind == .filter ? Theme.textSecondary : Theme.textPrimary
     }
 }
 

@@ -12,7 +12,7 @@ struct QueuedImportIcon: View {
         Image(systemName: "clock")
             .themeIcon(.small)
             .frame(width: Self.box, height: Self.box)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .help(waiting)
             .accessibilityLabel(waiting)
     }

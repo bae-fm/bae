@@ -15,10 +15,6 @@ public enum Theme {
     public static let accent = Color.accentColor
     public static let accentSoft = accent.opacity(ThemeOpacity.tint)
     public static let accentStrong = accent.opacity(ThemeOpacity.tintStrong)
-
-    /// Secondary text on every platform: the design system's
-    /// `text-secondary`.
-    public static let macTextSecondary = textSecondary
 }
 
 extension View {

@@ -53,7 +53,7 @@
                                 "Finish signing in in the browser window that opened, then come back here."
                             )
                             .themeText(.detail)
-                            .foregroundStyle(Theme.macTextSecondary)
+                            .foregroundStyle(Theme.textSecondary)
                         }
                     }
                     if let error = browser.error {

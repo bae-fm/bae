@@ -363,7 +363,7 @@ private struct TitleSearchChip<Trailing: View>: View {
                             verbatim: FactList.joined([artistText, albumText])
                         )
                         .themeText(.mono)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .cutLine(.prose)
                     }
                     .buttonStyle(.accentPlain)
@@ -392,7 +392,7 @@ private struct TitleSearchChip<Trailing: View>: View {
         TextField(name, text: text, prompt: Text(verbatim: ""))
             .textFieldStyle(.plain)
             .themeText(.mono)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .focused($focused, equals: field)
             .disabled(isWaiting)
             .onSubmit { focused = nil }

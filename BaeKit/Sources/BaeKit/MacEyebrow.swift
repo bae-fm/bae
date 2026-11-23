@@ -19,6 +19,6 @@ public struct MacEyebrow: View {
     public var body: some View {
         text
             .themeText(.eyebrow)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
     }
 }

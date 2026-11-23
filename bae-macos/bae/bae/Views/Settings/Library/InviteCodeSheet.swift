@@ -167,7 +167,7 @@ struct InviteCodeSheetContent: View {
                 if let detail = held.reason.detail {
                     Text(detail)
                         .themeText(.mono)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .textSelection(.enabled)
                 }
             }
@@ -196,11 +196,11 @@ struct InviteCodeSheetContent: View {
             {
                 Text(verbatim: keyLine)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .textSelection(.enabled)
                 Text(verbatim: unusedLine)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }

@@ -38,7 +38,7 @@ struct MacStep<Content: View>: View {
                     BalancedText(
                         text: text,
                         role: .body,
-                        color: NSColor(Theme.macTextSecondary),
+                        color: NSColor(Theme.textSecondary),
                         maxWidth: Self.headWidth
                     )
                 }

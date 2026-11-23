@@ -17,7 +17,7 @@ struct MacStorageUsage: View {
                     .themeText(.figure)
                 Text("on this Mac")
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             bar
             legend

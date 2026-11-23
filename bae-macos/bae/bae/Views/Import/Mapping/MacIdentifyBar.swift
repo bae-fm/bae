@@ -37,7 +37,7 @@ struct MacIdentifyBar<Trailing: View>: View {
         HStack(spacing: ThemeSpace.related) {
             Text("Identify")
                 .themeText(.strong)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
             MacButton("Automatic") { onAutomatic() }
             MacButton("Search") { onSearch() }
             metadataMenu(onMetadataCommand)

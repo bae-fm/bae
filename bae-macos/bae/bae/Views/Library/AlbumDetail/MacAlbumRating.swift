@@ -20,7 +20,7 @@ struct MacAlbumRating: View {
             )
             Text(verbatim: raters.text)
                 .themeText(.detail)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
         }
         .accessibilityIdentifier("album-rating")
     }

@@ -101,7 +101,7 @@ struct MacPressingRow: View {
                 "Find online, under the pressing identification picked on its own: bae reads the release from its catalogs before it stores the answer."
         )
         .themeText(.body)
-        .foregroundStyle(Theme.macTextSecondary)
+        .foregroundStyle(Theme.textSecondary)
         .padding(.horizontal, Self.horizontalPadding)
         .padding(.bottom, ThemeSpace.related)
         .frame(height: isReadingUnattended ? nil : 0, alignment: .top)
@@ -183,7 +183,7 @@ struct MacPressingRow: View {
                         )
                     )
                     .themeText(.body)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .cutLine(.prose)
                 }
                 ForEach(
@@ -196,7 +196,7 @@ struct MacPressingRow: View {
             if !pressing.barcodes.isEmpty {
                 MacSourcedValue(pressing.barcodes)
                     .themeText(.body)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .monospacedDigit()
                     .lineLimit(1)
             }

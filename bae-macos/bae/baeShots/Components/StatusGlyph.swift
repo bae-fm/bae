@@ -32,7 +32,7 @@ extension ShotScene {
                 StatusGlyph(.danger)
             }
             .font(.system(size: 17))
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
         },
         component("mac.component.status-glyph.android", height: 60) {
             HStack(spacing: 16) {

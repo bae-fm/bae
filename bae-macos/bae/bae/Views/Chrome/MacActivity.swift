@@ -59,7 +59,7 @@ struct MacActivity: View {
             if !problems.needsAttention, !showsTransfers {
                 SettingsTitledBox(title: nil) {
                     Text(localizedCoreString("core.activity.idle"))
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(.top, Self.sectionGap)
             }

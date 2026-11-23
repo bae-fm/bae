@@ -87,7 +87,7 @@ struct DeviceResetView: View {
                     .localizedLine
             )
             .themeText(.body)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: WelcomeLayout.columnWidth)
             if let error {

@@ -27,7 +27,7 @@ struct InvalidCandidateRow: View {
                 }
                 Text(invalid.reason.localizedText)
                     .themeText(.detail)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .cutLine(.prose)
             }
         }

@@ -21,7 +21,7 @@ struct MacDisclosure<Label: View, Content: View>: View {
                 MacItem {
                     DisclosureChevron(isExpanded: isExpanded)
                         .themeIcon(.small)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 } content: {
                     label
                 }

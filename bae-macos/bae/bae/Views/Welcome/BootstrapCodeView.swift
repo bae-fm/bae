@@ -55,7 +55,7 @@ struct BootstrapCodeView: View {
                 .padding(.bottom, ThemeSpace.line)
             subtitle
                 .themeText(.body)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, ThemeSpace.edge)
             Form {
@@ -178,7 +178,7 @@ private struct AttemptDetailsSection: View {
                 if metadata.provider == .s3 && metadata.carriesS3Key {
                     Text("Your S3 access key came with the scanned code.")
                         .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             case .join(_, let invite), .resume(_, let invite):
                 MacRow("Library", value: invite.libraryName)
@@ -198,7 +198,7 @@ private struct AttemptDetailsSection: View {
                 "You will sign in to \(metadata.provider.displayName) in your browser."
             )
             .themeText(.detail)
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
         }
     }
 }

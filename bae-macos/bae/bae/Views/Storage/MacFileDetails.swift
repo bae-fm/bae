@@ -21,7 +21,7 @@ struct MacFileDetails: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark.circle")
                         .themeIcon(.medium)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 .buttonStyle(.accentPlain)
                 .accessibilityLabel(Text("Close file details"))

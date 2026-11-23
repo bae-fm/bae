@@ -12,7 +12,7 @@ struct DocumentViewerView: View {
             HStack {
                 Text(name)
                     .themeText(.body)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 Spacer()
                 MacButton("Done") { onClose() }
                     .keyboardShortcut(.cancelAction)

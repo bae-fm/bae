@@ -13,7 +13,7 @@ struct MacRadio: View {
         HStack(alignment: .top, spacing: ThemeSpace.group) {
             Image(systemName: checked ? "largecircle.fill.circle" : "circle")
                 .foregroundStyle(
-                    checked ? Color.accentColor : Theme.macTextSecondary
+                    checked ? Color.accentColor : Theme.textSecondary
                 )
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -22,7 +22,7 @@ struct MacRadio: View {
                 if let note {
                     note
                         .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
 

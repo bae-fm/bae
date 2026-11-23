@@ -223,7 +223,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
 
     private var secondaryColor: Color {
         options.selection == true
-            ? Theme.onFillSecondary : Theme.macTextSecondary
+            ? Theme.onFillSecondary : Theme.textSecondary
     }
 
     private func row(
@@ -246,7 +246,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                     if chevron {
                         Image(systemName: "chevron.forward")
                             .themeIcon(.small)
-                            .foregroundStyle(Theme.macTextSecondary)
+                            .foregroundStyle(Theme.textSecondary)
                             .opacity(textOpacity)
                             .accessibilityHidden(true)
                     }

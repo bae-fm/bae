@@ -14,7 +14,7 @@ struct StorageTransferCounts: View {
                 count in
                 if index > 0 {
                     Text(verbatim: FactList.glyph)
-                        .foregroundStyle(Theme.macTextSecondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 Text(count.label.localizedLine)
                     .fontWeight(count.stage == .moving ? .semibold : .regular)
@@ -27,7 +27,7 @@ struct StorageTransferCounts: View {
         switch stage {
         case .moving: AnyShapeStyle(Theme.accent)
         case .waiting: AnyShapeStyle(.primary)
-        case .done: AnyShapeStyle(Theme.macTextSecondary)
+        case .done: AnyShapeStyle(Theme.textSecondary)
         }
     }
 }

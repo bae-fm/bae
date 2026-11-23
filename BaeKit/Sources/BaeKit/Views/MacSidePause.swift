@@ -62,7 +62,7 @@ private struct SidePausePromptCard: View {
                 .themeText(.heading)
             Text(verbatim: localizedCoreString("core.playback.pause.message"))
                 .themeText(.body)
-                .foregroundStyle(Theme.macTextSecondary)
+                .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let countdown = prompt.countdown {
                 SidePauseCountdownLine(countdown: countdown)
@@ -76,7 +76,7 @@ private struct SidePausePromptCard: View {
             if !keepPausing {
                 Text("You can turn this back on in Settings › Playback.")
                     .themeText(.body)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

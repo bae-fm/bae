@@ -45,7 +45,7 @@ struct ImportListFilterField: View {
         Text("\(shown) of \(total)")
             .themeText(.detail)
             .monospacedDigit()
-            .foregroundStyle(Theme.macTextSecondary)
+            .foregroundStyle(Theme.textSecondary)
             .fixedSize()
     }
 }

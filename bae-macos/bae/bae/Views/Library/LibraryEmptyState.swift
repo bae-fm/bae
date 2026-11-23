@@ -28,7 +28,7 @@ struct LibraryEmptyState: View {
                     .themeText(.title)
                 Text("Import some music to get started")
                     .themeText(.body)
-                    .foregroundStyle(Theme.macTextSecondary)
+                    .foregroundStyle(Theme.textSecondary)
                 HStack(spacing: ThemeSpace.related) {
                     MacButton("Import folder…") {
                         uiStore.setImportFolderPickerPresented(true)
