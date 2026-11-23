@@ -27,6 +27,7 @@ public struct MacButton<Label: View>: View {
     private var tone = Tone.inherited
     private var isTinted = false
     private var controlSize: ControlSize?
+    private var fillsWidth = false
 
     /// What a press does.
     private enum Press {
@@ -87,6 +88,15 @@ public struct MacButton<Label: View>: View {
         return copy
     }
 
+    /// A button as wide as the space it is given, its words centred, instead
+    /// of as wide as its words: the welcome window's three choices share one
+    /// column.
+    public func fillsWidth(_ fills: Bool = true) -> MacButton {
+        var copy = self
+        copy.fillsWidth = fills
+        return copy
+    }
+
     /// A small button.
     public func small() -> MacButton {
         var copy = self
@@ -101,12 +111,13 @@ public struct MacButton<Label: View>: View {
 
     /// A button with words keeps them whole on one line at their own width,
     /// as the board's does, so a row beside it wraps instead of squeezing the
-    /// button.
+    /// button; one that `fillsWidth` takes the width it is given.
     @ViewBuilder
     private var sized: some View {
         switch kind {
         case .primary, .secondary, .fieldAction, .borderless:
-            drawn.lineLimit(1).fixedSize(horizontal: true, vertical: false)
+            drawn.lineLimit(1)
+                .fixedSize(horizontal: !fillsWidth, vertical: false)
         case .plain, .icon:
             drawn
         }

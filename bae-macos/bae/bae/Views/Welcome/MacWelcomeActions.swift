@@ -18,15 +18,18 @@ struct MacWelcomeActions: View {
                 Text("Create new library…")
                     .frame(maxWidth: .infinity)
             }
+            .fillsWidth()
             .disabled(disabled)
             .keyboardShortcut(.defaultAction)
             HStack(spacing: ThemeSpace.related) {
                 MacButton(action: onScanCode) {
                     Text("Scan code").frame(maxWidth: .infinity)
                 }
+                .fillsWidth()
                 MacButton(action: onEnterCode) {
                     Text("Enter code").frame(maxWidth: .infinity)
                 }
+                .fillsWidth()
             }
             .disabled(disabled)
         }
