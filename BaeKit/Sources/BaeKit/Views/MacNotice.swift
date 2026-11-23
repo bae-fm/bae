@@ -95,6 +95,7 @@ public struct MacNotice: View {
     private let look: NoticeLook
     private let action: ErrorAction?
     private let secondary: ErrorAction?
+    private let leave: ErrorAction?
     private let buttons: NoticeButtons
     private let detailsOpening: NoticeDetailsOpening
     private let onDismiss: (() -> Void)?
@@ -119,6 +120,7 @@ public struct MacNotice: View {
         self.look = look
         self.action = action
         self.secondary = secondary
+        self.leave = nil
         self.buttons = buttons
         self.detailsOpening = detailsOpening
         self.onDismiss = onDismiss
@@ -138,6 +140,7 @@ public struct MacNotice: View {
         look: NoticeLook = .filled,
         action: ErrorAction? = nil,
         secondary: ErrorAction? = nil,
+        leave: ErrorAction? = nil,
         buttons: NoticeButtons = .inline,
         detailsOpening: NoticeDetailsOpening = .button,
         onDismiss: (() -> Void)? = nil
@@ -147,6 +150,7 @@ public struct MacNotice: View {
         self.look = look
         self.action = action
         self.secondary = secondary
+        self.leave = leave
         self.buttons = buttons
         self.detailsOpening = detailsOpening
         self.onDismiss = onDismiss
@@ -402,6 +406,9 @@ extension MacNotice {
                     .multilineTextAlignment(.center)
             }
             HStack(spacing: ThemeSpace.group) {
+                if let leave {
+                    actionButton(leave)
+                }
                 if let details {
                     detailsButton(details)
                 }
