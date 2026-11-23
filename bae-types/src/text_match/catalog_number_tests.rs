@@ -71,3 +71,16 @@ fn the_pieces_run_together_are_the_squashed_text() {
         assert_eq!(catalog_words(text).concat(), squash(text), "{text}");
     }
 }
+
+/// The phonographic and copyright marks, written as the letters P and C
+/// before a year, are no catalog number: `P 2007` is a letter and four
+/// digits, which is what a number printed with a space looks like.
+#[test]
+fn a_copyright_line_is_no_number() {
+    assert!(printed_catalog_numbers("P 2007").is_empty());
+    assert!(printed_catalog_numbers("C 1999 Imprint").is_empty());
+    assert_eq!(printed_catalog_numbers("P 2007 Imprint KBOX3555B"), vec!["KBOX3555B"]);
+    // A prefix of two letters, or digits that are no year, is still a number.
+    assert_eq!(printed_catalog_numbers("PC 2007"), vec!["PC 2007"]);
+    assert_eq!(printed_catalog_numbers("P 12345"), vec!["P 12345"]);
+}

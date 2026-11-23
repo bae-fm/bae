@@ -35,6 +35,8 @@ pub fn catalog_words(text: &str) -> Vec<String> {
 /// numbers of its line, and the text prints it by
 /// `CandidateText::prints_catalog`.
 ///
+/// A copyright line's mark and year, `P 2007`, is no number.
+///
 /// A number is a piece that begins with a capital letter, writes every
 /// letter in capitals and holds three digits or more — `WPCR-80001`,
 /// `CDP7.46437`, `BVCK-15024/5`. A piece of capitals and at most two
@@ -54,6 +56,7 @@ pub fn printed_catalog_numbers(text: &str) -> Vec<String> {
                 && text[start + piece.len()..*next_start] == *" "
                 && next.starts_with(|c: char| c.is_ascii_digit())
                 && digits(piece) + digits(next) >= 3
+                && !is_copyright_year(piece, next)
         });
         let number = match joined {
             Some((next_start, next)) => {
@@ -72,6 +75,17 @@ pub fn printed_catalog_numbers(text: &str) -> Vec<String> {
         }
     }
     numbers
+}
+
+/// Whether `piece` and `next` are a copyright line's mark and year: the
+/// letter P (phonographic) or C, then four digits that are a year, as in
+/// `P 2007`.
+#[cfg(desktop)]
+fn is_copyright_year(piece: &str, next: &str) -> bool {
+    matches!(piece, "P" | "C")
+        && next.len() == 4
+        && next.chars().all(|c| c.is_ascii_digit())
+        && (next.starts_with("19") || next.starts_with("20"))
 }
 
 /// The text cut as [`catalog_words`] cuts it, each piece as written with
