@@ -295,6 +295,7 @@
 .bae-a-fp-artist { margin-bottom: var(--space-section); font: var(--type-android-heading-weight) var(--type-android-heading-size)/var(--type-android-heading-line-height) var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
 .bae-a-fp-repeat { display: flex; justify-content: center; margin-top: var(--space-edge); }
 .bae-a-fp-volume { display: flex; align-items: center; margin-top: var(--space-related); }
+.bae-a-castrow-wait { padding: var(--space-edge); }
 .bae-a-castrow { display: flex; align-items: center; gap: var(--space-group); padding: var(--space-group) var(--space-edge); font-family: var(--font-android); }
 /* A long receiver name wraps to a second line, then ends in an ellipsis; the icon and the trailing control stay centred on the row. */
 .bae-a-castrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }

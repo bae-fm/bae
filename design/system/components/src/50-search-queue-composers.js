@@ -166,8 +166,8 @@
     return h('div', { className: 'bae-a-volume', role: 'slider', 'aria-label': 'Volume', 'aria-valuenow': Math.round(parseFloat(pct)), style: { '--level': pct } }, h('div'), h('span'));
   }
   function AndroidCastRow(props) {
-    // `waiting` with no receiver: the list's own wait, a spinner and its words (Looking for devices…).
-    if (props.waiting && !props.name) return h('div', { className: 'bae-a-castrow' }, h(AndroidSpinner, { size: 20 }), h('span', { className: 'bae-muted', style: { fontSize: 'var(--type-android-body-size)' } }, props.waiting));
+    // `waiting` with no receiver: the list's own wait, a spinner named by its words (Looking for devices…) and the words beside it.
+    if (props.waiting && !props.name) return h('div', { className: 'bae-a-castrow-wait' }, h(AndroidSpinner, { label: props.waiting }));
     // A receiver, in the picker and in the Playback settings alike: under its name its kind, or Playing for the one playing, which ends in Disconnect. Tapping any other plays on it. No separate "Playing on" row, and no check: the row says it. `menu` (the Playback settings) ends every row in ⋮ in place of Disconnect: Details… and, on the one playing, Disconnect; `menuOpen` draws that menu open under it.
     // `waiting` on a receiver: the words of a wait on it (Connecting…, or Accept on <the receiver>) in place of its kind, with a spinner at the row's end, before the ⋮ in the Playback settings.
     var icon = { cast: 'cast', airplay: 'speakerbox', upnp: 'tv' }[props.kind || 'cast'];
