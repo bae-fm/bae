@@ -12,10 +12,7 @@ struct CoverGalleryFrame<Content: View>: View {
     let content: () -> Content
 
     private var host: CGSize {
-        guard let modalHost else {
-            preconditionFailure("CoverGalleryFrame is shown outside a MacModal")
-        }
-        return modalHost
+        modalHostSize(modalHost, for: "CoverGalleryFrame")
     }
 
     var body: some View {

@@ -51,12 +51,7 @@ struct ReleaseEditorSheet: View {
     }
 
     private var host: CGSize {
-        guard let modalHost else {
-            preconditionFailure(
-                "ReleaseEditorSheet is shown outside a MacModal"
-            )
-        }
-        return modalHost
+        modalHostSize(modalHost, for: "ReleaseEditorSheet")
     }
 
     var body: some View {

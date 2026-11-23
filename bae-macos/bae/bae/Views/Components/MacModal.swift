@@ -8,6 +8,19 @@ extension EnvironmentValues {
     var modalHost: CGSize?
 }
 
+/// The window a modal opens over, for the sheet `sheet` that sizes itself to
+/// it. A sheet shown outside a `MacModal` is a bug: it is reported, and the
+/// sheet draws at no size.
+func modalHostSize(_ host: CGSize?, for sheet: String) -> CGSize {
+    if let host {
+        return host
+    }
+    let detail = "\(sheet) is shown outside a MacModal"
+    baeAppLogger.error("\(detail)")
+    CoreBugReporter().report(operation: "size a modal sheet", detail: detail)
+    return .zero
+}
+
 /// A scrim over the window with the content in the sheet face.
 struct MacModal<Content: View>: View {
     let onDismiss: () -> Void
