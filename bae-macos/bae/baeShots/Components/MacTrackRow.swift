@@ -9,26 +9,26 @@ extension ShotScene {
         trackRow(
             "mac.component.track-row.resting",
             track: PreviewData.previewTrack(
-                title: "Harbor Lights",
-                position: "1",
-                durationMs: 272_000
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
             )
         ),
         trackRow(
             "mac.component.track-row.hover",
             track: PreviewData.previewTrack(
-                title: "The Long Way Home",
-                position: "2",
-                durationMs: 312_000
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
             ),
             hover: true
         ),
         trackRow(
             "mac.component.track-row.current",
             track: PreviewData.previewTrack(
-                title: "Second Floor",
-                position: "3",
-                durationMs: 225_000
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
             ),
             current: true
         ),
@@ -119,7 +119,7 @@ extension ShotScene {
         picked: Bool = false,
         rating: BridgeTrackRating = .stars(mine: nil)
     ) -> ShotScene {
-        component(id, height: 70) {
+        component(id, width: 840, height: 70) {
             MacTrackRow(
                 track: track,
                 artist: artist,
@@ -132,7 +132,7 @@ extension ShotScene {
                 onPlay: {},
                 onTogglePlayPause: {}
             )
-            .frame(width: 380, height: artist == nil ? 40 : 52)
+            .frame(width: 840, height: artist == nil ? 40 : 52)
         }
     }
 }
