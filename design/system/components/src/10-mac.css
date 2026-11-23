@@ -17,6 +17,8 @@
 /* The system's lights: 14pt each, 9pt apart. */
 .bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: calc(var(--space-related) + var(--space-hairline)); }
 .bae-m-lights-inset { top: 20px; left: 20px; }
+/* The main window moves its lights 6 pt right and 7 pt down from AppKit's place, to sit in its taller title bar (TrafficLightOffset). */
+.bae-m-mainwin > .bae-m-lights { top: 16px; left: 15px; }
 .bae-m-lights span { width: 14px; height: 14px; border-radius: 7px; background: #FF5F57; }
 .bae-m-lights span + span { background: #FEBC2E; }
 .bae-m-lights span + span + span { background: #28C840; }
