@@ -15,7 +15,15 @@ struct MacLibraryHeading<Trailing: View>: View {
         HStack(alignment: .firstTextBaseline) {
             LibraryModeHeading(collapseProgress: collapseProgress)
             Spacer()
-            trailing
+            HStack(spacing: ThemeSpace.related) {
+                trailing
+            }
+            .alignmentGuide(.firstTextBaseline) { dimensions in
+                // The Albums board aligns the heading's baseline with the
+                // bottom of the 14-point checkbox. Keep the row anchored
+                // there as its controls change.
+                dimensions[VerticalAlignment.center] + 7
+            }
         }
         // Lines up with the album art: container padding plus the card's inset.
         .padding(
