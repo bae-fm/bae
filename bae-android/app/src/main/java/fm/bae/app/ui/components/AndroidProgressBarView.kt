@@ -2,14 +2,9 @@ package fm.bae.app.ui.components
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.database.ContentObserver
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
-import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
 import android.util.TypedValue
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
@@ -19,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
+import fm.bae.app.ui.appearance.observeAndroidAnimatorsEnabled
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 
@@ -91,8 +87,8 @@ internal class AndroidProgressBarView(
                     }
                 }
 
-            fun updateAnimation() {
-                if (ValueAnimator.areAnimatorsEnabled()) {
+            fun updateAnimation(enabled: Boolean) {
+                if (enabled) {
                     if (!crossing.isStarted) crossing.start()
                 } else {
                     crossing.cancel()
@@ -172,28 +168,7 @@ internal class AndroidProgressBarView(
     }
 
     private fun observeCrossing(moving: Progress.Moving) {
-        moving.stopObservingScale =
-            observeAnimatorScale {
-                if (progress === moving && isAttachedToWindow) moving.updateAnimation()
-            }
-        moving.updateAnimation()
-    }
-
-    private fun observeAnimatorScale(onScaleChange: () -> Unit): () -> Unit {
-        val main = Handler(Looper.getMainLooper())
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val listener = ValueAnimator.DurationScaleChangeListener { main.post { onScaleChange() } }
-            ValueAnimator.registerDurationScaleChangeListener(listener)
-            return { ValueAnimator.unregisterDurationScaleChangeListener(listener) }
-        }
-        val resolver = context.contentResolver
-        val observer =
-            object : ContentObserver(main) {
-                override fun onChange(selfChange: Boolean) = onScaleChange()
-            }
-        val scaleUri = Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE)
-        resolver.registerContentObserver(scaleUri, false, observer)
-        return { resolver.unregisterContentObserver(observer) }
+        moving.stopObservingScale = observeAndroidAnimatorsEnabled(moving::updateAnimation)
     }
 
     override fun onMeasure(
