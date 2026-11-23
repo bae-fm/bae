@@ -118,7 +118,8 @@ extension ShotScene {
             let scanned = content != .unread
             let art =
                 scanned
-                ? PreviewData.boardImage("cover.jpg", art: "Northbound") : nil
+                ? try PreviewData.boardImage("cover.jpg", art: "Northbound")
+                : nil
             let values = editorValues(
                 release.values,
                 content: content,
