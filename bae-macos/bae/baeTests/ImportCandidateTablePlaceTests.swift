@@ -311,7 +311,9 @@ extension ImportCandidateTablePlaceTests {
             // The second header is on top: found by position, not by
             // dividing the offset by one height.
             Self.scroll(table, toRow: 20)
-            try await Wait.until { slot.place?.position == 20 }
+            try await Wait.untilLaidOut(table) {
+                slot.place?.position == 20 && coordinator.item(at: 20) != nil
+            }
             #expect(Self.topRow(of: table) == 20)
             #expect(coordinator.pinnedHeader()?.header == Self.header(20))
             #expect(!coordinator.pinnedStrip.isHidden)
@@ -326,6 +328,9 @@ extension ImportCandidateTablePlaceTests {
                 to: NSPoint(x: 0, y: table.rect(ofRow: 19).minY + 20)
             )
             table.enclosingScrollView?.reflectScrolledClipView(clipView)
+            try await Wait.untilLaidOut(table) {
+                coordinator.item(at: 19) != nil
+            }
             #expect(Self.topRow(of: table) == 19)
             let pinned = try #require(coordinator.pinnedHeader())
             #expect(pinned.header == Self.header(0))
