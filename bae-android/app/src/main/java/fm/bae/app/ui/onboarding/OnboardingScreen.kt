@@ -376,8 +376,7 @@ internal fun RunningLines(
     ) {
         if (!counting) AndroidSpinner()
     }
-    val openingLineShows = stepping || !counting
-    if (openingLineShows && (!stepping || title != null)) Spacer(modifier = Modifier.height(ThemeSpace.section))
+    if (stepping || !counting) Spacer(modifier = Modifier.height(ThemeSpace.section))
     title?.let {
         Text(text = it, style = ThemeText.heading.style, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(ThemeSpace.related))
