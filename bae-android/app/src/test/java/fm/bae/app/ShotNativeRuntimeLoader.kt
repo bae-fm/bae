@@ -2,7 +2,6 @@ package fm.bae.app
 
 import org.robolectric.nativeruntime.DefaultNativeRuntimeLoader
 import org.robolectric.util.TempDirectory
-import org.robolectric.versioning.AndroidVersions
 import org.w3c.dom.Element
 import java.nio.file.Files
 import javax.xml.parsers.DocumentBuilderFactory
@@ -13,9 +12,6 @@ import javax.xml.transform.stream.StreamResult
 /** Adds the weights bae uses that Robolectric's static Roboto family lacks. */
 class ShotNativeRuntimeLoader : DefaultNativeRuntimeLoader() {
     override fun maybeCopyExtraResources(dir: TempDirectory) {
-        // Robolectric extracts fonts for SDKs that support native graphics.
-        if (AndroidVersions.CURRENT.sdkInt < AndroidVersions.O.SDK_INT) return
-
         val fonts = dir.basePath.resolve("fonts")
         // This Roboto is the variable font from AOSP's android-15.0.0_r1 tag in external/roboto-fonts.
         val font =
