@@ -132,7 +132,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         NotNeeded,
-        NoTitle,
         Waiting { album, artist },
         Searched { album, artist, cells: (each AutomationProviderCell) },
     },

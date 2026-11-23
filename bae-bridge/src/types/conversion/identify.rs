@@ -216,7 +216,6 @@ mirror_enum! {
     from_core: fn,
     variants: {
         NotNeeded,
-        NoTitle,
         Waiting { album, artist },
         Searched { album, artist, cells: (each BridgeProviderCell) },
     },

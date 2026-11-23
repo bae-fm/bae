@@ -127,7 +127,6 @@ pub enum AutomationCatalogStep {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchStep {
     NotNeeded,
-    NoTitle,
     Waiting { album: String, artist: String },
     Searched { album: String, artist: String, cells: Vec<AutomationProviderCell> },
 }

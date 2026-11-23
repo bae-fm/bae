@@ -254,9 +254,9 @@ extension MacIdentifierBand {
     @ViewBuilder
     private var titleChip: some View {
         switch run.search {
-        // A run with no title to search by, or whose identifiers answered,
-        // searched by no title, so the band draws no title search.
-        case .notNeeded, .noTitle:
+        // A run whose identifiers answered, or that has no title to search
+        // by, searched by no title, so the band draws no title search.
+        case .notNeeded:
             EmptyView()
         // Not editable until the run reaches the search.
         case .waiting(let album, let artist):

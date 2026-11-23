@@ -189,7 +189,7 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
         barcode: BarcodeStepView::NoCodes,
         catalog: CatalogStepView::NoneFound,
         isrc: IsrcStepView::Absent,
-        search: SearchStepView::NoTitle,
+        search: SearchStepView::NotNeeded,
     };
     let verdict = TerminalVerdict::ManualOnly { track_count: 11, ledger: Some(quiet.clone()) };
     assert_eq!(stored_and_read(&verdict).await.0, verdict);
@@ -297,7 +297,7 @@ fn paired_cell_verdict() -> TerminalVerdict {
             },
             catalog: CatalogStepView::NoneFound,
             isrc: IsrcStepView::Absent,
-            search: SearchStepView::NoTitle,
+            search: SearchStepView::NotNeeded,
         }),
     }
 }

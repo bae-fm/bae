@@ -33,9 +33,9 @@ struct IdentifierBandTitleSearchTests {
     }
 
     @Test(
-        "a run with no title to search by draws no empty Artist and Title fields"
+        "a run that searched by no title draws no empty Artist and Title fields"
     )
-    func noTitleDrawsNoFields() async throws {
-        #expect(try await fields(of: .noTitle).isEmpty)
+    func noSearchDrawsNoFields() async throws {
+        #expect(try await fields(of: .notNeeded).isEmpty)
     }
 }

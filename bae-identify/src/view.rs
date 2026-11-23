@@ -137,10 +137,9 @@ pub enum IsrcStepView {
 /// nothing.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SearchStepView {
-    /// The identifiers answered; no search was needed.
+    /// No search goes out: the identifiers answered, or the draft has no
+    /// title to search by.
     NotNeeded,
-    /// Nothing to search by: the draft has no title.
-    NoTitle,
     /// The identifiers are still being looked up.
     Waiting { album: String, artist: String },
     Searched {

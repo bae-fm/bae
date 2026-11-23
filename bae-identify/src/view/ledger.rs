@@ -23,7 +23,7 @@ pub(super) fn search_step(
     context: &SignalsContext,
 ) -> SearchStepView {
     let providers = match (progress, &context.search.query) {
-        (_, None) => return SearchStepView::NoTitle,
+        (_, None) => return SearchStepView::NotNeeded,
         (SearchProgress::Pending, Some(_)) if identifiers_found_something => {
             return SearchStepView::NotNeeded
         }

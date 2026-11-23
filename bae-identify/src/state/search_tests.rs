@@ -245,7 +245,7 @@ fn a_ledger_says_why_no_search_ran() {
     };
     assert!(matches!(
         ledger.as_ref().expect("a run with inputs").search,
-        crate::SearchStepView::NoTitle
+        crate::SearchStepView::NotNeeded
     ));
 }
 

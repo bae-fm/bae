@@ -99,7 +99,6 @@ pub(super) fn step_columns<'a>(
     };
     let (search, search_album, search_artist) = match &ledger.search {
         SearchStepView::NotNeeded => ("not_needed", None, None),
-        SearchStepView::NoTitle => ("no_title", None, None),
         SearchStepView::Waiting { album, artist } if running => {
             ("waiting", Some(album.as_str()), Some(artist.as_str()))
         }
@@ -756,12 +755,9 @@ impl StoredLedger {
                 stray(&search_rows, STEP_SEARCH, "waiting")?;
                 SearchStepView::Waiting { album, artist }
             }
-            (stood @ ("not_needed" | "no_title"), None, None) => {
-                stray(&search_rows, STEP_SEARCH, stood)?;
-                match stood {
-                    "not_needed" => SearchStepView::NotNeeded,
-                    _ => SearchStepView::NoTitle,
-                }
+            ("not_needed", None, None) => {
+                stray(&search_rows, STEP_SEARCH, "not_needed")?;
+                SearchStepView::NotNeeded
             }
             (other, _, _) => {
                 return Err(DbError::unreadable("import_candidate_verdict.search_step", other))

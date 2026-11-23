@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     -- tables beside it. 'absent': no LOG or CUE, no barcode source, no ISRC.
     -- 'not_cd_audio': the CUE lays out audio at a rate no CD has.
     -- 'no_codes': a barcode source held no code. 'none_found': no catalog
-    -- number was offered or in effect. 'not_needed': the clues answered, so
-    -- no title search went out; 'no_title': there was no title to search by.
+    -- number was offered or in effect. 'not_needed': the clues answered or
+    -- there was no title to search by, so no title search went out.
     -- Only a run in flight stands at 'reading' (extraction has not reported
     -- the disc IDs or the ISRCs), 'scanning' (the artwork is still being read,
     -- so more barcodes or catalog numbers may come) or 'waiting' (the title
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     barcode_step  TEXT CHECK (barcode_step IN ('absent', 'no_codes', 'rows', 'scanning')),
     catalog_step  TEXT CHECK (catalog_step IN ('none_found', 'numbers', 'scanning')),
     isrc_step     TEXT CHECK (isrc_step IN ('reading', 'absent', 'read')),
-    search_step   TEXT CHECK (search_step IN ('not_needed', 'no_title', 'waiting', 'searched')),
+    search_step   TEXT CHECK (search_step IN ('not_needed', 'waiting', 'searched')),
     -- The words the title search asked, or will ask, for a 'searched' or
     -- 'waiting' step: the album, and the album artist, blank where the draft
     -- named none.

@@ -190,7 +190,7 @@ extension PreviewData {
             candidates: Array(catalogCandidates.prefix(2))
         ),
         isrc: .absent,
-        search: .noTitle,
+        search: .notNeeded,
         readingArtwork: false
     )
 
