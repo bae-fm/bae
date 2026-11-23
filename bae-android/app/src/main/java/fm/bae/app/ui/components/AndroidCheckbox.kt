@@ -1,5 +1,6 @@
 package fm.bae.app.ui.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 
 /** A checkbox row with its [label]; the whole row toggles. */
 @Composable
@@ -34,9 +36,11 @@ fun AndroidCheckbox(
                 ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = checked, onCheckedChange = null)
+        Box(modifier = Modifier.width(ROW_HEIGHT), contentAlignment = Alignment.Center) {
+            Checkbox(checked = checked, onCheckedChange = null)
+        }
         Spacer(modifier = Modifier.width(ThemeSpace.related))
-        Text(label)
+        Text(label, style = ThemeText.body.style)
     }
 }
 
