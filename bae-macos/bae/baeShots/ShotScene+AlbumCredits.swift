@@ -20,7 +20,7 @@ extension ShotScene {
                 openAlbum: true,
                 detail: creditedBoardAlbum()
             )
-            let images = coverStore()
+            let images = coverGalleryImages()
             return ShotStage(
                 ShotScenes.libraryWindow(
                     uiStore: uiStore,

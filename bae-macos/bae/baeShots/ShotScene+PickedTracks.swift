@@ -19,7 +19,7 @@ extension ShotScene {
                 albumCount: 4,
                 openAlbum: true
             )
-            let images = coverStore()
+            let images = coverGalleryImages()
             let tracks = PreviewData.boardAlbumDetail().releases[0].tracks
                 .map(Track.init(from:))
             for index in [1, 3, 4] {

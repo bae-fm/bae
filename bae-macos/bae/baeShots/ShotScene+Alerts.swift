@@ -345,7 +345,7 @@ extension ShotScene {
             albumCount: openAlbum ? 4 : nil,
             openAlbum: openAlbum
         )
-        let images = coverStore()
+        let images = coverGalleryImages()
         return ShotStage(
             OverWindow.alert(
                 alert,

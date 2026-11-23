@@ -59,7 +59,7 @@ extension ShotScene {
                 openAlbum: true,
                 detail: detail
             )
-            let images = coverStore()
+            let images = coverGalleryImages()
             let rated = AlbumDetail(bridge: detail)
             return ShotStage(
                 ZStack(alignment: .topLeading) {
