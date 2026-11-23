@@ -8,6 +8,8 @@ struct MediaCountsEditor: View {
     /// The media the pressing does not hold yet, as core offers them.
     let offered: [BridgeMedium]
     let write: @MainActor (BridgePressingFactEdit) async -> Void
+    /// The editor takes no input, as while the release editor reads a file.
+    var off = false
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
@@ -15,7 +17,8 @@ struct MediaCountsEditor: View {
                 MediumCountRow(
                     counted: counted,
                     setCount: { commit(counted.medium, count: $0) },
-                    remove: { commit(counted.medium, count: 0) }
+                    remove: { commit(counted.medium, count: 0) },
+                    off: off
                 )
             }
             MacButton(
@@ -56,6 +59,7 @@ private struct MediumCountRow: View {
     let counted: BridgeMediaCount
     let setCount: (UInt32) -> Void
     let remove: () -> Void
+    let off: Bool
 
     private var name: String {
         bridgeMediumLabel(medium: counted.medium).text
@@ -72,7 +76,8 @@ private struct MediumCountRow: View {
                 value: Binding(
                     get: { Int(counted.count) },
                     set: { setCount(UInt32($0)) }
-                )
+                ),
+                off: off
             )
             MacIconButton.remove(name, action: remove)
         }

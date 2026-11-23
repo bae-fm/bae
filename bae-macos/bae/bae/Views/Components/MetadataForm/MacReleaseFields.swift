@@ -9,6 +9,9 @@ struct MacReleaseFields: View {
     let pressingOffers: BridgePressingOffers
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
+    /// Every field, stepper and button takes no input, as while the release
+    /// editor reads a file.
+    var off = false
 
     static let labelWidth: CGFloat = 64
     static let labelGap = ThemeSpace.group
@@ -36,7 +39,8 @@ struct MacReleaseFields: View {
                     MediaCountsEditor(
                         media: values.pressing.facts.media,
                         offered: pressingOffers.media,
-                        write: writer.setPressingFact
+                        write: writer.setPressingFact,
+                        off: off
                     )
                     .valueCell()
                 }
@@ -79,6 +83,7 @@ struct MacReleaseFields: View {
                     .valueCell()
                 }
             }
+            .disabled(off)
         }
     }
 

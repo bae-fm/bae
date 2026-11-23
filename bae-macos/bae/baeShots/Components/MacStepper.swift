@@ -10,8 +10,7 @@ extension ShotScene {
             MacStepper(label: "Number of CD", value: .constant(1))
         },
         component("mac.component.stepper.off", page: true, height: 40) {
-            MacStepper(label: "Number of CD", value: .constant(1))
-                .disabled(true)
+            MacStepper(label: "Number of CD", value: .constant(1), off: true)
         },
     ]
 }

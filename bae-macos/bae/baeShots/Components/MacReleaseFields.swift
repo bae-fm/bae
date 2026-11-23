@@ -61,7 +61,7 @@ extension ShotScene {
                     details: [.remastered]
                 )
             ),
-            disabled: true
+            off: true
         ),
     ]
 
@@ -81,7 +81,7 @@ extension ShotScene {
     private static func releaseFieldsScene(
         _ id: String,
         _ values: BridgeRawReleaseEdit,
-        disabled: Bool = false
+        off: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -93,10 +93,10 @@ extension ShotScene {
                     values: values,
                     pressingOffers: PreviewData.pressingOffers,
                     writer: ReleaseFieldWriter { _, _ in },
-                    editingCommands: EditingCommitCommands()
+                    editingCommands: EditingCommitCommands(),
+                    off: off
                 )
                 .frame(width: 560, alignment: .leading)
-                .disabled(disabled)
             )
         }
     }
