@@ -77,11 +77,6 @@ struct MacImportTable: View {
             actions: actions,
             artistSearch: library.artistSearch,
         )
-        .mappingRowChrome(
-            background: row.audition.previewTarget != nil
-                && row.audition.previewTarget == previewingTarget
-                ? Theme.accentSoft : .clear
-        )
     }
 
     // The leading cell names the section.
@@ -132,19 +127,6 @@ struct TrackAuditionActions {
     /// Play the library release from the track this id names; `nil` where
     /// the host plays no library track.
     let playTrack: ((String) -> Void)?
-}
-
-extension View {
-    /// A mapping row's content sits below its hairline.
-    func mappingRowChrome(background: Color = .clear) -> some View {
-        padding(.vertical, ThemeSpace.compact)
-            .frame(minHeight: 40)
-            .padding(.top, ThemeSpace.hairline)
-            .background(background)
-            .overlay(alignment: .top) {
-                MacHairline()
-            }
-    }
 }
 
 enum ImportMappingColumns {

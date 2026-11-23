@@ -9,14 +9,9 @@ struct TrackSourceCell: View {
     let audition: BridgeTrackAudition
     /// The track the row edits, which a library release's row plays from.
     let trackId: String
-    let previewingTarget: BridgePreviewTarget?
+    let isPreviewing: Bool
     let actions: TrackAuditionActions
     private static let auditionLineHeight: CGFloat = 16
-
-    private var isPreviewing: Bool {
-        guard let target = audition.previewTarget else { return false }
-        return target == previewingTarget
-    }
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {

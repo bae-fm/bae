@@ -15,6 +15,11 @@ struct MacImportTrackRow: View {
     /// open.
     let artistSearch: ArtistSearchOpener
 
+    private var isPreviewing: Bool {
+        guard let target = row.audition.previewTarget else { return false }
+        return target == previewingTarget
+    }
+
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
             sourceCell
@@ -31,6 +36,11 @@ struct MacImportTrackRow: View {
                 onChange: { await actions.editTrack($0) }
             )
         }
+        .padding(.vertical, ThemeSpace.compact)
+        .frame(minHeight: 40)
+        .padding(.top, ThemeSpace.hairline)
+        .background(isPreviewing ? Theme.accentSoft : .clear)
+        .overlay(alignment: .top) { MacHairline() }
     }
 
     /// The file or CUE slice that supplies this track's audio.
@@ -39,7 +49,7 @@ struct MacImportTrackRow: View {
             source: row.source,
             audition: row.audition,
             trackId: row.track.id,
-            previewingTarget: previewingTarget,
+            isPreviewing: isPreviewing,
             actions: actions.audition,
         )
         .frame(width: columns.source, alignment: .leading)

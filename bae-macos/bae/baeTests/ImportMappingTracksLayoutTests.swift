@@ -146,11 +146,11 @@ struct ImportMappingTracksLayoutTests {
     func sourceStatesKeepOneRowHeight() {
         let stopped = sourceCellHeight(
             source: pairedMapping.source,
-            previewing: nil
+            isPreviewing: false
         )
         let playing = sourceCellHeight(
             source: pairedMapping.source,
-            previewing: previewTarget
+            isPreviewing: true
         )
 
         #expect(stopped == playing)
@@ -289,7 +289,7 @@ extension ImportMappingTracksLayoutTests {
                     source: sheetEntryMapping(number: number).source,
                     audition: .libraryTrack,
                     trackId: "sheet-track-\(number)",
-                    previewingTarget: nil,
+                    isPreviewing: false,
                     actions: actions(recording: MappingTrackActionRecorder())
                         .audition
                 )
@@ -467,14 +467,14 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func sourceCellHeight(
         source: BridgeTrackSource,
-        previewing: BridgePreviewTarget?
+        isPreviewing: Bool
     ) -> CGFloat {
         let host = NSHostingView(
             rootView: TrackSourceCell(
                 source: source,
                 audition: .preview(target: previewTarget),
                 trackId: "track",
-                previewingTarget: previewing,
+                isPreviewing: isPreviewing,
                 actions: actions(recording: MappingTrackActionRecorder())
                     .audition
             )
