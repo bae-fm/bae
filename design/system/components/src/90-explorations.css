@@ -15,7 +15,7 @@
 .bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
 .bae-m-dlrow { display: flex; flex-direction: column; gap: var(--space-compact); padding: var(--space-related) var(--space-edge); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); border-bottom: 1px solid var(--hairline); }
 .bae-m-dlrow-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: var(--space-related); }
-.bae-m-dlrow-detail { font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: normal; white-space: nowrap; }
+.bae-m-dlrow-detail { font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: var(--type-cell-line-height); white-space: nowrap; }
 .bae-m-dlrow-ago { font-size: var(--type-fine-size); font-weight: var(--type-fine-weight); line-height: normal; white-space: nowrap; }
 
 /* Logo */
@@ -31,7 +31,7 @@
 
 .bae-errdis-panel { position: relative; margin-top: var(--space-line); padding: var(--space-related) calc(var(--space-section) + var(--space-compact)) var(--space-related) calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); background: color-mix(in srgb, black 28%, transparent); }
 [data-theme="light"] .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
-.bae-errdis-chain { font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bae-errdis-chain { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
 /* On macOS Copy shows only under the pointer (or keyboard focus); on Android, with no pointer, it always shows. */
 .bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }

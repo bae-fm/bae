@@ -2,7 +2,7 @@
 /* Shared helpers for the storage, album-action, import and error parts */
 .bae-num { font-variant-numeric: tabular-nums; }
 /* The design system's mono style, 12px (Codes and paths), on a 14px line: SF Mono's own line at 12pt, so a row holds it at the height it held the 11px text. */
-.bae-mono { font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); }
+.bae-mono { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-strong { font-weight: var(--type-strong-weight); }
 .bae-ellipsis { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-sym { flex: none; }
@@ -29,7 +29,7 @@
 .bae-m-table-alt { background: var(--hover); }
 .bae-m-table-row { height: 28px; border-radius: var(--radius-chip); }
 /* A storage state that stands still (Local, Pinned, Cloud, Queued, Waiting, Error): a plain word in the row's text, with no chip; a problem's word in its tone's colour. Its type is the cell text role. */
-.bae-m-storeword { font: var(--type-cell-weight) var(--type-cell-size) var(--font-sans); color: var(--text-primary); text-align: start; white-space: nowrap; }
+.bae-m-storeword { font: var(--type-cell-weight) var(--type-cell-size)/var(--type-cell-line-height) var(--font-sans); color: var(--text-primary); text-align: start; white-space: nowrap; }
 .bae-m-storeword-tone { color: var(--bae-tone); }
 .bae-m-table-selected { background: var(--accent-tint); }
 .bae-m-table-td { padding: 0 var(--space-inline); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }

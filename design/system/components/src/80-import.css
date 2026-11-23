@@ -2,12 +2,12 @@
 .bae-warning { color: var(--warning); }
 .bae-success { color: var(--success); }
 .bae-m-card { background: var(--surface); border-radius: var(--radius-card); box-shadow: 0 0 0 1px var(--hairline); }
-.bae-m-eyebrowtxt { font: var(--type-eyebrow-weight) var(--type-eyebrow-size) var(--font-sans); color: var(--text-secondary); }
+.bae-m-eyebrowtxt { font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-ifiles { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-m-iimages { display: flex; gap: var(--space-related); }
 .bae-m-ifile { display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-line); border-top: 1px solid var(--hairline); }
 .bae-m-ifile:first-child { border-top: 0; }
-.bae-m-ifile-size { flex: none; margin-left: auto; font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: normal; }
+.bae-m-ifile-size { flex: none; margin-left: auto; font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: var(--type-cell-line-height); }
 .bae-m-formhead { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); padding-bottom: var(--space-inline); border-bottom: 1px solid var(--hairline); }
 .bae-m-isb { width: 420px; flex: none; height: 100%; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-isb-tabs { display: flex; gap: var(--space-inline); padding: var(--space-related); }
@@ -83,7 +83,7 @@
 .bae-m-bulkgrp + .bae-m-bulkgrp { border-top: 1px solid var(--hairline); }
 .bae-m-bulkrow { display: flex; width: 100%; align-items: center; gap: calc(var(--space-related) + var(--space-line)); padding: var(--space-related) var(--space-group); border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .bae-m-bulkrow-off { opacity: 0.4; }
-.bae-m-prow-catalog { font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: normal; }
+.bae-m-prow-catalog { font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: var(--type-cell-line-height); }
 .bae-m-idraft-album { display: flex; align-items: center; gap: var(--space-related); margin-top: var(--space-compact); }
 /* The import pane's own buttons, drawn with bae-plainbtn: each takes the box its words and glyphs need. */
 .bae-m-igh { width: 100%; box-sizing: border-box; text-align: start; }
@@ -111,7 +111,7 @@
 /* A field in a list row is as wide as its value, and 96pt while empty, so there is somewhere to click. */
 .bae-m-icell.bae-m-icell-fit { flex: none; width: auto; field-sizing: content; min-width: 2ch; }
 .bae-m-icell.bae-m-icell-fit:placeholder-shown { min-width: 96px; }
-.bae-m-icell.bae-m-icell-mono { font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); }
+.bae-m-icell.bae-m-icell-mono { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-m-idraft-entry { display: flex; align-items: center; gap: var(--space-compact); min-width: 0; }
 .bae-m-idraft-media { gap: calc(var(--space-group) + var(--space-line)); }
 .bae-m-idraft-add { flex: none; display: inline-flex; align-items: center; gap: var(--space-line); }

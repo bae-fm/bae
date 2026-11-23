@@ -99,7 +99,7 @@
 .bae-a-input { width: 100%; box-sizing: border-box; min-height: var(--size-android-field); padding: var(--space-edge) var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: var(--type-android-body-large-weight) var(--type-android-body-large-size)/var(--type-android-body-large-line-height) var(--font-android); }
 .bae-a-input::placeholder { color: var(--text-secondary); }
 .bae-a-codetext { min-height: calc(3 * 24px + 28px); font: var(--type-android-mono-weight) var(--type-android-mono-size)/var(--type-android-mono-line-height) var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
-.bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: var(--space-related); padding-bottom: var(--space-related); font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: var(--space-related); padding-bottom: var(--space-related); font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .bae-codetext-placeholder { font-family: var(--font-sans); word-spacing: normal; color: var(--text-secondary); }
 .bae-a-pin { display: flex; flex-direction: column; gap: var(--space-inline); font-family: var(--font-android); }
 .bae-a-pin-cells { display: flex; gap: var(--space-group); }
