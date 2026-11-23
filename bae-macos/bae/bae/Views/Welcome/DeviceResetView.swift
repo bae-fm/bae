@@ -76,36 +76,29 @@ struct DeviceResetView: View {
     }
 
     private var unfinished: some View {
-        VStack(spacing: ThemeSpace.edge) {
-            Spacer()
-            Text("Finish reset from cloud?")
-                .themeText(.title)
-            Text(
+        MacStep(
+            String(localized: "Finish reset from cloud?"),
+            text:
                 BridgeErrorCategory.replacementUnfinished(by: .reset)
-                    .localizedLine
-            )
-            .themeText(.body)
-            .foregroundStyle(Theme.textSecondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: WelcomeLayout.columnWidth)
-            if let error {
-                MacNotice(
-                    title: error.step.title,
-                    advice: error.step.advice,
-                    error: error.error
-                )
-                .frame(maxWidth: WelcomeLayout.columnWidth)
+                .localizedLine
+        ) {
+            VStack(spacing: ThemeSpace.section) {
+                if let error {
+                    MacNotice(
+                        title: error.step.title,
+                        advice: error.step.advice,
+                        error: error.error
+                    )
+                    .frame(maxWidth: WelcomeLayout.columnWidth)
+                }
+                MacStepActions {
+                    MacButton("Cancel", action: onCancel)
+                        .keyboardShortcut(.cancelAction)
+                    MacButton("Finish reset from cloud", action: onReset)
+                        .destructive()
+                }
             }
-            HStack(spacing: ThemeSpace.group) {
-                MacButton("Cancel", action: onCancel)
-                    .keyboardShortcut(.cancelAction)
-                MacButton("Finish reset from cloud", action: onReset)
-                    .destructive()
-            }
-            Spacer()
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
