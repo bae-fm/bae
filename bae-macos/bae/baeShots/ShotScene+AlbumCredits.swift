@@ -28,7 +28,7 @@ extension ShotScene {
                     playbackStore: boardPlayback(),
                     images: images,
                     size: size,
-                    headerProgress: 1
+                    pinnedHeaderProgress: 1
                 ),
                 images: images
             ) {
@@ -39,7 +39,7 @@ extension ShotScene {
 
     /// The board's album with the credits and works its board draws.
     private static func creditedBoardAlbum() -> BridgeAlbumDetail {
-        var detail = PreviewData.boardAlbumDetail()
+        var detail = boardAlbumDetail()
         var release = detail.releases[0]
         release.hasCredits = true
         release.credits = [

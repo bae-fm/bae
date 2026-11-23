@@ -29,10 +29,13 @@ struct LibraryView: View {
     @State
     private var retryRead = CancellableTaskSlot()
 
-    /// The library with its header `headerProgress` collapsed.
-    init(headerProgress: Double = 0) {
+    /// The library whose header follows the scrolling, or stays
+    /// `pinnedHeaderProgress` collapsed when that is given.
+    init(pinnedHeaderProgress: Double? = nil) {
         _headerCollapse = State(
-            initialValue: HeaderCollapse(progress: headerProgress)
+            initialValue: pinnedHeaderProgress.map {
+                HeaderCollapse(pinnedAt: $0)
+            } ?? HeaderCollapse()
         )
     }
 

@@ -35,7 +35,7 @@ struct MacMainWindowContainer: View {
     @State
     private var searchText: String
     private let initialHoveredQueueEntry: String?
-    private let headerProgress: Double
+    private let pinnedHeaderProgress: Double?
     /// The lightbox's image as it loads.
     @State
     private var lightboxLoad = LightboxImageLoad()
@@ -54,9 +54,9 @@ struct MacMainWindowContainer: View {
     init(
         searchText: String = "",
         initialHoveredQueueEntry: String? = nil,
-        headerProgress: Double = 0
+        pinnedHeaderProgress: Double? = nil
     ) {
-        self.headerProgress = headerProgress
+        self.pinnedHeaderProgress = pinnedHeaderProgress
         _searchText = State(initialValue: searchText)
         self.initialHoveredQueueEntry = initialHoveredQueueEntry
     }
@@ -76,7 +76,7 @@ struct MacMainWindowContainer: View {
                 // Only the active section is mounted: `.onHover` tracking
                 // areas ignore opacity, so a hidden one would leak hover.
                 if uiStore.activeSection == .library {
-                    LibraryView(headerProgress: headerProgress)
+                    LibraryView(pinnedHeaderProgress: pinnedHeaderProgress)
                 }
                 else {
                     MacImportWindow(endEditing: endEditing)

@@ -69,7 +69,7 @@ extension ShotScene {
                         playbackStore: boardPlayback(),
                         images: images,
                         size: size,
-                        headerProgress: 1
+                        pinnedHeaderProgress: 1
                     )
                     openMenu(menu, album: rated)
                 },
@@ -214,7 +214,7 @@ extension ShotScene {
         trackRating: BridgeTrackRating = .stars(mine: nil),
         trackStars stars: [Int: BridgeStars] = [0: .five, 3: .four, 6: .three]
     ) -> BridgeAlbumDetail {
-        var detail = PreviewData.boardAlbumDetail()
+        var detail = boardAlbumDetail()
         detail.rating = albumRating
         var release = detail.releases[0]
         for index in release.tracks.indices {

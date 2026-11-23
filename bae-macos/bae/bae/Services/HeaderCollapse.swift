@@ -22,10 +22,20 @@ final class HeaderCollapse {
     /// 0 = fully expanded, 1 = fully compact.
     private(set) var progress: Double
 
-    /// A header that starts `progress` collapsed, which a shot of a scrolled
-    /// page draws.
-    init(progress: Double = 0) {
+    /// Whether the header stays at its `progress` whatever the panes report,
+    /// as a shot of a scrolled page draws it.
+    private let isPinned: Bool
+
+    /// A header that follows the panes' scrolling.
+    init() {
+        progress = 0
+        isPinned = false
+    }
+
+    /// A header that stays `progress` collapsed.
+    init(pinnedAt progress: Double) {
         self.progress = progress
+        isPinned = true
     }
 
     /// Scroll distance over which the header scrubs between its end states
@@ -38,6 +48,7 @@ final class HeaderCollapse {
     /// the top edge (0 = at rest at the top), normalized for content insets
     /// and clamped to the scrollable span by the reporter.
     func reportScroll(scroller: String, offset: Double) {
+        guard !isPinned else { return }
         activeScroller = scroller
         progress = min(max(offset / Self.trackDistance, 0), 1)
     }
@@ -47,7 +58,7 @@ final class HeaderCollapse {
     /// state; the next in-zone scroll event re-derives progress from the
     /// offset.
     func reportPhase(scroller: String, isScrolling: Bool) {
-        guard !isScrolling, scroller == activeScroller else {
+        guard !isPinned, !isScrolling, scroller == activeScroller else {
             return
         }
         if progress > 0, progress < 1 {

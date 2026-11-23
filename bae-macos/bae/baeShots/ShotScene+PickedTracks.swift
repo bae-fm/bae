@@ -33,7 +33,7 @@ extension ShotScene {
                         playbackStore: boardPlayback(),
                         images: images,
                         size: size,
-                        headerProgress: 1
+                        pinnedHeaderProgress: 1
                     )
                     MacMenuInPlace(
                         {

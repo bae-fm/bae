@@ -355,7 +355,7 @@ extension ShotScene {
                     playbackStore: boardPlayback(),
                     images: images,
                     size: CGSize(width: 1_200, height: height),
-                    headerProgress: openAlbum ? 1 : 0
+                    pinnedHeaderProgress: openAlbum ? 1 : nil
                 )
             ),
             images: images

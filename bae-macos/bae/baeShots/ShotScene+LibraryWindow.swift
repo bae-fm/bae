@@ -101,6 +101,17 @@ extension ShotScene {
 
     }
 
+    /// The board's open album, "Low Tide Hours", with the cover its tile
+    /// and its page draw.
+    static func boardAlbumDetail() -> BridgeAlbumDetail {
+        var detail = PreviewData.boardAlbumDetail()
+        let image = cover("Low Tide Hours")
+        detail.album.cover = image
+        detail.releases[0].cover = image
+        detail.shownRelease.cover = image
+        return detail
+    }
+
     /// Where core places `albumId`'s card in the flat grid of `albums`.
     nonisolated private static func boardAlbumPlace(
         _ albumId: String,
@@ -120,7 +131,7 @@ extension ShotScene {
         albumCount: Int? = nil,
         openAlbum: Bool = false,
         detailAnswered: AlbumDetailAnswered? = nil,
-        detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
+        detail: BridgeAlbumDetail = boardAlbumDetail(),
         playlists: [BridgePlaylistSummary] = [],
         playlistDetails: [String: BridgePlaylistDetail] = [:],
         history: [BridgeHistoryPlay] = [],
