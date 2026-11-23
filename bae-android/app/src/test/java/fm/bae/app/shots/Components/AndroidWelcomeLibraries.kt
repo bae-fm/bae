@@ -1,5 +1,10 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.onboarding.SCENE_UNREADABLE_JOIN
 import fm.bae.app.ui.onboarding.WelcomeLibrariesSceneContent
 import fm.bae.app.ui.onboarding.sceneLeavingRemoval
@@ -12,25 +17,25 @@ class AndroidWelcomeLibrariesShots : BoardShot() {
     @Test
     fun androidComponentWelcomeLibrariesOpen() =
         component("android.component.welcome-libraries.open") {
-            WelcomeLibrariesSceneContent(onAdd = {})
+            OnTheWelcome { WelcomeLibrariesSceneContent(onAdd = {}) }
         }
 
     @Test
     fun androidComponentWelcomeLibrariesRemoving() =
         component("android.component.welcome-libraries.removing") {
-            WelcomeLibrariesSceneContent(onAdd = {}, running = sceneLeavingRemoval())
+            OnTheWelcome { WelcomeLibrariesSceneContent(onAdd = {}, running = sceneLeavingRemoval()) }
         }
 
     @Test
     fun androidComponentWelcomeLibrariesUnreadable() =
         component("android.component.welcome-libraries.unreadable") {
-            WelcomeLibrariesSceneContent(onAdd = {}, extra = listOf(nameUnreadable))
+            OnTheWelcome { WelcomeLibrariesSceneContent(onAdd = {}, extra = listOf(nameUnreadable)) }
         }
 
     @Test
     fun androidComponentWelcomeLibrariesDamagedJoin() =
         component("android.component.welcome-libraries.damaged-join") {
-            WelcomeLibrariesSceneContent(onAdd = {}, unreadableInstallation = SCENE_UNREADABLE_JOIN)
+            OnTheWelcome { WelcomeLibrariesSceneContent(onAdd = {}, unreadableInstallation = SCENE_UNREADABLE_JOIN) }
         }
 }
 
@@ -43,3 +48,9 @@ internal val nameUnreadable =
         state = BridgeLibraryState.NameUnreadable,
         isActive = false,
     )
+
+/** The list as the welcome screen holds it: inside the screen's side padding. */
+@Composable
+private fun OnTheWelcome(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.padding(horizontal = ThemeSpace.page)) { content() }
+}
