@@ -5059,6 +5059,7 @@ window its decode reads first.
 The seek bar never leaves the player. On a Mac, VoiceOver reads the window's
 content before the player. In the player it reads the track, the transport, the
 seek bar, then Play on, Queue, Mute and Volume when those controls are present.
+VoiceOver reads Volume as a slider.
 On a Mac, the seek bar shows which ranges of the current track its file's
 buffer holds. bae maps each buffered byte range to the track's timeline using
 its first and last bytes and its scrub points (§3.7), and spreads the bytes

@@ -64,7 +64,7 @@ struct NowPlayingBarOrderTests {
         let castControl = try index("Play on")
         let queue = try index("Queue")
         let mute = try index("Mute")
-        let volume = try index("Volume")
+        let volume = try index("Volume", role: .slider)
         #expect(library < repeatControl, "listed \(labels)")
         #expect(repeatControl < seek, "listed \(labels)")
         #expect(seek < castControl, "listed \(labels)")

@@ -43,7 +43,6 @@ struct MacVolumeSlider: View {
                     onChange: onChange
                 )
                 .frame(width: Self.sliderWidth)
-                .accessibilityLabel("Volume")
             case .waitingForCore:
                 MacTransport.controlSpace
 
@@ -152,15 +151,15 @@ private struct VolumeSliderTrack: View {
             )
         }
         .frame(height: 20)
-        .accessibilityElement(children: .ignore)
-        .accessibilityValue(Text(Double(clamped).formatted(.percent)))
-        .accessibilityAdjustableAction { direction in
-            let step: Float = 0.05
-            switch direction {
-            case .increment: set(min(1, clamped + step))
-            case .decrement: set(max(0, clamped - step))
-            @unknown default: break
+        .accessibilityRepresentation {
+            Slider(
+                value: Binding(get: { clamped }, set: set),
+                in: 0...1,
+                step: 0.05
+            ) {
+                Text("Volume")
             }
+            .accessibilityValue(Text(Double(clamped).formatted(.percent)))
         }
     }
 }
