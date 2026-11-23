@@ -228,11 +228,12 @@
       h('div', { className: 'bae-m-tile-year' }, props.year || ' '));
   }
 
-  // A track row's lead: the track's number; under the pointer (`hover`) Play, or Pause on the current track while it plays; on the current track otherwise the speaker.
+  // A track row's lead: the track's number; under the pointer (`hover`) a Play button, or Pause on the current track while it plays; on the current track otherwise the speaker, which a screen reader names Now playing.
   function MacTrackLead(props) {
+    var pause = props.current && props.playing;
     return h('span', { className: 'bae-m-track-lead' },
-      props.hover ? h(Glyph, { set: 'mac', name: props.current && props.playing ? 'pause' : 'play', size: 'medium' })
-        : props.current ? h(Glyph, { set: 'mac', name: 'speaker', size: 'small', className: 'bae-accent' })
+      props.hover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': pause ? 'Pause' : 'Play' }, h(Glyph, { set: 'mac', name: pause ? 'pause' : 'play', size: 'medium' }))
+        : props.current ? h(Glyph, { set: 'mac', name: 'speaker', size: 'small', className: 'bae-accent', label: 'Now playing' })
         : h('span', { className: 'bae-m-track-pos' }, props.position));
   }
 
