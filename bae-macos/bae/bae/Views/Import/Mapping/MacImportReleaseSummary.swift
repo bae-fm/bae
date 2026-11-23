@@ -7,19 +7,17 @@ struct ImportReleaseSummary {
     let title: String
     let titleIsPlaceholder: Bool
     let artist: String?
-    /// What the catalog's release prints: its year, each label with its
-    /// catalog number, then its country; empty for a draft from the files'
-    /// own tags.
+    /// What the release prints: its year, each label with its catalog
+    /// numbers, then its country; empty for a draft from the files' own tags.
     let editionLine: String
-    /// What the person has: the media and details; empty for a draft from the
-    /// files' own tags.
+    /// What the person has: the media and details, then the length; empty
+    /// for a draft from the files' own tags.
     let copyLine: String
     let sourceAudio: BridgeSourceAudioSummary?
 
     /// `candidate`'s draft, `draft`, with the folder's audio.
     init(candidate: Candidate, draft: BridgeCandidateDraftPane) {
         let values = draft.metadataDraft
-        let provenance = draft.metadataProvenance
         titleIsPlaceholder = values.albumTitle.isEmpty
         title =
             values.albumTitle.isEmpty
@@ -28,30 +26,23 @@ struct ImportReleaseSummary {
             values.albumArtistAssignments.isEmpty
             ? nil
             : bridgeCreditLine(credits: values.albumArtistAssignments).text
-        switch provenance {
-        case .externalRelease:
-            let pressing = values.pressing
-            editionLine = FactList.joined([
-                pressing.year,
-                FactList.joined(
-                    pressing.labels.map { row in
-                        FactList.joined([
-                            row.label.name, row.label.catalogNumber,
-                        ])
-                    }
-                ),
-                PressingText.line(bridgeAreaTerms(facts: pressing.facts)),
-            ])
-            copyLine = FactList.joined([
-                PressingText.media(pressing.facts.media),
-                PressingText.line(
-                    bridgePressingDetails(facts: pressing.facts)
-                ),
-            ])
-        case .fileMetadata, nil:
-            editionLine = ""
-            copyLine = ""
-        }
+        let lines = draft.releaseLines
+        editionLine =
+            lines.map {
+                PressingText.editionLine(
+                    year: $0.year,
+                    labels: $0.labels,
+                    area: $0.areaTerms
+                )
+            } ?? ""
+        copyLine =
+            lines.map {
+                PressingText.copyLine(
+                    media: $0.mediaTerms,
+                    details: $0.pressingDetails,
+                    length: $0.totalDuration
+                )
+            } ?? ""
         sourceAudio = candidate.files.sourceAudio
     }
 

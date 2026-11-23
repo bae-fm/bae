@@ -400,6 +400,7 @@ extension MappingFixtures {
                     album: .new,
                     metadataDraft: edit,
                     pressingOffers: PreviewData.pressingOffers,
+                    releaseLines: nil,
                     albumArtists: nil,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,

@@ -26,7 +26,8 @@ extension ShotScene {
             releaseSummary(
                 PreviewData.blankDraft(files: []),
                 provenance: nil,
-                tracks: []
+                tracks: [],
+                minutes: nil
             )
         },
         releaseSummaryScene(
@@ -59,12 +60,14 @@ extension ShotScene {
     )
 
     /// The summary the import pane draws of Northbound's folder: `edit`'s
-    /// draft, read as `provenance` says, over files whose audio is `audio`.
+    /// draft, read as `provenance` says, over files whose audio is `audio` and
+    /// whose tracks play `minutes` together, as the board states it.
     @MainActor
     private static func releaseSummary(
         _ edit: BridgeRawReleaseEdit,
         provenance: BridgeMetadataProvenance?,
         tracks: [PreviewData.BoardTrack] = PreviewData.northboundTracks,
+        minutes: UInt64? = 18,
         audio: BridgeSourceAudioSummary? = flacAudio
     ) -> ImportReleaseSummary {
         var files = PreviewData.boardFolderFiles(tracks: tracks, images: [])
@@ -73,6 +76,8 @@ extension ShotScene {
             folder: PreviewData.boardFolder(.northbound, files: files),
             metadataProvenance: provenance,
             edit: edit,
+            releaseLines: provenance == .fileMetadata
+                ? nil : PreviewData.releaseLines(of: edit, minutes: minutes),
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: PreviewData.boardTrackSides(tracks, edit: edit),

@@ -307,6 +307,9 @@ pub struct BridgeCandidateDraftPane {
     pub metadata_draft: BridgeRawReleaseEdit,
     /// The media and Discogs details the draft's pressing Add menus offer.
     pub pressing_offers: crate::types::BridgePressingOffers,
+    /// What the pane's summary states of the draft's release; `None` for a
+    /// draft read from the files' own tags.
+    pub release_lines: Option<BridgeDraftReleaseLines>,
     /// The draft's album artists, each with how it stands to the library, as
     /// the pane's live read found them; each mapping row carries its track's
     /// own. `None` when the draft names no album artist.
@@ -332,6 +335,27 @@ pub struct BridgeCandidateDraftPane {
     /// identification runs for it or its answer waits on the person, the
     /// draft otherwise. The app keeps where the person moves it from there.
     pub opens_on: BridgeMetadataPresentation,
+}
+
+/// What the import pane's summary states of a draft's release: the parts of
+/// its edition and copy lines, carried as a library release carries them, so
+/// the app words both the same way.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeDraftReleaseLines {
+    /// The year the draft's pressing states, as typed.
+    pub year: Option<String>,
+    /// The labels as a surface shows them: each name once, each catalog
+    /// number once.
+    pub labels: Vec<crate::types::BridgeLabelLine>,
+    /// Where the pressing was released, worded; empty when it states none.
+    pub area_terms: Vec<crate::types::BridgeFactTerm>,
+    /// The pressing's media, worded.
+    pub media_terms: Vec<crate::types::BridgeFactTerm>,
+    /// The pressing's details, as [`crate::types::bridge_pressing_details`]
+    /// words them.
+    pub pressing_details: Vec<crate::types::BridgeFactTerm>,
+    /// How long the draft's tracks play together; `None` when it has none.
+    pub total_duration: Option<crate::types::BridgeDurationUnits>,
 }
 
 /// Where the queue places the candidate a pane shows, with what the pane

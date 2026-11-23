@@ -34,6 +34,7 @@ extension PreviewData {
             ),
             releaseLink: boardLink("board-northbound"),
             edit: northboundEdit(),
+            releaseLines: releaseLines(of: northboundEdit(), minutes: 18),
             mapping: northboundMapping(),
             cover: boardCover("Northbound"),
             placement: .pending(

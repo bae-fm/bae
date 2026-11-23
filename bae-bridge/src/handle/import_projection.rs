@@ -775,6 +775,7 @@ impl crate::types::BridgeCandidateDraftPane {
             album,
             metadata_draft,
             pressing_offers,
+            release_lines,
             album_artists,
             metadata_draft_is_blank,
             metadata_provenance,
@@ -794,6 +795,7 @@ impl crate::types::BridgeCandidateDraftPane {
             album: crate::types::BridgeDraftAlbum::from_core(album),
             metadata_draft: crate::types::BridgeRawReleaseEdit::from_core(metadata_draft),
             pressing_offers: crate::types::BridgePressingOffers::from_core(pressing_offers),
+            release_lines: release_lines.map(crate::types::BridgeDraftReleaseLines::from_core),
             album_artists: album_artists.map(crate::types::BridgeArtistField::from_core),
             metadata_draft_is_blank,
             metadata_provenance: metadata_provenance
@@ -805,6 +807,21 @@ impl crate::types::BridgeCandidateDraftPane {
                 .map(|failure| crate::types::BridgeError::from_core(failure.reason.ui_error())),
             pane_failure: pane_failure.map(crate::types::BridgePaneFailure::from_core),
             opens_on: crate::types::BridgeMetadataPresentation::from_core(opens_on),
+        }
+    }
+}
+
+impl crate::types::BridgeDraftReleaseLines {
+    fn from_core(lines: bae_import::DraftReleaseLines) -> Self {
+        let bae_import::DraftReleaseLines { year, labels, facts, length } = lines;
+        let facts = crate::types::BridgePressingFacts::from_core(facts);
+        Self {
+            year,
+            labels: labels.into_iter().map(crate::types::BridgeLabelLine::from_core).collect(),
+            area_terms: crate::types::bridge_area_terms(facts.clone()),
+            media_terms: crate::types::bridge_media_terms(facts.media.clone()),
+            pressing_details: crate::types::bridge_pressing_details(facts),
+            total_duration: length.map(crate::types::BridgeDurationUnits::from_core),
         }
     }
 }

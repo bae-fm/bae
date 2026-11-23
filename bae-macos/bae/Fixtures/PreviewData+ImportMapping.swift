@@ -332,6 +332,28 @@ extension PreviewData {
         )
     }
 
+    /// The release lines core states of `edit`'s draft when its tracks play
+    /// `minutes` together, or none: one label line for each label row.
+    static func releaseLines(
+        of edit: BridgeRawReleaseEdit,
+        minutes: UInt64?
+    ) -> BridgeDraftReleaseLines {
+        let pressing = edit.pressing
+        return BridgeDraftReleaseLines(
+            year: pressing.year.isEmpty ? nil : pressing.year,
+            labels: pressing.labels.map {
+                BridgeLabelLine(
+                    names: [$0.label.name],
+                    catalogNumbers: [$0.label.catalogNumber]
+                )
+            },
+            areaTerms: bridgeAreaTerms(facts: pressing.facts),
+            mediaTerms: bridgeMediaTerms(media: pressing.facts.media),
+            pressingDetails: bridgePressingDetails(facts: pressing.facts),
+            totalDuration: minutes.map { .minutesOnly(minutes: $0) }
+        )
+    }
+
     /// A candidate as the per-candidate read answers for it: the folder,
     /// where the queue places it, what runs for it, and everything the pane
     /// draws. The pane holds none of it — this is the one value it renders
@@ -342,6 +364,7 @@ extension PreviewData {
         metadataProvenance: BridgeMetadataProvenance? = nil,
         releaseLink: BridgeReleaseLink? = nil,
         edit: BridgeRawReleaseEdit = blankDraftValues,
+        releaseLines: BridgeDraftReleaseLines? = nil,
         mapping: BridgeMappingTable,
         cover: BridgeCoverChoice? = nil,
         failure: BridgeError? = nil,
@@ -383,6 +406,7 @@ extension PreviewData {
                         album: album,
                         metadataDraft: edit,
                         pressingOffers: pressingOffers,
+                        releaseLines: releaseLines,
                         albumArtists: albumArtists,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,

@@ -327,6 +327,49 @@ fn a_form_takes_each_edit_by_its_field_or_row() {
 }
 
 #[test]
+fn release_lines_state_the_year_the_labels_once_and_the_tracks_length() {
+    let mut pressing = valid_form().pressing;
+    pressing.year = " 1974 ".to_string();
+    pressing.labels = vec![
+        RawLabelEdit {
+            name: "Harbor Records".to_string(),
+            catalog_number: "HR-0412".to_string(),
+            ..Default::default()
+        },
+        RawLabelEdit::default(),
+        RawLabelEdit {
+            name: "Harbor Records".to_string(),
+            catalog_number: "HR-0412".to_string(),
+            ..Default::default()
+        },
+    ];
+
+    let lines = pressing.release_lines(1_096_000);
+
+    assert_eq!(lines.year.as_deref(), Some("1974"));
+    assert_eq!(
+        lines.labels,
+        vec![bae_types::pressing::LabelLine {
+            names: vec!["Harbor Records".to_string()],
+            catalog_numbers: vec!["HR-0412".to_string()],
+        }]
+    );
+    assert_eq!(lines.facts, pressing.facts);
+    assert_eq!(lines.length, Some(bae_util::duration::DurationUnits::MinutesOnly { minutes: 18 }));
+}
+
+#[test]
+fn release_lines_name_no_year_or_length_the_draft_lacks() {
+    let mut pressing = valid_form().pressing;
+    pressing.year = String::new();
+
+    let lines = pressing.release_lines(0);
+
+    assert_eq!(lines.year, None);
+    assert_eq!(lines.length, None);
+}
+
+#[test]
 fn offers_leave_out_the_media_and_details_the_pressing_holds() {
     use bae_types::pressing::{DiscogsDetail, Medium};
     let mut pressing = valid_form().pressing;

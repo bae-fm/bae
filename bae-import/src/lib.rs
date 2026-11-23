@@ -343,10 +343,11 @@ pub use types::ReleaseLink;
 pub use types::{
     credited_line, AlbumLine, AlbumPick, ArtistAssignment, ArtistField, ArtistStanding,
     ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, Credited,
-    DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
-    ListRow, MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit, RawPressingEdit,
-    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditTrackContext,
-    ReleaseUserEdit, StandingCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    DraftAlbum, DraftFieldEdit, DraftReleaseLines, DraftTrack, EditValidationError, LibraryDraft,
+    LibraryTrack, ListRow, MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit,
+    RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError,
+    ReleaseEditTrackContext, ReleaseUserEdit, StandingCredit, TrackArtistAssignments, TrackBinding,
+    TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

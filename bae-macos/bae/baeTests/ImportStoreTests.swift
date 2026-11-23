@@ -112,6 +112,7 @@ private func detail(
                 album: .new,
                 metadataDraft: MappingFixtures.albumEdit,
                 pressingOffers: PreviewData.pressingOffers,
+                releaseLines: nil,
                 albumArtists: nil,
                 metadataDraftIsBlank: false,
                 metadataProvenance: MappingFixtures.provenance,

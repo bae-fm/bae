@@ -280,6 +280,13 @@ impl ImportCandidateDetailProjection {
                         picked_library_status,
                         album,
                         pressing_offers: metadata_draft.pressing.offers(),
+                        // A draft read from the files' own tags states no
+                        // edition or copy.
+                        release_lines: (!matches!(
+                            metadata_provenance,
+                            Some(MetadataProvenance::FileMetadata)
+                        ))
+                        .then(|| metadata_draft.pressing.release_lines(mapping.track_length_ms())),
                         metadata_draft,
                         album_artists,
                         metadata_draft_is_blank: draft_blank,
@@ -445,6 +452,9 @@ pub struct CandidateDraftPane {
     pub metadata_draft: RawReleaseEdit,
     /// The media and Discogs details the draft's pressing Add menus offer.
     pub pressing_offers: crate::PressingOffers,
+    /// What the pane's summary states of the draft's release; `None` for a
+    /// draft read from the files' own tags.
+    pub release_lines: Option<crate::DraftReleaseLines>,
     /// The draft's album artists, each with how it stands to the library, as
     /// the pane's live read found them; each mapping row carries its track's
     /// own. `None` when the draft names no album artist.

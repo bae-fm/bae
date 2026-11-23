@@ -302,6 +302,22 @@ impl RawTrackEdit {
     }
 }
 
+/// What a summary of a draft states of its release, as the parts of its
+/// edition and copy lines.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DraftReleaseLines {
+    /// The year the pressing states, as typed; `None` when it states none.
+    pub year: Option<String>,
+    /// The labels as a surface shows them: each name once, each catalog
+    /// number once.
+    pub labels: Vec<bae_types::pressing::LabelLine>,
+    /// Where the pressing was released, its media, status, packaging and
+    /// Discogs details.
+    pub facts: bae_types::pressing::PressingFacts,
+    /// How long the draft's tracks play together; `None` when it has none.
+    pub length: Option<bae_util::duration::DurationUnits>,
+}
+
 /// What the pressing's Add menus offer: each medium and Discogs detail the
 /// pressing's facts do not hold yet, in the vocabulary's order.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -311,6 +327,32 @@ pub struct PressingOffers {
 }
 
 impl RawPressingEdit {
+    /// What a summary of the draft states of its release: the parts of the
+    /// edition and copy lines, with `length_ms`, the length the draft's
+    /// tracks measure together.
+    pub fn release_lines(&self, length_ms: u64) -> DraftReleaseLines {
+        DraftReleaseLines {
+            year: trim_to_option(&self.year),
+            labels: bae_types::pressing::label_lines(&self.stated_labels()),
+            facts: self.facts.clone(),
+            length: bae_util::duration::DurationUnits::from_millis(length_ms),
+        }
+    }
+
+    /// The labels the rows state, each once, with the ids the catalogs know
+    /// them by; a blank row states none.
+    fn stated_labels(&self) -> Vec<bae_types::pressing::ReleaseLabel> {
+        bae_types::pressing::ReleaseLabel::each_once(self.labels.iter().filter_map(|label| {
+            bae_types::pressing::ReleaseLabel::new(
+                trim_to_option(&label.name),
+                trim_to_option(&label.catalog_number),
+            )
+            .map(|stated| {
+                stated.with_ids(label.musicbrainz_label_id.clone(), label.discogs_label_id.clone())
+            })
+        }))
+    }
+
     /// The choices the pressing's Add menus offer.
     pub fn offers(&self) -> PressingOffers {
         PressingOffers {
@@ -334,20 +376,7 @@ impl RawPressingEdit {
     fn shape(&self) -> Result<bae_types::pressing::Pressing, EditValidationError> {
         Ok(bae_types::pressing::Pressing {
             year: parse_optional_year(&self.year)?,
-            labels: bae_types::pressing::ReleaseLabel::each_once(self.labels.iter().filter_map(
-                |label| {
-                    bae_types::pressing::ReleaseLabel::new(
-                        trim_to_option(&label.name),
-                        trim_to_option(&label.catalog_number),
-                    )
-                    .map(|stated| {
-                        stated.with_ids(
-                            label.musicbrainz_label_id.clone(),
-                            label.discogs_label_id.clone(),
-                        )
-                    })
-                },
-            )),
+            labels: self.stated_labels(),
             barcodes: {
                 let mut barcodes: Vec<String> = Vec::new();
                 for barcode in self.barcodes.iter().filter_map(|row| trim_to_option(row)) {
