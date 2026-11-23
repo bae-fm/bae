@@ -37,7 +37,7 @@ struct QueueNowPlayingNavigationTests {
         ui.setSidePanePresented(true)
         try await SnapshotTestSupport.withHostedWindow(
             MacQueuePanelContainer(
-                rowHover: QueueRowHover(),
+                initialHoveredEntry: nil,
                 onClose: {},
                 onInsertTracks: { _, _ in }
             )

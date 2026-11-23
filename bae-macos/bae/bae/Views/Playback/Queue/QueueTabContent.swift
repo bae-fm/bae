@@ -209,7 +209,6 @@ struct QueueTabContent: View {
                 }
             }
         }
-        .onDisappear { rowHover.clear() }
         .task(
             id: UpcomingOpening(hasContext: context != nil, shuffled: shuffled)
         ) {

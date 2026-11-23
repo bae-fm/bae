@@ -19,7 +19,7 @@ extension ShotScene {
                 covered: true
             )
             let playbackStore = boardPlayback(covered: true)
-            let manual = manualQueue(covered: true)
+            let manual = manualQueue
             playbackStore.applyQueueSnapshot(
                 BridgeQueueSnapshot(
                     manual: manual,
@@ -40,7 +40,6 @@ extension ShotScene {
             let queue = Queue(upcomingQueries: { _ in
                 .fixed(upcoming, answers: answers)
             })
-            let rowHover = QueueRowHover(entryId: manual[1].id)
             let window = ShotScenes.libraryWindow(
                 uiStore: uiStore,
                 backing: backing,
@@ -49,8 +48,10 @@ extension ShotScene {
                 images: images,
                 size: CGSize(width: 1200, height: 760),
                 window: AnyView(
-                    MacMainWindowContainer(queueRowHover: rowHover)
-                        .environment(queue)
+                    MacMainWindowContainer(
+                        initialHoveredQueueEntry: manual[1].id
+                    )
+                    .environment(queue)
                 )
             )
             return ShotStage(window, images: images) {
@@ -71,7 +72,8 @@ extension ShotScene {
                 albumCount: 6
             )
             let playbackStore = boardPlayback(removedFromLibrary: true)
-            let manual = manualQueue(covered: false)
+            let images = coverStore()
+            let manual = manualQueue
             playbackStore.applyQueueSnapshot(
                 BridgeQueueSnapshot(
                     manual: manual,
@@ -89,28 +91,18 @@ extension ShotScene {
                     backing: backing,
                     needsAttention: false,
                     playbackStore: playbackStore,
+                    images: images,
                     size: CGSize(width: 1200, height: 760)
-                )
+                ),
+                images: images
             )
         },
     ]
 
-    private static func manualQueue(covered: Bool) -> [BridgeQueueEntry] {
-        [
-            queueEntry(
-                "Margins",
-                album: "Northbound",
-                duration: 295_000,
-                covered: covered
-            ),
-            queueEntry(
-                "Night Ferry",
-                album: "Quiet Engines",
-                duration: 276_000,
-                covered: covered
-            ),
-        ]
-    }
+    private static let manualQueue = [
+        queueEntry("Margins", album: "Northbound", duration: 295_000),
+        queueEntry("Night Ferry", album: "Quiet Engines", duration: 276_000),
+    ]
 
     private static let boardUpcoming = [
         ("Tin Roof", UInt64(341_000)),

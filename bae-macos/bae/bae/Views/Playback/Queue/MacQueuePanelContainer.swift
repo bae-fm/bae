@@ -9,7 +9,7 @@ struct MacQueuePanelContainer: View {
     @Environment(LibraryProjectionStore.self)
     private var libraryProjections
 
-    let rowHover: QueueRowHover
+    let initialHoveredEntry: String?
     let onClose: () -> Void
     let onInsertTracks: ([String], Int) -> Void
 
@@ -23,7 +23,7 @@ struct MacQueuePanelContainer: View {
                 switch uiStore.sidePaneTab {
                 case .queue:
                     QueueTabContainer(
-                        rowHover: rowHover,
+                        initialHoveredEntry: initialHoveredEntry,
                         onInsertTracks: onInsertTracks
                     )
                 case .playlists:
@@ -66,8 +66,19 @@ private struct QueueTabContainer: View {
     @Environment(UiStore.self)
     private var uiStore
 
-    let rowHover: QueueRowHover
+    @State
+    private var rowHover: QueueRowHover
     let onInsertTracks: ([String], Int) -> Void
+
+    init(
+        initialHoveredEntry: String?,
+        onInsertTracks: @escaping ([String], Int) -> Void
+    ) {
+        _rowHover = State(
+            initialValue: QueueRowHover(entryId: initialHoveredEntry)
+        )
+        self.onInsertTracks = onInsertTracks
+    }
 
     var body: some View {
         let navigation = NowPlayingNavigationAction(

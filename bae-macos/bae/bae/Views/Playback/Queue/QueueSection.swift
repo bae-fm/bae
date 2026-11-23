@@ -202,7 +202,7 @@ struct QueueSection: View {
         // until it ends.
         .onChange(of: coordinator.isDragging) {
             if coordinator.isDragging {
-                hoveredEntryId = nil
+                rowHover.clear()
             }
         }
     }
