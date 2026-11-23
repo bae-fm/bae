@@ -72,7 +72,11 @@ class SeekSlider: NSSlider {
     /// The slider's frame is taller than the track so a click near the track
     /// seeks; its accessibility frame is the track the board draws.
     override func accessibilityFrame() -> NSRect {
-        guard let cell = cell as? SlimSeekSliderCell, let window else {
+        guard let cell = cell as? SlimSeekSliderCell else {
+            preconditionFailure("SeekSlider's cell is a SlimSeekSliderCell")
+        }
+        guard let window else {
+            seekSliderLogger.debug("No accessibility frame: no window")
             return super.accessibilityFrame()
         }
         let track = cell.trackRect(in: bounds, flipped: isFlipped)
