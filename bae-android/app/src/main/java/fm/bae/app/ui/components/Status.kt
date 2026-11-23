@@ -40,10 +40,9 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
 /**
- * What a chip or notice says about its subject, and the colour that says it. Info, like the accent tone, draws in the
- * person's accent; so do uploads and pins, which have no tone of their own.
+ * What a chip or notice says about its subject, and the colour that says it. Info draws in the person's accent.
  */
-enum class StatusTone { NEUTRAL, ACCENT, INFO, SUCCESS, WARNING, DANGER }
+enum class StatusTone { NEUTRAL, INFO, SUCCESS, WARNING, DANGER }
 
 /** The text, glyph and outline colour. */
 val StatusTone.color: Color
@@ -51,7 +50,6 @@ val StatusTone.color: Color
     get() =
         when (this) {
             StatusTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
-            StatusTone.ACCENT -> MaterialTheme.colorScheme.primary
             StatusTone.INFO -> MaterialTheme.colorScheme.primary
             StatusTone.SUCCESS -> BaeTheme.colors.success
             StatusTone.WARNING -> BaeTheme.colors.warning
@@ -72,11 +70,11 @@ private val StatusTone.noticeFill: Color
     @Composable
     get() =
         when (this) {
-            StatusTone.INFO -> if (BaeTheme.isDark) StatusTone.NEUTRAL.fill else StatusTone.ACCENT.fill
+            StatusTone.INFO -> if (BaeTheme.isDark) StatusTone.NEUTRAL.fill else fill
             StatusTone.SUCCESS -> BaeTheme.colors.successNotice
             StatusTone.WARNING -> BaeTheme.colors.warningNotice
             StatusTone.DANGER -> BaeTheme.colors.dangerNotice
-            StatusTone.NEUTRAL, StatusTone.ACCENT -> fill
+            StatusTone.NEUTRAL -> fill
         }
 
 /** Whether a filled notice in this tone has its own fill, under `onNotice` text: the tones with a glyph. */
@@ -99,7 +97,7 @@ internal fun StatusTone.glyph(set: StatusGlyphSet): ImageVector? {
         StatusTone.INFO -> if (ring) StatusRingIcons.Info else SymbolIcons.Info
         StatusTone.SUCCESS -> if (ring) StatusRingIcons.Success else SymbolIcons.CheckCircle
         StatusTone.WARNING, StatusTone.DANGER -> if (ring) StatusRingIcons.Bang else SymbolIcons.Error
-        StatusTone.NEUTRAL, StatusTone.ACCENT -> null
+        StatusTone.NEUTRAL -> null
     }
 }
 
@@ -111,7 +109,7 @@ internal val StatusTone.iconColor: Color
             StatusTone.SUCCESS -> BaeTheme.colors.successIcon
             StatusTone.WARNING -> BaeTheme.colors.warningIcon
             StatusTone.DANGER -> BaeTheme.colors.dangerIcon
-            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.INFO -> color
+            StatusTone.NEUTRAL, StatusTone.INFO -> color
         }
 
 /**
