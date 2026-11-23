@@ -22,8 +22,13 @@ struct MacReleaseFields: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             MacFormHeading(title: String(localized: "Release"))
+            // Each row's label sits on the baseline of its value's first
+            // line, as the boards draw it, whatever the value's height.
             Grid(
-                alignment: .topLeading,
+                alignment: Alignment(
+                    horizontal: .leading,
+                    vertical: .firstTextBaseline
+                ),
                 horizontalSpacing: Self.labelGap,
                 verticalSpacing: Self.rowSpacing
             ) {
