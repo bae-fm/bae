@@ -30,21 +30,32 @@ public struct MacScrim: View {
 
     private final class SheetScrimAnchor: NSView {
         private var scrim: ScrimWindow?
-        private var keyObserver: NSObjectProtocol?
+        private var observers: [NSObjectProtocol] = []
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard window != nil else { return }
+            guard window != nil, observers.isEmpty else { return }
             // The sheet is attached to its window after its content is in
-            // the sheet's window, and a window becomes key as a sheet starts
-            // and as it ends, so each key change checks whether the sheet is
-            // attached.
-            keyObserver = NotificationCenter.default.addObserver(
-                forName: NSWindow.didBecomeKeyNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated { self?.sync() }
+            // the sheet's window: a window starting or ending a sheet says
+            // so, and each time the sheet may be attached or gone.
+            for name in [
+                NSWindow.willBeginSheetNotification,
+                NSWindow.didEndSheetNotification,
+                NSWindow.didBecomeKeyNotification,
+            ] {
+                observers.append(
+                    NotificationCenter.default.addObserver(
+                        forName: name,
+                        object: nil,
+                        queue: .main
+                    ) { [weak self] _ in
+                        MainActor.assumeIsolated { self?.sync() }
+                        // The sheet is attached once the notice is handled.
+                        DispatchQueue.main.async { [weak self] in
+                            MainActor.assumeIsolated { self?.sync() }
+                        }
+                    }
+                )
             }
             sync()
         }
@@ -70,8 +81,8 @@ public struct MacScrim: View {
         override func viewWillMove(toWindow newWindow: NSWindow?) {
             if newWindow == nil {
                 clear()
-                keyObserver.map(NotificationCenter.default.removeObserver)
-                keyObserver = nil
+                observers.forEach(NotificationCenter.default.removeObserver)
+                observers = []
             }
             super.viewWillMove(toWindow: newWindow)
         }
