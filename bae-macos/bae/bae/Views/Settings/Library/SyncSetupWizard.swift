@@ -432,7 +432,6 @@ struct SetupStep<Fields: View, Leading: View>: View {
                     }
                 }
             )
-            .padding(.horizontal)
             .padding(.bottom, ThemeSpace.section)
         }
         .onDisappear { run.leave() }
