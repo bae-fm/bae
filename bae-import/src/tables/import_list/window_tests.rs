@@ -224,7 +224,11 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
     let summary = row.metadata_summary.expect("the row carries its applied draft");
-    assert_eq!(summary.album_title, "Edited Album");
+    assert!(matches!(
+        summary,
+        crate::AlbumLine::TitleAlone { title }
+            | crate::AlbumLine::TitleAndArtists { title, .. } if title == "Edited Album"
+    ));
     assert_eq!(
         row.cover,
         Some(crate::CoverImageSource::Local {
@@ -792,11 +796,12 @@ async fn a_done_row_reads_its_library_release() {
     );
     assert_eq!(
         done.metadata_summary,
-        Some(crate::TriageMetadataSummary {
-            album_title: "Album Title".to_string(),
-            artist_line: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
+        Some(crate::AlbumLine::TitleAndArtists {
+            title: "Album Title".to_string(),
+            artist_line: bae_types::credits::CreditLine::of_name("Artist Name"),
         })
     );
+    assert_eq!(done.state_line, None);
     assert_eq!(
         done.cover,
         Some(crate::CoverImageSource::Library {
@@ -818,13 +823,11 @@ async fn a_done_row_reads_its_library_release() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(
-        window_rows(&retitled)[0]
-            .metadata_summary
-            .as_ref()
-            .map(|summary| summary.album_title.as_str()),
-        Some("Retitled")
-    );
+    assert!(matches!(
+        &window_rows(&retitled)[0].metadata_summary,
+        Some(crate::AlbumLine::TitleAlone { title }
+            | crate::AlbumLine::TitleAndArtists { title, .. }) if title == "Retitled"
+    ));
 }
 
 /// A folder of one bound FLAC and a front cover image.

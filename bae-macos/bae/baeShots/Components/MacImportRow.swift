@@ -86,11 +86,14 @@ extension ShotScene {
     ) throws -> BridgeTriageRow {
         PreviewData.boardRow(
             folder,
-            summary: title.map {
-                BridgeTriageMetadataSummary(
-                    albumTitle: $0,
-                    artistLine: artist.map { .named($0) }
-                )
+            summary: title.map { title in
+                if let artist {
+                    return .titleAndArtists(
+                        title: title,
+                        artistLine: .named(artist)
+                    )
+                }
+                return .titleAlone(title: title)
             },
             record: record,
             cover: try title.map {
@@ -119,8 +122,8 @@ extension ShotScene {
     private static func uploadingRow() throws -> BridgeTriageRow {
         PreviewData.boardRow(
             .lowTideHours,
-            summary: BridgeTriageMetadataSummary(
-                albumTitle: "Low Tide Hours",
+            summary: BridgeAlbumLine.titleAndArtists(
+                title: "Low Tide Hours",
                 artistLine: .named("Mara Quill")
             ),
             record: "component-low-tide-hours",

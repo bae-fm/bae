@@ -12,7 +12,7 @@ extension PreviewData {
     static func triageRow(
         for candidate: Candidate,
         placement: BridgeTriagePlacement,
-        metadataSummary: BridgeTriageMetadataSummary? = nil,
+        metadataSummary: BridgeAlbumLine? = nil,
         cover: BridgeCoverImageSource? = nil,
         importStatus: BridgeTriageImportStatus? = nil,
         stateLine: BridgeTriageStateLine? = nil,
@@ -162,8 +162,8 @@ extension PreviewData {
     static let triageRowPrefilledFromTags = triageRow(
         for: importTabTaggedCandidate,
         placement: .pending,
-        metadataSummary: BridgeTriageMetadataSummary(
-            albumTitle: "Album Title Twelve",
+        metadataSummary: BridgeAlbumLine.titleAndArtists(
+            title: "Album Title Twelve",
             artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
@@ -187,8 +187,8 @@ extension PreviewData {
     static let triageRowIdentifiedOnline = triageRow(
         for: importTabIdentifiedCandidate,
         placement: .pending,
-        metadataSummary: BridgeTriageMetadataSummary(
-            albumTitle: "Album Title Thirteen",
+        metadataSummary: BridgeAlbumLine.titleAndArtists(
+            title: "Album Title Thirteen",
             artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
@@ -205,8 +205,8 @@ extension PreviewData {
     static let triageRowIdentifiedSeveralMatches = triageRow(
         for: importTabIdentifiedSeveralMatchesCandidate,
         placement: .pending,
-        metadataSummary: BridgeTriageMetadataSummary(
-            albumTitle: "Album Title Fourteen",
+        metadataSummary: BridgeAlbumLine.titleAndArtists(
+            title: "Album Title Fourteen",
             artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
@@ -323,8 +323,8 @@ extension PreviewData {
     static let triageRowDoneImported = triageRow(
         for: importTabDoneCandidate,
         placement: .done,
-        metadataSummary: BridgeTriageMetadataSummary(
-            albumTitle: "Album Title Sixteen",
+        metadataSummary: BridgeAlbumLine.titleAndArtists(
+            title: "Album Title Sixteen",
             artistLine: .named("Artist Name")
         ),
         cover: .local(file: previewArtFile("Front.png")),
@@ -348,8 +348,8 @@ extension PreviewData {
     static let triageRowDoneFromTags = triageRow(
         for: folderCandidates[0],
         placement: .done,
-        metadataSummary: BridgeTriageMetadataSummary(
-            albumTitle: "Album Title",
+        metadataSummary: BridgeAlbumLine.titleAndArtists(
+            title: "Album Title",
             artistLine: .named("Artist Name")
         ),
         importStatus: .complete(

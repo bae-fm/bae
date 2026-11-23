@@ -85,7 +85,7 @@ extension ShotScene {
                     trackSides: PreviewData.boardTrackSides(
                         tracks,
                         edit: edit,
-                        showsAlbumArtist: true
+                        artist: .albumArtist
                     ),
                     files: [],
                     untitledTrackCount: 0

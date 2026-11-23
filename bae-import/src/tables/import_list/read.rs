@@ -12,16 +12,6 @@ use crate::list::{ImportListCount, ImportQueueSummary, ImportWindow};
 use bae_store::list_windows::OrderKey;
 use bae_store::ListWindow;
 
-/// `window` of the list `request` shows: the items of its range, and the
-/// header of the group they start inside of.
-fn window_on(
-    sql: &SqlReadContext<'_>,
-    request: &ImportListRequest,
-    window: &ListWindow,
-) -> Result<ImportWindow, DbError> {
-    window::read_window(sql, request, window)
-}
-
 /// How many items sit before the one at `key` in the list `request` shows.
 fn position_on(
     sql: &SqlReadContext<'_>,
@@ -42,7 +32,10 @@ impl ImportTables {
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, ImportWindow, DbError> {
         self.store
-            .subscribe_reconfigurable(initial, move |window, sql| window_on(&sql, &request, window))
+            .subscribe_reconfigurable(initial, move |window, sql| {
+                window::read_window(&sql, &request, window)
+            })
+            .process(window::WindowRows::process)
     }
 
     /// How many items the list `request` shows holds and how many its
@@ -99,7 +92,10 @@ impl ImportTables {
         request: ImportListRequest,
         window: ListWindow,
     ) -> Result<ImportWindow, DbError> {
-        self.store.read(move |sql| window_on(&sql, &request, &window)).await
+        self.store
+            .read(move |sql| window::read_window(&sql, &request, &window))
+            .process(window::WindowRows::process)
+            .await
     }
 
     /// The key of the item at `position` in the list `request` shows, or of
@@ -136,7 +132,7 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let window = ListWindow::top(u64::MAX);
-                let rows = window_on(&sql, &request, &window)?;
+                let rows = window::read_window(&sql, &request, &window)?;
                 Ok((
                     rows,
                     summary::count(&sql, &request)?,
@@ -146,7 +142,13 @@ impl ImportTables {
                 ))
             })
             .process(|(rows, count, summary, entries, selection)| {
-                Ok(crate::list::ImportListRead::of(rows, count, summary, entries, selection))
+                Ok(crate::list::ImportListRead::of(
+                    rows.process()?,
+                    count,
+                    summary,
+                    entries,
+                    selection,
+                ))
             })
             .await
     }

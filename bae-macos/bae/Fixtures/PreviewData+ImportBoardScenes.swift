@@ -270,32 +270,32 @@ extension PreviewData {
     {
         let cover = try northboundCover()
         let gallery = try northboundImages(cover: cover)
-        let otherReleases: [(BoardFolder, BridgeTriageMetadataSummary)] = [
+        let otherReleases: [(BoardFolder, BridgeAlbumLine)] = [
             (
                 .driftwood,
-                .init(
-                    albumTitle: "Driftwood",
+                .titleAndArtists(
+                    title: "Driftwood",
                     artistLine: .named("Mara Quill")
                 )
             ),
             (
                 .glassHarbor,
-                .init(
-                    albumTitle: "Glass Harbor",
+                .titleAndArtists(
+                    title: "Glass Harbor",
                     artistLine: .named("Ines Varga Trio")
                 )
             ),
             (
                 .lateArrivals,
-                .init(
-                    albumTitle: "Late Arrivals",
+                .titleAndArtists(
+                    title: "Late Arrivals",
                     artistLine: .named("The Slow Orchards")
                 )
             ),
         ]
         let otherRows = try otherReleases.map { folder, summary in
             let artwork = try BoardArtwork.scannedFile(
-                named: summary.albumTitle
+                named: summary.title
             )
             return importedBoardItem(folder, summary: summary, cover: artwork)
         }

@@ -104,6 +104,7 @@ pub(crate) fn cover_read_columns() -> String {
 }
 
 /// One candidate's [`cover_read_columns`] as SQLite hands them over.
+#[derive(Clone, PartialEq)]
 pub(crate) struct StoredCover {
     kind: String,
     file_id: Option<String>,

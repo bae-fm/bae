@@ -79,6 +79,7 @@ pub(crate) const PROVENANCE_COLUMNS: &str = "provenance.content_hash AS provenan
      provenance.release_id AS provenance_release_id";
 
 /// One candidate's [`PROVENANCE_COLUMNS`] as SQLite hands them over.
+#[derive(Clone, PartialEq)]
 pub(crate) struct StoredProvenance {
     kind: String,
     source: Option<String>,

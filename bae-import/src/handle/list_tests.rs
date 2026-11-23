@@ -526,9 +526,13 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         })),
         "the row is linked to the release the pick settled it on"
     );
-    let summary = row.metadata_summary.expect("the row shows the draft the pick read");
-    assert_eq!(summary.album_title, "Picked Album Title");
-    assert_eq!(summary.artist_line.unwrap().plain_text(), "Picked Artist Name");
+    assert_eq!(
+        row.metadata_summary,
+        Some(crate::AlbumLine::TitleAndArtists {
+            title: "Picked Album Title".to_owned(),
+            artist_line: bae_types::credits::CreditLine::of_name("Picked Artist Name"),
+        })
+    );
 }
 
 /// A pick is written with the candidate, so the answer, the row's resume

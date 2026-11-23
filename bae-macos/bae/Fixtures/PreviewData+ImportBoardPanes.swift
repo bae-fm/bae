@@ -245,7 +245,7 @@ extension PreviewData {
                 trackSides: boardTrackSides(
                     tracks,
                     edit: edit,
-                    showsAlbumArtist: true
+                    artist: .albumArtist
                 ),
                 files: lowTideHoursFiles.map { .file(file: $0) },
                 untitledTrackCount: 0
@@ -294,7 +294,7 @@ extension PreviewData {
                 trackSides: boardTrackSides(
                     untitledTracks,
                     edit: edit,
-                    showsAlbumArtist: false
+                    artist: .empty
                 ),
                 files: [],
                 untitledTrackCount: UInt32(untitledTracks.count)
@@ -577,7 +577,7 @@ extension PreviewData {
                 trackSides: boardTrackSides(
                     notFoundTracks,
                     edit: edit,
-                    showsAlbumArtist: true
+                    artist: .albumArtist
                 ),
                 files: [],
                 untitledTrackCount: 0

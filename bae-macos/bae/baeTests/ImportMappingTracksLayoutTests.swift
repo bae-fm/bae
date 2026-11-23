@@ -162,7 +162,7 @@ struct ImportMappingTracksLayoutTests {
             tableWidth: wideTableWidth
         )
         var mapping = pairedMapping
-        mapping.artists = nil
+        mapping.artist = .empty
         let size = NSSize(
             width: wideTableWidth,
             height: 40
@@ -344,8 +344,7 @@ extension ImportMappingTracksLayoutTests {
             position: "1",
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
-            artists: trackArtists,
-            showsAlbumArtist: false
+            artist: .own(field: trackArtists)
         )
     }
 
@@ -417,8 +416,7 @@ extension ImportMappingTracksLayoutTests {
             position: String(number),
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
-            artists: trackArtists,
-            showsAlbumArtist: false
+            artist: .own(field: trackArtists)
         )
     }
 

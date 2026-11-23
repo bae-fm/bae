@@ -177,7 +177,10 @@ async fn an_artist_the_form_picked_shows_and_saves_as_a_new_credit_once_deleted(
                     .iter()
                     .flatten()
                     .flat_map(bae_import::TrackTableSide::rows)
-                    .find_map(|row| row.artists.as_ref());
+                    .find_map(|row| match &row.artist {
+                        bae_import::TrackArtistDisplay::Own(field) => Some(field),
+                        _ => None,
+                    });
                 [draft.album_artists.as_ref(), track_artists].into_iter().all(|field| {
                     field.is_some_and(|field| {
                         field.credits.iter().map(|credit| &credit.standing).eq([&wanted])

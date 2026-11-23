@@ -69,7 +69,6 @@ mirror_struct! {
     #[cfg(desktop)]
     BridgeInternalFailure = bae_catalogs::InternalFailure,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     fields: { detail },
 }
 

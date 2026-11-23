@@ -95,6 +95,7 @@ pub(crate) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
 
 /// One candidate's [`RELEASE_LINK_COLUMNS`] as SQLite hands them over, its
 /// lists still JSON.
+#[derive(Clone, PartialEq)]
 pub(crate) struct StoredReleaseLink {
     content_hash: String,
     kind: String,

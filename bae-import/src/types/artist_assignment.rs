@@ -91,12 +91,6 @@ pub enum TrackArtistAssignments {
 }
 
 impl TrackArtistAssignments {
-    /// Whether the track's artist field reads “Album artist”.
-    #[cfg(desktop)]
-    pub(crate) fn shows_album_artist(&self, has_album_artists: bool) -> bool {
-        matches!(self, Self::AlbumArtists) && has_album_artists
-    }
-
     /// Each credit normalized and the joins kept as stored (see
     /// [`Credited::normalized_list`]).
     pub(crate) fn normalize(&mut self) {

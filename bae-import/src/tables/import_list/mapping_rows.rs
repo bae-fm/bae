@@ -702,14 +702,17 @@ fn table_row(
     };
     let track = track.edit.as_edit();
     Ok(TrackTableRow {
-        shows_album_artist: track.artist_assignments.shows_album_artist(has_album_artists),
+        artist: crate::TrackArtistDisplay::of(
+            &track.artist_assignments,
+            row.artists.map(super::ArtistFieldJson::field).transpose()?,
+            has_album_artists,
+        ),
         track,
         source,
         audition: TrackAudition::Preview(audition),
         position,
         length_ms: unit.length_ms,
         listed_length_ms: row.listed_ms,
-        artists: row.artists.map(super::ArtistFieldJson::field).transpose()?,
     })
 }
 

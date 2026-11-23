@@ -18,7 +18,7 @@ extension PreviewData {
     /// the files' tags.
     static func boardRow(
         _ folder: BoardFolder,
-        summary: BridgeTriageMetadataSummary? = nil,
+        summary: BridgeAlbumLine? = nil,
         record: String? = nil,
         cover: BridgeCoverImageSource?,
         placement: BridgeTriagePlacement = .pending,
@@ -117,8 +117,8 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .fieldRecordings,
-                    summary: BridgeTriageMetadataSummary(
-                        albumTitle: "Field Recordings",
+                    summary: BridgeAlbumLine.titleAndArtists(
+                        title: "Field Recordings",
                         artistLine: .named("Mara Quill")
                     ),
                     record: "board-field-recordings",
@@ -162,8 +162,8 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .smallHours,
-                    summary: BridgeTriageMetadataSummary(
-                        albumTitle: "Small Hours",
+                    summary: BridgeAlbumLine.titleAndArtists(
+                        title: "Small Hours",
                         artistLine: .named("Tomas Brell")
                     ),
                     cover: .local(file: images.smallHours),
@@ -188,8 +188,8 @@ extension PreviewData {
     {
         boardRow(
             .lowTideHours,
-            summary: BridgeTriageMetadataSummary(
-                albumTitle: "Low Tide Hours",
+            summary: BridgeAlbumLine.titleAndArtists(
+                title: "Low Tide Hours",
                 artistLine: .named("Mara Quill")
             ),
             record: "board-low-tide-hours",
@@ -204,8 +204,8 @@ extension PreviewData {
     ) -> BridgeTriageRow {
         boardRow(
             folder.folder,
-            summary: BridgeTriageMetadataSummary(
-                albumTitle: folder.album,
+            summary: BridgeAlbumLine.titleAndArtists(
+                title: folder.album,
                 artistLine: .named(folder.artist)
             ),
             cover: .local(file: cover),
@@ -231,8 +231,8 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .saltAndCedar,
-                    summary: BridgeTriageMetadataSummary(
-                        albumTitle: "Salt and Cedar",
+                    summary: BridgeAlbumLine.titleAndArtists(
+                        title: "Salt and Cedar",
                         artistLine: .named("The Slow Orchards")
                     ),
                     record: "board-salt-and-cedar",
@@ -249,8 +249,8 @@ extension PreviewData {
     {
         boardRow(
             .paperLanterns,
-            summary: BridgeTriageMetadataSummary(
-                albumTitle: "Paper Lanterns",
+            summary: BridgeAlbumLine.titleAndArtists(
+                title: "Paper Lanterns",
                 artistLine: .named("The Slow Orchards")
             ),
             cover: .local(file: cover),
@@ -285,7 +285,7 @@ extension PreviewData {
     /// An Imported row, whose cover and upload belong to its library release.
     static func importedBoardItem(
         _ folder: BoardFolder,
-        summary: BridgeTriageMetadataSummary,
+        summary: BridgeAlbumLine,
         cover: BridgeFileVersion,
         stateLine: BridgeTriageStateLine? = nil
     ) -> BridgeImportListItem {
@@ -293,7 +293,7 @@ extension PreviewData {
             boardRow(
                 folder,
                 summary: summary,
-                record: "board-\(summary.albumTitle)",
+                record: "board-\(summary.title)",
                 cover: .local(file: cover),
                 placement: .done,
                 live: triageLive([.revealFolder]),

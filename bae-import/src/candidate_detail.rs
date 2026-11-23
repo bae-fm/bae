@@ -6,8 +6,8 @@ use super::cover_art::CoverChoice;
 use super::folder_scanner::FolderCandidate;
 use super::mapping::MappingTable;
 use super::triage::{
-    import_status_of, stated_folder_check, CandidateLiveState, TriageImportStatus,
-    TriageMetadataSummary, TriagePlacement, TriageRuntimeFacts,
+    import_status_of, stated_folder_check, CandidateLiveState, TriageImportStatus, TriagePlacement,
+    TriageRuntimeFacts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::{FileEvidence, ImportFailure, ImportedRelease};
@@ -249,16 +249,7 @@ impl ImportCandidateDetailProjection {
                 );
                 // The catalogs the linked release is described in, as the row
                 // names them: only a linked candidate names any.
-                let draft_records = || {
-                    let linked = release_link.as_ref().filter(|_| actionable);
-                    let answered = linked.is_some() || metadata_provenance.is_some();
-                    super::triage::TriageReading::of(
-                        TriageMetadataSummary::of(&metadata_draft, answered).as_ref(),
-                        linked,
-                        records,
-                    )
-                    .records()
-                };
+                let draft_records = (actionable && release_link.is_some()).then_some(records);
                 let pane_placement = match placement.tab() {
                     TriageTab::Pending => CandidatePanePlacement::Pending {
                         folder_check: (placement == TriagePlacement::Pending)
@@ -270,10 +261,10 @@ impl ImportCandidateDetailProjection {
                                 )
                             })
                             .flatten(),
-                        records: draft_records(),
+                        records: draft_records,
                     },
                     TriageTab::Skipped => {
-                        CandidatePanePlacement::Skipped { records: draft_records() }
+                        CandidatePanePlacement::Skipped { records: draft_records }
                     }
                     TriageTab::Done => CandidatePanePlacement::Done,
                 };

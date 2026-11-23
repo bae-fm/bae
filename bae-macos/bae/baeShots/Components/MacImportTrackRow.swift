@@ -26,8 +26,9 @@ extension ShotScene {
                 artists: .explicit(
                     assignments: [PreviewData.boardArtist("Odile Fen")]
                 ),
-                ownArtists: PreviewData.boardLibraryArtists("Odile Fen"),
-                showsAlbumArtist: false
+                artist: .own(
+                    field: PreviewData.boardLibraryArtists("Odile Fen")
+                )
             )
         ),
         trackRowScene(
@@ -66,7 +67,7 @@ extension ShotScene {
                 title: "Salt Road",
                 seconds: 320,
                 artists: .explicit(assignments: []),
-                showsAlbumArtist: false
+                artist: .empty
             )
         ),
     ]
@@ -101,8 +102,7 @@ extension ShotScene {
             position: position,
             length: BridgeDurationClock.length(ms: seconds * 1_000),
             listedLength: nil,
-            artists: nil,
-            showsAlbumArtist: true
+            artist: .albumArtist
         )
     }
 

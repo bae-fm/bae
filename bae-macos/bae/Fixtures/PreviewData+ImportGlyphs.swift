@@ -10,8 +10,8 @@ extension PreviewData {
         importTabFolder(path: name, name: name)
     }
 
-    private static let glyphSummary = BridgeTriageMetadataSummary(
-        albumTitle: "Album Title Fifteen",
+    private static let glyphSummary = BridgeAlbumLine.titleAndArtists(
+        title: "Album Title Fifteen",
         artistLine: .named("Artist Name")
     )
 

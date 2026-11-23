@@ -424,11 +424,16 @@ pub struct BridgeTrackTableRow {
     /// marks the same rows. The listed length marks a row and disables
     /// nothing.
     pub listed_length: Option<BridgeDurationClock>,
-    /// The track's own artists, each with how it stands to the library;
-    /// `None` when the track takes its album's artists or names none.
-    pub artists: Option<BridgeArtistField>,
-    /// The artist field reads “Album artist”.
-    pub shows_album_artist: bool,
+    pub artist: BridgeTrackArtistDisplay,
+}
+
+/// What the track's artist field shows. Mirror of bae-import's `TrackArtistDisplay`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeTrackArtistDisplay {
+    Own { field: BridgeArtistField },
+    AlbumArtist,
+    Empty,
 }
 
 /// What a row's source cell names. Mirror of bae-import's `TrackSource`.
@@ -632,7 +637,7 @@ pub enum BridgeAlbumLine {
 #[cfg(desktop)]
 mirror_enum! {
     BridgeAlbumLine = bae_import::AlbumLine,
-    from_core: fn,
+    from_core: pub(crate) fn,
     variants: {
         TitleAlone { title },
         TitleAndArtists { title, artist_line: (BridgeCreditLine) },

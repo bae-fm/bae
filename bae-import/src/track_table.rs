@@ -64,12 +64,33 @@ pub struct TrackTableRow {
     /// [`bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS`] from
     /// `length_ms`.
     pub listed_length_ms: Option<u64>,
-    /// The track's own artists, each with how it stands to the library, as
-    /// the read that returned the row found them; `None` when the track
-    /// takes its album's artists or names none.
-    pub artists: Option<crate::ArtistField>,
-    /// The track takes its album's artists and the album names at least one.
-    pub shows_album_artist: bool,
+    pub artist: TrackArtistDisplay,
+}
+
+/// What the track's artist field shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TrackArtistDisplay {
+    Own(crate::ArtistField),
+    AlbumArtist,
+    Empty,
+}
+
+impl TrackArtistDisplay {
+    pub(crate) fn of(
+        assignments: &crate::TrackArtistAssignments,
+        own: Option<crate::ArtistField>,
+        has_album_artists: bool,
+    ) -> Self {
+        match own {
+            Some(field) => Self::Own(field),
+            None if has_album_artists
+                && matches!(assignments, crate::TrackArtistAssignments::AlbumArtists) =>
+            {
+                Self::AlbumArtist
+            }
+            None => Self::Empty,
+        }
+    }
 }
 
 /// What a row's source cell names.

@@ -254,9 +254,11 @@ async fn edits_under(view: ImportListView) {
         let snapshot = delivered(&handle, &list, std::slice::from_ref(&key)).await;
         let rows = candidate_rows(&snapshot);
         let shows_title = rows.iter().any(|(_, row)| {
-            row.metadata_summary
-                .as_ref()
-                .is_some_and(|summary| summary.album_title == "Typed Title")
+            matches!(
+                &row.metadata_summary,
+                Some(crate::AlbumLine::TitleAlone { title }
+                    | crate::AlbumLine::TitleAndArtists { title, .. }) if title == "Typed Title"
+            )
         });
         if shows_title {
             break snapshot;

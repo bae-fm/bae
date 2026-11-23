@@ -25,10 +25,7 @@ struct InvalidCandidateRow: View {
                 else {
                     ImportFolderNameLine(folderName: invalid.sourceFolderName)
                 }
-                Text(invalid.reason.localizedText)
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.textSecondary)
-                    .cutLine(.prose)
+                ImportRowStateText(text: invalid.reason.localizedText)
             }
         }
         .frame(minHeight: ImportCandidateTableLayout.height(for: invalid))

@@ -58,14 +58,17 @@ impl ReleaseEditTrackRow {
         has_album_artists: bool,
     ) -> crate::TrackTableRow {
         crate::TrackTableRow {
-            shows_album_artist: self.edit.artist_assignments.shows_album_artist(has_album_artists),
+            artist: crate::TrackArtistDisplay::of(
+                &self.edit.artist_assignments,
+                self.artists,
+                has_album_artists,
+            ),
             track: self.edit,
             source,
             audition: self.audition,
             position: self.context.position_text,
             length_ms: self.context.duration_ms,
             listed_length_ms: self.context.listed_length_ms,
-            artists: self.artists,
         }
     }
 }

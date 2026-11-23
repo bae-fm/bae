@@ -361,23 +361,16 @@ pub enum BridgeCandidateAction {
     RevealFolder,
 }
 
-/// Where one Found row stands: its state, and why a row that needs the
-/// person does, and how bae broke for a row in error. Mirrors
-/// `bae_import::PendingStanding`.
+/// Where one Found row stands and why a row that needs the person does.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgePendingStanding {
     NotLookedUp,
     Identifying,
-    NeedsYou {
-        reason: BridgeNeedsYouReason,
-    },
+    NeedsYou { reason: BridgeNeedsYouReason },
     Identified,
     Unmatched,
     LookupError,
-    /// bae broke on its own side; the row states how.
-    Error {
-        failure: BridgeInternalFailure,
-    },
+    Error,
     Importing,
     ImportError,
 }
@@ -569,14 +562,6 @@ pub fn bridge_folder_check_key(folder_check: &BridgeFolderCheck) -> String {
     folder_check.loc_key().to_string()
 }
 
-/// The candidate's stored draft as its row shows it.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeTriageMetadataSummary {
-    pub album_title: String,
-    /// The album credits, when the row has an artist line.
-    pub artist_line: Option<BridgeCreditLine>,
-}
-
 /// Where a candidate's draft was read from.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMetadataProvenance {
@@ -707,7 +692,7 @@ pub struct BridgeTriageRow {
     /// offers and the state it is in with it. The list delivers the row again
     /// when it changes.
     pub live: BridgeCandidateLiveState,
-    pub metadata_summary: Option<BridgeTriageMetadataSummary>,
+    pub metadata_summary: Option<BridgeAlbumLine>,
     /// The cover the row draws, even when its draft is otherwise blank.
     pub cover: Option<BridgeCoverImageSource>,
     pub import_status: Option<BridgeTriageImportStatus>,
@@ -722,7 +707,7 @@ pub enum BridgeTriageStateLine {
     Importing { step: BridgeImportStep },
     Uploading { release_id: String },
     QueuedToUpload,
-    Error { detail: String },
+    Error { failure: BridgeInternalFailure },
 }
 
 /// The release this device imported from a candidate's files.

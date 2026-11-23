@@ -42,7 +42,7 @@ private func bridgeFolder(
 func identifiedRow(
     _ path: String,
     title: String,
-    metadataSummary: BridgeTriageMetadataSummary? = nil,
+    metadataSummary: BridgeAlbumLine? = nil,
     cover: BridgeCoverImageSource? = nil
 ) -> BridgeTriageRow {
     BridgeTriageRow(
@@ -324,9 +324,8 @@ struct ImportStoreSidebarCoverTests {
             let row = identifiedRow(
                 path,
                 title: "Subject",
-                metadataSummary: BridgeTriageMetadataSummary(
-                    albumTitle: "Applied Draft",
-                    artistLine: nil
+                metadataSummary: BridgeAlbumLine.titleAlone(
+                    title: "Applied Draft"
                 ),
                 cover: choice.image
             )

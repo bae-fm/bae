@@ -1,5 +1,4 @@
 import BaeKit
-import SwiftUI
 import Testing
 
 @testable import bae
@@ -22,8 +21,6 @@ struct DoneRowTests {
         var found = done
         found.placement = .pending
         found.importStatus = nil
-        #expect(done.stateLine == nil, "nothing of the release waits to upload")
-        #expect(found.stateLine == nil)
         #expect(
             ImportReleaseSummary(row: done)?.title
                 == ImportReleaseSummary(row: found)?.title
@@ -50,7 +47,11 @@ struct DoneRowTests {
         "a row with an artist and a status reserves room for both",
         arguments: [
             BridgeTriageStateLine.queuedToUpload,
-            .error(detail: "Failed to store a lookup result"),
+            .error(
+                failure: BridgeInternalFailure(
+                    detail: "Failed to store a lookup result"
+                )
+            ),
         ]
     )
     func rowsWithStatusReserveRoom(state: BridgeTriageStateLine) {

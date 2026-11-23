@@ -16,7 +16,7 @@ struct ImportListSameViewValueTests {
     func aNewValueOfTheSameViewKeepsTheSelection() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let selected = PreviewData.triageRowIdentified
+        let selected = PreviewData.triageRowIdentifiedOnline
         let other = PreviewData.candidateItem(PreviewData.triageRowUnidentified)
         let source = MutableImportList(items: [
             PreviewData.candidateItem(selected), other,
@@ -40,7 +40,11 @@ struct ImportListSameViewValueTests {
             let focused = window.firstResponder
 
             var edited = selected
-            edited.metadataSummary?.albumTitle = "Typed Title"
+            let artistLine = try #require(selected.metadataSummary?.artistLine)
+            edited.metadataSummary = .titleAndArtists(
+                title: "Typed Title",
+                artistLine: artistLine
+            )
             await source.replaceItems([
                 PreviewData.candidateItem(edited), other,
             ])

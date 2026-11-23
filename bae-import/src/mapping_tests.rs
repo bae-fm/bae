@@ -223,7 +223,7 @@ async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     );
     assert_eq!(file_names(&runs(&table)), ["01.flac", "02.flac"]);
     assert_eq!(mapping_tracks(&table), blank_candidate_draft(&files).release_edit().tracks);
-    assert!(mappings.iter().all(|row| !row.shows_album_artist));
+    assert!(mappings.iter().all(|row| row.artist == crate::TrackArtistDisplay::Empty));
     let carried: Vec<(&str, MappingRole)> = table
         .files
         .iter()

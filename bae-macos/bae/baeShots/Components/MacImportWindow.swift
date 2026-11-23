@@ -91,8 +91,8 @@ extension ShotScene {
             PreviewData.candidateItem(
                 PreviewData.boardRow(
                     .lowTideHours,
-                    summary: BridgeTriageMetadataSummary(
-                        albumTitle: "Low Tide Hours",
+                    summary: BridgeAlbumLine.titleAndArtists(
+                        title: "Low Tide Hours",
                         artistLine: .named("Mara Quill")
                     ),
                     record: "board-low-tide-hours",

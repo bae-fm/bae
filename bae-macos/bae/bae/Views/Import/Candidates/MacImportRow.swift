@@ -117,20 +117,14 @@ struct MacImportRow: View {
             DoneRowUploadLineContainer(releaseId: releaseId)
                 .themeText(.detail)
         case .queuedToUpload:
-            stateText(BridgeUploadActivity.queued.phaseText)
-        case .error(let detail):
-            stateText(detail)
+            ImportRowStateText(text: BridgeUploadActivity.queued.phaseText)
+        case .error(let failure):
+            ImportRowStateText(text: failure.detail)
         case nil:
             EmptyView()
         }
     }
 
-    private func stateText(_ text: String) -> some View {
-        Text(verbatim: text)
-            .themeText(.detail)
-            .foregroundStyle(Theme.textSecondary)
-            .cutLine(.prose)
-    }
 }
 
 /// A Done row's bar while files of its release upload. Only this leaf

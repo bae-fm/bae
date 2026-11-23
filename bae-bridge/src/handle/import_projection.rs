@@ -240,7 +240,6 @@ impl crate::types::BridgeTriageRow {
         row: bae_import::TriageRow,
         live: bae_import::CandidateLiveState,
     ) -> Self {
-        let state_line = row.state_line(&live).map(crate::types::BridgeTriageStateLine::from_core);
         let bae_import::TriageRow {
             candidate_key,
             folder_name,
@@ -250,7 +249,7 @@ impl crate::types::BridgeTriageRow {
             metadata_summary,
             cover,
             import_status,
-            upload: _,
+            state_line,
             metadata_provenance,
             // The row's reading names the linked release's records.
             release_link: _,
@@ -263,11 +262,10 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
-            metadata_summary: metadata_summary
-                .map(crate::types::BridgeTriageMetadataSummary::from_core),
+            metadata_summary: metadata_summary.map(crate::types::BridgeAlbumLine::from_core),
             cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
-            state_line,
+            state_line: state_line.map(crate::types::BridgeTriageStateLine::from_core),
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),
@@ -315,27 +313,28 @@ mirror_enum! {
     variants: { Pending, Failed, Done, Skipped },
 }
 
-mirror_enum! {
-    crate::types::BridgePendingStanding = bae_import::PendingStanding,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: {
-        NotLookedUp,
-        Identifying,
-        NeedsYou { reason: (crate::types::BridgeNeedsYouReason) },
-        Identified,
-        Unmatched,
-        LookupError,
-        Error { failure: (crate::types::BridgeInternalFailure) },
-        Importing,
-        ImportError,
-    },
+impl crate::types::BridgePendingStanding {
+    fn from_core(standing: bae_import::PendingStanding) -> Self {
+        use bae_import::PendingStanding as Core;
+        match standing {
+            Core::NotLookedUp => Self::NotLookedUp,
+            Core::Identifying => Self::Identifying,
+            Core::NeedsYou { reason } => {
+                Self::NeedsYou { reason: crate::types::BridgeNeedsYouReason::from_core(reason) }
+            }
+            Core::Identified => Self::Identified,
+            Core::Unmatched => Self::Unmatched,
+            Core::LookupError => Self::LookupError,
+            Core::Error { .. } => Self::Error,
+            Core::Importing => Self::Importing,
+            Core::ImportError => Self::ImportError,
+        }
+    }
 }
 
 mirror_enum! {
     crate::types::BridgeNeedsYouReason = bae_import::NeedsYouReason,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     variants: {
         Matches { count },
         NoTracklist,
@@ -421,15 +420,6 @@ impl crate::types::BridgeFolderCheck {
 
 // ── The paged list ─────────────────────────────────────────────────────────
 
-mirror_struct! {
-    crate::types::BridgeTriageMetadataSummary = bae_import::triage::TriageMetadataSummary,
-    from_core: fn,
-    fields: {
-        album_title,
-        artist_line: (opt crate::types::BridgeCreditLine),
-    },
-}
-
 mirror_enum! {
     crate::types::BridgeTriageStateLine = bae_import::triage::TriageStateLine,
     from_core: fn,
@@ -437,7 +427,7 @@ mirror_enum! {
         Importing { step: (crate::types::BridgeImportStep) },
         Uploading { release_id },
         QueuedToUpload,
-        Error { detail },
+        Error { failure: (crate::types::BridgeInternalFailure) },
     },
 }
 

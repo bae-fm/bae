@@ -254,8 +254,7 @@ extension ShotScene {
 
     /// One track of the mapping table: the file it plays from, its title
     /// and the position core numbers it by. By default the album's artists
-    /// are its artists, so its artist field is empty; `ownArtists` is the
-    /// field core's read gives the track's own `artists`; `listedSeconds` is
+    /// are its artists. `artist` is the artist cell the row draws. `listedSeconds` is
     /// the length the source lists when it differs from the audio's.
     static func mappingTrack(
         file: String,
@@ -263,9 +262,8 @@ extension ShotScene {
         title: String,
         seconds: UInt64,
         artists: BridgeTrackArtistAssignments = .albumArtists,
-        ownArtists: BridgeArtistField? = nil,
         listedSeconds: UInt64? = nil,
-        showsAlbumArtist: Bool = true
+        artist: BridgeTrackArtistDisplay = .albumArtist
     ) -> BridgeTrackTableRow {
         BridgeTrackTableRow(
             track: BridgeRawTrackEdit(
@@ -281,8 +279,7 @@ extension ShotScene {
             listedLength: listedSeconds.map {
                 BridgeDurationClock.length(ms: $0 * 1_000)
             },
-            artists: ownArtists,
-            showsAlbumArtist: showsAlbumArtist
+            artist: artist
         )
     }
 

@@ -31,9 +31,7 @@ use crate::tables::import_state::{
     RUNTIME_FACT_COLUMNS,
 };
 use crate::tables::release_groupings::block_of;
-use crate::triage::{
-    import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
-};
+use crate::triage::{import_status_of, TriageGroup, TriageReading, TriageRow, TriageStateLine};
 use crate::RelativeFolder;
 use crate::{CandidateKey, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
 use bae_catalogs::records::ReleaseRecord;
@@ -44,9 +42,36 @@ use bae_records::records::read::{
     records_column, release_records_json_sql, release_records_kind_sql,
 };
 use bae_records::UploadProgress;
-use bae_store::ListWindow;
+use bae_store::{list_windows::OrderKey, ListWindow};
+use bae_types::credits::CreditLine;
 use rusqlite::ToSql;
 use std::path::PathBuf;
+
+/// The columns of a window, before they are shaped into the rows the list shows.
+#[derive(Clone, PartialEq)]
+pub(super) struct WindowRows {
+    window: ListWindow,
+    rows: Vec<(String, OrderKey, StoredItem)>,
+}
+
+impl WindowRows {
+    pub(super) fn process(self) -> Result<ImportWindow, DbError> {
+        let rows = self
+            .rows
+            .into_iter()
+            .map(|(item, ordered, stored)| {
+                let shown = match stored {
+                    StoredItem::Header(header) => {
+                        ImportListItem::GroupHeader(group_header(header)?)
+                    }
+                    StoredItem::Release(release) => release_item(*release, Item::of(&item)?)?,
+                };
+                Ok((shown, ordered))
+            })
+            .collect::<Result<_, DbError>>()?;
+        Ok(ImportWindow { window: self.window, rows })
+    }
+}
 
 /// Reads the window `window` of the list `request` shows in one statement: the items
 /// of its range, each with its key, and each member of a group with its
@@ -55,7 +80,7 @@ pub(super) fn read_window(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
     window: &ListWindow,
-) -> Result<ImportWindow, DbError> {
+) -> Result<WindowRows, DbError> {
     let rows = window_query(request, window, |items, statement, named| {
         items.query(sql, statement, named, |row| {
             let item: String = row.get("item")?;
@@ -67,18 +92,7 @@ pub(super) fn read_window(
             Ok((item, ordered, stored))
         })
     })?;
-    let Some(rows) = rows else {
-        return Ok(ImportWindow { window: window.clone(), rows: Vec::new() });
-    };
-    let mut read = Vec::new();
-    for (item, ordered, stored) in rows {
-        let shown = match stored {
-            StoredItem::Header(header) => ImportListItem::GroupHeader(group_header(header)?),
-            StoredItem::Release(release) => release_item(*release, Item::of(&item)?)?,
-        };
-        read.push((shown, ordered));
-    }
-    Ok(ImportWindow { window: window.clone(), rows: read })
+    Ok(WindowRows { window: window.clone(), rows: rows.unwrap_or_default() })
 }
 
 /// Runs `run` with the list's items, the statement reading the window
@@ -117,12 +131,14 @@ fn window_query<T>(
 }
 
 /// What one row of the window's statement holds, by its kind.
+#[derive(Clone, PartialEq)]
 enum StoredItem {
     Header(HeaderRow),
     Release(Box<ReleaseRows>),
 }
 
 /// One group header's columns.
+#[derive(Clone, PartialEq)]
 struct HeaderRow {
     root: PathBuf,
     folder: RelativeFolder,
@@ -183,6 +199,7 @@ fn read_header(row: &Row<'_>) -> rusqlite::Result<HeaderRow> {
 
 /// A group member's columns: its group's header, and whether the list shows
 /// no member of the group after it.
+#[derive(Clone, PartialEq)]
 struct MemberRow {
     header: HeaderRow,
     last: bool,
@@ -214,13 +231,14 @@ fn group_header(header: HeaderRow) -> Result<ImportGroupHeader, DbError> {
 }
 
 /// One release's columns, read for the window that holds it.
+#[derive(Clone, PartialEq)]
 struct ReleaseRows {
     watched_folder_path: PathBuf,
     key: CandidateKey,
     /// What the row shows: an imported release's library album title and
     /// credits, else its draft's title and artists while it shows its draft,
     /// else nothing past its folder's name.
-    summary: Option<TriageMetadataSummary>,
+    summary: Option<(String, CreditLine)>,
     listed: ListedColumns,
     name: String,
     block: (Option<String>, Option<String>, Option<String>),
@@ -236,6 +254,7 @@ struct ReleaseRows {
 
 /// The columns a release's row shows past its placement, by whether this
 /// device imported the release.
+#[derive(Clone, PartialEq)]
 enum ShownColumns {
     /// A release this device imported, which shows the library release.
     Imported {
@@ -367,9 +386,9 @@ fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) 
 fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
     use crate::tables::import_state::failure_rows::failure_reason_from_row;
     let summary = match row.get::<_, Option<bool>>(2)? {
-        Some(true) => Some(TriageMetadataSummary::new(
+        Some(true) => Some((
             row.get(3)?,
-            crate::tables::stored_credits::line_column(row, "shown_credits")?,
+            crate::tables::stored_credits::required_line_column(row, "shown_credits")?,
         )),
         Some(false) | None => None,
     };
@@ -477,13 +496,15 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
                 .transpose()?;
             ShownRows {
                 metadata_provenance: provenance.map(|stored| stored.provenance()).transpose()?,
-                reading: TriageReading::of(summary.as_ref(), release_link.as_ref(), records),
+                reading: TriageReading::of(summary.is_some(), release_link.as_ref(), records),
                 release_link,
                 cover,
                 upload: None,
             }
         }
     };
+    let live = crate::CandidateLiveState::of(actions, facts, standing);
+    let state_line = TriageStateLine::of(import_status.as_ref(), shown.upload.as_ref(), &live);
     let row = TriageRow {
         candidate_key: key,
         folder_name: name,
@@ -491,16 +512,16 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         actionable: basis.actionable,
         placement: basis.placement,
         reading: shown.reading,
-        metadata_summary: summary,
+        metadata_summary: summary.map(|(title, credits)| crate::AlbumLine::of(title, credits)),
         cover: shown.cover,
         import_status,
-        upload: shown.upload,
+        state_line,
         metadata_provenance: shown.metadata_provenance,
         release_link: shown.release_link,
     };
     Ok(ImportListItem::Candidate {
         row,
-        live: crate::CandidateLiveState::of(actions, facts, standing),
+        live,
         group: group
             .map(|MemberRow { header, last }| {
                 Ok::<_, DbError>(ImportGroupMember { header: group_header(header)?, last })

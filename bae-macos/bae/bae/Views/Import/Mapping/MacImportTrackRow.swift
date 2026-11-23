@@ -25,8 +25,7 @@ struct MacImportTrackRow: View {
             sourceCell
             ReleaseMetadataTrackRow(
                 track: row.track,
-                artists: row.artists,
-                showsAlbumArtist: row.showsAlbumArtist,
+                artist: row.artist,
                 length: row.length,
                 listedLength: row.listedLength,
                 columns: columns,

@@ -58,37 +58,6 @@ pub enum IdentificationStatus {
     FinalizationFailed { failure: crate::SaveFailure },
 }
 
-/// The title and artists a row shows: the candidate's stored draft's,
-/// independent of what identification matched, or the library album's of a
-/// release this device imported.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TriageMetadataSummary {
-    pub album_title: String,
-    /// The album credits, when the row has an artist line.
-    pub artist_line: Option<bae_types::credits::CreditLine>,
-}
-
-impl TriageMetadataSummary {
-    pub(crate) fn new(
-        album_title: String,
-        credits: Option<bae_types::credits::CreditLine>,
-    ) -> Self {
-        Self { album_title, artist_line: credits.filter(|credits| !credits.is_empty()) }
-    }
-
-    /// `None` for a blank draft of a candidate that is `answered` by nothing:
-    /// no draft read from anywhere and no release link.
-    pub(crate) fn of(draft: &crate::RawReleaseEdit, answered: bool) -> Option<Self> {
-        if draft.is_blank() && !answered {
-            return None;
-        }
-        Some(Self::new(
-            draft.album_title.clone(),
-            Some(crate::credited_line(&draft.album_artist_assignments)),
-        ))
-    }
-}
-
 /// What a row's text column says about its release: nothing yet, a draft, a
 /// draft of a candidate linked to a catalog pressing, or one linked to an
 /// album whose pressing is unknown; or, for a release this device imported,
@@ -114,25 +83,17 @@ impl TriageReading {
     /// How a row reads from its draft, its release link, and the catalog
     /// records what it is linked to is described in.
     pub fn of(
-        summary: Option<&TriageMetadataSummary>,
+        has_summary: bool,
         link: Option<&ReleaseLink>,
         records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Self {
-        if summary.is_none() {
+        if !has_summary {
             return Self::Unidentified;
         }
         match link {
             Some(ReleaseLink::Pressing(_)) => Self::Identified { records },
             Some(ReleaseLink::Album(_)) => Self::IdentifiedAlbum { records },
             None => Self::Prefilled,
-        }
-    }
-
-    /// Every catalog record the row names; `None` unless it is linked.
-    pub fn records(self) -> Option<Vec<bae_catalogs::records::ReleaseRecord>> {
-        match self {
-            Self::Identified { records } | Self::IdentifiedAlbum { records } => Some(records),
-            Self::Unidentified | Self::Prefilled => None,
         }
     }
 }
@@ -149,18 +110,14 @@ pub struct TriageRow {
     pub watched_folder_path: std::path::PathBuf,
     pub actionable: bool,
     pub placement: TriagePlacement,
-    pub metadata_summary: Option<TriageMetadataSummary>,
+    /// The album title and credits, when the row shows them.
+    pub metadata_summary: Option<crate::AlbumLine>,
     /// The cover the row draws: the candidate's chosen one, or for a release
     /// this device imported, the library release's.
     pub cover: Option<crate::CoverImageSource>,
     /// How the candidate's last import ended.
     pub import_status: Option<TriageImportStatus>,
-    /// How many files of the release this device imported from the
-    /// candidate's files wait in this device's upload queue and how many
-    /// are being sent, as the Storage Manager counts them: read only for a
-    /// row with an imported release, and `None` while none of its files
-    /// waits. How far the bytes have got is the release's upload transfer.
-    pub upload: Option<bae_records::UploadProgress>,
+    pub state_line: Option<TriageStateLine>,
     /// Where the candidate's draft was read from, once a source was applied;
     /// none for a release this device imported, which reads the library.
     pub metadata_provenance: Option<crate::MetadataProvenance>,
@@ -171,39 +128,42 @@ pub struct TriageRow {
     pub reading: TriageReading,
 }
 
-impl TriageRow {
-    /// The line under the row's title and credits, if it has one.
-    pub fn state_line(&self, live: &CandidateLiveState) -> Option<TriageStateLine> {
-        match live.facts.import {
-            // The row shows a wait mark in its trailing column.
-            Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)) => return None,
-            Some(step) => return Some(TriageStateLine::Importing { step }),
-            None => {}
-        }
-        if let Some(TriageImportStatus::Complete { release }) = &self.import_status {
-            return self.upload.as_ref().map(|upload| match upload.activity() {
-                bae_records::UploadActivity::Uploading => {
-                    TriageStateLine::Uploading { release_id: release.release_id.clone() }
-                }
-                bae_records::UploadActivity::Queued => TriageStateLine::QueuedToUpload,
-            });
-        }
-        match &live.standing {
-            Some(PendingStanding::Error { failure }) => {
-                Some(TriageStateLine::Error { detail: failure.detail.clone() })
-            }
-            _ => None,
-        }
-    }
-}
-
 /// What a candidate row says below its title and credits.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriageStateLine {
     Importing { step: crate::ImportStep },
     Uploading { release_id: String },
     QueuedToUpload,
-    Error { detail: String },
+    Error { failure: bae_catalogs::InternalFailure },
+}
+
+impl TriageStateLine {
+    pub(crate) fn of(
+        import_status: Option<&TriageImportStatus>,
+        upload: Option<&bae_records::UploadProgress>,
+        live: &CandidateLiveState,
+    ) -> Option<Self> {
+        match live.facts.import {
+            // The row shows a wait mark in its trailing column.
+            Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)) => return None,
+            Some(step) => return Some(Self::Importing { step }),
+            None => {}
+        }
+        if let Some(TriageImportStatus::Complete { release }) = import_status {
+            return upload.map(|upload| match upload.activity() {
+                bae_records::UploadActivity::Uploading => {
+                    Self::Uploading { release_id: release.release_id.clone() }
+                }
+                bae_records::UploadActivity::Queued => Self::QueuedToUpload,
+            });
+        }
+        match &live.standing {
+            Some(PendingStanding::Error { failure }) => {
+                Some(Self::Error { failure: failure.clone() })
+            }
+            _ => None,
+        }
+    }
 }
 
 /// A folder that failed validation, as its row under Skipped and the pane

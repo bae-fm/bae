@@ -126,7 +126,7 @@ fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet() {
 
     assert_eq!(sides.iter().map(|side| &side.side).collect::<Vec<_>>(), [&side("A"), &side("B")]);
     assert_eq!(runs(&sides[0]), [(Some("first"), vec!["a1", "a2"]), (None, vec!["a3"])]);
-    assert!(sides[0].rows().all(|row| row.shows_album_artist));
+    assert!(sides[0].rows().all(|row| row.artist == crate::TrackArtistDisplay::AlbumArtist));
     assert_eq!(runs(&sides[1]), [(Some("second"), vec!["b1", "b2"]), (Some("third"), vec!["b3"])]);
 }
 

@@ -208,8 +208,7 @@ impl BridgeTrackTableRow {
             position,
             length_ms,
             listed_length_ms,
-            artists,
-            shows_album_artist,
+            artist,
         } = row;
         BridgeTrackTableRow {
             track: BridgeRawTrackEdit::from_core(track),
@@ -229,10 +228,19 @@ impl BridgeTrackTableRow {
             position,
             length: BridgeDurationClock::of_length(length_ms),
             listed_length: listed_length_ms.map(BridgeDurationClock::of_length),
-            artists: artists.map(BridgeArtistField::from_core),
-            shows_album_artist,
+            artist: BridgeTrackArtistDisplay::from_core(artist),
         }
     }
+}
+
+mirror_enum! {
+    BridgeTrackArtistDisplay = bae_import::TrackArtistDisplay,
+    from_core: fn,
+    variants: {
+        Own(field: (BridgeArtistField)),
+        AlbumArtist,
+        Empty,
+    },
 }
 
 mirror_enum! {

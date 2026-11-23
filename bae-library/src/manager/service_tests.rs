@@ -6,6 +6,7 @@
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
+use bae_import::triage::TriageStateLine;
 use bae_store::live_query::LiveQueryError;
 use bae_util::test_files::TestFolder;
 use coven::MemoryStorage;
@@ -202,24 +203,21 @@ async fn done_runs_the_releases_still_uploading_first() {
 }
 
 /// Each Done row's name and how its release's upload stands, in order.
-fn done_uploads(
-    window: &bae_import::ImportWindow,
-) -> Vec<(String, Option<bae_records::UploadProgress>)> {
+fn done_uploads(window: &bae_import::ImportWindow) -> Vec<(String, Option<TriageStateLine>)> {
     window
         .rows
         .iter()
         .filter_map(|(item, _key)| match item {
             bae_import::ImportListItem::Candidate { row, .. } => {
-                Some((row.folder_name.clone(), row.upload.clone()))
+                Some((row.folder_name.clone(), row.state_line.clone()))
             }
             _ => None,
         })
         .collect()
 }
 
-/// A Done row carries how its release's upload stands, as the Storage
-/// Manager counts it: its files waiting, then one being sent, and nothing
-/// once they are stored. The list's live read follows each step.
+/// The list's live read tells a Done row what to show while its release
+/// waits for upload, while it uploads and after it finishes.
 #[tokio::test]
 async fn a_done_row_carries_its_release_upload() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -234,12 +232,11 @@ async fn a_done_row_carries_its_release_upload() {
         }),
         bae_store::ListWindow::top(50),
     );
-    let waiting = Some(bae_records::UploadProgress { queued: 1, uploading: 0 });
     assert_eq!(
         done_uploads(&subscription.next().await.unwrap().result.unwrap()),
         [
-            ("C".to_string(), waiting.clone()),
-            ("B".to_string(), waiting),
+            ("C".to_string(), Some(TriageStateLine::QueuedToUpload)),
+            ("B".to_string(), Some(TriageStateLine::QueuedToUpload)),
             ("A".to_string(), None),
             ("D".to_string(), None),
         ]
@@ -259,15 +256,14 @@ async fn a_done_row_carries_its_release_upload() {
         let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    let sending = Some(bae_records::UploadProgress { queued: 0, uploading: 1 });
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while !done_uploads(&subscription.next().await.unwrap().result.unwrap())
             .iter()
-            .any(|(_, upload)| *upload == sending)
+            .any(|(_, line)| matches!(line, Some(TriageStateLine::Uploading { .. })))
         {}
     })
     .await
-    .expect("a row counts its file being sent");
+    .expect("a row shows its release uploading");
     created.await.unwrap();
     resume.send(()).unwrap();
     drain.await.unwrap().unwrap();

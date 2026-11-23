@@ -79,8 +79,8 @@ pub mod mapping;
 mod track_table;
 #[cfg(desktop)]
 pub use track_table::{
-    MappingContainer, SheetBound, SheetBoundAudio, SheetGroup, TrackAudition, TrackSource,
-    TrackTableRow, TrackTableRun, TrackTableSide,
+    MappingContainer, SheetBound, SheetBoundAudio, SheetGroup, TrackArtistDisplay, TrackAudition,
+    TrackSource, TrackTableRow, TrackTableRun, TrackTableSide,
 };
 #[cfg(desktop)]
 pub mod pane;
@@ -333,8 +333,8 @@ pub const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
 pub use triage::{
     BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
     IdentifyingStep, ImportedRelease, NeedsYouReason, PendingBadge, PendingStanding, PendingState,
-    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow,
-    TriageRuntimeFacts, TriageTab, TriageTabCounts,
+    TriageGroup, TriageImportStatus, TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTab,
+    TriageTabCounts,
 };
 #[cfg(desktop)]
 pub use types::ImportCommand;

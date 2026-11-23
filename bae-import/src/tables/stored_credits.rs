@@ -19,11 +19,21 @@ pub(crate) fn line_column(
         .map_err(|error| bae_store::read::column_conversion_error(row, column, error))
 }
 
+/// The line a non-null column of stored credits holds.
+pub(crate) fn required_line_column(
+    row: &rusqlite::Row<'_>,
+    column: &str,
+) -> rusqlite::Result<CreditLine> {
+    line_text(&row.get::<_, String>(column)?)
+        .map_err(|error| bae_store::read::column_conversion_error(row, column, error))
+}
+
 /// The credit line in stored credits text, or `None` when there is no text.
 pub(crate) fn line_of(json: Option<&str>) -> Result<Option<CreditLine>, serde_json::Error> {
-    json.map(|json| {
-        serde_json::from_str::<Vec<StoredCredit>>(json)
-            .map(|credits| CreditLine::from_stored_credits(&credits))
-    })
-    .transpose()
+    json.map(line_text).transpose()
+}
+
+fn line_text(json: &str) -> Result<CreditLine, serde_json::Error> {
+    serde_json::from_str::<Vec<StoredCredit>>(json)
+        .map(|credits| CreditLine::from_stored_credits(&credits))
 }

@@ -44,7 +44,7 @@ extension PreviewData {
         position: String,
         lengthMs: UInt64,
         listedMs: UInt64? = nil,
-        showsAlbumArtist: Bool = true
+        artist: BridgeTrackArtistDisplay = .albumArtist
     ) -> BridgeTrackTableRow {
         BridgeTrackTableRow(
             track: track,
@@ -53,8 +53,7 @@ extension PreviewData {
             position: position,
             length: BridgeDurationClock.length(ms: lengthMs),
             listedLength: listedMs.map { BridgeDurationClock.length(ms: $0) },
-            artists: nil,
-            showsAlbumArtist: showsAlbumArtist
+            artist: artist
         )
     }
 

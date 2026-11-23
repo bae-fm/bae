@@ -73,3 +73,15 @@ extension ImportFolderNameLine where Accessory == EmptyView {
         self.init(folderName: folderName) { EmptyView() }
     }
 }
+
+/// The text below the title and artist in an import list row.
+struct ImportRowStateText: View {
+    let text: String
+
+    var body: some View {
+        Text(verbatim: text)
+            .themeText(.detail)
+            .foregroundStyle(Theme.textSecondary)
+            .cutLine(.prose)
+    }
+}

@@ -107,6 +107,7 @@ pub(crate) const COVER_VERSION_COLUMNS: &str = "\
 
 /// The [`COVER_VERSION_COLUMNS`] of one row, as SQLite holds them: each kind
 /// of selection reads its own, and the others are `NULL`.
+#[derive(Clone, PartialEq)]
 pub(crate) struct CoverVersionColumns {
     local: (Option<Vec<u8>>, Option<i64>, Option<i64>),
     embedded_source: Option<String>,
