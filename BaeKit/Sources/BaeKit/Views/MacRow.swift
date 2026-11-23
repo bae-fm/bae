@@ -189,17 +189,22 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         labelAction: (() -> Void)? = nil
     ) -> some View {
         let content = row(chevron: chevron, labelAction: labelAction)
-        if var placement {
-            if options.isNested {
-                placement.insets.top = 0
-                placement.minHeight = 0
-            }
+        if let placement = currentPlacement {
             content.placedInRow(placement)
                 .contentShape(Rectangle())
         }
         else {
             content
         }
+    }
+
+    private var currentPlacement: MacRowPlacement? {
+        guard var placement else { return nil }
+        if options.isNested {
+            placement.insets.top = 0
+            placement.minHeight = 0
+        }
+        return placement
     }
 
     @ViewBuilder
