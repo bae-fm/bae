@@ -11,12 +11,12 @@ extension MacImportWindow {
 
     @ViewBuilder
     var splitContent: some View {
-        HSplitView {
+        // The list's floor, 410 points, is what the four tab labels and their
+        // count badges need on one line in English; wider locales get the
+        // labels' scale-down allowance on top.
+        ImportListSplit(paneFloor: Self.paneFloor) {
             candidateList
-                // The floor is what the four tab labels and their count
-                // badges need on one line in English; wider locales get the
-                // labels' scale-down allowance on top.
-                .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
+        } pane: {
             if importSelection.summary.count > 1 {
                 MacImportBulk(
                     importDestination: importDestination,
