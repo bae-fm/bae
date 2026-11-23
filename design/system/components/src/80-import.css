@@ -81,7 +81,7 @@
 .bae-m-bulk { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-group); }
 .bae-m-bulklist { border-radius: var(--radius-card); background: var(--hover); box-shadow: inset 0 0 0 1px var(--hairline); overflow: hidden; }
 .bae-m-bulkgrp + .bae-m-bulkgrp { border-top: 1px solid var(--hairline); }
-.bae-m-bulkrow { display: flex; width: 100%; align-items: center; gap: calc(var(--space-related) + var(--space-line)); padding: var(--space-related) var(--space-group); border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.bae-m-bulkrow { display: flex; width: 100%; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-group); border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .bae-m-bulkrow-off { opacity: 0.4; }
 .bae-m-prow-catalog { font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: var(--type-cell-line-height); }
 .bae-m-idraft-album { display: flex; align-items: center; gap: var(--space-related); margin-top: var(--space-compact); }
