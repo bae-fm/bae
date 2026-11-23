@@ -22,12 +22,13 @@ struct MacButtonMetrics {
         }
     }
 
-    /// A capsule when large, rounded 4 points when small and 5 otherwise.
+    /// A capsule when large, rounded by the design's bar radius when small and its chip radius otherwise.
     var shape: AnyShape {
         switch controlSize {
         case .large, .extraLarge: AnyShape(Capsule())
-        case .mini, .small: AnyShape(RoundedRectangle(cornerRadius: 4))
-        default: AnyShape(RoundedRectangle(cornerRadius: 5))
+        case .mini, .small:
+            AnyShape(RoundedRectangle(cornerRadius: ThemeRadius.bar))
+        default: AnyShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
         }
     }
 }
