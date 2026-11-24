@@ -9,7 +9,9 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Libraries', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome))), W('Empty', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { empty: true }))), W('Children', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, null, slot()))), W('Removing', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { state: 'removing' }))), W('Unreadable', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { state: 'unreadable' }))), W('Damaged join', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { state: 'damaged-join' })))));
+  // The stand-in keeps the screen's edge margin, as the saved codes' card under the libraries does.
+  function edgeSlot() { return h('div', { style: { padding: '0 var(--space-edge)' } }, slot()); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Libraries', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome))), W('Empty', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { empty: true }))), W('Children', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, null, edgeSlot()))), W('Removing', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { state: 'removing' }))), W('Unreadable', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { state: 'unreadable' }))), W('Damaged join', h(B.AndroidScreen, null, h(B.AndroidWelcomeHome, { state: 'damaged-join' })))));
 </script>
 </body>
 </html>
