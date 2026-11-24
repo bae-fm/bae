@@ -142,6 +142,7 @@ struct MacAlbumGrid<ExpansionContent: View>: View {
                     LibraryContentContainer.horizontalPadding
                 )
                 .padding(.bottom)
+                .padding(.top, albumGridRingReach)
                 .libraryContentContainer(fullWidth: fullWidth)
                 .coordinateSpace(.named(albumGridContentSpace))
                 // A click on the empty background clears the selection.
@@ -296,8 +297,16 @@ struct MacAlbumGrid<ExpansionContent: View>: View {
                 await show(target.reveal, at: target.place)
             }
         }
+        // The grid reaches up over the heading's last points, and its
+        // content starts that far down, so the open tile's ring, which
+        // stands 1.5 pt higher than a tile's padding, is not cut off at the
+        // scroll view's edge.
+        .padding(.top, -albumGridRingReach)
     }
 }
+
+/// How far the grid reaches up over the heading, and starts its content down.
+private let albumGridRingReach: CGFloat = 2
 
 /// The grid content's coordinate space, in which a scroll to an offset
 /// measures.
