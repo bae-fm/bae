@@ -192,10 +192,9 @@ extension ShotScene {
         )
     }
 
-    /// Storage turning this Mac's sign-in down, which sync reports as its
-    /// failure.
+    /// Storage signing this Mac out, which sync reports as its failure.
     static let syncRefused = BridgeError.Diagnostic(
-        category: .storage(failure: .authentication),
+        category: .signedOut(provider: .dropbox),
         detail: "Dropbox answered 401: expired_access_token"
     )
 

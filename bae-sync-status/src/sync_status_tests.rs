@@ -398,6 +398,30 @@ fn a_removed_device_shows_its_removal_as_its_failure() {
     assert_eq!(status.shown().status, SyncStatusWord::RemovedFromTheLibrary);
 }
 
+/// A device its storage signed out names the provider as the problem, with
+/// the pass's error as the detail, whatever class the pass's failure had.
+#[test]
+fn a_signed_out_device_shows_the_provider_as_its_failure() {
+    let provider = coven::CloudProvider::Dropbox;
+    let state = ended(
+        coven::LastPass::Failed {
+            failure: coven::StatusFailure::Storage(coven::StorageFailure::Authentication),
+            error: "the provider refused the sign-in".into(),
+        },
+        |cause| coven::SyncState::SignedOut {
+            provider: coven::CloudProvider::Dropbox,
+            cause: Some(cause),
+        },
+    );
+    assert_eq!(
+        alone(state).failure(),
+        Some(UiError::diagnostic(
+            bae_diagnostics::UiErrorCategory::SignedOut(provider),
+            "the provider refused the sign-in",
+        ))
+    );
+}
+
 /// A state a pending record names shows the error coven keeps beside the
 /// record, and bae doesn't log it again: coven logged it as it recorded it.
 #[test]

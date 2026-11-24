@@ -286,6 +286,20 @@ impl SyncStatusSnapshot {
             }
             _ => {}
         }
+        let failure = self.cause_failure()?;
+        match (&self.coven.state, failure) {
+            // Storage signed the device out: the provider is the problem the
+            // person reads, and the cause's error stays the detail.
+            (coven::SyncState::SignedOut { provider, .. }, UiError::Diagnostic { detail, .. }) => {
+                Some(UiError::diagnostic(C::SignedOut(*provider), detail))
+            }
+            (_, failure) => Some(failure),
+        }
+    }
+
+    /// What names a failed state: the last pass or a pending record.
+    fn cause_failure(&self) -> Option<UiError> {
+        use bae_diagnostics::UiErrorCategory as C;
         let pass = match self.shown_cause()? {
             coven::SyncCause::Pass(pass) => pass,
             coven::SyncCause::Pending(record) => {

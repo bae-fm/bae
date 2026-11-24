@@ -8,6 +8,7 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
+import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadKind
@@ -48,7 +49,6 @@ import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSideHeading
 import uniffi.bae_bridge.BridgeSidePausePrompt
-import uniffi.bae_bridge.BridgeStorageFailure
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
@@ -245,7 +245,7 @@ object PreviewData {
             failure =
                 if (needsAttention) {
                     BridgeException.Diagnostic(
-                        BridgeErrorCategory.Storage(BridgeStorageFailure.Authentication),
+                        BridgeErrorCategory.SignedOut(BridgeCloudProvider.DROPBOX),
                         "Dropbox answered 401: expired_access_token",
                     )
                 } else {
