@@ -1,6 +1,17 @@
 import BaeKit
 import SwiftUI
 
+/// Which images the editor's Images section draws, and what a click on one
+/// does.
+enum EditorImages {
+    /// The images of the folder the release was imported from, as the scan
+    /// read them, which open in the folder's lightbox.
+    case folder([BridgeMappingImage], open: (String) -> Void)
+    /// The images among the release's own files, which open in the Change
+    /// cover sheet's lightbox.
+    case release
+}
+
 /// The one release editor: a library release's cover, fields, album and
 /// tracks, with the catalog search that applies a release onto them, laid
 /// out as the import pane lays out a folder's draft. The library's Edit…
@@ -10,12 +21,8 @@ struct ReleaseEditorView: View {
     /// What the catalog search names the release by.
     let displayName: String
     var onPlayTrack: ((String) -> Void)?
-    /// The images of the folder the release was imported from, as the scan
-    /// read them, drawn between the album row and the tracks. `nil` where
-    /// the host shows none: the editor then draws the images among the
-    /// release's own files, which open in the album's image viewer.
-    var folderImages: [BridgeMappingImage]?
-    var onOpenFolderImages: ((String) -> Void)?
+    /// The images the editor draws between the album row and the tracks.
+    let images: EditorImages
     /// The save landed; receives the album the release is on after it.
     let onSaved: @MainActor @Sendable (String) -> Void
 
@@ -64,7 +71,7 @@ struct ReleaseEditorView: View {
                     card: card(draft),
                     tracks: ReleaseEditorTracks(
                         images: images(of: draft),
-                        onOpenImages: onOpenImages,
+                        onOpenImages: { openImage($0, of: draft) },
                         sides: draft.sides,
                         files: draft.files,
                         previewingTarget: nil,
@@ -95,22 +102,28 @@ struct ReleaseEditorView: View {
         }
     }
 
-    /// The images the editor draws: the folder's, where the host passes
-    /// them, else the release's own.
+    /// The images the editor draws, from the source the host chose.
     private func images(of draft: BridgeReleaseEditDraft) -> [ImportImage]? {
-        if let folderImages { return folderImages.map(ImportImage.init) }
-        let releaseId = session.releaseId
-        return draft.images?
-            .map {
-                ImportImage($0, releaseId: releaseId)
-            }
+        switch images {
+        case .folder(let images, _):
+            return images.isEmpty ? nil : images.map(ImportImage.init)
+        case .release:
+            let releaseId = session.releaseId
+            return draft.images?.map { ImportImage($0, releaseId: releaseId) }
+        }
     }
 
-    /// What a click on an image does: the folder's lightbox where the host
-    /// passes folder images, else the album's image viewer at that image.
-    private var onOpenImages: (String) -> Void {
-        if folderImages != nil { return onOpenFolderImages ?? { _ in } }
-        return { presentImageViewer(at: .file(fileId: $0)) }
+    /// What a click on an image does, by the file id of the image.
+    private func openImage(_ fileId: String, of draft: BridgeReleaseEditDraft) {
+        switch images {
+        case .folder(_, let open):
+            open(fileId)
+        case .release:
+            guard
+                let image = draft.images?.first(where: { $0.fileId == fileId })
+            else { return }
+            presentImageViewer(at: image.key)
+        }
     }
 
     /// Cancel and Save, the step of an apply, and why the form can't be

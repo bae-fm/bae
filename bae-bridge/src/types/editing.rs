@@ -391,6 +391,10 @@ pub struct BridgeReleaseImage {
     pub file_id: String,
     /// The file's own name, past the folders above it.
     pub name: String,
+    /// Where the library reads the image's bytes from.
+    pub source: BridgeGallerySource,
+    /// What names the image in the Change cover picker, which opens at it.
+    pub key: BridgeCoverKey,
 }
 
 /// One side or disc of a release's track table and the runs of rows on it,

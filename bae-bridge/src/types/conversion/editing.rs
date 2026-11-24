@@ -199,7 +199,7 @@ mirror_struct! {
     #[cfg(desktop)]
     BridgeReleaseImage = bae_import::ReleaseImage,
     from_core: fn,
-    fields: { file_id, name },
+    fields: { file_id, name, source: (BridgeGallerySource), key: (BridgeCoverKey) },
 }
 
 mirror_struct! {

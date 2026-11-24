@@ -55,6 +55,12 @@ pub struct MappingImage {
     pub file: crate::folder_scanner::FileVersion,
 }
 
+/// The last name of a `/`-separated relative path: the file's own name,
+/// without its folders.
+pub(crate) fn file_name(relative_path: &str) -> &str {
+    relative_path.rsplit('/').next().unwrap_or(relative_path)
+}
+
 /// What one of a release's files is, as a row of the mapping table or of a
 /// library release's files.
 ///

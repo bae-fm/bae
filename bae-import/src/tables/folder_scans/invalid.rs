@@ -5,6 +5,7 @@
 use super::columns::proposed_role_of;
 use super::*;
 use crate::folder_scanner::{FileVersion, InvalidReason, ProposedRole, SkippedTags};
+use crate::mapping::file_name;
 use crate::triage::InvalidRow;
 use crate::CandidateKey;
 use crate::{InvalidCandidateDetail, MappingFile, MappingImage, MappingRole};
@@ -271,10 +272,4 @@ fn mapping_role(role: ProposedRole) -> MappingRole {
         ProposedRole::DamagedImage => MappingRole::DamagedImage,
         ProposedRole::Other => MappingRole::Other,
     }
-}
-
-/// The last name of a `/`-separated relative path: the file's own name,
-/// without its folders.
-fn file_name(relative_path: &str) -> &str {
-    relative_path.rsplit('/').next().unwrap_or(relative_path)
 }

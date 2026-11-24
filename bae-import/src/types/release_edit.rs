@@ -366,6 +366,10 @@ pub struct ReleaseImage {
     pub file_id: String,
     /// The file's own name, past the folders above it.
     pub name: String,
+    /// Where the library reads the image's bytes from.
+    pub source: bae_records::GallerySource,
+    /// What names the image in the Change cover picker, which opens at it.
+    pub key: crate::CoverKey,
 }
 
 /// A library release's editor's draft, as the editor shows it beside one

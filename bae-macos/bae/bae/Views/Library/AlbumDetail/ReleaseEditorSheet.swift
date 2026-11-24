@@ -64,6 +64,7 @@ struct ReleaseEditorSheet: View {
                     session: session,
                     displayName: displayName,
                     onPlayTrack: playTrack,
+                    images: .release,
                     onSaved: onSaved
                 )
                 .padding(ThemeSpace.section)

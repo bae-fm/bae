@@ -83,7 +83,12 @@ extension ShotScene {
         // The scene's images serve a release file by the art its id names, so
         // the file `cover.jpg` is the art `Northbound`.
         release.draft.images = [
-            BridgeReleaseImage(fileId: "Northbound", name: "cover.jpg")
+            BridgeReleaseImage(
+                fileId: "Northbound",
+                name: "cover.jpg",
+                source: .releaseFile(fileId: "Northbound"),
+                key: .file(fileId: "Northbound")
+            )
         ]
         release.draft.changed = true
         return release

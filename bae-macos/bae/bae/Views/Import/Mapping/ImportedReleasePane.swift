@@ -42,8 +42,7 @@ struct ImportedReleasePane: View {
                     session: session,
                     displayName: candidate.displayName,
                     onPlayTrack: onPlayTrack,
-                    folderImages: images,
-                    onOpenFolderImages: onOpenImages,
+                    images: .folder(images ?? [], open: onOpenImages),
                     onSaved: { _ in }
                 )
             }

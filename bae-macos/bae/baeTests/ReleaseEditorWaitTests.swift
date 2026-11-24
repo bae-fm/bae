@@ -109,6 +109,7 @@ struct ReleaseEditorWaitTests {
             ReleaseEditorView(
                 session: session,
                 displayName: "Album Title",
+                images: .release,
                 onSaved: { _ in }
             )
             .frame(width: size.width, height: size.height)

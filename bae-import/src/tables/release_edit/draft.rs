@@ -470,17 +470,17 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
-            images: (!files.images.is_empty()).then(|| {
+            images: (files.image_count > 0).then(|| {
                 files
                     .images
                     .iter()
                     .map(|image| crate::ReleaseImage {
                         file_id: image.id.clone(),
-                        name: image
-                            .original_filename
-                            .rsplit_once('/')
-                            .map_or(image.original_filename.as_str(), |(_, name)| name)
-                            .to_string(),
+                        name: crate::mapping::file_name(&image.original_filename).to_string(),
+                        source: bae_records::GallerySource::ReleaseFile {
+                            file_id: image.id.clone(),
+                        },
+                        key: crate::CoverKey::File(image.id.clone()),
                     })
                     .collect()
             }),

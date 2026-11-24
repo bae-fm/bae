@@ -22,7 +22,7 @@ struct ImportImage: Identifiable, Equatable {
         name = image.name
         content = .releaseImage(
             releaseId: releaseId,
-            source: .releaseFile(fileId: image.fileId)
+            source: image.source
         )
     }
 }
