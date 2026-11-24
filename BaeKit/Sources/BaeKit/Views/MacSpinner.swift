@@ -36,6 +36,12 @@ public struct MacSpinner: View {
         size = nil
     }
 
+    /// The spinner `size` points across, with `words` beside it.
+    public init(_ words: Text, size: CGFloat) {
+        self.words = words
+        self.size = size
+    }
+
     /// The spinner, with the words `key` names beside it.
     public init(_ key: LocalizedStringKey) {
         words = Text(key)

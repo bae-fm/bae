@@ -15,7 +15,7 @@ struct ReleaseEditControls: View {
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
             if let reading {
-                MacSpinner(Text(verbatim: reading))
+                MacSpinner(Text(verbatim: reading), size: 14)
             }
             MacButton("Cancel", action: onCancel)
                 .opacity(changed ? 1 : 0)
