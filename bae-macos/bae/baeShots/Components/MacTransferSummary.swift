@@ -4,8 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacTransferSummary`, an upload with one file moving, two waiting
-    /// and four done.
+    /// `MacTransferSummary`, an upload and a pin, each with one file moving,
+    /// two waiting and four done, in core's words for each.
     static let macTransferSummaryScenes: [ShotScene] = [
         component("mac.component.transfer-summary.default", height: 110) {
             MacTransferSummary(
@@ -56,17 +56,17 @@ extension ShotScene {
                 kind: .pin,
                 counts: [
                     PreviewData.transferCount(
-                        "core.queue.uploading",
+                        "core.queue.pinning",
                         1,
                         .moving
                     ),
                     PreviewData.transferCount(
-                        "core.queue.queued_to_upload",
+                        "core.queue.waiting",
                         2,
                         .waiting
                     ),
                     PreviewData.transferCount(
-                        "core.queue.stored",
+                        "core.queue.pinned",
                         4,
                         .done
                     ),
