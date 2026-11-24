@@ -47,7 +47,7 @@ extension ShotScene {
         sidebarScene(
             "mac.component.import-sidebar.narrow",
             ColumnState(),
-            width: 300
+            width: 410
         ),
     ]
 

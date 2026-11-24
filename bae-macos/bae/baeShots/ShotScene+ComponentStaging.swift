@@ -557,7 +557,12 @@ extension ShotScene {
         var scanning = false
         var filtered = false
         var items: () throws -> [BridgeImportListItem] = {
-            PreviewData.lookupItems(images: try PreviewData.LookupBoardImages())
+            Array(
+                PreviewData.lookupItems(
+                    images: try PreviewData.LookupBoardImages()
+                )
+                .prefix(2)
+            )
         }
     }
 
