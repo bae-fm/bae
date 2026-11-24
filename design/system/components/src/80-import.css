@@ -61,6 +61,8 @@
 .bae-m-itable-track { min-height: 40px; border-top: 1px solid var(--hairline); }
 .bae-m-itable-playing { background: var(--accent-tint); }
 .bae-m-isrc { display: flex; align-items: center; gap: var(--space-related); min-width: 0; }
+/* The Play button's empty column on a track the save adds: the button's glyph is icon-chip, 10px wide. */
+.bae-m-isrc-noplay { flex: none; width: 10px; }
 .bae-m-icue { display: flex; align-items: center; gap: var(--space-related); padding: var(--space-related) 0; border-top: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-icue-disc { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); background: var(--hover); }
 .bae-m-fo { display: flex; flex-direction: column; overflow: hidden; }
