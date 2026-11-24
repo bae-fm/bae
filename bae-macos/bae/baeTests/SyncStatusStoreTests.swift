@@ -101,8 +101,20 @@ struct SyncStatusStoreTests {
                 == "bae ran into a problem on this Mac and keeps trying. If it does not clear, restart bae."
         )
         #expect(
-            BridgeSyncCause.enterNewRestoreCode.macLine
+            BridgeSyncCause.enterNewRestoreCode(madeOn: nil).macLine
                 == "Enter the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent."
+        )
+    }
+
+    @Test("a new restore code made on the person's device names it")
+    func aNewRestoreCodeNamesTheDeviceThatMadeIt() {
+        let madeOn = BridgeMessage(
+            key: "core.sync.cause.new_code_made_on",
+            args: [BridgeMessageArg(name: "device", value: "iPhone")]
+        )
+        #expect(
+            BridgeSyncCause.enterNewRestoreCode(madeOn: madeOn).macLine
+                == "You made the new code on your iPhone. Enter the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent."
         )
     }
 

@@ -43,13 +43,18 @@ extension BridgeSyncCause {
                 comment:
                     "Sync failed: bae's own copy of an image it made failed its check on this Mac; bae retries by itself."
             )
-        case .enterNewRestoreCode:
-            String(
-                localized:
-                    "Enter the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent.",
-                comment:
-                    "Sync status line after another of the person's devices made a new restore code: entering it restores the library on this Mac, and the restore loses what this Mac had not sent."
-            )
+        case .enterNewRestoreCode(let madeOn):
+            [
+                madeOn?.localizedLine,
+                String(
+                    localized:
+                        "Enter the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent.",
+                    comment:
+                        "Sync status line after another of the person's devices made a new restore code: entering it restores the library on this Mac, and the restore loses what this Mac had not sent."
+                ),
+            ]
+            .compactMap { $0 }
+            .joined(separator: " ")
         case .changesStayOnDevice:
             String(
                 localized: "Your changes stay on this Mac.",

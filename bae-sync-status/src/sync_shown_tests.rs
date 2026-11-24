@@ -153,20 +153,32 @@ fn every_state_shows_its_words_color_cause_and_fix() {
 
     let by_pass = |failure, named: Names| dropbox(failed_status(failure, named));
     check(dropbox(needs_reset_state()), W::DeviceNeedsReset, T::Danger, None, Some(F::ResetDevice));
-    let keys_replaced = coven::SyncState::NeedsReset {
-        reason: coven::ResetReason::MemberKeysReplaced {
-            member: coven::MemberId(uuid::Uuid::from_u128(7)),
-            by: None,
-        },
-        unsent: coven::UnsentWork { writes: 1, files: 0 },
+    let member = coven::MemberId(uuid::Uuid::from_u128(7));
+    let replaced_by = |by: Option<coven::ReplacingDevice>| {
+        dropbox(coven::SyncState::NeedsReset {
+            reason: coven::ResetReason::MemberKeysReplaced { member, by },
+            unsent: coven::UnsentWork { writes: 1, files: 0 },
+        })
     };
-    check(
-        dropbox(keys_replaced),
-        W::NewRestoreCode,
-        T::Warning,
-        Some(C::EnterNewRestoreCode),
-        Some(F::EnterRestoreCode),
-    );
+    let device = |owner| coven::ReplacingDevice {
+        device: coven::NamedDevice { id: coven::DeviceId(3), name: "iPhone".into() },
+        member: owner,
+    };
+    // The member's own device made the code, so the cause names it; an
+    // admin's device, or none read, names nothing.
+    for (by, named) in [
+        (Some(device(member)), Some("iPhone".to_owned())),
+        (Some(device(coven::MemberId(uuid::Uuid::from_u128(8)))), None),
+        (None, None),
+    ] {
+        check(
+            replaced_by(by),
+            W::NewRestoreCode,
+            T::Warning,
+            Some(C::EnterNewRestoreCode { device: named }),
+            Some(F::EnterRestoreCode),
+        );
+    }
     check(
         by_pass(
             coven::StatusFailure::Storage(coven::StorageFailure::PermissionDenied),

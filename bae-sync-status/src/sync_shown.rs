@@ -85,7 +85,11 @@ pub enum SyncCauseLine {
     /// restores the library on this device as a new device, and the restore
     /// discards what this device has not sent, since coven refuses every
     /// write signed with the keys the new code replaced.
-    EnterNewRestoreCode,
+    EnterNewRestoreCode {
+        /// The name of the person's own device that made the code; none when
+        /// this device has not read who made it, or an admin made it.
+        device: Option<String>,
+    },
     /// The provider answered with an error, told as the provider told it.
     ProviderError {
         provider: CloudProvider,
@@ -214,9 +218,16 @@ impl SyncStatusSnapshot {
             SyncState::Removed { .. } => SyncShown::new(W::RemovedFromTheLibrary, T::Danger)
                 .because(SyncCauseLine::OldCopy)
                 .fixed_by(SyncFix::RemoveFromThisDevice),
-            SyncState::NeedsReset { reason: ResetReason::MemberKeysReplaced { .. }, .. } => {
+            SyncState::NeedsReset {
+                reason: ResetReason::MemberKeysReplaced { member, by },
+                ..
+            } => {
+                let device = by
+                    .as_ref()
+                    .filter(|replacer| replacer.member == *member)
+                    .map(|replacer| replacer.device.name.clone());
                 SyncShown::new(W::NewRestoreCode, T::Warning)
-                    .because(SyncCauseLine::EnterNewRestoreCode)
+                    .because(SyncCauseLine::EnterNewRestoreCode { device })
                     .fixed_by(SyncFix::EnterRestoreCode)
             }
             SyncState::NeedsReset {

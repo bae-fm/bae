@@ -856,7 +856,18 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
         });
         std::iter::once(message).chain(countdown)
     })
+    .chain(new_code_made_on())
     .collect()
+}
+
+/// The sentence naming the device a new restore code was made on.
+fn new_code_made_on() -> Option<BridgeMessage> {
+    let cause =
+        bae_sync_status::SyncCauseLine::EnterNewRestoreCode { device: Some("iPhone".into()) };
+    match BridgeSyncCause::from_core(cause) {
+        BridgeSyncCause::EnterNewRestoreCode { made_on } => made_on,
+        other => panic!("a new restore code is its own cause, not {other:?}"),
+    }
 }
 
 /// The causes that name the device reach a UI as themselves, not as a
@@ -874,8 +885,17 @@ fn device_causes_are_the_platforms_to_word() {
         BridgeSyncCause::BaeProblemOnDevice
     );
     assert_eq!(
-        BridgeSyncCause::from_core(C::EnterNewRestoreCode),
-        BridgeSyncCause::EnterNewRestoreCode
+        BridgeSyncCause::from_core(C::EnterNewRestoreCode { device: None }),
+        BridgeSyncCause::EnterNewRestoreCode { made_on: None }
+    );
+    assert_eq!(
+        BridgeSyncCause::from_core(C::EnterNewRestoreCode { device: Some("iPhone".into()) }),
+        BridgeSyncCause::EnterNewRestoreCode {
+            made_on: Some(BridgeMessage {
+                key: "core.sync.cause.new_code_made_on".into(),
+                args: vec![BridgeMessageArg::new("device", "iPhone".into())],
+            })
+        }
     );
     assert_eq!(
         BridgeSyncCause::from_core(C::ChangesStayOnDevice),

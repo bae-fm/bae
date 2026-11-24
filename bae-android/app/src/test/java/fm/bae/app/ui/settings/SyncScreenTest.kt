@@ -246,7 +246,14 @@ class SyncScreenTest {
                         statusKey = "core.sync.status.new_restore_code",
                         shortStatusKey = "core.sync.status.new_restore_code",
                         tone = BridgeSyncTone.WARNING,
-                        cause = BridgeSyncCause.EnterNewRestoreCode,
+                        cause =
+                            BridgeSyncCause.EnterNewRestoreCode(
+                                madeOn =
+                                    BridgeMessage(
+                                        "core.sync.cause.new_code_made_on",
+                                        listOf(BridgeMessageArg("device", "iPhone")),
+                                    ),
+                            ),
                         fix = BridgeSyncFix.EnterRestoreCode,
                         lastSynced = null,
                     ),
@@ -267,7 +274,8 @@ class SyncScreenTest {
         compose.onNodeWithText("New restore code").assertExists()
         compose
             .onNodeWithText(
-                "Enter the new restore code to restore the library on this device. " +
+                "You made the new code on your iPhone. " +
+                    "Enter the new restore code to restore the library on this device. " +
                     "The restore discards any changes this device has not sent.",
             ).assertExists()
         compose.onNodeWithText("Enter restore code…").performClick()

@@ -563,7 +563,11 @@ pub enum BridgeSyncCause {
     /// Another of the person's devices made a new restore code: entering it
     /// restores the library on this device, and the restore discards what
     /// this device has not sent.
-    EnterNewRestoreCode,
+    EnterNewRestoreCode {
+        /// "You made the new code on your iPhone", in core's words, when the
+        /// code was made on one of the person's own devices.
+        made_on: Option<BridgeMessage>,
+    },
     /// The changes this device made stay on it until it signs in again.
     ChangesStayOnDevice,
 }
@@ -698,7 +702,14 @@ impl BridgeSyncCause {
             C::DeviceDiskDenied => plain("core.sync.cause.disk_denied"),
             C::DeviceKeysUnreadable => return Self::DeviceKeysUnreadable,
             C::BaeProblemOnDevice => return Self::BaeProblemOnDevice,
-            C::EnterNewRestoreCode => return Self::EnterNewRestoreCode,
+            C::EnterNewRestoreCode { device } => {
+                return Self::EnterNewRestoreCode {
+                    made_on: device.map(|device| BridgeMessage {
+                        key: "core.sync.cause.new_code_made_on".to_string(),
+                        args: vec![BridgeMessageArg::new("device", device)],
+                    }),
+                }
+            }
             C::ChangesStayOnDevice => return Self::ChangesStayOnDevice,
             C::ProviderError { provider, detail } => BridgeMessage {
                 key: "core.sync.cause.provider_error".to_string(),

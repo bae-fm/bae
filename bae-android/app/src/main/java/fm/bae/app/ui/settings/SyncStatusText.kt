@@ -41,8 +41,11 @@ internal fun syncCauseText(
             context.getString(R.string.sync_cause_bae_problem)
         }
 
-        BridgeSyncCause.EnterNewRestoreCode -> {
-            context.getString(R.string.sync_cause_enter_new_restore_code)
+        is BridgeSyncCause.EnterNewRestoreCode -> {
+            listOfNotNull(
+                cause.madeOn?.let(context::coreString),
+                context.getString(R.string.sync_cause_enter_new_restore_code),
+            ).joinToString(" ")
         }
 
         BridgeSyncCause.ChangesStayOnDevice -> {

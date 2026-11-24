@@ -15802,6 +15802,40 @@ da = "En administrator har fjernet denne enhed. Det, der er her, er en gammel ko
 nb = "En administrator fjernet denne enheten. Det som er her, er en gammel kopi."
 fi = "Ylläpitäjä poisti tämän laitteen. Täällä oleva on vanha kopio."
 
+[messages."core.sync.cause.new_code_made_on"]
+comment = "Why sync stopped, first sentence: the person made the new restore code on one of their own devices; {device} is that device's name, such as iPhone."
+args = { device = "Str" }
+value = "You made the new code on your {device}."
+
+[messages."core.sync.cause.new_code_made_on".translations]
+es = "Creaste el nuevo código en tu {device}."
+fr = "Vous avez créé le nouveau code sur votre {device}."
+de = "Du hast den neuen Code auf deinem {device} erstellt."
+pt-BR = "Você criou o novo código no seu dispositivo {device}."
+ja = "新しいコードは、お使いの{device}で作成しました。"
+ko = "새 코드를 내 {device}에서 만들었습니다."
+zh-Hans = "新的恢复码是你在自己的{device}上生成的。"
+ar = "أنشأت الرمز الجديد على {device} الخاص بك."
+he = "יצרת את הקוד החדש ב{device} שלך."
+uk = "Ви створили новий код на своєму пристрої {device}."
+bg = "Създадохте новия код на вашето устройство {device}."
+pl = "Nowy kod utworzono na Twoim urządzeniu: {device}."
+cs = "Nový kód jste vytvořili na svém zařízení {device}."
+hr = "Novi kod izradili ste na svom uređaju {device}."
+zh-Hant = "新的還原碼是你在自己的{device}上建立的。"
+it = "Hai creato il nuovo codice sul tuo dispositivo {device}."
+tr = "Yeni kodu {device} cihazında oluşturdun."
+nl = "Je hebt de nieuwe code gemaakt op je {device}."
+sk = "Nový kód ste vytvorili na svojom zariadení {device}."
+hu = "Az új kódot a(z) {device} eszközödön hoztad létre."
+ro = "Ai creat noul cod pe dispozitivul tău {device}."
+el = "Δημιουργήσατε τον νέο κωδικό στη συσκευή σας {device}."
+pt-PT = "Criou o novo código no seu dispositivo {device}."
+sv = "Du skapade den nya koden på din enhet {device}."
+da = "Du har oprettet den nye kode på din enhed {device}."
+nb = "Du opprettet den nye koden på enheten din, {device}."
+fi = "Loit uuden koodin laitteellasi {device}."
+
 [messages."core.sync.cause.free_space"]
 comment = "Why sync stopped: the cloud provider's quota is used up."
 value = "Free up space in the cloud."
