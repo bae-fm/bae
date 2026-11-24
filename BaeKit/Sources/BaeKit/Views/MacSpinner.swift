@@ -6,45 +6,50 @@ import SwiftUI
 /// a flow, draws a bar instead.
 public struct MacSpinner: View {
     private let words: Text?
-    private let isGlyphSize: Bool
+    private let size: CGFloat?
 
     /// The spinner alone, where what it waits on is said elsewhere.
     public init() {
         words = nil
-        isGlyphSize = false
+        size = nil
     }
 
     /// The spinner alone, 11 points across as a glyph at the end of a menu
     /// line is.
     public static var glyph: MacSpinner {
-        MacSpinner(isGlyphSize: true)
+        sized(11)
     }
 
-    private init(isGlyphSize: Bool) {
+    /// The spinner alone, `size` points across.
+    public static func sized(_ size: CGFloat) -> MacSpinner {
+        MacSpinner(size: size)
+    }
+
+    private init(size: CGFloat) {
         words = nil
-        self.isGlyphSize = isGlyphSize
+        self.size = size
     }
 
     /// The spinner, with `words` beside it.
     public init(_ words: Text) {
         self.words = words
-        isGlyphSize = false
+        size = nil
     }
 
     /// The spinner, with the words `key` names beside it.
     public init(_ key: LocalizedStringKey) {
         words = Text(key)
-        isGlyphSize = false
+        size = nil
     }
 
-    /// The system's small spinner is 16 points across; a glyph-sized one
-    /// draws it scaled into 11.
+    /// The system's small spinner is 16 points across; a smaller one draws
+    /// it scaled into its size.
     @ViewBuilder
     private var sized: some View {
-        if isGlyphSize {
+        if let size {
             SystemSpinner()
-                .scaleEffect(11 / 16)
-                .frame(width: 11, height: 11)
+                .scaleEffect(size / 16)
+                .frame(width: size, height: size)
         }
         else {
             SystemSpinner()

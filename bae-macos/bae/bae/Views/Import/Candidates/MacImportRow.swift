@@ -192,7 +192,7 @@ extension MacImportRow {
                 .help(waiting)
                 .accessibilityLabel(waiting)
         case .running:
-            MacSpinner()
+            MacSpinner.sized(12)
                 .help(String(localized: "Identifying\u{2026}"))
         }
     }
