@@ -20,8 +20,6 @@ struct RecordArrow: View {
                 Image(systemName: "arrow.up.right")
                     .themeIcon(.medium)
                     .foregroundStyle(Theme.textSecondary)
-                    .frame(width: Self.width, height: Self.width)
-                    .accessibilityElement(children: .ignore)
                     .accessibilityIdentifier("identified-glyph")
                     .accessibilityLabel(
                         localizedCoreString("core.identity.identified")
@@ -29,9 +27,9 @@ struct RecordArrow: View {
             }
             else {
                 Color.clear
-                    .frame(width: Self.width, height: Self.width)
             }
         }
+        .frame(width: Self.width, height: Self.width)
         .allowsHitTesting(false)
         .fixedSize()
     }
