@@ -101,7 +101,6 @@
 .bae-m-ifile { width: 100%; box-sizing: border-box; text-align: start; }
 .bae-m-fo-sec { width: 100%; box-sizing: border-box; text-align: start; }
 .bae-m-fo-back { display: flex; align-items: center; gap: var(--space-inline); }
-.bae-m-fo-close { flex: none; display: inline-flex; align-items: flex-start; }
 .bae-m-reclink { text-decoration: none; }
 .bae-m-reclink-button { padding: 0; border: 0; background: none; cursor: default; }
 /* A field drawn as the value it holds: the field's fill shows under the pointer and while it has focus. It pulls out by its padding so its words keep the column's edge. */

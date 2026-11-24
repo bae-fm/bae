@@ -306,7 +306,8 @@
     return h('div', { className: 'bae-m-card bae-m-fo' },
       h('div', { className: 'bae-m-fo-head' }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent bae-m-fo-back' }, h(Sym, { name: 'left', size: 12 }), 'Back'), h('span', { className: 'bae-strong', style: { position: 'absolute', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' } }, 'Identify')),
       h('div', { className: 'bae-divider' }),
-      props.discogsBar ? h('div', { style: { padding: 'var(--space-group)' } }, h(MacNotice, { tone: 'info' }, h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))' } }, h('div', { style: { flex: 1 } }, h('div', { className: 'bae-strong' }, 'Add Discogs to find more pressings'), h('div', { className: 'bae-muted' }, 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.')), h(MacButton, { kind: 'primary', size: 'small' }, 'Open Settings'), h('button', { type: 'button', className: 'bae-plainbtn bae-m-fo-close', 'aria-label': 'Close' }, h(Sym, { name: 'close', size: 11 }))))) : null,
+      // The Discogs bar is the shared notice: its title, what to do, Open settings and the × that dismisses it.
+      props.discogsBar ? h('div', { style: { padding: 'var(--space-group)' } }, h(MacNotice, { tone: 'info', title: 'Add Discogs to find more pressings', subtitle: 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.', action: 'Open settings', dismiss: true })) : null,
       head('Automatic', props.autoStatus === 'working' ? h(MacSpinner, { size: 11 }) : props.autoStatus === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'chip' }) : null),
       open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, k) : null,
       h('div', { className: 'bae-divider' }),
