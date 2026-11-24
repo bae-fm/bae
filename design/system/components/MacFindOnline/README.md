@@ -1,6 +1,6 @@
 # MacFindOnline
 
-Identify: the Back button and Identify, the Discogs bar, a `MacNotice` with Open settings and the × that dismisses it, then Automatic and Search, each heading a button that opens its section, one open at a time. The children fill Search when it is open.
+Identify: the Back button and Identify, the Discogs bar, a `MacNotice` with Open settings and the × that dismisses it, then Automatic and Search, each heading a button that opens its section, one open at a time. The open section's button reads selected. The children fill Search when it is open.
 
 Automatic draws itself from its run's state (`automatic`), as the app's MacFindOnline draws from the run:
 
