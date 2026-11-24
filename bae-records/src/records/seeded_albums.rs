@@ -5,7 +5,7 @@ use super::*;
 
 /// One album as a fixture writes it: the album, the artists it credits after
 /// its own, its one release with that release's tracks, the cover the
-/// release shows with the bytes it stores, and the audio its tracks play.
+/// release shows with its copies, and the audio its tracks play.
 pub struct SeededAlbum {
     pub album: DbAlbum,
     pub credits: Vec<DbAlbumArtist>,
@@ -13,7 +13,7 @@ pub struct SeededAlbum {
     /// The release's one medium, which its tracks sit on.
     pub medium: DbReleaseMedium,
     pub tracks: Vec<DbTrack>,
-    pub cover: Option<(DbLibraryImage, Vec<u8>)>,
+    pub cover: Option<NewCover>,
     /// `None` for an album whose tracks play nothing.
     pub audio: Option<SeededAudio>,
 }
@@ -35,13 +35,10 @@ impl Records {
         artists: Vec<DbArtist>,
         mut albums: Vec<SeededAlbum>,
     ) -> Result<(), IdentityWriteError> {
-        // Each cover's bytes, then each release file's original, are staged
+        // Each cover's copies, then each release file's original, are staged
         // as coven files in album order, which the rows then reference.
-        let cover_files: Vec<(&'static str, Vec<u8>)> = albums
-            .iter()
-            .filter_map(|seeded| seeded.cover.as_ref())
-            .map(|(image, bytes)| (image.image_type.namespace(), bytes.clone()))
-            .collect();
+        let covers_to_stage: Vec<NewCover> =
+            albums.iter().filter_map(|seeded| seeded.cover.clone()).collect();
         let mut originals = Vec::new();
         let mut audios = Vec::new();
         let pressing: Vec<super::label_resolution::PressingParts> = albums
@@ -63,12 +60,10 @@ impl Records {
         self.store
             .write_staged(
                 move |batch| {
-                    Ok(cover_files
-                        .into_iter()
-                        .map(|(namespace, bytes)| {
-                            batch.put_file(namespace, bytes, coven::Place::Cloud)
-                        })
-                        .collect::<Vec<coven::FileId>>())
+                    Ok(covers_to_stage
+                        .iter()
+                        .map(|cover| stage_cover(batch, cover))
+                        .collect::<Vec<StagedCover>>())
                 },
                 move |sql, covers| {
                     let files = originals
@@ -102,8 +97,11 @@ impl Records {
                         for track in &seeded.tracks {
                             insert_track_row(tx, track)?;
                         }
-                        if let Some((image, _)) = &seeded.cover {
-                            upsert_library_image_row(tx, image, &staged(covers.next()))?;
+                        if let Some(cover) = &seeded.cover {
+                            let staged_cover = covers
+                                .next()
+                                .expect("every seeded cover has its files staged for it");
+                            upsert_cover_row(tx, cover, &staged_cover)?;
                         }
                     }
                     // The files go in after every release, each referencing the

@@ -584,22 +584,82 @@ fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, 
     value.map(|value| to_i64(value, what)).transpose()
 }
 
-/// Write an image's row, pointing it at `file`, the coven file its write
-/// staged.
-pub fn upsert_library_image_row(
+/// Write an artist image's row, pointing it at `file`, the coven file its
+/// write staged.
+pub fn upsert_artist_image_row(
     conn: &CovenWrite<'_>,
-    image: &DbLibraryImage,
+    image: &DbArtistImage,
     file: &coven::FileId,
 ) -> Result<(), DbError> {
-    let table = image_table(&image.image_type);
     conn.execute(
-        &format!(
-            "INSERT INTO {table} (id, file, content_type) VALUES (?, ?, ?) \
-             ON CONFLICT(id) DO UPDATE SET \
-                 file = excluded.file, \
-                 content_type = excluded.content_type"
-        ),
-        params![image.id, file, image.content_type.as_str()],
+        "INSERT INTO artist_images (id, file, content_type) VALUES (?, ?, ?) \
+         ON CONFLICT(id) DO UPDATE SET \
+             file = excluded.file, \
+             content_type = excluded.content_type",
+        params![image.artist_id, file, image.content_type.as_str()],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+/// The coven files a cover's write staged, which its row references.
+#[derive(Debug, Clone)]
+pub struct StagedCover {
+    pub browse: coven::FileId,
+    pub large: coven::FileId,
+    /// The kept original; `None` when the cover is one of the release's
+    /// files.
+    pub original: Option<coven::FileId>,
+}
+
+/// Stage a cover's copies, and its original when it keeps one, as coven
+/// files for the cloud, each in its own namespace.
+pub fn stage_cover(w: &mut coven::WriteBatch<'_>, cover: &NewCover) -> StagedCover {
+    let browse = w.put_file(
+        crate::synced::COVER_BROWSE_NAMESPACE,
+        cover.browse.clone(),
+        coven::Place::Cloud,
+    );
+    let large =
+        w.put_file(crate::synced::COVER_LARGE_NAMESPACE, cover.large.clone(), coven::Place::Cloud);
+    let original = match &cover.picture {
+        NewCoverPicture::ReleaseFile { .. } => None,
+        NewCoverPicture::Original { bytes } => Some(w.put_file(
+            crate::synced::COVER_ORIGINALS_NAMESPACE,
+            bytes.clone(),
+            coven::Place::Cloud,
+        )),
+    };
+    StagedCover { browse, large, original }
+}
+
+/// Write a cover's row, pointing it at the files its write staged.
+pub fn upsert_cover_row(
+    conn: &CovenWrite<'_>,
+    cover: &NewCover,
+    staged: &StagedCover,
+) -> Result<(), DbError> {
+    let source_file = match &cover.picture {
+        NewCoverPicture::ReleaseFile { file_id } => Some(file_id.as_str()),
+        NewCoverPicture::Original { .. } => None,
+    };
+    conn.execute(
+        "INSERT INTO covers (id, source_file, original_file, browse_file, large_file, content_type) \
+         VALUES (?, ?, ?, ?, ?, ?) \
+         ON CONFLICT(id) DO UPDATE SET \
+             source_file = excluded.source_file, \
+             original_file = excluded.original_file, \
+             browse_file = excluded.browse_file, \
+             large_file = excluded.large_file, \
+             content_type = excluded.content_type",
+        params![
+            cover.release_id,
+            source_file,
+            staged.original,
+            staged.browse,
+            staged.large,
+            cover.content_type.as_str()
+        ],
     )
     .map(|_| ())
     .map_err(DbError::from)

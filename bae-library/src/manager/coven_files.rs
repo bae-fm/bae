@@ -36,6 +36,26 @@ impl LibraryManager {
         self.library_image_file(id, image_type).await
     }
 
+    /// Write `cover` as the cover of its release, for tests that need one
+    /// without the import that makes it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn write_test_cover(&self, cover: bae_records::NewCover) -> Result<(), LibraryError> {
+        self.records.write_cover(cover).await?;
+        Ok(())
+    }
+
+    /// Write `bytes` as the image of an artist, for tests that need one
+    /// without the import that makes it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn write_test_artist_image(
+        &self,
+        image: &bae_records::DbArtistImage,
+        bytes: &[u8],
+    ) -> Result<(), LibraryError> {
+        self.records.write_artist_image(image, bytes).await?;
+        Ok(())
+    }
+
     /// Wait for every file of a release being pinned to be kept whole on
     /// this device.
     #[cfg(any(test, feature = "test-utils"))]
@@ -88,40 +108,93 @@ impl LibraryManager {
         cover_ref_for(&self.records, release_id).await
     }
 
-    /// Read a host-provided library image's whole bytes through coven's
-    /// locality-aware read. The [`ImageRef`] carries the image kind, so the read
-    /// goes directly to the table/namespace that produced the ref.
+    /// Read a library image's bytes through coven's locality-aware read. The
+    /// [`ImageRef`] carries the image kind, so the read goes directly to the
+    /// table/namespace that produced the ref. A cover has two copies: `pixels`,
+    /// the longer edge of the slot that draws it, picks the browse copy or the
+    /// large one, and a read with no size takes the large copy. An artist's
+    /// image has one copy.
     pub async fn read_image_bytes(
         &self,
         image: &ImageRef,
+        pixels: Option<u32>,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        self.read_library_image_bytes(&image.id, &image.image_type).await
+        match image.image_type {
+            LibraryImageType::Cover => {
+                let copy = pixels.map_or(CoverCopy::Large, CoverCopy::covering);
+                self.read_cover_copy(&image.id, copy).await
+            }
+            LibraryImageType::Artist => {
+                self.read_library_image_bytes(&image.id, &image.image_type).await
+            }
+        }
     }
 
+    /// The large copy of the release's cover, the most bae keeps of it
+    /// besides its original; `None` when the release has no cover.
     pub async fn read_cover_image_bytes(
         &self,
         release_id: &str,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        self.read_library_image_bytes(release_id, &LibraryImageType::Cover).await
+        self.read_cover_copy(release_id, CoverCopy::Large).await
     }
 
-    /// Read a library image's whole bytes by its subject id and kind; `None`
-    /// when this device has no file for it.
+    /// One copy of the release's cover; `None` when the release has no cover.
+    pub async fn read_cover_copy(
+        &self,
+        release_id: &str,
+        copy: CoverCopy,
+    ) -> Result<Option<Vec<u8>>, LibraryError> {
+        let Some(file) = self.records.cover_copy_file(release_id, copy).await? else {
+            return Ok(None);
+        };
+        self.read_image_file(&format!("{copy:?} copy of {release_id}'s cover"), &file)
+            .await
+            .map(Some)
+    }
+
+    /// The release's cover original, the picture the viewer opens: the
+    /// catalog image or embedded art the cover keeps. `None` when the release
+    /// has no cover, or its cover is one of its image files, which the viewer
+    /// opens as it opens any of them.
+    pub async fn read_cover_original(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<Vec<u8>>, LibraryError> {
+        let Some(file) = self.records.cover_original_file(release_id).await? else {
+            return Ok(None);
+        };
+        self.read_image_file(&format!("original of {release_id}'s cover"), &file).await.map(Some)
+    }
+
+    /// Read a library image's bytes by its subject id and kind; for a cover,
+    /// its large copy. `None` when this device has no file for it.
     pub async fn read_library_image_bytes(
         &self,
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        let Some(file) = self.library_image_file(id, image_type).await? else {
-            return Ok(None);
-        };
+        match image_type {
+            LibraryImageType::Cover => self.read_cover_copy(id, CoverCopy::Large).await,
+            LibraryImageType::Artist => {
+                let Some(file) = self.library_image_file(id, image_type).await? else {
+                    return Ok(None);
+                };
+                self.read_image_file(&format!("image {id}"), &file).await.map(Some)
+            }
+        }
+    }
+
+    async fn read_image_file(
+        &self,
+        what: &str,
+        file: &coven::FileRef,
+    ) -> Result<Vec<u8>, LibraryError> {
         let lease = bae_store::lease_one(&self.files).await;
-        let bytes = self
-            .store
-            .read_file(&file, &lease)
+        self.store
+            .read_file(file, &lease)
             .await
-            .map_err(|e| LibraryError::file_read(format!("read image {id}"), e))?;
-        Ok(Some(bytes))
+            .map_err(|e| LibraryError::file_read(format!("read {what}"), e))
     }
 
     /// The coven file a library image's row references, as this device
@@ -165,16 +238,6 @@ impl LibraryManager {
             0,
             total_bytes(release_id, &pinnable)?,
         )?)
-    }
-
-    /// Store a bae-produced host-provided image and its row in one coven batch.
-    pub async fn store_library_image(
-        &self,
-        image: &DbLibraryImage,
-        bytes: &[u8],
-    ) -> Result<(), LibraryError> {
-        self.records.write_library_image(image, bytes).await?;
-        Ok(())
     }
 }
 

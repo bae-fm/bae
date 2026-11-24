@@ -2,7 +2,7 @@
 //! add rows under, and how a test checks what moved a live query.
 
 use super::library::RecordsFixture;
-use crate::{DbLibraryImage, LibraryImageType, Records};
+use crate::{DbArtistImage, Records};
 use bae_store::Store;
 use bae_util::content_type::ContentType;
 
@@ -35,12 +35,8 @@ pub async fn live_db(schema: bae_store::Schema) -> (Store, bae_util::test_files:
 pub async fn write_artist_image(records: &Records, artist: &str, content: &str) -> String {
     let bytes = content.as_bytes();
     records
-        .write_library_image(
-            &DbLibraryImage {
-                id: artist.into(),
-                image_type: LibraryImageType::Artist,
-                content_type: ContentType::Jpeg,
-            },
+        .write_artist_image(
+            &DbArtistImage { artist_id: artist.into(), content_type: ContentType::Jpeg },
             bytes,
         )
         .await

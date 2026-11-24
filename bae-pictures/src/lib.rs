@@ -17,7 +17,7 @@ mod types;
 #[cfg(libvips)]
 mod vips;
 
-pub use copy::{make_copy, CopyFormat, PictureCopy};
+pub use copy::{make_copy, make_copy_of_bytes, CopyFormat, PictureCopy};
 pub use flights::{FlightError, Flights};
 pub use gate::{Permit, Priority, Volumes};
 pub use origin::PictureOrigin;

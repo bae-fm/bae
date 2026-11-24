@@ -565,16 +565,21 @@ impl ImportService {
         db_release.album_loudness_lufs = loudness.album_loudness_lufs;
         db_release.album_peak_linear = loudness.album_peak_linear;
 
-        // Finalize writes the cover's bytes and row in one coven batch.
+        // Finalize writes the cover's copies and row in one coven batch.
         let cover_winner = match cover {
             Some(cover) => Some(
                 cover
-                    .stored(discovered_files, &db_release.id, &self.diagnostics, &self.files)
+                    .made(
+                        &self.pictures,
+                        discovered_files,
+                        &file_ids,
+                        &db_release.id,
+                        &self.diagnostics,
+                    )
                     .await?,
             ),
             None => None,
         };
-        let library_image = cover_winner.as_ref().map(|(image, bytes)| (image, bytes.as_slice()));
 
         // Past here the release is written in one transaction, which a cancel
         // no longer interrupts; one that came first stops the import here.
@@ -626,7 +631,7 @@ impl ImportService {
                     records,
                 },
                 prepared_files,
-                library_image,
+                cover_winner.as_ref(),
                 artist_images,
             )
             .await?;
@@ -670,7 +675,7 @@ impl ImportService {
         tracks_to_files: &[TrackFile],
         rows: crate::tables::ImportRows<'_>,
         files: Vec<PreparedImportFile>,
-        library_image: Option<(&bae_records::DbLibraryImage, &[u8])>,
+        cover: Option<&bae_records::NewCover>,
         artist_images: &[DiscogsArtistImage],
     ) -> Result<String, crate::ImportError> {
         let pictures = self.staged_artist_pictures(&rows.artists, artist_images).await?;
@@ -685,7 +690,7 @@ impl ImportService {
                 tracks_to_files,
                 rows,
                 files,
-                library_image,
+                cover,
                 crate::tables::NewArtistImages {
                     expected_new_artists: &pictures.expected_new_artists,
                     images: &images,

@@ -2080,7 +2080,8 @@ that serves it (the Cover Art Archive, Discogs), the album's front image as the
 album's, a gallery entry's number and what it shows (front, back, booklet and
 the archive's other types) and the archive's comment, joined by the language's
 separator. A release's gallery holds its cover and each image bae can show, a JPEG, PNG, GIF or WebP, and names its cover Cover and an image file by its
-filename. On Android the album page's cover opens the gallery only when the
+filename. A cover made from one of the release's image files is that file's entry, named Cover, so
+the picture shows once, first; a cover that keeps a picture of its own is an entry of its own, first. On Android the album page's cover opens the gallery only when the
 release has gallery items, and the gallery shows its page counter, with the
 number of items as its total, only when it holds more than one. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
@@ -2104,9 +2105,9 @@ pane shows no text or invitation to add an image.
 The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
-fetches them (step 2). Every image that syncs through coven (covers, artist
-images and avatars) is downscaled to at most 600 pixels on a side and
-stored as JPEG.
+fetches them (step 2). An artist image or an avatar that syncs through coven
+is downscaled to at most 600 pixels on a side and stored as JPEG. A cover is
+no one size: it keeps two copies of its picture, and the picture itself (§4.1).
 
 The Mac shows a candidate's folder images and the art embedded in its tags as
 copies that core makes, and its app never reads those files. A screen asks core
@@ -2515,29 +2516,50 @@ Two kinds of file, matching coven's
 - **Audio: the household's own files.** Every file of a release's folder,
   audio or not, is the person's file at its path. bae and coven record its
   path, size and modification time and never change, move or delete it.
-- **Covers, artist images and avatars: bae's own.** bae makes them, each
-  downscaled to at most 600 pixels as JPEG, and hands the bytes to coven,
-  which keeps them. It makes one from an image up to 8,192 pixels on its
-  longer side, a 48-megapixel camera photo included; a 16-bit PNG, which
-  takes twice the memory to decode, up to about 5,800 pixels square.
+- **Covers, artist images and avatars: bae's own.** bae makes them and hands
+  the bytes to coven, which keeps them. An artist image and an avatar are each
+  downscaled to at most 600 pixels as JPEG. A cover is a choice of one picture
+  and keeps two copies of it, below. bae makes them from an image up to 8,192
+  pixels on its longer side, a 48-megapixel camera photo included; a 16-bit
+  PNG, which takes twice the memory to decode, up to about 5,800 pixels square.
+
+**A cover is a choice of a picture.** A release's cover names the picture it is
+made from: one of the release's image files, or a picture of its own that the
+cover keeps, the catalog image the person picked or art embedded in one of the
+release's audio files. The cover keeps two copies of that picture, made when
+the cover is set: a browse copy that fits 768 pixels, which grids and rows
+draw, and a large copy that fits 1536, which the Mac's album panel, Android's
+full player and Now Playing draw. Each fits its size and is never larger than
+the picture. A picture with transparency makes two PNGs, any other two JPEGs,
+and the cover's row names the format of both. A slot asks for the copy that
+covers its size in pixels, and the apps decode no more than that copy. The
+viewer opens the picture itself, at full quality: the release's image file, or
+the cover's original. Every writer of a cover makes the copies and names the
+picture: the import, and the *Change cover* sheet of a library release.
+A catalog image or embedded art that the cover keeps is stored once, in the
+`cover_originals` namespace, and bae downloads it once, when it makes the
+cover; another device fetches it only when its viewer opens the cover.
+A cover made from an image file keeps no second copy of the file.
 
 A cover belongs to one release, an artist image to one artist, an avatar to one
 person. A row references its image by the id of a coven file, the record coven
 keeps of the bytes
 ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)):
-the `file` column of `covers` and `artist_images`, `avatar_id` of `people`. A
-coven file never changes its bytes, so changing a cover stages a new file and
-points the release's cover row at it in one write; the old file goes with its
-last reference, and coven deletes its stored bytes once nothing refers to them
+`browse_file`, `large_file` and `original_file` of `covers`, the `file` column
+of `artist_images`, `avatar_id` of `people`. A coven file never changes its
+bytes, so changing a cover stages new files and points the release's cover row
+at them in one write; the old files go with their last reference, and coven
+deletes their stored bytes once nothing refers to them
 ([coven §17.10](https://github.com/bae-fm/coven/blob/main/spec/coven.md#1710-deleting-stored-files)).
 When two artists merge (§2.3) and only the absorbed one has an image, the
 survivor's row references the same file: nothing is uploaded again.
 
-The three image references are bound
-([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)):
-the write that points a row at a new image goes out only once coven has
-stored the image's file, and another device receives the row and the stored
-file in one transaction. So no device but the one that made an image sees a
+The image references are bound
+([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)),
+except a cover's original, which trails the row, since an original can pass a
+bound file's limit: the write that points a row at a new image goes out only
+once coven has stored the image's file, and another device receives the row and
+the stored file in one transaction. So no device but the one that made an image sees a
 row naming an image it can't read, unless a schema change that needs every
 device updated is made between the write and the end of its upload. The write
 then goes out together with the change, and the stored file after them: a
@@ -2547,9 +2569,11 @@ arrives bae shows the image as unavailable.
 The device that made the image shows it at once, read from
 coven's own copy. Until the file is stored, that device's later writes wait
 behind it too, a rating made right after included, which is why a bound file
-must be small: coven refuses a write naming a file over 1.5 MiB. Every image
-that syncs through coven (a cover, an artist image or an avatar) is a JPEG at
-most 600 pixels across, which stays under that limit.
+must be small: coven refuses a write naming a file over its limit. An artist
+image and an avatar are JPEGs at most 600 pixels across, which stay under the
+default 1.5 MiB. A cover's browse copy may be 4 MiB and its large copy 16 MiB,
+because a PNG with transparency is larger than a JPEG; one over its limit
+makes no cover.
 
 When an image changes, every device and every Subsonic client shows the new
 one, and an image a device couldn't read shows once its file is stored.
@@ -2637,11 +2661,12 @@ at a local release's track points at a row every device can read
 Where a file is changes in coven's own record of it, with no change to a row
 of bae's (Appendix B).
 
-A release's cover is bound (§4.1), so it reaches other devices with the
+A release's cover copies are bound (§4.1), so they reach other devices with the
 release, local or not: the write that imports the release, or sets its cover,
-waits until coven has stored the cover, and other devices receive the
-release's rows and its stored cover together. coven uploads covers apart from
-the release files, never behind them, and pausing uploads doesn't hold them.
+waits until coven has stored the copies, and other devices receive the
+release's rows and its stored copies together. coven uploads covers apart from
+the release files, never behind them, and pausing uploads doesn't hold the
+copies. A cover's original trails its row, and uploads with the queue.
 That upload is bae's own file, not the release's: until its audio moves, the
 release reads as local everywhere, and nothing about it reads as uploading.
 Waiting files draw no progress bar; a bar appears only while a file's bytes
@@ -2843,9 +2868,16 @@ pushes the covers out:
 | Kind | Budget |
 |---|---|
 | Audio and the folder's other files | 20 GB, as Keep up to sets it (§4.7) |
-| Covers | 512 MiB |
+| Cover browse copies (768 pixels) | 1 GiB |
+| Cover large copies (1536 pixels) | 1 GiB |
+| Cover originals (catalog images and embedded art) | 512 MiB |
 | Artist images | 256 MiB |
 | Avatars | 64 MiB |
+
+A browse copy is about 100 KB, so its 1 GiB holds the copies of 10,000 albums,
+twice a library of 5,000. A device downloads a large copy (about 400 KB) only
+for a cover it shows large, and an original (about 2 MB) only when its viewer
+opens one.
 
 Pinned files don't count toward a budget: a device that pins 20 GiB of audio
 still caches the next album it plays from the cloud, up to the budget, and no
@@ -3101,7 +3133,8 @@ appears. The categories appear in this order.
 - **Pinned**: releases kept whole to play offline, and the pins on the way to
   being kept (the partial downloads a stopped pin keeps). Pinned releases don't
   count toward the cache (§4.3).
-- **Cache**: tracks played from the cloud, covers and pictures, and on a
+- **Cache**: tracks played from the cloud, covers' copies and originals,
+  pictures, and on a
   desktop the catalog images found while importing. bae downloads them again
   when the person plays or opens them.
 - **Library**: the library's database, its settings and keys, and the copies
@@ -4289,16 +4322,18 @@ with:
   ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)),
   each with its binding
   ([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)):
-  `file` on `release_files` is trailing, so a write setting it goes out at
-  once and other devices see the file on its uploading device until it is
-  stored; `file` on `covers` and `artist_images` and `avatar_id` on `people`
-  are bound, with coven's default limit of 1.5 MiB, so a write setting one
-  goes out only once its file is stored, together with it (§4.1).
+  `file` on `release_files` and `original_file` on `covers` are trailing, so a
+  write setting one goes out at once and other devices see the file on its
+  uploading device until it is stored; `browse_file` and `large_file` on
+  `covers`, `file` on `artist_images` and `avatar_id` on `people` are bound, so
+  a write setting one goes out only once its file is stored, together with it
+  (§4.1): with coven's default limit of 1.5 MiB, except `browse_file` (4 MiB)
+  and `large_file` (16 MiB).
 
-bae declares its four kinds of file when the store opens, each a coven
+bae declares its kinds of file when the store opens, each a coven
 *namespace* with its kind and this device's cache budget (§4.3):
-`release_files`, the person's own; `covers`, `artist_images` and `avatars`,
-bae's own. Each file is downloaded when it is first read.
+`release_files`, the person's own; `cover_browse`, `cover_large`,
+`cover_originals`, `artist_images` and `avatars`, bae's own. Each file is downloaded when it is first read.
 
 Appendix B lists every declaration. Every table bae creates is either
 declared or listed as device-local, so a new table stays on one device only
@@ -6225,7 +6260,7 @@ All sync.
 | `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
 | `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
-| `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, and its type |
+| `covers` | release's cover, keyed by the release: the picture it is made from, either one of the release's files (`source_file`) or a coven file of its own (`original_file`), exactly one; its browse copy and large copy, each a coven file it references (`browse_file`, `large_file`), with an index by each file; and the type of both copies |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1; none of its `/`-separated names empty), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, with the role it holds (a key of bae's list, `instrument` with an instrument's id, `voice` with a voice's id, `performer` with the catalog's words for its part, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
@@ -6505,7 +6540,7 @@ transfer queues (A.9), so they never sync.
 | `carved_tracks` | independent: its track | store | | |
 | `release_sheet_bindings` | shared key: the sheet's file and the `FILE` line | store | | |
 | `release_sheet_places` | shared key: the sheet's file | store | | |
-| `covers` | shared key: the release | store | | `file`, bound, in `covers`: bae's own; read on first use |
+| `covers` | shared key: the release | store | | `browse_file`, bound to 4 MiB, in `cover_browse`; `large_file`, bound to 16 MiB, in `cover_large`; `original_file`, trailing, in `cover_originals`: bae's own; each read on first use |
 | `artist_images` | shared key: the artist | store | | `file`, bound, in `artist_images`: bae's own; read on first use; shared by two merged artists |
 | `people` | shared key: the person's `MemberId` | store | yes | `avatar_id`, bound, in `avatars`: bae's own; read on first use |
 | `ratings` | shared key: the person, and the album or track | store | yes | |

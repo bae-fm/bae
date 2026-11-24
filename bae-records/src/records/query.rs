@@ -45,17 +45,13 @@ pub fn artist_is_shown(alias: &str) -> String {
     )
 }
 
-/// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
-/// type, so `image_type` is supplied by the caller rather than read from a column.
-pub(super) fn row_to_library_image(
-    row: &Row,
-    image_type: LibraryImageType,
-) -> rusqlite::Result<DbLibraryImage> {
-    Ok(DbLibraryImage {
-        id: row.get("id")?,
-        image_type,
-        content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
-    })
+/// The column of an image's table that names the file the image is read
+/// from: a cover's browse copy, or the artist image's own file.
+pub(super) fn image_file_column(image_type: &LibraryImageType) -> &'static str {
+    match image_type {
+        LibraryImageType::Cover => "browse_file",
+        LibraryImageType::Artist => "file",
+    }
 }
 
 /// Each release with files in coven's upload queue, and where its first

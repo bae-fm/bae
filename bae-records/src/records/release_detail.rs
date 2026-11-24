@@ -85,6 +85,8 @@ pub fn release_details_on<X>(
                 storage.stored = 1 AS remote, \
                 {upload_columns}, \
                 {cover_version} AS cover_version, \
+                (SELECT cover.source_file FROM covers AS cover WHERE cover.id = rel.id) \
+                    AS cover_source_file, \
                 (SELECT number FROM release_number_in_album WHERE release_id = rel.id) \
                     AS release_number{extra_columns} \
          FROM releases rel \
@@ -131,6 +133,7 @@ pub fn release_details_on<X>(
             remote: row.get("remote")?,
             upload: super::queued_uploads::release_upload_in_row(row)?,
             cover_version: row.get("cover_version")?,
+            cover_source_file: row.get("cover_source_file")?,
             release_number: row.get("release_number")?,
         };
         Ok((detail, extra(row)?))
@@ -154,6 +157,7 @@ pub struct DbReleaseDetailRows {
     remote: bool,
     upload: Option<DbReleaseUpload>,
     cover_version: Option<String>,
+    cover_source_file: Option<String>,
     release_number: i64,
 }
 
@@ -180,6 +184,7 @@ impl DbReleaseDetailRows {
             remote: self.remote,
             upload: self.upload,
             cover_version: self.cover_version,
+            cover_source_file: self.cover_source_file,
             release_number: self.release_number,
         }
     }

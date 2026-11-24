@@ -264,14 +264,13 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
 
     lib.library
         .manager()
-        .store_library_image(
-            &bae_records::DbLibraryImage {
-                id: lib.per_track_release.clone(),
-                image_type: bae_records::LibraryImageType::Cover,
-                content_type: bae_util::content_type::ContentType::Png,
-            },
-            &bae_catalogs::test_image_host::cover_png(),
-        )
+        .write_test_cover(bae_records::NewCover {
+            content_type: bae_util::content_type::ContentType::Png,
+            ..bae_records::test_fixtures::test_cover(
+                &lib.per_track_release,
+                &bae_catalogs::test_image_host::cover_png(),
+            )
+        })
         .await
         .unwrap();
 
@@ -299,10 +298,9 @@ async fn an_artist_cover_art_is_the_artist_image() {
     let image = bae_catalogs::test_image_host::cover_png();
     lib.library
         .manager()
-        .store_library_image(
-            &bae_records::DbLibraryImage {
-                id: artist_id,
-                image_type: bae_records::LibraryImageType::Artist,
+        .write_test_artist_image(
+            &bae_records::DbArtistImage {
+                artist_id,
                 content_type: bae_util::content_type::ContentType::Png,
             },
             &image,

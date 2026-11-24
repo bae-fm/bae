@@ -183,14 +183,7 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
     // import / change_cover does.
     let bytes = b"cover-jpeg-bytes";
     mgr.manager()
-        .store_library_image(
-            &bae_records::DbLibraryImage {
-                id: release_id.clone(),
-                image_type: bae_records::LibraryImageType::Cover,
-                content_type: bae_util::content_type::ContentType::Jpeg,
-            },
-            bytes,
-        )
+        .write_test_cover(bae_records::test_fixtures::test_cover(&release_id, bytes))
         .await
         .unwrap();
 
@@ -406,7 +399,7 @@ async fn test_missing_external_source_maps_to_error() {
 
     let result = mgr
         .manager()
-        .read_gallery_bytes(&release_id, &GallerySource::ReleaseFile { file_id: file.id })
+        .read_gallery_bytes(&release_id, &GallerySource::ReleaseFile { file_id: file.id }, None)
         .await;
     assert!(result.is_err(), "a vanished external source must surface a read error");
 }

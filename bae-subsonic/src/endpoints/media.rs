@@ -396,24 +396,30 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
     let services = &state.services;
     let (subject_id, image_type) = cover_subject(services, params.require("id")?).await?;
 
-    // `size` scaling isn't applied: images are stored pre-resized, so the stored
-    // image is served at its stored size.
+    // `size` scaling isn't applied: images are stored pre-resized, so the largest
+    // stored copy is served at its stored size.
     if params.get("size").is_some() {
         debug!("getCoverArt: size scaling is not applied; serving the stored image");
     }
 
-    let row = services
-        .get_library_image(&subject_id, &image_type)
-        .await
-        .map_err(lib_err)?
-        .ok_or_else(SubError::not_found)?;
+    let content_type = match image_type {
+        LibraryImageType::Cover => {
+            services.get_cover(&subject_id).await.map_err(lib_err)?.map(|cover| cover.content_type)
+        }
+        LibraryImageType::Artist => services
+            .get_artist_image(&subject_id)
+            .await
+            .map_err(lib_err)?
+            .map(|image| image.content_type),
+    }
+    .ok_or_else(SubError::not_found)?;
     let bytes = services
         .read_library_image_bytes(&subject_id, &image_type)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
 
-    Ok(([(CONTENT_TYPE, row.content_type.as_str().to_string())], bytes).into_response())
+    Ok(([(CONTENT_TYPE, content_type.as_str().to_string())], bytes).into_response())
 }
 
 /// The image a `getCoverArt` id names: an album's or a song's release cover,

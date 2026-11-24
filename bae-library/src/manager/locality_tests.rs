@@ -383,7 +383,10 @@ async fn unpinning_a_release_removes_its_audio_from_this_device_and_leaves_its_c
 
     manager.upload_release(&release.id).await.unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(uploaded, 1, "the release's file uploads; its cover is stored already");
+    assert_eq!(
+        uploaded, 2,
+        "the release's file and its cover's original upload; the cover's copies are stored already"
+    );
     pin_directly(manager, &release.id).await;
     let file_id = release_files(manager, &release.id).await[0].id.clone();
     assert!(
@@ -393,7 +396,7 @@ async fn unpinning_a_release_removes_its_audio_from_this_device_and_leaves_its_c
     let audio = namespace_bytes(manager, bae_records::synced::RELEASE_FILES_NAMESPACE).await;
     assert!(audio.pinned > 0, "the pinned audio is measured as pinned: {audio:?}");
     assert!(audio.budget > audio.pinned, "the budget has room to spare");
-    let covers_before = namespace_bytes(manager, bae_records::synced::COVERS_NAMESPACE).await;
+    let covers_before = namespace_bytes(manager, bae_records::synced::COVER_BROWSE_NAMESPACE).await;
     assert_eq!(covers_before.pinned, 0, "a cover is never pinned");
 
     manager.unpin_releases(std::slice::from_ref(&release.id)).await.unwrap();
@@ -404,7 +407,7 @@ async fn unpinning_a_release_removes_its_audio_from_this_device_and_leaves_its_c
     );
     let audio = namespace_bytes(manager, bae_records::synced::RELEASE_FILES_NAMESPACE).await;
     assert_eq!((audio.pinned, audio.cached), (0, 0), "the audio left this device: {audio:?}");
-    let covers = namespace_bytes(manager, bae_records::synced::COVERS_NAMESPACE).await;
+    let covers = namespace_bytes(manager, bae_records::synced::COVER_BROWSE_NAMESPACE).await;
     assert_eq!(covers.cached, covers_before.cached, "the cover stays cached");
 }
 

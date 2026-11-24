@@ -97,7 +97,7 @@ struct Commit<'a> {
     track_files: &'a [crate::TrackFile],
     rows: crate::tables::ImportRows<'a>,
     files: Vec<crate::service::PreparedImportFile>,
-    library_image: Option<(&'a DbLibraryImage, &'a [u8])>,
+    cover: Option<&'a bae_records::NewCover>,
     artist_images: crate::tables::NewArtistImages<'a>,
 }
 
@@ -157,7 +157,7 @@ async fn commit_import(db: &Store, release: &DbRelease, commit: Commit<'_>) {
             commit.track_files,
             crate::tables::ImportRows { mediums: &mediums, ..commit.rows },
             commit.files,
-            commit.library_image,
+            commit.cover,
             commit.artist_images,
         )
         .await

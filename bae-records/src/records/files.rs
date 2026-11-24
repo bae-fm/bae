@@ -14,21 +14,21 @@ pub enum ImageWriteRefusal {
 pub type ImageWriteError = WriteError<ImageWriteRefusal>;
 
 impl Records {
-    /// Replace an image's bytes and row atomically: the write stages the bytes
-    /// as a new coven file and points the row at it, and the file the row named
-    /// before goes with its last reference.
-    pub async fn write_library_image(
+    /// Replace an artist's image bytes and row atomically: the write stages
+    /// the bytes as a new coven file and points the row at it, and the file
+    /// the row named before goes with its last reference.
+    pub async fn write_artist_image(
         &self,
-        image: &DbLibraryImage,
+        image: &DbArtistImage,
         bytes: &[u8],
     ) -> Result<(), ImageWriteError> {
-        self.write_library_image_after_planning(image, bytes, || async {}).await
+        self.write_artist_image_after_planning(image, bytes, || async {}).await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn write_library_image_after_planning_for_test<F, Fut>(
+    pub async fn write_artist_image_after_planning_for_test<F, Fut>(
         &self,
-        image: &DbLibraryImage,
+        image: &DbArtistImage,
         bytes: &[u8],
         after_planning: F,
     ) -> Result<(), ImageWriteError>
@@ -36,12 +36,12 @@ impl Records {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = ()>,
     {
-        self.write_library_image_after_planning(image, bytes, after_planning).await
+        self.write_artist_image_after_planning(image, bytes, after_planning).await
     }
 
-    async fn write_library_image_after_planning<F, Fut>(
+    async fn write_artist_image_after_planning<F, Fut>(
         &self,
-        image: &DbLibraryImage,
+        image: &DbArtistImage,
         bytes: &[u8],
         after_planning: F,
     ) -> Result<(), ImageWriteError>
@@ -50,52 +50,196 @@ impl Records {
         Fut: std::future::Future<Output = ()>,
     {
         let image = image.clone();
-        let namespace = image.image_type.namespace();
-        let (image_type, id) = (image.image_type.clone(), image.id.clone());
-        let planned = self.store.read(move |sql| image_file_on(&sql, &image_type, &id)).await?;
+        let id = image.artist_id.clone();
+        let planned =
+            self.store.read(move |sql| image_file_on(&sql, &LibraryImageType::Artist, &id)).await?;
         after_planning().await;
         let bytes = bytes.to_vec();
         self.store
             .write_staged(
-                move |w| Ok(w.put_file(namespace, bytes, coven::Place::Cloud)),
+                move |w| {
+                    Ok(w.put_file(
+                        crate::synced::ARTIST_IMAGES_NAMESPACE,
+                        bytes,
+                        coven::Place::Cloud,
+                    ))
+                },
                 move |sql, file| {
                     // Refuse a replacement when another write of the image landed
                     // since planning: the row names another file than it did.
-                    let current = image_file_on(&sql, &image.image_type, &image.id)?;
+                    let current = image_file_on(&sql, &LibraryImageType::Artist, &image.artist_id)?;
                     if current != planned {
                         return Err(WriteError::Refused(ImageWriteRefusal::Superseded {
-                            image_type: image.image_type.clone(),
-                            subject_id: image.id.clone(),
+                            image_type: LibraryImageType::Artist,
+                            subject_id: image.artist_id.clone(),
                         }));
                     }
-                    upsert_library_image_row(&sql, &image, &file)?;
+                    upsert_artist_image_row(&sql, &image, &file)?;
                     Ok(())
                 },
             )
             .await
     }
 
-    /// Find a host-provided image (cover / artist image) by its subject id. The
-    /// `image_type` selects the table (`covers` / `artist_images`); the id is the
-    /// release/artist id. Caller-provided id — may not exist.
-    pub async fn find_library_image(
+    /// Replace a release's cover atomically: the write stages the copies (and
+    /// the original, when the cover keeps one) as new coven files and points
+    /// the release's row at them, and the files the row named before go with
+    /// their last reference.
+    pub async fn write_cover(&self, cover: NewCover) -> Result<(), ImageWriteError> {
+        self.write_cover_after_planning(cover, || async {}).await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn write_cover_after_planning_for_test<F, Fut>(
         &self,
-        id: &str,
-        image_type: &LibraryImageType,
-    ) -> Result<Option<DbLibraryImage>, DbError> {
-        let id = id.to_string();
-        let image_type = image_type.clone();
-        let table = image_table(&image_type);
-        let query = format!("SELECT * FROM {table} WHERE id = ?");
+        cover: NewCover,
+        after_planning: F,
+    ) -> Result<(), ImageWriteError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = ()>,
+    {
+        self.write_cover_after_planning(cover, after_planning).await
+    }
+
+    async fn write_cover_after_planning<F, Fut>(
+        &self,
+        cover: NewCover,
+        after_planning: F,
+    ) -> Result<(), ImageWriteError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = ()>,
+    {
+        let release_id = cover.release_id.clone();
+        let planned = self
+            .store
+            .read(move |sql| image_file_on(&sql, &LibraryImageType::Cover, &release_id))
+            .await?;
+        after_planning().await;
+        self.store
+            .write_staged(
+                {
+                    let cover = cover.clone();
+                    move |w| Ok(stage_cover(w, &cover))
+                },
+                move |sql, staged| {
+                    // Refuse a replacement when another write of the cover landed
+                    // since planning: the row names another file than it did.
+                    let current = image_file_on(&sql, &LibraryImageType::Cover, &cover.release_id)?;
+                    if current != planned {
+                        return Err(WriteError::Refused(ImageWriteRefusal::Superseded {
+                            image_type: LibraryImageType::Cover,
+                            subject_id: cover.release_id.clone(),
+                        }));
+                    }
+                    upsert_cover_row(&sql, &cover, &staged)?;
+                    Ok(())
+                },
+            )
+            .await
+    }
+
+    /// The artist's image row; `None` when the artist has none.
+    pub async fn find_artist_image(
+        &self,
+        artist_id: &str,
+    ) -> Result<Option<DbArtistImage>, DbError> {
+        let artist_id = artist_id.to_string();
         self.store
             .read(move |sql| {
-                sql.query_row(&query, params![id], |row| {
-                    row_to_library_image(row, image_type.clone())
-                })
+                sql.query_row(
+                    "SELECT id, content_type FROM artist_images WHERE id = ?",
+                    params![artist_id],
+                    |row| {
+                        Ok(DbArtistImage {
+                            artist_id: row.get("id")?,
+                            content_type: ContentType::from_mime(
+                                &row.get::<_, String>("content_type")?,
+                            ),
+                        })
+                    },
+                )
                 .optional()
                 .map_err(DbError::from)
             })
             .await
+    }
+
+    /// The release's cover row; `None` when the release has no cover.
+    pub async fn find_cover(&self, release_id: &str) -> Result<Option<DbCover>, DbError> {
+        let release_id = release_id.to_string();
+        self.store
+            .read(move |sql| {
+                sql.query_row(
+                    "SELECT id, source_file, content_type FROM covers WHERE id = ?",
+                    params![release_id],
+                    |row| {
+                        Ok(DbCover {
+                            release_id: row.get("id")?,
+                            source: match row.get::<_, Option<String>>("source_file")? {
+                                Some(file_id) => CoverSource::ReleaseFile { file_id },
+                                None => CoverSource::Original,
+                            },
+                            content_type: ContentType::from_mime(
+                                &row.get::<_, String>("content_type")?,
+                            ),
+                        })
+                    },
+                )
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
+    /// The coven file of the release's cover copy `copy`, as this device
+    /// reads it now; `None` when the release has no cover.
+    pub async fn cover_copy_file(
+        &self,
+        release_id: &str,
+        copy: CoverCopy,
+    ) -> Result<Option<coven::FileRef>, DbError> {
+        let column = match copy {
+            CoverCopy::Browse => "browse_file",
+            CoverCopy::Large => "large_file",
+        };
+        self.cover_file_in(release_id, column).await
+    }
+
+    /// The coven file of the release's cover original, as this device reads
+    /// it now; `None` when the release has no cover or the cover is one of
+    /// the release's files.
+    pub async fn cover_original_file(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<coven::FileRef>, DbError> {
+        self.cover_file_in(release_id, "original_file").await
+    }
+
+    async fn cover_file_in(
+        &self,
+        release_id: &str,
+        column: &'static str,
+    ) -> Result<Option<coven::FileRef>, DbError> {
+        let release_id = release_id.to_string();
+        let Some(file) = self
+            .store
+            .read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        &format!("SELECT {column} FROM covers WHERE id = ?"),
+                        params![release_id],
+                        |row| row.get::<_, Option<coven::FileId>>(0),
+                    )
+                    .optional()?
+                    .flatten())
+            })
+            .await?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(self.store.file_ref(file).await?))
     }
 
     /// The version of one release's cover, or `None` when it has no cover.
@@ -207,7 +351,7 @@ pub fn cover_version_sql(release_id: &str) -> String {
     format!(
         "(SELECT {version} FROM {table} AS cover WHERE cover.id = {release_id})",
         table = image_table(&LibraryImageType::Cover),
-        version = file_version_sql("cover.file")
+        version = file_version_sql("cover.browse_file")
     )
 }
 
@@ -233,7 +377,7 @@ pub(super) fn image_version_on<Q: coven::SqlRead>(
         .query_row(
             &format!(
                 "SELECT {version} FROM {table} AS image WHERE image.id = ?",
-                version = file_version_sql("image.file")
+                version = file_version_sql(&format!("image.{}", image_file_column(image_type)))
             ),
             params![id],
             |row| row.get::<_, String>(0),
@@ -241,15 +385,16 @@ pub(super) fn image_version_on<Q: coven::SqlRead>(
         .optional()?)
 }
 
-/// The coven file one image row names, or `None` when there is no such row.
+/// The coven file one image row names (a cover's browse copy), or `None` when there is no such row.
 pub fn image_file_on<Q: coven::SqlRead>(
     sql: &Q,
     image_type: &LibraryImageType,
     id: &str,
 ) -> Result<Option<coven::FileId>, DbError> {
     let table = image_table(image_type);
+    let column = image_file_column(image_type);
     Ok(sql
-        .query_row(&format!("SELECT file FROM {table} WHERE id = ?"), params![id], |row| {
+        .query_row(&format!("SELECT {column} FROM {table} WHERE id = ?"), params![id], |row| {
             row.get::<_, coven::FileId>(0)
         })
         .optional()?)

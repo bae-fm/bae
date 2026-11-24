@@ -3,7 +3,9 @@
 //! identification, no import.
 
 use super::*;
-use bae_records::{DbAlbumArtist, DbArtist, DbLibraryImage, DbRelease, DbTrack, SeededAlbum};
+use bae_records::{
+    DbAlbumArtist, DbArtist, DbRelease, DbTrack, NewCover, NewCoverPicture, SeededAlbum,
+};
 
 mod import_list;
 mod playing;
@@ -214,8 +216,9 @@ impl LibraryManager {
         id
     }
 
-    /// The cover row of `release_id` and the bytes it stores, read from the
-    /// image at `path` and resized as every stored cover is.
+    /// The cover of `release_id`, read from the image at `path` and resized
+    /// as an artist's picture is: the fixture's browse and large copies are
+    /// that one small JPEG, and the image is its original.
     #[expect(
         clippy::disallowed_methods,
         reason = "file system: a debug UI test's fixture files, which no library holds"
@@ -224,7 +227,7 @@ impl LibraryManager {
         &self,
         path: &std::path::Path,
         release_id: &str,
-    ) -> Result<(DbLibraryImage, Vec<u8>), LibraryFixtureError> {
+    ) -> Result<NewCover, LibraryFixtureError> {
         let failed =
             |detail: String| LibraryFixtureError::Cover { path: path.to_path_buf(), detail };
         let source = path.to_path_buf();
@@ -237,8 +240,13 @@ impl LibraryManager {
             .await
             .map_err(|task| failed(task.to_string()))?
             .map_err(failed)?;
-        let image = DbLibraryImage::cover(release_id);
-        Ok((image, bytes))
+        Ok(NewCover {
+            release_id: release_id.to_string(),
+            picture: NewCoverPicture::Original { bytes: bytes.clone() },
+            browse: bytes.clone(),
+            large: bytes,
+            content_type: bae_util::content_type::ContentType::Jpeg,
+        })
     }
 }
 

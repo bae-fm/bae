@@ -178,12 +178,7 @@ async fn import_with_cover_art() {
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // Cover image row in DB
-    let cover = f
-        .library
-        .records()
-        .find_library_image(&release_id, &LibraryImageType::Cover)
-        .await
-        .unwrap();
+    let cover = f.library.records().find_cover(&release_id).await.unwrap();
     assert!(cover.is_some(), "should have cover image in DB");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
@@ -196,9 +191,9 @@ async fn import_with_cover_art() {
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
-/// An oversized folder cover is resized to a ≤600 JPEG thumbnail at import: the
-/// stored file decodes to 600×600 JPEG (from a 1000×1000 PNG source) and the
-/// `covers` row records JPEG, not the source PNG.
+/// An oversized folder cover is made into JPEG copies at import: the browse copy
+/// decodes to 768×768 and the large copy keeps the 1000×1000 PNG source's size,
+/// and the `covers` row records JPEG, not the source PNG.
 #[tokio::test]
 async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     bae_util::test_logs::install();
@@ -230,23 +225,26 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // The row records the stored format (JPEG), not the source PNG.
-    let cover = f
-        .library
-        .records()
-        .find_library_image(&release_id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .expect("cover image in DB");
+    let cover =
+        f.library.records().find_cover(&release_id).await.unwrap().expect("cover image in DB");
     assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
 
-    // The stored file is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
-    let cover_bytes =
-        bae_library::test_libraries::read_cover_image_bytes(f.library.manager(), &release_id)
+    // The browse copy is a JPEG downscaled from the 1000×1000 PNG source; the
+    // large copy is no larger than the source.
+    for (copy, edge) in
+        [(bae_records::CoverCopy::Browse, 768), (bae_records::CoverCopy::Large, 1000)]
+    {
+        let cover_bytes = f
+            .library
+            .manager()
+            .read_cover_copy(&release_id, copy)
             .await
+            .unwrap()
             .expect("cover file should be readable");
-    assert_eq!(image::guess_format(&cover_bytes).unwrap(), image::ImageFormat::Jpeg);
-    let decoded = image::load_from_memory(&cover_bytes).unwrap();
-    assert_eq!((decoded.width(), decoded.height()), (600, 600));
+        assert_eq!(image::guess_format(&cover_bytes).unwrap(), image::ImageFormat::Jpeg);
+        let decoded = image::load_from_memory(&cover_bytes).unwrap();
+        assert_eq!((decoded.width(), decoded.height()), (edge, edge), "{copy:?}");
+    }
 
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
@@ -258,8 +256,8 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
     for (name, bytes, dimensions) in [
         ("solid.gif", bae_util::test_cover_art::SOLID_GIF, (16, 8)),
         ("solid.webp", bae_util::test_cover_art::SOLID_WEBP, (16, 8)),
-        ("animated.gif", bae_util::test_cover_art::ANIMATED_GIF, (600, 300)),
-        ("animated.webp", bae_util::test_cover_art::ANIMATED_WEBP, (600, 300)),
+        ("animated.gif", bae_util::test_cover_art::ANIMATED_GIF, (1200, 600)),
+        ("animated.webp", bae_util::test_cover_art::ANIMATED_WEBP, (1200, 600)),
     ] {
         let release = discogs_release("Cover Format Album", &["Track"]);
         let f = ImportFixture::new().await;
@@ -286,13 +284,7 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
             bae_import::test_imports::try_wait_for_import_complete(&mut progress_rx)
                 .await
                 .unwrap_or_else(|error| panic!("{name}: {error}"));
-        let cover = f
-            .library
-            .records()
-            .find_library_image(&release_id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .unwrap();
+        let cover = f.library.records().find_cover(&release_id).await.unwrap().unwrap();
         assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
         let stored =
             bae_library::test_libraries::read_cover_image_bytes(f.library.manager(), &release_id)

@@ -36,6 +36,11 @@ pub fn make_copy(
     }
 }
 
+/// [`make_copy`] of a picture held in memory, which nothing cancels.
+pub fn make_copy_of_bytes(bytes: Vec<u8>, step: PictureStep) -> Result<PictureCopy, PicturesError> {
+    make_copy(std::io::Cursor::new(bytes), std::sync::Arc::new(|| false), step)
+}
+
 /// Without libvips there is no copy to make: see `build.rs`.
 #[cfg(not(libvips))]
 pub fn make_copy(

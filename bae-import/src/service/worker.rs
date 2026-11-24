@@ -95,6 +95,14 @@ impl ImportService {
         let import_cancels = services.import_cancels.clone();
         let catalogs = services.catalogs.clone();
         let remote_images = services.remote_images.clone();
+        // The jobs that make pictures, which the worker and the handle share.
+        let pictures = crate::pictures::ImportPictures::new(
+            services.tables.clone(),
+            services.files.clone(),
+            diagnostics.clone(),
+            runtime_handle.clone(),
+        );
+        let pictures_for_worker = pictures.clone();
 
         // Constructed before the watcher task spawns; the task doesn't need the
         // watcher, only the `fs_rx` end of its event channel.
@@ -137,6 +145,7 @@ impl ImportService {
                     files,
                     import_cancels,
                     diagnostics,
+                    pictures: pictures_for_worker,
                 };
 
                 while let Some(message) = commands_rx.recv().await {
@@ -183,6 +192,7 @@ impl ImportService {
             release_reads,
             identify,
             extraction,
+            pictures,
             runtime_handle,
         )
     }

@@ -58,7 +58,7 @@ pub(crate) fn track_display_columns(prefix: &str) -> String {
          a.title AS {prefix}album_title, r.id AS {prefix}release_id, \
          {cover_version} AS {prefix}cover_version, \
          {artist_names} AS {prefix}artist_names",
-        cover_version = bae_store::file_version_sql("c.file"),
+        cover_version = bae_store::file_version_sql("c.browse_file"),
         artist_names = track_credits_json_sql("t"),
     )
 }

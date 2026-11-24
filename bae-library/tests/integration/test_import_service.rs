@@ -303,16 +303,14 @@ mod works_and_covers;
 /// the image it was made from — and their size. The record carries the
 /// file's hash once it is stored.
 async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
-    f.library
-        .records()
-        .find_library_image(release_id, &LibraryImageType::Cover)
+    f.library.records().find_cover(release_id).await.unwrap().expect("cover row");
+    let bytes = f
+        .library
+        .manager()
+        .read_cover_copy(release_id, bae_records::CoverCopy::Browse)
         .await
         .unwrap()
-        .expect("cover row");
-    let bytes =
-        bae_library::test_libraries::read_cover_image_bytes(f.library.manager(), release_id)
-            .await
-            .expect("cover file readable");
+        .expect("cover file readable");
     let file = f
         .library
         .manager()

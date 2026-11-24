@@ -1101,6 +1101,7 @@ dependencies = [
  "bae-identify",
  "bae-import",
  "bae-people",
+ "bae-pictures",
  "bae-playback",
  "bae-preferences",
  "bae-records",

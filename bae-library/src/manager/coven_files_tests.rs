@@ -4,7 +4,6 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::DbLibraryImage;
 
 /// A cover reaches another device together with its stored file. The cover's
 /// reference is bound, so the write naming it waits for its upload, and the
@@ -25,8 +24,8 @@ fn a_cover_reaches_another_device_with_its_stored_file() {
         let cover = cover_file(manager, &release.id).await;
         devices
             .converge(
-                "SELECT c.id, c.file, hex(f.hash), f.coordinates FROM covers AS c \
-                 LEFT JOIN coven_files AS f ON f.id = c.file",
+                "SELECT c.id, c.browse_file, hex(f.hash), f.coordinates FROM covers AS c \
+                 LEFT JOIN coven_files AS f ON f.id = c.browse_file",
             )
             .await;
 
@@ -59,7 +58,7 @@ fn a_cover_asked_for_at_launch_waits_for_storage_and_then_reads() {
         insert_release(manager, &release).await;
         devices.converge("SELECT id FROM releases").await;
         store_test_cover(manager, &release.id, b"the cover").await;
-        devices.converge("SELECT c.id, c.file FROM covers AS c").await;
+        devices.converge("SELECT c.id, c.browse_file FROM covers AS c").await;
 
         // The second device opens again as at launch: its sync is not started
         // and its storage is out of reach, with the cover not on this device.
@@ -233,11 +232,13 @@ async fn an_image_over_the_bound_limit_is_refused() {
     store_test_cover(manager, &release.id, b"the first cover").await;
     let first = cover_file(manager, &release.id).await;
 
-    let oversized = vec![0u8; usize::try_from(coven::BOUND_FILE_LIMIT).unwrap() + 1];
-    let cover = DbLibraryImage::cover(&release.id);
+    let limit = 4 * 1024 * 1024usize;
+    let oversized = vec![0u8; limit + 1];
     let error = manager
-        .store_library_image(&cover, &oversized)
+        .records
+        .write_cover(bae_records::test_fixtures::test_cover(&release.id, &oversized))
         .await
+        .map_err(LibraryError::from)
         .expect_err("an image over the limit makes no cover");
     let LibraryError::Database(bae_store::DbError::Coven(coven_error)) = &error else {
         panic!("expected BoundFileTooLarge, got {error:?}");
@@ -249,9 +250,9 @@ async fn an_image_over_the_bound_limit_is_refused() {
             size,
             limit,
         }) => {
-            assert_eq!((table.as_str(), column.as_str()), ("covers", "file"));
-            assert_eq!(*size, coven::BOUND_FILE_LIMIT + 1);
-            assert_eq!(*limit, coven::BOUND_FILE_LIMIT);
+            assert_eq!((table.as_str(), column.as_str()), ("covers", "browse_file"));
+            assert_eq!(*size, 4 * 1024 * 1024 + 1);
+            assert_eq!(*limit, 4 * 1024 * 1024);
         }
         other => panic!("expected BoundFileTooLarge, got {other:?}"),
     }
@@ -294,13 +295,13 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     store_test_cover(manager.library.manager(), &release.id, b"first cover").await;
     let concurrent = manager.library.manager().clone();
     let concurrent_release = release.id.clone();
-    let late = DbLibraryImage::cover(&release.id);
+    let late = bae_records::test_fixtures::test_cover(&release.id, b"late cover");
 
     let error = manager
         .library
         .manager()
         .records
-        .write_library_image_after_planning_for_test(&late, b"late cover", move || async move {
+        .write_cover_after_planning_for_test(late, move || async move {
             store_test_cover(&concurrent, &concurrent_release, b"between cover").await;
         })
         .await

@@ -38,7 +38,7 @@ impl DiscogsArtistImage {
 /// create, and a library image row with its bytes for each that has one.
 pub(super) struct StagedArtistPictures {
     pub(super) expected_new_artists: Vec<String>,
-    pub(super) images: Vec<(bae_records::DbLibraryImage, Vec<u8>)>,
+    pub(super) images: Vec<(bae_records::DbArtistImage, Vec<u8>)>,
 }
 
 impl ImportService {
@@ -116,7 +116,7 @@ impl ImportService {
 fn artist_image_rows(
     inserted_artists: &[bae_records::DbArtist],
     fetched: &[DiscogsArtistImage],
-) -> Result<Vec<(bae_records::DbLibraryImage, Vec<u8>)>, crate::ImportError> {
+) -> Result<Vec<(bae_records::DbArtistImage, Vec<u8>)>, crate::ImportError> {
     let by_discogs_id: HashMap<_, _> =
         fetched.iter().map(|answer| (answer.discogs_artist_id(), answer)).collect();
     if by_discogs_id.len() != fetched.len() {
@@ -135,10 +135,7 @@ fn artist_image_rows(
         let DiscogsArtistImage::Image { jpeg, .. } = answer else {
             continue;
         };
-        let row = bae_records::DbLibraryImage::stored_jpeg(
-            bae_records::LibraryImageType::Artist,
-            &artist.id,
-        );
+        let row = bae_records::DbArtistImage::stored_jpeg(&artist.id);
         images.push((row, jpeg.clone()));
     }
     Ok(images)

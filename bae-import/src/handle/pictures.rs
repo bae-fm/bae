@@ -15,7 +15,7 @@ impl ImportServiceHandle {
         pixels: Option<u32>,
         priority: bae_pictures::Priority,
     ) -> Result<Vec<u8>, crate::ImportError> {
-        self.pictures.read(&self.services, source, pixels, priority).await
+        self.pictures.read(source, pixels, priority).await
     }
 }
 

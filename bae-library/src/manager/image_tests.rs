@@ -4,14 +4,14 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::{LibraryImageType, NewReleaseFile};
+use bae_records::NewReleaseFile;
 use bae_util::content_type::ContentType;
 use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
-/// `change_cover` resizes whatever the user picks to a ≤600 JPEG thumbnail
-/// before storing it: a 900×300 PNG release image lands as a 600×200 JPEG file
-/// (downscaled to fit 600, aspect kept), and the `covers` row records JPEG.
+/// `change_cover` makes a browse copy of whatever the user picks, a JPEG that
+/// fits 768 pixels: a 900×300 PNG release image lands as a 768×256 JPEG file
+/// (downscaled to fit, aspect kept), and the `covers` row records JPEG.
 #[tokio::test]
 async fn change_cover_stores_a_resized_jpeg_thumbnail() {
     let image = ::image::RgbImage::from_pixel(900, 300, ::image::Rgb([20, 160, 90]));
@@ -19,7 +19,7 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
     ::image::DynamicImage::ImageRgb8(image)
         .write_to(&mut bytes, ::image::ImageFormat::Png)
         .unwrap();
-    assert_changed_cover("art.png", &bytes.into_inner(), ContentType::Png, (600, 200)).await;
+    assert_changed_cover("art.png", &bytes.into_inner(), ContentType::Png, (768, 256)).await;
 }
 
 #[tokio::test]
@@ -27,8 +27,8 @@ async fn change_cover_stores_gif_and_webp_as_jpeg_without_replacing_source() {
     for (name, bytes, content_type, dimensions) in [
         ("solid.gif", bae_util::test_cover_art::SOLID_GIF, ContentType::Gif, (16, 8)),
         ("solid.webp", bae_util::test_cover_art::SOLID_WEBP, ContentType::Webp, (16, 8)),
-        ("animated.gif", bae_util::test_cover_art::ANIMATED_GIF, ContentType::Gif, (600, 300)),
-        ("animated.webp", bae_util::test_cover_art::ANIMATED_WEBP, ContentType::Webp, (600, 300)),
+        ("animated.gif", bae_util::test_cover_art::ANIMATED_GIF, ContentType::Gif, (768, 384)),
+        ("animated.webp", bae_util::test_cover_art::ANIMATED_WEBP, ContentType::Webp, (768, 384)),
     ] {
         assert_changed_cover(name, bytes, content_type, dimensions).await;
     }
@@ -63,12 +63,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         .await
         .expect_err("bytes that are no image make no cover");
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ImportData, "{error}");
-    assert!(manager
-        .records
-        .find_library_image(&release.id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(manager.records.find_cover(&release.id).await.unwrap().is_none());
 }
 
 async fn assert_changed_cover(
@@ -102,9 +97,13 @@ async fn assert_changed_cover(
         .await
         .unwrap();
 
-    // The cover is a normalized JPEG; the release file retains its original bytes.
-    let stored =
-        manager.read_cover_image_bytes(&release.id).await.unwrap().expect("cover file stored");
+    // The cover's copies are normalized JPEGs; the release file retains its
+    // original bytes.
+    let stored = manager
+        .read_cover_copy(&release.id, bae_records::CoverCopy::Browse)
+        .await
+        .unwrap()
+        .expect("cover file stored");
     assert_eq!(::image::guess_format(&stored).unwrap(), ::image::ImageFormat::Jpeg);
     let decoded = ::image::load_from_memory(&stored).unwrap();
     assert_eq!((decoded.width(), decoded.height()), dimensions);
@@ -112,14 +111,24 @@ async fn assert_changed_cover(
 
     // The row describes the stored thumbnail, a JPEG, and its coven file
     // holds the thumbnail's bytes.
-    let row = manager
-        .records
-        .find_library_image(&release.id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .expect("cover row stored");
+    let row = manager.records.find_cover(&release.id).await.unwrap().expect("cover row stored");
     assert_eq!(row.content_type, ContentType::Jpeg);
     assert_eq!(cover_file(manager, &release.id).await.size(), stored.len() as u64);
+
+    // The cover is made from the release file it was picked from, which it
+    // names, and keeps no original of its own. Its large copy fits 1536 pixels
+    // and is never larger than the picture.
+    assert_eq!(row.source, bae_records::CoverSource::ReleaseFile { file_id: file.id });
+    assert!(manager.records.cover_original_file(&release.id).await.unwrap().is_none());
+    let large = manager
+        .read_cover_copy(&release.id, bae_records::CoverCopy::Large)
+        .await
+        .unwrap()
+        .expect("large copy stored");
+    assert_eq!(::image::guess_format(&large).unwrap(), ::image::ImageFormat::Jpeg);
+    let large = ::image::load_from_memory(&large).unwrap();
+    assert!(large.width().max(large.height()) <= 1536);
+    assert!(large.width() >= decoded.width() && large.height() >= decoded.height());
 }
 
 /// A cover can be changed again and again. A coven file never changes its
@@ -167,14 +176,8 @@ async fn change_cover_twice_replaces_the_cover_file() {
             .change_cover(&release.id, CoverSelection::ReleaseImage { file_id: file.id.clone() })
             .await
     };
-    let cover_row = async || {
-        manager
-            .records
-            .find_library_image(&release.id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .expect("cover row stored")
-    };
+    let cover_row =
+        async || manager.records.find_cover(&release.id).await.unwrap().expect("cover row stored");
 
     let cover_version =
         async || manager.cover_ref(&release.id).await.unwrap().expect("cover stored").version;

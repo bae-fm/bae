@@ -4,14 +4,14 @@ forward! { async this => {
     /// A library image's bytes, or `None` when no image is stored.
     fn fetch_library_image_bytes(image: crate::types::BridgeImageRef) -> Option<Vec<u8>> {
         this.services
-            .read_image_bytes(&image.into_core())
+            .read_image_bytes(&image.into_core(), None)
             .await
             .map_err(BridgeError::from)
     }
 
     fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource) -> Vec<u8> {
         this.services
-            .read_gallery_bytes(&release_id, &source.into_core())
+            .read_gallery_bytes(&release_id, &source.into_core(), None)
             .await
             .map_err(BridgeError::from)
     }

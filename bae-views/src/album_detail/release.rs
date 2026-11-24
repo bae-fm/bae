@@ -215,31 +215,40 @@ impl ReleaseDetail {
         let total_size = raw.files.total_size;
         let total_duration_ms = raw.total_duration_ms;
 
-        // The gallery holds the cover slot when the release has a cover, then
-        // one item for each image the release's files statement counts.
-        let gallery_item_count = raw.files.image_count + u32::from(ctx.cover.is_some());
+        // The gallery shows the cover first, then each of the release's other
+        // image files. A cover made from one of the release's image files is
+        // that file's slot, labelled as the cover, so the picture shows once;
+        // a cover that keeps a picture of its own is a slot of its own.
         let mut gallery = Vec::new();
-        // One resolve of the `covers` row feeds both the gallery's "Cover" slot and
-        // the summary's `cover`. The lightbox fetches the bytes by image id and
-        // caches them under `(id, version)`; coven owns where they sit on disk.
         if let Some(cover_ref) = &ctx.cover {
-            gallery.push(GalleryItem {
-                id: "cover".to_string(),
-                label: GalleryLabel::Cover,
-                source: GallerySource::Cover(cover_ref.clone()),
-            });
+            match &raw.cover_source_file {
+                None => gallery.push(GalleryItem {
+                    id: "cover".to_string(),
+                    label: GalleryLabel::Cover,
+                    source: GallerySource::Cover(cover_ref.clone()),
+                }),
+                Some(file_id) => {
+                    let file = image_files.iter().find(|file| &file.id == file_id);
+                    gallery.extend(file.map(|file| GalleryItem {
+                        id: file.id.clone(),
+                        label: GalleryLabel::Cover,
+                        source: GallerySource::ReleaseFile { file_id: file.id.clone() },
+                    }));
+                }
+            }
         }
-        // An image file likewise has no stable bae path: the lightbox fetches its
-        // bytes by file id through `read_gallery_bytes`, and coven reads them from
+        // An image file has no stable bae path: the lightbox fetches its bytes
+        // by file id through `read_gallery_bytes`, and coven reads them from
         // wherever they are — the user's own file on the one device holding it,
         // the cache once it is in storage.
-        for f in &image_files {
+        for f in image_files.iter().filter(|f| raw.cover_source_file.as_ref() != Some(&f.id)) {
             gallery.push(GalleryItem {
                 id: f.id.clone(),
                 label: GalleryLabel::File { name: f.original_filename.clone() },
                 source: GallerySource::ReleaseFile { file_id: f.id.clone() },
             });
         }
+        let gallery_item_count = gallery.len() as u32;
 
         let name = ReleaseName::of(
             release.release_name.as_deref(),

@@ -506,10 +506,9 @@ fn uploading_counts_releases_and_no_cover() {
 
 /// An artist image, which stages one file for the cloud.
 async fn write_image(records: &bae_records::Records, artist: &str) {
-    let image = bae_records::DbLibraryImage {
-        id: artist.to_string(),
-        image_type: bae_records::LibraryImageType::Artist,
+    let image = bae_records::DbArtistImage {
+        artist_id: artist.to_string(),
         content_type: bae_util::content_type::ContentType::Jpeg,
     };
-    records.write_library_image(&image, artist.as_bytes()).await.unwrap();
+    records.write_artist_image(&image, artist.as_bytes()).await.unwrap();
 }

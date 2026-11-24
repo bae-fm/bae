@@ -75,8 +75,12 @@ async fn cover_ref(db: &Store, release_id: &str) -> Option<bae_records::ImageRef
     let records = bae_records::test_fixtures::test_records(db);
     Some(bae_records::ImageRef {
         id: release_id.to_string(),
-        version: stored_image_version(&records, bae_records::synced::COVERS_NAMESPACE, release_id)
-            .await,
+        version: stored_image_version(
+            &records,
+            bae_records::synced::COVER_BROWSE_NAMESPACE,
+            release_id,
+        )
+        .await,
         image_type: LibraryImageType::Cover,
     })
 }

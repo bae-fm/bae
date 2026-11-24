@@ -21,12 +21,16 @@ use crate::save::SaveService;
 use crate::sync::S3ConfigData;
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_records::GallerySource;
+use bae_records::{CoverCopy, DbFile, DbRelease, ImageRef, LibraryImageType};
 #[cfg(desktop)]
 use bae_records::{DbAlbum, DbArtist, DbTrack};
-use bae_records::{DbFile, DbLibraryImage, DbRelease, ImageRef, LibraryImageType};
+#[cfg(desktop)]
+use bae_records::{NewCover, NewCoverPicture};
 use bae_store::Store;
 use bae_sync_status::SyncStatus;
 use bae_types::release_storage::ReleaseStorageAction;
+#[cfg(desktop)]
+use bae_util::content_type::ContentType;
 use bae_util::task_failure::{caught, Bug, TaskFailed};
 use coven::ClockRef;
 use coven::IdSourceRef;

@@ -212,6 +212,9 @@ pub struct ImportService {
     /// Where every bug the import worker finds is reported: a write no
     /// caller waits on, and an image the blocking format prep can't read.
     diagnostics: bae_diagnostics::Diagnostics,
+    /// The jobs that make the pictures of the import list, which the import
+    /// writes its cover's copies and its images' previews from.
+    pictures: crate::pictures::ImportPictures,
 }
 
 /// The records a pick commits: the primary's and every partner's, each

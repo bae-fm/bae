@@ -50,7 +50,7 @@ impl Records {
                  WHERE f.release_id = ?1 \
                  UNION ALL \
                  SELECT 'covers', cover.id FROM covers AS cover \
-                 JOIN coven_uploads AS upload ON upload.file = cover.file \
+                 JOIN coven_uploads AS upload ON upload.file = cover.browse_file \
                  WHERE cover.id = ?1",
                     [root_id],
                     |row| Ok((row.get(0)?, row.get(1)?)),
@@ -408,7 +408,8 @@ fn credits_for_test(
 /// The column of `table` that references a coven file.
 fn file_column_for_test(table: &str) -> &'static str {
     match table {
-        "release_files" | "covers" | "artist_images" => "file",
+        "release_files" | "artist_images" => "file",
+        "covers" => "browse_file",
         "people" => "avatar_id",
         other => panic!("{other} references no coven file"),
     }

@@ -124,6 +124,10 @@ mod track;
 #[path = "records_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "records/covers_tests.rs"]
+mod covers_tests;
+
 pub mod pressing_columns;
 pub mod query;
 pub mod read;

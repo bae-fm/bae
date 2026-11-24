@@ -4,20 +4,30 @@ use super::*;
 
 impl LibraryManager {
     /// Bytes of one gallery slot, dispatching the read on its [`GallerySource`]
-    /// so no caller picks the byte source itself: a `Cover` is read by its image
-    /// ref, a `ReleaseFile` by file id (`load_gallery_image`).
+    /// so no caller picks the byte source itself. With a size, a cover slot
+    /// reads the copy that covers it; with none, a slot reads the picture
+    /// itself, which only the viewer asks for: a cover's kept original, or the
+    /// image file as the release holds it.
     /// The gallery carries a cover slot only when a cover exists, so a `Cover`
     /// with no bytes here is exceptional and surfaces rather than being masked.
     pub async fn read_gallery_bytes(
         &self,
         release_id: &str,
         source: &GallerySource,
+        pixels: Option<u32>,
     ) -> Result<Vec<u8>, LibraryError> {
-        match source {
-            GallerySource::Cover(image) => self.read_image_bytes(image).await?.ok_or_else(|| {
-                LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
-            }),
-            GallerySource::ReleaseFile { file_id } => {
+        match (source, pixels) {
+            (GallerySource::Cover(image), Some(_)) => {
+                self.read_image_bytes(image, pixels).await?.ok_or_else(|| {
+                    LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
+                })
+            }
+            (GallerySource::Cover(image), None) => {
+                self.read_cover_original(&image.id).await?.ok_or_else(|| {
+                    LibraryError::Storage(format!("gallery cover {} has no original", image.id))
+                })
+            }
+            (GallerySource::ReleaseFile { file_id }, _) => {
                 self.load_gallery_image(release_id, file_id).await
             }
         }
@@ -41,18 +51,17 @@ impl LibraryManager {
     }
 
     /// Change the cover art for an album's release. A `ReleaseImage` selection
-    /// reads an image file already in the library by file id; a `RemoteCover` one
-    /// downloads it from a URL. Either way the bytes are resized and stored as the
-    /// release's cover file.
+    /// reads an image file already in the library by file id and makes the cover
+    /// from that file; a `RemoteCover` one downloads the catalog's image from a
+    /// URL and keeps it as the cover's original. Either way the cover's browse
+    /// and large copies are made from the picture.
     #[cfg(desktop)]
     pub async fn change_cover(
         &self,
         release_id: &str,
         selection: CoverSelection,
     ) -> Result<(), LibraryError> {
-        // The source content type is discarded: every stored cover is resized to
-        // JPEG below, so only the bytes carry through.
-        let bytes = match selection {
+        let (picture, bytes) = match selection {
             CoverSelection::ReleaseImage { file_id } => {
                 let file = self.records.find_file_by_id(&file_id).await?.ok_or_else(|| {
                     LibraryError::FileMissing {
@@ -63,29 +72,51 @@ impl LibraryManager {
 
                 // Read the chosen release image file through coven's locality-aware
                 // read (the user's own file when Local, the cache/cloud when Remote).
-                self.read_release_file(&file).await?
+                let bytes = self.read_release_file(&file).await?;
+                (NewCoverPicture::ReleaseFile { file_id }, bytes)
             }
             CoverSelection::RemoteCover { url } => {
-                self.remote_images
+                let bytes = self
+                    .remote_images
                     .fetch_required(&url)
                     .await
                     .map_err(bae_import::ImportError::from)?
-                    .bytes
+                    .bytes;
+                (NewCoverPicture::Original { bytes: bytes.clone() }, bytes)
             }
         };
 
-        // Resize to a ≤600px JPEG thumbnail, then build the row from that output:
-        // the stored bytes, their format, size and hash all describe the thumbnail,
-        // not the source.
-        // Decoding and re-encoding the image is CPU work.
-        let bytes = self
+        // Decoding and shrinking the picture is CPU work.
+        let (browse, large) = self
             .diagnostics
-            .blocking("resize a cover", move || bae_util::stored_image::stored_jpeg(&bytes))
+            .blocking("make a cover's copies", move || {
+                let copy =
+                    |bytes: &Vec<u8>, step| bae_pictures::make_copy_of_bytes(bytes.clone(), step);
+                Ok::<_, bae_pictures::PicturesError>((
+                    copy(&bytes, bae_pictures::PictureStep::S768)?,
+                    copy(&bytes, bae_pictures::PictureStep::S1536)?,
+                ))
+            })
             .await?
-            .map_err(|detail| bae_import::ImportError::CoverArt { detail })?;
-        let library_image = DbLibraryImage::cover(release_id);
-
-        self.store_library_image(&library_image, &bytes).await?;
+            .map_err(|error| bae_import::ImportError::CoverArt { detail: error.to_string() })?;
+        let content_type = match (browse.format, large.format) {
+            (bae_pictures::CopyFormat::Jpeg, bae_pictures::CopyFormat::Jpeg) => ContentType::Jpeg,
+            (bae_pictures::CopyFormat::Png, bae_pictures::CopyFormat::Png) => ContentType::Png,
+            _ => {
+                return Err(LibraryError::Storage(format!(
+                    "the copies of {release_id}'s cover are in different formats"
+                )))
+            }
+        };
+        self.records
+            .write_cover(NewCover {
+                release_id: release_id.to_string(),
+                picture,
+                browse: browse.bytes,
+                large: large.bytes,
+                content_type,
+            })
+            .await?;
 
         Ok(())
     }

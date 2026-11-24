@@ -217,7 +217,7 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
 
     f.library
         .records()
-        .find_library_image(&release_id, &LibraryImageType::Cover)
+        .find_cover(&release_id)
         .await
         .unwrap()
         .expect("embedded cover should be written when no folder/remote image exists");
@@ -272,12 +272,7 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
     let (release_id, _) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    f.library
-        .records()
-        .find_library_image(&release_id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .expect("a cover should be written");
+    f.library.records().find_cover(&release_id).await.unwrap().expect("a cover should be written");
     let bytes =
         bae_library::test_libraries::read_cover_image_bytes(f.library.manager(), &release_id)
             .await

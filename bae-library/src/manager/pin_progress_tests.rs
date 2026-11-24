@@ -393,7 +393,7 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     manager.upload_release(&release.id).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     assert!(
-        !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(manager, bae_records::synced::COVER_BROWSE_NAMESPACE, &release.id).await,
         "upload without pin leaves the cover evictable"
     );
 
@@ -420,7 +420,7 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
         "the release file pinned"
     );
     assert!(
-        !file_pinned(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(manager, bae_records::synced::COVER_BROWSE_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
     let last = progress.last().expect("the pin reports progress");

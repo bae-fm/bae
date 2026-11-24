@@ -438,17 +438,33 @@ CREATE TABLE IF NOT EXISTS release_media (
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 
--- One stored cover per release; `id` is the release's id. `file` is the
--- cover's coven file (`coven_files`), which a new cover replaces.
+-- One cover per release; `id` is the release's id. A cover is a choice of
+-- one picture: one of the release's image files (`source_file`), or a
+-- picture the cover keeps as its own original (`original_file`, in
+-- `cover_originals`): the catalog image the person picked, or art embedded
+-- in one of the release's audio files. The viewer opens that picture. The
+-- grids and the album panel draw two copies made from it, a browse copy at
+-- 768 pixels (`browse_file`) and a large copy at 1536 (`large_file`). A new
+-- cover replaces the row; each file is a coven file (`coven_files`).
 CREATE TABLE IF NOT EXISTS covers (
     id TEXT PRIMARY KEY,
-    file TEXT NOT NULL,
+    source_file TEXT,
+    original_file TEXT,
+    browse_file TEXT NOT NULL,
+    large_file TEXT NOT NULL,
+    -- The format of both copies: they come from one picture, so a picture
+    -- with transparency makes two PNGs and any other two JPEGs.
     content_type TEXT NOT NULL,
-    FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
+    CHECK ((source_file IS NULL) <> (original_file IS NULL)),
+    FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE,
+    FOREIGN KEY (source_file) REFERENCES release_files (id) ON DELETE CASCADE
 ) STRICT;
 
--- A cover's row by its file, which coven's pending records name.
-CREATE INDEX IF NOT EXISTS idx_covers_file ON covers (file);
+-- A cover's row by each of its files, which coven's pending records name.
+CREATE INDEX IF NOT EXISTS idx_covers_browse_file ON covers (browse_file);
+CREATE INDEX IF NOT EXISTS idx_covers_large_file ON covers (large_file);
+CREATE INDEX IF NOT EXISTS idx_covers_original_file ON covers (original_file);
+CREATE INDEX IF NOT EXISTS idx_covers_source_file ON covers (source_file);
 
 -- The files a release's audio and artwork are stored as, with the facts of the
 -- audio they were imported from.

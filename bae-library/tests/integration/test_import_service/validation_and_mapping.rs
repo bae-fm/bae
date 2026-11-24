@@ -549,15 +549,10 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     .await
     .expect("the import succeeds");
 
-    f.library
-        .records()
-        .find_library_image(&release_id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .expect(
-            "the release document says the archive holds a front image, so the import \
+    f.library.records().find_cover(&release_id).await.unwrap().expect(
+        "the release document says the archive holds a front image, so the import \
              must land one",
-        );
+    );
 }
 
 /// When the release's own cover will not download, the import fails rather

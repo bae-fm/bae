@@ -2,7 +2,6 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::test_imports::wait_for_import_complete;
 use bae_import::{CoverSelection, ImportCommand};
-use bae_records::LibraryImageType;
 use bae_util::content_type::ContentType;
 use bae_util::test_files::TestFolder;
 use std::path::Path;
@@ -320,7 +319,7 @@ async fn run_import_with_cover_test() {
 
     let cover = library
         .records()
-        .find_library_image(&release_id, &LibraryImageType::Cover)
+        .find_cover(&release_id)
         .await
         .expect("Failed to get cover")
         .expect("Cover should exist in the covers table");

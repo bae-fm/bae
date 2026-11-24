@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};
+use bae_records::{DbRelease, NewReleaseFile};
 use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
@@ -650,8 +650,11 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
     )
     .await;
     let cover_bytes = b"cover-bytes";
-    let cover = DbLibraryImage::cover(&release.id);
-    manager.store_library_image(&cover, cover_bytes).await.unwrap();
+    manager
+        .records
+        .write_cover(bae_records::test_fixtures::test_cover(&release.id, cover_bytes))
+        .await
+        .unwrap();
     manager.upload_release(&release.id).await.unwrap();
     finish_bound_uploads(manager).await;
 

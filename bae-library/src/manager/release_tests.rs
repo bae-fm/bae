@@ -5,7 +5,7 @@ use super::*;
 use crate::manager::tests::*;
 use bae_catalogs::catalog::Catalog;
 use bae_records::test_fixtures::library::LibraryRows;
-use bae_records::{DbRelease, DbTrackWork, DbWork, LibraryImageType, NewReleaseFile};
+use bae_records::{DbRelease, DbTrackWork, DbWork, NewReleaseFile};
 use bae_util::content_type::ContentType;
 use time::UtcDateTime;
 
@@ -209,17 +209,12 @@ async fn delete_release_removes_its_cover_image() {
     // Give release1 a cover: a `covers` row plus its file in one coven batch.
     store_test_cover(manager, &release1.id, b"image").await;
 
-    wait_for_published_file(manager, bae_records::synced::COVERS_NAMESPACE, &release1.id).await;
+    wait_for_published_file(manager, "covers", &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
     // Row removed (the `covers` FK to `releases` cascade-deletes it).
-    assert!(manager
-        .records
-        .find_library_image(&release1.id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(manager.records.find_cover(&release1.id).await.unwrap().is_none());
 }
 
 /// A delete is planned against the release's rows and files before its write
@@ -788,6 +783,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
         .read_gallery_bytes(
             &release.id,
             &bae_records::GallerySource::ReleaseFile { file_id: file.id.clone() },
+            None,
         )
         .await
         .expect_err("the file is another release's");

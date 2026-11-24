@@ -60,6 +60,7 @@ getrandom = { workspace = true, features = ["js"] }
 # Import: watched folders, candidates, identification and the import that
 # writes a release into the store, and the release-edit model.
 bae-import = { workspace = true }
+bae-pictures = { workspace = true }
 # The identify reducer, its view and its verdicts, which only the desktop
 # import pipeline drives.
 bae-identify = { workspace = true }

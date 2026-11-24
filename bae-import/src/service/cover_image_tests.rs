@@ -8,7 +8,6 @@ use crate::import_cancel::ImportStop;
 use crate::service::tests::*;
 use crate::ImportDestination;
 use crate::ImportProgress;
-use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -24,14 +23,7 @@ async fn explicit_bmp_cover_is_rejected() {
         artwork(ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1)),
     ];
 
-    let error = folder_cover(
-        &discovered,
-        "cover.bmp",
-        &bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    )
-    .await
-    .unwrap_err();
+    let error = folder_cover(&discovered, "cover.bmp").unwrap_err();
     assert!(matches!(error, crate::ImportError::LocalCover { .. }));
 }
 
@@ -51,14 +43,7 @@ async fn a_damaged_image_is_never_picked_as_the_cover() {
         role: crate::folder_scanner::FileRole::DamagedImage,
     }];
 
-    let error = folder_cover(
-        &discovered,
-        "front.png",
-        &bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    )
-    .await
-    .unwrap_err();
+    let error = folder_cover(&discovered, "front.png").unwrap_err();
     assert!(matches!(error, crate::ImportError::LocalCover { .. }));
 }
 
@@ -174,7 +159,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             // The embedded artwork is no image the store reads, so a stored
             // cover is the folder's front.jpg.
             bae_records::test_fixtures::test_records(&test.db)
-                .find_library_image(&release_id, &bae_records::LibraryImageType::Cover)
+                .find_cover(&release_id)
                 .await
                 .unwrap()
                 .expect("the folder's cover is stored");
@@ -190,14 +175,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let discovered =
         vec![artwork(ScannedFile::new(fallback.clone(), "front.jpg".to_string(), 9, 1))];
 
-    let err = folder_cover(
-        &discovered,
-        "cover.bmp",
-        &bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    )
-    .await
-    .unwrap_err();
+    let err = folder_cover(&discovered, "cover.bmp").unwrap_err();
 
     assert!(
         matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
@@ -207,44 +185,10 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
-    let err = folder_cover(
-        &[],
-        "cover.bmp",
-        &bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    )
-    .await
-    .unwrap_err();
+    let err = folder_cover(&[], "cover.bmp").unwrap_err();
 
     assert!(
         matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
-        "got: {err}"
-    );
-}
-
-#[cfg(unix)]
-#[tokio::test]
-async fn unreadable_selected_cover_is_an_error() {
-    use std::os::unix::fs::PermissionsExt;
-
-    let test = setup_import_service().await;
-    let cover = test.temp.path().join("cover.jpg");
-    test.temp.write(&cover, b"jpg bytes");
-    test.temp.set_permissions(&cover, std::fs::Permissions::from_mode(0o000));
-    let discovered = vec![artwork(ScannedFile::new(cover.clone(), "cover.jpg".to_string(), 9, 1))];
-
-    let result = folder_cover(
-        &discovered,
-        "cover.jpg",
-        &bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    )
-    .await;
-
-    test.temp.set_permissions(&cover, std::fs::Permissions::from_mode(0o600));
-    let err = result.unwrap_err();
-    assert!(
-        matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Failed to read cover art")),
         "got: {err}"
     );
 }
@@ -282,41 +226,4 @@ fn an_embedded_cover_is_the_snapshot_artwork_of_the_audio_it_names() {
             .expect("no other artwork stands in for the named audio's");
         assert!(matches!(error, crate::ImportError::Internal { .. }));
     }
-}
-
-/// While the test holds the only place of a budget of one, the import waits
-/// to read the cover, and stores it once the test drops its lease.
-#[tokio::test(flavor = "multi_thread")]
-async fn the_import_cover_read_waits_for_a_place() {
-    let temp = TestFolder::new();
-    let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
-    let watch = budget.watch();
-    let cover = temp.write("front.gif", bae_util::test_cover_art::SOLID_GIF);
-    let discovered = vec![artwork(ScannedFile::new(
-        cover,
-        "front.gif".to_string(),
-        bae_util::test_cover_art::SOLID_GIF.len() as u64,
-        1,
-    ))];
-    let held = budget.lease(1).await.unwrap();
-    let waited = watch.lease_waits_from_now(1);
-
-    let diagnostics = bae_diagnostics::Diagnostics::noop();
-    let storing = ImportCover::Local("front.gif".to_string()).stored(
-        &discovered,
-        "release-1",
-        &diagnostics,
-        &budget,
-    );
-    tokio::pin!(storing);
-    tokio::select! {
-        _ = &mut storing => panic!("the import read the cover without a place"),
-        () = waited => {}
-    }
-    drop(held);
-
-    let (image, bytes) = storing.await.expect("the import stores the cover");
-    assert_eq!(image.id, "release-1");
-    assert!(!bytes.is_empty());
-    assert_eq!(watch.holding(), 0);
 }

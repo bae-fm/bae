@@ -16,7 +16,7 @@ use bae_pictures::{
 use coven::LeasedFile;
 
 use crate::folder_scanner::FileVersion;
-use crate::{CoverRefusal, ImportError, ImportPicture, ImportServices};
+use crate::{CoverRefusal, ImportError, ImportPicture};
 
 /// Why a picture could not be read.
 #[derive(Debug, thiserror::Error)]
@@ -45,19 +45,36 @@ pub enum PictureError {
     NoArt(#[from] CoverRefusal),
 }
 
+/// What a picture's job reads and writes: the import's tables, where its
+/// copies are kept, the places open files take, and the reporter of a bug in
+/// the job.
+#[derive(Clone)]
+struct PictureServices {
+    tables: crate::tables::ImportTables,
+    files: coven::FileBudget,
+    diagnostics: bae_diagnostics::Diagnostics,
+}
+
 /// The jobs making pictures now, and the reads each volume takes at once.
 #[derive(Clone)]
 pub(crate) struct ImportPictures {
     flights: Flights<(ImportPicture, PictureSize), Vec<u8>, PictureError>,
     volumes: Volumes,
+    services: PictureServices,
 }
 
 impl ImportPictures {
     pub(crate) fn new(
+        tables: crate::tables::ImportTables,
+        files: coven::FileBudget,
         diagnostics: bae_diagnostics::Diagnostics,
         runtime: tokio::runtime::Handle,
     ) -> Self {
-        Self { flights: Flights::new(diagnostics, runtime), volumes: Volumes::new() }
+        Self {
+            flights: Flights::new(diagnostics.clone(), runtime),
+            volumes: Volumes::new(),
+            services: PictureServices { tables, files, diagnostics },
+        }
     }
 
     /// The bytes of `source` at the size `pixels` asks for. Requests for the
@@ -65,7 +82,6 @@ impl ImportPictures {
     /// them is dropped.
     pub(crate) async fn read(
         &self,
-        services: &ImportServices,
         source: ImportPicture,
         pixels: Option<u32>,
         priority: Priority,
@@ -73,7 +89,7 @@ impl ImportPictures {
         let size = PictureSize::covering(pixels);
         let job = {
             let (services, volumes, source) =
-                (services.clone(), self.volumes.clone(), source.clone());
+                (self.services.clone(), self.volumes.clone(), source.clone());
             move |cancelled: IsCancelled| make(services, volumes, source, size, priority, cancelled)
         };
         match self.flights.request((source, size), job).await {
@@ -114,7 +130,7 @@ enum Origin {
 /// one, else a read of the original that ends when `cancel` is set, kept for
 /// the next request when it is a copy.
 async fn make(
-    services: ImportServices,
+    services: PictureServices,
     volumes: Volumes,
     source: ImportPicture,
     size: PictureSize,

@@ -13,13 +13,6 @@ impl LibraryImageType {
             LibraryImageType::Artist => "artist",
         }
     }
-
-    pub fn namespace(&self) -> &'static str {
-        match self {
-            LibraryImageType::Cover => crate::synced::COVERS_NAMESPACE,
-            LibraryImageType::Artist => crate::synced::ARTIST_IMAGES_NAMESPACE,
-        }
-    }
 }
 
 impl std::str::FromStr for LibraryImageType {
@@ -77,29 +70,90 @@ pub fn artist_image_ref(artist_id: &str, version: Option<String>) -> Option<Imag
     })
 }
 
-/// A cover or artist image. The bytes are a coven app-provided file in the
-/// `covers` or `artist_images` namespace (per `image_type`), which the row
-/// keyed by `id` references. A coven file never changes its bytes, so
+/// An artist's image, as its row records it. The bytes are a coven
+/// app-provided file in the `artist_images` namespace, which the row keyed by
+/// the artist's id references. A coven file never changes its bytes, so
 /// replacing an image stages a new file and points the same row at it.
 #[derive(Debug, Clone)]
-pub struct DbLibraryImage {
-    /// release_id for covers, artist_id for artist images
-    pub id: String,
-    pub image_type: LibraryImageType,
+pub struct DbArtistImage {
+    pub artist_id: String,
     pub content_type: ContentType,
 }
 
-impl DbLibraryImage {
-    /// The row describing a release's cover, a JPEG
-    /// [`bae_util::stored_image::stored_jpeg`] made.
-    pub fn cover(release_id: &str) -> Self {
-        Self::stored_jpeg(LibraryImageType::Cover, release_id)
-    }
-
-    /// The row describing the image of `image_type` kept for `id`, a JPEG
+impl DbArtistImage {
+    /// The row describing the image kept for `artist_id`, a JPEG
     /// [`bae_util::stored_image::stored_jpeg`] made, whose bytes the write
     /// stages with coven.
-    pub fn stored_jpeg(image_type: LibraryImageType, id: &str) -> Self {
-        DbLibraryImage { id: id.to_string(), image_type, content_type: ContentType::Jpeg }
+    pub fn stored_jpeg(artist_id: &str) -> Self {
+        DbArtistImage { artist_id: artist_id.to_string(), content_type: ContentType::Jpeg }
     }
+}
+
+/// What a cover is made from, as its row records it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CoverSource {
+    /// One of the release's image files, by its release file id.
+    ReleaseFile { file_id: String },
+    /// A picture of the cover's own, kept as its original: a catalog's
+    /// image or art embedded in one of the release's audio files.
+    Original,
+}
+
+/// A cover's row: the picture it is made from and the format of its copies.
+/// The copies' bytes are coven files the row references.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbCover {
+    /// The release's id.
+    pub release_id: String,
+    pub source: CoverSource,
+    pub content_type: ContentType,
+}
+
+/// The copy of a cover a slot draws: the browse copy for grids and rows, the
+/// large copy for the album panel, the full player and Now Playing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CoverCopy {
+    Browse,
+    Large,
+}
+
+impl CoverCopy {
+    /// The longer edge in pixels a copy is made at.
+    pub fn edge(self) -> u32 {
+        match self {
+            Self::Browse => 768,
+            Self::Large => 1536,
+        }
+    }
+
+    /// The smaller copy that holds a slot `pixels` wide on its longer side,
+    /// or the large copy for a slot above the browse copy.
+    pub fn covering(pixels: u32) -> Self {
+        if pixels <= Self::Browse.edge() {
+            Self::Browse
+        } else {
+            Self::Large
+        }
+    }
+}
+
+/// A cover to write: the picture it is made from and its two copies, which
+/// the caller made from that picture.
+#[derive(Debug, Clone)]
+pub struct NewCover {
+    pub release_id: String,
+    pub picture: NewCoverPicture,
+    pub browse: Vec<u8>,
+    pub large: Vec<u8>,
+    /// The format of both copies.
+    pub content_type: ContentType,
+}
+
+/// The picture a new cover is made from.
+#[derive(Debug, Clone)]
+pub enum NewCoverPicture {
+    /// One of the release's image files, by its release file id.
+    ReleaseFile { file_id: String },
+    /// A picture the cover keeps as its own original: these bytes.
+    Original { bytes: Vec<u8> },
 }

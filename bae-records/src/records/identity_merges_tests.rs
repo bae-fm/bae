@@ -53,12 +53,8 @@ async fn merges(store: &Store, table: &'static str) -> Vec<(String, String)> {
 }
 
 async fn store_artist_image(db: &Records, artist_id: &str, bytes: &[u8]) {
-    let image = DbLibraryImage {
-        id: artist_id.to_string(),
-        image_type: LibraryImageType::Artist,
-        content_type: ContentType::Jpeg,
-    };
-    db.write_library_image(&image, bytes).await.unwrap();
+    let image = DbArtistImage { artist_id: artist_id.to_string(), content_type: ContentType::Jpeg };
+    db.write_artist_image(&image, bytes).await.unwrap();
 }
 
 async fn artist_image_file(db: &Records, artist_id: &str) -> Option<coven::FileRef> {
@@ -164,11 +160,7 @@ async fn a_survivor_with_an_image_keeps_it_and_the_absorbed_artists_goes() {
         db.read_file(&kept, &bae_store::lease_one(db.test_sources().files()).await).await.unwrap(),
         b"survivor"
     );
-    assert!(records
-        .find_library_image(&absorbed.id, &LibraryImageType::Artist)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(records.find_artist_image(&absorbed.id).await.unwrap().is_none());
 }
 
 /// When only the absorbed artist has an image, the survivor takes it: its
@@ -210,11 +202,7 @@ async fn a_survivor_without_an_image_takes_the_absorbed_artists_file() {
             1,
             "the merge stages no second copy"
         );
-        assert!(records
-            .find_library_image(&absorbed.id, &LibraryImageType::Artist)
-            .await
-            .unwrap()
-            .is_none());
+        assert!(records.find_artist_image(&absorbed.id).await.unwrap().is_none());
     }
 }
 

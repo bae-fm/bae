@@ -3,7 +3,6 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::LibraryImageType;
 
 /// delete_album removes each release's cover too (same helper, second wiring
 /// site): the cover row is gone with its release.
@@ -19,16 +18,11 @@ async fn delete_album_removes_release_covers() {
     .await;
     store_test_cover(manager, &release.id, b"image").await;
 
-    wait_for_published_file(manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await;
+    wait_for_published_file(manager, "covers", &release.id).await;
 
     manager.delete_album(&release.album_id).await.unwrap();
 
-    assert!(manager
-        .records
-        .find_library_image(&release.id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(manager.records.find_cover(&release.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -106,12 +100,15 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         let ids = release_ids.iter().map(|id| format!("'{id}'")).collect::<Vec<_>>().join(", ");
         format!(
             "SELECT file FROM release_files WHERE release_id IN ({ids}) \
-             UNION ALL SELECT file FROM covers WHERE id IN ({ids})"
+             UNION ALL SELECT browse_file FROM covers WHERE id IN ({ids}) \
+             UNION ALL SELECT large_file FROM covers WHERE id IN ({ids}) \
+             UNION ALL SELECT original_file FROM covers WHERE id IN ({ids}) \
+                 AND original_file IS NOT NULL"
         )
     };
     let deleted_files =
         manager.store.query_texts_for_test(&coven_files_of(&[&kept, &local])).await.unwrap();
-    assert_eq!(deleted_files.len(), 4, "two files and two covers");
+    assert_eq!(deleted_files.len(), 8, "two files and two covers of three files each");
     let mut pinned = 0;
     for file in &deleted_files {
         pinned += manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap();
@@ -161,12 +158,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         assert!(find_release(manager, release_id).await.is_none());
         assert!(manager.records.get_tracks_for_release(release_id).await.unwrap().is_empty());
         assert!(release_files(manager, release_id).await.is_empty());
-        assert!(manager
-            .records
-            .find_library_image(release_id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .is_none());
+        assert!(manager.records.find_cover(release_id).await.unwrap().is_none());
     }
     for file in &deleted_files {
         assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 0);
@@ -177,12 +169,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
 
     assert!(find_release(manager, &other.id).await.is_some());
     assert_eq!(manager.records.get_tracks_for_release(&other.id).await.unwrap().len(), 1);
-    assert!(manager
-        .records
-        .find_library_image(&other.id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(manager.records.find_cover(&other.id).await.unwrap().is_some());
     for file in &kept_files {
         assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 1);
     }

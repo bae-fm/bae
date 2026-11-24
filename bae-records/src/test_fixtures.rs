@@ -29,13 +29,22 @@ pub const TRACK_ROLE_A: &str = "fa0c8483-f09a-4b69-8903-b1ebcdc31322";
 pub const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015";
 pub const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4";
 
-/// Store a real cover holding `content` as a coven file its row references,
-/// and return the version reads report for it.
+/// The cover of `release` whose original and both copies hold `bytes`.
+pub fn test_cover(release: &str, bytes: &[u8]) -> crate::NewCover {
+    crate::NewCover {
+        release_id: release.to_string(),
+        picture: crate::NewCoverPicture::Original { bytes: bytes.to_vec() },
+        browse: bytes.to_vec(),
+        large: bytes.to_vec(),
+        content_type: bae_util::content_type::ContentType::Jpeg,
+    }
+}
+
+/// Store a cover whose original and both copies hold `content`, each a coven
+/// file the row references, and return the version reads report for it.
 pub async fn write_cover(records: &crate::Records, release: &str, content: &str) -> String {
-    let bytes = content.as_bytes();
-    let image = crate::DbLibraryImage::cover(release);
-    records.write_library_image(&image, bytes).await.unwrap();
-    stored_image_version(records, crate::synced::COVERS_NAMESPACE, release).await
+    records.write_cover(test_cover(release, content.as_bytes())).await.unwrap();
+    stored_image_version(records, crate::synced::COVER_BROWSE_NAMESPACE, release).await
 }
 
 /// The version reads should report for the image on `table`'s row `id`: the
@@ -44,7 +53,7 @@ pub async fn write_cover(records: &crate::Records, release: &str, content: &str)
 /// than from the version query.
 pub async fn stored_image_version(records: &crate::Records, table: &str, id: &str) -> String {
     let image_type = match table {
-        crate::synced::COVERS_NAMESPACE => crate::LibraryImageType::Cover,
+        crate::synced::COVER_BROWSE_NAMESPACE => crate::LibraryImageType::Cover,
         crate::synced::ARTIST_IMAGES_NAMESPACE => crate::LibraryImageType::Artist,
         other => panic!("{other} holds no library images"),
     };

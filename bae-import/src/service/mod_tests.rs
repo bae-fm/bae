@@ -127,6 +127,7 @@ pub(crate) async fn setup_import_service() -> TestService {
         tokio::runtime::Handle::current(),
     );
     let event_tx = crate::ImportEventBus::new(runtime.clone());
+    let tables_for_pictures = tables.clone();
     TestService {
         service: ImportService {
             event_tx,
@@ -145,6 +146,12 @@ pub(crate) async fn setup_import_service() -> TestService {
             files: db.test_sources().files().clone(),
             import_cancels: crate::import_cancel::ImportCancels::new(),
             diagnostics: bae_diagnostics::Diagnostics::noop(),
+            pictures: crate::pictures::ImportPictures::new(
+                tables_for_pictures,
+                db.test_sources().files().clone(),
+                bae_diagnostics::Diagnostics::noop(),
+                tokio::runtime::Handle::current(),
+            ),
         },
         preparations,
         db,

@@ -77,9 +77,16 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
             .map(|column| (column.column(), column.binding(), column.is_write_once()))
             .collect();
         let bound = Binding::Bound { limit: coven::BOUND_FILE_LIMIT };
+        let browse_bound = Binding::Bound { limit: 4 * 1024 * 1024 };
+        let large_bound = Binding::Bound { limit: 16 * 1024 * 1024 };
         let expected: &[(&str, &Binding, bool)] = match table.name() {
             "release_files" => &[("file", &Binding::Trailing, false)],
-            "covers" | "artist_images" => &[("file", &bound, false)],
+            "artist_images" => &[("file", &bound, false)],
+            "covers" => &[
+                ("browse_file", &browse_bound, false),
+                ("large_file", &large_bound, false),
+                ("original_file", &Binding::Trailing, false),
+            ],
             _ => &[],
         };
         assert_eq!(columns, expected, "{}", table.name());
@@ -97,7 +104,9 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
                 &Provenance::UserProvided,
                 crate::CacheLimit::DEFAULT.bytes()
             ),
-            (COVERS_NAMESPACE, &Provenance::AppProvided, 512 * 1024 * 1024),
+            (COVER_BROWSE_NAMESPACE, &Provenance::AppProvided, 1024 * 1024 * 1024),
+            (COVER_LARGE_NAMESPACE, &Provenance::AppProvided, 1024 * 1024 * 1024),
+            (COVER_ORIGINALS_NAMESPACE, &Provenance::AppProvided, 512 * 1024 * 1024),
             (ARTIST_IMAGES_NAMESPACE, &Provenance::AppProvided, 256 * 1024 * 1024),
         ]
     );

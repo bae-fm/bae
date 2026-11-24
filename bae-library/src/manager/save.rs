@@ -79,10 +79,7 @@ impl LibraryManager {
         if !embed_cover {
             return Ok(None);
         }
-        match self.cover_ref(release_id).await? {
-            Some(image) => self.read_image_bytes(&image).await,
-            None => Ok(None),
-        }
+        self.read_cover_copy(release_id, CoverCopy::Large).await
     }
 
     /// Open a streaming read of one release file for the save decoder: a

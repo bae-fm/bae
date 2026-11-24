@@ -8,7 +8,7 @@ pub(super) use crate::test_libraries::{download_queue_until, move_to_this_device
 use crate::LibraryError;
 use bae_diagnostics::UiErrorCategory;
 use bae_import::ImportError;
-use bae_records::{DbAlbum, DbFile, DbLibraryImage, DbRelease, LibraryImageType, NewReleaseFile};
+use bae_records::{DbAlbum, DbFile, DbRelease, LibraryImageType, NewReleaseFile};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::content_type::ContentType;
 use bae_util::test_files::TestFolder;
@@ -462,8 +462,11 @@ pub(super) async fn playback_error_reason_for_file(
 /// and its file in one coven batch. Storing different bytes again replaces the
 /// cover, as `change_cover` does.
 pub(super) async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u8]) {
-    let cover = DbLibraryImage::cover(release_id);
-    manager.store_library_image(&cover, bytes).await.unwrap();
+    manager
+        .records
+        .write_cover(bae_records::test_fixtures::test_cover(release_id, bytes))
+        .await
+        .unwrap();
 }
 
 /// Run the bound uploads waiting now, a cover's, an artist image's or an
@@ -483,7 +486,7 @@ pub(super) async fn file_pinned(manager: &LibraryManager, namespace: &str, row_i
         bae_records::synced::RELEASE_FILES_NAMESPACE => {
             manager.release_file_ref(row_id).await.unwrap()
         }
-        bae_records::synced::COVERS_NAMESPACE => cover_file(manager, row_id).await,
+        bae_records::synced::COVER_BROWSE_NAMESPACE => cover_file(manager, row_id).await,
         other => panic!("no pinned files in {other}"),
     };
     manager

@@ -11,8 +11,8 @@ use bae_records::records::write::{
     insert_release_artist_role_row, insert_release_file_row, insert_release_medium_row,
     insert_release_row, insert_scrub_points_row, insert_track_artist_role_row,
     insert_track_artist_row, insert_track_row, insert_track_work_row, insert_work_artist_row,
-    insert_work_part_row, insert_work_row, replace_album_artists, upsert_album_row,
-    upsert_library_image_row, write_release_records,
+    insert_work_part_row, insert_work_row, replace_album_artists, stage_cover, upsert_album_row,
+    upsert_artist_image_row, upsert_cover_row, write_release_records,
 };
 use bae_records::GonePicked;
 use bae_util::timestamp::StoredTimestamp as _;
@@ -372,7 +372,7 @@ impl Carving {
 #[derive(Default, Clone, Copy)]
 pub(crate) struct NewArtistImages<'a> {
     pub expected_new_artists: &'a [String],
-    pub images: &'a [(&'a DbLibraryImage, &'a [u8])],
+    pub images: &'a [(&'a bae_records::DbArtistImage, &'a [u8])],
 }
 
 impl ImportTables {
@@ -390,7 +390,7 @@ impl ImportTables {
         tracks_to_files: &[crate::TrackFile],
         rows: ImportRows<'_>,
         files: Vec<crate::service::PreparedImportFile>,
-        library_image: Option<(&DbLibraryImage, &[u8])>,
+        cover: Option<&bae_records::NewCover>,
         artist_images: NewArtistImages<'_>,
     ) -> Result<String, ImportCommitError> {
         let album = album.map(|album| (album.row.clone(), album.picked_new));
@@ -413,19 +413,17 @@ impl ImportTables {
         let audio_formats = rows.audio_formats.to_vec();
         let audio_segments = rows.audio_segments.to_vec();
         let scrub_points = rows.scrub_points.to_vec();
-        let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
-        let artist_images: Vec<(DbLibraryImage, Vec<u8>)> = artist_images
+        let cover = cover.cloned();
+        let artist_images: Vec<(bae_records::DbArtistImage, Vec<u8>)> = artist_images
             .images
             .iter()
             .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
             .collect();
-        // Each image's bytes are staged as a coven file, in the order of
-        // `library_image` then `artist_images`, which the rows then reference.
-        let image_files: Vec<(&'static str, Vec<u8>)> = library_image
-            .iter()
-            .chain(artist_images.iter())
-            .map(|(image, bytes)| (image.image_type.namespace(), bytes.clone()))
-            .collect();
+        // The cover's copies and each artist image's bytes are staged as coven
+        // files, which the rows then reference.
+        let cover_to_stage = cover.clone();
+        let artist_images_to_stage: Vec<Vec<u8>> =
+            artist_images.iter().map(|(_, bytes)| bytes.clone()).collect();
         // Each original is staged as a coven file, on this device only or for
         // the cloud as its place says, which its row references.
         let (rows_to_insert, originals): (Vec<NewReleaseFile>, Vec<_>) = files
@@ -441,12 +439,20 @@ impl ImportTables {
         self.store
             .write_staged(
                 move |w| {
-                    Ok(image_files
+                    let staged_cover = cover_to_stage.as_ref().map(|cover| stage_cover(w, cover));
+                    let artist_files = artist_images_to_stage
                         .into_iter()
-                        .map(|(namespace, bytes)| w.put_file(namespace, bytes, coven::Place::Cloud))
-                        .collect::<Vec<coven::FileId>>())
+                        .map(|bytes| {
+                            w.put_file(
+                                bae_records::synced::ARTIST_IMAGES_NAMESPACE,
+                                bytes,
+                                coven::Place::Cloud,
+                            )
+                        })
+                        .collect::<Vec<coven::FileId>>();
+                    Ok((staged_cover, artist_files))
                 },
-                move |sql, image_file_ids| {
+                move |sql, (staged_cover, artist_file_ids)| {
                     let original_file_ids = originals
                         .into_iter()
                         .map(|(original, place)| {
@@ -603,10 +609,11 @@ impl ImportTables {
                         insert_scrub_points_row(tx, points)?;
                     }
 
-                    for ((image, _), file) in
-                        library_image.iter().chain(artist_images.iter()).zip(&image_file_ids)
-                    {
-                        upsert_library_image_row(tx, image, file)?;
+                    if let (Some(cover), Some(staged)) = (&cover, &staged_cover) {
+                        upsert_cover_row(tx, cover, staged)?;
+                    }
+                    for ((image, _), file) in artist_images.iter().zip(&artist_file_ids) {
+                        upsert_artist_image_row(tx, image, file)?;
                     }
 
                     Ok(release.album_id)

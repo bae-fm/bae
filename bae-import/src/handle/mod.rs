@@ -129,13 +129,11 @@ impl ImportServiceHandle {
         release_reads: crate::ReleaseReads,
         identify: crate::IdentifyService,
         extraction: crate::extraction::ExtractionService,
+        pictures: crate::pictures::ImportPictures,
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
         Self {
-            pictures: crate::pictures::ImportPictures::new(
-                services.diagnostics.clone(),
-                runtime_handle.clone(),
-            ),
+            pictures,
             worker,
             services,
             release_reads,
