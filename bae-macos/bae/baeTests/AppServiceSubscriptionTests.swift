@@ -576,6 +576,9 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         super.init(unsafeFromHandle: handle)
     }
 
+    /// The service tells core the device's time zone as it is built.
+    override func setLocalTimeZone(zone: BridgeLocalTimeZone) {}
+
     override func subscribeConfig() -> ConfigSubscription {
         SilentConfig()
     }
