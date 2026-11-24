@@ -9,6 +9,9 @@
         static let cornerRadius: CGFloat = ThemeRadius.card
         static let itemCornerRadius: CGFloat = 6
         static let itemHeight: CGFloat = 22
+        /// An item drawn as an image is its 11-point image and the board's
+        /// 3 points of padding above and below it.
+        static let imageItemHeight: CGFloat = 17
         static let headerHeight: CGFloat = 22
         static let dividerHeight: CGFloat = 11
         static let markWidth: CGFloat = 11
@@ -20,7 +23,9 @@
 
         static func height(of entry: MacMenuEntry) -> CGFloat {
             switch entry {
-            case .item, .submenu: itemHeight
+            case .item(let item):
+                item.image == nil ? itemHeight : imageItemHeight
+            case .submenu: itemHeight
             case .header: headerHeight
             case .divider: dividerHeight
             }
@@ -185,6 +190,9 @@
             accessory: MacMenuAccessory? = nil
         ) -> some View {
             let highlighted = level.highlighted == index && !disabled
+            let rowHeight =
+                image == nil
+                ? MacMenuMetrics.itemHeight : MacMenuMetrics.imageItemHeight
             return HStack(spacing: ThemeSpace.compact) {
                 // A stack, which keeps its width with no mark in it: an
                 // empty view drawn with a frame takes no room, and the words
@@ -219,8 +227,8 @@
             .padding(.trailing, isPopUp ? ThemeSpace.edge : ThemeSpace.related)
             .frame(
                 maxWidth: .infinity,
-                minHeight: MacMenuMetrics.itemHeight,
-                maxHeight: MacMenuMetrics.itemHeight,
+                minHeight: rowHeight,
+                maxHeight: rowHeight,
                 alignment: .leading
             )
             .foregroundStyle(
