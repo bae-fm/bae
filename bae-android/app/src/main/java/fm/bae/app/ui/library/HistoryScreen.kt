@@ -70,7 +70,7 @@ internal fun HistoryScreen(
     // Read once here, so every row agrees on today and on the zone the times show in.
     val nowMs = LocalNowMs.current
     val zone = remember { TimeZone.getDefault() }
-    val today = remember { LocalDate.ofInstant(Instant.ofEpochMilli(nowMs()), zone.toZoneId()) }
+    val today = remember { Instant.ofEpochMilli(nowMs()).atZone(zone.toZoneId()).toLocalDate() }
     AndroidScreen(
         title = stringResource(R.string.history),
         onBack = onBack,
