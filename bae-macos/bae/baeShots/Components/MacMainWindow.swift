@@ -43,7 +43,11 @@ extension ShotScene {
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: true)
+            mainWindow(
+                section: .library,
+                playing: true,
+                searchFocused: true
+            )
         },
         ShotScene(
             id: "mac.component.main-window.sync-attention",
@@ -101,7 +105,8 @@ extension ShotScene {
         section: MainSection,
         playing: Bool,
         waitsOnStorage: Bool = false,
-        activity: BridgeSyncActivity? = nil
+        activity: BridgeSyncActivity? = nil,
+        searchFocused: Bool = false
     ) -> ShotStage {
         let uiStore = storeShowing(section)
         let backing = boardLibraryBacking(uiStore: uiStore)
@@ -131,6 +136,12 @@ extension ShotScene {
             )
         ) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
+        } isDrawn: { host in
+            // A window that becomes key gives its first field the keyboard,
+            // which draws the search field focused: every board but the
+            // focused one draws it at rest.
+            if !searchFocused { host.window?.makeFirstResponder(nil) }
+            return true
         }
     }
 
