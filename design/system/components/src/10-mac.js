@@ -50,7 +50,7 @@
         props.message ? h('div', { className: 'bae-m-alert-message' }, props.message) : null,
         props.details ? h(MacErrorDetails, { details: props.details }) : null,
         // `suppress`: the checkbox that stops the alert asking again ("Don't show this again"), under the message, as NSAlert's suppression button sits.
-        props.suppress ? h(MacCheckbox, { label: props.suppress, on: props.suppressOn }) : null,
+        props.suppress ? h(MacCheckbox, { label: props.suppress, on: props.suppressOn, detail: true }) : null,
         h('div', { ref: row, className: cx('bae-m-alert-buttons', stackState[0] && 'bae-m-alert-buttons-stacked') }, props.children)));
   }
 

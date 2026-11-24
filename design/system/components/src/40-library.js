@@ -417,8 +417,9 @@
   // The filled circle with an × that removes one entry of a list (xmark.circle.fill).
   SF.removefill = 'M11.01 0.93C7.34 1.1 3.98 3.02 1.94 6.1C-0.02 9.05 -0.5 12.73 0.62 16.1C1.77 19.51 4.49 22.23 7.9 23.38C10.48 24.24 13.27 24.16 15.81 23.16C16.27 22.98 17.22 22.51 17.63 22.24C19.35 21.16 20.72 19.73 21.69 17.97C22.98 15.64 23.4 12.87 22.89 10.22C21.8 4.63 16.71 0.65 11.01 0.93ZM7.75 7.57C8.04 7.63 8.02 7.61 9.82 9.41C10.77 10.35 11.55 11.12 11.57 11.12C11.59 11.12 12.38 10.35 13.32 9.41C14.69 8.05 15.06 7.69 15.16 7.65C15.64 7.44 16.18 7.63 16.4 8.1C16.45 8.22 16.46 8.27 16.46 8.49C16.46 8.89 16.57 8.77 14.61 10.74L12.9 12.46L14.62 14.19C16.59 16.16 16.46 16.01 16.46 16.44C16.46 16.74 16.4 16.91 16.2 17.11C16.01 17.3 15.84 17.36 15.55 17.36C15.13 17.36 15.28 17.48 13.31 15.51L11.57 13.79L9.86 15.5C7.89 17.46 8.01 17.36 7.59 17.36C7.39 17.36 7.34 17.35 7.22 17.3C6.73 17.06 6.52 16.48 6.77 15.99C6.81 15.9 7.25 15.45 8.54 14.17L10.25 12.46L8.53 10.74C7.21 9.42 6.8 8.98 6.75 8.9C6.5 8.35 6.8 7.71 7.38 7.59C7.58 7.54 7.59 7.54 7.75 7.57Z';
 
+  // A checkbox and its label, as wide as its content, as AppKit sizes a checkbox. `detail`: the label in the detail type, as under an alert's message.
   function MacCheckbox(props) {
-    return h('label', { className: 'bae-m-checkbox', role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph, { size: 'chip' }) : null), props.label);
+    return h('label', { className: cx('bae-m-checkbox', props.detail && 'bae-m-checkbox-detail'), role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph, { size: 'chip' }) : null), props.label);
   }
 
   // Heads an artist's albums when the grid is grouped by artist: the artist's picture, as the artist list draws it, beside the name over the album count. `noImage`: the artist has no picture.
