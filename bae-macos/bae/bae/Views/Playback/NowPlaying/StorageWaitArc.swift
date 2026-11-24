@@ -14,7 +14,9 @@ struct StorageWaitArc: NSViewRepresentable {
     let waits: Bool
 
     func makeNSView(context _: Context) -> StorageWaitArcNSView {
-        let view = StorageWaitArcNSView()
+        let view = StorageWaitArcNSView(
+            color: NSColor(accent.color(in: colorScheme))
+        )
         apply(to: view)
         return view
     }
@@ -37,11 +39,12 @@ final class StorageWaitArcNSView: NSView {
 
     private let arc = CAShapeLayer()
 
-    var color: NSColor = .controlAccentColor {
+    var color: NSColor {
         didSet { arc.strokeColor = color.cgColor }
     }
 
-    init() {
+    init(color: NSColor) {
+        self.color = color
         super.init(frame: .zero)
         wantsLayer = true
         arc.fillColor = nil

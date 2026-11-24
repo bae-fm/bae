@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 import Testing
 
@@ -22,7 +23,7 @@ struct ProgressTrackTests {
     func marchesWithoutAFraction() async throws {
         let bar = ProgressTrackNSView(
             progress: nil,
-            accent: .controlAccentColor
+            accent: AccentChoice.standard.appKitColor
         )
         bar.frame = NSRect(x: 0, y: 0, width: 200, height: 20)
         bar.needsLayout = true
@@ -40,7 +41,9 @@ struct ProgressTrackTests {
 
     @Test("the queue's playback strip holds still before any position")
     func playbackStripStartsEmpty() throws {
-        let strip = ProgressStripNSView(accent: .controlAccentColor)
+        let strip = ProgressStripNSView(
+            accent: AccentChoice.standard.appKitColor
+        )
         strip.frame = NSRect(x: 0, y: 0, width: 200, height: 20)
         strip.layoutSubtreeIfNeeded()
         #expect(!marching(try track(in: strip)))

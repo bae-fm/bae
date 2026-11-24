@@ -16,7 +16,9 @@ struct SaveNameFieldTests {
     /// handed recorded in order.
     @MainActor
     final class Bench {
-        let coordinator = Field.Coordinator()
+        let coordinator = Field.Coordinator(
+            accent: AccentChoice.standard.appKitColor
+        )
         let field: SaveNameFieldView
         let window: NSWindow
         /// The Add row's values.

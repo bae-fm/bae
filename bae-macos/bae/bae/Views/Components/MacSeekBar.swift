@@ -21,7 +21,8 @@ struct MacSeekBar: NSViewRepresentable {
 
     func makeNSView(context _: Context) -> SeekBarNSView {
         let view = SeekBarNSView(
-            showsRemainingTimeToggle: onToggleRemainingTime != nil
+            showsRemainingTimeToggle: onToggleRemainingTime != nil,
+            accent: NSColor(accent.color(in: colorScheme))
         )
         apply(to: view)
         return view

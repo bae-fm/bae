@@ -54,7 +54,7 @@ struct CandidateListMenu: View {
                 // list never reads as a short queue.
                 if pendingFilter != .all && !state.hasScanProblem {
                     Circle()
-                        .fill(Color.accentColor)
+                        .fill(Theme.accent)
                         .frame(width: 6, height: 6)
                         .offset(x: 2, y: -2)
                 }

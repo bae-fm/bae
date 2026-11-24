@@ -121,7 +121,7 @@ final class SeekBarNSView: NSView {
     /// playing one. A drop never outlives its stream. Screen state only.
     private var followed: Followed?
 
-    init(showsRemainingTimeToggle: Bool) {
+    init(showsRemainingTimeToggle: Bool, accent: NSColor) {
         self.showsRemainingTimeToggle = showsRemainingTimeToggle
 
         let font = NSFont.monospacedDigitSystemFont(
@@ -136,7 +136,7 @@ final class SeekBarNSView: NSView {
         elapsedField.alignment = .right
         elapsedField.translatesAutoresizingMaskIntoConstraints = false
 
-        slider = SeekSlider()
+        slider = SeekSlider(accent: accent)
         slider.isContinuous = true
         slider.setAccessibilityLabel(String(localized: "Position"))
         slider.translatesAutoresizingMaskIntoConstraints = false

@@ -1,10 +1,5 @@
 import SwiftUI
 
-extension EnvironmentValues {
-    @Entry
-    public var accentChoice: AccentChoice = .standard
-}
-
 private struct AppAppearance: ViewModifier {
     private var preferences = AppearancePreferences()
 
@@ -96,9 +91,7 @@ extension View {
         textStyles
             .environment(\.surfaceTone, tone)
             .environment(\.accentChoice, accent)
-            .accentColor(accentColor)
-            // `accentColor` alone leaves `Color.accentColor` at the Mac's own
-            // accent where the Mac sets one; the tint is what it reads.
+            // SwiftUI's own controls draw in the tint.
             .tint(accentColor)
             #if os(macOS)
                 .background(AccentTextSelection(accent: accent))

@@ -313,7 +313,7 @@ struct LookupCellView: View {
                 Button(action: onRetry) {
                     Image(systemName: "arrow.clockwise")
                         .themeIcon(.small)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Theme.accent)
                 }
                 .buttonStyle(.accentPlain)
                 .help("Retry")

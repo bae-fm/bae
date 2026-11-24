@@ -10,7 +10,7 @@ private let seekSliderLogger = Logger.bae("SeekSlider")
 /// core sends the played fraction, or the person drags to a new one. The cell
 /// draws that value directly as the fill fraction.
 class SeekSlider: NSSlider {
-    var accent: NSColor = .controlAccentColor {
+    var accent: NSColor {
         didSet { needsDisplay = true }
     }
 
@@ -30,8 +30,9 @@ class SeekSlider: NSSlider {
         set {}
     }
 
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+    init(accent: NSColor) {
+        self.accent = accent
+        super.init(frame: .zero)
         minValue = 0
         maxValue = 1
     }

@@ -27,7 +27,7 @@ struct MacCoverTile: View {
                 .overlay {
                     RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         .strokeBorder(
-                            selected ? Color.accentColor : .clear,
+                            selected ? Theme.accent : .clear,
                             lineWidth: 2
                         )
                 }

@@ -57,7 +57,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
     private var accent
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(accent: accent.appKitColor)
     }
 
     func makeNSView(context: Context) -> SaveNameFieldView {
@@ -122,7 +122,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         var fail: @MainActor (Error) -> Void = { _ in }
         var setFocused: @MainActor (Bool) -> Void = { _ in }
         /// The accent the chips draw in; a change redraws them.
-        var accent: NSColor = .controlAccentColor {
+        var accent: NSColor {
             didSet {
                 guard accent != oldValue, let field else { return }
                 let pieces = pieces(in: field)
@@ -139,6 +139,10 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         /// draws what it handed over until the last returns, and the stored
         /// pattern after.
         private(set) var writes: SaveNameWrites<Piece>?
+
+        init(accent: NSColor) {
+            self.accent = accent
+        }
 
         func focus(_ focused: Bool) {
             setFocused(focused)

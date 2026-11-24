@@ -520,7 +520,9 @@ struct ProgressStripTests {
             position(45_000, of: 180_000, progress: 0.25),
             for: "track"
         )
-        let strip = ProgressStripNSView(accent: .controlAccentColor)
+        let strip = ProgressStripNSView(
+            accent: AccentChoice.standard.appKitColor
+        )
         strip.follow(positions.stream.source(for: "track"))
         let label = try #require(
             SnapshotTestSupport.descendants(of: strip)
