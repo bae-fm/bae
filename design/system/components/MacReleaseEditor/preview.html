@@ -9,8 +9,8 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
 
-  // The Identifying row's Find online, as the release editor's shot stages it: nothing found, no Discogs bar, MacFindOnline's identifier band.
-  var chips = 'Disc ID|Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-|filled|MusicBrainz=0,Barcode|0123456789012|filled|MusicBrainz=0+Discogs=0,ISRC||dash,Title search|Artist Name · Album Title One|filled|MusicBrainz=0+Discogs=0,Catalog #|LC 6006 · BN-4055|outlined';
+  // The Identifying row's Find online, as the release editor's shot stages it: nothing found, no Discogs bar. Its band looks up the editor's release: Northbound by Mara Quill, catalog number HR-0412, no barcode.
+  var chips = 'Disc ID|Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-|filled|MusicBrainz=0,Barcode||dash,ISRC||dash,Title search|Mara Quill · Northbound|filled|MusicBrainz=0+Discogs=0,Catalog #|HR-0412|outlined';
   function editor(options) {
     if (options.unread) return box(720, h(B.MacReleaseEditor, { actions: 'import', blank: true }));
     var props = {
