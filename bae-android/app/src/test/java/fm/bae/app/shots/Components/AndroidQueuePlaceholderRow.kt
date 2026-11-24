@@ -1,6 +1,7 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Column
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.AndroidQueuePlaceholderRow
 import fm.bae.app.ui.playback.AndroidQueueRow
 import org.junit.Test
@@ -14,12 +15,12 @@ class AndroidQueuePlaceholderRowShots : BoardShot() {
     @Test
     fun androidComponentQueuePlaceholderRowBesideALoadedRow() =
         component("android.component.queue-placeholder-row.beside-a-loaded-row") {
-            Images {
+            Covers {
                 Column {
                     AndroidQueueRow(
                         title = "Margins",
                         artist = "Mara Quill",
-                        cover = playing.cover,
+                        cover = PreviewData.imageRef("Northbound"),
                         album = "Northbound",
                         duration = "4:55",
                     )

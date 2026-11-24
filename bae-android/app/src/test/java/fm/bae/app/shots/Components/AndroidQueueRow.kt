@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.AndroidQueueRow
 import org.junit.Test
 
@@ -8,11 +9,11 @@ class AndroidQueueRowShots : BoardShot() {
     @Test
     fun androidComponentQueueRowQueued() =
         component("android.component.queue-row.queued") {
-            Images {
+            Covers {
                 AndroidQueueRow(
                     title = "Margins",
                     artist = "Mara Quill",
-                    cover = playing.cover,
+                    cover = PreviewData.imageRef("Northbound"),
                     album = "Northbound",
                     duration = "4:55",
                 )
@@ -22,19 +23,24 @@ class AndroidQueueRowShots : BoardShot() {
     @Test
     fun androidComponentQueueRowNowPlaying() =
         component("android.component.queue-row.now-playing") {
-            Images {
-                AndroidQueueRow(title = "Low Tide Hours", artist = "Mara Quill", cover = playing.cover, current = true)
+            Covers {
+                AndroidQueueRow(
+                    title = "Low Tide Hours",
+                    artist = "Mara Quill",
+                    cover = PreviewData.imageRef("Low Tide Hours"),
+                    current = true,
+                )
             }
         }
 
     @Test
     fun androidComponentQueueRowDragging() =
         component("android.component.queue-row.dragging") {
-            Images {
+            Covers {
                 AndroidQueueRow(
                     title = "Margins",
                     artist = "Mara Quill",
-                    cover = playing.cover,
+                    cover = PreviewData.imageRef("Northbound"),
                     album = "Northbound",
                     duration = "4:55",
                 )

@@ -410,22 +410,51 @@ internal fun Covers(content: @Composable () -> Unit) =
         LocalImageStore provides
             ImageStore(
                 fetchLibraryImageBytes = { ref, _ ->
-                    if (ref.id == "Northbound") {
-                        northboundCover
-                    } else {
-                        val resource =
-                            requireNotNull(BoardShot::class.java.getResourceAsStream("/${ref.id}.png")) {
-                                "No board artwork for ${ref.id}"
-                            }
-                        resource.use { it.readBytes() }
-                    }
+                    val resource = BoardShot::class.java.getResourceAsStream("/${ref.id}.png")
+                    if (resource != null) resource.use { it.readBytes() } else fallbackCover(ref.id)
                 },
                 dispatcher = Dispatchers.Unconfined,
             ),
         content = content,
     )
 
-/** The board's fallback artwork for Northbound, with its green and teal endpoints. */
-private val northboundCover by lazy {
-    TestImages.gradientPng(size = 256, topLeft = 0xFF51B861.toInt(), bottomRight = 0xFF215957.toInt())
+/**
+ * The artwork the board draws for a title it has no picture of: a 135 degree gradient from `hsl(hue 42% 52%)` to
+ * `hsl(hue+48 46% 24%)`, the hue a hash of the title, as the design system's Artwork computes it.
+ */
+private fun fallbackCover(title: String): ByteArray {
+    var hue = 0
+    for (char in title) hue = (hue * HUE_HASH_FACTOR + char.code) % HUE_DEGREES
+    return TestImages.gradientPng(
+        size = 256,
+        topLeft = hsl(hue.toFloat(), 0.42f, 0.52f),
+        bottomRight = hsl(((hue + HUE_STEP) % HUE_DEGREES).toFloat(), 0.46f, 0.24f),
+    )
 }
+
+/** CSS's `hsl()` as an opaque colour. */
+private fun hsl(
+    hue: Float,
+    saturation: Float,
+    lightness: Float,
+): Int {
+    val chroma = (1 - kotlin.math.abs(2 * lightness - 1)) * saturation
+
+    fun channel(offset: Float): Float {
+        val k = (offset + hue / HUE_SECTOR) % HUE_SECTORS
+        return lightness - chroma / 2 * maxOf(-1f, minOf(k - 3, minOf(9 - k, 1f)))
+    }
+
+    fun byte(value: Float) = (value * BYTE_MAX).toInt().coerceIn(0, BYTE_MAX.toInt())
+    return (0xFF shl ALPHA_SHIFT) or (byte(channel(0f)) shl RED_SHIFT) or (byte(channel(8f)) shl GREEN_SHIFT) or byte(channel(4f))
+}
+
+private const val HUE_HASH_FACTOR = 31
+private const val HUE_DEGREES = 360
+private const val HUE_STEP = 48
+private const val HUE_SECTOR = 30f
+private const val HUE_SECTORS = 12f
+private const val BYTE_MAX = 255f
+private const val ALPHA_SHIFT = 24
+private const val RED_SHIFT = 16
+private const val GREEN_SHIFT = 8

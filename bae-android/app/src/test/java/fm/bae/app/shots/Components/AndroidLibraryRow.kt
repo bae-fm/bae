@@ -9,7 +9,7 @@ class AndroidLibraryRowShots : BoardShot() {
     @Test
     fun androidComponentLibraryRowArtist() =
         component("android.component.library-row.artist") {
-            Images { AndroidLibraryRow(title = "Mara Quill", subtitle = "12 albums", art = PreviewData.imageRef()) }
+            Covers { AndroidLibraryRow(title = "Mara Quill", subtitle = "12 albums", art = PreviewData.imageRef("Mara Quill")) }
         }
 
     @Test
@@ -21,7 +21,9 @@ class AndroidLibraryRowShots : BoardShot() {
     @Test
     fun androidComponentLibraryRowAlbum() =
         component("android.component.library-row.album") {
-            Images { AndroidLibraryRow(title = "Low Tide Hours", subtitle = "Mara Quill · 1992", art = PreviewData.imageRef()) }
+            Covers {
+                AndroidLibraryRow(title = "Low Tide Hours", subtitle = "Mara Quill · 1992", art = PreviewData.imageRef("Low Tide Hours"))
+            }
         }
 
     @Test
@@ -33,19 +35,24 @@ class AndroidLibraryRowShots : BoardShot() {
     @Test
     fun androidComponentLibraryRowWork() =
         component("android.component.library-row.work") {
-            Images {
-                AndroidLibraryRow(title = "Low Tide Suite", subtitle = "Ada Lindqvist", art = PreviewData.imageRef(), inset = true)
+            Covers {
+                AndroidLibraryRow(
+                    title = "Low Tide Suite",
+                    subtitle = "Ada Lindqvist",
+                    art = PreviewData.imageRef("Blue Room Sessions"),
+                    inset = true,
+                )
             }
         }
 
     @Test
     fun androidComponentLibraryRowPart() =
         component("android.component.library-row.part") {
-            Images {
+            Covers {
                 AndroidLibraryRow(
                     title = "II. Slack Water",
                     subtitle = "Ada Lindqvist",
-                    art = PreviewData.imageRef(),
+                    art = PreviewData.imageRef("Blue Room Sessions"),
                     part = true,
                     inset = true,
                 )

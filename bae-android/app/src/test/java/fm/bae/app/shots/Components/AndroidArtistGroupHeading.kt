@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.library.AndroidArtistGroupHeading
 import org.junit.Test
@@ -27,7 +28,7 @@ class AndroidArtistGroupHeadingShots : BoardShot() {
 
 @Composable
 private fun InAlbumGrid(pinned: Boolean) {
-    Images {
+    Covers {
         Box(modifier = Modifier.padding(ThemeSpace.group)) {
             AndroidArtistGroupHeading(section, pinned = pinned, gridPadding = ThemeSpace.group, onClick = {})
         }
@@ -35,4 +36,11 @@ private fun InAlbumGrid(pinned: Boolean) {
 }
 
 private val section =
-    BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, 0uL, 12uL, BridgeCountLabel("core.library.album_count", 12uL))
+    BridgeLibraryBrowseSection(
+        "artist-1",
+        "Mara Quill",
+        PreviewData.imageRef("Mara Quill"),
+        0uL,
+        12uL,
+        BridgeCountLabel("core.library.album_count", 12uL),
+    )

@@ -19,7 +19,13 @@ class AndroidPlaylistHeaderShots : BoardShot() {
             Header(
                 BridgeFixtures.playlistSummary(name = "Late night", sharing = BridgeSharing.HOUSEHOLD).copy(
                     owner = BridgePersonRef(person = "person-1", name = "Ana", initials = "A", avatarVersion = null),
-                    cover = BridgePlaylistCover.Grid(covers = List(4) { PreviewData.imageRef("img-$it") }),
+                    cover =
+                        BridgePlaylistCover.Grid(
+                            covers =
+                                listOf("Low Tide Hours", "Copper Sky", "Small Hours", "Paper Lanterns").map {
+                                    PreviewData.imageRef(it)
+                                },
+                        ),
                 ),
             )
         }
@@ -31,11 +37,11 @@ class AndroidPlaylistHeaderShots : BoardShot() {
                 BridgeFixtures.playlistSummary(name = "Sunday mornings in the kitchen").copy(
                     owner = BridgePersonRef(person = "person-2", name = "Ben", initials = "B", avatarVersion = null),
                     trackCount = BridgeCountLabel(key = "core.library.track_count", count = 1uL),
-                    cover = BridgePlaylistCover.Single(PreviewData.imageRef("img-1")),
+                    cover = BridgePlaylistCover.Single(PreviewData.imageRef("Copper Sky")),
                 ),
             )
         }
 }
 
 @Composable
-private fun Header(summary: BridgePlaylistSummary) = Images { AndroidPlaylistHeader(summary, onPlay = {}) }
+private fun Header(summary: BridgePlaylistSummary) = Covers { AndroidPlaylistHeader(summary, onPlay = {}) }
