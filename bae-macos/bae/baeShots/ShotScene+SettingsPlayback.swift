@@ -84,8 +84,7 @@ extension ShotScene {
         ) {
             playbackStage(receivers: foundReceivers) { window in
                 OverWindow.popover(
-                    CastReceiverDetails(receiver: livingRoom)
-                        .windowBackground(),
+                    CastReceiverDetails(receiver: livingRoom),
                     top: 330,
                     trailing: 12,
                     over: window

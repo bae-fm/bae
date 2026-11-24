@@ -99,8 +99,9 @@ enum OverWindow {
     ) -> some View {
         ZStack(alignment: .bottomTrailing) {
             window
-            UpwardPopover(
+            PlacedPopover(
                 content: content,
+                arrowSide: .bottom,
                 arrowFromTrailing: arrowFromTrailing
             )
             // The face holds its arrow under the body and a room for its
@@ -123,27 +124,24 @@ enum OverWindow {
         trailing: CGFloat,
         over window: some View
     ) -> some View {
-        ZStack(alignment: .topTrailing) {
-            window
-            content
-                .fixedSize(horizontal: false, vertical: true)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(alignment: .topTrailing) {
-                    Rectangle()
-                        .fill(Color(nsColor: .windowBackgroundColor))
-                        .frame(width: 14, height: 14)
-                        .rotationEffect(.degrees(45))
-                        .offset(x: -40, y: -7)
-                        .accessibilityHidden(true)
-                }
-                .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
-                .padding(.top, distance)
-                .padding(.trailing, trailing)
-                // The app's popover is a window of its own. The boards read
-                // one hung from the top after the window it opens from, not
-                // among the rows it covers.
-                .accessibilitySortPriority(-1)
+        // An overlay, so the popover's face and the room round it for its
+        // shadow never change the window's own size.
+        window.overlay(alignment: .topTrailing) {
+            PlacedPopover(
+                content: content,
+                arrowSide: .top,
+                // The boards' arrow is 14 points wide, 40 from the body's
+                // right edge, so its middle is 47 in.
+                arrowFromTrailing: 47
+            )
+            // The face holds its arrow over the body and a room for its
+            // shadow around it.
+            .padding(.top, distance - popoverArrowLength - popoverShadowRoom)
+            .padding(.trailing, trailing - popoverShadowRoom)
+            // The app's popover is a window of its own. The boards read
+            // one hung from the top after the window it opens from, not
+            // among the rows it covers.
+            .accessibilitySortPriority(-1)
         }
     }
 }
@@ -153,10 +151,11 @@ enum OverWindow {
 private let popoverArrowLength: CGFloat = 7
 private let popoverShadowRoom: CGFloat = 40
 
-/// `content` in the popover face the app draws, its arrow on the bottom edge
-/// `arrowFromTrailing` points in from the right edge.
-private struct UpwardPopover<Content: View>: View {
+/// `content` in the popover face the app draws, its arrow on the `arrowSide`
+/// edge `arrowFromTrailing` points in from the right edge.
+private struct PlacedPopover<Content: View>: View {
     let content: Content
+    let arrowSide: Edge
     let arrowFromTrailing: CGFloat
 
     @State
@@ -164,7 +163,7 @@ private struct UpwardPopover<Content: View>: View {
 
     var body: some View {
         MacPopoverInPlace(
-            arrowSide: .bottom,
+            arrowSide: arrowSide,
             arrowOffset: width - arrowFromTrailing
         ) {
             content
