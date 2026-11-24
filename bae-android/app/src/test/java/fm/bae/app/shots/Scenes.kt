@@ -106,8 +106,9 @@ internal fun SheetOverScrim(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .dialogPane(heading.title)
-                        .then(if (top == null) Modifier else Modifier.fillMaxHeight().padding(top = top)),
+                        .then(if (top == null) Modifier else Modifier.fillMaxHeight().padding(top = top))
+                        // After the padding, so the name sits on the sheet's own box and not on the cell above it.
+                        .dialogPane(heading.title),
                 shape = BottomSheetDefaults.ExpandedShape,
                 color = BottomSheetDefaults.ContainerColor,
             ) {
