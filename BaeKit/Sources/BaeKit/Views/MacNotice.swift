@@ -188,7 +188,7 @@ public struct MacNotice: View {
         switch look {
         case .filled, .quiet:
             row
-        case .centered, .centeredNoGlyph, .centeredOnStage:
+        case .centered, .centeredOnStage:
             centered
         }
     }
@@ -418,7 +418,7 @@ extension MacNotice {
                         .foregroundStyle(Theme.onFillSecondary)
                         .accessibilityHidden(true)
                 }
-                else if look != .centeredNoGlyph {
+                else {
                     StatusGlyph(tone, muted: true)
                         .font(Self.glyphFont(scaledTo: .heading))
                         .accessibilityHidden(true)
@@ -553,7 +553,7 @@ extension MacNotice {
     private var centeredSecondary: Color? {
         switch look {
         case .filled, .quiet: nil
-        case .centered, .centeredNoGlyph: Theme.textSecondary
+        case .centered: Theme.textSecondary
         case .centeredOnStage: Theme.onFillSecondary
         }
     }

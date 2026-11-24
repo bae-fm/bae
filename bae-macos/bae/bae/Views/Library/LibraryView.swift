@@ -179,7 +179,7 @@ extension LibraryView {
                         title: String(localized: "Could not read your library"),
                         advice: nil,
                         error: error,
-                        look: .centeredNoGlyph,
+                        look: .centered,
                         action: error.retryAction {
                             retryRead.replace { await albumList.loadInitial() }
                         }
