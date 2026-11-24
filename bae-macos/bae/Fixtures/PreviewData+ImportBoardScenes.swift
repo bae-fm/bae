@@ -68,7 +68,11 @@ extension PreviewData {
         in store: ImportStore
     ) throws -> ([BridgeImportListItem], ImportSelection) {
         let images = try FoundBoardImages()
-        let items = foundItems(northbound: northbound, images: images)
+        let items = foundItems(
+            northbound: northbound,
+            lowTideHoursOpen: pane == .lowTideHours,
+            images: images
+        )
         guard let pane else {
             return (items, ImportSelection())
         }

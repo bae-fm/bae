@@ -89,10 +89,14 @@ extension PreviewData {
     /// The Found tab's rows as the boards list them.
     static func foundItems(
         northbound: NorthboundStanding,
+        lowTideHoursOpen: Bool = false,
         images: FoundBoardImages
     ) -> [BridgeImportListItem] {
         groupItems(cover: images.fieldRecordings.image)
-            + lookupItems(images: images.lookup)
+            + lookupItems(
+                lowTideHoursOpen: lowTideHoursOpen,
+                images: images.lookup
+            )
             + importItems(northbound: northbound, images: images)
     }
 
@@ -135,11 +139,18 @@ extension PreviewData {
     }
 
     /// The rows the lookups left to the person or have not reached.
-    static func lookupItems(images: LookupBoardImages) -> [BridgeImportListItem]
-    {
+    /// `lowTideHoursOpen` draws Low Tide Hours as the importable draft its
+    /// open pane shows, with no badge.
+    static func lookupItems(
+        lowTideHoursOpen: Bool = false,
+        images: LookupBoardImages
+    ) -> [BridgeImportListItem] {
         [
             candidateItem(
-                lowTideHoursBoardRow(cover: images.lowTideHours.file)
+                lowTideHoursBoardRow(
+                    cover: images.lowTideHours.file,
+                    open: lowTideHoursOpen
+                )
             ),
             candidateItem(
                 notFoundBoardRow(copperSky, cover: images.copperSky.file)
@@ -174,9 +185,10 @@ extension PreviewData {
         ]
     }
 
-    static func lowTideHoursBoardRow(cover: BridgeFileVersion)
-        -> BridgeTriageRow
-    {
+    static func lowTideHoursBoardRow(
+        cover: BridgeFileVersion,
+        open: Bool = false
+    ) -> BridgeTriageRow {
         boardRow(
             .lowTideHours,
             summary: BridgeAlbumLine.titleAndArtists(
@@ -184,7 +196,9 @@ extension PreviewData {
                 artistLine: .named("Mara Quill")
             ),
             record: "board-low-tide-hours",
-            cover: .local(file: cover)
+            cover: .local(file: cover),
+            live: open
+                ? triageLive(boardDraftActions) : needsYou(.matches(count: 3))
         )
     }
 
