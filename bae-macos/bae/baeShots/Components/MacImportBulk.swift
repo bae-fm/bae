@@ -31,12 +31,12 @@ extension ShotScene {
             component(
                 "mac.component.import-bulk.running",
                 width: 842,
-                height: 601,
+                height: 625,
                 isReady: { running.selection?.running != nil }
             ) {
                 let selection = runningSelection()
                 running.selection = selection
-                return importBulk(selection: selection, height: 601)
+                return importBulk(selection: selection, height: 625)
             }
         ]
     }()
