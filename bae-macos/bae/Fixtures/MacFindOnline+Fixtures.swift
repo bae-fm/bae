@@ -17,6 +17,7 @@ extension MacFindOnline {
         openSection: FindOnlineSection = .automatic,
         onRetryFailed: @escaping () -> Void = {},
         showsDiscogsBar: Bool = false,
+        keepsOwnDraft: Bool = true,
     ) -> MacFindOnline {
         MacFindOnline(
             state: state,
@@ -35,7 +36,7 @@ extension MacFindOnline {
             onRetryFailed: onRetryFailed,
             onEditTitleSearch: { _, _ in },
             onSelect: { _ in },
-            onKeepOwnDraft: {},
+            onKeepOwnDraft: keepsOwnDraft ? {} : nil,
             onLinkSharedAlbum: {},
             openSection: openSection,
             onOpenSection: { _ in },

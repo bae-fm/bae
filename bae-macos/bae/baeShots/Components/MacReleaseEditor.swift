@@ -51,6 +51,11 @@ extension ShotScene {
             actionRow: .importing(nil)
         ),
         editorScene(
+            "mac.component.release-editor.identifying",
+            actionRow: .importing(commitControls()),
+            searching: true
+        ),
+        editorScene(
             "mac.component.release-editor.save",
             actionRow: .saving(saveRow(changed: false))
         ),
@@ -105,7 +110,8 @@ extension ShotScene {
         secondLabel: Bool = false,
         actionRow: ReleaseEditorActionRow,
         editable: Bool = true,
-        openAlbum: Bool = false
+        openAlbum: Bool = false,
+        searching: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -147,8 +153,14 @@ extension ShotScene {
                         ),
                         editingCommands: EditingCommitCommands(),
                         editable: editable,
-                        searching: false,
-                        search: { EmptyView() }
+                        searching: searching,
+                        search: {
+                            MacFindOnline.preview(
+                                state: PreviewData.searchStateNotFound
+                            )
+                            .frame(maxWidth: .infinity)
+                            .card()
+                        }
                     ),
                     syncs: syncs
                 )

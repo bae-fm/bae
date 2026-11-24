@@ -628,6 +628,14 @@ extension PreviewData {
         signals: settledSignals
     )
 
+    /// Both signals ran, neither source knew them, and the folder waits on
+    /// the person.
+    static let searchStateNotFoundNeedsYou = searchState(
+        identifyState: .notFoundAnywhere(run: identifyRunNothingFound),
+        signals: settledSignals,
+        needsYou: .notFound
+    )
+
     /// The folder carries nothing to look up and nothing to offer.
     static let searchStateNoSignals = searchState(
         identifyState: .manualOnly(trackCount: 9, run: nil),
