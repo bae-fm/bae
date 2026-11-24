@@ -132,7 +132,7 @@ public final class ImageStore: Sendable, Observable {
 
     /// What the decoded cache holds at most, in decoded bytes, for every kind
     /// of content together.
-    public static let defaultDecodedByteBudget = 256 * 1024 * 1024
+    private static let decodedByteBudget = 256 * 1024 * 1024
 
     #if DEBUG
         /// Posted after each image enters the decoded cache, for a test to
@@ -165,15 +165,14 @@ public final class ImageStore: Sendable, Observable {
             },
         fetchAvatarBytes:
             @escaping @Sendable (String) async throws -> Data? = { _ in nil },
-        decodedByteBudget: Int = ImageStore.defaultDecodedByteBudget,
-        decodeQueue: ImageDecodeQueue = .shared
+        decodeQueue: ImageDecodeQueue = ImageDecodeQueue()
     ) {
         self.fetchLibraryImageBytes = fetchLibraryImageBytes
         self.fetchReleaseImageBytes = fetchReleaseImageBytes
         self.fetchRemoteImage = fetchRemoteImage
         self.fetchEmbeddedCover = fetchEmbeddedCover
         self.fetchAvatarBytes = fetchAvatarBytes
-        cache = DecodedImageCache(totalCostLimit: decodedByteBudget)
+        cache = DecodedImageCache(totalCostLimit: Self.decodedByteBudget)
         self.decodeQueue = decodeQueue
     }
 
@@ -322,6 +321,32 @@ public final class ImageStore: Sendable, Observable {
         return image
     }
 
+}
+
+extension ImageStore {
+    /// `content` decoded at its own resolution, for a viewer that zooms in:
+    /// not cached, and nil when no such image exists. Runs on the decode
+    /// queue like every other decode.
+    public func fullResolutionImage(
+        _ content: ImageContent,
+        displayScale: CGFloat
+    ) async throws -> PlatformImage? {
+        guard
+            let source = try await decodeSource(
+                for: content,
+                at: .nativeResolution
+            )
+        else {
+            return nil
+        }
+        return try await ImageLoader.load(
+            source: source,
+            size: .native,
+            displayScale: displayScale,
+            queue: decodeQueue
+        )
+    }
+
     /// Decode `contents` at `pointSize` into the cache, so a view that mounts
     /// later draws the art on its first frame instead of a loading placeholder.
     ///
@@ -368,11 +393,7 @@ public final class ImageStore: Sendable, Observable {
     /// Where `content`'s bytes come from, resolved for a decode: a path for a
     /// local file (which streams rather than loading whole), the fetched bytes
     /// otherwise. Nil when no such image exists.
-    ///
-    /// The zoomable viewers take this at `.nativeResolution` to decode the
-    /// same bytes to fit the screen and then at full size without crossing
-    /// the bridge again.
-    public func decodeSource(
+    func decodeSource(
         for content: ImageContent,
         at target: DecodeTarget
     ) async throws -> ImageLoader.Source? {

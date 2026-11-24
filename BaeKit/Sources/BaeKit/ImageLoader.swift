@@ -63,7 +63,7 @@ public enum ImageLoader {
         source: Source,
         size: Size,
         displayScale: CGFloat,
-        queue: ImageDecodeQueue = .shared,
+        queue: ImageDecodeQueue,
         shouldStart: @escaping @Sendable () -> Bool = { true }
     ) async throws -> PlatformImage {
         let decoded = try await queue.run(shouldStart: shouldStart) {

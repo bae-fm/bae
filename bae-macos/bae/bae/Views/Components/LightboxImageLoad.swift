@@ -25,17 +25,21 @@ final class LightboxImageLoad {
         case failed
     }
 
+    /// The image the last load was for, and the store it loads from; nil
+    /// before the first load and once the lightbox closes.
+    private struct Shown {
+        let content: ImageContent
+        let images: ImageStore
+    }
+
+    private var shown: Shown?
     /// The image the last load was for; nil before the first and once the
     /// lightbox closes.
-    private(set) var content: ImageContent?
+    var content: ImageContent? { shown?.content }
     private(set) var phase = Phase.loading
     /// The image decoded at its own resolution, once a zoom asked for it.
     private(set) var fullResolution: NSImage?
 
-    /// The store the image loads from, kept for the decode at full
-    /// resolution a zoom asks for.
-    @ObservationIgnored
-    private var images: ImageStore?
     /// Moves with each load and each close, so a load that was replaced
     /// changes nothing when its work comes back.
     @ObservationIgnored
@@ -53,8 +57,7 @@ final class LightboxImageLoad {
         fitting points: CGFloat,
         displayScale: CGFloat
     ) async {
-        let current = restart(with: image)
-        self.images = images
+        let current = restart(showing: Shown(content: image, images: images))
         guard
             let decoded = await decode(
                 image,
@@ -129,8 +132,7 @@ final class LightboxImageLoad {
     /// Decode the image at its own resolution, for a zoom: once per image,
     /// and again after a decode that failed.
     func loadFullResolution(displayScale: CGFloat) {
-        guard fullResolution == nil, upgrade == nil, let content, let images
-        else { return }
+        guard fullResolution == nil, upgrade == nil, let shown else { return }
         let current = generation
         upgrade = Task {
             defer {
@@ -139,21 +141,17 @@ final class LightboxImageLoad {
             let loaded: NSImage
             do {
                 guard
-                    let source = try await images.decodeSource(
-                        for: content,
-                        at: .nativeResolution
+                    let image = try await shown.images.fullResolutionImage(
+                        shown.content,
+                        displayScale: displayScale
                     )
                 else {
                     logger.warning(
-                        "No bytes for full-res image \(content.description)"
+                        "No bytes for full-res image \(shown.content.description)"
                     )
                     return
                 }
-                loaded = try await ImageLoader.load(
-                    source: source,
-                    size: .native,
-                    displayScale: displayScale
-                )
+                loaded = image
             }
             catch is CancellationError {
                 return
@@ -170,18 +168,17 @@ final class LightboxImageLoad {
     /// The lightbox closed: nothing shown, and no load still running
     /// changes that.
     func close() {
-        restart(with: nil)
+        restart(showing: nil)
     }
 
     @discardableResult
-    private func restart(with image: ImageContent?) -> Int {
+    private func restart(showing shown: Shown?) -> Int {
         generation += 1
         upgrade?.cancel()
         upgrade = nil
-        content = image
+        self.shown = shown
         phase = .loading
         fullResolution = nil
-        images = nil
         return generation
     }
 

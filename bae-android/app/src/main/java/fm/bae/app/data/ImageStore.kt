@@ -95,11 +95,12 @@ private const val DECODED_IMAGE_BUDGET = 64 * MEGABYTE
 private const val DECODE_WIDTH = 3
 
 /**
- * The threads picture decodes run on: at most [DECODE_WIDTH] at a time, apart from
- * the threads that draw and the ones other coroutines share.
+ * A dispatcher for picture decodes: at most [DECODE_WIDTH] at a time, apart from
+ * the threads that draw and the ones other coroutines share. Each [ImageStore]
+ * makes its own.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-private val decodeDispatcher: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(DECODE_WIDTH)
+private fun boundedDecodeDispatcher(): CoroutineDispatcher = Dispatchers.Default.limitedParallelism(DECODE_WIDTH)
 
 /**
  * The app's image pipeline: bytes → decode at the slot's pixel size on a bounded
@@ -128,7 +129,7 @@ class ImageStore(
     decodedBudget: Int = DECODED_IMAGE_BUDGET,
     /** Where fetches and decodes run. Injected so tests drive them on their own
      *  scheduler. */
-    private val dispatcher: CoroutineDispatcher = decodeDispatcher,
+    private val dispatcher: CoroutineDispatcher = boundedDecodeDispatcher(),
     /** Turns bytes into a bitmap at a size, on a thread of [dispatcher]. Injected so a
      *  test can see where decodes run. */
     private val decode: (ByteArray, DecodeSize) -> Bitmap? = ::decodeBytes,

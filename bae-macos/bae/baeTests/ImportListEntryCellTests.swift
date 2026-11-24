@@ -13,6 +13,7 @@ struct ImportListEntryCellTests {
         let fetches = Counter()
         let images = ImageStore(fetchLibraryImageBytes: { _ in
             fetches.increment()
+            Wait.happened()
             try await Task.sleep(for: .seconds(600))
             return nil
         })
@@ -22,17 +23,19 @@ struct ImportListEntryCellTests {
         let first = Self.entry(cover: "cover-1", images: images)
 
         cell.show(first, displayScale: 2)
+        let load = try #require(cell.coverLoad)
         try await Wait.until { fetches.count == 1 }
         cell.show(first, displayScale: 2)
         cell.show(Self.entry(cover: "cover-1", images: images), displayScale: 2)
-        try await Task.sleep(for: .milliseconds(150))
-        #expect(fetches.count == 1, "the redraws left the load alone")
+        #expect(cell.coverLoad == load, "the redraws left the load alone")
 
         cell.show(Self.entry(cover: "cover-2", images: images), displayScale: 2)
+        #expect(cell.coverLoad != load, "another cover starts its own load")
         try await Wait.until { fetches.count == 2 }
 
         // No scale ends the cell's load.
         cell.show(first, displayScale: nil)
+        #expect(cell.coverLoad == nil)
     }
 
     private static func entry(

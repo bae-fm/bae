@@ -10,10 +10,11 @@ import Foundation
 /// app while they waited. Each decode runs here instead, and its caller awaits
 /// it through a continuation.
 public final class ImageDecodeQueue: @unchecked Sendable {
-    /// The queue every app decode runs on.
-    public static let shared = ImageDecodeQueue(
-        width: max(2, min(4, ProcessInfo.processInfo.activeProcessorCount))
-    )
+    /// The width of a queue made with `init()`: at most four decodes, and at
+    /// least two, so one slow file never holds up every other picture.
+    public static var defaultWidth: Int {
+        max(2, min(4, ProcessInfo.processInfo.activeProcessorCount))
+    }
 
     /// One request for a decode, from the moment it is submitted.
     private final class Entry: @unchecked Sendable {
@@ -70,6 +71,10 @@ public final class ImageDecodeQueue: @unchecked Sendable {
             return recordedRuns
         }
     #endif
+
+    public convenience init() {
+        self.init(width: Self.defaultWidth)
+    }
 
     public init(width: Int) {
         precondition(width > 0, "a decode queue runs at least one decode")

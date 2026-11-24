@@ -420,38 +420,34 @@ struct ImageStoreDecodingTests {
         #expect(queue.runs.allSatisfy { $0.onQueue && !$0.onMainThread })
     }
 
-    @Test("no more decodes run at once than the queue's width")
+    @Test("no more decodes start than the queue's width, until one ends")
     func decodesRunAtMostWidthAtOnce() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
         let queue = ImageDecodeQueue(width: 2)
-        let running = Counter()
-        let widest = Counter()
-        queue.beforeRun = {
-            running.increment()
-            widest.raise(to: running.count)
-            Thread.sleep(forTimeInterval: 0.02)
-            running.decrement()
-        }
+        let hold = DecodeHold()
+        hold.install(on: queue)
         let store = ImageStore(
             fetchLibraryImageBytes: { _ in bytes },
             decodeQueue: queue
         )
-
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for index in 0..<8 {
-                group.addTask {
-                    _ = try await store.image(
+        let loads = (0..<8)
+            .map { index in
+                Task {
+                    try await store.image(
                         .libraryImage(coverRef(version: "v\(index)")),
                         pointSize: 56,
                         displayScale: 2
                     )
                 }
             }
-            try await group.waitForAll()
-        }
 
+        await hold.waitUntilStarted()
+        await hold.waitUntilStarted()
+        #expect(queue.runs.count == 2, "two decodes are held; no third started")
+
+        for _ in loads { hold.release() }
+        for load in loads { _ = try await load.value }
         #expect(queue.runs.count == 8)
-        #expect(widest.count == 2)
     }
 
     /// The last request for a decode that is under way is cancelled, and the
