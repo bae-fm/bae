@@ -517,6 +517,7 @@ mod conversion_roundtrip {
             let bridge = BridgeReleaseEditDraft::from_core(bae_import::ReleaseEditDraft {
                 cover: None,
                 source_audio: None,
+                images: None,
                 sides: Some(vec![bae_import::TrackTableSide {
                     side: bae_types::mediums::TrackSide::Disc { disc: 2 },
                     runs: vec![bae_import::TrackTableRun::Track(bae_import::TrackTableRow {

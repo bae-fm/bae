@@ -80,6 +80,11 @@ extension ShotScene {
         release.draft.files = PreviewData.carriedBoardFiles.map {
             .file(file: $0)
         }
+        // The scene's images serve a release file by the art its id names, so
+        // the file `cover.jpg` is the art `Northbound`.
+        release.draft.images = [
+            BridgeReleaseImage(fileId: "Northbound", name: "cover.jpg")
+        ]
         release.draft.changed = true
         return release
     }

@@ -373,6 +373,24 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     fixture.shut_down().await;
 }
 
+/// The editor's draft of an imported release lists the images bae can show
+/// that the folder held, each with the id the library reads it by and its
+/// own name.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_imported_release_edit_lists_the_folders_images() {
+    let fixture = ImportingLibrary::open().await;
+    let key = fixture.importable_folder("watched", "Album", "Fixture Artist").await;
+    let (release_id, _) =
+        fixture.import(&key).await.unwrap_or_else(|error| panic!("import failed: {error}"));
+
+    let draft = fixture.release_edit(&release_id).await;
+
+    let images = draft.images.expect("the release holds its folder's cover image");
+    assert_eq!(images.iter().map(|image| image.name.as_str()).collect::<Vec<_>>(), ["cover.jpg"]);
+    assert!(!images[0].file_id.is_empty());
+    fixture.shut_down().await;
+}
+
 /// An imported candidate holds no draft: an edit of it is refused as an
 /// import of those files would be, and the library release stays as the
 /// import wrote it.

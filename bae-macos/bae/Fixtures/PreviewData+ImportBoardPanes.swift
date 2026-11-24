@@ -86,6 +86,7 @@ extension PreviewData {
                     format: previewSourceAudioFormat
                 )
             ),
+            images: nil,
             sides: [
                 BridgeTrackTableSide(
                     side: .flat,

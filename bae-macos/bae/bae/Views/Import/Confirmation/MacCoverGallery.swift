@@ -20,6 +20,9 @@ struct MacCoverGallery: View {
     let selectedCover: BridgeCoverSelection?
     /// The lightbox's image as it loads, owned by whoever shows the gallery.
     let lightboxLoad: LightboxImageLoad
+    /// Whether the gallery opens on the lightbox at the focused cover, not
+    /// on its grid.
+    var opensOnLightbox = false
     var isSaving = false
     var error: DisplayError?
     var onRefresh: (() -> Void)?
@@ -29,6 +32,7 @@ struct MacCoverGallery: View {
 
     @State
     private var browser = ArtworkBrowserState(layout: .grid)
+
     @FocusState
     private var previewFocused: Bool
 
@@ -158,6 +162,9 @@ struct MacCoverGallery: View {
             .disabled(browser.layout == .lightbox)
             .accessibilityHidden(browser.layout == .lightbox)
             .overlay { lightboxOverlay }
+            .onAppear {
+                if opensOnLightbox { browser.layout = .lightbox }
+            }
             // The grid's preview gets keyboard focus whenever it appears: when
             // the sheet opens on the grid, its covers arrive, or the lightbox
             // closes back to it. The code never clears the preview's focus

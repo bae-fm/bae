@@ -40,7 +40,9 @@ pub use release_link::ReleaseLink;
 mod release_edit;
 pub use release_edit::{AlbumLine, AlbumPick, DraftAlbum, ReleaseUserEdit, TrackUserEdit};
 #[cfg(desktop)]
-pub use release_edit::{AppliedCatalog, ReleaseEditDraft, ReleaseEditForm, ReleaseEditSeed};
+pub use release_edit::{
+    AppliedCatalog, ReleaseEditDraft, ReleaseEditForm, ReleaseEditSeed, ReleaseImage,
+};
 mod candidate_draft;
 #[cfg(desktop)]
 pub use candidate_draft::CandidateMetadataDraft;

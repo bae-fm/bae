@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The folder's images under their own ruled heading.
 struct MacImportImages: View {
-    let images: [BridgeMappingImage]
+    let images: [ImportImage]
     let onOpen: (String) -> Void
 
     var body: some View {

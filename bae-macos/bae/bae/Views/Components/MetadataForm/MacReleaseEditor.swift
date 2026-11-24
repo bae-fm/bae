@@ -195,9 +195,9 @@ struct ReleaseCover {
 /// What the editor shows under its card: the release's images, its track
 /// table and its Files list, and what their controls do.
 struct ReleaseEditorTracks {
-    /// The folder's images; `nil` where there are none to show.
-    let images: [BridgeMappingImage]?
-    /// Open the images in the lightbox at the one whose file id it gets.
+    /// The release's images; `nil` where there are none to show.
+    let images: [ImportImage]?
+    /// Open the images at the one whose file id it gets.
     let onOpenImages: (String) -> Void
     /// The track table's sides; `nil` while the release has no track.
     let sides: [BridgeTrackTableSide]?

@@ -28,9 +28,11 @@ extension ShotScene {
         ) {
             MacImportImages(
                 images: try names.map {
-                    try PreviewData.boardImage(
-                        "\($0).jpg",
-                        art: "Low Tide Hours\(art[$0] ?? "")"
+                    ImportImage(
+                        try PreviewData.boardImage(
+                            "\($0).jpg",
+                            art: "Low Tide Hours\(art[$0] ?? "")"
+                        )
                     )
                 },
                 onOpen: { _ in }

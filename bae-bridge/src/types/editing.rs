@@ -382,6 +382,17 @@ pub struct BridgeMappingImage {
     pub file: BridgeFileVersion,
 }
 
+/// One image bae can show among a library release's files. Mirror of
+/// `bae_import::ReleaseImage`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseImage {
+    /// The id the library reads the file by.
+    pub file_id: String,
+    /// The file's own name, past the folders above it.
+    pub name: String,
+}
+
 /// One side or disc of a release's track table and the runs of rows on it,
 /// headed once: the one shape the import pane's draft and a library
 /// release's editor's draft hand the app. Mirror of bae-import's
@@ -707,6 +718,10 @@ pub struct BridgeReleaseEditSaved {
 pub struct BridgeReleaseEditDraft {
     pub cover: Option<BridgeImageRef>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
+    /// The images bae can show among the release's files, in the release's
+    /// file order, which the editor's Images section lists; `None` when it
+    /// has none.
+    pub images: Option<Vec<BridgeReleaseImage>>,
     /// The release's tracks on the track table's sides, each row the form
     /// row that edits the track; `None` when the release has no tracks.
     pub sides: Option<Vec<BridgeTrackTableSide>>,

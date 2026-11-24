@@ -1,10 +1,35 @@
 import BaeKit
 import SwiftUI
 
-/// The folder's images as a thumbnail gallery; each opens the lightbox at
-/// itself.
+/// One image of the editor's Images section: a file of the folder on disk, or
+/// a file of the library release.
+struct ImportImage: Identifiable, Equatable {
+    /// The file's id, which a click hands to the lightbox.
+    let id: String
+    let name: String
+    let content: ImageContent
+
+    /// An image of the folder, at the version the scan read.
+    init(_ image: BridgeMappingImage) {
+        id = image.fileId
+        name = image.name
+        content = .localFile(image.file)
+    }
+
+    /// An image among the files of the library release `releaseId`.
+    init(_ image: BridgeReleaseImage, releaseId: String) {
+        id = image.fileId
+        name = image.name
+        content = .releaseImage(
+            releaseId: releaseId,
+            source: .releaseFile(fileId: image.fileId)
+        )
+    }
+}
+
+/// The images as a thumbnail gallery; each opens the lightbox at itself.
 struct ImportMappingGallery: View {
-    let images: [BridgeMappingImage]
+    let images: [ImportImage]
     let onOpen: (String) -> Void
 
     static let tileSize: CGFloat = 128
@@ -24,7 +49,7 @@ struct ImportMappingGallery: View {
             alignment: .leading,
             spacing: ThemeSpace.related
         ) {
-            ForEach(images, id: \.fileId) { image in
+            ForEach(images) { image in
                 ImportMappingGalleryTile(image: image, onOpen: onOpen)
             }
         }
@@ -35,7 +60,7 @@ struct ImportMappingGallery: View {
 /// One gallery image, named on hover, outlined on hover; dragging it onto
 /// the cover well makes it the cover.
 struct ImportMappingGalleryTile: View {
-    let image: BridgeMappingImage
+    let image: ImportImage
     let onOpen: (String) -> Void
 
     @State
@@ -45,10 +70,10 @@ struct ImportMappingGalleryTile: View {
 
     var body: some View {
         Button {
-            onOpen(image.fileId)
+            onOpen(image.id)
         } label: {
             Artwork(
-                content: .localFile(image.file),
+                content: image.content,
                 pointSize: tileSize,
                 cornerRadius: nil
             )
@@ -68,6 +93,6 @@ struct ImportMappingGalleryTile: View {
         .help(image.name)
         .accessibilityLabel(Text(verbatim: image.name))
         .onHover { hovering = $0 }
-        .draggable(image.fileId)
+        .draggable(image.id)
     }
 }

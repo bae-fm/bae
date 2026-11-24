@@ -352,6 +352,7 @@ pub use types::{
 #[cfg(desktop)]
 pub use types::{
     AppliedCatalog, ReleaseEditDisplayContext, ReleaseEditDraft, ReleaseEditForm, ReleaseEditSeed,
+    ReleaseImage,
 };
 #[cfg(desktop)]
 pub use types::{

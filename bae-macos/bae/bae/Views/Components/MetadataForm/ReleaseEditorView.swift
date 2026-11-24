@@ -11,10 +11,11 @@ struct ReleaseEditorView: View {
     let displayName: String
     var onPlayTrack: ((String) -> Void)?
     /// The images of the folder the release was imported from, as the scan
-    /// read them, drawn between the album row and the tracks; `nil` where
-    /// the release has no folder images to show.
-    var images: [BridgeMappingImage]?
-    var onOpenImages: ((String) -> Void)?
+    /// read them, drawn between the album row and the tracks. `nil` where
+    /// the host shows none: the editor then draws the images among the
+    /// release's own files, which open in the album's image viewer.
+    var folderImages: [BridgeMappingImage]?
+    var onOpenFolderImages: ((String) -> Void)?
     /// The save landed; receives the album the release is on after it.
     let onSaved: @MainActor @Sendable (String) -> Void
 
@@ -62,8 +63,8 @@ struct ReleaseEditorView: View {
                     ),
                     card: card(draft),
                     tracks: ReleaseEditorTracks(
-                        images: images,
-                        onOpenImages: onOpenImages ?? { _ in },
+                        images: images(of: draft),
+                        onOpenImages: onOpenImages,
                         sides: draft.sides,
                         files: draft.files,
                         previewingTarget: nil,
@@ -92,6 +93,24 @@ struct ReleaseEditorView: View {
                 session.save(onSuccess: onSaved)
             }
         }
+    }
+
+    /// The images the editor draws: the folder's, where the host passes
+    /// them, else the release's own.
+    private func images(of draft: BridgeReleaseEditDraft) -> [ImportImage]? {
+        if let folderImages { return folderImages.map(ImportImage.init) }
+        let releaseId = session.releaseId
+        return draft.images?
+            .map {
+                ImportImage($0, releaseId: releaseId)
+            }
+    }
+
+    /// What a click on an image does: the folder's lightbox where the host
+    /// passes folder images, else the album's image viewer at that image.
+    private var onOpenImages: (String) -> Void {
+        if folderImages != nil { return onOpenFolderImages ?? { _ in } }
+        return { presentImageViewer(at: .file(fileId: $0)) }
     }
 
     /// Cancel and Save, the step of an apply, and why the form can't be
@@ -176,6 +195,13 @@ struct ReleaseEditorView: View {
 
     /// Open Change cover over the editor; a pick writes the cover at once.
     private func presentCoverPicker() {
+        presentImageViewer(at: nil)
+    }
+
+    /// Open the album's image viewer over the editor, on the lightbox at
+    /// the image `focus` names, or on its grid with no focus; a pick writes
+    /// the cover at once.
+    private func presentImageViewer(at focus: BridgeCoverKey?) {
         let releaseEditor = releaseEditor
         let uiStore = uiStore
         let session = session
@@ -184,6 +210,7 @@ struct ReleaseEditorView: View {
             CoverGalleryFrame(host: host) {
                 CoverSheetView(
                     owner: .release(releaseId: session.releaseId),
+                    opensOn: focus,
                     lightboxLoad: lightboxLoad,
                     onFindRelease: {
                         uiStore.dismissModal()

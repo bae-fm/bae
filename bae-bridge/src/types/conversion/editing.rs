@@ -197,11 +197,19 @@ mirror_struct! {
 
 mirror_struct! {
     #[cfg(desktop)]
+    BridgeReleaseImage = bae_import::ReleaseImage,
+    from_core: fn,
+    fields: { file_id, name },
+}
+
+mirror_struct! {
+    #[cfg(desktop)]
     BridgeReleaseEditDraft = bae_import::ReleaseEditDraft,
     from_core: pub(crate) fn,
     fields: {
         cover: (opt BridgeImageRef),
         source_audio: (opt BridgeSourceAudioSummary),
+        images: (opt each BridgeReleaseImage),
         sides: (opt each BridgeTrackTableSide),
         files: (opt each BridgeMappingFileRow),
         album: (BridgeDraftAlbum),

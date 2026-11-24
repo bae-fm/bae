@@ -470,6 +470,20 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
+            images: (!files.images.is_empty()).then(|| {
+                files
+                    .images
+                    .iter()
+                    .map(|image| crate::ReleaseImage {
+                        file_id: image.id.clone(),
+                        name: image
+                            .original_filename
+                            .rsplit_once('/')
+                            .map_or(image.original_filename.as_str(), |(_, name)| name)
+                            .to_string(),
+                    })
+                    .collect()
+            }),
             sides: has_tracks
                 .then(|| crate::types::lay_out_tracks(rows, album_artists.is_some()))
                 .transpose()?,

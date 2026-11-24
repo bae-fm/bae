@@ -135,6 +135,7 @@ extension PreviewData {
                     format: format
                 )
             ),
+            images: nil,
             sides: [
                 BridgeTrackTableSide(
                     side: .flat,

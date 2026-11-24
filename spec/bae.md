@@ -2372,13 +2372,17 @@ destructive *Save*. A save that deletes only tracks with none of these shows no
 alert.
 
 **Images.** Before the tracks, a folder's *Images* section lists the JPEG,
-PNG, GIF and WebP images the scan could read. On the Mac, clicking an image
-opens the folder's lightbox at that image. The lightbox shows the image the person last
+PNG, GIF and WebP images the scan could read. A library release's *Images*
+section lists the images bae can show among the release's files, in the
+release's file order. On the Mac, clicking an image in a Found or imported
+folder's pane opens the folder's lightbox at that image. The lightbox shows the image the person last
 moved to while the folder holds it, otherwise the folder's first image, and its
 arrows move to the images before and after it, wrapping around the ends; a lone
 image has none. On the Mac, the lightbox's strip shows a thumbnail of each image
 when it holds more than one, and VoiceOver reads each thumbnail button by its
-image's name, the caption the lightbox shows for it.
+image's name, the caption the lightbox shows for it. Clicking an image in the
+*Edit release* sheet opens the album's image viewer at that image, with the
+same arrows as the album page's viewer.
 
 **Files.** A release's *Files* list is one list, the same in all three places:
 the files no track plays from, such as a rip log, a track sheet that carves no

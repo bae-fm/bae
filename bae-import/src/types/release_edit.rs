@@ -357,6 +357,17 @@ impl ReleaseEditForm {
     }
 }
 
+/// One image bae can show among a library release's files, as the editor's
+/// Images section lists it.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseImage {
+    /// The id the library reads the file by: its release file's id.
+    pub file_id: String,
+    /// The file's own name, past the folders above it.
+    pub name: String,
+}
+
 /// A library release's editor's draft, as the editor shows it beside one
 /// form, which the editor draws itself: the release's cover as it is now,
 /// the tracks beside their form rows, the album a save files the release
@@ -369,6 +380,9 @@ pub struct ReleaseEditDraft {
     pub cover: Option<bae_records::ImageRef>,
     /// The summary of the release's audio.
     pub source_audio: Option<bae_records::source_audio::SourceAudioSummary>,
+    /// The images bae can show among the release's files, in the release's
+    /// file order; `None` when it has none.
+    pub images: Option<Vec<ReleaseImage>>,
     /// The release's tracks on the track table's sides and runs, each row
     /// the form row that edits the track, with its picked artists as
     /// the library holds them now and each one the library no longer holds

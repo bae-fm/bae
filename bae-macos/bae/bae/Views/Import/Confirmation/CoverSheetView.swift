@@ -13,6 +13,8 @@ struct CoverSheetView: View {
     let onFindRelease: (() -> Void)?
     let onSelect: (BridgeCoverSelection) async throws -> Void
     let onDone: () -> Void
+    /// Whether the sheet opens on the lightbox at its focused cover.
+    private let opensOnLightbox: Bool
 
     @State
     private var state = CoverPickerState()
@@ -23,6 +25,7 @@ struct CoverSheetView: View {
 
     init(
         owner: BridgeCoverGalleryOwner,
+        opensOn focus: BridgeCoverKey? = nil,
         selectedCover: BridgeCoverSelection? = nil,
         lightboxLoad: LightboxImageLoad,
         onFindRelease: (() -> Void)? = nil,
@@ -35,12 +38,10 @@ struct CoverSheetView: View {
         self.onFindRelease = onFindRelease
         self.onSelect = onSelect
         self.onDone = onDone
-        _covers = State(
-            initialValue: CoverGalleryState(
-                owner: owner,
-                refresh: refreshCovers
-            )
-        )
+        opensOnLightbox = focus != nil
+        let covers = CoverGalleryState(owner: owner, refresh: refreshCovers)
+        covers.focusedCover = focus
+        _covers = State(initialValue: covers)
     }
 
     var body: some View {
@@ -53,6 +54,7 @@ struct CoverSheetView: View {
             focusedCover: $covers.focusedCover,
             selectedCover: selectedCover,
             lightboxLoad: lightboxLoad,
+            opensOnLightbox: opensOnLightbox,
             isSaving: state.isSaving,
             error: state.error ?? covers.readFailure,
             onRefresh: { covers.startRefresh() },

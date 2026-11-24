@@ -216,7 +216,7 @@ extension ShotScene {
             editTrack: mapping.trackTable.editTrack
         )
         return ReleaseEditorTracks(
-            images: art.map { [$0] },
+            images: art.map { [ImportImage($0)] },
             onOpenImages: { _ in },
             sides: content == .unread
                 ? nil : editorSides(draft.sides, content: content),
