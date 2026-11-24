@@ -34,9 +34,11 @@ pub fn test_cover(release: &str, bytes: &[u8]) -> crate::NewCover {
     crate::NewCover {
         release_id: release.to_string(),
         picture: crate::NewCoverPicture::Original { bytes: bytes.to_vec() },
-        browse: bytes.to_vec(),
-        large: bytes.to_vec(),
-        content_type: bae_util::content_type::ContentType::Jpeg,
+        copies: crate::CoverCopies {
+            browse: bytes.to_vec(),
+            large: bytes.to_vec(),
+            content_type: bae_util::content_type::ContentType::Jpeg,
+        },
     }
 }
 

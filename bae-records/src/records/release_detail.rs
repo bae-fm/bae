@@ -146,10 +146,7 @@ fn cover_in_row(row: &Row) -> rusqlite::Result<Option<DbReleaseCover>> {
     let source_file: Option<String> = row.get("cover_source_file")?;
     Ok(version.map(|version| DbReleaseCover {
         version,
-        source: match source_file {
-            Some(file_id) => CoverSource::ReleaseFile { file_id },
-            None => CoverSource::Original,
-        },
+        source: CoverSource::of_source_file(source_file),
     }))
 }
 

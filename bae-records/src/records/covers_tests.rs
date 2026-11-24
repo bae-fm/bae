@@ -20,9 +20,11 @@ fn cover(picture: NewCoverPicture, browse: &str, large: &str) -> NewCover {
     NewCover {
         release_id: RELEASE_A.to_string(),
         picture,
-        browse: browse.as_bytes().to_vec(),
-        large: large.as_bytes().to_vec(),
-        content_type: ContentType::Jpeg,
+        copies: CoverCopies {
+            browse: browse.as_bytes().to_vec(),
+            large: large.as_bytes().to_vec(),
+            content_type: ContentType::Jpeg,
+        },
     }
 }
 

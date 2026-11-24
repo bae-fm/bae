@@ -114,15 +114,9 @@ impl LibraryManager {
             }
         };
 
-        let copies = bae_import::CoverCopies::of_picture(bytes, &self.diagnostics).await?;
+        let copies = bae_import::make_cover_copies(bytes, &self.diagnostics).await?;
         self.records
-            .write_cover(NewCover {
-                release_id: release_id.to_string(),
-                picture,
-                browse: copies.browse,
-                large: copies.large,
-                content_type: copies.content_type,
-            })
+            .write_cover(NewCover { release_id: release_id.to_string(), picture, copies })
             .await?;
 
         Ok(())

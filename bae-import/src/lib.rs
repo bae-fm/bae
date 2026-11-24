@@ -259,7 +259,7 @@ pub use cover_art::CoverSelection;
 #[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource, CoverRefusal, ImportPicture};
 #[cfg(desktop)]
-pub use cover_copies::{content_type_of, CoverCopies};
+pub use cover_copies::{content_type_of, cover_copies_of, make_cover_copies};
 pub use error::ImportError;
 #[cfg(desktop)]
 pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};

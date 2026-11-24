@@ -99,6 +99,17 @@ pub enum CoverSource {
     Original,
 }
 
+impl CoverSource {
+    /// The source a row's `source_file` column states: the release file it
+    /// names, or none for a cover that keeps its own picture.
+    pub fn of_source_file(source_file: Option<String>) -> Self {
+        match source_file {
+            Some(file_id) => Self::ReleaseFile { file_id },
+            None => Self::Original,
+        }
+    }
+}
+
 /// The copy of a cover a slot draws: the browse copy for grids and rows, the
 /// large copy for the album panel, the full player and Now Playing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -127,16 +138,23 @@ impl CoverCopy {
     }
 }
 
+/// A cover's browse copy and large copy, made from one picture, so both are
+/// in one format.
+#[derive(Debug, Clone)]
+pub struct CoverCopies {
+    pub browse: Vec<u8>,
+    pub large: Vec<u8>,
+    /// The format of both copies.
+    pub content_type: ContentType,
+}
+
 /// A cover to write: the picture it is made from and its two copies, which
 /// the caller made from that picture.
 #[derive(Debug, Clone)]
 pub struct NewCover {
     pub release_id: String,
     pub picture: NewCoverPicture,
-    pub browse: Vec<u8>,
-    pub large: Vec<u8>,
-    /// The format of both copies.
-    pub content_type: ContentType,
+    pub copies: CoverCopies,
 }
 
 /// The picture a new cover is made from.

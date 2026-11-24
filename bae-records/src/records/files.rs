@@ -187,10 +187,7 @@ impl Records {
                         |row| row.get::<_, Option<String>>(0),
                     )
                     .optional()?
-                    .map(|source_file| match source_file {
-                        Some(file_id) => CoverSource::ReleaseFile { file_id },
-                        None => CoverSource::Original,
-                    }))
+                    .map(CoverSource::of_source_file))
             })
             .await
     }

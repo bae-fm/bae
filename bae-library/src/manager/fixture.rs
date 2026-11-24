@@ -243,9 +243,11 @@ impl LibraryManager {
         Ok(NewCover {
             release_id: release_id.to_string(),
             picture: NewCoverPicture::Original { bytes: bytes.clone() },
-            browse: bytes.clone(),
-            large: bytes,
-            content_type: bae_util::content_type::ContentType::Jpeg,
+            copies: bae_records::CoverCopies {
+                browse: bytes.clone(),
+                large: bytes,
+                content_type: bae_util::content_type::ContentType::Jpeg,
+            },
         })
     }
 }

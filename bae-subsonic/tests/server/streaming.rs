@@ -264,12 +264,13 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
 
     lib.library
         .manager()
-        .write_test_cover(bae_records::NewCover {
-            content_type: bae_util::content_type::ContentType::Png,
-            ..bae_records::test_fixtures::test_cover(
+        .write_test_cover({
+            let mut cover = bae_records::test_fixtures::test_cover(
                 &lib.per_track_release,
                 &bae_catalogs::test_image_host::cover_png(),
-            )
+            );
+            cover.copies.content_type = bae_util::content_type::ContentType::Png;
+            cover
         })
         .await
         .unwrap();

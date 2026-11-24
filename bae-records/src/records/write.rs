@@ -617,11 +617,14 @@ pub struct StagedCover {
 pub fn stage_cover(w: &mut coven::WriteBatch<'_>, cover: &NewCover) -> StagedCover {
     let browse = w.put_file(
         crate::synced::COVER_BROWSE_NAMESPACE,
-        cover.browse.clone(),
+        cover.copies.browse.clone(),
         coven::Place::Cloud,
     );
-    let large =
-        w.put_file(crate::synced::COVER_LARGE_NAMESPACE, cover.large.clone(), coven::Place::Cloud);
+    let large = w.put_file(
+        crate::synced::COVER_LARGE_NAMESPACE,
+        cover.copies.large.clone(),
+        coven::Place::Cloud,
+    );
     let original = match &cover.picture {
         NewCoverPicture::ReleaseFile { .. } => None,
         NewCoverPicture::Original { bytes } => Some(w.put_file(
@@ -658,7 +661,7 @@ pub fn upsert_cover_row(
             staged.original,
             staged.browse,
             staged.large,
-            cover.content_type.as_str()
+            cover.copies.content_type.as_str()
         ],
     )
     .map(|_| ())

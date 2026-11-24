@@ -4,7 +4,7 @@
 use crate::cover_art::PreparedCover;
 use crate::file_tag_snapshot::FileTagSnapshot;
 use crate::folder_scanner::CandidateFile;
-use crate::CoverCopies;
+use crate::make_cover_copies;
 use crate::ImportError;
 use bae_catalogs::remote_image::RemoteImage;
 use bae_records::{CoverCopy, NewCover, NewCoverPicture};
@@ -99,23 +99,17 @@ impl ImportCover {
                 let large = pictures
                     .read_copy(picture, CoverCopy::Large.step(), bae_pictures::Priority::Visible)
                     .await?;
-                (NewCoverPicture::ReleaseFile { file_id }, CoverCopies::of_copies(browse, large)?)
+                (NewCoverPicture::ReleaseFile { file_id }, crate::cover_copies_of(browse, large)?)
             }
             Self::Remote(bytes) | Self::Embedded(bytes) => {
                 // Names the format it refuses before libvips fails on it.
                 bae_util::stored_image::inspect_image(&bytes)
                     .map_err(|detail| ImportError::CoverArt { detail })?;
-                let copies = CoverCopies::of_picture(bytes.clone(), diagnostics).await?;
+                let copies = make_cover_copies(bytes.clone(), diagnostics).await?;
                 (NewCoverPicture::Original { bytes }, copies)
             }
         };
-        Ok(NewCover {
-            release_id: release_id.to_string(),
-            picture,
-            browse: copies.browse,
-            large: copies.large,
-            content_type: copies.content_type,
-        })
+        Ok(NewCover { release_id: release_id.to_string(), picture, copies })
     }
 }
 
