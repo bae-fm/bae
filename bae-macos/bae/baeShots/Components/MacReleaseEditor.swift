@@ -114,7 +114,7 @@ extension ShotScene {
                         lookup: .noMatch
                     )
                 ]),
-                barcode: .rows(rows: []),
+                barcode: .noCodes,
                 catalog: .numbers(
                     rows: [],
                     candidates: [BridgeCatalogCandidate(value: "HR-0412")]
