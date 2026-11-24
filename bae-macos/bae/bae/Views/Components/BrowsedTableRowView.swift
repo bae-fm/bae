@@ -10,10 +10,17 @@ import SwiftUI
 final class BrowsedTableRowView: NSTableRowView {
     private let tint: NSColor
     private let alternate: Bool
+    private let roundsSelection: Bool
 
     /// A row whose selection is `accent`'s tint. Odd `stripedRow` indexes
-    /// use the hover tint.
-    init(accent: AccentChoice, stripedRow: Int? = nil) {
+    /// use the hover tint. `roundsSelection` draws the selection as the
+    /// row's own rounded shape, as a table in a full-width style needs.
+    init(
+        accent: AccentChoice,
+        stripedRow: Int? = nil,
+        roundsSelection: Bool = false
+    ) {
+        self.roundsSelection = roundsSelection
         alternate = stripedRow.map { $0 % 2 == 1 } == true
         tint = accent.appKitColor.withAlphaComponent(ThemeOpacity.tint)
         super.init(frame: .zero)
@@ -39,6 +46,16 @@ final class BrowsedTableRowView: NSTableRowView {
     /// the tint: the shape follows the table's style, inset and rounded in
     /// an inset table, and joins neighbouring selected rows.
     override func drawSelection(in dirtyRect: NSRect) {
+        if roundsSelection {
+            tint.setFill()
+            NSBezierPath(
+                roundedRect: bounds,
+                xRadius: ThemeRadius.chip,
+                yRadius: ThemeRadius.chip
+            )
+            .fill()
+            return
+        }
         guard let context = NSGraphicsContext.current?.cgContext else {
             return
         }

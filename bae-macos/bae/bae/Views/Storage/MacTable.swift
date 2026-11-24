@@ -88,7 +88,7 @@ struct MacTable: NSViewRepresentable {
             width: 0,
             height: tableView.intercellSpacing.height
         )
-        tableView.style = .inset
+        tableView.style = .fullWidth
         tableView.backgroundColor = .clear
 
         for column in StorageTableColumn.allCases {
@@ -96,6 +96,10 @@ struct MacTable: NSViewRepresentable {
                 identifier: NSUserInterfaceItemIdentifier(column.rawValue)
             )
             tableColumn.title = column.title
+            let headerCell = StorageHeaderCell(textCell: column.title)
+            headerCell.alignment =
+                cellAlignment(column) == .trailing ? .right : .left
+            tableColumn.headerCell = headerCell
             tableColumn.width = column.width
             tableColumn.minWidth = column.minWidth
             tableColumn.isEditable = false
@@ -453,7 +457,8 @@ extension MacTable.Coordinator {
     func tableView(_: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         BrowsedTableRowView(
             accent: appearance.accent,
-            stripedRow: row
+            stripedRow: row,
+            roundsSelection: true
         )
     }
 

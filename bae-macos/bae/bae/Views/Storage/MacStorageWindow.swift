@@ -168,6 +168,9 @@ struct MacStorageWindow: View {
                         layout: $columnLayout,
                         runner: runner,
                     )
+                    // The table's rows and header sit this far in from
+                    // the pane's edges, as the board draws them.
+                    .padding(.horizontal, ThemeSpace.related + ThemeSpace.line)
                     .overlay {
                         if storageManagerStore.searching == true,
                             list.count?.rows == 0
