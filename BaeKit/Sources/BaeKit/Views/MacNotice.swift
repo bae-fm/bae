@@ -249,7 +249,14 @@ public struct MacNotice: View {
             if (buttons == .inline && hasChoiceButtons) || onDismiss != nil {
                 HStack(spacing: ThemeSpace.related) {
                     if buttons == .inline {
-                        choiceButtons
+                        // A 24 pt button is 8 pt taller than the title's 16 pt
+                        // line and reaches 4 pt past it on each side, into
+                        // the notice's padding, so a notice with a button is
+                        // as tall as one without.
+                        choiceButtons.padding(
+                            .vertical,
+                            -ThemeSpace.inline
+                        )
                     }
                     if let onDismiss {
                         dismissButton(onDismiss)
