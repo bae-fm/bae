@@ -4395,10 +4395,10 @@ storage* where the line names the place the library is kept.
   - Offline · unsent changes, while changes or files wait to go out, with no
     count: *Syncing resumes when this Mac reconnects.* / *Your changes stay here
     until then.*
-  - New restore code, after another of the person's devices made a new
-    restore code, naming that device: *You made the new code on your iPhone.*
-    (left out when an admin made the code, or this device has not read who
-    did) / *Enter the new restore code to restore the library on this Mac. The restore
+  - New restore code, after a new restore code replaced this device's keys,
+    naming the person's device that made it: *You made the new code on your
+    iPhone.* (left out when an admin made the code, or this device has not
+    read who did) / *Enter the new restore code to restore the library on this Mac. The restore
     discards any changes this Mac has not sent.*, with *Enter restore code…*.
     Sync stays stopped until the person scans the code, and the scan restores
     this device as a new device that takes its place (below).
@@ -4547,9 +4547,10 @@ offers nothing.
   removed device, in the same words, with Removed from the library as its
   sync state
   ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
-- **New restore code.** When another of the person's devices made a new
-  restore code, this device stops syncing, and its sync state is New restore
-  code, naming that device. No device can send the changes this device has
+- **New restore code.** When a new restore code replaces this device's keys,
+  this device stops syncing, and its sync state is New restore code, naming
+  the device that made it when it is one of the person's own (§6.4, *When sync
+  stops*). No device can send the changes this device has
   not sent: coven refuses every write signed with the keys the new code
   replaced
   ([coven §12.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#123-replacing-a-members-keys)).
