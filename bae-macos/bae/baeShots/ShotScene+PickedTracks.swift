@@ -10,9 +10,9 @@ extension ShotScene {
     static let pickedTracksScenes: [ShotScene] = [
         ShotScene(
             id: "mac.album.play-picked-tracks",
-            size: CGSize(width: 1_200, height: 1_000)
+            size: CGSize(width: 1_200, height: 1_020)
         ) {
-            let size = CGSize(width: 1_200, height: 1_000)
+            let size = CGSize(width: 1_200, height: 1_020)
             let uiStore = UiStore()
             let backing = boardLibraryBacking(
                 uiStore: uiStore,

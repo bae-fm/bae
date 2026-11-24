@@ -29,7 +29,7 @@ struct ShotRendererTests {
     }
 
     /// A scene shown in a window at its full size: the library window with
-    /// an alert over it, 1200 by 1000 points, taller than the free area of a
+    /// an alert over it, 1200 by 1020 points, taller than the free area of a
     /// 1728 by 1117 laptop display and wider than a small display's.
     @Test
     func aWindowLargerThanTheMacsDisplayRendersWhole() async throws {
@@ -39,9 +39,9 @@ struct ShotRendererTests {
         let capture = try await ShotRenderer.render(scene, on: display)
         let image = try #require(NSBitmapImageRep(data: capture.png))
         #expect(image.pixelsWide == 2_400)
-        #expect(image.pixelsHigh == 2_000)
+        #expect(image.pixelsHigh == 2_040)
         #expect(capture.elements.size.width == 1_200)
-        #expect(capture.elements.size.height == 1_000)
+        #expect(capture.elements.size.height == 1_020)
         #expect(
             capture.elements.elements.contains { $0.label == "Delete album" }
         )

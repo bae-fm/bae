@@ -10,7 +10,7 @@ extension ShotScene {
         formatPicker,
         ShotScene(
             id: "mac.library.album-menu",
-            size: CGSize(width: 1_200, height: 1_000)
+            size: CGSize(width: 1_200, height: 1_020)
         ) {
             let uiStore = UiStore()
             let detailAnswered = AlbumDetailAnswered()
@@ -26,7 +26,7 @@ extension ShotScene {
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),
-                        size: CGSize(width: 1_200, height: 1_000)
+                        size: CGSize(width: 1_200, height: 1_020)
                     )
                     MacMenuInPlace(
                         {

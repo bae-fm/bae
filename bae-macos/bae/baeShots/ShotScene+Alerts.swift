@@ -11,29 +11,29 @@ extension ShotScene {
         [
             ShotScene(
                 id: "mac.album.delete-album",
-                size: CGSize(width: 1_200, height: 1_000),
+                size: CGSize(width: 1_200, height: 1_020),
                 frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
                     DeleteAlbumConfirmation.alert {},
-                    height: 1_000,
+                    height: 1_020,
                     openAlbum: true
                 )
             },
             ShotScene(
                 id: "mac.album.delete-release",
-                size: CGSize(width: 1_200, height: 1_000),
+                size: CGSize(width: 1_200, height: 1_020),
                 frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
                     DeleteReleaseConfirmation.alert {},
-                    height: 1_000,
+                    height: 1_020,
                     openAlbum: true
                 )
             },
             ShotScene(
                 id: "mac.album.storage.unpin",
-                size: CGSize(width: 1_200, height: 1_000),
+                size: CGSize(width: 1_200, height: 1_020),
                 frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
@@ -44,7 +44,7 @@ extension ShotScene {
                         ),
                         dontShowAgain: .constant(false)
                     ) { _ in },
-                    height: 1_000,
+                    height: 1_020,
                     openAlbum: true,
                     modal: { uiStore in
                         // The Storage sheet the alert asks over: Unpin
