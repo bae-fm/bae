@@ -44,7 +44,7 @@ struct MacAlbumPicker: View {
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
             Text("Album")
-                .themeText(.detail)
+                .themeText(.body)
                 .foregroundStyle(Theme.textSecondary)
             albumPopUp
                 .disabled(!canEdit)
