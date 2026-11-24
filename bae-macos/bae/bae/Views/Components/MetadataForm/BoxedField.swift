@@ -83,17 +83,19 @@ struct BoxedField<Focus: Hashable>: View {
             .themeText(font)
     }
 
+    /// The field, titled with an empty String, not a literal, so the title
+    /// is not a localizable key: the prompt names it.
     @ViewBuilder
     private var field: some View {
         if secret {
-            SecureField("", text: $text, prompt: prompt)
+            SecureField(String(), text: $text, prompt: prompt)
         }
         else if multiline {
-            TextField("", text: $text, prompt: prompt, axis: .vertical)
+            TextField(String(), text: $text, prompt: prompt, axis: .vertical)
                 .lineLimit(3...)
         }
         else {
-            TextField("", text: $text, prompt: prompt)
+            TextField(String(), text: $text, prompt: prompt)
         }
     }
 

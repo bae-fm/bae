@@ -31,8 +31,9 @@ struct MacSearchField: View {
         ) {
             glyph
             // The prompt is drawn here, since a plain field on macOS draws
-            // its own in the system's placeholder colour.
-            TextField("", text: $text)
+            // its own in the system's placeholder colour. The title is an
+            // empty String, not a literal, so it is not a localizable key.
+            TextField(String(), text: $text)
                 .overlay(alignment: .leading) {
                     if text.isEmpty {
                         Text(prompt)
