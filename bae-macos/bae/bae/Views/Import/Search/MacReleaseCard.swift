@@ -44,6 +44,9 @@ struct MacReleaseCard: View {
                     }
                 }
             }
+            // The board reads the title and its attribution before the
+            // catalog links; by position the links come between the two.
+            .accessibilitySortPriority(1)
 
             Spacer(minLength: ThemeSpace.related)
 
