@@ -147,20 +147,33 @@ async fn remote_cover_dimensions_are_bounded() {
     );
 }
 
-/// A download is checked by its header, not decoded: one that is cut off after
-/// its header is kept as served, and the copy made when a screen asks for it
-/// is what finds it damaged.
+/// A download is checked where it arrives, without decoding it: its header says
+/// the format and size, and its end says it is whole. One cut off after its
+/// header is refused, so the cache never holds bytes that cannot be drawn.
 #[tokio::test]
-async fn a_download_cut_off_after_its_header_is_kept_and_not_decoded() {
+async fn a_download_cut_off_after_its_header_is_refused() {
     let png = test_png();
-    for (bytes, content_type) in [
-        (bae_util::test_cover_art::SOLID_GIF[..45].to_vec(), ContentType::Gif),
-        (png[..png.len() - 8].to_vec(), ContentType::Png),
+    for bytes in [
+        bae_util::test_cover_art::SOLID_GIF[..45].to_vec(),
+        bae_util::test_cover_art::SOLID_WEBP[..30].to_vec(),
+        png[..png.len() - 8].to_vec(),
     ] {
-        assert!(bae_util::stored_image::stored_jpeg(&bytes).is_err(), "it cannot be decoded");
-        let url = start_mock(vec![(200, bytes.clone())]).await;
-        let image = test_cache().await.0.fetch_required(&url).await.unwrap();
-        assert_eq!(image.bytes, bytes);
-        assert_eq!(image.content_type, content_type);
+        let url = start_mock(vec![(200, bytes)]).await;
+        let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
+        assert!(
+            matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("cut off")),
+            "{error}"
+        );
     }
+}
+
+/// Bytes after the picture's end, which some encoders and servers add, do not
+/// make a download unusable.
+#[tokio::test]
+async fn a_download_with_trailing_bytes_is_kept() {
+    let mut png = test_png();
+    png.extend_from_slice(&[0; 16]);
+    let url = start_mock(vec![(200, png.clone())]).await;
+    let image = test_cache().await.0.fetch_required(&url).await.unwrap();
+    assert_eq!(image.bytes, png);
 }

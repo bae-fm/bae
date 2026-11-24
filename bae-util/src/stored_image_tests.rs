@@ -180,14 +180,37 @@ fn a_large_jpeg_is_stored_at_600_pixels_from_its_scaled_decode() {
 }
 
 #[test]
-fn inspecting_an_image_reads_its_header_and_decodes_nothing() {
+fn inspecting_an_image_reads_its_header_and_end_and_decodes_nothing() {
     let png = png_source(64, 48);
     assert_eq!(inspect_image(&png).unwrap(), ContentType::Png);
     // Cut off after its header, the picture cannot be decoded, and inspecting
-    // it does not try.
+    // it refuses it for its missing end without trying.
     let cut = &png[..png.len() - 8];
     assert!(decode_image(cut).is_err());
-    assert_eq!(inspect_image(cut).unwrap(), ContentType::Png);
+    assert!(inspect_image(cut).unwrap_err().contains("cut off"));
+}
+
+#[test]
+fn inspecting_refuses_a_jpeg_without_its_end_and_keeps_one_with_padding() {
+    let jpeg = jpeg_source(64, 48);
+    assert_eq!(inspect_image(&jpeg).unwrap(), ContentType::Jpeg);
+    assert!(inspect_image(&jpeg[..jpeg.len() - 40]).unwrap_err().contains("cut off"));
+    let mut padded = jpeg.clone();
+    padded.extend_from_slice(&[0; 32]);
+    assert_eq!(inspect_image(&padded).unwrap(), ContentType::Jpeg);
+}
+
+#[test]
+fn inspecting_keeps_a_gif_and_a_webp_that_are_whole_and_refuses_them_cut_off() {
+    for (whole, cut) in [
+        (crate::test_cover_art::SOLID_GIF, 45),
+        (crate::test_cover_art::SOLID_WEBP, 30),
+        (crate::test_cover_art::ANIMATED_GIF, 100),
+        (crate::test_cover_art::ANIMATED_WEBP, 100),
+    ] {
+        assert!(inspect_image(whole).is_ok());
+        assert!(inspect_image(&whole[..cut]).unwrap_err().contains("cut off"));
+    }
 }
 
 #[test]

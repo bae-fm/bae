@@ -20,10 +20,11 @@ const MAX_DECODE_DIMENSION: u32 = 8_192;
 /// about 5,800 pixels square.
 const MAX_DECODE_ALLOC_BYTES: u64 = MAX_DECODE_DIMENSION as u64 * MAX_DECODE_DIMENSION as u64 * 4;
 
-/// The format of the image in `data`, from its header alone: no pixel is
+/// The format of the image in `data`, from its header and its end: no pixel is
 /// decoded, so a download is checked for being an image of a format bae can
-/// store and of a size it can decode without paying a decode. Making a copy of
-/// it, when a screen asks, is what tells a truncated or damaged one.
+/// store, of a size it can decode, and whole, without paying a decode. A body
+/// damaged between a whole header and a whole end is for the decoder that
+/// draws it to report.
 pub fn inspect_image(data: &[u8]) -> Result<ContentType, String> {
     let reader = ImageReader::new(Cursor::new(data))
         .with_guessed_format()
@@ -40,7 +41,35 @@ pub fn inspect_image(data: &[u8]) -> Result<ContentType, String> {
             "Image is {width} by {height} pixels, over the limit of {MAX_DECODE_DIMENSION}"
         ));
     }
+    if !has_its_end(&content_type, data) {
+        return Err(format!("The {} image is cut off before its end", content_type.as_str()));
+    }
     Ok(content_type)
+}
+
+/// How far from the end of a file the end marker of its format may be:
+/// encoders and servers add padding after it.
+const END_SEARCH_LEN: usize = 1024;
+
+/// Whether `data` holds its format's end: a JPEG's end-of-image marker, a PNG's
+/// IEND chunk, a GIF's trailer and a WebP's whole RIFF length, each near the
+/// end of the bytes.
+fn has_its_end(content_type: &ContentType, data: &[u8]) -> bool {
+    let tail = &data[data.len().saturating_sub(END_SEARCH_LEN)..];
+    match content_type {
+        ContentType::Jpeg => tail.windows(2).any(|pair| pair == [0xFF, 0xD9]),
+        ContentType::Png => tail.windows(4).any(|chunk| chunk == b"IEND"),
+        ContentType::Gif => {
+            let end = tail.iter().rposition(|&byte| byte != 0).map_or(0, |last| last + 1);
+            tail[..end].last() == Some(&0x3B)
+        }
+        ContentType::Webp => {
+            let declared =
+                data.get(4..8).map(|size| u32::from_le_bytes([size[0], size[1], size[2], size[3]]));
+            declared.is_some_and(|size| u64::from(size) + 8 <= data.len() as u64)
+        }
+        _ => true,
+    }
 }
 
 /// Decode the first image using the formats and resource limits shared by
