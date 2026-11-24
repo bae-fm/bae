@@ -629,7 +629,6 @@ impl ImportError {
                 crate::PictureError::NotInImport(_)
                 | crate::PictureError::ChangedSinceScan(_)
                 | crate::PictureError::NoArt(_) => C::ChangedMeanwhile,
-                crate::PictureError::NotAnImportPicture => C::Internal,
                 crate::PictureError::Open { .. }
                 | crate::PictureError::ModifiedTime(_)
                 | crate::PictureError::Pictures(_) => C::Import,

@@ -112,13 +112,15 @@ impl InvalidColumns {
             other => return Err(DbError::unreadable("scan_candidate.invalid_reason", other)),
         };
         let cover = match self.cover {
-            Some((path, size, modified_at_ns)) => Some(crate::CoverImageSource::Local {
-                file: FileVersion {
-                    path,
-                    size: to_u64(size, "a skipped image's size")?,
-                    modified_at_ns,
-                },
-            }),
+            Some((path, size, modified_at_ns)) => {
+                Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
+                    file: FileVersion {
+                        path,
+                        size: to_u64(size, "a skipped image's size")?,
+                        modified_at_ns,
+                    },
+                }))
+            }
             None => None,
         };
         Ok(InvalidRow {

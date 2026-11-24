@@ -101,16 +101,18 @@ impl BridgeCoverImageSource {
             bae_import::CoverImageSource::Remote { image } => {
                 Self::Remote { image: BridgeRemoteImageSet::from_core(image) }
             }
-            bae_import::CoverImageSource::Local { file } => {
+            bae_import::CoverImageSource::Import(bae_import::ImportPicture::Folder { file }) => {
                 Self::Local { file: BridgeFileVersion::from_core(file) }
             }
-            bae_import::CoverImageSource::Embedded { source, candidate, source_file_id } => {
-                Self::Embedded {
-                    source: BridgeFileVersion::from_core(source),
-                    candidate_key: candidate.into(),
-                    source_file_id,
-                }
-            }
+            bae_import::CoverImageSource::Import(bae_import::ImportPicture::Embedded {
+                source,
+                candidate,
+                source_file_id,
+            }) => Self::Embedded {
+                source: BridgeFileVersion::from_core(source),
+                candidate_key: candidate.into(),
+                source_file_id,
+            },
         }
     }
 }

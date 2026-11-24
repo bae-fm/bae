@@ -679,7 +679,9 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
             album_title: "Album Title".to_string(),
             artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         }),
-        cover: Some(crate::CoverImageSource::Local { file: version("front.jpg", 4) }),
+        cover: Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
+            file: version("front.jpg", 4),
+        })),
     };
     assert_eq!(listed, std::slice::from_ref(&row));
     assert_eq!(list.selection.count, 1, "the list selects the folder like any row");

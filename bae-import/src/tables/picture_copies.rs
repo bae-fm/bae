@@ -6,7 +6,7 @@
 use super::folder_scans::columns::volume_of;
 use super::*;
 use crate::folder_scanner::FileVersion;
-use crate::CoverImageSource;
+use crate::ImportPicture;
 use crate::VolumeKind;
 use bae_pictures::{CopyFormat, PictureCopy, PictureStep};
 use std::path::Path;
@@ -37,21 +37,18 @@ fn step_column(step: PictureStep) -> i64 {
 
 impl ImportTables {
     /// The candidate whose scan holds the picture's file, or `None` when none
-    /// does: a file that is not an image of a stored candidate, or a source
-    /// of another kind, is no picture of the import list. Embedded art
-    /// belongs to the candidate its source names.
+    /// does: a file that is not an image of a stored candidate is no picture
+    /// of the import list. Embedded art belongs to the candidate its source
+    /// names.
     pub(crate) async fn picture_owner(
         &self,
-        source: &CoverImageSource,
+        source: &ImportPicture,
     ) -> Result<Option<PictureOwner>, DbError> {
         let (source_kind, file, embedded_in) = match source {
-            CoverImageSource::Local { file } => ("folder_file", file.clone(), None),
-            CoverImageSource::Embedded { source, candidate, .. } => {
+            ImportPicture::Folder { file } => ("folder_file", file.clone(), None),
+            ImportPicture::Embedded { source, candidate, .. } => {
                 ("embedded_art", source.clone(), Some(candidate.clone()))
             }
-            CoverImageSource::Library { .. }
-            | CoverImageSource::ReleaseImage { .. }
-            | CoverImageSource::Remote { .. } => return Ok(None),
         };
         let FileVersion { path, size, modified_at_ns } = file;
         let source_path = coven::path_bytes(&path);

@@ -161,7 +161,9 @@ impl ItemJson {
                     name: id.clone(),
                     selection: CoverSelection::Local(id),
                 },
-                image: CoverImageSource::Local { file: FileVersion { path, size, modified_at_ns } },
+                image: CoverImageSource::Import(crate::ImportPicture::Folder {
+                    file: FileVersion { path, size, modified_at_ns },
+                }),
             },
         })
     }

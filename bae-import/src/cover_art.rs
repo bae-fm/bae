@@ -28,10 +28,19 @@ pub enum CoverImageSource {
     Remote {
         image: RemoteImageSet,
     },
+    /// A picture of the import list: an image file of the folder or artwork
+    /// in its tags, which core makes copies of for a screen.
+    Import(ImportPicture),
+}
+
+/// A picture of the import list: a file of a candidate's folder, or art in the
+/// tags of one of its audio files. A screen asks core for it at a pixel size,
+/// and core reads the file the scan read, at its version, so a file the person
+/// replaced is another picture.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ImportPicture {
     /// An image file of the folder, at the version the scan read.
-    Local {
-        file: crate::folder_scanner::FileVersion,
-    },
+    Folder { file: crate::folder_scanner::FileVersion },
     /// Artwork embedded in an audio file's tags, as the file-tag snapshot
     /// stored it, with the version of that file the snapshot read it from.
     /// The bytes are not here: a list row names the artwork, and the reader
@@ -149,9 +158,15 @@ impl CoverChoice {
     pub fn into_image(self) -> CoverImageSource {
         match self {
             Self::Remote { image, .. } => CoverImageSource::Remote { image },
-            Self::Local { file, .. } => CoverImageSource::Local { file },
+            Self::Local { file, .. } => {
+                CoverImageSource::Import(crate::ImportPicture::Folder { file })
+            }
             Self::Embedded { candidate, source_file_id, source } => {
-                CoverImageSource::Embedded { source, candidate, source_file_id }
+                CoverImageSource::Import(crate::ImportPicture::Embedded {
+                    source,
+                    candidate,
+                    source_file_id,
+                })
             }
         }
     }

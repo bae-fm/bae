@@ -16,7 +16,7 @@ use bae_pictures::{
 use coven::LeasedFile;
 
 use crate::folder_scanner::FileVersion;
-use crate::{CandidateKey, CoverImageSource, CoverRefusal, ImportError, ImportServices};
+use crate::{CoverRefusal, ImportError, ImportPicture, ImportServices};
 
 /// Why a picture could not be read.
 #[derive(Debug, thiserror::Error)]
@@ -25,10 +25,6 @@ pub enum PictureError {
     /// list or its folder after the screen asked, or was never one of them.
     #[error("{} is not an image of a candidate in the import list", .0.display())]
     NotInImport(std::path::PathBuf),
-    /// The source is no file of the import list: a library image or a
-    /// catalog's, which core serves another way.
-    #[error("the source is no picture of the import list")]
-    NotAnImportPicture,
     /// The file is not the version the scan read: the person changed it
     /// since, and a copy of it would be kept under the old version.
     #[error("{} changed after its import candidate was scanned", .0.display())]
@@ -52,26 +48,8 @@ pub enum PictureError {
 /// The jobs making pictures now, and the reads each volume takes at once.
 #[derive(Clone)]
 pub(crate) struct ImportPictures {
-    flights: Flights<(PictureKey, PictureSize), Vec<u8>, PictureError>,
+    flights: Flights<(ImportPicture, PictureSize), Vec<u8>, PictureError>,
     volumes: Volumes,
-}
-
-/// What names one picture: the version of the file it is read from, and for
-/// art embedded in a file's tags the candidate and the file's id among its
-/// files.
-type PictureKey = (FileVersion, Option<(CandidateKey, String)>);
-
-/// The key of `source`, when it is a picture of the import list.
-fn key_of(source: &CoverImageSource) -> Option<PictureKey> {
-    match source {
-        CoverImageSource::Local { file } => Some((file.clone(), None)),
-        CoverImageSource::Embedded { source, candidate, source_file_id } => {
-            Some((source.clone(), Some((candidate.clone(), source_file_id.clone()))))
-        }
-        CoverImageSource::Library { .. }
-        | CoverImageSource::ReleaseImage { .. }
-        | CoverImageSource::Remote { .. } => None,
-    }
 }
 
 impl ImportPictures {
@@ -88,19 +66,17 @@ impl ImportPictures {
     pub(crate) async fn read(
         &self,
         services: &ImportServices,
-        source: CoverImageSource,
+        source: ImportPicture,
         pixels: Option<u32>,
         priority: Priority,
     ) -> Result<Vec<u8>, ImportError> {
         let size = PictureSize::covering(pixels);
-        let key = key_of(&source)
-            .ok_or_else(|| ImportError::Picture(Arc::new(PictureError::NotAnImportPicture)))?;
         let job = {
             let (services, volumes, source) =
                 (services.clone(), self.volumes.clone(), source.clone());
             move |cancelled: IsCancelled| make(services, volumes, source, size, priority, cancelled)
         };
-        match self.flights.request((key, size), job).await {
+        match self.flights.request((source, size), job).await {
             Ok(bytes) => Ok(Arc::try_unwrap(bytes).unwrap_or_else(|shared| (*shared).clone())),
             Err(FlightError::Failed(error)) => Err(ImportError::Picture(error)),
             Err(FlightError::Panicked) => Err(ImportError::Internal {
@@ -140,16 +116,15 @@ enum Origin {
 async fn make(
     services: ImportServices,
     volumes: Volumes,
-    source: CoverImageSource,
+    source: ImportPicture,
     size: PictureSize,
     priority: Priority,
     cancelled: IsCancelled,
 ) -> Result<Vec<u8>, PictureError> {
     let owner = services.tables.picture_owner(&source).await?.ok_or_else(|| match &source {
-        CoverImageSource::Local { file } | CoverImageSource::Embedded { source: file, .. } => {
+        ImportPicture::Folder { file } | ImportPicture::Embedded { source: file, .. } => {
             PictureError::NotInImport(file.path.clone())
         }
-        _ => PictureError::NotAnImportPicture,
     })?;
     if let PictureSize::Copy(step) = size {
         if let Some(kept) = services.tables.load_picture_copy(&owner, step).await? {
@@ -157,7 +132,7 @@ async fn make(
         }
     }
     let origin = match &source {
-        CoverImageSource::Embedded { candidate, source_file_id, .. } => Origin::Art(
+        ImportPicture::Embedded { candidate, source_file_id, .. } => Origin::Art(
             services
                 .tables
                 .load_embedded_cover_bytes(candidate, source_file_id)
@@ -166,9 +141,7 @@ async fn make(
                     source_file_id: source_file_id.clone(),
                 })?,
         ),
-        CoverImageSource::Local { file } => Origin::File(file.clone()),
-        // A source of another kind has no owner.
-        _ => return Err(PictureError::NotAnImportPicture),
+        ImportPicture::Folder { file } => Origin::File(file.clone()),
     };
     // Visible pictures read before prefetched ones, and a share is read a few
     // files at a time.

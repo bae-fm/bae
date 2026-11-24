@@ -5,7 +5,7 @@
 
 use crate::handle::tests::*;
 use crate::tests::reads::{self, FileRead};
-use crate::CoverImageSource;
+use crate::ImportPicture;
 use bae_pictures::Priority;
 
 /// `fixture`'s folder holding a GIF named `name`, stored as a scan reads it,
@@ -13,7 +13,7 @@ use bae_pictures::Priority;
 async fn with_image(
     fixture: &mut StoredCandidate,
     name: &str,
-) -> (CoverImageSource, std::path::PathBuf) {
+) -> (ImportPicture, std::path::PathBuf) {
     fixture.tmp.write(fixture.candidate.path.join(name), bae_util::test_cover_art::SOLID_GIF);
     fixture.candidate.files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &fixture.candidate.path,
@@ -33,7 +33,7 @@ async fn with_image(
         .version
         .clone();
     let path = version.path.clone();
-    (CoverImageSource::Local { file: version }, path)
+    (ImportPicture::Folder { file: version }, path)
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -104,7 +104,7 @@ async fn a_candidate_set_aside_keeps_no_copies() {
 async fn a_file_the_import_list_does_not_hold_is_refused() {
     let fixture = stored_candidate().await;
     let stray = fixture.tmp.write("stray.gif", bae_util::test_cover_art::SOLID_GIF);
-    let picture = CoverImageSource::Local {
+    let picture = ImportPicture::Folder {
         file: crate::folder_scanner::FileVersion { path: stray, size: 51, modified_at_ns: 1 },
     };
 
@@ -177,25 +177,6 @@ async fn a_file_touched_after_its_scan_makes_no_copy() {
 
     assert!(
         matches!(&refused, Err(crate::ImportError::Picture(error)) if matches!(**error, crate::PictureError::ChangedSinceScan(_))),
-        "{refused:?}"
-    );
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn a_catalog_image_is_no_picture_of_the_import_list() {
-    let fixture = stored_candidate().await;
-    let catalog = CoverImageSource::Remote {
-        image: bae_catalogs::remote_image::RemoteImageSet {
-            url: "https://images.example/front.jpg".to_string(),
-            downscaled: Vec::new(),
-        },
-    };
-
-    let refused = fixture.handle.read_picture(catalog, Some(100), Priority::Visible).await;
-    shut_down(fixture.handle).await;
-
-    assert!(
-        matches!(&refused, Err(crate::ImportError::Picture(error)) if matches!(**error, crate::PictureError::NotAnImportPicture)),
         "{refused:?}"
     );
 }

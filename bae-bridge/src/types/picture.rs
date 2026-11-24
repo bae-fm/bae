@@ -23,14 +23,14 @@ mirror_enum! {
 impl BridgeCoverImageSource {
     /// The picture of the import list this source names: an image file of a
     /// candidate's folder or art in its tags. A library or catalog image is
-    /// not one, and core refuses it.
-    pub(crate) fn into_picture(self) -> Result<bae_import::CoverImageSource, BridgeError> {
+    /// not one, and the app asks core for it another way.
+    pub(crate) fn into_picture(self) -> Result<bae_import::ImportPicture, BridgeError> {
         match self {
             Self::Local { file } => {
-                Ok(bae_import::CoverImageSource::Local { file: file.into_core()? })
+                Ok(bae_import::ImportPicture::Folder { file: file.into_core()? })
             }
             Self::Embedded { source, candidate_key, source_file_id } => {
-                Ok(bae_import::CoverImageSource::Embedded {
+                Ok(bae_import::ImportPicture::Embedded {
                     source: source.into_core()?,
                     candidate: candidate_key.into(),
                     source_file_id,

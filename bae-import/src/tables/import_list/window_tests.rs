@@ -227,13 +227,13 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     assert_eq!(summary, crate::AlbumLine::TitleAlone { title: "Edited Album".to_string() });
     assert_eq!(
         row.cover,
-        Some(crate::CoverImageSource::Local {
+        Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
             file: FileVersion {
                 path: root.join("Album").join("cover.jpg"),
                 size: 500,
                 modified_at_ns: 1,
             },
-        })
+        }))
     );
 
     pane.type_field(&hash, crate::CandidateEditField::AlbumTitle, "").await.unwrap();
@@ -260,13 +260,13 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover,
-        Some(crate::CoverImageSource::Local {
+        Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
             file: FileVersion {
                 path: root.join("Album").join("folder.jpg"),
                 size: 600,
                 modified_at_ns: 1,
             },
-        }),
+        })),
         "a rescan must retain the explicit cover"
     );
 
@@ -287,13 +287,13 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover,
-        Some(crate::CoverImageSource::Local {
+        Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
             file: FileVersion {
                 path: root.join("Album").join("folder.jpg"),
                 size: 600,
                 modified_at_ns: 1,
             },
-        }),
+        })),
         "a draft that brings no image of its own leaves the selection standing"
     );
 }
@@ -344,13 +344,13 @@ async fn the_scan_stores_the_folders_own_cover() {
     assert!(row.metadata_summary.is_none());
     assert_eq!(
         row.cover,
-        Some(crate::CoverImageSource::Local {
+        Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
             file: FileVersion {
                 path: root.join("Album").join("cover.jpg"),
                 size: 500,
                 modified_at_ns: 1,
             },
-        })
+        }))
     );
 
     let mut with_cover = verdict("release-with-cover", None);
@@ -369,13 +369,13 @@ async fn the_scan_stores_the_folders_own_cover() {
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover,
-        Some(crate::CoverImageSource::Local {
+        Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
             file: FileVersion {
                 path: root.join("Album").join("cover.jpg"),
                 size: 500,
                 modified_at_ns: 1,
             },
-        }),
+        })),
         "a row shows the cover the candidate would commit with, and nothing a \
          verdict merely found"
     );
@@ -951,9 +951,9 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
     assert_eq!(row.metadata_summary, None, "it shows its folder's name");
     assert_eq!(
         row.cover,
-        Some(crate::CoverImageSource::Local {
+        Some(crate::CoverImageSource::Import(crate::ImportPicture::Folder {
             file: candidate.files.files[1].file.version.clone()
-        })
+        }))
     );
 
     let pane =
