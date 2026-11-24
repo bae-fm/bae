@@ -13,7 +13,7 @@ private let logger = Logger.bae("StorageTableColumns")
 /// the coordinator's `layout`, which the table applies.
 extension MacTable.Coordinator {
     /// Show `layout` in the table: all of it the first time, and after that
-    /// what changed since the layout the table last took or wrote. The first
+    /// what changed since the layout the table last took or wrote. The release
     /// column's width follows the window, which a width written before it
     /// moved would undo.
     func applyLayout(_ layout: StorageTableLayout) {
@@ -24,8 +24,8 @@ extension MacTable.Coordinator {
         // change does; none of them is a change to write back.
         applyingLayout = true
         defer { applyingLayout = false }
-        // The table keeps its own width by resizing its first column, so a
-        // column hidden or narrowed here would widen the first column by
+        // The table keeps its own width by resizing its release column, so a
+        // column hidden or narrowed here would widen the release column by
         // as much: each column takes the layout's width with that off.
         let autoresizing = table.columnAutoresizingStyle
         table.columnAutoresizingStyle = .noColumnAutoresizing
@@ -103,7 +103,7 @@ extension MacTable.Coordinator {
     }
 
     func tableViewColumnDidResize(_ notification: Notification) {
-        // Only a width the person drags is kept: the first column also
+        // Only a width the person drags is kept: the release column also
         // follows the window's width, which is no choice of theirs.
         guard let headerView = table.headerView,
             headerView.resizedColumn >= 0

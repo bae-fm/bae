@@ -79,8 +79,9 @@ struct MacTable: NSViewRepresentable {
         tableView.allowsMultipleSelection = true
         tableView.allowsColumnReordering = true
         tableView.allowsColumnResizing = true
-        tableView.columnAutoresizingStyle =
-            .firstColumnOnlyAutoresizingStyle
+        // The release column takes the width the others leave, wherever the
+        // person moves it; the others keep theirs.
+        tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
         // The style first: choosing it sets the spacing between cells. The
         // plain style puts no inset in front of the first column's cells,
         // whose 10-point inset from the pane is the pane's padding.
@@ -103,6 +104,9 @@ struct MacTable: NSViewRepresentable {
             tableColumn.headerCell = headerCell
             tableColumn.width = column.width
             tableColumn.minWidth = column.minWidth
+            tableColumn.resizingMask =
+                column == .release
+                ? [.autoresizingMask, .userResizingMask] : .userResizingMask
             tableColumn.isEditable = false
             tableColumn.sortDescriptorPrototype = NSSortDescriptor(
                 key: column.rawValue,
@@ -116,7 +120,7 @@ struct MacTable: NSViewRepresentable {
         coordinator.applySortIndicator(to: tableView, sort: sort)
 
         let scrollView = tableView.themedScrollView()
-        // Applied in the scroll view, whose width the first column fits.
+        // Applied in the scroll view, whose width the release column fills.
         coordinator.applyLayout(layout)
         coordinator.observeScrolling(of: scrollView)
         return scrollView
@@ -190,7 +194,7 @@ extension MacTable {
         /// The column layout the table shows, which column changes write.
         let layout: Binding<StorageTableLayout>
         /// The layout the table last took from `layout` or wrote to it,
-        /// which its columns hold but for the first column's width: that
+        /// which its columns hold but for the release column's width: that
         /// follows the window.
         var appliedLayout: StorageTableLayout?
         /// True while `applyLayout` moves and resizes the table's columns,

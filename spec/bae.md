@@ -2775,7 +2775,8 @@ then local, pinned, and in cloud only — or when the release was added, either 
 title, then when the release was added, then id. On macOS the list is a table
 with a column for each of these. The person can drag a column to resize or
 reorder it, double-click its separator to fit its heading and visible rows,
-and hide or show it from the header menu. The release column always shows.
+and hide or show it from the header menu. The release column always shows, is at least 280 points wide and takes the
+width the other columns leave.
 bae keeps the visible columns, their order and their widths across launches.
 The inspector leaves the column widths intact. The person can scroll to reach
 columns that do not fit. The date added uses the platform's date format, such
