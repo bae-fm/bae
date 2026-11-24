@@ -38,6 +38,7 @@ libvips_version="${libvips_version%%-bae*}"
 libvips_sha256="5baaead3b0bb20ffdb9e9ff09aa9fda08620923df77b63b436654cb5e0b3bf94"
 meson_version="1.12.1"
 ninja_version="1.13.2"
+pkgconf_version="2.5.1"
 
 holds_pin() {
     [[ -f "$dist/VERSION" && "$(cat "$dist/VERSION")" == "$release" ]]
@@ -51,12 +52,15 @@ fi
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/bae-libvips-build"
 mkdir -p "$cache/downloads" "$(dirname "$dist")"
 
-# meson and ninja at pinned versions, from their own releases, which need only
-# the python3 and the macOS the build already needs: no pip, which a host's
-# system python may lack. meson runs from its unpacked source.
+# meson, ninja and pkgconf at pinned versions, from their own releases, which
+# need only the python3, the compiler and the make the build already needs: no
+# pip, which a host's system python may lack, and no Homebrew package. meson
+# runs from its unpacked source, and pkgconf is installed as pkg-config, which
+# meson finds libraries through.
 meson_sha256="ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743"
 ninja_sha256="c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b"
-tools="$cache/tools/meson-$meson_version-ninja-$ninja_version"
+pkgconf_sha256="cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243"
+tools="$cache/tools/meson-$meson_version-ninja-$ninja_version-pkgconf-$pkgconf_version"
 
 download_checked() { # URL SHA256 FILE
     if [[ ! -f "$3" ]]; then
@@ -70,7 +74,7 @@ download_checked() { # URL SHA256 FILE
     fi
 }
 
-if [[ ! -x "$tools/bin/meson" || ! -x "$tools/bin/ninja" ]]; then
+if [[ ! -x "$tools/bin/meson" || ! -x "$tools/bin/ninja" || ! -x "$tools/bin/pkg-config" ]]; then
     rm -rf "$tools"
     mkdir -p "$tools/bin"
     download_checked "https://github.com/mesonbuild/meson/releases/download/$meson_version/meson-$meson_version.tar.gz" \
@@ -82,6 +86,18 @@ if [[ ! -x "$tools/bin/meson" || ! -x "$tools/bin/ninja" ]]; then
     chmod 755 "$tools/bin/ninja"
     printf '#!/bin/sh\nexec python3 "%s/meson-%s/meson.py" "$@"\n' "$tools" "$meson_version" > "$tools/bin/meson"
     chmod 755 "$tools/bin/meson"
+    download_checked "https://distfiles.ariadne.space/pkgconf/pkgconf-$pkgconf_version.tar.xz" \
+        "$pkgconf_sha256" "$cache/downloads/pkgconf-$pkgconf_version.tar.xz"
+    mkdir -p "$tools/pkgconf-src"
+    tar -xJf "$cache/downloads/pkgconf-$pkgconf_version.tar.xz" -C "$tools/pkgconf-src"
+    (
+        cd "$tools/pkgconf-src/pkgconf-$pkgconf_version"
+        ./configure --prefix="$tools" --disable-shared >/dev/null
+        make -j"$(sysctl -n hw.ncpu)" >/dev/null
+        make install >/dev/null
+    )
+    ln -sf pkgconf "$tools/bin/pkg-config"
+    rm -rf "$tools/pkgconf-src"
 fi
 export PATH="$tools/bin:$PATH"
 
