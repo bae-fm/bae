@@ -143,21 +143,19 @@ extension ShotScene {
         selected: Bool = false
     ) -> ShotScene {
         component(id, height: 50) {
-            Group {
-                if selected {
-                    AccentSelectionList(
-                        rows: [row],
-                        id: \.file.id,
-                        selection: Binding<String?>.constant(row.file.id)
-                    ) { row in
-                        MacFileRow(row: row)
-                    }
-                    .frame(height: 36)
-                }
-                else {
-                    MacFileRow(row: row)
-                }
+            // The inspector's list makes each row a button, as it does in
+            // the app; the list is one row tall.
+            AccentSelectionList(
+                rows: [row],
+                id: \.file.id,
+                selection: Binding<String?>
+                    .constant(
+                        selected ? row.file.id : nil
+                    )
+            ) { row in
+                MacFileRow(row: row)
             }
+            .frame(height: 32)
             .environment(
                 OutboxStore(
                     uploadsPaused: false,

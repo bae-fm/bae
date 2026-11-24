@@ -4,6 +4,6 @@ The inspector shows a dashed circle for a file waiting to upload (`queued`), to 
 
 The mark is the only thing on the row that says where the file stands, so VoiceOver reads it by its words: Queued to upload, Queued to pin, Queued to move to This Mac, Uploading, Pinning, Moving to This Mac…, Waiting for a file or Could not move to the cloud.
 
-The chosen row of the inspector's list (`selected`) has the accent's tint behind it. The list makes the row one button, which VoiceOver reads by the file's name and size and as selected.
+The inspector's list makes each row one button, which VoiceOver reads by its mark, the file's name and its size. The chosen row (`selected`) has the accent's tint behind it, and VoiceOver reads it as selected.
 
 **In the code:** macOS: `MacFileRow` (`Views/Storage/MacFileRow.swift`).
