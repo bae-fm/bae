@@ -43,20 +43,7 @@ class AndroidSyncStatusShots : BoardShot() {
     @Test
     fun androidComponentSyncStatusCountdown() =
         component("android.component.sync-status.countdown") {
-            InsideScreenEdges(top = ThemeSpace.related) {
-                AndroidSyncStatus(
-                    line =
-                        SyncLine.Read(
-                            syncShown(
-                                BridgeSyncStatusWord.WAITING_TO_SYNC,
-                                "core.sync.status.waiting_to_sync",
-                                BridgeSyncTone.WARNING,
-                                cause = dropboxAskedToWait(),
-                            ),
-                        ),
-                    onFix = {},
-                )
-            }
+            SignedOutOfS3(BridgeSyncTone.WARNING, cause = dropboxAskedToWait())
         }
 }
 
