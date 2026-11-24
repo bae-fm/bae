@@ -55,7 +55,11 @@ extension ShotScene {
         let size = CGSize(width: 1_200, height: height)
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
-            let detail = boardAlbum(ratedUnder: system)
+            var detail = boardAlbum(ratedUnder: system)
+            if case .track = menu, case .heart = detail.rating {
+                // The track menu boards draw the album unhearted.
+                detail.rating = .heart(hearted: false, hearters: [])
+            }
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
                 albumCount: 4,
@@ -233,6 +237,7 @@ extension ShotScene {
             return group
         }
         detail.releases = [release]
+        detail.shownRelease = release
         return detail
     }
 
