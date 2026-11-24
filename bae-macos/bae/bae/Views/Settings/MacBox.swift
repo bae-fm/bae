@@ -157,11 +157,20 @@ struct MacBoxRows: View {
                 }
                 else {
                     let inset = row.containerValues.rowVerticalInset
+                    // The rows that belong to the one above, as the boards'
+                    // nested rows do, are 8 apart and the last has 12 below.
+                    let nextJoins =
+                        index + 1 < rows.count
+                        && rows[index + 1].containerValues.joinsRowAbove
+                    let bottom =
+                        joins
+                        ? (nextJoins ? ThemeSpace.related : ThemeSpace.group)
+                        : inset
                     let placement = MacRowPlacement(
                         insets: EdgeInsets(
                             top: inset,
                             leading: RowMetrics.inset,
-                            bottom: inset,
+                            bottom: bottom,
                             trailing: RowMetrics.inset
                         ),
                         minHeight: RowMetrics.height
