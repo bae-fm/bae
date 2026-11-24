@@ -32,7 +32,7 @@ class AndroidScreenShots : BoardShot() {
     fun androidComponentScreenMenu() =
         component("android.component.screen.menu") {
             AndroidScreen(
-                title = "History",
+                title = "Storage",
                 onBack = {},
                 modifier = Modifier.height(360.dp),
                 actions = { WhoseMenu(menu = historyChoice(BridgeHistoryShown.Everyone), open = false, onOpen = {}, onChoose = {}) },
@@ -63,7 +63,7 @@ class AndroidScreenShots : BoardShot() {
     fun androidComponentScreenKeyboard() =
         shot("android.component.screen.keyboard") {
             KeyboardScene {
-                AndroidScreen(title = "Name", onBack = {}) {
+                AndroidScreen(title = "Storage", onBack = {}) {
                     val focus = remember { FocusRequester() }
                     AndroidTextField(
                         value = "Home",

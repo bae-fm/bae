@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Back', h(B.AndroidTopBar, { title: 'Storage' })), W('Menu', h(B.AndroidTopBar, { title: 'History', menu: 'Everyone' })), W('Long title', h(B.AndroidTopBar, { title: 'Ines Varga Trio and friends' })), W('No title', h(B.AndroidTopBar, { backLabel: 'Back to library' })), W('No title with menu', h(B.AndroidTopBar, { backLabel: 'Back to library', more: 'Album options' }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Back', h(B.AndroidTopBar, { title: 'Storage' })), W('Menu', h(B.AndroidTopBar, { title: 'Storage', menu: 'Everyone' })), W('Long title', h(B.AndroidTopBar, { title: 'Ines Varga Trio and friends' })), W('No title', h(B.AndroidTopBar, { backLabel: 'Back to library' })), W('No title with menu', h(B.AndroidTopBar, { backLabel: 'Back to library', more: 'Album options' }))));
 </script>
 </body>
 </html>

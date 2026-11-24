@@ -19,7 +19,7 @@ class AndroidTopBarShots : BoardShot() {
         component("android.component.top-bar.menu") {
             AndroidTopBar(
                 onBack = {},
-                title = "History",
+                title = "Storage",
                 actions = { WhoseMenu(menu = historyChoice(BridgeHistoryShown.Everyone), open = false, onOpen = {}, onChoose = {}) },
             )
         }
