@@ -285,7 +285,7 @@ extension ShotScene {
         uiStore.presentSizedModal { host in
             ReleaseEditorSheet(
                 session: session,
-                displayName: "Northbound · CD · Harbor Records HR-0412 · 1974",
+                displayName: "Northbound",
                 host: host,
                 onSaved: { _ in },
                 onClose: {}
