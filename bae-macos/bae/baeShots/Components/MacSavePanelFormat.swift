@@ -5,7 +5,9 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacSavePanelFormat` closed, on FLAC.
+    /// `MacSavePanelFormat` closed, on FLAC. Its open rows are the design's
+    /// only: AppKit draws the menu in a window of its own, which a shot
+    /// can't open.
     static let macSavePanelFormatScenes: [ShotScene] = [
         component(
             "mac.component.save-panel-format.closed",
@@ -15,25 +17,7 @@ extension ShotScene {
             SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone"])
                 .frame(width: 250, height: 34)
                 .frame(maxWidth: .infinity)
-        },
-        component(
-            "mac.component.save-panel-format.open",
-            width: wideColumn,
-            height: 170
-        ) {
-            SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone"])
-                .frame(width: 250, height: 34)
-                .frame(maxWidth: .infinity)
-        },
-        component(
-            "mac.component.save-panel-format.new-format-chosen",
-            width: wideColumn,
-            height: 170
-        ) {
-            SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone", "FLAC (2)"])
-                .frame(width: 250, height: 34)
-                .frame(maxWidth: .infinity)
-        },
+        }
     ]
 
     /// The Save as panel's format line with `formats` in its pop-up.
