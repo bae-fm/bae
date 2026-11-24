@@ -8,6 +8,14 @@
 
 use std::path::PathBuf;
 
+// The build script runs on the host, and a Windows host builds this crate for
+// Windows, so the script compiles there too, though only a Mac target links
+// the dist's dylibs.
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
+#[cfg(windows)]
+use std::os::windows::fs::symlink_file as symlink;
+
 #[expect(
     clippy::disallowed_methods,
     reason = "file system: the build script looks for the libvips dist, which no library's file reaches"
@@ -60,7 +68,7 @@ fn link_into_out_dir(lib: &std::path::Path) -> PathBuf {
             let link = out.join(entry.file_name());
             // A link to a dist that is gone, or to an older one, is replaced.
             drop(std::fs::remove_file(&link));
-            std::os::unix::fs::symlink(entry.path(), &link)
+            symlink(entry.path(), &link)
                 .unwrap_or_else(|error| panic!("link {}: {error}", link.display()));
         }
     }
