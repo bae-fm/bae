@@ -56,6 +56,9 @@ struct ImportFolderNameLine<Accessory: View>: View {
         HStack(spacing: ThemeSpace.compact) {
             Image(systemName: "folder")
                 .themeIcon(.medium)
+                // The board's glyph is a box as wide as its size; the
+                // symbol's own advance is wider.
+                .frame(width: ThemeIcon.medium.size)
                 .foregroundStyle(Theme.textSecondary)
                 .accessibilityHidden(true)
             Text(folderName)
