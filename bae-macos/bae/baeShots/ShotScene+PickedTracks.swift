@@ -34,43 +34,9 @@ extension ShotScene {
                         images: images,
                         size: size
                     )
-                    MacMenuInPlace(
-                        {
-                            TrackMenu(
-                                track: tracks[1],
-                                targets: uiStore.pickedTracks.targets(
-                                    for: tracks[1].id
-                                ),
-                                picking: TrackPicking(
-                                    onExtend: { _ in },
-                                    onPlay: { _ in },
-                                    onAddNext: { _ in },
-                                    onAddToQueue: { _ in }
-                                ),
-                                onPlay: {},
-                                onAddNext: { _ in },
-                                onAddToQueue: { _ in },
-                                onExportTrack: { _ in },
-                                rating: .stars(mine: nil),
-                                onRate: { _ in },
-                                onSetHearted: { _ in },
-                                playlists: TrackPlaylistChoices(
-                                    listing: BridgePlaylistListing(
-                                        listed: [],
-                                        addTargets: [],
-                                        total: 0,
-                                        addTargetCount: 0,
-                                        canCreate: true
-                                    ),
-                                    onAdd: { _, _ in },
-                                    onNewPlaylist: { _ in }
-                                )
-                            )
-                        },
-                        highlighted: 0
-                    )
-                    .padding(.leading, 520)
-                    .padding(.top, 600)
+                    PickedTrackMenu(uiStore: uiStore, track: tracks[1])
+                        .padding(.leading, 520)
+                        .padding(.top, 600)
                 },
                 images: images,
                 isReady: { backing.session.albums.list?.delivered != nil },
@@ -106,4 +72,47 @@ extension ShotScene {
             )
         }
     ]
+}
+
+/// The track menu over the rows the person picked. It reads the picks in its
+/// own body, so it draws again once the scene has picked the rows.
+private struct PickedTrackMenu: View {
+    let uiStore: UiStore
+    let track: Track
+
+    var body: some View {
+        MacMenuInPlace(
+            {
+                TrackMenu(
+                    track: track,
+                    targets: uiStore.pickedTracks.targets(for: track.id),
+                    picking: TrackPicking(
+                        onExtend: { _ in },
+                        onPlay: { _ in },
+                        onAddNext: { _ in },
+                        onAddToQueue: { _ in }
+                    ),
+                    onPlay: {},
+                    onAddNext: { _ in },
+                    onAddToQueue: { _ in },
+                    onExportTrack: { _ in },
+                    rating: .stars(mine: nil),
+                    onRate: { _ in },
+                    onSetHearted: { _ in },
+                    playlists: TrackPlaylistChoices(
+                        listing: BridgePlaylistListing(
+                            listed: [],
+                            addTargets: [],
+                            total: 0,
+                            addTargetCount: 0,
+                            canCreate: true
+                        ),
+                        onAdd: { _, _ in },
+                        onNewPlaylist: { _ in }
+                    )
+                )
+            },
+            highlighted: 0
+        )
+    }
 }
