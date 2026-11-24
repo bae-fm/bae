@@ -120,7 +120,7 @@
   }
   // Above the right pane: the tab chip, a button that goes to that tab; the folder glyph, a button that reveals the folder in Finder; the folder's name.
   function MacImportFolderLine(props) {
-    return h('div', { className: 'bae-m-ifl' }, h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-tab' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found')), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-reveal bae-muted', 'aria-label': 'Reveal in Finder', title: 'Reveal in Finder' }, h(Sym, { name: 'folder', size: 15 })), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 'var(--type-heading-size)' } }, props.folder));
+    return h('div', { className: 'bae-m-ifl' }, h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-tab' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found')), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-reveal bae-muted', 'aria-label': 'Reveal in Finder', title: 'Reveal in Finder' }, h(Sym, { name: 'folder', size: 15 })), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.folder));
   }
   // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
   function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to, off: props.off }); }
@@ -334,7 +334,7 @@
   }
   // A found album: cover, title, artist · label, a button per catalog that has answered (`sources`) that opens the album on that catalog.
   function MacReleaseCard(props) {
-    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 'size-row-artwork', radius: 'radius-artwork' }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)' } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
+    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 'size-row-artwork', radius: 'radius-artwork' }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
   }
   // A found album with its pressings: the MacReleaseCard (`title`, `artist`, `label`, `sources`), then its pressings, the children, on a rule under it.
   function MacReleaseGroup(props) {

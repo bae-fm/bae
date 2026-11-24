@@ -56,7 +56,7 @@
 .bae-m-filerow-name > [aria-hidden] { user-select: none; }
 .bae-m-filerow-selected { background: var(--accent-tint); }
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: calc(var(--space-group) + var(--space-line)) var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: var(--space-group); border-top: 1px solid var(--hairline); }
-.bae-m-filedet-head { display: flex; justify-content: space-between; gap: var(--space-related); font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); }
+.bae-m-filedet-head { display: flex; justify-content: space-between; gap: var(--space-related); font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); }
 .bae-m-filedet-grid { display: grid; grid-template-columns: 84px 1fr; gap: var(--space-compact) var(--space-group); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-m-filedet-grid-wide { grid-template-columns: 140px 1fr; gap: var(--space-inline) var(--space-group); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; }
 .bae-errdis-copy { color: var(--text-secondary); }

@@ -188,7 +188,7 @@
 .bae-m-albumpanel-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
 .bae-m-albumhead { min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
 .bae-m-albumpanel-title { margin: 0; font: var(--type-hero-weight) var(--type-hero-size) var(--font-sans); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-m-albumpanel-sub { display: flex; gap: var(--space-related); font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); white-space: nowrap; }
+.bae-m-albumpanel-sub { display: flex; gap: var(--space-related); font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); white-space: nowrap; }
 .bae-m-albumpanel-releases { padding: var(--space-inline) 0 var(--space-line); }
 .bae-m-albumpanel-facts { display: flex; flex-direction: column; gap: var(--space-line); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-audio { padding-top: var(--space-related); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
@@ -266,7 +266,7 @@
 .bae-m-queue-menu.bae-m-queue-menu-action { font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; }
 .bae-m-queue-insert { position: relative; z-index: 1; flex: none; height: 2px; margin: calc(-1 * var(--space-hairline)) var(--space-related); background: var(--accent); }
 .bae-m-sidepause { width: 500px; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-group); padding: var(--space-section); }
-.bae-m-sidepause-title { font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); }
+.bae-m-sidepause-title { font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); }
 .bae-m-sidepause-count { font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); font-variant-numeric: tabular-nums; }
 .bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: var(--space-related); padding-top: var(--space-related); }
 .bae-m-castpop { color: var(--text-primary); display: flex; flex-direction: column; gap: var(--space-compact); padding: var(--space-compact) var(--space-inline) var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
@@ -312,7 +312,7 @@
 .bae-a-checkbox-on { background: var(--accent); box-shadow: none; }
 
 /* Composer and work pages */
-.bae-m-sechead { padding-top: var(--space-inline); font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); }
+.bae-m-sechead { padding-top: var(--space-inline); font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); }
 .bae-m-work { display: flex; flex-direction: column; gap: var(--space-group); }
 .bae-m-work-title { font: var(--type-title-weight) var(--type-title-size) var(--font-sans); letter-spacing: -0.3px; }
 .bae-m-hairline { height: 1px; background: var(--hairline); flex: none; }
