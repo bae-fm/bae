@@ -26,19 +26,20 @@ struct OpensWithoutFieldFocusTests {
     /// The view that holds the keyboard once a window showing `view` is key.
     private func keyboardHolder(_ view: some View) async throws -> NSResponder {
         let size = NSSize(width: 240, height: 80)
-        let host = NSHostingView(
+        let hosting = NSHostingController(
             rootView: view.frame(width: size.width, height: size.height)
         )
-        host.frame = NSRect(origin: .zero, size: size)
+        hosting.sizingOptions = []
         let panel = KeyPanel(
             contentRect: NSRect(origin: offscreenOrigin, size: size),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.titled, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
         panel.isReleasedWhenClosed = false
         panel.animationBehavior = .none
-        panel.contentView = host
+        panel.contentViewController = hosting
+        panel.setContentSize(size)
         defer { panel.close() }
         panel.makeKeyAndOrderFront(nil)
         try await Wait.until(
@@ -46,7 +47,7 @@ struct OpensWithoutFieldFocusTests {
         ) {
             panel.isKeyWindow
         }
-        try await SnapshotTestSupport.settle(host)
+        try await SnapshotTestSupport.settle(hosting.view)
         return try #require(panel.firstResponder)
     }
 
