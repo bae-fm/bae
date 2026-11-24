@@ -248,6 +248,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                     if chevron {
                         Image(systemName: "chevron.forward")
                             .themeIcon(.small)
+                            .frame(width: 7)
                             .foregroundStyle(Theme.textSecondary)
                             .opacity(textOpacity)
                             .accessibilityHidden(true)
