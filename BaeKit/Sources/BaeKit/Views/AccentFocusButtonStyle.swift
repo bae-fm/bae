@@ -28,11 +28,29 @@ public struct AccentFocusButtonStyle<Base: ButtonStyle>: PrimitiveButtonStyle {
     }
 }
 
+/// The look of SwiftUI's `.plain` button style, with bae's off opacity while
+/// the button is disabled: `.plain` dims a disabled button to its own 0.5,
+/// where every other bae control dims to `ThemeOpacity.off`.
+public struct PlainButtonLook: ButtonStyle {
+    @Environment(\.isEnabled)
+    private var isEnabled
+
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(
+                !isEnabled
+                    ? ThemeOpacity.off : configuration.isPressed ? 0.5 : 1
+            )
+    }
+}
+
 extension PrimitiveButtonStyle
-where Self == AccentFocusPrimitiveButtonStyle<PlainButtonStyle> {
-    /// `.plain`, wearing the accent's focus ring.
+where Self == AccentFocusButtonStyle<PlainButtonLook> {
+    /// `.plain` with bae's off opacity, wearing the accent's focus ring.
     public static var accentPlain: Self {
-        .init(base: .plain)
+        PlainButtonLook().accentFocus()
     }
 }
 
