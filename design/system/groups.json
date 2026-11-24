@@ -1,7 +1,7 @@
 [
   {
     "name": "Brand",
-    "about": "The sheep, the drawn word and the app icons, the sheep at play on the empty Import screen, and the picture that opens the design system.",
+    "about": "The sheep, the drawn word and the app icons, and the sheep at play on the empty Import screen.",
     "subgroups": [
       {
         "name": "The sheep and the word",
@@ -12,11 +12,10 @@
         ]
       },
       {
-        "name": "App icons and the cover",
-        "about": "Each platform's app icon, and the picture that opens the design system.",
+        "name": "App icons",
+        "about": "Each platform's app icon.",
         "components": [
-          "AppIcon",
-          "Cover"
+          "AppIcon"
         ]
       }
     ]
