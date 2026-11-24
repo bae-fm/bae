@@ -16,6 +16,9 @@ struct ReleaseEditControls: View {
         HStack(spacing: ThemeSpace.related) {
             if let reading {
                 MacSpinner(Text(verbatim: reading), size: 14)
+                    // The board leaves a group space after the line, which
+                    // the row's related space already holds 8 pt of.
+                    .padding(.trailing, ThemeSpace.inline)
             }
             MacButton("Cancel", action: onCancel)
                 .opacity(changed ? 1 : 0)
