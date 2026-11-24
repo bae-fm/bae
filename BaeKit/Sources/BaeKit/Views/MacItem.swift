@@ -52,8 +52,12 @@ public struct MacItem<Lead: View, Content: View, Trail: View>: View {
                 .frame(width: ThemeSize.lead)
                 .overlay { lead }
             content.frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: ThemeSpace.related) { trail }
-                .foregroundStyle(Theme.textSecondary)
+            // An item with no trail draws none, so its content runs to the
+            // item's edge instead of stopping a gap short of it.
+            if Trail.self != EmptyView.self {
+                HStack(spacing: ThemeSpace.related) { trail }
+                    .foregroundStyle(Theme.textSecondary)
+            }
         }
     }
 }
