@@ -44,6 +44,8 @@
 /* The box takes the words' 14px, so the inline status glyph (1.19em) sizes from the words beside it. */
 .bae-a-notice-box { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); }
 .bae-a-notice-box.bae-notice-quiet { padding: calc(var(--space-related) + var(--space-line)) 0; }
+/* On Android a notice's words start space-edge after its glyph, as Material's list items and AndroidItem. */
+.bae-a-notice-box.bae-notice-with-icon { gap: var(--space-edge); }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice-title-strong { font-weight: var(--type-strong-weight); }
