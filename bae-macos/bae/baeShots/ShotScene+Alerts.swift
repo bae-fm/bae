@@ -359,6 +359,7 @@ extension ShotScene {
                 queues: boardStorageQueues(pinning: "rel-row-6")
             )
             let streams = BoardTransferStreams(pinning: "rel-row-6")
+            let images = coverStore()
             let manager =
                 fixture.environment(
                     of: MacStorageWindow(
@@ -368,7 +369,8 @@ extension ShotScene {
                     ),
                     downloads: streams.downloads,
                     outputs: streams.outputs,
-                    outbox: streams.outbox
+                    outbox: streams.outbox,
+                    images: images
                 )
                 .frame(
                     width: storageManagerSize.width,
@@ -384,7 +386,8 @@ extension ShotScene {
                         dontShowAgain: .constant(false)
                     ) { _ in },
                     over: manager
-                )
+                ),
+                images: images
             ) {
                 fixture.storageManagerStore.list != nil
             }

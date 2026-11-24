@@ -66,12 +66,13 @@ struct StorageManagerPreviewFixture {
         of view: some View,
         downloads: DownloadStore? = nil,
         outputs: OutputStore? = nil,
-        outbox: OutboxStore? = nil
+        outbox: OutboxStore? = nil,
+        images: ImageStore = .stub()
     ) -> some View {
         view
             .environment(library)
             .environment(storageManagerStore)
-            .environment(ImageStore.stub())
+            .environment(images)
             .environment(ReleaseEditor.stub())
             .environment(Sync.stub())
             .environment(Downloads.stub())

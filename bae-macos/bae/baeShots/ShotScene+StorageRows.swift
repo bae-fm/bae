@@ -148,7 +148,12 @@ extension ShotScene {
                 releaseId: "rel-row-\(offset + 1)",
                 albumId: "album-row-\(offset + 1)",
                 upload: row.status == .uploading
-                    ? shotUpload(queued: 0, uploading: 1) : nil
+                    ? shotUpload(queued: 0, uploading: 1) : nil,
+                picture: BridgeImageRef(
+                    id: row.title,
+                    version: "1",
+                    imageType: .cover
+                )
             )
         }
 
@@ -163,12 +168,14 @@ extension ShotScene {
     }
 
     /// A row of the Storage Manager's table: `row` as release `releaseId` of
-    /// album `albumId`, with `upload` where its files are being sent.
+    /// album `albumId`, with `upload` where its files are being sent and
+    /// `picture` as the release's cover.
     static func storageRow(
         _ row: BoardRow,
         releaseId: String,
         albumId: String,
-        upload: BridgeReleaseUpload? = nil
+        upload: BridgeReleaseUpload? = nil,
+        picture: BridgeImageRef? = nil
     ) -> BridgeStorageRow {
         let transitioning =
             upload != nil || row.status == .uploading
@@ -191,7 +198,7 @@ extension ShotScene {
                 transitioning: transitioning,
                 fileCount: row.files,
                 totalSize: row.megabytes * 1_000_000,
-                cover: nil
+                cover: picture
             ),
             album: BridgeAlbum(
                 id: albumId,
