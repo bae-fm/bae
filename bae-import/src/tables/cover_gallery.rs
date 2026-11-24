@@ -138,10 +138,12 @@ pub struct CoverGallery {
 }
 
 /// The release's gallery under one filter, as the statement that binds the
-/// release as `:release` reads it: its saved cover only under all, catalog
-/// covers under all or their catalog, image files under all or the release's
-/// files, each file in name order. The release focuses its saved cover
-/// unless the request names another.
+/// release as `:release` reads it: its saved cover only under all and only when
+/// the cover keeps a picture of its own (one made from an image file is that
+/// file's entry), catalog covers under all or their catalog, image files under
+/// all or the release's files, each file in name order. The release focuses
+/// its saved cover, or the file the cover is made from, unless the request
+/// names another.
 fn release_gallery_sql() -> String {
     format!(
         "
@@ -149,6 +151,7 @@ WITH items (rank, pos, kind, key, preferred, item) AS (
     SELECT 0, 0, 'saved', NULL, 1, json_object('kind', 'saved', 'version', version)
     FROM (SELECT {cover_version} AS version)
     WHERE :filter = 'all' AND version IS NOT NULL
+      AND (SELECT cover.source_file FROM covers AS cover WHERE cover.id = :release) IS NULL
     UNION ALL
     SELECT 1, entry.position, 'remote', json_extract(entry.cover, '$.image.url'), 0,
            json_object('kind', 'remote', 'cover', json(entry.cover))
@@ -156,7 +159,9 @@ WITH items (rank, pos, kind, key, preferred, item) AS (
     WHERE entry.release_id = :release AND :filter IN ('all', entry.source)
     UNION ALL
     SELECT 2, ROW_NUMBER() OVER (ORDER BY file.original_filename COLLATE natural_order, file.id),
-           'file', file.id, 0,
+           'file', file.id,
+           COALESCE(file.id = (SELECT cover.source_file FROM covers AS cover
+                               WHERE cover.id = :release), 0),
            json_object('kind', 'release_file', 'id', file.id, 'name', file.original_filename)
     FROM release_files AS file
     WHERE file.release_id = :release AND :filter IN ('all', 'release_files')

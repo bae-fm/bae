@@ -2127,8 +2127,9 @@ and a request for one fails.
 
 A library release's picker and a candidate's each show, under the source the
 person chose (all, the release's files, or one catalog): a library release's
-saved cover, shown under all; the covers its catalogs offered when this device
-last fetched them; and the images a cover can be made from, the release's
+saved cover, shown under all, unless the cover is made from one of the
+release's image files, which then shows once, as that file; the covers its
+catalogs offered when this device last fetched them; and the images a cover can be made from, the release's
 files or the folder's images in a format bae can store. Each section shows its
 count, and the picker its total. The picker's preview and its lightbox focus
 the cover the person last moved to, while the source shows it; otherwise the

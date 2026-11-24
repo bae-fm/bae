@@ -426,3 +426,25 @@ async fn an_empty_picker_focuses_nothing() {
         read_focused(&ImportTables::new(db), CoverFilter::All, Some(CoverKey::Saved)).await;
     assert_eq!(gallery.focus, None);
 }
+
+/// A cover made from one of the release's image files is that file's entry:
+/// the picker shows the picture once, and focuses it unless asked for another.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cover_made_from_an_image_file_shows_once_as_that_file() {
+    let (tables, db, _temp, _files) = seeded().await;
+    let back = bae_util::test_ids::test_uuid("file-back");
+    bae_records::test_fixtures::test_records(&db)
+        .write_cover(bae_records::NewCover {
+            picture: bae_records::NewCoverPicture::ReleaseFile { file_id: back },
+            ..bae_records::test_fixtures::test_cover(RELEASE_ID, b"copy")
+        })
+        .await
+        .unwrap();
+
+    let gallery = read_focused(&tables, CoverFilter::All, None).await;
+
+    assert!(gallery.current.is_none(), "no second entry for the picture");
+    assert_eq!(gallery.total, 5);
+    assert_eq!(names(files(&gallery)), ["art 2.png", "Back.jpg"]);
+    assert_eq!(focus_of(&gallery).0, file_key("file-back"));
+}
