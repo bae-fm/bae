@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The prompt core raises when playback pauses at the end of a side or disc,
 /// drawn as a card because a system alert cannot hold its checkbox.
-public struct MacSidePause: ViewModifier {
+public struct MacSidePauseContainer: ViewModifier {
     @Environment(PlaybackStore.self)
     private var playbackStore
 
@@ -24,9 +24,10 @@ public struct MacSidePause: ViewModifier {
     }
 }
 
+/// The card's state and its answer: the box starts checked because the prompt
+/// only appears while the setting is on, and the setting is written only when
+/// the prompt is answered.
 private struct SidePausePromptCard: View {
-    private static let width: CGFloat = 500
-
     let prompt: BridgeSidePausePrompt
     let showError: @MainActor (any Error) -> Void
 
@@ -35,21 +36,65 @@ private struct SidePausePromptCard: View {
     @Environment(PlaybackStore.self)
     private var playbackStore
 
-    /// Starts checked because the prompt only appears while the setting is on;
-    /// written only when the prompt is answered.
     @State
     private var keepPausing = true
+
+    var body: some View {
+        MacSidePause(
+            prompt: prompt,
+            keepPausing: $keepPausing,
+            onAnswer: answer
+        )
+    }
+
+    private func answer(play: Bool) {
+        playbackStore.dismissSidePausePrompt(prompt)
+        let keepPausing = keepPausing
+        Task {
+            do {
+                try await playback.answerSidePausePrompt(
+                    keepPausing: keepPausing,
+                    play: play
+                )
+            }
+            catch {
+                showError(error)
+            }
+        }
+    }
+}
+
+/// The prompt as drawn: the card over the scrim, with the box's state and the
+/// answer given to it.
+public struct MacSidePause: View {
+    private static let width: CGFloat = 500
+
+    let prompt: BridgeSidePausePrompt
+    @Binding
+    var keepPausing: Bool
+    /// Answers the prompt: `true` plays, `false` closes it.
+    let onAnswer: (_ play: Bool) -> Void
 
     @FocusState
     private var focused: Bool
 
-    var body: some View {
+    public init(
+        prompt: BridgeSidePausePrompt,
+        keepPausing: Binding<Bool>,
+        onAnswer: @escaping (_ play: Bool) -> Void
+    ) {
+        self.prompt = prompt
+        _keepPausing = keepPausing
+        self.onAnswer = onAnswer
+    }
+
+    public var body: some View {
         // The card hangs from the top of the window over the scrim, which
         // takes the tap that closes it.
         ZStack(alignment: .top) {
             MacScrim()
                 .contentShape(Rectangle())
-                .onTapGesture { answer(play: false) }
+                .onTapGesture { onAnswer(false) }
 
             card
         }
@@ -82,10 +127,10 @@ private struct SidePausePromptCard: View {
 
             HStack(spacing: ThemeSpace.related) {
                 Spacer()
-                MacButton("Close") { answer(play: false) }
+                MacButton("Close") { onAnswer(false) }
                     .keyboardShortcut(.cancelAction)
 
-                MacButton("Play", kind: .primary) { answer(play: true) }
+                MacButton("Play", kind: .primary) { onAnswer(true) }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.top, ThemeSpace.related)
@@ -97,26 +142,10 @@ private struct SidePausePromptCard: View {
         .focusEffectDisabled()
         .focused($focused)
         .onKeyPress(.escape) {
-            answer(play: false)
+            onAnswer(false)
             return .handled
         }
         .onAppear { focused = true }
-    }
-
-    private func answer(play: Bool) {
-        playbackStore.dismissSidePausePrompt(prompt)
-        let keepPausing = keepPausing
-        Task {
-            do {
-                try await playback.answerSidePausePrompt(
-                    keepPausing: keepPausing,
-                    play: play
-                )
-            }
-            catch {
-                showError(error)
-            }
-        }
     }
 }
 
@@ -140,6 +169,6 @@ extension View {
     public func sidePausePromptAlert(
         showError: @escaping @MainActor (any Error) -> Void
     ) -> some View {
-        modifier(MacSidePause(showError: showError))
+        modifier(MacSidePauseContainer(showError: showError))
     }
 }

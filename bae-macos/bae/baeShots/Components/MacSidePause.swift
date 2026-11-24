@@ -26,14 +26,16 @@ extension ShotScene {
         sidePause(
             "mac.component.side-pause.box-cleared",
             ended: .sided(sideLetter: "A"),
-            countdownKey: nil
+            countdownKey: nil,
+            keepPausing: false
         ),
     ]
 
     private static func sidePause(
         _ id: String,
         ended: BridgeSideHeading,
-        countdownKey: String?
+        countdownKey: String?,
+        keepPausing: Bool = true
     ) -> ShotScene {
         ShotScene(
             id: id,
@@ -72,6 +74,22 @@ extension ShotScene {
                     reason: .sideEnded(prompt: prompt)
                 )
             )
+            // The card starts with its box checked, and a shot cannot click
+            // it, so the cleared card is drawn from its face with the box
+            // cleared, as the card holds it after a click.
+            if !keepPausing {
+                return ShotStage(
+                    Color.clear
+                        .background(Theme.surface)
+                        .overlay(alignment: .top) {
+                            MacSidePause(
+                                prompt: prompt,
+                                keepPausing: .constant(false),
+                                onAnswer: { _ in }
+                            )
+                        }
+                )
+            }
             return ShotStage(
                 Color.clear
                     .background(Theme.surface)
