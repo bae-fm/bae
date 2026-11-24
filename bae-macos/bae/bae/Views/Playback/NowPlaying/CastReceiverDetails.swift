@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// A receiver in a popover off its row on the Casting page, titled with its
+/// A receiver in a popover off its row in Playback settings, titled with its
 /// name: its type, its model when it states one, and its address.
 struct CastReceiverDetails: View {
     let receiver: BridgeCastReceiver
@@ -11,20 +11,12 @@ struct CastReceiverDetails: View {
     private let contentWidth: CGFloat = 320
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            Text(verbatim: receiver.name)
-                .padding(.horizontal, ThemeSpace.inline)
-                .themeText(.strong)
-            MacBox {
-                MacRow(
-                    "Type",
-                    value: receiver.kind.productName
-                )
-                if let model = receiver.model {
-                    MacRow("Model", value: model)
-                }
-                MacRow("Address", value: receiver.address)
+        SettingsTitledBox(title: Text(verbatim: receiver.name)) {
+            MacRow("Type", value: receiver.kind.productName)
+            if let model = receiver.model {
+                MacRow("Model", value: model)
             }
+            MacRow("Address", value: receiver.address)
         }
         // The popover's own inset, as the boards draw it: 14 at the sides and
         // bottom, and the title 18 down.
