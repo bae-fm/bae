@@ -87,7 +87,6 @@ struct ReleaseStorageSheet: View {
                 MacButton("Done") { onDone() }
                     .keyboardShortcut(.cancelAction)
             }
-            Divider()
             if let releaseError {
                 MacNotice(error: releaseError)
                     .padding()

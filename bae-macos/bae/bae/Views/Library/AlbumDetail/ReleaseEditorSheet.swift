@@ -58,7 +58,6 @@ struct ReleaseEditorSheet: View {
         let size = Self.modalSize(in: host)
         VStack(spacing: 0) {
             header
-            Divider()
             ScrollView {
                 ReleaseEditorView(
                     session: session,

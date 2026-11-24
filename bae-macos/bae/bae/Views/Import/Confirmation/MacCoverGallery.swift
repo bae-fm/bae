@@ -47,7 +47,6 @@ struct MacCoverGallery: View {
                     .keyboardShortcut(.cancelAction)
                     .disabled(isSaving)
             }
-            Divider()
             HStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: ThemeSpace.section) {

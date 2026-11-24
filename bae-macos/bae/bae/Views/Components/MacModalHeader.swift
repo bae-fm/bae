@@ -2,7 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// A modal's header: the title (22 point with `large`), a second line under
-/// it where the modal has one, and `buttons` at the trailing edge.
+/// it where the modal has one, and `buttons` at the trailing edge, with a
+/// divider under them.
 struct MacModalHeader<Buttons: View>: View {
     let title: LocalizedStringKey
     var subtitle: String?
@@ -11,6 +12,13 @@ struct MacModalHeader<Buttons: View>: View {
     var buttons: () -> Buttons
 
     var body: some View {
+        VStack(spacing: 0) {
+            content
+            MacHairline()
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: ThemeSpace.related) {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(title)
