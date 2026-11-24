@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.focused
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
@@ -152,6 +153,30 @@ class ElementListTest : BoardShot() {
                 .objects()
 
         assertEquals(listOf("Title", "Retry", "Close"), elements.map { it.getString("label") })
+    }
+
+    @Test
+    fun aContainerTalkBackNeverFocusesIsListedWhereItsFirstElementIsRead() {
+        compose.settle {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Tree order is Later, then the container; the container's text is above Later on the screen, and the
+                // container is no stop of Compose's chain, so only its text has a place in it.
+                Text("Later", modifier = Modifier.offset(0.dp, 200.dp))
+                Column(modifier = Modifier.offset(0.dp, 40.dp).semantics { isTraversalGroup = true }) {
+                    Text("Inner")
+                }
+            }
+        }
+        val elements =
+            ElementList
+                .of(
+                    "android.test.container",
+                    compose.onRoot().fetchSemanticsNode(),
+                    reading = ReadingOrder.of(compose.activity.window.decorView),
+                ).getJSONArray("elements")
+                .objects()
+
+        assertEquals(listOf("Inner", "Later"), elements.filterNot { it.isNull("label") }.map { it.getString("label") })
     }
 
     @Test

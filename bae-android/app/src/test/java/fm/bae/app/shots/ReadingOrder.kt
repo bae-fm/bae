@@ -14,7 +14,7 @@ import org.robolectric.Shadows
  * The order TalkBack reads a Compose screen's nodes in, from Compose's own accessibility delegate. The node provider
  * gives TalkBack no sorted child list: the delegate sorts all nodes by place on screen and traversal index into one
  * chain, and tells each node the node that follows it. [ElementList] lists each node's children by their place in
- * that chain.
+ * that chain; a node that is no stop of the chain goes where the chain first reaches something under it.
  */
 internal fun interface ReadingOrder {
     /** The semantics node ids under [parent], in reading order, or null when the provider has no such node. */
@@ -60,7 +60,8 @@ internal fun interface ReadingOrder {
             fun read(id: Int) {
                 if (id in children) return
                 val node = provider.createAccessibilityNodeInfo(id) ?: return
-                children[id] = (0 until node.childCount).map { virtual(childId.invoke(node, it) as Long) }
+                // A child that is an Android view, not a node, has the host's id.
+                children[id] = (0 until node.childCount).map { virtual(childId.invoke(node, it) as Long) }.filter { it != HOST }
                 children.getValue(id).forEach(::read)
             }
             read(HOST)
@@ -86,7 +87,15 @@ internal fun interface ReadingOrder {
                     at = next[at]
                 }
             }
-            return ReadingOrder { parent -> children[parent]?.sortedBy { rank[it] ?: Int.MAX_VALUE } }
+            // A node TalkBack never stops on (a layout with no semantics of its own) is read where its first
+            // descendant is, so it takes the earliest rank at or under it.
+            val reached = mutableMapOf<Int, Int>()
+
+            fun earliest(id: Int): Int =
+                reached.getOrPut(id) {
+                    (children[id].orEmpty().map(::earliest) + listOfNotNull(rank[id])).minOrNull() ?: Int.MAX_VALUE
+                }
+            return ReadingOrder { parent -> children[parent]?.sortedBy(::earliest) }
         }
 
         private fun find(view: View): View? =
