@@ -71,8 +71,8 @@ extension SetupLine: ProgressStep {
 
 /// How a call's step shows. `line` is the name over its bar in a pane or
 /// sheet, left-aligned in primary text. `stage` is the line of a screen the
-/// call fills: the name centred over the bar in primary text, the bar at the
-/// design system's height. `note` is the name alone, as a row's note.
+/// call fills: the name centred over the bar in primary text. `note` is the
+/// name alone, as a row's note.
 enum StepProgressLook {
     case line
     case stage
@@ -108,10 +108,7 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
     init(accent: NSColor, look: StepProgressLook = .line) {
         bar = ProgressTrackNSView(
             progress: 0,
-            accent: accent,
-            height: look == .stage
-                ? ProgressTrackNSView.stageHeight
-                : ProgressTrackNSView.trackHeight
+            accent: accent
         )
         bar.isHidden = look == .note
         stack = NSStackView(views: [label, bar])
