@@ -1,16 +1,12 @@
 import SwiftUI
 
-/// A system button style with the system's focus ring replaced by the
-/// accent's (`accentFocusRing`). The style keeps its own look, keyboard
-/// handling, pressed state and VoiceOver role.
-public struct AccentFocusPrimitiveButtonStyle<Base: PrimitiveButtonStyle>:
-    PrimitiveButtonStyle
-{
-    let base: Base
-
+/// `.borderless`, with the system's focus ring replaced by the accent's
+/// (`accentFocusRing`). The style keeps its own look, keyboard handling,
+/// pressed state and VoiceOver role.
+public struct AccentFocusBorderlessButtonStyle: PrimitiveButtonStyle {
     public func makeBody(configuration: Configuration) -> some View {
         Button(configuration)
-            .buttonStyle(base)
+            .buttonStyle(.borderless)
             .accentFocusRing(cornerRadius: ThemeRadius.control)
     }
 }
@@ -55,10 +51,10 @@ where Self == AccentFocusButtonStyle<PlainButtonLook> {
 }
 
 extension PrimitiveButtonStyle
-where Self == AccentFocusPrimitiveButtonStyle<BorderlessButtonStyle> {
+where Self == AccentFocusBorderlessButtonStyle {
     /// `.borderless`, wearing the accent's focus ring.
     public static var accentBorderless: Self {
-        .init(base: .borderless)
+        .init()
     }
 }
 
