@@ -199,6 +199,26 @@ struct AlbumGridCellsTests {
             open: open(8)
         )
         #expect(other.count == 3)
+        #expect(cells.openRow == 8..<9)
+        #expect(other.openRow == nil)
+    }
+
+    @Test("the open row is the cards the detail goes under")
+    func openRowIsTheRowAboveTheDetail() {
+        let cells = AlbumGridCells(
+            totalCount: 10,
+            columnCount: 4,
+            idAt: loaded(0..<10),
+            open: open(5)
+        )
+        #expect(cells.openRow == 4..<8)
+        let last = AlbumGridCells(
+            totalCount: 10,
+            columnCount: 4,
+            idAt: loaded(0..<10),
+            open: open(9)
+        )
+        #expect(last.openRow == 8..<10)
     }
 }
 

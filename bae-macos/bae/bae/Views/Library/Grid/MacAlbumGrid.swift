@@ -131,8 +131,9 @@ struct MacAlbumGrid<ExpansionContent: View>: View {
                     alignment: .leading,
                     spacing: ThemeSpace.page
                 ) {
-                    ForEach(cells(columnCount: metrics.columnCount)) { cell in
-                        slot(cell, metrics: metrics)
+                    let layout = cells(columnCount: metrics.columnCount)
+                    ForEach(layout) { cell in
+                        slot(cell, metrics: metrics, openRow: layout.openRow)
                     }
                 }
                 .scrollTargetLayout()
@@ -430,7 +431,8 @@ extension MacAlbumGrid {
     @ViewBuilder
     private func slot(
         _ cell: AlbumGridCell,
-        metrics: AlbumGridMetrics
+        metrics: AlbumGridMetrics,
+        openRow: Range<Int>?
     ) -> some View {
         switch cell {
         case .heading(let section):
@@ -453,7 +455,8 @@ extension MacAlbumGrid {
                     id: RowLoadID(epoch: list.loadEpoch, index: position)
                 ) {
                     await list.holdPage(containing: position)
-                },
+                }
+                .padding(.bottom, spaceUnderCard(position, openRow: openRow)),
                 cell.id,
                 as: .position(position, sectionId: sectionId),
                 columnCount: metrics.columnCount
@@ -465,28 +468,51 @@ extension MacAlbumGrid {
                         id: RowLoadID(epoch: list.loadEpoch, index: position)
                     ) {
                         await list.holdPage(containing: position)
-                    },
+                    }
+                    .padding(
+                        .bottom,
+                        spaceUnderCard(position, openRow: openRow)
+                    ),
                 cell.id,
                 as: .position(position, sectionId: sectionId),
                 columnCount: metrics.columnCount
             )
         case .detail(let albumId):
-            placed(
-                AlbumExpansionSlot(
-                    albumId: albumId,
-                    slotWidth: metrics.cardWidth,
-                    rowWidth: metrics.rowWidth,
-                    expansionContent: expansionContent
-                )
-                .environment(\.revealedTrackId, reveal?.trackId),
-                cell.id,
-                as: .detail(albumId: albumId),
-                columnCount: metrics.columnCount
-            )
-            .transition(.opacity)
+            detailSlot(albumId, metrics: metrics)
         case .filler, .sectionFiller:
             Color.clear.frame(width: metrics.cardWidth, height: 0)
         }
+    }
+
+    private func detailSlot(
+        _ albumId: String,
+        metrics: AlbumGridMetrics
+    ) -> some View {
+        placed(
+            AlbumExpansionSlot(
+                albumId: albumId,
+                slotWidth: metrics.cardWidth,
+                rowWidth: metrics.rowWidth,
+                expansionContent: expansionContent
+            )
+            .environment(\.revealedTrackId, reveal?.trackId),
+            AlbumGridCell.Identity.detail,
+            as: .detail(albumId: albumId),
+            columnCount: metrics.columnCount
+        )
+        .transition(.opacity)
+    }
+
+    /// The grid puts its row spacing under every row of cards, but the board
+    /// puts only the edge between the open album's row and its panel. The
+    /// open album's cards take the difference off their own bottom, so the
+    /// panel's cell starts where the panel draws, and a scroll to the cell
+    /// puts the panel on top.
+    private func spaceUnderCard(
+        _ position: Int,
+        openRow: Range<Int>?
+    ) -> CGFloat {
+        openRow?.contains(position) == true ? ThemeSpace.edge - gridSpacing : 0
     }
 
     /// Reports where this cell sits in the visible area, and puts the held

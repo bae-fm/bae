@@ -118,6 +118,11 @@ struct AlbumGridLayout: RandomAccessCollection {
     var startIndex: Int { 0 }
     var endIndex: Int { groups.last?.slots.upperBound ?? 0 }
 
+    /// The list positions of the open album's row, the row above its detail.
+    var openRow: Range<Int>? {
+        groups.lazy.compactMap { $0.cells.openRow }.first
+    }
+
     subscript(index: Int) -> AlbumGridCell {
         precondition(index >= startIndex && index < endIndex)
         var lower = 0
@@ -153,6 +158,9 @@ struct AlbumGridCells: RandomAccessCollection {
         /// The list position the detail's slots go before: the end of the
         /// open album's row.
         let insertAt: Int
+        /// The first slot of the open album's row, whose slots end at
+        /// `insertAt`.
+        let rowStart: Int
         /// Fillers completing the open album's row before the detail.
         let leadingFillers: Int
         /// Every slot the detail takes: the leading fillers, the detail, and
@@ -210,6 +218,7 @@ struct AlbumGridCells: RandomAccessCollection {
         expansion = Expansion(
             albumId: open.albumId,
             insertAt: insertAt,
+            rowStart: openPosition / columnCount * columnCount,
             leadingFillers: leadingFillers,
             count: leadingFillers + columnCount
         )
@@ -218,6 +227,13 @@ struct AlbumGridCells: RandomAccessCollection {
     var startIndex: Int { 0 }
 
     var endIndex: Int { totalCount + (expansion?.count ?? 0) }
+
+    /// The list positions of the open album's row, the row above its detail.
+    var openRow: Range<Int>? {
+        expansion.map {
+            startPosition + $0.rowStart..<startPosition + $0.insertAt
+        }
+    }
 
     subscript(index: Int) -> AlbumGridCell {
         guard let expansion, index >= expansion.insertAt else {
