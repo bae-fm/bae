@@ -107,12 +107,15 @@ struct MacS3Form: View {
         let failed =
             field.map { fields.fieldFailure?.field == $0 } ?? false
         return MacFieldRow(title, labelWidth: 120) {
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+            MacTextField(
+                title,
+                error: failed
+                    ? fields.fieldFailure.map {
+                        LocalizedStringKey($0.error.line)
+                    } : nil,
+                labelHidden: true
+            ) {
                 BoxedField(text: text, secret: secret, invalid: failed)
-                    .accessibilityLabel(Text(title))
-                if failed, let failure = fields.fieldFailure {
-                    FieldNote(verbatim: failure.error.line, isError: true)
-                }
             }
         }
         .accessibilityElement(children: .contain)
