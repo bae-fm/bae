@@ -7,7 +7,7 @@ extension ShotScene {
     static let macCoverGalleryScenes: [ShotScene] = [
         component(
             "mac.component.cover-gallery.resting",
-            width: 900,
+            width: 842,
             height: 520,
             images: coverGalleryImages()
         ) {
@@ -19,7 +19,7 @@ extension ShotScene {
         },
         component(
             "mac.component.cover-gallery.no-linked-release",
-            width: 900,
+            width: 842,
             height: 520,
             images: coverGalleryImages()
         ) {
@@ -69,6 +69,6 @@ extension ShotScene {
             onSelect: { _ in },
             onDone: {}
         )
-        .frame(width: 900, height: 520)
+        .frame(width: 842, height: 520)
     }
 }

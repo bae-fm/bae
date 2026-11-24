@@ -59,5 +59,5 @@ extension ShotScene {
         )
     }
 
-    private static let storageToolbarSize = CGSize(width: 900, height: 120)
+    private static let storageToolbarSize = CGSize(width: 842, height: 120)
 }

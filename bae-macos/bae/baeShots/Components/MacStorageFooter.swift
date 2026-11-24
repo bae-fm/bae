@@ -48,7 +48,7 @@ extension ShotScene {
     ) -> ShotScene {
         ShotScene(
             id: id,
-            size: CGSize(width: 640, height: 40)
+            size: CGSize(width: 842, height: 40)
         ) {
             let fixture = StorageManagerPreviewFixture(
                 rows: boardStorageRows,

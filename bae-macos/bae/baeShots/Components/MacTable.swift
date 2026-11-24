@@ -111,5 +111,5 @@ extension ShotScene {
         }
     }
 
-    private static let fullTableWidth: CGFloat = 1_080
+    private static let fullTableWidth: CGFloat = 842
 }

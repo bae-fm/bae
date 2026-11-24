@@ -35,7 +35,11 @@ extension ShotScene {
         ended: BridgeSideHeading,
         countdownKey: String?
     ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 560, height: 340)) {
+        ShotScene(
+            id: id,
+            size: CGSize(width: 874, height: 340),
+            frame: .component
+        ) {
             let store = PlaybackStore()
             let prompt = BridgeSidePausePrompt(
                 id: "side-pause",
