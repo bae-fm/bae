@@ -9,10 +9,10 @@ struct ShotDisplayKeeper {
     static func main() {
         let app = NSApplication.shared
         guard app.setActivationPolicy(.accessory) else {
-            let error =
-                "AppKit refused to make the shot display keeper a background process."
-            Logger.bae("ShotDisplayKeeper").error(error)
-            FileHandle.standardOutput.write(Data("\(error)\n".utf8))
+            report(
+                "AppKit refused to make the shot display keeper a background process.",
+                to: .pipe(FileHandle.standardOutput)
+            )
             exit(EXIT_FAILURE)
         }
         Task { @MainActor in
@@ -71,7 +71,10 @@ struct ShotDisplayKeeper {
             try active.close()
         }
         catch {
-            report(error, to: announced ? .file(result) : .pipe(output))
+            report(
+                String(describing: error),
+                to: announced ? .file(result) : .pipe(output)
+            )
             exit(EXIT_FAILURE)
         }
     }
@@ -81,10 +84,10 @@ struct ShotDisplayKeeper {
         case pipe(FileHandle)
     }
 
-    private static func report(_ error: any Error, to output: FailureOutput) {
+    private static func report(_ message: String, to output: FailureOutput) {
         let logger = Logger.bae("ShotDisplayKeeper")
-        logger.error(String(describing: error))
-        let failure = Data("\(error)\n".utf8)
+        logger.error("\(message)")
+        let failure = Data("\(message)\n".utf8)
         do {
             switch output {
             case .file(let result):

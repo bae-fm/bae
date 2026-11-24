@@ -38,12 +38,24 @@ enum ShotRenderer {
         on display: ShotDisplay?
     ) async throws -> Capture {
         let windowScene = try WindowScene(scene: scene, display: display)
+        // One suite for each render in each process, so a capture that runs
+        // at the same time as this one never shares or removes it.
+        let suite =
+            "fm.bae.appearance-shots.\(ProcessInfo.processInfo.processIdentifier).\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suite) else {
+            preconditionFailure("Cannot create screenshot preferences")
+        }
+        defaults.set(mode.rawValue, forKey: "appearance.mode")
+        defaults.set(accent.rawValue, forKey: "appearance.accent")
+        defaults.set(tone.rawValue, forKey: "appearance.tone")
+        defer { defaults.removePersistentDomain(forName: suite) }
         let stage = try scene.stage()
         // A view that opens or moves after the window shows, such as an album
         // grid's detail opening on its place's first answer, lands at once,
         // so the capture never holds a frame partway through.
         let rootView = scene.frame.applyTitleBar(to: stage.view)
-            .appearance(mode: mode, accent: accent, tone: tone)
+            .appAppearance()
+            .defaultAppStorage(defaults)
             .transaction {
                 $0.animation = nil
                 $0.disablesAnimations = true
