@@ -3,7 +3,6 @@
 //! stop between, and a few rows of it are held in memory rather than the
 //! whole picture.
 
-mod cancel;
 mod copy;
 #[cfg(libvips)]
 mod ffi;
@@ -18,7 +17,6 @@ mod types;
 #[cfg(libvips)]
 mod vips;
 
-pub use cancel::{CancelFlag, IsCancelled};
 pub use copy::{make_copy, CopyFormat, PictureCopy};
 pub use flights::{FlightError, Flights};
 pub use gate::{Permit, Priority, Volumes};
@@ -26,6 +24,10 @@ pub use origin::PictureOrigin;
 pub use original::read_original;
 pub use step::PictureStep;
 pub use types::{PictureSize, PictureSource, SourceFile};
+
+/// Asks whether the job that holds it should stop: what a reader checks before
+/// each read of the original.
+pub type IsCancelled = std::sync::Arc<dyn Fn() -> bool + Send + Sync>;
 
 /// Why a picture job failed.
 #[derive(Debug, thiserror::Error)]

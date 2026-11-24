@@ -7,13 +7,13 @@ use std::fs::OpenOptions;
 use std::io::{BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
 use bae_util::test_files::TestFolder;
 
-use crate::{make_copy, CancelFlag, CopyFormat, PictureStep, PicturesError};
+use crate::{make_copy, CopyFormat, IsCancelled, PictureStep, PicturesError};
 
 const WIDTH: u32 = 6000;
 const HEIGHT: u32 = 5600;
@@ -119,9 +119,9 @@ fn run_in_child(job: &str, original: &Path, output: &Path) -> Cost {
     Cost { peak_bytes: u64::try_from(usage.ru_maxrss).unwrap() * unit, seconds }
 }
 
-/// The flag that ends a copy.
-fn flag() -> CancelFlag {
-    CancelFlag::new()
+/// A job that nothing ends.
+fn never() -> IsCancelled {
+    Arc::new(|| false)
 }
 
 fn mebibytes(bytes: u64) -> f64 {
@@ -149,7 +149,7 @@ fn child_paths() -> (PathBuf, PathBuf) {
 fn copy_job() {
     let (original, output) = child_paths();
     let step = PictureStep::covering(256);
-    let copy = make_copy(std::fs::File::open(original).unwrap(), flag().watcher(), step).unwrap();
+    let copy = make_copy(std::fs::File::open(original).unwrap(), never(), step).unwrap();
     assert_eq!(copy.format, CopyFormat::Jpeg);
     std::fs::write(output, copy.bytes).unwrap();
 }
@@ -218,7 +218,7 @@ fn small_png(width: u32, height: u32, color: png::ColorType, pixel: &[u8]) -> Ve
 #[test]
 fn a_picture_with_transparency_keeps_it_as_a_png() {
     let original = small_png(64, 48, png::ColorType::Rgba, &[200, 30, 30, 128]);
-    let copy = make_copy(Cursor::new(original), flag().watcher(), PictureStep::S192).unwrap();
+    let copy = make_copy(Cursor::new(original), never(), PictureStep::S192).unwrap();
     assert_eq!(copy.format, CopyFormat::Png);
     assert_eq!(&copy.bytes[1..4], b"PNG");
 }
@@ -226,7 +226,7 @@ fn a_picture_with_transparency_keeps_it_as_a_png() {
 #[test]
 fn a_picture_without_transparency_is_a_jpeg_never_larger_than_the_original() {
     let original = small_png(64, 48, png::ColorType::Rgb, &[200, 30, 30]);
-    let copy = make_copy(Cursor::new(original), flag().watcher(), PictureStep::S192).unwrap();
+    let copy = make_copy(Cursor::new(original), never(), PictureStep::S192).unwrap();
     assert_eq!(copy.format, CopyFormat::Jpeg);
     let mut decoder = jpeg_decoder::Decoder::new(Cursor::new(copy.bytes));
     decoder.read_info().unwrap();
@@ -239,13 +239,13 @@ fn a_picture_without_transparency_is_a_jpeg_never_larger_than_the_original() {
 struct CancellingOrigin {
     inner: Cursor<Vec<u8>>,
     reads: Arc<AtomicUsize>,
-    cancel: CancelFlag,
+    cancel: Arc<AtomicBool>,
 }
 
 impl Read for CancellingOrigin {
     fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
         if self.reads.fetch_add(1, Ordering::SeqCst) + 1 == 3 {
-            self.cancel.cancel();
+            self.cancel.store(true, Ordering::SeqCst);
         }
         // Small chunks, so the picture takes many reads.
         let end = buffer.len().min(512);
@@ -262,14 +262,16 @@ impl Seek for CancellingOrigin {
 #[test]
 fn a_cancelled_copy_stops_reading_its_original() {
     let original = small_png(2000, 2000, png::ColorType::Rgb, &[10, 120, 200]);
-    let cancel = flag();
+    let cancel = Arc::new(AtomicBool::new(false));
     let reads = Arc::new(AtomicUsize::new(0));
     let origin = CancellingOrigin {
         inner: Cursor::new(original),
         reads: reads.clone(),
         cancel: cancel.clone(),
     };
-    let result = make_copy(origin, cancel.watcher(), PictureStep::S192);
+    let watcher = cancel.clone();
+    let result =
+        make_copy(origin, Arc::new(move || watcher.load(Ordering::SeqCst)), PictureStep::S192);
     assert!(matches!(result, Err(PicturesError::Cancelled)), "{result:?}");
     // The read that cancelled was the third. libvips may already have asked
     // for the next read, and no read starts once the flag is set.
@@ -278,10 +280,12 @@ fn a_cancelled_copy_stops_reading_its_original() {
 
 #[test]
 fn reading_the_whole_original_stops_when_cancelled() {
-    let cancel = flag();
-    let all = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancel.watcher()).unwrap();
+    let cancel = Arc::new(AtomicBool::new(false));
+    let watcher = cancel.clone();
+    let cancelled: IsCancelled = Arc::new(move || watcher.load(Ordering::SeqCst));
+    let all = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancelled).unwrap();
     assert_eq!(all.len(), 300_000);
-    cancel.cancel();
-    let result = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancel.watcher());
+    cancel.store(true, Ordering::SeqCst);
+    let result = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancelled);
     assert!(matches!(result, Err(PicturesError::Cancelled)));
 }

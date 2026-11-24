@@ -256,8 +256,6 @@ non_owner_types = [
 task_types = [
     # One read of a file's audio, one output stream, and the stream's control.
     "bae_track_audio::data_source::AudioDataReader",
-    # The flag that ends one picture job, made when the job starts.
-    "bae_pictures::cancel::CancelFlag",
     # A place of the open-files budget, taken for one piece of work.
     "coven::FileLease",
     "coven::LeasePlace",

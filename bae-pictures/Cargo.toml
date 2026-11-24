@@ -16,6 +16,8 @@ bae-diagnostics = { workspace = true }
 # What a job waits on while it shares its result.
 tokio = { workspace = true, features = ["rt", "sync"] }
 thiserror = { workspace = true }
+# The signal that ends a picture job.
+tokio-util = { workspace = true }
 # What a failed read or seek says, which libvips reduces to its own message.
 tracing = { workspace = true }
 

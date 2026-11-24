@@ -9,8 +9,9 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use bae_diagnostics::Diagnostics;
 use tokio::sync::watch;
+use tokio_util::sync::CancellationToken;
 
-use crate::{CancelFlag, IsCancelled};
+use crate::IsCancelled;
 
 /// How a job ended for the requests that shared it.
 #[derive(Debug)]
@@ -28,7 +29,7 @@ type Running<K, T, E> = Arc<Mutex<HashMap<K, Arc<Flight<T, E>>>>>;
 
 /// One job and the requests waiting on it.
 struct Flight<T, E> {
-    cancel: CancelFlag,
+    cancel: CancellationToken,
     outcome: watch::Sender<Outcome<T, E>>,
     /// The requests still waiting. Guarded by the map's lock.
     waiters: Mutex<usize>,
@@ -89,7 +90,7 @@ where
         self.running.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    fn join<F, Fut>(&self, key: K, start: F) -> Waiter<'_, K, T, E>
+    fn join<F, Fut>(&self, key: K, start: F) -> Waiter<K, T, E>
     where
         F: FnOnce(IsCancelled) -> Fut,
         Fut: Future<Output = Result<T, E>> + Send + 'static,
@@ -98,7 +99,7 @@ where
         if let Some(flight) = running.get(&key) {
             *flight.waiters.lock().unwrap_or_else(PoisonError::into_inner) += 1;
             return Waiter {
-                flights: self,
+                running: self.running.clone(),
                 outcome: flight.outcome.subscribe(),
                 flight: flight.clone(),
                 key,
@@ -106,9 +107,10 @@ where
         }
         let (outcome, receiver) = watch::channel(None);
         let flight =
-            Arc::new(Flight { cancel: CancelFlag::new(), outcome, waiters: Mutex::new(1) });
+            Arc::new(Flight { cancel: CancellationToken::new(), outcome, waiters: Mutex::new(1) });
         running.insert(key.clone(), flight.clone());
-        let job = start(flight.cancel.watcher());
+        let token = flight.cancel.clone();
+        let job = start(Arc::new(move || token.is_cancelled()));
         let ended = flight.clone();
         let map = self.running.clone();
         let ended_key = key.clone();
@@ -128,33 +130,35 @@ where
             // No request may be left to hear it.
             ended.outcome.send_replace(Some(result));
         }));
-        Waiter { flights: self, outcome: receiver, flight, key }
+        Waiter { running: self.running.clone(), outcome: receiver, flight, key }
     }
 }
 
 /// One request's place among those waiting on a job. The last one to go ends
 /// the job, unless it has ended.
-struct Waiter<'a, K, T, E>
+struct Waiter<K, T, E>
 where
     K: Hash + Eq + Clone + Send + 'static,
     T: Send + Sync + 'static,
     E: Send + Sync + 'static,
 {
-    flights: &'a Flights<K, T, E>,
+    /// The jobs running now, where this request ends its job when it is the
+    /// last to leave.
+    running: Running<K, T, E>,
     key: K,
     flight: Arc<Flight<T, E>>,
     /// What the request waits on for the job's result.
     outcome: watch::Receiver<Outcome<T, E>>,
 }
 
-impl<K, T, E> Drop for Waiter<'_, K, T, E>
+impl<K, T, E> Drop for Waiter<K, T, E>
 where
     K: Hash + Eq + Clone + Send + 'static,
     T: Send + Sync + 'static,
     E: Send + Sync + 'static,
 {
     fn drop(&mut self) {
-        let mut running = self.flights.lock();
+        let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
         let mut waiters = self.flight.waiters.lock().unwrap_or_else(PoisonError::into_inner);
         *waiters -= 1;
         if *waiters == 0 && self.flight.outcome.borrow().is_none() {
