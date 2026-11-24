@@ -91,6 +91,7 @@ extension ShotScene {
                 onSelectComposer: { _ in },
                 onSelectWork: { _ in }
             )
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 }

@@ -51,6 +51,7 @@ extension ShotScene {
             MacMoreMenu {
                 MacMenuItem("Details…") {}
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         },
     ]
 }

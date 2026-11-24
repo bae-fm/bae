@@ -10,10 +10,12 @@ extension ShotScene {
         component("mac.component.save-panel-format.closed", height: 50) {
             SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone"])
                 .frame(width: 250, height: 34)
+                .frame(maxWidth: .infinity)
         },
         component("mac.component.save-panel-format.open", height: 170) {
             SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone"])
                 .frame(width: 250, height: 34)
+                .frame(maxWidth: .infinity)
         },
         component(
             "mac.component.save-panel-format.new-format-chosen",
@@ -21,6 +23,7 @@ extension ShotScene {
         ) {
             SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone", "FLAC (2)"])
                 .frame(width: 250, height: 34)
+                .frame(maxWidth: .infinity)
         },
     ]
 

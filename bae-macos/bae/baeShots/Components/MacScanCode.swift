@@ -14,7 +14,7 @@ extension ShotScene {
                 qr: "bae-pairing-4F7K-2M9Q",
                 code: "4F7K-2M9Q"
             )
-            .frame(width: 380, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
     ]
 }
