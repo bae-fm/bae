@@ -103,9 +103,11 @@
             // face it would blur the highlighted line's shadow into the
             // lines around it.
             .background(
-                RoundedRectangle(cornerRadius: MacMenuMetrics.cornerRadius)
-                    .fill(Theme.surfaceElevated)
-                    .shadow(color: Theme.shadow, radius: 12, y: 8)
+                ShadowedFace(
+                    cornerRadius: MacMenuMetrics.cornerRadius,
+                    radius: 12,
+                    offset: 8
+                )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: MacMenuMetrics.cornerRadius)
