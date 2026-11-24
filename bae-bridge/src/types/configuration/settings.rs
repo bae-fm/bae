@@ -593,27 +593,11 @@ impl BridgeCoverSelection {
     }
 }
 
-impl BridgeCloudProvider {
-    pub(crate) fn from_core(p: &coven::CloudProvider) -> Self {
-        use coven::CloudProvider;
-        match p {
-            CloudProvider::S3 => BridgeCloudProvider::S3,
-            CloudProvider::Dropbox => BridgeCloudProvider::Dropbox,
-            CloudProvider::OneDrive => BridgeCloudProvider::OneDrive,
-            CloudProvider::CloudKit => BridgeCloudProvider::CloudKit,
-        }
-    }
-
-    #[cfg(feature = "oauth-providers")]
-    pub(crate) fn into_core(self) -> coven::CloudProvider {
-        use coven::CloudProvider;
-        match self {
-            BridgeCloudProvider::S3 => CloudProvider::S3,
-            BridgeCloudProvider::Dropbox => CloudProvider::Dropbox,
-            BridgeCloudProvider::OneDrive => CloudProvider::OneDrive,
-            BridgeCloudProvider::CloudKit => CloudProvider::CloudKit,
-        }
-    }
+mirror_enum! {
+    BridgeCloudProvider = coven::CloudProvider,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { S3, Dropbox, OneDrive, CloudKit },
 }
 
 mirror_enum! {

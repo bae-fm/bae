@@ -170,7 +170,7 @@ impl BridgeProviderSignOut {
     pub(crate) fn from_core(value: coven::ProviderSignOut) -> Self {
         match value {
             coven::ProviderSignOut::RemoveAppAccess { provider } => {
-                Self::RemoveAppAccess { provider: BridgeCloudProvider::from_core(&provider) }
+                Self::RemoveAppAccess { provider: BridgeCloudProvider::from_core(provider) }
             }
             coven::ProviderSignOut::RemoveFromAppleAccount => Self::RemoveFromAppleAccount,
         }

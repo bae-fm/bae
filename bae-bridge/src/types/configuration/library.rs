@@ -741,7 +741,7 @@ impl BridgeSyncFix {
             F::Reconnect => Self::Reconnect,
             F::CheckForUpdates => Self::CheckForUpdates,
             F::SignIn(provider) => {
-                Self::SignIn { provider: crate::types::BridgeCloudProvider::from_core(&provider) }
+                Self::SignIn { provider: crate::types::BridgeCloudProvider::from_core(provider) }
             }
             F::EnterAccessKey => Self::EnterAccessKey,
             F::OpenSystemSettings => Self::OpenSystemSettings,

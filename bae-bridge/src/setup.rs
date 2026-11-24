@@ -99,7 +99,7 @@ impl BridgeCodeMetadata {
         Self {
             library_id: value.store_id.to_string(),
             member_id: value.member.to_string(),
-            provider: BridgeCloudProvider::from_core(&value.cloud_provider),
+            provider: BridgeCloudProvider::from_core(value.cloud_provider),
             location: BridgeStorageLocation::from_core(value.location),
             oauth_access: value.oauth_access.map(BridgeOAuthAccess::from_core),
             carries_s3_key: value.carries_s3_key,
