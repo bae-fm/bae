@@ -15,6 +15,7 @@ import fm.bae.app.BridgeFixtures
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidContentUnavailable
@@ -86,7 +87,7 @@ class PersonMenuBoardShots : BoardShot() {
     fun androidPlaylistsList() =
         shot("android.playlists.list") {
             ScreenScene {
-                CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+                Covers {
                     AndroidScreen(
                         title = stringResource(R.string.library_mode_playlists),
                         onBack = {},
@@ -95,10 +96,10 @@ class PersonMenuBoardShots : BoardShot() {
                         PlaylistRows(
                             playlists =
                                 listOf(
-                                    playlist("late-night", "Late night", BridgeSharing.HOUSEHOLD, 12uL),
-                                    playlist("kitchen-radio", "Kitchen radio", BridgeSharing.HOUSEHOLD, 40uL),
-                                    playlist("running", "Running", BridgeSharing.PRIVATE, 18uL),
-                                    playlist("for-ana", "For Ana", BridgeSharing.PRIVATE, 9uL),
+                                    playlist("late-night", "Late night", BridgeSharing.HOUSEHOLD, 12uL, LATE_NIGHT_COVERS),
+                                    playlist("kitchen-radio", "Kitchen radio", BridgeSharing.HOUSEHOLD, 40uL, KITCHEN_RADIO_COVERS),
+                                    playlist("running", "Running", BridgeSharing.PRIVATE, 18uL, listOf("Small Hours", "Northbound")),
+                                    playlist("for-ana", "For Ana", BridgeSharing.PRIVATE, 9uL, listOf("Glass Harbor", "Salt and Cedar")),
                                 ),
                             listState = rememberLazyListState(),
                             onSelectPlaylist = {},
@@ -118,8 +119,15 @@ class PersonMenuBoardShots : BoardShot() {
         name: String,
         sharing: BridgeSharing,
         tracks: ULong,
+        covers: List<String>,
     ) = BridgeFixtures.playlistSummary(id = id, name = name, sharing = sharing).copy(
-        cover = BridgePlaylistCover.Grid(covers = listOf(null, null, null, null)),
+        // The board draws four covers as a grid and fewer as the first one alone.
+        cover =
+            if (covers.size == 4) {
+                BridgePlaylistCover.Grid(covers = covers.map { PreviewData.imageRef(it) })
+            } else {
+                BridgePlaylistCover.Single(PreviewData.imageRef(covers.first()))
+            },
         trackCount = BridgeFixtures.playlistSummary().trackCount.copy(count = tracks),
     )
 
@@ -179,3 +187,8 @@ internal fun BoardLibraryPerson(state: LibraryBrowserState) {
 }
 
 private val MENU_TOP = 52.dp
+
+/** The covers the boards draw for the playlists list's first two playlists. */
+private val LATE_NIGHT_COVERS = listOf("Low Tide Hours", "Copper Sky", "Small Hours", "Paper Lanterns")
+
+private val KITCHEN_RADIO_COVERS = listOf("Copper Sky", "Winter Kitchen", "Glass Harbor", "Field Recordings")
