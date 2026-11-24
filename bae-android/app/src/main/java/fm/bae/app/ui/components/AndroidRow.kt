@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -230,7 +231,9 @@ private fun RowScope.RowContent(
         )
     }
     avatar?.let { Avatar(face = it, size = AVATAR_SIZE) }
-    Column(modifier = Modifier.weight(1f).then(words)) {
+    // One traversal group: TalkBack reads the title and the line under it together before the row's trailing control,
+    // which spans both lines.
+    Column(modifier = Modifier.weight(1f).semantics { isTraversalGroup = true }.then(words)) {
         Title(title, tag, action = action, destructive = destructive)
         subtitle?.let { Subtitle(it, tone) }
         subtitleContent?.invoke()
