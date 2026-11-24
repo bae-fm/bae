@@ -190,9 +190,7 @@
             accessory: MacMenuAccessory? = nil
         ) -> some View {
             let highlighted = level.highlighted == index && !disabled
-            let rowHeight =
-                image == nil
-                ? MacMenuMetrics.itemHeight : MacMenuMetrics.imageItemHeight
+            let rowHeight = MacMenuMetrics.height(of: level.entries[index])
             return HStack(spacing: ThemeSpace.compact) {
                 // A stack, which keeps its width with no mark in it: an
                 // empty view drawn with a frame takes no room, and the words
