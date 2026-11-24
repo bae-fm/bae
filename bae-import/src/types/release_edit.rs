@@ -138,13 +138,6 @@ impl AlbumLine {
             (false, Some(artist_line)) => Self::TitleAndArtists { title, artist_line },
         }
     }
-
-    pub fn title(&self) -> Option<&str> {
-        match self {
-            Self::Untitled { .. } => None,
-            Self::TitleAlone { title } | Self::TitleAndArtists { title, .. } => Some(title),
-        }
-    }
 }
 
 /// What the person chose for the album a draft files under.

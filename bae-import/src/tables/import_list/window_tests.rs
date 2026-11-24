@@ -224,7 +224,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
     let summary = row.metadata_summary.expect("the row carries its applied draft");
-    assert_eq!(summary.title(), Some("Edited Album"));
+    assert_eq!(summary, crate::AlbumLine::TitleAlone { title: "Edited Album".to_string() });
     assert_eq!(
         row.cover,
         Some(crate::CoverImageSource::Local {
@@ -829,10 +829,9 @@ async fn a_done_row_reads_its_library_release() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(
-        window_rows(&retitled)[0].metadata_summary.as_ref().and_then(crate::AlbumLine::title),
-        Some("Retitled")
-    );
+    let artist_line = bae_types::credits::CreditLine::of_name("Artist Name");
+    let line = crate::AlbumLine::TitleAndArtists { title: "Retitled".to_string(), artist_line };
+    assert_eq!(window_rows(&retitled)[0].metadata_summary, Some(line));
 }
 
 /// A folder of one bound FLAC and a front cover image.
