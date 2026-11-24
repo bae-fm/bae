@@ -37,6 +37,11 @@ struct MacQRScanner: View {
                 placeholder(String(localized: "Starting camera…"))
             case .ready(let capture):
                 CameraPreview(capture: capture, onScan: onScan)
+                    // A picture of what the camera sees: the code in it is
+                    // read for the person, not by them.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Camera")
+                    .accessibilityAddTraits(.isImage)
             case .denied:
                 placeholder(
                     String(

@@ -4039,6 +4039,8 @@ does not show the typed code. On S3 the QR code carries the key her device
 connects with and the code to type does not, so the new device asks for the key
 only when she types the code. A phone camera can read each QR code that bae
 shows or prints.
+On the Mac, VoiceOver reads the scanner's live camera picture as an image
+named *Camera*.
 
 The new device's welcome takes the pairing code like any other code, scanned or
 typed, and sends a request that carries the name the device gave itself. The
