@@ -116,6 +116,24 @@ struct ShotRendererTests {
         )
     }
 
+    /// A scene whose window has a sheet over it leaves no window of its own
+    /// up: the next scene's alert, raised before its view is in its window,
+    /// would otherwise hang from the sheet left behind.
+    @Test
+    func aSceneWithASheetLeavesNoWindowUp() async throws {
+        let sheetScene = try #require(
+            ShotScene.all.first {
+                $0.id == "mac.welcome.add-code.s3-key-needed"
+            }
+        )
+        let before = Set(NSApp.windows.filter(\.isVisible).map(\.windowNumber))
+        _ = try await ShotRenderer.render(sheetScene, on: display)
+        let left = NSApp.windows.filter {
+            $0.isVisible && !before.contains($0.windowNumber)
+        }
+        #expect(left.isEmpty, "\(left.map { String(describing: $0.frame) })")
+    }
+
     #if BAE_OAUTH_PROVIDERS
         /// A step with more folders than the window is tall scrolls its
         /// folders inside the sheet, which stays within the window with its
