@@ -5,6 +5,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.View
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.core.view.drawToBitmap
@@ -35,7 +36,7 @@ class LogoTest {
         val rest = drawLogo()
 
         setTestAnimatorScale(1f)
-        shadowOf(Looper.getMainLooper()).idle()
+        hearTheChange()
         compose.mainClock.advanceTimeBy(MOVING_FRAME_MILLIS)
 
         assertFalse(rest.sameAs(drawLogo()))
@@ -45,19 +46,18 @@ class LogoTest {
     @Config(sdk = [32], application = Application::class)
     fun theVisibleLogoPausesAndResumesWithBatterySaver() {
         val context = compose.activity
-        val main = shadowOf(Looper.getMainLooper())
         Settings.Global.putFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
         setTestBatterySaver(context, true)
         showLogo()
         val rest = drawLogo()
 
         setTestBatterySaver(context, false)
-        main.idle()
+        hearTheChange()
         compose.mainClock.advanceTimeBy(MOVING_FRAME_MILLIS)
         assertFalse(rest.sameAs(drawLogo()))
 
         setTestBatterySaver(context, true)
-        main.idle()
+        hearTheChange()
         compose.mainClock.advanceTimeByFrame()
         assertTrue(rest.sameAs(drawLogo()))
     }
@@ -67,6 +67,15 @@ class LogoTest {
         compose.setContent {
             TestTheme { Logo(size = 120.dp, bob = true, glow = true) }
         }
+    }
+
+    /**
+     * Delivers the change to the logo, which writes it outside a composition. The compose runtime hears of such a write
+     * only once it is told, and after some other test classes in the same process, nothing else tells it.
+     */
+    private fun hearTheChange() {
+        shadowOf(Looper.getMainLooper()).idle()
+        Snapshot.sendApplyNotifications()
     }
 
     private fun drawLogo() = compose.runOnIdle { compose.activity.findViewById<View>(android.R.id.content).drawToBitmap() }
