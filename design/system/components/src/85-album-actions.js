@@ -9,10 +9,11 @@
     return h('div', { className: 'bae-m-modalhead' }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-strong', style: props.large ? null : { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 'var(--type-detail-size)' } }, props.subtitle) : null), props.children);
   }
   // One cover in the cover gallery: its image over its name, with no source line, since the section heading says where it comes from. `image` stands for the picture (the board draws it as artwork seeded by it, the name unless given); `selected` rings the one the preview shows.
+  // The tile is one button, named by the image's name; the shown one is the current one, which the Mac reads as selected.
   function MacCoverTile(props) {
-    return h('div', { className: 'bae-m-ctile' },
-      h('div', { className: cx('bae-m-ctile-img', props.selected && 'bae-m-ctile-sel') }, h(Artwork, { title: props.image || props.name, size: 118, radius: 'radius-artwork' })),
-      h('div', { className: 'bae-ellipsis bae-m-ctile-name' }, props.name));
+    return h('button', { type: 'button', className: 'bae-plainbtn bae-m-ctile', 'aria-label': props.name, 'aria-current': props.selected ? 'true' : null },
+      h('span', { className: cx('bae-m-ctile-img', props.selected && 'bae-m-ctile-sel') }, h(Artwork, { title: props.image || props.name, size: 118, radius: 'radius-artwork' })),
+      h('span', { className: 'bae-ellipsis bae-m-ctile-name' }, props.name));
   }
   // The cover gallery's preview: the picked image large (`image`, seeded as a tile's), its name, where it comes from (`source`), and its place among the images (`position` of `count`) between the previous and next arrows.
   function MacCoverPreview(props) {
