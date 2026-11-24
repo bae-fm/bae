@@ -3972,7 +3972,7 @@ nb = "{count, plural, one {# i kø for opplasting} other {# i kø for opplasting
 fi = "{count, plural, one {# jonossa lähetettäväksi} other {# jonossa lähetettäväksi}}"
 
 [messages."core.queue.queued_to_pin"]
-comment = "Pinning screen: count of releases waiting to be pinned."
+comment = "Pinning screen and Storage Manager inspector: how many releases, or a pinning release's files, are queued to be pinned."
 args = { count = "Int" }
 value = "{count, plural, other {# queued to pin}}"
 
@@ -4205,40 +4205,6 @@ sv = "{count, plural, one {# fästs} other {# fästs}}"
 da = "{count, plural, one {# fastgøres} other {# fastgøres}}"
 nb = "{count, plural, one {# festes} other {# festes}}"
 fi = "{count, plural, one {# kiinnitetään} other {# kiinnitetään}}"
-
-[messages."core.queue.waiting"]
-comment = "Storage Manager inspector: how many of a pinning release's files still wait to be kept on this device."
-args = { count = "Int" }
-value = "{count, plural, other {# waiting}}"
-
-[messages."core.queue.waiting".translations]
-es = "{count, plural, one {# en espera} other {# en espera}}"
-fr = "{count, plural, one {# en attente} other {# en attente}}"
-de = "{count, plural, one {# wartend} other {# wartend}}"
-pt-BR = "{count, plural, one {# aguardando} other {# aguardando}}"
-ja = "{count, plural, other {#件待機中}}"
-ko = "{count, plural, other {#개 대기 중}}"
-zh-Hans = "{count, plural, other {# 个等待中}}"
-ar = "{count, plural, zero {# قيد الانتظار} one {# قيد الانتظار} two {# قيد الانتظار} few {# قيد الانتظار} many {# قيد الانتظار} other {# قيد الانتظار}}"
-he = "{count, plural, one {# ממתין} two {# ממתינים} many {# ממתינים} other {# ממתינים}}"
-uk = "{count, plural, one {# очікує} few {# очікують} many {# очікують} other {# очікують}}"
-bg = "{count, plural, one {# чака} other {# чакат}}"
-pl = "{count, plural, one {# oczekujący} few {# oczekujące} many {# oczekujących} other {# oczekującego}}"
-cs = "{count, plural, one {# čeká} few {# čekají} many {# čeká} other {# čeká}}"
-hr = "{count, plural, one {# čeka} few {# čekaju} other {# čeka}}"
-zh-Hant = "{count, plural, other {# 個等待中}}"
-it = "{count, plural, one {# in attesa} other {# in attesa}}"
-tr = "{count, plural, one {# bekliyor} other {# bekliyor}}"
-nl = "{count, plural, one {# wachtend} other {# wachtend}}"
-sk = "{count, plural, one {čaká: #} few {čaká: #} many {čaká: #} other {čaká: #}}"
-hu = "{count, plural, one {# várakozik} other {# várakozik}}"
-ro = "{count, plural, one {# în așteptare} few {# în așteptare} other {# în așteptare}}"
-el = "{count, plural, one {# σε αναμονή} other {# σε αναμονή}}"
-pt-PT = "{count, plural, one {# em espera} other {# em espera}}"
-sv = "{count, plural, one {# väntar} other {# väntar}}"
-da = "{count, plural, one {# venter} other {# venter}}"
-nb = "{count, plural, one {# venter} other {# venter}}"
-fi = "{count, plural, one {# odottaa} other {# odottaa}}"
 
 [messages."core.queue.pinned"]
 comment = "Storage Manager inspector: how many of a pinning release's files are already kept on this device."

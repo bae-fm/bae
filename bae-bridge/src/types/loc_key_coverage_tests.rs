@@ -20,7 +20,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.queued_to_pin",
     "core.queue.stored",
     "core.queue.pinning",
-    "core.queue.waiting",
     "core.queue.pinned",
     // A release gallery's cover slot, and the parts of a cover picker label
     // the surface composes (the image types are `bridge_cover_image_type_key`).

@@ -571,7 +571,7 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
             .iter()
             .map(|count| (count.label.key.as_str(), count.label.count))
             .collect::<Vec<_>>(),
-        vec![("core.queue.waiting", 1)],
+        vec![("core.queue.queued_to_pin", 1)],
         "no file is kept yet, so none counts as pinned"
     );
 

@@ -124,7 +124,7 @@ impl StorageInspector {
             use bae_transfers::TransferStage;
             bae_transfers::transfer_summary([
                 ("core.queue.pinning", counts.downloading, TransferStage::Moving),
-                ("core.queue.waiting", counts.waiting, TransferStage::Waiting),
+                ("core.queue.queued_to_pin", counts.waiting, TransferStage::Waiting),
                 ("core.queue.pinned", counts.kept, TransferStage::Done),
             ])
         });

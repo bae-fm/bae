@@ -238,7 +238,7 @@ fn a_pinning_releases_download_counts_its_files() {
     else {
         panic!("a pinning release's download counts its files");
     };
-    assert_eq!(counts(summary), vec![("core.queue.pinning", 1), ("core.queue.waiting", 2)]);
+    assert_eq!(counts(summary), vec![("core.queue.pinning", 1), ("core.queue.queued_to_pin", 2)]);
 
     let resting = shown(Vec::new(), &entries, None, None);
     assert!(matches!(

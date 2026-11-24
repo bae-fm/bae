@@ -695,7 +695,7 @@ extension PreviewData {
                                     .moving
                                 )
                                 : transferCount(
-                                    "core.queue.waiting",
+                                    "core.queue.queued_to_pin",
                                     1,
                                     .waiting
                                 ),

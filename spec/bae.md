@@ -5952,7 +5952,7 @@ zero counts and offers cancellation. While files are moving, it shows
 the bytes stored or sent and their rate. Each file shows its name and
 size, and whether it is waiting or moving. A moving file shows its byte
 progress. When a file waits on a reason, pointing at it shows why. While a
-pin runs, the inspector counts files pinning, waiting and pinned, omits
+pin runs, the inspector counts files pinning, queued to pin and pinned, omits
 zero counts and offers cancellation. During the download, the inspector
 shows how many bytes the release holds and how fast they arrive. Each
 waiting file indicates it is queued, and each downloading file shows
