@@ -146,6 +146,8 @@ private struct SavedCodeRow: View {
                     .foregroundStyle(Theme.textSecondary)
                     .cutLine(.prose)
             }
+            // The name and its line read together, before the buttons.
+            .accessibilityElement(children: .contain)
             Spacer(minLength: ThemeSpace.group)
             if case .readable(let saved) = entry {
                 MacButton("Restore") { onRestore(saved) }

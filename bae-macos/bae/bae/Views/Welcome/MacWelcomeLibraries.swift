@@ -124,6 +124,8 @@ private struct UnreadableInstallationRow: View {
                     .foregroundStyle(Theme.textSecondary)
                     .cutLine(.prose)
             }
+            // The title and the id read together, before Discard….
+            .accessibilityElement(children: .contain)
             Spacer(minLength: ThemeSpace.group)
             MacButton("Discard…") { onDiscard(libraryId) }
         }
