@@ -52,6 +52,9 @@ struct MacImportBulk: View {
                 .frame(maxWidth: .infinity, minHeight: pane.size.height)
             }
         }
+        // The pane's own top inset, which the board's pane keeps above the
+        // card it centers.
+        .padding(.top, ThemeSpace.section)
     }
 }
 
