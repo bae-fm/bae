@@ -1126,6 +1126,11 @@ On macOS the Import screen keeps the list available while the selected
 candidate is open. A list row grows to fit all three lines when it shows a
 title, artist and status.
 
+While imports wait or run on a Mac, whoever started them, the list's filter
+row shows *Importing…*. Clicking it opens a popover that counts them and
+offers *Cancel all*, which cancels every import that has not begun writing
+its release (§3.7).
+
 Imported lists first the releases that still have files in coven's upload queue,
 the first queued first, and then the rest in the list's order. Only a
 release's own files count, as the Storage manager counts them (§4.2).
