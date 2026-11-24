@@ -40,14 +40,14 @@ struct MacIdentifyBar<Trailing: View>: View {
                 .foregroundStyle(Theme.textSecondary)
                 // The label is centred on the buttons, 4 pt lower than their
                 // tops, which would read it after them.
-                .accessibilitySortPriority(3)
-            Group {
-                MacButton("Automatic") { onAutomatic() }
-                MacButton("Search") { onSearch() }
-                metadataMenu(onMetadataCommand)
-            }
-            .accessibilitySortPriority(2)
+                .accessibilitySortPriority(1)
+            MacButton("Automatic") { onAutomatic() }
+            MacButton("Search") { onSearch() }
+            metadataMenu(onMetadataCommand)
         }
+        // One group, read whole before the trailing controls.
+        .accessibilityElement(children: .contain)
+        .accessibilitySortPriority(1)
         .disabled(identifyDisabled)
     }
 
