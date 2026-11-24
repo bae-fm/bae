@@ -79,23 +79,73 @@ public struct MacSpinner: View {
 #if canImport(AppKit)
     extension MacSpinner {
         final class NativeIndicator: NSProgressIndicator {
-            private(set) var spinning = false
+            /// Whether AppKit was last told to animate. AppKit has no way to
+            /// ask.
+            private(set) var animating = false
 
             override func accessibilityValue() -> NSNumber? { nil }
 
-            /// Spins unless the transaction disables animations, as the shot
-            /// renderer's does, so a capture draws the same still frame each
-            /// time. The stopped spinner stays drawn.
-            func applyAnimationPolicy(_ transaction: Transaction) {
-                let spinning = !transaction.disablesAnimations
-                guard self.spinning != spinning else { return }
-                self.spinning = spinning
-                if spinning {
+            /// AppKit stops a spinner that leaves its window and ignores a
+            /// start sent before it has one, so the animation starts each
+            /// time a window takes the view and stops when it leaves.
+            override func viewDidMoveToWindow() {
+                super.viewDidMoveToWindow()
+                syncAnimation()
+            }
+
+            override func viewDidUnhide() {
+                super.viewDidUnhide()
+                syncAnimation()
+            }
+
+            /// Turns while a window holds the view, unless that window holds
+            /// spinners still, as the shot renderer's does, so a capture
+            /// draws the same frame each time. The still spinner stays drawn.
+            func syncAnimation() {
+                let turns = window.map { !$0.holdsSpinnersStill } ?? false
+                guard turns != animating else { return }
+                animating = turns
+                if turns {
                     startAnimation(nil)
                 }
                 else {
                     stopAnimation(nil)
                 }
+            }
+        }
+    }
+
+    nonisolated(unsafe) private var holdsSpinnersStillKey: UInt8 = 0
+
+    extension NSWindow {
+        /// Whether the spinners in this window hold still. The shot renderer
+        /// sets it on its windows; the app never does. A view the app hosts
+        /// apart from the window's SwiftUI tree, such as a table cell, is in
+        /// the window all the same, which an environment value would not
+        /// reach. Setting it stops or starts the spinners already in the
+        /// window.
+        public var holdsSpinnersStill: Bool {
+            get {
+                objc_getAssociatedObject(self, &holdsSpinnersStillKey)
+                    as? Bool ?? false
+            }
+            set {
+                objc_setAssociatedObject(
+                    self,
+                    &holdsSpinnersStillKey,
+                    newValue,
+                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+                )
+                (contentView?.superview ?? contentView)?.syncSpinners()
+            }
+        }
+    }
+
+    extension NSView {
+        fileprivate func syncSpinners() {
+            (self as? MacSpinner.NativeIndicator)?.syncAnimation()
+            for view in subviews {
+                view.syncSpinners()
             }
         }
     }
@@ -110,16 +160,13 @@ public struct MacSpinner: View {
             indicator.isIndeterminate = true
             indicator.controlSize = .small
             indicator.isDisplayedWhenStopped = true
-            indicator.applyAnimationPolicy(context.transaction)
             return indicator
         }
 
         func updateNSView(
             _ indicator: MacSpinner.NativeIndicator,
             context: Context
-        ) {
-            indicator.applyAnimationPolicy(context.transaction)
-        }
+        ) {}
 
         func sizeThatFits(
             _ proposal: ProposedViewSize,

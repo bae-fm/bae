@@ -71,6 +71,7 @@ enum ShotRenderer {
             named: mode == .dark ? .darkAqua : .aqua
         )
         window.isReleasedWhenClosed = false
+        window.holdsSpinnersStill = true
         // Close the window however the render ends, a failure to place it
         // among them: the scene's view raises its alerts once it is in the
         // window, shown or not, and an alert left up is listed and captured

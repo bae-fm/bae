@@ -38,9 +38,47 @@ struct ImportListEntryCellTests {
         #expect(cell.coverLoad == nil)
     }
 
+    @Test("a row's spinner holds still in a window that holds spinners still")
+    func spinnerHoldsStillWithItsWindow() async throws {
+        let cell = ImportListEntryCell(
+            identifier: NSUserInterfaceItemIdentifier("candidate")
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 70),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: true
+        )
+        window.isReleasedWhenClosed = false
+        window.holdsSpinnersStill = true
+        cell.frame = NSRect(x: 0, y: 0, width: 420, height: 70)
+        window.contentView?.addSubview(cell)
+        cell.show(
+            Self.entry(
+                cover: "cover-1",
+                images: ImageStore(fetchLibraryImageBytes: { _, _ in nil }),
+                identifying: .running
+            ),
+            displayScale: 2
+        )
+        // SwiftUI builds the spinner when the cell lays out.
+        try await Wait.until {
+            cell.layoutSubtreeIfNeeded()
+            return cell.firstDescendant(ofType: MacSpinner.NativeIndicator.self)
+                != nil
+        }
+        let indicator = try #require(
+            cell.firstDescendant(ofType: MacSpinner.NativeIndicator.self)
+        )
+        #expect(!indicator.animating)
+        window.holdsSpinnersStill = false
+        #expect(indicator.animating)
+    }
+
     private static func entry(
         cover: String,
-        images: ImageStore
+        images: ImageStore,
+        identifying: BridgeIdentifyingStep? = nil
     ) -> ImportListEntry {
         let row = BridgeTriageRow(
             candidateKey: Data("/library/release".utf8),
@@ -48,7 +86,7 @@ struct ImportListEntryCellTests {
             watchedFolderPath: Data("/library".utf8),
             actionable: true,
             placement: .skipped,
-            live: PreviewData.triageLive([]),
+            live: PreviewData.triageLive([], identifying: identifying),
             metadataSummary: nil,
             cover: nil,
             importStatus: nil,
