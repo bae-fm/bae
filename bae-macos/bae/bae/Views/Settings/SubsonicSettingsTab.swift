@@ -352,7 +352,7 @@ extension SubsonicSettingsContent {
 
 /// A settings row with a second line under its title, and a control at the
 /// trailing edge.
-private struct SubsonicFieldRow<Second: View, Control: View>: View {
+struct SubsonicFieldRow<Second: View, Control: View>: View {
     let title: LocalizedStringKey
     @ViewBuilder
     let second: Second
@@ -368,6 +368,9 @@ private struct SubsonicFieldRow<Second: View, Control: View>: View {
             // The words keep their line while the control beside them takes
             // what is left.
             .layoutPriority(1)
+            // VoiceOver reads the title and its note before the control,
+            // though a tall control starts higher than the note.
+            .accessibilitySortPriority(1)
             Spacer(minLength: 0)
             control
         }
@@ -375,7 +378,7 @@ private struct SubsonicFieldRow<Second: View, Control: View>: View {
 }
 
 /// A row's second line when something is wrong at that row.
-private struct DangerNote: View {
+struct DangerNote: View {
     let text: LocalizedStringKey
 
     init(_ text: LocalizedStringKey) {

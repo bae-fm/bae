@@ -15,14 +15,9 @@ extension ShotScene {
         },
         component("mac.component.port-field.error", height: 100) {
             ShotBox {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        Text("Port")
-                        Text("Another app is using this port")
-                            .themeText(.detail)
-                            .foregroundStyle(Theme.danger)
-                    }
-                    Spacer(minLength: 0)
+                SubsonicFieldRow(title: "Port") {
+                    DangerNote("Another app is using this port")
+                } control: {
                     MacPortField(
                         value: "4533",
                         invalid: true,
