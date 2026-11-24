@@ -15,13 +15,13 @@
       h('span', { className: cx('bae-m-ctile-img', props.selected && 'bae-m-ctile-sel') }, h(Artwork, { title: props.image || props.name, size: 118, radius: 'radius-artwork' })),
       h('span', { className: 'bae-ellipsis bae-m-ctile-name' }, props.name));
   }
-  // The cover gallery's preview: the picked image large (`image`, seeded as a tile's), a button named View in lightbox that opens it there, its name, where it comes from (`source`), and its place among the images (`position` of `count`) between the Previous image and Next image buttons.
+  // The cover gallery's preview: the picked image large (`image`, seeded as a tile's), a button named View in lightbox that opens it there, its name, where it comes from (`source`), and its place among the images (`position` of `count`, in secondary text) between the Previous image and Next image buttons.
   function MacCoverPreview(props) {
     return h('div', { className: 'bae-m-cpreview' },
       h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'View in lightbox', title: 'View in lightbox' }, h(Artwork, { title: props.image || props.name, size: 300, radius: 'radius-artwork' })),
       h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.name),
       h('div', { className: 'bae-muted', style: { fontSize: 'var(--type-detail-size)' } }, props.source),
-      h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Previous image' }, h(Sym, { name: 'left', size: 12 })), (props.position || 1) + ' of ' + props.count, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Next image' }, h(Sym, { name: 'right', size: 12 }))));
+      h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Previous image' }, h(Sym, { name: 'left', size: 12 })), h('span', { className: 'bae-muted bae-num' }, (props.position || 1) + ' of ' + props.count), h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Next image' }, h(Sym, { name: 'right', size: 12 }))));
   }
   // The cover gallery: Source, sections of tiles, the preview with its count, Use this cover, off while the preview shows the current cover.
   function MacCoverGallery(props) {
