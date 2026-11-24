@@ -54,6 +54,8 @@ struct MacTrackLead: View {
                 .accessibilityLabel("Now playing")
                 .accessibilityHidden(!isCurrent)
         }
-        .frame(width: width)
+        // The Play icon is wider than a one-digit number's column: the extra
+        // width hangs to the left, so the number ends where the column ends.
+        .frame(width: width, alignment: .trailing)
     }
 }
