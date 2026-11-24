@@ -827,7 +827,7 @@ internal open class FakeAppHandle(
         unfaked("acknowledgeAdminChange")
     }
 
-    override fun subscribeMembers(): MembersSubscription = unfaked("subscribeMembers")
+    override fun subscribeMembers(): MembersSubscription = FakeMembersSubscription()
 
     override fun followAddDevice(pairing: String): AddDeviceStatusSubscription = unfaked("followAddDevice")
 

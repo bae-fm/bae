@@ -9,7 +9,6 @@ import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,7 +28,6 @@ import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeInviteProgress
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
-import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
@@ -37,8 +35,6 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeSharingRefusal
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
-import uniffi.bae_bridge.MembersSubscription
-import uniffi.bae_bridge.NoHandle
 
 /**
  * A failed read of the library's people ends the spinner with the failure, and
@@ -51,7 +47,7 @@ import uniffi.bae_bridge.NoHandle
 class MembersModelTest {
     @Test
     fun aFailedFirstReadShowsTheFailureAndRetrySubscribesAgain() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
@@ -76,7 +72,7 @@ class MembersModelTest {
 
     @Test
     fun aCancelledReadLeavesTheListAsItWas() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         model.watchPeople()
@@ -99,7 +95,7 @@ class MembersModelTest {
     /** Each value the people subscription pulls replaces the one shown, with its counts. */
     @Test
     fun eachPulledValueOfThePeopleReplacesTheShownOne() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
@@ -124,7 +120,7 @@ class MembersModelTest {
     /** A person's page follows the subscription keyed by their member id; when the person has left, the subscription delivers null. */
     @Test
     fun aPersonsPageFollowsTheSubscriptionKeyedByTheirMemberId() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
@@ -155,7 +151,7 @@ class MembersModelTest {
      */
     @Test
     fun theWaitingRequestFollowsTheReadThatLeavesOutTheClosedInvites() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
@@ -193,7 +189,7 @@ class MembersModelTest {
     /** An invite's dialog follows the read keyed by its id; an invite that ended arrives as none. */
     @Test
     fun anInvitesDialogFollowsTheReadKeyedByItsId() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val invite =
@@ -233,7 +229,7 @@ class MembersModelTest {
     /** Each list of invites the model pulls replaces the one it shows. */
     @Test
     fun eachPulledListOfInvitesReplacesTheShownOne() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
@@ -262,7 +258,7 @@ class MembersModelTest {
     /** An invite a sharing refusal ended arrives beside the open ones, in the order they came, and leaves with the list. */
     @Test
     fun anInviteARefusalEndedArrivesBesideTheOpenOnes() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
@@ -292,7 +288,7 @@ class MembersModelTest {
      */
     @Test
     fun eachPulledListOfAdminChangesReplacesTheShownOne() {
-        val handle = SilentMembersHandle()
+        val handle = FakeAppHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
@@ -330,20 +326,4 @@ class MembersModelTest {
     }
 
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
-
-    /** A handle whose members never change: a pull waits until cancelled. */
-    private class SilentMembersHandle : FakeAppHandle() {
-        override fun subscribeMembers(): MembersSubscription =
-            object : MembersSubscription(NoHandle) {
-                private val values = Channel<BridgeMembership>()
-
-                override suspend fun next(): BridgeMembership = values.receive()
-
-                override suspend fun cancel() {
-                    values.close(BridgeException.Cancelled())
-                }
-
-                override fun close() = Unit
-            }
-    }
 }

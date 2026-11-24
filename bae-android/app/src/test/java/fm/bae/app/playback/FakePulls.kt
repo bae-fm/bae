@@ -6,12 +6,14 @@ import uniffi.bae_bridge.BridgeAddDeviceStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
+import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.DownloadCountsSubscription
 import uniffi.bae_bridge.LibraryNameSubscription
+import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OpenInviteSubscription
 import uniffi.bae_bridge.PeopleSubscription
@@ -67,6 +69,17 @@ internal class FakePeopleSubscription : PeopleSubscription(NoHandle) {
     val pulls = PullChannel<BridgePeople>()
 
     override suspend fun next(): BridgePeople = pulls.next()
+
+    override suspend fun cancel() = pulls.cancel()
+
+    override fun close() = pulls.cancel()
+}
+
+/** The library's members a test hands the app: a pull waits until a test delivers or the app cancels. */
+internal class FakeMembersSubscription : MembersSubscription(NoHandle) {
+    val pulls = PullChannel<BridgeMembership>()
+
+    override suspend fun next(): BridgeMembership = pulls.next()
 
     override suspend fun cancel() = pulls.cancel()
 
