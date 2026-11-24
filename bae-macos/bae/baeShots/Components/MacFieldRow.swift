@@ -49,5 +49,6 @@ extension ShotScene {
 
     private static func nameField() -> some View {
         BoxedField(text: .constant("Home music"))
+            .accessibilityLabel("Name")
     }
 }
