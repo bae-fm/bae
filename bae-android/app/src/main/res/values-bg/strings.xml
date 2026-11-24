@@ -79,6 +79,7 @@
     <string name="search_section_recordings">Записи</string>
     <string name="search_section_credits">Кредити</string>
     <string name="search_section_releases">Издания</string>
+    <string name="release_picker_label">Издание</string>
     <string name="search_section_works">Произведения</string>
     <string name="search_section_composers">Композитори</string>
     <string name="library_empty_composers">Няма композитори</string>

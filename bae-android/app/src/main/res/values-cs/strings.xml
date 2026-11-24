@@ -79,6 +79,7 @@
     <string name="search_section_recordings">Nahrávky</string>
     <string name="search_section_credits">Kredity</string>
     <string name="search_section_releases">Vydání</string>
+    <string name="release_picker_label">Vydání</string>
     <string name="search_section_works">Díla</string>
     <string name="search_section_composers">Skladatelé</string>
     <string name="library_empty_composers">Žádní skladatelé</string>

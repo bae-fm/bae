@@ -79,6 +79,7 @@
     <string name="search_section_recordings">Snimke</string>
     <string name="search_section_credits">Zasluge</string>
     <string name="search_section_releases">Izdanja</string>
+    <string name="release_picker_label">Izdanje</string>
     <string name="search_section_works">Djela</string>
     <string name="search_section_composers">Skladatelji</string>
     <string name="library_empty_composers">Nema skladatelja</string>

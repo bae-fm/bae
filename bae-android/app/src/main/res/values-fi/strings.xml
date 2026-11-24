@@ -83,6 +83,7 @@
     <string name="search_section_recordings">Äänitteet</string>
     <string name="search_section_credits">Tekijät</string>
     <string name="search_section_releases">Julkaisut</string>
+    <string name="release_picker_label">Julkaisu</string>
     <string name="search_section_works">Teokset</string>
     <string name="search_section_composers">Säveltäjät</string>
     <string name="library_empty_composers">Ei säveltäjiä</string>

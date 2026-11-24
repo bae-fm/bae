@@ -83,6 +83,7 @@
     <string name="search_section_recordings">Ηχογραφήσεις</string>
     <string name="search_section_credits">Συντελεστές</string>
     <string name="search_section_releases">Κυκλοφορίες</string>
+    <string name="release_picker_label">Κυκλοφορία</string>
     <string name="search_section_works">Έργα</string>
     <string name="search_section_composers">Συνθέτες</string>
     <string name="library_empty_composers">Κανένας συνθέτης</string>

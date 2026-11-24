@@ -79,6 +79,7 @@
     <string name="search_section_recordings">录音</string>
     <string name="search_section_credits">鸣谢</string>
     <string name="search_section_releases">发行</string>
+    <string name="release_picker_label">发行</string>
     <string name="search_section_works">作品</string>
     <string name="search_section_composers">作曲家</string>
     <string name="library_empty_composers">没有作曲家</string>

@@ -79,6 +79,7 @@
     <string name="search_section_recordings">הקלטות</string>
     <string name="search_section_credits">קרדיטים</string>
     <string name="search_section_releases">הוצאות</string>
+    <string name="release_picker_label">הוצאה</string>
     <string name="search_section_works">יצירות</string>
     <string name="search_section_composers">מלחינים</string>
     <string name="library_empty_composers">אין מלחינים</string>

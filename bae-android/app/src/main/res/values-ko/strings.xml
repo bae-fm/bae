@@ -79,6 +79,7 @@
     <string name="search_section_recordings">녹음</string>
     <string name="search_section_credits">크레딧</string>
     <string name="search_section_releases">릴리스</string>
+    <string name="release_picker_label">릴리스</string>
     <string name="search_section_works">작품</string>
     <string name="search_section_composers">작곡가</string>
     <string name="library_empty_composers">작곡가 없음</string>

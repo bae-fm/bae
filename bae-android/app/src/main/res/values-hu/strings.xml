@@ -83,6 +83,7 @@
     <string name="search_section_recordings">Felvételek</string>
     <string name="search_section_credits">Közreműködők</string>
     <string name="search_section_releases">Kiadások</string>
+    <string name="release_picker_label">Kiadás</string>
     <string name="search_section_works">Művek</string>
     <string name="search_section_composers">Zeneszerzők</string>
     <string name="library_empty_composers">Nincs zeneszerző</string>

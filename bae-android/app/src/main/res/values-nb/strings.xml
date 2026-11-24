@@ -83,6 +83,7 @@
     <string name="search_section_recordings">Innspillinger</string>
     <string name="search_section_credits">Medvirkende</string>
     <string name="search_section_releases">Utgivelser</string>
+    <string name="release_picker_label">Utgivelse</string>
     <string name="search_section_works">Verk</string>
     <string name="search_section_composers">Komponister</string>
     <string name="library_empty_composers">Ingen komponister</string>

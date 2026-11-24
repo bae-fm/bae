@@ -79,6 +79,7 @@
     <string name="search_section_recordings">Kayıtlar</string>
     <string name="search_section_credits">Katkılar</string>
     <string name="search_section_releases">Yayınlar</string>
+    <string name="release_picker_label">Yayın</string>
     <string name="search_section_works">Eserler</string>
     <string name="search_section_composers">Besteciler</string>
     <string name="library_empty_composers">Besteci yok</string>

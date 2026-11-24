@@ -109,6 +109,7 @@
     <string name="search_section_recordings">Recordings</string>
     <string name="search_section_credits">Credits</string>
     <string name="search_section_releases">Releases</string>
+    <string name="release_picker_label">Release</string>
     <string name="search_section_works">Works</string>
     <string name="search_section_composers">Composers</string>
     <string name="library_empty_composers">No composers</string>

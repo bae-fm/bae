@@ -79,6 +79,7 @@
     <string name="search_section_recordings">錄音</string>
     <string name="search_section_credits">製作名單</string>
     <string name="search_section_releases">發行</string>
+    <string name="release_picker_label">發行</string>
     <string name="search_section_works">作品</string>
     <string name="search_section_composers">作曲者</string>
     <string name="library_empty_composers">沒有作曲者</string>

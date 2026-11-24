@@ -85,6 +85,7 @@
     <string name="search_section_recordings">Nahrávky</string>
     <string name="search_section_credits">Podieľali sa</string>
     <string name="search_section_releases">Vydania</string>
+    <string name="release_picker_label">Vydanie</string>
     <string name="search_section_works">Diela</string>
     <string name="search_section_composers">Skladatelia</string>
     <string name="library_empty_composers">Žiadni skladatelia</string>

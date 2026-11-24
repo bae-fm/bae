@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
@@ -378,7 +381,11 @@ internal fun AndroidReleasePicker(
     val context = LocalContext.current
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.small
-    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+    val label = stringResource(R.string.release_picker_label)
+    Row(
+        modifier = Modifier.selectableGroup().semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
         detail.releases.forEachIndexed { index, rel ->
             val chosen = index == detail.shownReleaseIndex.toInt()
             val face =

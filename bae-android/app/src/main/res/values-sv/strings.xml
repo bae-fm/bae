@@ -83,6 +83,7 @@
     <string name="search_section_recordings">Inspelningar</string>
     <string name="search_section_credits">Medverkande</string>
     <string name="search_section_releases">Utgåvor</string>
+    <string name="release_picker_label">Utgåva</string>
     <string name="search_section_works">Verk</string>
     <string name="search_section_composers">Kompositörer</string>
     <string name="library_empty_composers">Inga kompositörer</string>

@@ -79,6 +79,7 @@
     <string name="search_section_recordings">Grabaciones</string>
     <string name="search_section_credits">Créditos</string>
     <string name="search_section_releases">Lanzamientos</string>
+    <string name="release_picker_label">Lanzamiento</string>
     <string name="search_section_works">Obras</string>
     <string name="search_section_composers">Compositores</string>
     <string name="library_empty_composers">No hay compositores</string>

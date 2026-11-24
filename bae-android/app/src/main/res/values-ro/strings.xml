@@ -84,6 +84,7 @@
     <string name="search_section_recordings">Înregistrări</string>
     <string name="search_section_credits">Contribuții</string>
     <string name="search_section_releases">Ediții</string>
+    <string name="release_picker_label">Ediție</string>
     <string name="search_section_works">Opere</string>
     <string name="search_section_composers">Compozitori</string>
     <string name="library_empty_composers">Niciun compozitor</string>

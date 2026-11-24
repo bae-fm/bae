@@ -79,6 +79,7 @@
     <string name="search_section_recordings">التسجيلات</string>
     <string name="search_section_credits">الاعتمادات</string>
     <string name="search_section_releases">الإصدارات</string>
+    <string name="release_picker_label">الإصدار</string>
     <string name="search_section_works">الأعمال</string>
     <string name="search_section_composers">المؤلفون</string>
     <string name="library_empty_composers">لا يوجد مؤلفون</string>
