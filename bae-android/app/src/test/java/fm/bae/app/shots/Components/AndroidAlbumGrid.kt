@@ -1,7 +1,7 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.Modifier
@@ -19,15 +19,18 @@ class AndroidAlbumGridShots : BoardShot() {
         component("android.component.album-grid.default") {
             Covers {
                 val rows = previewAlbums
-                Box(Modifier.width(380.dp).height(240.dp)) {
-                    AndroidAlbumGrid(
-                        count = rows.size,
-                        layout = AlbumGridLayout.Flat,
-                        rowAt = rows::get,
-                        gridState = rememberLazyGridState(),
-                        onSelectAlbum = {},
-                        onSelectArtist = {},
-                    )
+                // The preview's box, the phone's width, in which the grid lays out its two columns as on a phone.
+                InsidePreviewPage {
+                    Box(Modifier.width(412.dp).fillMaxHeight()) {
+                        AndroidAlbumGrid(
+                            count = rows.size,
+                            layout = AlbumGridLayout.Flat,
+                            rowAt = rows::get,
+                            gridState = rememberLazyGridState(),
+                            onSelectAlbum = {},
+                            onSelectArtist = {},
+                        )
+                    }
                 }
             }
         }
