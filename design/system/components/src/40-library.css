@@ -46,7 +46,8 @@
 .bae-m-main-content { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
 .bae-m-npbar { flex: none; display: flex; align-items: center; gap: var(--space-section); padding: var(--space-group) var(--space-section); background: var(--surface); box-shadow: inset 0 1px 0 var(--hairline); }
 .bae-m-np-left, .bae-m-np-right { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-group); }
-.bae-m-np-right { justify-content: flex-end; }
+/* The right group never narrows past its controls, as in the app's bar: in a narrow window the track's side gives up the room, and the transport moves left. */
+.bae-m-np-right { min-width: max-content; justify-content: flex-end; }
 .bae-m-nptrack { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-group); }
 .bae-m-nptrack-top { align-items: flex-start; }
 .bae-m-nptrack-eyebrow { font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--accent); }
