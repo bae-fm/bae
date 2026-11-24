@@ -614,7 +614,7 @@ extension MacTable.Coordinator {
 /// selection change the table proposes. Select All asks the coordinator to
 /// select every release the list shows, not only the rows the table has
 /// loaded.
-final class StorageTable: NSTableView {
+final class StorageTable: HeaderFirstTableView {
     weak var menus: MacTable.Coordinator?
     /// The mouse or key press the table is handling, while it handles it.
     private(set) var handlingEvent: NSEvent?
@@ -651,18 +651,6 @@ final class StorageTable: NSTableView {
         let row = row(at: convert(event.locationInWindow, from: nil))
         menus?.showContextMenu(forRow: row, in: self)
         return nil
-    }
-
-    /// The header's column buttons first, then the rows: a person reading
-    /// the table with VoiceOver meets the column names before the cells.
-    override func accessibilityChildren() -> [Any]? {
-        guard let children = super.accessibilityChildren() else { return nil }
-        guard let header = headerView else { return children }
-        let isHeader: (Any) -> Bool = { child in
-            guard let view = child as? NSView else { return false }
-            return view === header || view.isDescendant(of: header)
-        }
-        return children.filter(isHeader) + children.filter { !isHeader($0) }
     }
 }
 

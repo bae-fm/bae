@@ -151,7 +151,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
     final class Coordinator: NSObject, NSTableViewDataSource,
         NSTableViewDelegate
     {
-        let table = NSTableView()
+        let table = HeaderFirstTableView()
         private var order: Binding<BridgeReleaseFileOrder>
         private var presentationError: Binding<DisplayError?>
         private var appearance: HostedAppearance
