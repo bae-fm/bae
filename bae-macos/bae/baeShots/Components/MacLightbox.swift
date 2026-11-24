@@ -15,20 +15,26 @@ extension ShotScene {
         lightbox("mac.component.lightbox.one-image", single: true),
     ]
 
+    /// The widest a thumbnail's copy is, in pixels; the large image asks for
+    /// more.
+    private nonisolated static let thumbnailPixels: UInt32 = 256
+
     /// What a lightbox shows of its image.
     private enum LightboxImageState {
         case shown, loading, failed
     }
 
-    /// A store that gives the first image no bytes when it `failed`, and
-    /// every image's art at once otherwise.
+    /// A store that gives the first image's large copy no bytes when it
+    /// `failed` and never answers it while `loading`; its thumbnail and every
+    /// other image have their art at once.
     private static func lightboxStore(_ state: LightboxImageState)
         -> ImageStore
     {
         let first = lightboxImages[0]
         return ImageStore(
-            fetchLibraryImageBytes: { ref, _ in
-                if ref.id == first {
+            fetchLibraryImageBytes: { ref, pixels in
+                let isLarge = (pixels ?? .max) > thumbnailPixels
+                if ref.id == first, isLarge {
                     switch state {
                     case .shown:
                         return try BoardArtwork.data(named: ref.id)
@@ -80,13 +86,14 @@ extension ShotScene {
                     load.phase.image != nil
                 }
             case .loading:
-                // The first image never answers, so the stage cannot wait
-                // for the store to hand every image back.
+                // The first image's large copy never answers, so the stage
+                // cannot wait for the store to hand every image back.
                 return ShotStage(
                     view,
                     isReady: {
-                        if case .loading = load.phase { return true }
-                        return false
+                        guard case .loading = load.phase else { return false }
+                        // Every image but the one that never answers.
+                        return images.unansweredImages <= 1
                     }
                 )
             case .failed:
