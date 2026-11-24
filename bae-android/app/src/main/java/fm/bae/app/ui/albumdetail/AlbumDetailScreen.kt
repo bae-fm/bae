@@ -322,6 +322,7 @@ internal fun AlbumDetailPage(
     if (showGallery && shown.galleryItemCount > 0u) {
         AndroidLightbox(
             releaseId = shown.id,
+            title = detail.album.title,
             items = shown.galleryItems,
             count = shown.galleryItemCount,
             onDismiss = { showGallery = false },

@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -47,6 +49,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -86,6 +91,7 @@ private val logger = BaeLogger(TAG)
 @Composable
 fun AndroidLightbox(
     releaseId: String,
+    title: String,
     items: List<BridgeGalleryItem>,
     count: UInt,
     onDismiss: () -> Unit,
@@ -101,7 +107,7 @@ fun AndroidLightbox(
             ),
     ) {
         FullDisplayDialogWindow()
-        GalleryViewer(releaseId = releaseId, items = items, count = count, onDismiss = onDismiss)
+        GalleryViewer(releaseId = releaseId, title = title, items = items, count = count, onDismiss = onDismiss)
     }
 }
 
@@ -112,6 +118,7 @@ fun AndroidLightbox(
 @Composable
 internal fun GalleryViewer(
     releaseId: String,
+    title: String,
     items: List<BridgeGalleryItem>,
     count: UInt,
     onDismiss: () -> Unit,
@@ -152,7 +159,7 @@ internal fun GalleryViewer(
         ) {
             Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
                 HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                    GalleryPage(releaseId = releaseId, item = items[page])
+                    GalleryPage(releaseId = releaseId, title = title, item = items[page])
                 }
                 GalleryCloseButton(onDismiss = onDismiss)
                 GalleryFoot(items = items, count = count, pagerState = pagerState)
@@ -195,11 +202,16 @@ private fun FullDisplayDialogWindow() {
 @Composable
 private fun GalleryPage(
     releaseId: String,
+    title: String,
     item: BridgeGalleryItem,
 ) {
     val content =
         remember(releaseId, item.id) { ImageContent.ReleaseImage(releaseId, item.source) }
-    GalleryImage(content = content, label = LocalContext.current.galleryLabelText(item.label))
+    val label = LocalContext.current.galleryLabelText(item.label)
+    // The page is named for its slot, and the picture in it for the release whose art it shows.
+    Box(modifier = Modifier.fillMaxSize().semantics { contentDescription = label }) {
+        GalleryImage(content = content, label = label, title = title)
+    }
 }
 
 /** A gallery slot's name: the cover in the app's language, a file by its filename. */
@@ -219,6 +231,8 @@ private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
         modifier =
             Modifier
                 .align(Alignment.TopEnd)
+                // Close is read before the picture, as the board lists it, though it is drawn over it.
+                .semantics { traversalIndex = -1f }
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                 ).padding(ThemeSpace.inline),
@@ -254,6 +268,7 @@ private fun BoxScope.GalleryFoot(
 private fun GalleryImage(
     content: ImageContent,
     label: String,
+    title: String,
 ) {
     val store = LocalImageStore.current
     BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -285,7 +300,7 @@ private fun GalleryImage(
                 ZoomableGalleryImage(
                     bitmap = shown,
                     identity = content,
-                    contentDescription = label,
+                    contentDescription = title,
                     onZoomedIn = { zoomedIn = true },
                 )
             }
@@ -357,7 +372,8 @@ private fun ZoomableGalleryImage(
         contentScale = ContentScale.Fit,
         modifier =
             Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .aspectRatio(bitmap.width.toFloat() / bitmap.height.toFloat())
                 .pointerInput(identity) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)

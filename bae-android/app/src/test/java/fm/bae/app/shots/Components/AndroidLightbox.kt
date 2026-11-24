@@ -35,6 +35,7 @@ private fun Lightbox(
     CompositionLocalProvider(LocalImageStore provides store, LocalBugReports provides BugReports()) {
         GalleryViewer(
             releaseId = "rel-1",
+            title = "Low Tide Hours",
             items = listOf(PreviewData.galleryItem(label = BridgeGalleryLabel.File("cover.jpg"))),
             count = count,
             onDismiss = {},
