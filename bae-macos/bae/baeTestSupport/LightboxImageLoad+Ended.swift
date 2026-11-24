@@ -7,7 +7,7 @@ extension LightboxImageLoad {
     /// image it opened on, has ended: decoded and read for Live Text, or
     /// failed. Waited for under observation, as `phase` changes.
     func ended(loading image: ImageContent? = nil) -> Bool {
-        guard let content = shown?.content, image == nil || image == content
+        guard let content, image == nil || image == content
         else {
             return false
         }

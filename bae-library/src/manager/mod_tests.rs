@@ -573,6 +573,24 @@ pub(super) fn an_import_error_keeps_its_kind_through_a_library_error() {
     assert!(matches!(from_db, LibraryError::Database(_)), "{from_db:?}");
 }
 
+/// A failed read of a picture's original carries coven's own failure, so a
+/// tile failure that a missing storage connection caused is a configuration
+/// failure and one that no coven failure caused is a bug.
+#[test]
+pub(super) fn a_failed_read_of_a_pictures_original_keeps_its_category_through_a_tile_error() {
+    use bae_pictures::tile_cache::TilesError;
+    use bae_pictures::PicturesError;
+
+    let read_of = |cause: std::io::Error| {
+        LibraryError::from(TilesError::Pictures(PicturesError::Read(cause)))
+    };
+    let from_coven = read_of(std::io::Error::other(coven::FileReadError::NoStorage));
+    assert_eq!(from_coven.category(), UiErrorCategory::Config);
+
+    let other = read_of(std::io::Error::other("the share went away"));
+    assert_eq!(other.category(), UiErrorCategory::Internal);
+}
+
 /// The storage actions a release offers on `manager`'s device, and its
 /// download control.
 pub(super) async fn offered(

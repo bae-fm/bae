@@ -53,6 +53,28 @@ pub enum ImportPicture {
     },
 }
 
+impl ImportPicture {
+    /// The version of the file the picture is read from: the image file, or
+    /// the audio file whose tags hold the art.
+    pub fn version(&self) -> &crate::folder_scanner::FileVersion {
+        match self {
+            Self::Folder { file } | Self::Embedded { source: file, .. } => file,
+        }
+    }
+
+    /// What names the picture's bytes: the kind of picture and the version
+    /// of the file it is read from, which changes when the person replaces
+    /// the file.
+    pub fn identity(&self) -> String {
+        let kind = match self {
+            Self::Folder { .. } => "folder image",
+            Self::Embedded { .. } => "tag art",
+        };
+        let version = self.version();
+        format!("{kind} {:?} {} {}", version.path, version.size, version.modified_at_ns)
+    }
+}
+
 /// User's cover art selection for an import.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CoverSelection {

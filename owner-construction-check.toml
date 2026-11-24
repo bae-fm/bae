@@ -34,9 +34,9 @@ crate_order = [
     "bae-util",
     "bae-audio",
     "bae-diagnostics",
-    "bae-pictures",
     "bae-app-dir",
     "bae-store",
+    "bae-pictures",
     "bae-catalogs",
     "bae-records",
     "bae-people",
@@ -269,6 +269,9 @@ task_types = [
     # the same stream read by a thread that may block.
     "bae_store::file_stream::FileStream",
     "bae_store::file_stream::BlockingFileReader",
+    # A picture's original, opened for one cut of its tiles or one read to
+    # its end, with the place of a budget it holds while it is open.
+    "bae_pictures::origin::HeldOrigin",
     # A client asking Discogs with the library's stored key, for one call.
     "bae_catalogs::discogs::client::DiscogsClient",
     # The guard that cancels one call the app may stop when the call's future
@@ -754,6 +757,11 @@ task_types = [
 "bae-pictures/src/flights.rs" = ["Flights::new", "Flights::join"]
 "bae-pictures/src/gate.rs" = ["Volumes::new"]
 
+# The tile cache's constructors build the cache and the parts it holds that
+# nothing else shares: its folders' and rows' owner, and the flights of its
+# cuts.
+"bae-pictures/src/tile_cache.rs" = ["PictureTiles::new", "PictureTiles::in_dir"]
+
 # The outcome of starting libvips, which one start per process makes and which
 # every picture job reads: the process is its scope.
 "bae-pictures/src/vips.rs" = ["START"]
@@ -1041,6 +1049,12 @@ capability = "SQLite"
 counters = [
     { column = "folder_scan_generation_sequence.last_generation", reason = "numbers the scans of watched folders" },
 ]
+
+[[database.domains]]
+name = "picture tile cache"
+owner = "bae_pictures::tile_cache::TileDisk"
+homes = ["bae-pictures/src/tile_cache.rs", "bae-pictures/src/tile_cache.sql"]
+tables = ["cached_tiles"]
 
 [[database.domains]]
 name = "catalog image cache"

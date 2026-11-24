@@ -17,8 +17,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandleInterface
+import uniffi.bae_bridge.BridgeCoverImageSource
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLibraryImageType
 import java.io.ByteArrayInputStream
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -51,6 +53,24 @@ sealed interface ImageContent {
         val version: String,
     ) : ImageContent
 
+    /** The picture the viewer zooms, as core names it for its tiles; null for an artist's image or an avatar, which
+     *  no viewer zooms. */
+    val tiledSource: BridgeCoverImageSource?
+        get() =
+            when (this) {
+                is LibraryImage -> {
+                    BridgeCoverImageSource.Library(image).takeIf { image.imageType == BridgeLibraryImageType.COVER }
+                }
+
+                is ReleaseImage -> {
+                    BridgeCoverImageSource.ReleaseImage(releaseId, source)
+                }
+
+                is Avatar -> {
+                    null
+                }
+            }
+
     /** Human-readable description for failure logs. */
     val description: String
         get() =
@@ -66,24 +86,20 @@ sealed interface ImageContent {
  *
  * [FitTo] takes the downsampled path, decoding the smallest power-of-two
  * reduction whose longer edge still covers the slot. [Native] decodes at the
- * source's own resolution — what the zoomable viewer asks for once the user
- * pinches in, so a large scan never decodes whole just to fill a screen.
+ * source's own resolution: the viewer's tiles, which core cuts at most 512
+ * pixels on a side, decode this way, and a library image is read in its largest
+ * copy.
  */
 sealed interface DecodeSize {
     data class FitTo(
         val pixels: Int,
-    ) : DecodeSize
+    ) : DecodeSize {
+        /** The part of a cache key that says at what resolution the entry was
+         *  decoded, so one slot's decode never serves another's. */
+        val keySuffix: String get() = pixels.toString()
+    }
 
     data object Native : DecodeSize
-
-    /** The part of a cache key that says at what resolution the entry was
-     *  decoded, so one slot's decode never serves another's. */
-    val keySuffix: String
-        get() =
-            when (this) {
-                is FitTo -> pixels.toString()
-                Native -> "native"
-            }
 }
 
 private const val MEGABYTE = 1024 * 1024
@@ -100,7 +116,7 @@ private const val DECODE_WIDTH = 3
  * makes its own.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-private fun boundedDecodeDispatcher(): CoroutineDispatcher = Dispatchers.Default.limitedParallelism(DECODE_WIDTH)
+internal fun boundedDecodeDispatcher(): CoroutineDispatcher = Dispatchers.Default.limitedParallelism(DECODE_WIDTH)
 
 /**
  * The app's image pipeline: bytes → decode at the slot's pixel size on a bounded
@@ -121,11 +137,11 @@ class ImageStore(
      *  the cover's browse or large copy. */
     private val fetchLibraryImageBytes: suspend (image: BridgeImageRef, pixels: UInt?) -> ByteArray? = { _, _ -> null },
     /** Bytes of one of a release's image-strip slots for a slot [pixels] wide on
-     *  its longer side: a cover's copy, or a release image's preview. With null,
-     *  the picture itself, which core downloads from the release's storage (and
-     *  decrypts) when it isn't on disk here. */
+     *  its longer side: a cover's copy, or a release image's preview; a size above
+     *  the largest copy is the picture itself, which core downloads from the
+     *  release's storage (and decrypts) when it isn't on disk here. */
     private val fetchReleaseImageBytes:
-        suspend (releaseId: String, source: BridgeGallerySource, pixels: UInt?) -> ByteArray =
+        suspend (releaseId: String, source: BridgeGallerySource, pixels: UInt) -> ByteArray =
         { _, _, _ -> throw ImageStoreUnavailable() },
     /** Bytes of a person's avatar, or null when they have none. */
     private val fetchAvatarBytes: suspend (person: String) -> ByteArray? = { null },
@@ -159,7 +175,7 @@ class ImageStore(
      */
     fun cachedImage(
         content: ImageContent,
-        size: DecodeSize,
+        size: DecodeSize.FitTo,
     ): Bitmap? = decoded.get(cacheKey(content, size))
 
     /**
@@ -177,7 +193,7 @@ class ImageStore(
      */
     suspend fun image(
         content: ImageContent,
-        size: DecodeSize,
+        size: DecodeSize.FitTo,
     ): Bitmap? {
         val key = cacheKey(content, size)
         decoded.get(key)?.let { return it }
@@ -188,11 +204,11 @@ class ImageStore(
 
     private suspend fun loadImage(
         content: ImageContent,
-        size: DecodeSize,
+        size: DecodeSize.FitTo,
         key: String,
         control: LoadControl,
     ): Bitmap? {
-        val bytes = imageBytes(content, size) ?: return null
+        val bytes = withContext(dispatcher) { fetchBytes(content, size.pixels.toUInt()) } ?: return null
         control.beginDecoding()
         val bitmap =
             withContext(dispatcher) {
@@ -203,31 +219,24 @@ class ImageStore(
     }
 
     /**
-     * The encoded bytes [content] decodes from, read across the bridge. Null when no
-     * such image exists.
+     * The encoded bytes of [art], read across the bridge. Null when no such
+     * image exists.
      *
      * Consumers that hand encoded bytes to something else — the artwork
      * `ContentProvider` streaming to a media-browse client — read them here rather
-     * than opening a second path to core. With a [size] to fit, core returns the
-     * copy that covers it; the native size is the largest copy of a cover, or the
-     * picture itself for a viewer.
+     * than opening a second path to core. Core returns the largest copy of a cover.
      */
-    suspend fun imageBytes(
-        content: ImageContent,
-        size: DecodeSize = DecodeSize.Native,
-    ): ByteArray? = withContext(dispatcher) { fetchBytes(content, size) }
+    suspend fun imageBytes(art: ImageContent.LibraryImage) = withContext(dispatcher) { fetchBytes(art, null) }
 
-    /** Read [content]'s bytes from core. Null when core reports no such image. */
+    /**
+     * Read [content]'s bytes from core for a slot [pixels] wide on its longer side. Null when core reports no such
+     * image.
+     */
     private suspend fun fetchBytes(
         content: ImageContent,
-        size: DecodeSize,
-    ): ByteArray? {
-        val pixels: UInt? =
-            when (size) {
-                is DecodeSize.FitTo -> size.pixels.toUInt()
-                DecodeSize.Native -> null
-            }
-        return when (content) {
+        pixels: UInt?,
+    ): ByteArray? =
+        when (content) {
             is ImageContent.LibraryImage -> {
                 fetchLibraryImageBytes(content.image, pixels).also {
                     if (it == null) {
@@ -239,14 +248,14 @@ class ImageStore(
             }
 
             is ImageContent.ReleaseImage -> {
-                fetchReleaseImageBytes(content.releaseId, content.source, pixels)
+                val slot = checkNotNull(pixels) { "a gallery slot has a size" }
+                fetchReleaseImageBytes(content.releaseId, content.source, slot)
             }
 
             is ImageContent.Avatar -> {
                 fetchAvatarBytes(content.person)
             }
         }
-    }
 
     /**
      * Cache key for a decoded bitmap: its content identity plus the decode

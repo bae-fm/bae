@@ -12,10 +12,20 @@ impl ImportServiceHandle {
     pub async fn read_picture(
         &self,
         source: crate::ImportPicture,
-        pixels: Option<u32>,
+        pixels: u32,
         priority: bae_pictures::Priority,
     ) -> Result<Vec<u8>, crate::ImportError> {
         self.pictures.read(source, pixels, priority).await
+    }
+
+    /// The original of the import-list picture `source`, for a read to its
+    /// end such as the viewer's tiles: refused when the picture is no image
+    /// of a candidate in the import list.
+    pub async fn open_picture_original(
+        &self,
+        source: crate::ImportPicture,
+    ) -> Result<Box<dyn bae_pictures::PictureOrigin>, crate::ImportError> {
+        self.pictures.open_original(source).await
     }
 }
 

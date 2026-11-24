@@ -214,7 +214,7 @@ async fn delete_release_removes_its_cover_image() {
     manager.delete_release(&release1.id).await.unwrap();
 
     // Row removed (the `covers` FK to `releases` cascade-deletes it).
-    assert!(manager.records.cover_source(&release1.id).await.unwrap().is_none());
+    assert!(manager.records.cover_source_for_test(&release1.id).await.unwrap().is_none());
 }
 
 /// A delete is planned against the release's rows and files before its write
@@ -783,7 +783,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
         .read_gallery_bytes(
             &release.id,
             &bae_records::GallerySource::ReleaseFile { file_id: file.id.clone() },
-            None,
+            1800,
         )
         .await
         .expect_err("the file is another release's");

@@ -66,8 +66,10 @@ case ",$BAE_BRIDGE_FEATURES," in
     *) BINDINGS_DIR="bae-bridge/kotlin-bindings-baeium" ;;
 esac
 
-# The pinned release's FFmpeg for each arch, installed when missing.
+# The pinned release's FFmpeg and libvips for each arch, installed when
+# missing.
 ./scripts/build-ffmpeg-android.sh
+./scripts/build-libvips-android.sh
 
 # Build each selected ABI.
 for ABI in "${ABIS[@]}"; do
@@ -75,7 +77,7 @@ for ABI in "${ABIS[@]}"; do
     # The FFmpeg download names each arch by its target triple's first part.
     FA="${TARGET%%-*}"
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" ./scripts/cargo.sh build $CARGO_FLAGS "${ANDROID_CARGO_CONFIG[@]}" --target "$TARGET" --target-dir "$ANDROID_TARGET_DIR" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" LIBVIPS_DIR="$ANDROID_LIBVIPS_DIR/$FA" ./scripts/cargo.sh build $CARGO_FLAGS "${ANDROID_CARGO_CONFIG[@]}" --target "$TARGET" --target-dir "$ANDROID_TARGET_DIR" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
 # Bindings come from the built .a: the release .so is stripped of the uniffi
@@ -134,6 +136,8 @@ for ABI in "${ABIS[@]}"; do
     for so in libavcodec libavformat libavutil libswresample; do
         cp "$ANDROID_FFMPEG_DIR/$FA/lib/$so.so" "$DEST/"
     done
+    # So do libvips and every library of its dist, which it loads.
+    cp "$ANDROID_LIBVIPS_DIR/$FA/lib/"*.so "$DEST/"
 done
 
 echo ""

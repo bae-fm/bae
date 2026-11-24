@@ -14,12 +14,7 @@ impl LibraryManager {
         release_id: &str,
         file_id: &str,
     ) -> Result<String, LibraryError> {
-        let file = self.records.find_release_file(release_id, file_id).await?.ok_or_else(|| {
-            LibraryError::FileMissing {
-                release_id: release_id.to_string(),
-                file_id: file_id.to_string(),
-            }
-        })?;
+        let file = self.release_file(release_id, file_id).await?;
         if !file.role.is_readable_text() {
             return Err(LibraryError::Internal(format!(
                 "release file {file_id} is no document: it is {}",

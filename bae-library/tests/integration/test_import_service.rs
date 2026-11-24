@@ -303,7 +303,7 @@ mod works_and_covers;
 /// the image it was made from — and their size. The record carries the
 /// file's hash once it is stored.
 async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
-    f.library.records().cover_source(release_id).await.unwrap().expect("cover row");
+    f.library.records().cover_source_for_test(release_id).await.unwrap().expect("cover row");
     let bytes = f
         .library
         .manager()

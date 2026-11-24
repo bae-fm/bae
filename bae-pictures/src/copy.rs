@@ -11,6 +11,25 @@ pub enum CopyFormat {
     Png,
 }
 
+impl CopyFormat {
+    /// The name a row that keeps a picture's format stores.
+    pub fn stored_name(self) -> &'static str {
+        match self {
+            Self::Jpeg => "jpeg",
+            Self::Png => "png",
+        }
+    }
+
+    /// The format a row's stored name names; none for any other text.
+    pub fn from_stored_name(name: &str) -> Option<Self> {
+        match name {
+            "jpeg" => Some(Self::Jpeg),
+            "png" => Some(Self::Png),
+            _ => None,
+        }
+    }
+}
+
 /// A picture's copy at one step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PictureCopy {
@@ -87,7 +106,7 @@ mod libvips {
                 ptr::null::<c_char>(),
             )
         };
-        check(status)?;
+        check(status).map_err(|error| source.blame_read(error))?;
         let image = Image::adopt(image)?;
         // SAFETY: `image` is a valid image.
         let has_alpha = unsafe { ffi::vips_image_hasalpha(image.0) } != 0;
@@ -118,7 +137,12 @@ mod libvips {
                 )
             }
         };
-        check(status)?;
+        check(status).map_err(|error| source.blame_read(error))?;
+        // A read that failed ends the picture early, and libvips saves what
+        // it has: the failure is the copy's.
+        if let Some(failure) = source.take_failure() {
+            return Err(failure);
+        }
         // SAFETY: on success `buffer` holds `length` bytes that this copies and
         // then frees with the allocator libvips used.
         let bytes = unsafe {

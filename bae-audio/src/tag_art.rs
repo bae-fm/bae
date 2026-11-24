@@ -46,17 +46,56 @@ pub fn image_content_type(mime: &lofty::picture::MimeType) -> Option<ContentType
     content_type.is_supported_cover().then_some(content_type)
 }
 
+/// A reader that keeps the first failure of the reader under it, and hands
+/// its caller an error of the same kind. A parser puts the error it reads
+/// behind its own, so the failure's type survives only here.
+struct FailureKept<R> {
+    inner: R,
+    failure: Option<std::io::Error>,
+}
+
+impl<R> FailureKept<R> {
+    fn keep<T>(&mut self, result: std::io::Result<T>) -> std::io::Result<T> {
+        result.map_err(|error| {
+            let kind = error.kind();
+            self.failure.get_or_insert(error);
+            std::io::Error::new(kind, "the read of the file failed")
+        })
+    }
+}
+
+impl<R: Read> Read for FailureKept<R> {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        let result = self.inner.read(buffer);
+        self.keep(result)
+    }
+}
+
+impl<R: Seek> Seek for FailureKept<R> {
+    fn seek(&mut self, position: std::io::SeekFrom) -> std::io::Result<u64> {
+        let result = self.inner.seek(position);
+        self.keep(result)
+    }
+}
+
 /// The art the tags of the audio file `reader` holds, as [`tag_art`] picks
 /// it from its [`primary_tag`]; `None` when it holds none. The read takes the
-/// file's tags only: it skips the audio, so only the tag's bytes are read.
+/// file's tags only: it skips the audio, so only the tag's bytes are read. A
+/// read of the file that fails is [`TagArtError::Read`] with the reader's own
+/// error, whether or not the parser met it first.
 pub fn read_tag_art(
     reader: impl Read + Seek,
 ) -> Result<Option<(Vec<u8>, ContentType)>, TagArtError> {
-    let tagged = Probe::new(reader)
+    let mut reader = FailureKept { inner: reader, failure: None };
+    let parsed = Probe::new(&mut reader)
         .options(ParseOptions::new().read_properties(false))
-        .guess_file_type()?
-        .read()?;
-    Ok(primary_tag(&tagged).and_then(tag_art))
+        .guess_file_type()
+        .map_err(TagArtError::from)
+        .and_then(|probe| probe.read().map_err(TagArtError::from));
+    if let Some(failure) = reader.failure {
+        return Err(TagArtError::Read(failure));
+    }
+    Ok(primary_tag(&parsed?).and_then(tag_art))
 }
 
 #[cfg(test)]

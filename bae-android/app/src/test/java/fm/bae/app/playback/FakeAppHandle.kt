@@ -28,6 +28,7 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCopyReset
+import uniffi.bae_bridge.BridgeCoverImageSource
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDeviceRemoval
 import uniffi.bae_bridge.BridgeDownloadCounts
@@ -51,6 +52,7 @@ import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMoveToThisDeviceFeeds
 import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePagedList
+import uniffi.bae_bridge.BridgePictureTiles
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeQueueLane
@@ -638,8 +640,17 @@ internal open class FakeAppHandle(
     override suspend fun fetchReleaseImageBytes(
         releaseId: String,
         source: BridgeGallerySource,
-        pixels: UInt?,
+        pixels: UInt,
     ): ByteArray = unfaked("fetchReleaseImageBytes")
+
+    override suspend fun pictureTiles(source: BridgeCoverImageSource): BridgePictureTiles = unfaked("pictureTiles")
+
+    override suspend fun pictureTile(
+        source: BridgeCoverImageSource,
+        level: UInt,
+        x: UInt,
+        y: UInt,
+    ): ByteArray = unfaked("pictureTile")
 
     override suspend fun renameLibrary(name: String) {
         unfaked("renameLibrary")

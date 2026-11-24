@@ -385,7 +385,7 @@ async fn test_missing_external_source_maps_to_error() {
 
     let result = mgr
         .manager()
-        .read_gallery_bytes(&release_id, &GallerySource::ReleaseFile { file_id: file.id }, None)
+        .read_gallery_bytes(&release_id, &GallerySource::ReleaseFile { file_id: file.id }, 1800)
         .await;
     assert!(result.is_err(), "a vanished external source must surface a read error");
 }

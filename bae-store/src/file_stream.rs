@@ -32,7 +32,17 @@ impl FileStream {
     /// decoder's: each read waits on `runtime` for the bytes it asks for, and
     /// nothing is mapped into memory.
     pub fn into_blocking_reader(self, runtime: tokio::runtime::Handle) -> BlockingFileReader {
-        BlockingFileReader { stream: self, runtime, position: 0 }
+        std::sync::Arc::new(self).blocking_reader(runtime)
+    }
+
+    /// A reader of the stream like [`into_blocking_reader`](Self::into_blocking_reader)
+    /// that shares it: each reader keeps its own position, and the stream
+    /// lives until the last of them drops.
+    pub fn blocking_reader(
+        self: &std::sync::Arc<Self>,
+        runtime: tokio::runtime::Handle,
+    ) -> BlockingFileReader {
+        BlockingFileReader { stream: self.clone(), runtime, position: 0 }
     }
 
     /// `read_at`, telling `progress` how many of the range's bytes are here
@@ -53,7 +63,7 @@ impl FileStream {
 /// A [`FileStream`] read with `Read` and `Seek` on a thread that may block:
 /// each read asks the stream for the range it fills, and waits for it.
 pub struct BlockingFileReader {
-    stream: FileStream,
+    stream: std::sync::Arc<FileStream>,
     runtime: tokio::runtime::Handle,
     position: u64,
 }

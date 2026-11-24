@@ -21,6 +21,8 @@ bae-app-dir = { workspace = true }
 bae-audio = { workspace = true }
 # The catalogs a library asks, and the image cache their covers come through.
 bae-catalogs = { workspace = true }
+# The tile cache the open library's viewer zooms pictures from.
+bae-pictures = { workspace = true }
 # The library: its manager, views, transfers and what they show.
 bae-library = { workspace = true }
 # The store the bootstrap opens, and the live reads the services pass on.

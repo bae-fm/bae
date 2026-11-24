@@ -2,16 +2,15 @@
 //! art embedded in one of its audio files. A screen asks for one at a pixel
 //! size and gets a small encoded copy, read from the original once, in chunks
 //! that stop when nobody wants the picture, off the app's threads, and kept
-//! with its candidate until the candidate leaves the list. A viewer that
-//! decodes at full size asks for the original's own bytes through the same
-//! reader.
+//! with its candidate until the candidate leaves the list. The viewer's tiles
+//! are cut from the original, which the same reader opens.
 
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::sync::Arc;
 
 use bae_pictures::{
-    FlightError, Flights, IsCancelled, PictureCopy, PictureSize, Priority, Volumes,
+    FlightError, Flights, IsCancelled, PictureCopy, PictureStep, Priority, Volumes,
 };
 use coven::LeasedFile;
 
@@ -58,7 +57,7 @@ struct PictureServices {
 /// The jobs making pictures now, and the reads each volume takes at once.
 #[derive(Clone)]
 pub(crate) struct ImportPictures {
-    flights: Flights<(ImportPicture, PictureSize), Made, PictureError>,
+    flights: Flights<(ImportPicture, PictureStep), PictureCopy, PictureError>,
     volumes: Volumes,
     services: PictureServices,
 }
@@ -83,13 +82,10 @@ impl ImportPictures {
     pub(crate) async fn read(
         &self,
         source: ImportPicture,
-        pixels: Option<u32>,
+        pixels: u32,
         priority: Priority,
     ) -> Result<Vec<u8>, ImportError> {
-        Ok(match self.request(source, PictureSize::covering(pixels), priority).await? {
-            Made::Copy(copy) => copy.bytes,
-            Made::Original(bytes) => bytes,
-        })
+        Ok(self.read_copy(source, PictureStep::covering(pixels), priority).await?.bytes)
     }
 
     /// The copy of `source` at `step`, with its format, which the import
@@ -97,34 +93,59 @@ impl ImportPictures {
     pub(crate) async fn read_copy(
         &self,
         source: ImportPicture,
-        step: bae_pictures::PictureStep,
+        step: PictureStep,
         priority: Priority,
     ) -> Result<PictureCopy, ImportError> {
-        match self.request(source, PictureSize::Copy(step), priority).await? {
-            Made::Copy(copy) => Ok(copy),
-            Made::Original(_) => Err(ImportError::Internal {
-                detail: "a request for a copy of a picture returned its original".to_string(),
-            }),
-        }
-    }
-
-    async fn request(
-        &self,
-        source: ImportPicture,
-        size: PictureSize,
-        priority: Priority,
-    ) -> Result<Made, ImportError> {
         let job = {
             let (services, volumes, source) =
                 (self.services.clone(), self.volumes.clone(), source.clone());
-            move |cancelled: IsCancelled| make(services, volumes, source, size, priority, cancelled)
+            move |cancelled: IsCancelled| make(services, volumes, source, step, priority, cancelled)
         };
-        match self.flights.request((source, size), job).await {
-            Ok(made) => Ok(Arc::try_unwrap(made).unwrap_or_else(|shared| (*shared).clone())),
+        match self.flights.request((source, step), job).await {
+            Ok(copy) => Ok(Arc::try_unwrap(copy).unwrap_or_else(|shared| (*shared).clone())),
             Err(FlightError::Failed(error)) => Err(ImportError::Picture(error)),
             Err(FlightError::Panicked) => Err(ImportError::Internal {
                 detail: "the job that makes a picture panicked".to_string(),
             }),
+        }
+    }
+
+    /// The original of `source` for a cut that reads it to its end, such as
+    /// the viewer's tiles: the image file at the version the scan read, or
+    /// the art the candidate's snapshot stored. The file is opened off the
+    /// app's threads, and holds one of its volume's places for reads, as a
+    /// visible picture, until the origin is dropped.
+    pub(crate) async fn open_original(
+        &self,
+        source: ImportPicture,
+    ) -> Result<Box<dyn bae_pictures::PictureOrigin>, ImportError> {
+        let services = &self.services;
+        let owner = services
+            .tables
+            .picture_owner(&source, None)
+            .await?
+            .ok_or_else(|| picture_error(PictureError::NotInImport(source.version().path.clone())))?
+            .owner;
+        match source_origin(services, &source).await.map_err(picture_error)? {
+            Origin::Art(art) => Ok(Box::new(Cursor::new(art))),
+            Origin::File(version) => {
+                let turn = self
+                    .volumes
+                    .read_place(
+                        &owner.watched_folder_path,
+                        reads_at_once(owner.volume),
+                        Priority::Visible,
+                    )
+                    .await;
+                let lease = bae_store::lease_one(&services.files).await;
+                let file = services
+                    .diagnostics
+                    .blocking("open a picture's original", move || open(&version, &lease))
+                    .await
+                    .map_err(|failed| picture_error(PictureError::Task(failed)))?
+                    .map_err(picture_error)?;
+                Ok(Box::new(bae_pictures::HeldOrigin::new(file, turn)))
+            }
         }
     }
 }
@@ -153,28 +174,51 @@ enum Origin {
     Art(Vec<u8>),
 }
 
-/// `source` at `size`: the kept copy when the candidate keeps
-/// one, else a read of the original that ends when `cancel` is set, kept for
-/// the next request when it is a copy.
+/// `source` at `step`: the kept copy when the candidate keeps one, else a
+/// read of the original that ends when `cancelled` is set, kept for the next
+/// request.
 async fn make(
     services: PictureServices,
     volumes: Volumes,
     source: ImportPicture,
-    size: PictureSize,
+    step: PictureStep,
     priority: Priority,
     cancelled: IsCancelled,
-) -> Result<Made, PictureError> {
-    let owner = services.tables.picture_owner(&source).await?.ok_or_else(|| match &source {
-        ImportPicture::Folder { file } | ImportPicture::Embedded { source: file, .. } => {
-            PictureError::NotInImport(file.path.clone())
-        }
-    })?;
-    if let PictureSize::Copy(step) = size {
-        if let Some(kept) = services.tables.load_picture_copy(&owner, step).await? {
-            return Ok(Made::Copy(kept));
-        }
+) -> Result<PictureCopy, PictureError> {
+    let picture = services
+        .tables
+        .picture_owner(&source, Some(step))
+        .await?
+        .ok_or_else(|| PictureError::NotInImport(source.version().path.clone()))?;
+    if let Some(kept) = picture.kept {
+        return Ok(kept);
     }
-    let origin = match &source {
+    let owner = picture.owner;
+    let origin = source_origin(&services, &source).await?;
+    // Visible pictures read before prefetched ones, and a share is read a few
+    // files at a time.
+    let _turn =
+        volumes.read_place(&owner.watched_folder_path, reads_at_once(owner.volume), priority).await;
+    let lease = bae_store::lease_one(&services.files).await;
+    let copy = services
+        .diagnostics
+        .blocking("make a picture copy", move || read_picture(origin, step, cancelled, lease))
+        .await??;
+    services.tables.store_picture_copy(&owner, step, &copy).await?;
+    Ok(copy)
+}
+
+fn picture_error(error: PictureError) -> ImportError {
+    ImportError::Picture(Arc::new(error))
+}
+
+/// Where the bytes of `source` are read from: the art its candidate's
+/// snapshot stored, or the image file at the version the scan read.
+async fn source_origin(
+    services: &PictureServices,
+    source: &ImportPicture,
+) -> Result<Origin, PictureError> {
+    Ok(match source {
         ImportPicture::Embedded { candidate, source_file_id, .. } => Origin::Art(
             services
                 .tables
@@ -185,20 +229,7 @@ async fn make(
                 })?,
         ),
         ImportPicture::Folder { file } => Origin::File(file.clone()),
-    };
-    // Visible pictures read before prefetched ones, and a share is read a few
-    // files at a time.
-    let _turn =
-        volumes.read_place(&owner.watched_folder_path, reads_at_once(owner.volume), priority).await;
-    let lease = bae_store::lease_one(&services.files).await;
-    let bytes = services
-        .diagnostics
-        .blocking("make a picture copy", move || read_picture(origin, size, cancelled, lease))
-        .await??;
-    if let (PictureSize::Copy(step), Made::Copy(copy)) = (size, &bytes) {
-        services.tables.store_picture_copy(&owner, step, copy).await?;
-    }
-    Ok(bytes)
+    })
 }
 
 /// How many pictures of one watched folder are read at once: a few from a
@@ -210,34 +241,17 @@ fn reads_at_once(volume: crate::VolumeKind) -> usize {
     }
 }
 
-/// What reading a picture made.
-#[derive(Clone)]
-enum Made {
-    Copy(PictureCopy),
-    Original(Vec<u8>),
-}
-
-/// Read the picture from `origin` at `size`, on a blocking thread.
+/// Read the copy of the picture from `origin` at `step`, on a blocking thread.
 fn read_picture(
     origin: Origin,
-    size: PictureSize,
+    step: PictureStep,
     cancelled: IsCancelled,
     lease: coven::FileLease,
-) -> Result<Made, PictureError> {
-    let read = |origin: Box<dyn Read + Send>| bae_pictures::read_original(origin, &cancelled);
-    match (origin, size) {
-        (Origin::File(version), PictureSize::Copy(step)) => {
-            let file = open(&version, &lease)?;
-            Ok(Made::Copy(bae_pictures::make_copy(file, cancelled, step)?))
-        }
-        (Origin::File(version), PictureSize::Original) => {
-            Ok(Made::Original(read(Box::new(open(&version, &lease)?))?))
-        }
-        (Origin::Art(art), PictureSize::Copy(step)) => {
-            Ok(Made::Copy(bae_pictures::make_copy(Cursor::new(art), cancelled, step)?))
-        }
-        (Origin::Art(art), PictureSize::Original) => Ok(Made::Original(art)),
-    }
+) -> Result<PictureCopy, PictureError> {
+    Ok(match origin {
+        Origin::File(version) => bae_pictures::make_copy(open(&version, &lease)?, cancelled, step)?,
+        Origin::Art(art) => bae_pictures::make_copy(Cursor::new(art), cancelled, step)?,
+    })
 }
 
 /// Opens the file the scan read as `version`, refused when it is no longer that

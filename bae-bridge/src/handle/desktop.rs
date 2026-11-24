@@ -415,15 +415,13 @@ forward! {
 
         /// The bytes of one of an import candidate's pictures: a copy at the
         /// smallest step (192, 384, 768 or 1536 px on the longer side) that
-        /// holds `pixels`, or the original's own bytes when `pixels` is
-        /// absent, for a viewer that decodes at full size. Core reads the
-        /// file once, in chunks, off the app's threads, keeps the copy with
-        /// its candidate, and stops reading when every call for the picture
-        /// is dropped. `turn` says whether a screen shows the picture now or
-        /// may show it soon.
+        /// holds `pixels`. Core reads the file once, in chunks, off the app's
+        /// threads, keeps the copy with its candidate, and stops reading when
+        /// every call for the picture is dropped. `turn` says whether a
+        /// screen shows the picture now or may show it soon.
         fn picture(
             source: crate::types::BridgeCoverImageSource,
-            pixels: Option<u32>,
+            pixels: u32,
             turn: crate::types::BridgePictureTurn,
         ) -> Vec<u8> {
             this.services
@@ -675,10 +673,10 @@ forward! {
         /// nothing. That is the slot having no image, not a failed load.
         fn fetch_remote_image_bytes(
             image: crate::types::BridgeRemoteImageSet,
-            pixels: Option<u32>,
+            pixels: u32,
         ) -> Option<Vec<u8>> {
             this.services
-                .import_fetch_remote_image_bytes(image.into_core(), pixels)
+                .import_fetch_remote_image_bytes(image.into_core(), Some(pixels))
                 .await
                 .map(|image| image.map(|image| image.bytes))
                 .map_err(BridgeError::from)

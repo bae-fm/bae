@@ -22,6 +22,7 @@ use std::os::windows::fs::symlink_file as symlink;
     reason = "file system: the build script looks for the libvips dist, which no library's file reaches"
 )]
 fn main() {
+    bae_schema_manifest::emit_crate();
     println!("cargo:rerun-if-env-changed=LIBVIPS_DIR");
     println!("cargo:rustc-check-cfg=cfg(libvips)");
     let target_os =

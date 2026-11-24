@@ -91,8 +91,8 @@ struct CoverLightboxTests {
             )
         )
         let recorder = Reads()
-        let images = ImageStore(fetchRemoteImage: { image, pixels in
-            await recorder.read(Read(url: image.url, pixels: pixels))
+        let images = ImageStore(fetchRemoteImage: { image, _ in
+            await recorder.read(Read(url: image.url))
             return bytes
         })
         var selected: CoverItem?
@@ -160,7 +160,7 @@ struct CoverLightboxTests {
     }
 
     @Test(
-        "The lightbox stage and its strip ask for their own sizes, never the original"
+        "Opening the lightbox reads each image's copy and cuts no tiles until a zoom"
     )
     func originalImageSource() async throws {
         let item = remote("Booklet")
@@ -170,10 +170,16 @@ struct CoverLightboxTests {
             )
         )
         let recorder = Reads()
-        let images = ImageStore(fetchRemoteImage: { image, pixels in
-            await recorder.read(Read(url: image.url, pixels: pixels))
-            return bytes
-        })
+        let images = ImageStore(
+            fetchRemoteImage: { image, _ in
+                await recorder.read(Read(url: image.url))
+                return bytes
+            },
+            fetchPictureTiles: { source in
+                await recorder.cut(source)
+                throw ImageStoreUnavailable()
+            }
+        )
         let back = remote("Back")
         let size = NSSize(width: 800, height: 600)
         try await SnapshotTestSupport.withHostedWindow(
@@ -199,25 +205,27 @@ struct CoverLightboxTests {
             let booklet = "https://images.example/Booklet-original.png"
             let back = "https://images.example/Back-original.png"
             // The stage decodes the current image to fit the screen, through
-            // the image store; the original is read only for a zoom. Each
+            // the image store, and core cuts tiles only for a zoom. Each
             // slot names its pixel size and core picks the copy.
-            #expect(!reads.contains(Read(url: booklet, pixels: nil)))
-            #expect(reads.contains { $0.url == booklet && $0.pixels != nil })
-            #expect(reads.contains { $0.url == back && $0.pixels != nil })
-            #expect(!reads.contains(Read(url: back, pixels: nil)))
+            #expect(reads.contains { $0.url == booklet })
+            #expect(reads.contains { $0.url == back })
+            #expect(await recorder.cuts.isEmpty)
         }
     }
 
     private struct Read: Equatable {
         let url: String
-        let pixels: UInt32?
     }
 
     private actor Reads {
         var reads: [Read] = []
+        var cuts: [BridgeCoverImageSource] = []
         func read(_ read: Read) {
             reads.append(read)
             Wait.happened()
+        }
+        func cut(_ source: BridgeCoverImageSource) {
+            cuts.append(source)
         }
     }
 }
@@ -229,8 +237,8 @@ extension CoverLightboxTests {
         -> ImageStore
     {
         ImageStore(
-            fetchRemoteImage: { image, pixels in
-                await recorder.read(Read(url: image.url, pixels: pixels))
+            fetchRemoteImage: { image, _ in
+                await recorder.read(Read(url: image.url))
                 return bytes
             },
             fetchPicture: { _, _, _ in bytes }

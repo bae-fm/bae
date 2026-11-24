@@ -124,6 +124,21 @@ jobs:
       if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
       run: ./scripts/build-ffmpeg-android.sh
 
+    - name: Cache Android libvips
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cache/bae-libvips
+          ~/.cache/bae-libvips-build
+        # Keyed on the build scripts and the release they build.
+        key: libvips-android-${{ hashFiles('scripts/bae-libvips-release', 'scripts/build-libvips.sh', 'scripts/build-libvips-android.sh', 'scripts/libvips/**') }}
+
+    - name: Build Android libvips
+      # Built from source into ~/.cache/bae-libvips when the cache holds none,
+      # and linked at bae-libvips, where build-android.sh and
+      # clippy-android.sh find each arch's dist.
+      run: ./scripts/build-libvips-android.sh
+
     - name: Clippy (Android target)
       # The host clippy in linux.yml never compiles the Android-only code.
       run: ./bae-bridge/clippy-android.sh

@@ -33,6 +33,7 @@ pub async fn start_services_on(
         library.diagnostics().clone(),
         tokio::runtime::Handle::current(),
         library.remote_images().clone(),
+        library.tiles().clone(),
         50,
         false,
         Arc::new(bae_playback::WallPlaybackClock::new(library.clock().clone())),

@@ -66,12 +66,13 @@ struct MacLightbox<Item: LightboxImage>: View {
     private var imageStore
     @Environment(\.displayScale)
     private var displayScale
+    /// The picture and time of asking whose tiles core could not give, which
+    /// the stage shows as it shows a picture that did not load, until the
+    /// person retries or moves to another picture.
     @State
-    private var magnification: CGFloat = 1.0
-    @State
-    private var magnifyAnchor: UnitPoint = .center
-    /// How many times the person retried a failed load; part of the load's
-    /// identity, so a retry restarts it.
+    private var failedZoom: FailedZoom?
+    /// How many times the person retried a failed load or zoom; part of the
+    /// load's identity, so a retry restarts it.
     @State
     private var attempt = 0
     @FocusState
@@ -98,12 +99,7 @@ struct MacLightbox<Item: LightboxImage>: View {
                         closeButtonOverlay
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .task(
-                        id: LightboxLoadRequest(
-                            image: place.current.image,
-                            attempt: attempt
-                        )
-                    ) {
+                    .task(id: currentRequest) {
                         await load.load(
                             place.current.image,
                             from: imageStore,
@@ -137,7 +133,6 @@ struct MacLightbox<Item: LightboxImage>: View {
                         )
                     }
                     .padding(.bottom, ThemeSpace.group)
-                    .fadesWhenZoomed(at: magnification)
                 }
             }
             .allowsHitTesting(true)
@@ -160,18 +155,26 @@ struct MacLightbox<Item: LightboxImage>: View {
         }
         .onAppear { focused = true }
         .onDisappear { load.close() }
-        .onChange(of: place.current.image) { _, _ in
-            magnification = 1.0
-        }
+    }
+
+    /// The load of the current image, at this time of asking.
+    private var currentRequest: LightboxLoadRequest {
+        LightboxLoadRequest(image: place.current.image, attempt: attempt)
     }
 
     @ViewBuilder
     private var imageContent: some View {
-        if let nsImage = load.fullResolution ?? load.phase.image {
-            loadedImageView(nsImage)
+        // The load holds the previous image's phase until the load of the
+        // current one starts.
+        let phase = load.phase(for: place.current.image)
+        if let failed = failedZoom, failed.request == currentRequest {
+            loadFailedView(failed.failure)
         }
-        else if case .failed = load.phase {
-            loadFailedView
+        else if let nsImage = phase.image {
+            loadedImageView(nsImage, analysis: phase.analysis)
+        }
+        else if case .failed(let failure) = phase {
+            loadFailedView(failure)
         }
         else {
             MacSpinner(
@@ -184,34 +187,30 @@ struct MacLightbox<Item: LightboxImage>: View {
         }
     }
 
-    private func loadedImageView(_ nsImage: NSImage) -> some View {
-        Image(nsImage: nsImage)
-            .resizable()
-            .scaledToFit()
-            .overlay {
-                if let analysis = load.phase.analysis {
-                    LiveTextOverlay(analysis: analysis)
-                }
-            }
-            .scaleEffect(magnification, anchor: magnifyAnchor)
-            .gesture(
-                MagnifyGesture()
-                    .onChanged { value in
-                        magnifyAnchor = value.startAnchor
-                        magnification = max(value.magnification, 1.0)
-                        if value.magnification > 1.01 {
-                            load.loadFullResolution(displayScale: displayScale)
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.easeOut(duration: 0.25)) {
-                            magnification = 1.0
-                        }
-                    },
-            )
-            .padding(.horizontal, ThemeSpace.page)
-            .padding(.vertical, ThemeSpace.edge)
-            .shadow(color: Theme.shadow, radius: 20)
+    private func loadedImageView(
+        _ nsImage: NSImage,
+        analysis: ImageAnalysis?
+    ) -> some View {
+        MacZoomablePicture(
+            picture: place.current.image.tiledSource,
+            fit: nsImage,
+            fitAnalysis: analysis,
+            images: imageStore,
+            textReader: load.textReader,
+            onFailure: { [request = currentRequest] failure in
+                failedZoom = FailedZoom(request: request, failure: failure)
+            },
+            onClickBeside: onDismiss
+        )
+        .background {
+            // The picture's shadow, which the picture over it hides.
+            Image(nsImage: nsImage)
+                .resizable()
+                .scaledToFit()
+                .shadow(color: Theme.shadow, radius: 20)
+        }
+        .padding(.horizontal, ThemeSpace.page)
+        .padding(.vertical, ThemeSpace.edge)
     }
 }
 
@@ -239,7 +238,6 @@ extension MacLightbox {
         .multilineTextAlignment(.center)
         .padding(.horizontal, ThemeSpace.section)
         .padding(.vertical, ThemeSpace.related)
-        .fadesWhenZoomed(at: magnification)
     }
 
     fileprivate var cycleNavButtons: some View {
@@ -262,7 +260,6 @@ extension MacLightbox {
         // The arrows sit level with the middle of the stage under the row
         // that holds the close button.
         .padding(.top, lightboxStageTopInset)
-        .fadesWhenZoomed(at: magnification)
     }
 
     fileprivate var closeButtonOverlay: some View {
@@ -296,7 +293,6 @@ extension MacLightbox {
             }
             Spacer()
         }
-        .fadesWhenZoomed(at: magnification)
     }
 
     fileprivate func circleIconButton(
@@ -320,44 +316,27 @@ extension MacLightbox {
 }
 
 extension MacLightbox {
-    /// The failed-load state, with a retry. The load keeps no error, so the
-    /// notice has no Details.
-    fileprivate var loadFailedView: some View {
+    /// The failed-load and failed-zoom state: core's error, when core said
+    /// anything to show, behind Details, and a Retry when trying again can
+    /// get past the failure.
+    fileprivate func loadFailedView(_ failure: LightboxFailure) -> some View {
         MacNotice(
-            error: DisplayError(
-                line: String(localized: "Could not load the image")
-            ),
+            title: String(localized: "Could not load the image"),
+            advice: nil,
+            error: failure.error,
             look: .centeredOnStage,
-            action: ErrorAction { attempt += 1 }
+            action: failure.offersRetry ? ErrorAction { attempt += 1 } : nil
         )
     }
 }
 
-extension View {
-    fileprivate func fadesWhenZoomed(at magnification: CGFloat) -> some View {
-        opacity(magnification > 1.01 ? 0 : 1)
-    }
+/// A zoom whose tiles core could not give, and why.
+private struct FailedZoom {
+    let request: LightboxLoadRequest
+    let failure: LightboxFailure
 }
 
-private struct LiveTextOverlay: NSViewRepresentable {
-    let analysis: ImageAnalysis
-
-    func makeNSView(context _: Context) -> ImageAnalysisOverlayView {
-        let overlayView = ImageAnalysisOverlayView()
-        overlayView.preferredInteractionTypes = .textSelection
-        overlayView.analysis = analysis
-        return overlayView
-    }
-
-    func updateNSView(
-        _ overlayView: ImageAnalysisOverlayView,
-        context _: Context
-    ) {
-        overlayView.analysis = analysis
-    }
-}
-
-// periphery:ignore - a `.task(id:)` identity: compared, never read.
+// periphery:ignore - an identity: compared, never read.
 /// One load of the lightbox's image: which image, and which time of asking.
 private struct LightboxLoadRequest: Equatable {
     let image: ImageContent

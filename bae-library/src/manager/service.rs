@@ -46,6 +46,7 @@ impl LibraryManager {
         files: coven::FileBudget,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
+        tiles: bae_pictures::tile_cache::PictureTiles,
         #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] release_reads: bae_import::ReleaseReads,
         #[cfg(desktop)] import_tables: bae_import::tables::ImportTables,
@@ -75,6 +76,7 @@ impl LibraryManager {
             membership,
             sync_status,
             app_dir,
+            tiles,
             #[cfg(desktop)]
             remote_images,
             clock,

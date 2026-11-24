@@ -6,74 +6,42 @@ use crate::types::CueAnalyzedAudioFile;
 use crate::ImportError;
 use bae_audio::ReadableFile;
 use bae_records::Records;
-use bae_store::FileStream;
+use bae_store::{BlockingFileReader, FileStream};
 use std::collections::HashMap;
-use std::io::SeekFrom;
+use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 /// The bytes one read of coven's stream fetches, so the demuxer's many small
 /// reads of a file's neighbouring bytes make one read of the stream.
-const WINDOW: u64 = 1024 * 1024;
+const WINDOW: usize = 1024 * 1024;
 
 /// A coven stream read as a file, from a thread of the blocking pool.
 struct StreamFile {
-    stream: Arc<FileStream>,
-    runtime: tokio::runtime::Handle,
-    position: u64,
-    /// The bytes last fetched, and the offset they start at.
-    window: Option<(u64, Vec<u8>)>,
+    reader: BufReader<BlockingFileReader>,
+    size: u64,
 }
 
 impl StreamFile {
-    fn new(stream: Arc<FileStream>, runtime: tokio::runtime::Handle) -> Self {
-        Self { stream, runtime, position: 0, window: None }
+    fn new(stream: &Arc<FileStream>, runtime: tokio::runtime::Handle) -> Self {
+        Self {
+            reader: BufReader::with_capacity(WINDOW, stream.blocking_reader(runtime)),
+            size: stream.plaintext_size(),
+        }
     }
 }
 
 impl ReadableFile for StreamFile {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let size = self.stream.plaintext_size();
-        if self.position >= size || buf.is_empty() {
-            return Ok(0);
-        }
-        let held = self
-            .window
-            .as_ref()
-            .filter(|(start, bytes)| {
-                *start <= self.position && self.position < start + bytes.len() as u64
-            })
-            .is_some();
-        if !held {
-            let len = WINDOW.min(size - self.position);
-            let bytes = self
-                .runtime
-                .block_on(self.stream.read_at(self.position, len))
-                .map_err(std::io::Error::other)?;
-            self.window = Some((self.position, bytes));
-        }
-        let (start, bytes) = self.window.as_ref().expect("a window was fetched above");
-        let from = (self.position - start) as usize;
-        let count = buf.len().min(bytes.len() - from);
-        buf[..count].copy_from_slice(&bytes[from..from + count]);
-        self.position += count as u64;
-        Ok(count)
+        self.reader.read(buf)
     }
 
     fn seek(&mut self, to: SeekFrom) -> std::io::Result<u64> {
-        let target = match to {
-            SeekFrom::Start(offset) => Some(offset),
-            SeekFrom::Current(delta) => self.position.checked_add_signed(delta),
-            SeekFrom::End(delta) => self.stream.plaintext_size().checked_add_signed(delta),
-        };
-        self.position = target.ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "seek to a negative offset")
-        })?;
-        Ok(self.position)
+        self.reader.seek(to)
     }
 
     fn size(&self) -> std::io::Result<u64> {
-        Ok(self.stream.plaintext_size())
+        Ok(self.size)
     }
 }
 
@@ -116,8 +84,8 @@ impl CueImageOpener for LibraryImages {
         let stream = self.runtime.block_on(self.records.open_release_file(file_id, &self.lease))?;
         let stream = Arc::new(stream);
         Ok([
-            Box::new(StreamFile::new(stream.clone(), self.runtime.clone())),
-            Box::new(StreamFile::new(stream, self.runtime.clone())),
+            Box::new(StreamFile::new(&stream, self.runtime.clone())),
+            Box::new(StreamFile::new(&stream, self.runtime.clone())),
         ])
     }
 }

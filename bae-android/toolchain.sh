@@ -47,6 +47,10 @@ fi
 # scripts/build-ffmpeg-android.sh downloads.
 ANDROID_FFMPEG_DIR="$(dirname "$BAE_ANDROID_DIR")/bae-ffmpeg/android"
 
+# The libvips dist per arch (aarch64, x86_64), which
+# scripts/build-libvips-android.sh builds.
+ANDROID_LIBVIPS_DIR="$(dirname "$BAE_ANDROID_DIR")/bae-libvips/android"
+
 # android_rust_target <abi>: the Rust target triple that builds for an ABI.
 android_rust_target() {
     case "$1" in

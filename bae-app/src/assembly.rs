@@ -47,6 +47,7 @@ pub async fn start_library_services(
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
+    #[cfg(desktop)] tiles: bae_pictures::tile_cache::PictureTiles,
     position_update_interval_ms: u32,
     restore_playback: bool,
     playback_clock: bae_playback::PlaybackClockRef,
@@ -134,6 +135,7 @@ pub async fn start_library_services(
             import,
             identification,
             catalogs,
+            tiles,
         ))
     }
     #[cfg(not(desktop))]

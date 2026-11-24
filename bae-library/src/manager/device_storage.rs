@@ -1,7 +1,7 @@
 //! What this device keeps for the open library, in bytes on disk: its pinned
 //! releases, its cache, the library itself and what a reset left behind. The
-//! read is one live query that sums coven's byte tables and the catalog image
-//! cache's table; the commands clear the cache, set how much audio it keeps,
+//! read is one live query that sums coven's byte tables and the tables of the
+//! catalog image cache and the tile cache; the commands clear the cache, set how much audio it keeps,
 //! and delete what a reset kept.
 
 use super::*;
@@ -56,7 +56,8 @@ pub(crate) struct StorageSums {
     /// Pinned whole copies, and the partial downloads that stopped pins
     /// left.
     pub(crate) pinned: u64,
-    /// Cached chunks and headers, and the catalog image cache's files.
+    /// Cached chunks and headers, and the files of the catalog image cache
+    /// and the tile cache.
     pub(crate) cache: u64,
     /// The library's own files.
     pub(crate) library: u64,
@@ -66,14 +67,16 @@ pub(crate) struct StorageSums {
     pub(crate) total: u64,
 }
 
-/// One row of [`StorageSums`], from coven's byte tables and the catalog image
-/// cache's `cached_image`; `?1` is the audio namespace.
+/// One row of [`StorageSums`], from coven's byte tables, the catalog image
+/// cache's `cached_image` and the tile cache's `cached_tiles`; `?1` is the
+/// audio namespace.
 const STORAGE_SUMS: &str = "\
     WITH sums AS (SELECT \
         (SELECT budget FROM coven_cache_bytes WHERE namespace = ?1) AS audio_budget, \
         (SELECT COALESCE(SUM(pinned + pinning), 0) FROM coven_cache_bytes) AS pinned, \
         (SELECT COALESCE(SUM(cached), 0) FROM coven_cache_bytes) \
-            + (SELECT COALESCE(SUM(bytes), 0) FROM cached_image) AS cache, \
+            + (SELECT COALESCE(SUM(bytes), 0) FROM cached_image) \
+            + (SELECT COALESCE(SUM(bytes), 0) FROM cached_tiles) AS cache, \
         (SELECT COALESCE(SUM(bytes), 0) FROM coven_library_bytes) AS library, \
         (SELECT SUM(bytes) FROM coven_archive_bytes) AS before_reset) \
     SELECT audio_budget, pinned, cache, library, before_reset, \
@@ -134,10 +137,10 @@ impl LibraryManager {
     }
 
     /// Remove everything this device caches for the library: every
-    /// unpinned file and chunk, and the catalog images on a desktop. Pinned
-    /// releases and pins on the way stay. The stores are two, so a failure
-    /// of either returns to the caller with what was cleared still cleared,
-    /// all of it cache; calling again finishes.
+    /// unpinned file and chunk, the pictures' tiles, and the catalog images
+    /// on a desktop. Pinned releases and pins on the way stay. Each is
+    /// cleared in turn, so a failure of one returns to the caller with what
+    /// was cleared still cleared, all of it cache; calling again finishes.
     pub async fn clear_cache(&self) -> Result<(), LibraryError> {
         let namespaces: Vec<String> = crate::SCHEMA
             .namespaces()
@@ -152,6 +155,7 @@ impl LibraryManager {
                 Ok(())
             })
             .await?;
+        self.tiles.clear().await?;
         #[cfg(desktop)]
         self.remote_images.clear().await?;
         Ok(())

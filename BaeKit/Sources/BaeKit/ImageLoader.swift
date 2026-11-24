@@ -15,38 +15,74 @@ import ImageIO
     public typealias PlatformImage = UIImage
 #endif
 
-public enum ImageLoader {
-    /// Decode strategy for `load`. `.fitTo` takes the IDCT thumbnail
-    /// path, decoding at most `points × displayScale` pixels. `.native`
-    /// decodes the source at its full pixel resolution, eagerly, so
-    /// the returned image is ready to draw without main-thread
-    /// decode work. The lightbox loads `.fitTo` for the screen-fit view
-    /// and upgrades to `.native` only when the user zooms in, so a huge
-    /// (e.g. 35 MB) JPEG never decodes at full resolution until needed.
-    public enum Size: Sendable {
-        case fitTo(points: CGFloat)
-        case native
+extension PlatformImage {
+    /// The bitmap the image draws. Every decode here makes one, so an image
+    /// with none is a bug.
+    public var bitmap: CGImage {
+        #if canImport(AppKit)
+            var rect = CGRect(origin: .zero, size: size)
+            let bitmap = cgImage(
+                forProposedRect: &rect,
+                context: nil,
+                hints: nil
+            )
+        #elseif canImport(UIKit)
+            let bitmap = cgImage
+        #endif
+        guard let bitmap else {
+            preconditionFailure("a decoded image is a bitmap")
+        }
+        return bitmap
     }
+}
 
+public enum ImageLoader {
     public struct DecodeError: Error {}
 
     /// Decodes the image in `data`, bytes already in memory (core reads files
-    /// and hands over what the slot needs), at the given `size`. The decode
-    /// runs on `queue`, never on Swift's cooperative pool, and produces an
-    /// image backed by an already-decoded CGImage. Throws `CancellationError`
-    /// if the surrounding task is cancelled, or `shouldStart` answers false,
-    /// before the decode starts, or `DecodeError` if the bytes can't be
-    /// decoded. A decode that has started is not interrupted: its image is
-    /// returned even to a cancelled caller.
+    /// and hands over what the slot needs), to at most `points ×
+    /// displayScale` pixels on its longer side, by the IDCT thumbnail path.
+    /// The decode runs on `queue`, never on Swift's cooperative pool, and
+    /// produces an image backed by an already-decoded CGImage. Throws
+    /// `CancellationError` if the surrounding task is cancelled, or
+    /// `shouldStart` answers false, before the decode starts, or
+    /// `DecodeError` if the bytes can't be decoded. A decode that has started
+    /// is not interrupted: its image is returned even to a cancelled caller.
     public static func load(
         data: Data,
-        size: Size,
+        points: CGFloat,
         displayScale: CGFloat,
         queue: ImageDecodeQueue,
-        shouldStart: @escaping @Sendable () -> Bool = { true }
+        shouldStart: @escaping @Sendable () -> Bool
     ) async throws -> PlatformImage {
         let decoded = try await queue.run(shouldStart: shouldStart) {
-            decode(data: data, size: size, displayScale: displayScale)
+            thumbnail(of: data, points: points, displayScale: displayScale)
+        }
+        guard let decoded else {
+            throw DecodeError()
+        }
+        return decoded
+    }
+
+    /// Decodes the image in `data` at its own resolution, eagerly, for a
+    /// viewer that draws it itself: a tile core cut, at most 512 pixels on a
+    /// side. Throws as `load` does.
+    public static func loadTile(
+        data: Data,
+        queue: ImageDecodeQueue
+    ) async throws -> CGImage {
+        let decoded = try await queue.run {
+            CGImageSourceCreateWithData(data as CFData, nil)
+                .flatMap {
+                    // ShouldCacheImmediately forces the bytes-to-bitmap step to
+                    // run on the decode queue's thread instead of the first draw.
+                    CGImageSourceCreateImageAtIndex(
+                        $0,
+                        0,
+                        [kCGImageSourceShouldCacheImmediately: true]
+                            as CFDictionary
+                    )
+                }
         }
         guard let decoded else {
             throw DecodeError()
@@ -55,19 +91,27 @@ public enum ImageLoader {
     }
 }
 
-/// Decodes `data` to a platform image at the requested size, on the calling
-/// thread; nil when the bytes can't be decoded.
-private func decode(
-    data: Data,
-    size: ImageLoader.Size,
+/// Decodes `data` to a platform image of at most `points × displayScale`
+/// pixels, on the calling thread; nil when the bytes can't be decoded.
+private func thumbnail(
+    of data: Data,
+    points: CGFloat,
     displayScale: CGFloat
 ) -> PlatformImage? {
-    let cgSource = CGImageSourceCreateWithData(data as CFData, nil)
-    guard let cgSource,
-        let cg = decodeCGImage(
-            from: cgSource,
-            size: size,
-            displayScale: displayScale
+    // ShouldCacheImmediately forces the bytes-to-bitmap step to run on the
+    // decode queue's thread instead of being deferred until first draw on
+    // the main thread.
+    let options: [CFString: Any] = [
+        kCGImageSourceThumbnailMaxPixelSize: Int(points * displayScale),
+        kCGImageSourceCreateThumbnailFromImageAlways: true,
+        kCGImageSourceCreateThumbnailWithTransform: true,
+        kCGImageSourceShouldCacheImmediately: true,
+    ]
+    guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+        let cg = CGImageSourceCreateThumbnailAtIndex(
+            source,
+            0,
+            options as CFDictionary
         )
     else {
         return nil
@@ -87,40 +131,4 @@ private func decode(
         // transform.
         return UIImage(cgImage: cg, scale: displayScale, orientation: .up)
     #endif
-}
-
-/// Decodes `source` to a CGImage at the resolution implied by `size`.
-private func decodeCGImage(
-    from source: CGImageSource,
-    size: ImageLoader.Size,
-    displayScale: CGFloat
-) -> CGImage? {
-    // ShouldCacheImmediately forces the bytes-to-bitmap step to run on
-    // the decode queue's thread instead of being deferred until first
-    // draw on the main thread. It defaults to true for the thumbnail
-    // call and false for CreateImageAtIndex, but we set it explicitly
-    // in both branches so the policy is visible at the callsite.
-    switch size {
-    case .fitTo(let points):
-        let options: [CFString: Any] = [
-            kCGImageSourceThumbnailMaxPixelSize: Int(points * displayScale),
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCacheImmediately: true,
-        ]
-        return CGImageSourceCreateThumbnailAtIndex(
-            source,
-            0,
-            options as CFDictionary
-        )
-    case .native:
-        let options: [CFString: Any] = [
-            kCGImageSourceShouldCacheImmediately: true
-        ]
-        return CGImageSourceCreateImageAtIndex(
-            source,
-            0,
-            options as CFDictionary
-        )
-    }
 }

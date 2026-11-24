@@ -14,6 +14,7 @@ import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.PersonStore
+import fm.bae.app.data.PictureTileStore
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
@@ -94,6 +95,9 @@ class OpenLibrary internal constructor(
     // are keyed on this library's image ids — so it lives and dies with the
     // session, not the process.
     val imageStore = ImageStore(appHandle)
+
+    // The tiles the gallery zooms pictures from, read from this library.
+    val pictureTiles = PictureTileStore(appHandle)
 
     // Holds the multicast lock discovery needs, so it is built with the session
     // rather than per picker.

@@ -54,6 +54,7 @@ pub struct TestLibrary {
     ids: IdSourceRef,
     diagnostics: Diagnostics,
     remote_images: RemoteImageCache,
+    tiles: bae_pictures::tile_cache::PictureTiles,
 }
 
 impl TestLibrary {
@@ -103,6 +104,11 @@ impl TestLibrary {
         let import_tables = bae_import::tables::ImportTables::new(store.clone());
         let release_reads = bae_import::ReleaseReads::new(import_tables.clone(), catalogs.clone());
         let closing = CancellationToken::new();
+        let tiles = bae_pictures::tile_cache::PictureTiles::for_test(
+            store.clone(),
+            diagnostics.clone(),
+            tokio::runtime::Handle::current(),
+        );
         let manager = crate::open_library_manager(
             store.clone(),
             preferences.clone(),
@@ -119,6 +125,7 @@ impl TestLibrary {
             store.test_sources().files().clone(),
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
+            tiles.clone(),
             remote_images.clone(),
         )
         .await
@@ -137,6 +144,7 @@ impl TestLibrary {
             ids,
             diagnostics,
             remote_images,
+            tiles,
         }
     }
 
@@ -215,6 +223,11 @@ impl TestLibrary {
     /// The image cache the library fetches covers through.
     pub fn remote_images(&self) -> &RemoteImageCache {
         &self.remote_images
+    }
+
+    /// The tile cache the library's viewer zooms pictures from.
+    pub fn tiles(&self) -> &bae_pictures::tile_cache::PictureTiles {
+        &self.tiles
     }
 
     /// The import service alone, over the library's store, ending as the

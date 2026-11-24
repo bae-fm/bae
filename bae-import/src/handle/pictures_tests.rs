@@ -41,11 +41,12 @@ async fn a_picture_is_made_at_the_step_that_covers_the_request_and_read_once() {
     let mut fixture = stored_candidate().await;
     let (picture, path) = with_image(&mut fixture, "cover.gif").await;
 
-    let first = fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await;
-    let second = fixture.handle.read_picture(picture.clone(), Some(150), Priority::Visible).await;
+    let first = fixture.handle.read_picture(picture.clone(), 100, Priority::Visible).await;
+    let second = fixture.handle.read_picture(picture.clone(), 150, Priority::Visible).await;
     let (first, second) = (first.unwrap(), second.unwrap());
     let reads = reads::count(FileRead::PictureOriginal, &path);
-    let owner = fixture.handle.services.tables.picture_owner(&picture).await.unwrap().unwrap();
+    let owner =
+        fixture.handle.services.tables.picture_owner(&picture, None).await.unwrap().unwrap().owner;
     let kept = fixture.handle.services.tables.picture_copy_count(&owner).await.unwrap();
     shut_down(fixture.handle).await;
 
@@ -63,8 +64,8 @@ async fn two_requests_for_one_picture_and_size_read_the_file_once() {
     let (picture, path) = with_image(&mut fixture, "cover.gif").await;
 
     let (first, second) = tokio::join!(
-        fixture.handle.read_picture(picture.clone(), Some(300), Priority::Visible),
-        fixture.handle.read_picture(picture.clone(), Some(300), Priority::Prefetch),
+        fixture.handle.read_picture(picture.clone(), 300, Priority::Visible),
+        fixture.handle.read_picture(picture.clone(), 300, Priority::Prefetch),
     );
     let reads = reads::count(FileRead::PictureOriginal, &path);
     shut_down(fixture.handle).await;
@@ -74,23 +75,25 @@ async fn two_requests_for_one_picture_and_size_read_the_file_once() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn the_original_comes_back_as_the_files_own_bytes() {
+async fn the_original_opens_as_the_files_own_bytes() {
     let mut fixture = stored_candidate().await;
     let (picture, _) = with_image(&mut fixture, "cover.gif").await;
 
-    let original = fixture.handle.read_picture(picture, None, Priority::Visible).await;
+    let mut original = fixture.handle.open_picture_original(picture).await.unwrap();
+    let mut bytes = Vec::new();
+    tokio::task::block_in_place(|| std::io::Read::read_to_end(&mut original, &mut bytes)).unwrap();
     shut_down(fixture.handle).await;
 
-    assert_eq!(original.unwrap(), bae_util::test_cover_art::SOLID_GIF);
+    assert_eq!(bytes, bae_util::test_cover_art::SOLID_GIF);
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_candidate_set_aside_keeps_no_copies() {
     let mut fixture = stored_candidate().await;
     let (picture, _) = with_image(&mut fixture, "cover.gif").await;
-    fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await.unwrap();
+    fixture.handle.read_picture(picture.clone(), 100, Priority::Visible).await.unwrap();
     let tables = &fixture.handle.services.tables;
-    let owner = tables.picture_owner(&picture).await.unwrap().unwrap();
+    let owner = tables.picture_owner(&picture, None).await.unwrap().unwrap().owner;
     assert_eq!(tables.picture_copy_count(&owner).await.unwrap(), 1);
 
     tables.set_import_candidate_skipped(&fixture.candidate.path, true).await.unwrap();
@@ -108,7 +111,7 @@ async fn a_file_the_import_list_does_not_hold_is_refused() {
         file: crate::folder_scanner::FileVersion { path: stray, size: 51, modified_at_ns: 1 },
     };
 
-    let refused = fixture.handle.read_picture(picture, Some(100), Priority::Visible).await;
+    let refused = fixture.handle.read_picture(picture, 100, Priority::Visible).await;
     shut_down(fixture.handle).await;
 
     assert!(
@@ -122,8 +125,8 @@ async fn an_imported_candidate_keeps_no_copies() {
     let mut fixture = stored_candidate().await;
     let (picture, _) = with_image(&mut fixture, "cover.gif").await;
     let handle = &fixture.handle;
-    handle.read_picture(picture.clone(), Some(100), Priority::Visible).await.unwrap();
-    let owner = handle.services.tables.picture_owner(&picture).await.unwrap().unwrap();
+    handle.read_picture(picture.clone(), 100, Priority::Visible).await.unwrap();
+    let owner = handle.services.tables.picture_owner(&picture, None).await.unwrap().unwrap().owner;
     assert_eq!(handle.services.tables.picture_copy_count(&owner).await.unwrap(), 1);
 
     handle.select_candidate_file_tags(fixture.key.clone()).await.unwrap();
@@ -150,8 +153,9 @@ async fn a_file_replaced_after_its_scan_makes_no_copy() {
     // The person saves another picture over the file after the scan read it.
     fixture.tmp.write(&path, bae_util::test_cover_art::SOLID_WEBP);
 
-    let refused = fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await;
-    let owner = fixture.handle.services.tables.picture_owner(&picture).await.unwrap().unwrap();
+    let refused = fixture.handle.read_picture(picture.clone(), 100, Priority::Visible).await;
+    let owner =
+        fixture.handle.services.tables.picture_owner(&picture, None).await.unwrap().unwrap().owner;
     let kept = fixture.handle.services.tables.picture_copy_count(&owner).await.unwrap();
     shut_down(fixture.handle).await;
 
@@ -172,7 +176,7 @@ async fn a_file_touched_after_its_scan_makes_no_copy() {
         .set_modified(std::time::SystemTime::now())
         .expect("set the file's modification time");
 
-    let refused = fixture.handle.read_picture(picture, Some(100), Priority::Visible).await;
+    let refused = fixture.handle.read_picture(picture, 100, Priority::Visible).await;
     shut_down(fixture.handle).await;
 
     assert!(
@@ -185,11 +189,11 @@ async fn a_file_touched_after_its_scan_makes_no_copy() {
 async fn a_rescan_that_finds_the_same_file_keeps_its_copies() {
     let mut fixture = stored_candidate().await;
     let (picture, path) = with_image(&mut fixture, "cover.gif").await;
-    let first = fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await;
+    let first = fixture.handle.read_picture(picture.clone(), 100, Priority::Visible).await;
 
     // The folder is read and stored again, as a scan does after it changes.
     rescan_into(&fixture.handle.services.tables, fixture.candidate.clone()).await;
-    let second = fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await;
+    let second = fixture.handle.read_picture(picture.clone(), 100, Priority::Visible).await;
     let reads = reads::count(FileRead::PictureOriginal, &path);
     shut_down(fixture.handle).await;
 

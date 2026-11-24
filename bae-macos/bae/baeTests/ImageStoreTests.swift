@@ -43,28 +43,6 @@ private actor FetchCount {
     }
 }
 
-/// Holds every fetch that reaches it until `open`, so a test decides when a load
-/// in flight may finish.
-private actor FetchGate {
-    private var isOpen = false
-    private var held: [CheckedContinuation<Void, Never>] = []
-
-    func pass() async {
-        if isOpen {
-            return
-        }
-        await withCheckedContinuation { held.append($0) }
-    }
-
-    func open() {
-        isOpen = true
-        for fetch in held {
-            fetch.resume()
-        }
-        held = []
-    }
-}
-
 /// A fetch that waits until it is cancelled, announcing its start and its
 /// cancellation.
 private final class CancellableFetch: Sendable {
@@ -109,8 +87,8 @@ private final class SerialTaskExecutor: TaskExecutor {
 private actor PictureAsks {
     private(set) var asks: [String] = []
 
-    func record(_ pixels: UInt32?, _ turn: BridgePictureTurn) {
-        let size = pixels.map { "\($0) px" } ?? "original"
+    func record(_ pixels: UInt32, _ turn: BridgePictureTurn) {
+        let size = "\(pixels) px"
         let turnName =
             switch turn {
             case .visible: "visible"
@@ -121,9 +99,9 @@ private actor PictureAsks {
 }
 
 private actor PixelReads {
-    private(set) var pixels: [UInt32?] = []
+    private(set) var pixels: [UInt32] = []
 
-    func record(_ value: UInt32?) {
+    func record(_ value: UInt32) {
         pixels.append(value)
     }
 }
@@ -166,7 +144,7 @@ struct ImageStoreCacheTests {
     }
 
     @Test(
-        "provider art is fetched for the slot's pixel size, and a viewer's decode for the original"
+        "provider art is fetched for the slot's pixel size"
     )
     func remoteArtIsFetchedForTheSlotsPixelSize() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
@@ -189,13 +167,12 @@ struct ImageStoreCacheTests {
 
         _ = try await store.image(content, pointSize: 40, displayScale: 2)
         _ = try await store.image(content, pointSize: 260, displayScale: 2)
-        _ = try await store.decodeSource(for: content, at: .nativeResolution)
 
-        #expect(await asked.pixels == [80, 520, nil])
+        #expect(await asked.pixels == [80, 520])
     }
 
     @Test(
-        "a picture of the import list is asked of core at the slot's pixels, a viewer's decode for the original, and a warm as a prefetch"
+        "a picture of the import list is asked of core at the slot's pixels, and a warm as a prefetch"
     )
     func importPicturesAskCoreForTheSlotsPixels() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
@@ -213,12 +190,11 @@ struct ImageStoreCacheTests {
         )
 
         _ = try await store.image(content, pointSize: 40, displayScale: 2)
-        _ = try await store.fullResolutionImage(content, displayScale: 2)
         await store.warm([content], pointSize: 90, displayScale: 2)
 
         #expect(
             await asked.asks == [
-                "80 px visible", "original visible", "180 px prefetch",
+                "80 px visible", "180 px prefetch",
             ]
         )
     }

@@ -31,15 +31,24 @@ fn step_column(step: PictureStep) -> i64 {
     i64::from(step.edge())
 }
 
+/// A picture of the import list: its owner, and the copy at the step that
+/// was asked for when its candidate keeps one.
+pub(crate) struct OwnedPicture {
+    pub(crate) owner: PictureOwner,
+    pub(crate) kept: Option<PictureCopy>,
+}
+
 impl ImportTables {
     /// The candidate whose scan holds the picture's file, or `None` when none
     /// does: a file that is not an image of a stored candidate is no picture
     /// of the import list. Embedded art belongs to the candidate its source
-    /// names.
+    /// names. With a `step`, the owner comes with the copy at that step its
+    /// candidate keeps, if it keeps one.
     pub(crate) async fn picture_owner(
         &self,
         source: &ImportPicture,
-    ) -> Result<Option<PictureOwner>, DbError> {
+        step: Option<PictureStep>,
+    ) -> Result<Option<OwnedPicture>, DbError> {
         let (source_kind, file, embedded_in) = match source {
             ImportPicture::Folder { file } => ("folder_file", file.clone(), None),
             ImportPicture::Embedded { source, candidate, .. } => {
@@ -49,6 +58,18 @@ impl ImportTables {
         let FileVersion { path, size, modified_at_ns } = file;
         let source_path = coven::path_bytes(&path);
         let source_size = to_i64(size, "a picture file's size")?;
+        let step = step.map(step_column);
+        // The copy joins on the owner's own columns and the version of the
+        // source; with no step it matches nothing.
+        let kept_join = |owner: &str, candidate: &str| {
+            format!(
+                "LEFT JOIN import_picture_copy AS k \
+                   ON k.watched_folder_path = {owner}.watched_folder_path \
+                  AND k.candidate_path = {owner}.{candidate} \
+                  AND k.source_kind = ? AND k.source_path = ? AND k.source_size = ? \
+                  AND k.source_modified_at_ns = ? AND k.step = ? "
+            )
+        };
         self.store
             .read(move |sql| {
                 let row = |row: &rusqlite::Row<'_>| {
@@ -56,92 +77,88 @@ impl ImportTables {
                         row.get::<_, Vec<u8>>(0)?,
                         row.get::<_, Vec<u8>>(1)?,
                         row.get::<_, String>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                        row.get::<_, Option<Vec<u8>>>(4)?,
                     ))
                 };
                 let found = match &embedded_in {
                     None => sql
                         .query_row(
-                            "SELECT f.watched_folder_path, f.candidate_path, r.volume \
-                             FROM scan_candidate_file AS f \
-                             JOIN folder_scan_roots AS r \
-                               ON r.watched_folder_path = f.watched_folder_path \
-                             WHERE f.absolute_path = ? AND f.size = ? \
-                               AND f.modified_at_ns = ? AND f.role = 'artwork' \
-                             LIMIT 1",
-                            params![source_path, source_size, modified_at_ns],
+                            &format!(
+                                "SELECT f.watched_folder_path, f.candidate_path, r.volume, \
+                                        k.format, k.bytes \
+                                 FROM scan_candidate_file AS f \
+                                 JOIN folder_scan_roots AS r \
+                                   ON r.watched_folder_path = f.watched_folder_path \
+                                 {} \
+                                 WHERE f.absolute_path = ? AND f.size = ? \
+                                   AND f.modified_at_ns = ? AND f.role = 'artwork' \
+                                 LIMIT 1",
+                                kept_join("f", "candidate_path")
+                            ),
+                            params![
+                                source_kind,
+                                source_path,
+                                source_size,
+                                modified_at_ns,
+                                step,
+                                source_path,
+                                source_size,
+                                modified_at_ns
+                            ],
                             row,
                         )
                         .optional()?,
                     Some(candidate) => sql
                         .query_row(
-                            "SELECT c.watched_folder_path, c.path, r.volume \
-                             FROM scan_candidate AS c \
-                             JOIN folder_scan_roots AS r \
-                               ON r.watched_folder_path = c.watched_folder_path \
-                             WHERE c.path = ? LIMIT 1",
-                            [candidate],
+                            &format!(
+                                "SELECT c.watched_folder_path, c.path, r.volume, \
+                                        k.format, k.bytes \
+                                 FROM scan_candidate AS c \
+                                 JOIN folder_scan_roots AS r \
+                                   ON r.watched_folder_path = c.watched_folder_path \
+                                 {} \
+                                 WHERE c.path = ? LIMIT 1",
+                                kept_join("c", "path")
+                            ),
+                            params![
+                                source_kind,
+                                source_path,
+                                source_size,
+                                modified_at_ns,
+                                step,
+                                candidate
+                            ],
                             row,
                         )
                         .optional()?,
                 };
                 found
-                    .map(|(watched_folder_path, candidate_path, volume)| {
-                        Ok(PictureOwner {
-                            watched_folder_path,
-                            candidate_path,
-                            volume: volume_of(&volume)?,
-                            source_kind,
-                            source_path,
-                            source_size,
-                            source_modified_at_ns: modified_at_ns,
+                    .map(|(watched_folder_path, candidate_path, volume, format, bytes)| {
+                        let kept = match (format, bytes) {
+                            (Some(format), Some(bytes)) => {
+                                let format =
+                                    CopyFormat::from_stored_name(&format).ok_or_else(|| {
+                                        DbError::unreadable("a kept picture copy's format", &format)
+                                    })?;
+                                Some(PictureCopy { format, bytes })
+                            }
+                            _ => None,
+                        };
+                        Ok(OwnedPicture {
+                            owner: PictureOwner {
+                                watched_folder_path,
+                                candidate_path,
+                                volume: volume_of(&volume)?,
+                                source_kind,
+                                source_path,
+                                source_size,
+                                source_modified_at_ns: modified_at_ns,
+                            },
+                            kept,
                         })
                     })
                     .transpose()
-            })
-            .await
-    }
-
-    /// The copy of the owner's picture at `step` that its candidate keeps, if
-    /// it keeps one.
-    pub(crate) async fn load_picture_copy(
-        &self,
-        owner: &PictureOwner,
-        step: PictureStep,
-    ) -> Result<Option<PictureCopy>, DbError> {
-        let owner = owner.clone();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    "SELECT format, bytes FROM import_picture_copy \
-                     WHERE watched_folder_path = ? AND candidate_path = ? \
-                       AND source_kind = ? AND source_path = ? AND source_size = ? \
-                       AND source_modified_at_ns = ? AND step = ?",
-                    params![
-                        owner.watched_folder_path,
-                        owner.candidate_path,
-                        owner.source_kind,
-                        owner.source_path,
-                        owner.source_size,
-                        owner.source_modified_at_ns,
-                        step_column(step)
-                    ],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?)),
-                )
-                .optional()?
-                .map(|(format, bytes)| {
-                    let format = match format.as_str() {
-                        "jpeg" => CopyFormat::Jpeg,
-                        "png" => CopyFormat::Png,
-                        other => {
-                            return Err(DbError::Unreadable {
-                                what: "a kept picture copy's format".to_string(),
-                                stored: other.to_string(),
-                            })
-                        }
-                    };
-                    Ok(PictureCopy { format, bytes })
-                })
-                .transpose()
             })
             .await
     }
@@ -156,10 +173,7 @@ impl ImportTables {
         copy: &PictureCopy,
     ) -> Result<(), DbError> {
         let owner = owner.clone();
-        let format = match copy.format {
-            CopyFormat::Jpeg => "jpeg",
-            CopyFormat::Png => "png",
-        };
+        let format = copy.format.stored_name();
         let bytes = copy.bytes.clone();
         self.store
             .write(move |sql| {

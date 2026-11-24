@@ -63,7 +63,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         .await
         .expect_err("bytes that are no image make no cover");
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ImportData, "{error}");
-    assert!(manager.records.cover_source(&release.id).await.unwrap().is_none());
+    assert!(manager.records.cover_source_for_test(&release.id).await.unwrap().is_none());
 }
 
 async fn assert_changed_cover(
@@ -118,9 +118,9 @@ async fn assert_changed_cover(
     // The cover is made from the release file it was picked from, which it
     // names, and keeps no original of its own. Its large copy fits 1536 pixels
     // and is never larger than the picture.
-    let source = manager.records.cover_source(&release.id).await.unwrap();
+    let source = manager.records.cover_source_for_test(&release.id).await.unwrap();
     assert_eq!(source, Some(bae_records::CoverSource::ReleaseFile { file_id: file.id }));
-    assert!(manager.records.cover_original_file(&release.id).await.unwrap().is_none());
+    assert!(manager.records.cover_original_file_for_test(&release.id).await.unwrap().is_none());
     let large = manager
         .read_cover_copy(&release.id, bae_records::CoverCopy::Large)
         .await
@@ -178,7 +178,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
             .await
     };
     let cover_row = async || {
-        manager.records.cover_source(&release.id).await.unwrap().expect("cover row stored")
+        manager.records.cover_source_for_test(&release.id).await.unwrap().expect("cover row stored")
     };
 
     let cover_version =
@@ -274,14 +274,37 @@ async fn an_image_file_with_no_preview_fails_a_small_read_and_still_opens_whole(
     manager.add_external_file_for_test(&file, &source_path).await.unwrap();
     let slot = bae_records::GallerySource::ReleaseFile { file_id: file.id.clone() };
 
-    let sized = manager.read_gallery_bytes(&release.id, &slot, Some(360)).await;
-    let whole = manager.read_gallery_bytes(&release.id, &slot, None).await.unwrap();
-    let viewer = manager.read_gallery_bytes(&release.id, &slot, Some(1800)).await.unwrap();
+    let sized = manager.read_gallery_bytes(&release.id, &slot, 360).await;
+    let viewer = manager.read_gallery_bytes(&release.id, &slot, 1800).await.unwrap();
 
     assert!(
         matches!(&sized, Err(LibraryError::Storage(detail)) if detail.contains("has no preview")),
         "{sized:?}"
     );
-    assert_eq!(whole, b"scan bytes");
-    assert_eq!(viewer, whole, "a size above the preview's is a viewer's, and reads the file");
+    assert_eq!(viewer, b"scan bytes", "a size above the preview's reads the file");
+}
+
+/// A file whose reads fail keeps its read failure when the parser of its tags
+/// meets it, as a stored picture's does, and a file that is no audio is a
+/// storage error.
+#[test]
+fn a_failed_read_of_an_audio_files_tags_keeps_its_file_read_failure() {
+    struct Unreadable;
+    impl std::io::Read for Unreadable {
+        fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other(coven::FileReadError::NoStorage))
+        }
+    }
+    impl std::io::Seek for Unreadable {
+        fn seek(&mut self, _: std::io::SeekFrom) -> std::io::Result<u64> {
+            Ok(0)
+        }
+    }
+
+    let error = tag_art_of(Unreadable, "a cover").unwrap_err();
+    assert!(matches!(error, LibraryError::FileRead { .. }), "{error:?}");
+    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Config);
+
+    let error = tag_art_of(std::io::Cursor::new(vec![0u8; 64]), "a cover").unwrap_err();
+    assert!(matches!(error, LibraryError::Storage(_)), "{error:?}");
 }

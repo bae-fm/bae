@@ -66,6 +66,7 @@ impl Library {
             import.clone(),
             identification.clone(),
             library.catalogs().clone(),
+            library.tiles().clone(),
         );
         let root = temp.create_folder("watched");
         Self { services, import, identification, db, provider, root, temp_folder: temp }

@@ -2100,7 +2100,7 @@ album's, a gallery entry's number and what it shows (front, back, booklet and
 the archive's other types) and the archive's comment, joined by the language's
 separator. A release's gallery holds its cover and each image bae can show, a JPEG, PNG, GIF or WebP, and names its cover Cover and an image file by its
 filename. A cover made from one of the release's image files is that file's entry, named Cover, so
-the picture shows once, first; a cover that keeps a picture of its own is an entry of its own, first. On Android the album page's cover opens the gallery only when the
+the picture shows once, first; a cover made from art in an audio file, or that keeps a catalog image of its own, is an entry of its own, first. On Android the album page's cover opens the gallery only when the
 release has gallery items, and the gallery shows its page counter, with the
 number of items as its total, only when it holds more than one. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
@@ -2139,8 +2139,8 @@ chunks when no request wants the picture any more. A disk is read a few pictures
 at a time, a network share fewer, and a picture a screen shows goes before one
 it only expects to show. The candidate keeps each copy on this device until it is
 imported or set aside, so showing the picture again reads the copy, and nothing
-syncs a copy. The lightbox's zoom asks core for the original's own bytes through
-the same reader. Core refuses a file that is not an image of a candidate in the
+syncs a copy. The lightbox's zoom reads the original through the same reader
+(below). Core refuses a file that is not an image of a candidate in the
 import list.
 
 A library release's picker and a candidate's each show, under the source the
@@ -2911,6 +2911,7 @@ pushes the covers out:
 | Release image previews (384 pixels) | 1 GiB |
 | Artist images | 256 MiB |
 | Avatars | 64 MiB |
+| Picture tiles (the viewer's zoom) | 512 MiB |
 
 A browse copy is about 100 KB, so its 1 GiB holds the copies of 10,000 albums,
 twice a library of 5,000. A device downloads a large copy (about 400 KB) only
@@ -2926,6 +2927,46 @@ A file downloads when it is first read: a cover when it is first shown, a
 track as it plays. Over budget, the least recently used go first. Covers are
 never pinned; an evicted one is fetched again the next time it is shown.
 The Mac lightbox and Android gallery name the image while it loads.
+
+**Zooming a picture.** The Mac lightbox and the Android gallery zoom any
+picture they show, however large, from tiles that core cuts: a library
+release's cover or image file, and on the Mac a catalog's image and a picture
+of the import list. The viewer first shows the picture fitted to the screen,
+as a copy, and asks core for its tiles once the person zooms past it, so
+opening a picture cuts nothing. Core cuts the picture once into tiles
+of 512 pixels at each zoom level, from the picture's own size halving down to
+the level that fits one tile, reading the original once, in chunks, never
+memory-mapped, and writing each band of tiles as its rows arrive, so a few
+rows of the picture are in memory and never all of it. It turns the tiles
+upright by the picture's orientation flag and converts their colours to sRGB.
+A cut stops between two chunks when no viewer wants the picture any more. The
+viewer asks core for the tiles that come on screen, at the level whose pixels
+match the screen's at its zoom, shows the coarser level's tile, or the copy,
+until each arrives, stops asking for the tiles that leave the screen, and
+holds at most 64 MiB of them in memory. When core cannot give the levels or a
+tile, because the picture's file cannot be read or the network is down, the
+viewer asks for no more
+tiles of that picture and shows the failure as it shows a picture that did
+not load, with Retry when core says trying again can help, which loads the
+picture and its tiles again; a picture file the device cannot decode shows
+the same failure with no Retry; a bug in the viewer shows it with no Retry too,
+and goes to the bug report.
+Pinching zooms in and out, and the picture stays zoomed until the person
+zooms out or moves to another picture; while it is zoomed, the person drags
+or scrolls across it. On the Mac, Live Text reads what is on screen at the
+current zoom.
+
+Core keeps the tiles in this device's tile cache, for library and import
+pictures alike, so reopening a recently zoomed picture shows its tiles at once.
+Each picture's tiles are a folder in the library's cache folder, with a row in
+the device-local table `cached_tiles` that holds the folder's size and when a
+viewer last opened it (Appendix A.13). Every row names a folder that is there.
+A folder that no row names, which a crash can leave, bae neither reads nor
+counts, and Clear cache removes it. When the rows' sizes add up to more than
+512 MiB, bae deletes the rows of
+the pictures opened longest ago, and their folders, until the rest fit; the
+picture opened last stays, even when its tiles alone are over 512 MiB. The
+tiles never sync.
 
 The download queue holds pins and moves-to-this-device (§4.4) and downloads one release
 at a time. Pins download from a queue that can be paused,
@@ -3174,9 +3215,10 @@ appears. The categories appear in this order.
   being kept (the partial downloads a stopped pin keeps). Pinned releases don't
   count toward the cache (§4.3).
 - **Cache**: tracks played from the cloud, covers' copies and originals,
-  pictures, and on a
+  pictures, the tiles the viewer zoomed pictures from (§4.3), and on a
   desktop the catalog images found while importing. bae downloads them again
-  when the person plays or opens them.
+  when the person plays or opens them, and cuts the tiles again from the
+  picture when the person zooms it.
 - **Library**: the library's database, its settings and keys, and the copies
   of files coven keeps until they are stored.
 - **From before the reset**: the installation a reset of this device kept
@@ -3194,10 +3236,11 @@ sizes add up to more than 128 MiB, bae deletes the rows of the files it read
 or wrote longest ago, and those files, until the rest fit.
 
 **Clear cache** removes every unpinned file and chunk in every kind of file the
-library keeps, and on a desktop deletes every `cached_image` row and then the
-catalog images' folder. Pinned releases and pins on
-the way stay. It asks nothing, and is off while the cache is empty. The two
-stores are cleared one after the other; a failure of either is reported, what
+library keeps, deletes every `cached_tiles` row and then the tiles' folder, and
+on a desktop deletes every `cached_image` row and then the catalog images'
+folder. Pinned releases and pins on
+the way stay. It asks nothing, and is off while the cache is empty. The
+stores are cleared one after the other; a failure of one is reported, what
 was cleared stays cleared since it was all cache, and clearing again finishes.
 
 **Keep up to** is how much audio and other release files the cache holds before
@@ -6189,8 +6232,8 @@ the desktop's secret service.
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the panic hook that reports each panic once, the tasks and threads that end what a panicking one served, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
-| bae-audio | the audio codec over FFmpeg (decode, encode, probe, resample), the sparse buffer a decode reads a file's bytes from, and the stream a decoded track plays from |
-| bae-pictures | copies of pictures at fixed sizes through libvips: the names of a picture and of a size, the copy made from one read of the original in chunks a job stops between, with orientation and colour applied, the job that requests for one picture and size share, and how many reads a volume takes at once |
+| bae-audio | the audio codec over FFmpeg (decode, encode, probe, resample), the sparse buffer a decode reads a file's bytes from, the stream a decoded track plays from, and the art an audio file's tags carry |
+| bae-pictures | pictures through libvips: copies at fixed sizes, and the tiles a viewer zooms a picture from, each made from one read of the original in chunks a job stops between, with orientation and colour applied; the job that requests for one picture share; the tile cache, with its table `cached_tiles`; and how many reads a volume takes at once |
 | bae-types | the domain values the catalogs, identification and the library share: what a pressing is, how two pieces of written text name one thing, and how a barcode is read |
 | bae-util | what the other crates build on, with no library vocabulary and nothing else in bae beneath it: content types, duration labels, outbound HTTP and its retries, error text, the natural order of names and the folding library search compares text by, stored images, text encodings, the embedded-server lifecycle, the log subscriber every app installs |
 | bae-bridge | the uniffi exports for the apps |
@@ -6539,6 +6582,14 @@ Never synced (§4.7).
 | Table | One row per |
 |---|---|
 | `cached_image` | file in the catalog image cache's folder, keyed by its name (the SHA-256 of the image's address): its size in bytes, and its place in the order of the cache's reads and writes, one past the highest each time bae writes or reads the file, which eviction removes the lowest of first |
+
+### A.13 Tile cache (bae-pictures)
+
+Never synced (§4.3, §4.7).
+
+| Table | One row per |
+|---|---|
+| `cached_tiles` | folder in the tile cache's folder, keyed by its name (the SHA-256 of what names the picture's bytes: a release file's id, a cover's version, a catalog image's address, or an import picture's file and version): the picture's width and height upright, the format of its tiles (JPEG, or PNG for a picture with transparency), the folder's size in bytes, and its place in the order of the cache's cuts and of viewers opening it, which eviction removes the lowest of first |
 
 ---
 

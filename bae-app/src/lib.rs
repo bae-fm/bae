@@ -648,6 +648,12 @@ fn open_library(
     let people = bae_people::People::new(store.clone(), files.clone());
     let membership = bae_people::Membership::new(store.clone());
     let sync_status = bae_sync_status::SyncStatus::new(store.clone());
+    let tiles = bae_pictures::tile_cache::PictureTiles::new(
+        &app_dir.registered_library(library_id),
+        store.clone(),
+        diagnostics.clone(),
+        runtime.handle().clone(),
+    );
     #[cfg(desktop)]
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
         &app_dir.registered_library(library_id),
@@ -690,6 +696,7 @@ fn open_library(
                 files.clone(),
                 diagnostics.clone(),
                 runtime.handle().clone(),
+                tiles.clone(),
                 #[cfg(desktop)]
                 remote_images.clone(),
             ))
@@ -791,6 +798,8 @@ fn open_library(
                     runtime.handle().clone(),
                     #[cfg(desktop)]
                     remote_images,
+                    #[cfg(desktop)]
+                    tiles,
                     position_update_interval_ms,
                     restore_playback,
                     Arc::new(bae_playback::WallPlaybackClock::new(Arc::clone(&clock))),

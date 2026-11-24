@@ -102,6 +102,15 @@ pub enum CoverSource {
     Original,
 }
 
+/// The picture a release's cover is made from, with the coven file that holds
+/// it: the image file, the audio file whose tags hold the art, or the
+/// catalog image the cover keeps as its original.
+#[derive(Debug, Clone)]
+pub struct CoverPicture {
+    pub source: CoverSource,
+    pub file: coven::FileRef,
+}
+
 impl CoverSource {
     /// The source a row's `source_file` and `embedded_file` columns state:
     /// the image file or the audio file one of them names, or neither for a

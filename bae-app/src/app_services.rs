@@ -106,6 +106,10 @@ struct AppServicesInner {
     /// library waits for before its store closes.
     #[cfg(desktop)]
     catalogs: bae_import::CatalogSessions,
+    /// The library's tile cache, which the viewer's pictures from outside
+    /// the library are cut and read through.
+    #[cfg(desktop)]
+    tiles: bae_pictures::tile_cache::PictureTiles,
 }
 
 impl Drop for AppServicesInner {
@@ -157,6 +161,7 @@ impl AppServices {
         #[cfg(desktop)] import: ImportServiceHandle,
         #[cfg(desktop)] identification: IdentificationHandle,
         #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
+        #[cfg(desktop)] tiles: bae_pictures::tile_cache::PictureTiles,
     ) -> Self {
         AppServices {
             inner: Arc::new(AppServicesInner {
@@ -175,6 +180,8 @@ impl AppServices {
                 identification,
                 #[cfg(desktop)]
                 catalogs,
+                #[cfg(desktop)]
+                tiles,
             }),
         }
     }
@@ -526,7 +533,7 @@ impl AppServices {
     delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_records::ImageRef>, bae_library::LibraryError>);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_records::ImageRef, pixels: Option<u32>) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &bae_records::LibraryImageType) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
-    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &bae_records::GallerySource, pixels: Option<u32>) -> Result<Vec<u8>, bae_library::LibraryError>);
+    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &bae_records::GallerySource, pixels: u32) -> Result<Vec<u8>, bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, read_release_document => read_release_document(release_id: &str, file_id: &str) -> Result<String, bae_library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_lib!(records, get_shown_artists_for_track => get_shown_artists_for_track(track_id: &str) -> Vec<bae_records::credits::LibraryCredit>);
@@ -900,6 +907,10 @@ mod import_list_reads;
 mod list_reads;
 #[cfg(desktop)]
 mod pane;
+mod picture_tiles;
+#[cfg(desktop)]
+pub use picture_tiles::OutsidePicture;
+pub use picture_tiles::TiledPicture;
 mod playback_reads;
 mod queue_reads;
 #[cfg(desktop)]

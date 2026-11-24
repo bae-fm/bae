@@ -66,6 +66,7 @@ mod locality;
 #[cfg(desktop)]
 mod output;
 mod people;
+mod picture_tiles;
 mod pin;
 mod playback_state;
 #[cfg(desktop)]
@@ -180,6 +181,9 @@ pub enum LibraryError {
     Encryption(#[from] coven::CryptoError),
     #[error("Storage error: {0}")]
     Storage(String),
+    /// A picture's tiles could not be cut or read.
+    #[error(transparent)]
+    Tiles(#[from] bae_pictures::tile_cache::TilesError),
     /// Reading, pinning, or unpinning a file's bytes through coven failed.
     #[error("{operation}: {error}")]
     FileRead {
@@ -442,6 +446,7 @@ impl LibraryError {
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),
+            LibraryError::Tiles(error) => tiles_category(error),
             LibraryError::MoveToThisDevice(error) => device_only_category(error),
             LibraryError::StorageMove(error) => {
                 write_error_category(error, storage_move_refusal_category)
@@ -483,6 +488,33 @@ impl From<bae_import::CatalogSessionError> for LibraryError {
             bae_import::CatalogSessionError::Preferences(error) => Self::Database(error),
             bae_import::CatalogSessionError::Keyring(error) => Self::Keyring(error),
         }
+    }
+}
+
+/// The class a surface words a picture's tile failure in: the opener's own
+/// when the original could not be opened, the store's when the cache's rows
+/// failed, coven's own when reading the original failed, and otherwise a bug.
+fn tiles_category(
+    error: &bae_pictures::tile_cache::TilesError,
+) -> bae_diagnostics::UiErrorCategory {
+    use bae_pictures::tile_cache::TilesError;
+    match error {
+        TilesError::Open(open) => open.category.clone(),
+        TilesError::Shared(error) => tiles_category(error),
+        TilesError::Store(error) => bae_diagnostics::database_category(error),
+        // A read of the original that failed carries coven's own failure, which
+        // says whether it was the network.
+        TilesError::Pictures(bae_pictures::PicturesError::Read(error)) => {
+            error.get_ref().and_then(|cause| cause.downcast_ref::<coven::FileReadError>()).map_or(
+                bae_diagnostics::UiErrorCategory::Internal,
+                bae_diagnostics::file_read_category,
+            )
+        }
+        TilesError::Pictures(_)
+        | TilesError::Task(_)
+        | TilesError::Panicked
+        | TilesError::NoTile { .. }
+        | TilesError::Missing { .. } => bae_diagnostics::UiErrorCategory::Internal,
     }
 }
 
@@ -797,6 +829,8 @@ pub struct LibraryManager {
     /// module.
     #[cfg(desktop)]
     outputs: bae_transfers::Outputs,
+    /// The tiles of the pictures viewers zoomed, which Clear cache empties.
+    tiles: bae_pictures::tile_cache::PictureTiles,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     #[cfg(desktop)]

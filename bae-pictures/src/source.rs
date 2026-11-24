@@ -17,12 +17,25 @@ use crate::{IsCancelled, PictureOrigin, PicturesError};
 struct Reader {
     origin: Mutex<Box<dyn PictureOrigin>>,
     cancelled: IsCancelled,
+    /// Why the first read that failed did, which libvips alone cannot say: a
+    /// failed read ends a JPEG as a truncated picture and a PNG as a warning,
+    /// so a save from the source can succeed over a picture that stops early.
+    failure: Mutex<Option<PicturesError>>,
+}
+
+impl Reader {
+    /// Keep why a read failed, unless an earlier read's failure is kept.
+    fn fail(&self, error: PicturesError) {
+        self.failure.lock().unwrap_or_else(PoisonError::into_inner).get_or_insert(error);
+    }
 }
 
 /// A source over one origin. Dropping it releases this handle, and libvips
 /// frees the origin once the images made from the source are gone.
 pub(crate) struct OriginSource {
     source: *mut VipsSource,
+    /// The source's reader, which lives while this handle does.
+    reader: *const Reader,
 }
 
 impl OriginSource {
@@ -31,8 +44,11 @@ impl OriginSource {
         cancelled: IsCancelled,
     ) -> Result<Self, PicturesError> {
         crate::vips::init()?;
-        let reader =
-            Box::into_raw(Box::new(Reader { origin: Mutex::new(Box::new(origin)), cancelled }));
+        let reader = Box::into_raw(Box::new(Reader {
+            origin: Mutex::new(Box::new(origin)),
+            cancelled,
+            failure: Mutex::new(None),
+        }));
         // SAFETY: the signal handlers match the argument lists of
         // VipsSourceCustom's `read` and `seek` signals, and `reader` lives
         // until libvips calls `free_reader` as the source is finalized.
@@ -62,7 +78,22 @@ impl OriginSource {
             );
             source
         };
-        Ok(Self { source })
+        Ok(Self { source, reader })
+    }
+
+    /// Why a read of the picture failed, if one did: a save from this source
+    /// that returned Ok over a failed read holds a picture that stops early.
+    pub(crate) fn take_failure(&self) -> Option<PicturesError> {
+        // SAFETY: `reader` lives while libvips holds the source, which this
+        // handle does until it is dropped.
+        let reader = unsafe { &*self.reader };
+        reader.failure.lock().unwrap_or_else(PoisonError::into_inner).take()
+    }
+
+    /// What libvips' `error` came from: the failed read of the picture when
+    /// one failed, since libvips reports only that it could not read.
+    pub(crate) fn blame_read(&self, error: PicturesError) -> PicturesError {
+        self.take_failure().unwrap_or(error)
     }
 
     pub(crate) fn as_ptr(&self) -> *mut VipsSource {
@@ -95,6 +126,7 @@ unsafe extern "C" fn read(
         (&*data.cast::<Reader>(), slice::from_raw_parts_mut(buffer.cast::<u8>(), length))
     };
     if (reader.cancelled)() {
+        reader.fail(PicturesError::Cancelled);
         return -1;
     }
     let mut origin = reader.origin.lock().unwrap_or_else(PoisonError::into_inner);
@@ -104,6 +136,7 @@ unsafe extern "C" fn read(
             Err(error) if error.kind() == ErrorKind::Interrupted => {}
             Err(error) => {
                 tracing::warn!(%error, "reading a picture's file failed");
+                reader.fail(PicturesError::Read(error));
                 return -1;
             }
         }

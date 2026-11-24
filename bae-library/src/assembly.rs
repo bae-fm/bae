@@ -29,6 +29,7 @@ pub async fn open_library_manager(
     files: coven::FileBudget,
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
+    tiles: bae_pictures::tile_cache::PictureTiles,
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
 ) -> Result<LibraryManager, DbError> {
     let downloads = bae_transfers::Downloads::new(store.clone());
@@ -47,6 +48,7 @@ pub async fn open_library_manager(
         files,
         diagnostics,
         runtime_handle,
+        tiles,
         #[cfg(desktop)]
         remote_images,
         #[cfg(desktop)]

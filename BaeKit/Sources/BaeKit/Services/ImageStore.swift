@@ -71,6 +71,29 @@ public enum ImageContent: Equatable, Hashable, Sendable {
         }
     }
 
+    /// The picture the viewer zooms, as core names it for its tiles; nil for
+    /// an artist's image or an avatar, which no viewer zooms.
+    public var tiledSource: BridgeCoverImageSource? {
+        switch self {
+        case .libraryImage(let image):
+            image.imageType == .cover ? .library(image: image) : nil
+        case .releaseImage(let releaseId, let source):
+            .releaseImage(releaseId: releaseId, source: source)
+        case .remote(let image):
+            .remote(image: image)
+        case .localFile(let file):
+            .local(file: file)
+        case .embeddedCover(let source, let candidateKey, let sourceFileId):
+            .embedded(
+                source: source,
+                candidateKey: candidateKey,
+                sourceFileId: sourceFileId
+            )
+        case .avatar:
+            nil
+        }
+    }
+
     /// Human-readable description for failure logs.
     public var description: String {
         switch self {
@@ -104,41 +127,53 @@ public enum ImageContent: Equatable, Hashable, Sendable {
 /// a file to decide what it holds.
 public final class ImageStore: Sendable, Observable {
     /// Bytes of a curated library image for a slot `pixels` wide on its longer
-    /// side (nil: the largest copy), or nil when no such image exists. Core
-    /// picks the cover's browse or large copy.
+    /// side, or nil when no such image exists. Core picks the cover's browse
+    /// or large copy.
     private let fetchLibraryImageBytes:
-        @Sendable (_ image: BridgeImageRef, _ pixels: UInt32?)
+        @Sendable (_ image: BridgeImageRef, _ pixels: UInt32)
             async throws -> Data?
     /// Bytes of one of a release's image-strip slots for a slot `pixels` wide
-    /// on its longer side: a cover's copy, or a release image's preview. With
-    /// nil, the picture itself, which core downloads from the release's
-    /// storage (and decrypts) when it isn't on disk here.
+    /// on its longer side: a cover's copy, or a release image's preview.
     private let fetchReleaseImageBytes:
         @Sendable (
             _ releaseId: String,
             _ source: BridgeGallerySource,
-            _ pixels: UInt32?
+            _ pixels: UInt32
         ) async throws -> Data
-    /// Bytes of provider art for a slot `pixels` wide on its longer side (nil:
-    /// the original), or nil when the source serves no image there — cover
-    /// addresses are derived from a release's ids, so an offered one can hold
-    /// nothing. Core picks the copy.
+    /// Bytes of provider art for a slot `pixels` wide on its longer side, or
+    /// nil when the source serves no image there — cover addresses are
+    /// derived from a release's ids, so an offered one can hold nothing. Core
+    /// picks the copy.
     private let fetchRemoteImage:
-        @Sendable (_ image: BridgeRemoteImageSet, _ pixels: UInt32?)
+        @Sendable (_ image: BridgeRemoteImageSet, _ pixels: UInt32)
             async throws -> Data?
     /// Bytes of one of an import candidate's pictures: a copy core made at
-    /// the step covering `pixels`, or the original's own bytes when `pixels`
-    /// is nil. Core reads the file, once and off the app's threads, and
-    /// stops when the call is cancelled and no other call wants the picture.
+    /// the step covering `pixels`. Core reads the file, once and off the
+    /// app's threads, and stops when the call is cancelled and no other call
+    /// wants the picture.
     private let fetchPicture:
         @Sendable (
             _ source: BridgeCoverImageSource,
-            _ pixels: UInt32?,
+            _ pixels: UInt32,
             _ turn: BridgePictureTurn
         ) async throws -> Data
     /// Bytes of a person's avatar, or nil when they have none.
     private let fetchAvatarBytes:
         @Sendable (_ person: String) async throws -> Data?
+    /// The levels of a picture's tiles. Core cuts the picture into tiles
+    /// the first time, and stops the cut when the call is cancelled and no
+    /// other call wants the picture.
+    private let fetchPictureTiles:
+        @Sendable (_ source: BridgeCoverImageSource) async throws ->
+            BridgePictureTiles
+    /// The bytes of one tile: column `x` and row `y` of level `level`.
+    private let fetchPictureTile:
+        @Sendable (
+            _ source: BridgeCoverImageSource,
+            _ level: UInt32,
+            _ x: UInt32,
+            _ y: UInt32
+        ) async throws -> Data
 
     private let cache: DecodedImageCache
     private let decodeQueue: ImageDecodeQueue
@@ -164,26 +199,38 @@ public final class ImageStore: Sendable, Observable {
 
     public init(
         fetchLibraryImageBytes:
-            @escaping @Sendable (BridgeImageRef, UInt32?) async throws -> Data? =
+            @escaping @Sendable (BridgeImageRef, UInt32) async throws -> Data? =
             { _, _ in nil },
         fetchReleaseImageBytes:
-            @escaping @Sendable (String, BridgeGallerySource, UInt32?)
+            @escaping @Sendable (String, BridgeGallerySource, UInt32)
             async throws -> Data = { _, _, _ in
                 throw ImageStoreUnavailable()
             },
         fetchRemoteImage:
-            @escaping @Sendable (BridgeRemoteImageSet, UInt32?) async throws ->
+            @escaping @Sendable (BridgeRemoteImageSet, UInt32) async throws ->
             Data? = { _, _ in throw ImageStoreUnavailable() },
         fetchPicture:
             @escaping @Sendable (
                 BridgeCoverImageSource,
-                UInt32?,
+                UInt32,
                 BridgePictureTurn
             ) async throws -> Data = { _, _, _ in
                 throw ImageStoreUnavailable()
             },
         fetchAvatarBytes:
             @escaping @Sendable (String) async throws -> Data? = { _ in nil },
+        fetchPictureTiles:
+            @escaping @Sendable (BridgeCoverImageSource) async throws ->
+            BridgePictureTiles = { _ in throw ImageStoreUnavailable() },
+        fetchPictureTile:
+            @escaping @Sendable (
+                BridgeCoverImageSource,
+                UInt32,
+                UInt32,
+                UInt32
+            ) async throws -> Data = { _, _, _, _ in
+                throw ImageStoreUnavailable()
+            },
         decodeQueue: ImageDecodeQueue = ImageDecodeQueue()
     ) {
         self.fetchLibraryImageBytes = fetchLibraryImageBytes
@@ -191,6 +238,8 @@ public final class ImageStore: Sendable, Observable {
         self.fetchRemoteImage = fetchRemoteImage
         self.fetchPicture = fetchPicture
         self.fetchAvatarBytes = fetchAvatarBytes
+        self.fetchPictureTiles = fetchPictureTiles
+        self.fetchPictureTile = fetchPictureTile
         cache = DecodedImageCache(totalCostLimit: Self.decodedByteBudget)
         self.decodeQueue = decodeQueue
     }
@@ -234,6 +283,19 @@ public final class ImageStore: Sendable, Observable {
                 },
                 fetchAvatarBytes: {
                     try await handle.avatar(person: $0).map { Data($0) }
+                },
+                fetchPictureTiles: {
+                    try await handle.pictureTiles(source: $0)
+                },
+                fetchPictureTile: {
+                    Data(
+                        try await handle.pictureTile(
+                            source: $0,
+                            level: $1,
+                            x: $2,
+                            y: $3
+                        )
+                    )
                 }
             )
         }
@@ -330,7 +392,7 @@ public final class ImageStore: Sendable, Observable {
         guard
             let data = try await decodeSource(
                 for: content,
-                at: .slot(pixels: pixels),
+                pixels: UInt32(clamping: pixels),
                 turn: turn
             )
         else {
@@ -338,7 +400,7 @@ public final class ImageStore: Sendable, Observable {
         }
         let image = try await ImageLoader.load(
             data: data,
-            size: .fitTo(points: pointSize),
+            points: pointSize,
             displayScale: displayScale,
             queue: decodeQueue,
             shouldStart: { control.beginDecoding() }
@@ -357,27 +419,24 @@ public final class ImageStore: Sendable, Observable {
 }
 
 extension ImageStore {
-    /// `content` decoded at its own resolution, for a viewer that zooms in:
-    /// not cached, and nil when no such image exists. Runs on the decode
-    /// queue like every other decode.
-    public func fullResolutionImage(
-        _ content: ImageContent,
-        displayScale: CGFloat
-    ) async throws -> PlatformImage? {
-        guard
-            let data = try await decodeSource(
-                for: content,
-                at: .nativeResolution
-            )
-        else {
-            return nil
-        }
-        return try await ImageLoader.load(
-            data: data,
-            size: .native,
-            displayScale: displayScale,
-            queue: decodeQueue
-        )
+    /// The levels of the tiles a viewer zooms `source` from, 0 being the
+    /// picture's own size.
+    public func pictureTiles(
+        _ source: BridgeCoverImageSource
+    ) async throws -> BridgePictureTiles {
+        try await fetchPictureTiles(source)
+    }
+
+    /// One tile of `source`, decoded on the decode queue at its own size: a
+    /// viewer holds the few it draws, so the store caches none.
+    public func pictureTile(
+        _ source: BridgeCoverImageSource,
+        level: UInt32,
+        x: UInt32,
+        y: UInt32
+    ) async throws -> CGImage {
+        let data = try await fetchPictureTile(source, level, x, y)
+        return try await ImageLoader.loadTile(data: data, queue: decodeQueue)
     }
 
     /// Decode `contents` at `pointSize` into the cache, so a view that mounts
@@ -424,12 +483,12 @@ extension ImageStore {
         }
     }
 
-    /// `content`'s bytes, fetched for a decode: a copy at the slot's size for
-    /// a picture of the import list, the original's own bytes for a viewer.
-    /// Nil when no such image exists.
+    /// `content`'s bytes, fetched for a decode into a slot `pixels` wide on
+    /// its longer side: the copy that fills it, where the content has
+    /// copies. Nil when no such image exists.
     func decodeSource(
         for content: ImageContent,
-        at target: DecodeTarget,
+        pixels: UInt32,
         turn: BridgePictureTurn = .visible
     ) async throws -> Data? {
         switch content {
@@ -437,7 +496,7 @@ extension ImageStore {
             guard
                 let bytes = try await fetchLibraryImageBytes(
                     image,
-                    target.pictureEdge
+                    pixels
                 )
             else {
                 logger.warning(
@@ -450,15 +509,15 @@ extension ImageStore {
             return try await fetchReleaseImageBytes(
                 releaseId,
                 source,
-                target.pictureEdge
+                pixels
             )
         case .remote(let image):
-            let pixels: UInt32? =
-                switch target {
-                case .slot(let pixels): UInt32(clamping: pixels)
-                case .nativeResolution: nil
-                }
-            guard let bytes = try await fetchRemoteImage(image, pixels) else {
+            guard
+                let bytes = try await fetchRemoteImage(
+                    image,
+                    pixels
+                )
+            else {
                 logger.debug("No provider art is served at \(image.url)")
                 return nil
             }
@@ -466,7 +525,7 @@ extension ImageStore {
         case .localFile(let file):
             return try await fetchPicture(
                 .local(file: file),
-                target.pictureEdge,
+                pixels,
                 turn
             )
         case .embeddedCover(let source, let candidateKey, let sourceFileId):
@@ -476,7 +535,7 @@ extension ImageStore {
                     candidateKey: candidateKey,
                     sourceFileId: sourceFileId
                 ),
-                target.pictureEdge,
+                pixels,
                 turn
             )
         case .avatar(let person, _):
@@ -534,27 +593,6 @@ extension ImageStore {
 
     fileprivate static func libraryToken(_ image: BridgeImageRef) -> String {
         "library:\(image.imageType):\(image.id):\(image.version)"
-    }
-}
-
-extension ImageStore {
-    /// The size a decode's bytes are fetched for. It only chooses among the
-    /// copies of provider art; every other content has one set of bytes.
-    public enum DecodeTarget: Equatable, Sendable {
-        /// A slot `pixels` wide on its longer side: the smallest copy that
-        /// fills it.
-        case slot(pixels: Int)
-        /// The image's own resolution, for a viewer that zooms in.
-        case nativeResolution
-
-        /// The pixels a request for a picture of the import list names:
-        /// the slot's, or none for the original's own bytes.
-        var pictureEdge: UInt32? {
-            switch self {
-            case .slot(let pixels): UInt32(clamping: pixels)
-            case .nativeResolution: nil
-            }
-        }
     }
 }
 
@@ -755,22 +793,7 @@ final class DecodedImageCache: @unchecked Sendable {
     #endif
 
     static func decodedByteCost(of image: PlatformImage) -> Int {
-        #if canImport(AppKit)
-            var proposedRect = CGRect(origin: .zero, size: image.size)
-            if let cgImage = image.cgImage(
-                forProposedRect: &proposedRect,
-                context: nil,
-                hints: nil
-            ) {
-                return decodedByteCost(of: cgImage)
-            }
-        #elseif canImport(UIKit)
-            if let cgImage = image.cgImage {
-                return decodedByteCost(of: cgImage)
-            }
-        #endif
-
-        preconditionFailure("the decoded image cache stores decoded images")
+        decodedByteCost(of: image.bitmap)
     }
 
     private static func decodedByteCost(of cgImage: CGImage) -> Int {

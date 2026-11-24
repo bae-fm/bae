@@ -171,20 +171,46 @@ impl Records {
             .await
     }
 
-    /// What the release's cover is made from; `None` when it has no cover.
-    pub async fn cover_source(&self, release_id: &str) -> Result<Option<CoverSource>, DbError> {
+    /// What the release's cover is made from and the coven file that holds
+    /// it, read in one statement; `None` when it has no cover.
+    pub async fn cover_picture(&self, release_id: &str) -> Result<Option<CoverPicture>, DbError> {
         let release_id = release_id.to_string();
-        self.store
+        let Some((source, file)) = self
+            .store
             .read(move |sql| {
                 Ok(sql
                     .query_row(
-                        "SELECT source_file, embedded_file FROM covers WHERE id = ?",
+                        "SELECT c.source_file, c.embedded_file, \
+                                COALESCE(image.file, audio.file, c.original_file) \
+                         FROM covers AS c \
+                         LEFT JOIN release_files AS image ON image.id = c.source_file \
+                         LEFT JOIN release_files AS audio ON audio.id = c.embedded_file \
+                         WHERE c.id = ?",
                         params![release_id],
-                        |row| Ok(CoverSource::of_columns(row.get(0)?, row.get(1)?)),
+                        |row| {
+                            Ok((
+                                CoverSource::of_columns(row.get(0)?, row.get(1)?),
+                                row.get::<_, Option<coven::FileId>>(2)?,
+                            ))
+                        },
                     )
                     .optional()?)
             })
-            .await
+            .await?
+        else {
+            return Ok(None);
+        };
+        let file = file.ok_or_else(|| DbError::unreadable("a cover's file", &source))?;
+        Ok(Some(CoverPicture { source, file: self.store.file_ref(file).await? }))
+    }
+
+    /// What the release's cover is made from; `None` when it has no cover.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn cover_source_for_test(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<CoverSource>, DbError> {
+        Ok(self.cover_picture(release_id).await?.map(|picture| picture.source))
     }
 
     /// The coven file of the release's cover copy `copy`, as this device
@@ -204,7 +230,8 @@ impl Records {
     /// The coven file of the release's cover original, as this device reads
     /// it now; `None` when the release has no cover or the cover is made from
     /// one of the release's files.
-    pub async fn cover_original_file(
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn cover_original_file_for_test(
         &self,
         release_id: &str,
     ) -> Result<Option<coven::FileRef>, DbError> {

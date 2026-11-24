@@ -76,6 +76,8 @@ every_build = [
     "AppHandle.invite_person",
     "AppHandle.library_name",
     "AppHandle.move_playlist_entry",
+    "AppHandle.picture_tile",
+    "AppHandle.picture_tiles",
     "AppHandle.play_library_shuffled",
     "AppHandle.play_picked_tracks",
     "AppHandle.play_playlist",

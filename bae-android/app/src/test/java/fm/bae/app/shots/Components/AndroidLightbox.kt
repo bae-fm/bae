@@ -6,6 +6,9 @@ import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.LocalPictureTileStore
+import fm.bae.app.data.PictureTileStore
+import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.GalleryViewer
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +34,11 @@ private fun Lightbox(
     store: ImageStore,
     count: UInt,
 ) = ScreenScene {
-    CompositionLocalProvider(LocalImageStore provides store, LocalBugReports provides BugReports()) {
+    CompositionLocalProvider(
+        LocalImageStore provides store,
+        LocalPictureTileStore provides PictureTileStore(FakeAppHandle()),
+        LocalBugReports provides BugReports(),
+    ) {
         GalleryViewer(
             releaseId = "rel-1",
             title = "Low Tide Hours",

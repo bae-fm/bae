@@ -14,13 +14,31 @@ forward! { async this => {
 
     /// One slot of a release's pictures. `pixels` is the longer edge of the
     /// slot that draws it: a cover slot returns the copy that covers it and
-    /// an image file's slot its preview. A size above the largest copy, or
-    /// none, is the viewer's, and returns the picture itself.
-    fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource, pixels: Option<u32>) -> Vec<u8> {
+    /// an image file's slot its preview. A size above the largest copy
+    /// returns the picture itself.
+    fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource, pixels: u32) -> Vec<u8> {
         this.services
             .read_gallery_bytes(&release_id, &source.into_core(), pixels)
             .await
             .map_err(BridgeError::from)
+    }
+
+    /// The tiles the viewer zooms `source` from: the picture's levels, each
+    /// with its size and how many tiles across and down. Core cuts the
+    /// picture into tiles once, reading it in chunks, and keeps them in this
+    /// device's tile cache, so a later call answers from the kept tiles.
+    /// Dropping the call stops the cut when no other call wants the picture.
+    fn picture_tiles(source: crate::types::BridgeCoverImageSource) -> crate::types::BridgePictureTiles {
+        Ok(crate::types::BridgePictureTiles::from_core(
+            this.services.picture_tiles(source.into_tiled()?).await?,
+        ))
+    }
+
+    /// The bytes of one tile of `source`, a JPEG or, for a picture with
+    /// transparency, a PNG: column `x` and row `y` of level `level`, 0 being
+    /// the picture's own size, as `picture_tiles` lists the levels.
+    fn picture_tile(source: crate::types::BridgeCoverImageSource, level: u32, x: u32, y: u32) -> Vec<u8> {
+        Ok(this.services.picture_tile(source.into_tiled()?, level, x, y).await?)
     }
 } }
 

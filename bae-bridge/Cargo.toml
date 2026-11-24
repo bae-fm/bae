@@ -23,6 +23,8 @@ async-trait = { workspace = true }
 bae-cast = { workspace = true, optional = true }
 # The app's services over an open library, which this crate calls.
 bae-app = { workspace = true }
+# The tile edge and levels of a picture's tiles, which the viewer zooms from.
+bae-pictures = { workspace = true }
 bae-library = { workspace = true }
 bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.

@@ -13,6 +13,7 @@ use std::time::Instant;
 
 use bae_util::test_files::TestFolder;
 
+use crate::tiles::{cut_tiles, tile_path, Pyramid};
 use crate::{make_copy, CopyFormat, IsCancelled, PictureStep, PicturesError};
 
 const WIDTH: u32 = 6000;
@@ -212,6 +213,103 @@ fn a_large_png_makes_an_upright_copy() {
 }
 
 #[test]
+#[ignore = "runs as the child of a_large_png_cuts_into_upright_tiles"]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the child opens the file its parent made in a test folder"
+)]
+fn tiles_job() {
+    let (original, output) = child_paths();
+    let pyramid = cut_tiles(std::fs::File::open(original).unwrap(), never(), &output).unwrap();
+    assert_eq!(pyramid, Pyramid { width: HEIGHT, height: WIDTH, format: CopyFormat::Jpeg });
+}
+
+/// The decoded pixels of one tile, with its width and height.
+fn tile_pixels(folder: &TestFolder, path: &Path) -> (Vec<u8>, usize, usize) {
+    let relative = path.strip_prefix(folder.path()).unwrap();
+    let mut decoder = jpeg_decoder::Decoder::new(folder.open(relative));
+    let pixels = decoder.decode().unwrap();
+    let info = decoder.info().unwrap();
+    (pixels, usize::from(info.width), usize::from(info.height))
+}
+
+fn is_red(pixels: &[u8], width: usize, x: usize, y: usize) -> bool {
+    let [red, green, blue] = <[u8; 3]>::try_from(&pixels[(y * width + x) * 3..][..3]).unwrap();
+    red > 200 && green < 80 && blue < 80
+}
+
+#[test]
+fn a_large_png_cuts_into_upright_tiles() {
+    let folder = TestFolder::new();
+    let (original, original_bytes) = make_original(&folder);
+    let tiles = folder.join("tiles");
+    let cost = run_in_child("tests::tiles_job", &original, &tiles);
+    println!(
+        "tiles: {WIDTH}x{HEIGHT} PNG of {:.1} MiB; peak memory {:.1} MiB, {:.2} s",
+        mebibytes(original_bytes),
+        mebibytes(cost.peak_bytes),
+        cost.seconds,
+    );
+    assert!(cost.peak_bytes < DECODED_BYTES, "peak memory held the whole picture");
+
+    // The stored picture is wider than tall and says "rotate clockwise", so
+    // the tiles are of a picture taller than wide.
+    let pyramid = Pyramid { width: HEIGHT, height: WIDTH, format: CopyFormat::Jpeg };
+    for (index, level) in pyramid.levels().iter().enumerate() {
+        let index = u32::try_from(index).unwrap();
+        let last = tile_path(&tiles, pyramid.format, index, level.columns - 1, level.rows - 1);
+        let (_, width, height) = tile_pixels(&folder, &last);
+        let edge = |side: u32| ((side - 1) % 512 + 1) as usize;
+        assert_eq!((width, height), (edge(level.width), edge(level.height)), "level {index}");
+    }
+    // The red square, stored top-left, shows top-right once upright: it
+    // fills the last column's first tile and reaches into the one before it.
+    let columns = pyramid.levels()[0].columns;
+    let (pixels, width, _) =
+        tile_pixels(&folder, &tile_path(&tiles, pyramid.format, 0, columns - 1, 0));
+    assert!(is_red(&pixels, width, 8, 8) && is_red(&pixels, width, width - 8, 8));
+    let (pixels, width, _) =
+        tile_pixels(&folder, &tile_path(&tiles, pyramid.format, 0, columns - 2, 0));
+    assert!(!is_red(&pixels, width, 8, 8) && is_red(&pixels, width, width - 8, 8));
+    let (pixels, width, _) = tile_pixels(&folder, &tile_path(&tiles, pyramid.format, 0, 0, 0));
+    assert!(!is_red(&pixels, width, 8, 8));
+}
+
+#[test]
+fn a_picture_with_transparency_cuts_into_png_tiles() {
+    let folder = TestFolder::new();
+    let original = small_png(700, 300, png::ColorType::Rgba, &[200, 30, 30, 128]);
+    let tiles = folder.join("tiles");
+    let pyramid = cut_tiles(Cursor::new(original), never(), &tiles).unwrap();
+    assert_eq!(pyramid, Pyramid { width: 700, height: 300, format: CopyFormat::Png });
+    let levels = pyramid.levels();
+    assert_eq!(levels.len(), 2);
+    let tile = tile_path(&tiles, CopyFormat::Png, 0, 1, 0);
+    let relative = tile.strip_prefix(folder.path()).unwrap();
+    let mut bytes = Vec::new();
+    folder.open(relative).read_to_end(&mut bytes).unwrap();
+    assert_eq!(&bytes[1..4], b"PNG");
+}
+
+#[test]
+fn a_cancelled_cut_stops_reading_its_original() {
+    let original = small_png(2000, 2000, png::ColorType::Rgb, &[10, 120, 200]);
+    let cancel = Arc::new(AtomicBool::new(false));
+    let reads = Arc::new(AtomicUsize::new(0));
+    let origin = CancellingOrigin {
+        inner: Cursor::new(original),
+        reads: reads.clone(),
+        cancel: cancel.clone(),
+    };
+    let watcher = cancel.clone();
+    let folder = TestFolder::new();
+    let result =
+        cut_tiles(origin, Arc::new(move || watcher.load(Ordering::SeqCst)), &folder.join("tiles"));
+    assert!(matches!(result, Err(PicturesError::Cancelled)), "{result:?}");
+    assert!(reads.load(Ordering::SeqCst) <= 4, "{} reads", reads.load(Ordering::SeqCst));
+}
+
+#[test]
 fn a_request_rounds_up_to_the_next_step() {
     assert_eq!(PictureStep::covering(1), PictureStep::S192);
     assert_eq!(PictureStep::covering(192), PictureStep::S192);
@@ -283,6 +381,53 @@ impl Seek for CancellingOrigin {
     }
 }
 
+/// A picture whose reads fail after `good` bytes, as a network read does.
+struct FailingOrigin {
+    inner: Cursor<Vec<u8>>,
+    good: usize,
+}
+
+impl Read for FailingOrigin {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        let at = usize::try_from(self.inner.position()).unwrap();
+        if at >= self.good {
+            return Err(std::io::Error::other("the share went away"));
+        }
+        let end = buffer.len().min(self.good - at);
+        self.inner.read(&mut buffer[..end])
+    }
+}
+
+impl Seek for FailingOrigin {
+    fn seek(&mut self, position: SeekFrom) -> std::io::Result<u64> {
+        self.inner.seek(position)
+    }
+}
+
+/// A picture that stops being readable fails its cut and its copy with the
+/// failed read, whichever format it is in and wherever it stops, even before
+/// libvips has read the picture's header, instead of keeping what libvips
+/// made of the part it read.
+#[test]
+fn a_read_that_fails_fails_the_cut_and_the_copy() {
+    let photo = {
+        // A JPEG, from a copy of a PNG.
+        let png = small_png(1500, 1500, png::ColorType::Rgb, &[10, 120, 200]);
+        make_copy(Cursor::new(png), never(), PictureStep::S1536).unwrap().bytes
+    };
+    let png = small_png(1500, 1500, png::ColorType::Rgb, &[10, 120, 200]);
+    for (name, original) in [("a JPEG", photo), ("a PNG", png)] {
+        for (stops, good) in [("partway", original.len() / 2), ("at once", 0)] {
+            let origin = || FailingOrigin { inner: Cursor::new(original.clone()), good };
+            let folder = TestFolder::new();
+            let cut = cut_tiles(origin(), never(), &folder.join("tiles"));
+            assert!(matches!(cut, Err(PicturesError::Read(_))), "{name} {stops}: {cut:?}");
+            let copy = make_copy(origin(), never(), PictureStep::S192);
+            assert!(matches!(copy, Err(PicturesError::Read(_))), "{name} {stops}: {copy:?}");
+        }
+    }
+}
+
 #[test]
 fn a_cancelled_copy_stops_reading_its_original() {
     let original = small_png(2000, 2000, png::ColorType::Rgb, &[10, 120, 200]);
@@ -300,16 +445,4 @@ fn a_cancelled_copy_stops_reading_its_original() {
     // The read that cancelled was the third. libvips may already have asked
     // for the next read, and no read starts once the flag is set.
     assert!(reads.load(Ordering::SeqCst) <= 4, "{} reads", reads.load(Ordering::SeqCst));
-}
-
-#[test]
-fn reading_the_whole_original_stops_when_cancelled() {
-    let cancel = Arc::new(AtomicBool::new(false));
-    let watcher = cancel.clone();
-    let cancelled: IsCancelled = Arc::new(move || watcher.load(Ordering::SeqCst));
-    let all = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancelled).unwrap();
-    assert_eq!(all.len(), 300_000);
-    cancel.store(true, Ordering::SeqCst);
-    let result = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancelled);
-    assert!(matches!(result, Err(PicturesError::Cancelled)));
 }

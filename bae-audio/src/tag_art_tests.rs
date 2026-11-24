@@ -20,3 +20,24 @@ fn image_content_type_maps_known_and_rejects_non_images() {
     // A non-image known variant is rejected too.
     assert_eq!(image_content_type(&MimeType::Tiff), None);
 }
+
+/// A read that fails while the parser reads the tags is the read's own error,
+/// not a failure to parse.
+#[test]
+fn a_failed_read_is_a_read_error_though_the_parser_met_it() {
+    struct Unreadable;
+    impl Read for Unreadable {
+        fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("the share went away"))
+        }
+    }
+    impl Seek for Unreadable {
+        fn seek(&mut self, _: std::io::SeekFrom) -> std::io::Result<u64> {
+            Ok(0)
+        }
+    }
+
+    let error = read_tag_art(Unreadable).unwrap_err();
+
+    assert!(matches!(error, TagArtError::Read(_)), "{error:?}");
+}

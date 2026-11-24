@@ -83,6 +83,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::TrackMapping(e) => Self::Import(e),
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
+            error @ LibraryError::Tiles(_) => Self::Unavailable(error.to_string()),
             error @ LibraryError::Closed(_) => Self::Unavailable(error.to_string()),
             error @ LibraryError::FileRead { .. } => Self::Unavailable(error.to_string()),
             error @ LibraryError::MoveToThisDevice(_) => Self::Unavailable(error.to_string()),

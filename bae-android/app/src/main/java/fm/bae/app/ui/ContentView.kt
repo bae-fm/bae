@@ -34,7 +34,6 @@ import fm.bae.app.R
 import fm.bae.app.ScreenFailure
 import fm.bae.app.ShortcutAction
 import fm.bae.app.coreString
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.SessionMessage
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidSnackbarOverlay
@@ -410,8 +409,7 @@ private fun LibraryOpenScreen(
             onShortcutHandled()
         }
     }
-    // Scoped to the session because the cache is keyed on that library's image ids.
-    CompositionLocalProvider(LocalImageStore provides session.imageStore) {
+    SessionPictures(session) {
         LibraryScreen(
             session = session,
             libraries = libraries,

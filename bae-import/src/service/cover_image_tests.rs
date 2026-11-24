@@ -159,7 +159,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             // The embedded artwork is no image the store reads, so a stored
             // cover is the folder's front.jpg.
             bae_records::test_fixtures::test_records(&test.db)
-                .cover_source(&release_id)
+                .cover_source_for_test(&release_id)
                 .await
                 .unwrap()
                 .expect("the folder's cover is stored");

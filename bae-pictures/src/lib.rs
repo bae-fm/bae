@@ -1,7 +1,7 @@
-//! Pictures through libvips: a copy of a picture at one of a few sizes. The
-//! original is read once, top to bottom, through plain reads that a job can
-//! stop between, and a few rows of it are held in memory rather than the
-//! whole picture.
+//! Pictures through libvips: a copy of a picture at one of a few sizes, and
+//! the tiles a viewer zooms it from. The original is read once, top to
+//! bottom, through plain reads that a job can stop between, and a few rows of
+//! it are held in memory rather than the whole picture.
 
 mod copy;
 #[cfg(libvips)]
@@ -9,10 +9,10 @@ mod ffi;
 mod flights;
 mod gate;
 mod origin;
-mod original;
 #[cfg(libvips)]
 mod source;
-mod types;
+pub mod tile_cache;
+pub mod tiles;
 #[cfg(libvips)]
 mod vips;
 
@@ -20,9 +20,12 @@ pub use bae_types::picture_step::PictureStep;
 pub use copy::{make_copy, make_copy_of_bytes, CopyFormat, PictureCopy};
 pub use flights::{FlightError, Flights};
 pub use gate::{Permit, Priority, Volumes};
-pub use origin::PictureOrigin;
-pub use original::read_original;
-pub use types::PictureSize;
+pub use origin::{HeldOrigin, PictureOrigin};
+
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));
+
+#[cfg(all(test, libvips))]
+const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[SCHEMA_PARTS]);
 
 /// Asks whether the job that holds it should stop: what a reader checks before
 /// each read of the original.
@@ -33,6 +36,8 @@ pub type IsCancelled = std::sync::Arc<dyn Fn() -> bool + Send + Sync>;
 pub enum PicturesError {
     #[error("reading the picture failed: {0}")]
     Read(std::io::Error),
+    #[error("writing the picture's tiles failed: {0}")]
+    Write(std::io::Error),
     #[error("libvips: {0}")]
     Vips(String),
     /// This build has no libvips: every target but iOS links it.

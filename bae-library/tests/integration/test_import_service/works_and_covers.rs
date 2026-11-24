@@ -178,7 +178,7 @@ async fn import_with_cover_art() {
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // Cover image row in DB
-    let cover = f.library.records().cover_source(&release_id).await.unwrap();
+    let cover = f.library.records().cover_source_for_test(&release_id).await.unwrap();
     assert!(cover.is_some(), "should have cover image in DB");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
@@ -225,17 +225,22 @@ async fn an_import_names_the_cover_s_file_and_writes_a_preview_of_each_image() {
         .iter()
         .find(|file| file.original_filename == cover_path)
         .expect("the release holds the folder's image");
-    let cover =
-        f.library.records().cover_source(&release_id).await.unwrap().expect("the cover row");
+    let cover = f
+        .library
+        .records()
+        .cover_source_for_test(&release_id)
+        .await
+        .unwrap()
+        .expect("the cover row");
     assert_eq!(cover, bae_records::CoverSource::ReleaseFile { file_id: image.id.clone() });
-    assert!(f.library.records().cover_original_file(&release_id).await.unwrap().is_none());
+    assert!(f.library.records().cover_original_file_for_test(&release_id).await.unwrap().is_none());
     let preview = f
         .library
         .manager()
         .read_gallery_bytes(
             &release_id,
             &bae_records::GallerySource::ReleaseFile { file_id: image.id.clone() },
-            Some(384),
+            384,
         )
         .await
         .expect("the image has a preview");
