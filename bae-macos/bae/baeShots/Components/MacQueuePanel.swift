@@ -196,7 +196,7 @@ extension ShotScene {
                 ? .libraryImage(cover("Low Tide Hours")) : nil,
             position: PreviewData.trackPosition(
                 positionMs: 102_000,
-                durationMs: 303_000
+                durationMs: 291_000
             )
         )
     }
