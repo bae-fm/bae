@@ -14,7 +14,7 @@
     W('Inspector open', h(B.MacStorageWindow, { width: 1100, height: 300, inspector: true }, h(B.MacTable, { columns: 'Release:280:up,Artist:200,Media:80,Storage:190,Files:60:right,Size:100:right,Date added:120', rows: 'Copper Sky|Odile Fen|CD|local|11|388 MB|Oct 4, 2026; Field Recordings|Mara Quill|2×CD|uploading 0.62|24|902 MB|Nov 6, 2026; Glass Harbor|Ines Varga Trio|CD|cloud|9|356 MB|Aug 30, 2026', selected: 2 }), h(B.MacStorageFooter, { releases: '3 releases', total: '1.6 GB' }), slot('Inspector'))),
     W('Filtered', h(B.MacStorageWindow, { width: 1100, height: 300, filter: 'Cloud', search: 'harbor' }, h(B.MacTable, { columns: 'Release:280:up,Artist:200,Media:80,Storage:190,Files:60:right,Size:100:right,Date added:120', rows: 'Copper Sky|Odile Fen|CD|local|11|388 MB|Oct 4, 2026; Field Recordings|Mara Quill|2×CD|uploading 0.62|24|902 MB|Nov 6, 2026; Glass Harbor|Ines Varga Trio|CD|cloud|9|356 MB|Aug 30, 2026' }), h(B.MacStorageFooter, { releases: '3 releases', total: '1.6 GB' }))),
     W('No matches', h(B.MacStorageWindow, { width: 1100, height: 300, search: 'zzz', empty: true }, h(B.MacTable, { columns: 'Release:280:up,Artist:200,Media:80,Storage:190,Files:60:right,Size:100:right,Date added:120' }), h(B.MacStorageFooter, { releases: '0 releases' }))),
-    W('No library', h(B.MacStorageWindow, { width: 1100, height: 300, disabled: true }, slot('Release list')))));
+    W('No library', h(B.MacStorageWindow, { width: 1100, height: 300, disabled: true }, h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } }, h(B.MacContentUnavailable, { title: 'No library loaded', description: 'Open a library first' }))))));
 </script>
 </body>
 </html>
