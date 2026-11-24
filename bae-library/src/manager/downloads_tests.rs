@@ -166,6 +166,16 @@ async fn download_queue_failed_pin_retries() {
     assert!(download_queue_now(manager).await.rows.is_empty(), "cancel removes the entry");
 }
 
+/// Take the network away and wait until the download queue has heard it.
+async fn lose_network(test: &TestManager) {
+    test.installation.lose_network();
+    let mut counts = test.library.manager().subscribe_download_counts();
+    crate::followed::query_matching(&mut counts, |counts| {
+        counts.wait == Some(bae_transfers::QueueWait::Offline)
+    })
+    .await;
+}
+
 /// The download queue takes no entry while the device has no usable network,
 /// and goes on when the network returns.
 #[tokio::test]
@@ -180,15 +190,7 @@ async fn a_pin_waits_while_the_network_is_down() {
     }
     manager.start().unwrap();
 
-    test.installation.lose_network();
-    let mut counts = manager.subscribe_download_counts();
-    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        while counts.next_inline().await.expect("the query stays open").unwrap().wait
-            != Some(bae_transfers::QueueWait::Offline)
-        {}
-    })
-    .await
-    .expect("the queue hears that the network is down");
+    lose_network(&test).await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     // The worker has read the queue the enqueue woke it to, and taken nothing.
     manager.settle_download_worker_for_test().await;
@@ -217,6 +219,7 @@ async fn a_queued_pin_shows_queued_and_a_failed_one_its_error() {
     let first = uploaded_release(manager, &temp_dir, &dir("first"), "Album Title A", false).await;
     let second = uploaded_release(manager, &temp_dir, &dir("second"), "Album Title B", false).await;
     let third = uploaded_release(manager, &temp_dir, &dir("third"), "Album Title C", false).await;
+    lose_network(&test).await;
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![first.clone(), second.clone(), third.clone()]).await.unwrap();
 
@@ -256,7 +259,6 @@ async fn a_queued_pin_shows_queued_and_a_failed_one_its_error() {
 
     // The queue's hold is the queue's, and shows on no release; the pause
     // reads before the network.
-    test.installation.lose_network();
     let downloads_wait = || async { listed_queues(manager).await.downloads.unwrap().wait };
     assert_eq!(downloads_wait().await, Some(bae_transfers::QueueWait::Paused));
     manager.set_downloads_paused(false).await.unwrap();
