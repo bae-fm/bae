@@ -19,6 +19,65 @@ struct AccentPlainButtonStyleTests {
         #expect(abs(dimmed - ThemeOpacity.off) < 0.02)
     }
 
+    /// A disabled pop-up button and a disabled row that opens something draw
+    /// at the off opacity once, as the board does: their own labels do not
+    /// dim again under the button style's dimming.
+    @Test("a disabled pop-up and a disabled pressed row dim once")
+    func dimOnce() throws {
+        func popUp(enabled: Bool) -> some View {
+            MacPopUpButton("Share with", selection: .constant("Only me")) {
+                MacPopUpOption(verbatim: "Only me", value: "Only me")
+            }
+            .disabled(!enabled)
+        }
+        func row(enabled: Bool) -> some View {
+            MacRow("Storage", value: "Cloud")
+                .pressing(.opens {})
+                .disabled(!enabled)
+                .frame(width: 300)
+        }
+        let popUpRatio =
+            try brightest(popUp(enabled: false))
+            / brightest(popUp(enabled: true))
+        let rowRatio =
+            try brightest(row(enabled: false)) / brightest(row(enabled: true))
+        #expect(abs(popUpRatio - ThemeOpacity.off) < 0.03)
+        #expect(abs(rowRatio - ThemeOpacity.off) < 0.03)
+    }
+
+    /// The brightest colour component of `content` drawn on black.
+    private func brightest<Content: View>(_ content: Content) throws -> Double {
+        let renderer = ImageRenderer(
+            content:
+                content
+                .appearance(mode: .dark, accent: .pink, tone: .midnight)
+                .padding(4)
+                .background(Color.black)
+        )
+        renderer.scale = 2
+        let image = try #require(renderer.cgImage)
+        let bitmap = NSBitmapImageRep(cgImage: image)
+        var brightest = 0.0
+        for x in 0..<image.width {
+            for y in 0..<image.height {
+                let colour = try #require(
+                    bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)
+                )
+                brightest = max(
+                    brightest,
+                    Double(
+                        max(
+                            colour.redComponent,
+                            colour.greenComponent,
+                            colour.blueComponent
+                        )
+                    )
+                )
+            }
+        }
+        return brightest
+    }
+
     private func pixel(enabled: Bool) throws -> Double {
         let renderer = ImageRenderer(
             content: Button {
