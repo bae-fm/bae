@@ -2381,8 +2381,8 @@ arrows move to the images before and after it, wrapping around the ends; a lone
 image has none. On the Mac, the lightbox's strip shows a thumbnail of each image
 when it holds more than one, and VoiceOver reads each thumbnail button by its
 image's name, the caption the lightbox shows for it. Clicking an image in the
-*Edit release* sheet opens the album's image viewer at that image, with the
-same arrows as the album page's viewer.
+*Edit release* sheet opens the *Change cover* sheet's lightbox at that image,
+with the lightbox's arrows (§3.7).
 
 **Files.** A release's *Files* list is one list, the same in all three places:
 the files no track plays from, such as a rip log, a track sheet that carves no
