@@ -160,16 +160,25 @@ extension View {
     /// design system's box is; an elevated card floats over other content with
     /// a shadow.
     public func card(elevated: Bool = false) -> some View {
-        background(
-            elevated ? Theme.surfaceElevated : Theme.surface,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.card)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
-        .shadow(
-            color: elevated ? Theme.shadow : .clear,
-            radius: ThemeSpace.group,
-            y: ThemeSpace.compact
-        )
+        let face = RoundedRectangle(cornerRadius: ThemeRadius.card)
+        return clipShape(face)
+            .background {
+                if elevated {
+                    let radius = ThemeSpace.group
+                    let offset = ThemeSpace.compact
+                    let shadowRoom = 2 * radius + offset
+                    // Rasterize the face and its shadow together. A macOS
+                    // window reverses the vertical offset of a layer shadow.
+                    face.fill(Theme.surfaceElevated)
+                        .shadow(color: Theme.shadow, radius: radius, y: offset)
+                        .padding(shadowRoom)
+                        .drawingGroup()
+                        .padding(-shadowRoom)
+                }
+                else {
+                    face.fill(Theme.surface)
+                }
+            }
     }
 }
 
