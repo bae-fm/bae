@@ -260,23 +260,29 @@
         }
 
         // periphery:ignore - called by baeShots
-        /// The album the boards open in the library window: "Low Tide Hours"
-        /// by Mara Quill, one CD of ten tracks under no disc heading, as
-        /// the boards list them with their lengths.
-        static func boardAlbumDetail() -> BridgeAlbumDetail {
-            let tracks: [(String, UInt64)] = [
+        /// The album the boards open in the library window: by default "Low
+        /// Tide Hours" by Mara Quill, one CD of ten tracks under no disc
+        /// heading, as the boards list them with their lengths. The release
+        /// editor's boards open "Northbound" instead, by passing its title,
+        /// year, catalog number and tracks (a title and seconds each).
+        static func boardAlbumDetail(
+            title: String = "Low Tide Hours",
+            year: Int32 = 1992,
+            catalogNumber: String = "HR-1042",
+            tracks: [(String, UInt64)] = [
                 ("Harbor Lights", 272), ("The Long Way Home", 312),
                 ("Second Floor", 225), ("Low Tide Hours", 303),
                 ("Tin Roof", 341), ("Margins", 295),
                 ("Weather Report Card", 276), ("Old Dog", 177),
                 ("Night Ferry", 276), ("Slow Morning", 622),
             ]
+        ) -> BridgeAlbumDetail {
             var detail = makeDetail(
                 album: AlbumFixture(
                     id: "board-0",
-                    title: "Low Tide Hours",
+                    title: title,
                     artist: "Mara Quill",
-                    year: 1992
+                    year: year
                 ),
                 primary: ReleaseFixture(
                     media: [BridgeMediaCount(medium: .cd, count: 1)],
@@ -285,7 +291,7 @@
                         labels: [
                             BridgeLabelLine(
                                 names: ["Harbor Records"],
-                                catalogNumbers: ["HR-1042"]
+                                catalogNumbers: [catalogNumber]
                             )
                         ],
                         area: .country(code: "US")

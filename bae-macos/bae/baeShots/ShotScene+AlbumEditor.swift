@@ -54,6 +54,22 @@ extension ShotScene {
 
     private static let editedReleaseId = "rel-board-0"
 
+    /// The album page behind the editor: Northbound, the first card of the
+    /// board's grid, with its four tracks and its cover.
+    private static var northboundAlbumDetail: BridgeAlbumDetail {
+        var detail = PreviewData.boardAlbumDetail(
+            title: "Northbound",
+            year: 1974,
+            catalogNumber: "HR-0412",
+            tracks: PreviewData.northboundTracks.map { ($0.title, $0.seconds) }
+        )
+        let image = cover("Northbound")
+        detail.album.cover = image
+        detail.releases[0].cover = image
+        detail.shownRelease.cover = image
+        return detail
+    }
+
     /// The release the editor opens on: Northbound as its import made it,
     /// with a change made, so the editor offers Cancel and Save, and the rip
     /// log its folder carried.
@@ -183,14 +199,20 @@ extension ShotScene {
         stage: AlbumEditorStage,
         release: PreviewReleaseEdit = editedRelease
     ) -> ShotScene {
-        let size = CGSize(width: 1_200, height: 1_120)
+        let size = CGSize(
+            width: 1_200,
+            height: stage == .dropTracksAlert ? 1_300 : 1_320
+        )
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
             let detailAnswered = AlbumDetailAnswered()
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
+                albumCount: 4,
+                albums: boardAlbums(first: ("Northbound", 1974)),
                 openAlbum: true,
-                detailAnswered: detailAnswered
+                detailAnswered: detailAnswered,
+                detail: northboundAlbumDetail
             )
             let images = coverGalleryImages(of: "Northbound")
             let session = editorSession(

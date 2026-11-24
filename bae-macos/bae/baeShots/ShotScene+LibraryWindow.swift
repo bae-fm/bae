@@ -77,10 +77,16 @@ extension ShotScene {
         }
     }
 
-    /// The albums the boards' grid lists, in their order.
-    private static func boardAlbums() -> [BridgeAlbumAppearance] {
+    /// The albums the boards' grid lists, in their order, with `first`'s
+    /// title and year on the first card when a board opens another album.
+    static func boardAlbums(
+        first: (title: String, year: Int)? = nil
+    ) -> [BridgeAlbumAppearance] {
         [
-            ("Low Tide Hours", "Mara Quill", 1992),
+            (
+                first?.title ?? "Low Tide Hours", "Mara Quill",
+                first?.year ?? 1992
+            ),
             ("Paper Lanterns", "The Slow Orchards", 1971),
             ("Glass Harbor", "Ines Varga Trio", 1959),
             ("Copper Sky", "Odile Fen", 1972),
@@ -129,7 +135,7 @@ extension ShotScene {
             .map { BridgeAlbumPlace(position: UInt64($0), sectionId: nil) }
     }
 
-    /// A browse session over the first `albumCount` of `boardAlbums`, which
+    /// A browse session over the first `albumCount` of `albums`, which
     /// is as many cards as the scene's board draws, with the first album open
     /// when `openAlbum` is set; `detailAnswered` learns when its detail is
     /// answered.
@@ -137,6 +143,7 @@ extension ShotScene {
     static func boardLibraryBacking(
         uiStore: UiStore,
         albumCount: Int? = nil,
+        albums listed: [BridgeAlbumAppearance] = boardAlbums(),
         openAlbum: Bool = false,
         detailAnswered: AlbumDetailAnswered? = nil,
         detail: BridgeAlbumDetail = boardAlbumDetail(),
@@ -145,8 +152,7 @@ extension ShotScene {
         history: [BridgeHistoryPlay] = [],
         historyPeople: [(id: String, name: String)] = []
     ) -> (library: Library, session: LibraryBrowseSession) {
-        let allAlbums = boardAlbums()
-        let albums = Array(allAlbums.prefix(albumCount ?? allAlbums.count))
+        let albums = Array(listed.prefix(albumCount ?? listed.count))
         let library = Library(
             albumList: { _, _ in .fixed(albums, answers: UnansweredCount()) },
             albumPlaceReads: { _, albumId, _, _ in
