@@ -37,14 +37,12 @@ pub fn catalog_words(text: &str) -> Vec<String> {
 ///
 /// None of these is a number:
 ///
-/// - A copyright line's mark and year, `P 2007`, or any letters and a year
-///   after a space.
+/// - A copyright line's mark and year, `P 2007`.
 /// - An ISRC: two letters, three letters or digits, two digits, five digits.
 /// - A hex digest of 8, 32, 40 or 64 digits that holds a letter and a
 ///   digit, as a ripper's report prints its checksums.
 /// - A number a `%` follows, as `CDDA 100%`, or a version of one or two
 ///   digits, a dot and one or two digits, as `0.11`.
-/// - A medium and a year without a space, `CD1998`.
 /// - A composer's work number, `BWV 810`, `BWV846`.
 /// - A store's image size between underscores, `_SS500_`.
 ///
@@ -67,7 +65,7 @@ pub fn printed_catalog_numbers(text: &str) -> Vec<String> {
                 && text[start + piece.len()..*next_start] == *" "
                 && next.starts_with(|c: char| c.is_ascii_digit())
                 && digits(piece) + digits(next) >= 3
-                && !is_year(next)
+                && !is_copyright_year(piece, next)
                 && !is_version(next)
         });
         let number = match joined {
@@ -86,7 +84,6 @@ pub fn printed_catalog_numbers(text: &str) -> Vec<String> {
                 && !is_work_number(number)
                 && !is_recording_code(number)
                 && !is_digest(number)
-                && !is_medium_and_year(number)
                 && !is_image_size(text, begin, number)
         });
         if let Some((_, number)) = number {
@@ -98,12 +95,15 @@ pub fn printed_catalog_numbers(text: &str) -> Vec<String> {
     numbers
 }
 
-/// Whether `piece` is four digits that are a year, 1900 to 2099.
+/// Whether `piece` and `next` are a copyright line's mark and year: the
+/// letter P (phonographic) or C, then four digits that are a year, as in
+/// `P 2007`.
 #[cfg(desktop)]
-fn is_year(piece: &str) -> bool {
-    piece.len() == 4
-        && piece.chars().all(|c| c.is_ascii_digit())
-        && (piece.starts_with("19") || piece.starts_with("20"))
+fn is_copyright_year(piece: &str, next: &str) -> bool {
+    matches!(piece, "P" | "C")
+        && next.len() == 4
+        && next.chars().all(|c| c.is_ascii_digit())
+        && (next.starts_with("19") || next.starts_with("20"))
 }
 
 /// Whether `piece` is a program's version: one or two digits, a dot, one or
@@ -135,13 +135,6 @@ fn is_digest(number: &str) -> bool {
         && number.chars().all(|c| c.is_ascii_hexdigit())
         && number.chars().any(|c| c.is_ascii_alphabetic())
         && number.chars().any(|c| c.is_ascii_digit())
-}
-
-/// Whether `number` is a medium and a year, `CD1998`.
-#[cfg(desktop)]
-fn is_medium_and_year(number: &str) -> bool {
-    number.get(..2).is_some_and(|medium| matches!(medium, "CD" | "LP" | "EP"))
-        && is_year(&number[2..])
 }
 
 /// Whether `number` is a composer's work number: `BWV` and its digits.

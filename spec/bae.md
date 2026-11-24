@@ -1724,12 +1724,12 @@ screen readers read them all. The pane lists every catalog number the
 folder's text offers that no release confirms. Each number is a button
 that puts the number into the run, and the pane hides none behind a count.
 The pane lists each number once. These are no catalog number: a copyright
-line such as `P 2007` or any letters and a year after a space; an ISRC; a
-checksum from a rip report (8, 32, 40 or 64 hex digits holding a letter and a
-digit); a number followed by `%` (`CDDA 100%`) or a version of one or two
-digits, a dot and one or two digits (`0.11`); a medium and a year without a
-space (`CD1998`); a composer's work number (`BWV 810`); and a store's image
-size between underscores (`_SS500_`).
+line such as `P 2007`; an ISRC; a checksum from a rip report (8, 32, 40 or 64
+hex digits holding a letter and a digit); a number followed by `%`
+(`CDDA 100%`) or a version of one or two digits, a dot and one or two digits
+(`0.11`); a composer's work number (`BWV 810`); and a store's image size
+between underscores (`_SS500_`). A number made with a year, such as
+`MR 2002`, is a catalog number.
 Each Disc ID a catalog can answer and each barcode is a button that leaves
 it out of the run, or asks about it again once left out. Each catalog number
 in the run is a button that strikes it out, or puts a struck one back.

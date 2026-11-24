@@ -80,7 +80,8 @@ fn a_copyright_line_is_no_number() {
     assert!(printed_catalog_numbers("P 2007").is_empty());
     assert!(printed_catalog_numbers("C 1999 Imprint").is_empty());
     assert_eq!(printed_catalog_numbers("P 2007 Imprint KBOX3555B"), vec!["KBOX3555B"]);
-    // Digits that are no year are still a number.
+    // A prefix of two letters, or digits that are no year, is still a number.
+    assert_eq!(printed_catalog_numbers("PC 2007"), vec!["PC 2007"]);
     assert_eq!(printed_catalog_numbers("P 12345"), vec!["P 12345"]);
 }
 
@@ -123,22 +124,20 @@ fn a_ripper_report_piece_is_no_number() {
     assert_eq!(printed_catalog_numbers("XYZ 846.104"), vec!["XYZ 846.104"]);
 }
 
-/// A letter prefix and a year is no number, as a copyright mark and a year
-/// are none; the same letters and a year without the space are one.
+/// Letters, a space and four digits that read as a year are a number: only
+/// a copyright mark and its year are none.
 #[test]
-fn a_name_and_a_year_is_no_number() {
-    assert_eq!(
-        printed_catalog_numbers("ABCD 1980 'Title' (Country Label XY 16018)"),
-        vec!["XY 16018"]
-    );
+fn letters_and_a_year_are_a_number() {
+    assert_eq!(printed_catalog_numbers("Label [XQ 2002]"), vec!["XQ 2002"]);
+    assert_eq!(printed_catalog_numbers("ABCD 1980 Title"), vec!["ABCD 1980"]);
     assert_eq!(printed_catalog_numbers("MR2002"), vec!["MR2002"]);
 }
 
-/// A medium and a year in a scan's file name.
+/// A medium's name and four digits that read as a year are a number.
 #[test]
-fn a_medium_and_a_year_is_no_number() {
-    assert!(printed_catalog_numbers("Artist Title CD1998 Back").is_empty());
-    assert!(printed_catalog_numbers("Artist Title LP2011 500").is_empty());
+fn a_medium_and_a_year_are_a_number() {
+    assert_eq!(printed_catalog_numbers("Title CD1998 Back"), vec!["CD1998"]);
+    assert_eq!(printed_catalog_numbers("Title LP2011 500"), vec!["LP2011"]);
     assert_eq!(printed_catalog_numbers("CD 099"), vec!["CD 099"]);
 }
 
