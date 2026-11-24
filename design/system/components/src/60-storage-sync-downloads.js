@@ -115,7 +115,7 @@
     if (props.state) return h(MacStorageChip, { state: props.state, progress: props.progress });
     return h('span', { className: props.numeric ? 'bae-num bae-m-storecell-num' : null }, props.value);
   }
-  // A release's files in its Storage sheet: the Files heading over the columns Name, Audio, Size and Kind, the file name in the text colour, its audio format as the app writes it, cut to the column (empty for a file that isn't audio) and size in secondary text, its kind in tertiary. Name, Size and Kind sort the table, Audio doesn't, but every heading is a button, as each header cell of AppKit's table is; `sort` is the column it sorts by and its direction (Name:up unless given), marked in its header. `files` lists them, one "name|audio|size|kind" each, separated by semicolons.
+  // A release's files in its Storage sheet, under the sheet's Files heading: the columns Name, Audio, Size and Kind, the file name in the text colour, its audio format as the app writes it, cut to the column (empty for a file that isn't audio) and size in secondary text, its kind in tertiary. Name, Size and Kind sort the table, Audio doesn't, but every heading is a button, as each header cell of AppKit's table is; `sort` is the column it sorts by and its direction (Name:up unless given), marked in its header. `files` lists them, one "name|audio|size|kind" each, separated by semicolons.
   function MacReleaseFileTable(props) {
     var sort = String(props.sort || 'Name:up').split(':');
     var cs = cols('Name:200,Audio:120,Size:80,Kind:130').map(function (c) { if (c.title === sort[0]) c.sort = sort[1] || 'up'; return c; });
@@ -125,10 +125,8 @@
           h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-ellipsis' }, f[0])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted bae-ellipsis' }, f[1] || '')),
           h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted bae-num' }, f[2])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-m-tertiary' }, f[3]))));
     });
-    return h(React.Fragment, null,
-      h('div', { style: { padding: 'var(--space-related) var(--space-edge) var(--space-inline)' } }, h(MacEyebrow, null, 'Files')),
-      h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
-        h('div', { className: 'bae-m-table', style: { '--bae-cols': tableTemplate(cs) } }, tableHead(cs), h('div', { className: 'bae-m-table-body' }, rows))));
+    return h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
+      h('div', { className: 'bae-m-table', style: { '--bae-cols': tableTemplate(cs) } }, tableHead(cs), h('div', { className: 'bae-m-table-body' }, rows)));
   }
   // The Storage column, as MacStorageChip draws it: one word, with no icon. Every state that stands still is a plain word: Local, Pinned and Cloud at rest, Queued, and Waiting and Error in their tone's colour. Only the states with progress (Uploading, Pinning, Moving) are filled chips. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back. `long`, for a release's Storage sheet (MacStorageBand), names what a waiting or moving change does, as everywhere but the column: Queued to upload, Queued to pin, Queued to move to This Mac, Moving to This Mac….
   function MacStorageChip(props) {
