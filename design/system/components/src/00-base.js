@@ -99,9 +99,10 @@
   function MSymbol(props) {
     var s = iconSize(props.size, true), filled = props.filled != null ? props.filled : SYMBOL_FILLED[props.name];
     // `label`: the symbol's name for a screen reader, as an image; without one, a screen reader skips it.
+    // The text is the font's ligature name, which draws the glyph and is never read, so a labelled image holds only its label.
     var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
     return h('svg', Object.assign({ style: { width: s, height: s }, className: props.className, fill: props.fill }, named),
-      h('text', { x: 0, y: '50%', dominantBaseline: 'central', className: 'bae-msym', style: filled ? { fontSize: s, fontVariationSettings: "'FILL' 1" } : { fontSize: s } }, SYMBOL[props.name] || props.name));
+      h('text', { 'aria-hidden': true, x: 0, y: '50%', dominantBaseline: 'central', className: 'bae-msym', style: filled ? { fontSize: s, fontVariationSettings: "'FILL' 1" } : { fontSize: s } }, SYMBOL[props.name] || props.name));
   }
   function Material(props) {
     return h(MSymbol, { name: props.name, size: props.size || 'large', className: props.className });
