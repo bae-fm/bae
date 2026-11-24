@@ -146,7 +146,9 @@ extension ShotScene {
             storageRow(
                 row,
                 releaseId: "rel-row-\(offset + 1)",
-                albumId: "album-row-\(offset + 1)"
+                albumId: "album-row-\(offset + 1)",
+                upload: row.status == .uploading
+                    ? shotUpload(queued: 0, uploading: 1) : nil
             )
         }
 
@@ -237,6 +239,18 @@ struct BoardTransferStreams {
         )
         outbox = OutboxStore(
             uploadsPaused: false,
+            releaseProgress: .releaseUploads(
+                holding: [
+                    "rel-row-4": BridgeReleaseUploadTransfer(
+                        bar: BridgeUploadBar(
+                            bytesDone: 559_000_000,
+                            bytesTotal: 902_000_000,
+                            fraction: 0.62
+                        ),
+                        throughputBps: 6_400_000
+                    )
+                ]
+            ),
             filesBeingSent: .uploadTotal(
                 holding: BridgeUploadTransfer(
                     bar: BridgeUploadBar(
