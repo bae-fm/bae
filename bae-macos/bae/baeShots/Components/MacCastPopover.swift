@@ -65,7 +65,7 @@ extension ShotScene {
         found: [BridgeCastReceiver] = [],
         connecting: CastStart.Connecting? = nil
     ) -> ShotScene {
-        component(id, width: 284, height: 280) {
+        component(id, width: wideColumn, height: 260) {
             MacCastPopover(
                 receivers: BridgeCastReceiverList(
                     casting: casting,
@@ -74,6 +74,14 @@ extension ShotScene {
                 ),
                 endedFailure: nil,
                 onDisconnect: {}
+            )
+            // The board puts the popover at the cell's end, 10 points
+            // above its bottom.
+            .padding(.bottom, 10)
+            .frame(
+                width: wideColumn,
+                height: 260,
+                alignment: .bottomTrailing
             )
             .environment(
                 connecting.map { CastStart.drawn(connecting: $0) }

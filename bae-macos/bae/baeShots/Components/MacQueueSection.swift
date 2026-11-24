@@ -23,7 +23,7 @@ extension ShotScene {
     /// A day of History, with the whose-plays menu that ends the first day
     /// when `menu` is true.
     private static func day(_ id: String, menu: Bool = false) -> ShotScene {
-        component(id, height: 60) {
+        component(id, width: wideColumn, height: 60) {
             MacQueueSection(
                 title: "Playing from · Low Tide Hours",
                 kind: .day(
@@ -40,7 +40,7 @@ extension ShotScene {
         shuffled: Bool? = false,
         clear: Bool = true
     ) -> ShotScene {
-        component(id, height: 60) {
+        component(id, width: wideColumn, height: 60) {
             MacQueueSection(
                 title: "Playing from · Low Tide Hours",
                 kind: .lane(

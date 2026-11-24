@@ -7,18 +7,27 @@ import SwiftUI
 extension ShotScene {
     /// `MacSavePanelFormat` closed, on FLAC.
     static let macSavePanelFormatScenes: [ShotScene] = [
-        component("mac.component.save-panel-format.closed", height: 50) {
+        component(
+            "mac.component.save-panel-format.closed",
+            width: wideColumn,
+            height: 50
+        ) {
             SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone"])
                 .frame(width: 250, height: 34)
                 .frame(maxWidth: .infinity)
         },
-        component("mac.component.save-panel-format.open", height: 170) {
+        component(
+            "mac.component.save-panel-format.open",
+            width: wideColumn,
+            height: 170
+        ) {
             SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone"])
                 .frame(width: 250, height: 34)
                 .frame(maxWidth: .infinity)
         },
         component(
             "mac.component.save-panel-format.new-format-chosen",
+            width: wideColumn,
             height: 170
         ) {
             SavePanelFormatShot(formats: ["FLAC", "MP3", "Phone", "FLAC (2)"])
