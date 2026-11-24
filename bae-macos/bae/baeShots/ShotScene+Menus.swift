@@ -49,8 +49,10 @@ extension ShotScene {
                         },
                         highlighted: 7
                     )
+                    // The board puts the menu 330 pt down from the window's
+                    // content, which starts 55 pt below the window's top.
                     .padding(.leading, 640)
-                    .padding(.top, 330)
+                    .padding(.top, 385)
                 }
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
