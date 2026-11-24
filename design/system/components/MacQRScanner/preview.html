@@ -8,7 +8,7 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+  function box(w, c) { return h('div', { style: { width: w } }, c); }
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Starting', box(360, h(B.MacQRScanner, { state: 'starting' }))), W('Camera access off', box(360, h(B.MacQRScanner, { state: 'denied' }))), W('No camera', box(360, h(B.MacQRScanner, { state: 'unavailable' }))), W('Camera', box(360, h(B.MacQRScanner, { state: 'camera' })))));
 </script>

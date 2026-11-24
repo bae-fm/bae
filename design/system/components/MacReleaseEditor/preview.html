@@ -7,7 +7,7 @@
 <script>
   var B = window.Bae, h = React.createElement;
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+  function box(w, c) { return h('div', { style: { width: w } }, c); }
 
   // The Identifying row's Find online, as the release editor's shot stages it: nothing found, no Discogs bar. Its band looks up the editor's release: Northbound by Mara Quill, catalog number HR-0412, no barcode.
   var chips = 'Disc ID|Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-|filled|MusicBrainz=0,Barcode||dash,ISRC||dash,Title search|Mara Quill · Northbound|filled|MusicBrainz=0+Discogs=0,Catalog #|HR-0412|outlined';
