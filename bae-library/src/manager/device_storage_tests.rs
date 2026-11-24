@@ -249,68 +249,72 @@ async fn a_budget_no_choice_names_fails_the_subscription() {
 
 /// What a reset kept shows as From before the reset until it is deleted, and
 /// the subscription delivers each change.
-#[tokio::test]
-async fn data_from_before_a_reset_shows_until_it_is_deleted() {
-    let temp = bae_util::test_files::TestFolder::new();
-    let app_dir = bae_app_dir::AppDir::at(temp.path()).unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let sources = bae_store::TestSources::system();
-    let storage = std::sync::Arc::new(
-        coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
-    );
-    let created = crate::create_library(
-        sources.builder(&installation).storage_connector(storage.clone()),
-        bae_store::EnteredName::parse("Local Library").unwrap(),
-        bae_store::EnteredName::parse("Creator").unwrap(),
-        "Test Device",
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap();
-    // A reset loads the library back from storage, so the library has set it up.
-    created
-        .setup_s3_storage(
-            coven::Storage::config(storage.as_ref()),
-            "owner-key".into(),
-            coven::SecretText::new("owner-secret".into()),
-            &|_| (),
+#[test]
+fn data_from_before_a_reset_shows_until_it_is_deleted() {
+    bae_store::test_devices::on_device_runtime(async || {
+        let temp = bae_util::test_files::TestFolder::new();
+        let app_dir = bae_app_dir::AppDir::at(temp.path()).unwrap();
+        let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+        let sources = bae_store::TestSources::system();
+        let storage = std::sync::Arc::new(
+            coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
+        );
+        let created = crate::create_library(
+            sources.builder(&installation).storage_connector(storage.clone()),
+            bae_store::EnteredName::parse("Local Library").unwrap(),
+            bae_store::EnteredName::parse("Creator").unwrap(),
+            "Test Device",
+            &bae_diagnostics::Diagnostics::noop(),
         )
         .await
         .unwrap();
-    let store = created.store_id();
-    created.close().await.unwrap();
-    let handle = crate::reset_device(
-        sources.builder(&installation).storage_connector(std::sync::Arc::new(storage.for_device())),
-        store,
-        "Replacement",
-        |_| {},
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap();
-    let library = crate::test_libraries::test_library_from_handle(
-        handle,
-        temp.path(),
-        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
-        bae_util::http::Http::for_test(),
-        &sources,
-    )
-    .await;
-    let manager = library.manager();
+        // A reset loads the library back from storage, so the library has set it up.
+        created
+            .setup_s3_storage(
+                coven::Storage::config(storage.as_ref()),
+                "owner-key".into(),
+                coven::SecretText::new("owner-secret".into()),
+                &|_| (),
+            )
+            .await
+            .unwrap();
+        let store = created.store_id();
+        created.close().await.unwrap();
+        let handle = crate::reset_device(
+            sources
+                .builder(&installation)
+                .storage_connector(std::sync::Arc::new(storage.for_device())),
+            store,
+            "Replacement",
+            |_| {},
+            &bae_diagnostics::Diagnostics::noop(),
+        )
+        .await
+        .unwrap();
+        let library = crate::test_libraries::test_library_from_handle(
+            handle,
+            temp.path(),
+            bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+            bae_util::http::Http::for_test(),
+            &sources,
+        )
+        .await;
+        let manager = library.manager();
 
-    let mut live = manager.subscribe_device_storage();
-    let reset = next_until(&mut live, |_| true).await;
-    let kept = reset.before_reset.expect("the reset kept the installation it replaced");
-    assert!(kept > 0);
-    assert_eq!(
-        reset.parts.last().copied(),
-        Some(StoragePart { kind: StorageKind::BeforeReset, bytes: kept })
-    );
+        let mut live = manager.subscribe_device_storage();
+        let reset = next_until(&mut live, |_| true).await;
+        let kept = reset.before_reset.expect("the reset kept the installation it replaced");
+        assert!(kept > 0);
+        assert_eq!(
+            reset.parts.last().copied(),
+            Some(StoragePart { kind: StorageKind::BeforeReset, bytes: kept })
+        );
 
-    manager.delete_data_from_before_reset().await.unwrap();
+        manager.delete_data_from_before_reset().await.unwrap();
 
-    let deleted = next_until(&mut live, |storage| storage.before_reset.is_none()).await;
-    assert!(deleted.parts.iter().all(|part| part.kind != StorageKind::BeforeReset));
+        let deleted = next_until(&mut live, |storage| storage.before_reset.is_none()).await;
+        assert!(deleted.parts.iter().all(|part| part.kind != StorageKind::BeforeReset));
+    });
 }
 
 /// Caching a catalog image changes the page's Cache figure once, by the
