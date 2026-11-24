@@ -133,8 +133,8 @@ pub struct CoverGallery {
 
 /// The release's gallery under one filter, as the statement that binds the
 /// release as `:release` reads it: its saved cover only under all and only when
-/// the cover keeps a picture of its own (one made from an image file is that
-/// file's entry), catalog covers under all or their catalog, image files under
+/// the cover is made from no image file of the release (one made from an image
+/// file is that file's entry), catalog covers under all or their catalog, image files under
 /// all or the release's files, each file in name order. The release focuses
 /// its saved cover, or the file the cover is made from, unless the request
 /// names another.

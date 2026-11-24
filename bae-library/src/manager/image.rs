@@ -1,6 +1,11 @@
 //! Image domain operations for [`LibraryManager`].
 
 use super::*;
+use bae_records::CoverSource;
+
+/// The bytes each read of an audio file's tags asks its stored file for: the
+/// tags of most files, art and all, in one or two reads.
+const TAG_READ_BYTES: usize = 256 * 1024;
 
 impl LibraryManager {
     /// Bytes of one gallery slot, dispatching the read on its [`GallerySource`]
@@ -9,7 +14,8 @@ impl LibraryManager {
     /// cover slot reads the copy that covers the size, and an image file's slot
     /// its preview; a size above the largest copy (the cover's 1536 pixels, the
     /// preview's 384) is a viewer's, and reads the picture itself: the cover's
-    /// kept original, or the image file as the release holds it.
+    /// picture ([`read_cover_picture`](Self::read_cover_picture)), or the image
+    /// file as the release holds it.
     /// The gallery carries a cover slot only when a cover exists, so a `Cover`
     /// with no bytes here is exceptional and surfaces rather than being masked.
     pub async fn read_gallery_bytes(
@@ -27,8 +33,8 @@ impl LibraryManager {
                 })
             }
             (GallerySource::Cover(image), _) => {
-                self.read_cover_original(&image.id).await?.ok_or_else(|| {
-                    LibraryError::Storage(format!("gallery cover {} has no original", image.id))
+                self.read_cover_picture(&image.id).await?.ok_or_else(|| {
+                    LibraryError::Storage(format!("gallery cover {} has no row", image.id))
                 })
             }
             (GallerySource::ReleaseFile { file_id }, Some(pixels))
@@ -40,6 +46,60 @@ impl LibraryManager {
                 self.load_gallery_image(release_id, file_id).await
             }
         }
+    }
+
+    /// The picture the release's cover is made from, which the viewer opens:
+    /// the image file it names, the art in the audio file it names, or the
+    /// catalog image it keeps as its original. `None` when the release has no
+    /// cover.
+    pub async fn read_cover_picture(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<Vec<u8>>, LibraryError> {
+        let Some(source) = self.records.cover_source(release_id).await? else {
+            return Ok(None);
+        };
+        let picture = match source {
+            CoverSource::ReleaseFile { file_id } => {
+                self.load_gallery_image(release_id, &file_id).await?
+            }
+            CoverSource::Embedded { file_id } => self.read_tag_art(&file_id).await?,
+            CoverSource::Original => {
+                let file =
+                    self.records.cover_original_file(release_id).await?.ok_or_else(|| {
+                        LibraryError::Storage(format!("{release_id}'s cover keeps no original"))
+                    })?;
+                self.read_image_file(&format!("original of {release_id}'s cover"), &file).await?
+            }
+        };
+        Ok(Some(picture))
+    }
+
+    /// The art the tags of the release's audio file `file_id` hold, read from
+    /// the stored file in ranges, so only its tags are read and none of its
+    /// audio. A file whose tags hold no art is an error: a cover names it only
+    /// because its tags held the art the cover was made from.
+    async fn read_tag_art(&self, file_id: &str) -> Result<Vec<u8>, LibraryError> {
+        let lease = bae_store::lease_one(&self.files).await;
+        let stream = self.records.open_release_file(file_id, &lease).await?;
+        let reader = std::io::BufReader::with_capacity(
+            TAG_READ_BYTES,
+            stream.into_blocking_reader(self.runtime_handle.clone()),
+        );
+        let art = self
+            .diagnostics
+            .blocking("read a cover's art from its audio file", move || {
+                bae_audio::tag_art::read_tag_art(reader)
+            })
+            .await
+            .map_err(|failed| LibraryError::Storage(failed.to_string()))?
+            .map_err(|error| {
+                LibraryError::Storage(format!("read the tags of release file {file_id}: {error}"))
+            })?;
+        let (bytes, _) = art.ok_or_else(|| {
+            LibraryError::Storage(format!("the tags of release file {file_id} hold no art"))
+        })?;
+        Ok(bytes)
     }
 
     /// The preview of one of a release's image files, which the device that

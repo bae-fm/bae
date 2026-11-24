@@ -159,7 +159,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             // The embedded artwork is no image the store reads, so a stored
             // cover is the folder's front.jpg.
             bae_records::test_fixtures::test_records(&test.db)
-                .cover_source_for_test(&release_id)
+                .cover_source(&release_id)
                 .await
                 .unwrap()
                 .expect("the folder's cover is stored");
@@ -216,7 +216,11 @@ fn an_embedded_cover_is_the_snapshot_artwork_of_the_audio_it_names() {
     let selection = PreparedCover::Embedded("01.flac".into());
     let snapshot = snapshot_with_cover(Some("01.flac"));
     let cover = ImportCover::selected(Some(selection.clone()), Some(&snapshot), &key).unwrap();
-    assert!(matches!(cover, Some(ImportCover::Embedded(bytes)) if bytes == [1, 2, 3]));
+    assert!(matches!(
+        cover,
+        Some(ImportCover::Embedded { source_relative_path, art })
+            if source_relative_path == "01.flac" && art == [1, 2, 3]
+    ));
 
     for snapshot in
         [Some(snapshot_with_cover(Some("02.flac"))), Some(snapshot_with_cover(None)), None]

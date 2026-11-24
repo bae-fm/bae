@@ -607,8 +607,8 @@ pub fn upsert_artist_image_row(
 pub struct StagedCover {
     pub browse: coven::FileId,
     pub large: coven::FileId,
-    /// The kept original; `None` when the cover is one of the release's
-    /// files.
+    /// The kept original; `None` when the cover is made from a file of the
+    /// release.
     pub original: Option<coven::FileId>,
 }
 
@@ -626,7 +626,7 @@ pub fn stage_cover(w: &mut coven::WriteBatch<'_>, cover: &NewCover) -> StagedCov
         coven::Place::Cloud,
     );
     let original = match &cover.picture {
-        NewCoverPicture::ReleaseFile { .. } => None,
+        NewCoverPicture::ReleaseFile { .. } | NewCoverPicture::Embedded { .. } => None,
         NewCoverPicture::Original { bytes } => Some(w.put_file(
             crate::synced::COVER_ORIGINALS_NAMESPACE,
             bytes.clone(),
@@ -642,15 +642,18 @@ pub fn upsert_cover_row(
     cover: &NewCover,
     staged: &StagedCover,
 ) -> Result<(), DbError> {
-    let source_file = match &cover.picture {
-        NewCoverPicture::ReleaseFile { file_id } => Some(file_id.as_str()),
-        NewCoverPicture::Original { .. } => None,
+    let (source_file, embedded_file) = match &cover.picture {
+        NewCoverPicture::ReleaseFile { file_id } => (Some(file_id.as_str()), None),
+        NewCoverPicture::Embedded { file_id } => (None, Some(file_id.as_str())),
+        NewCoverPicture::Original { .. } => (None, None),
     };
     conn.execute(
-        "INSERT INTO covers (id, source_file, original_file, browse_file, large_file, content_type) \
-         VALUES (?, ?, ?, ?, ?, ?) \
+        "INSERT INTO covers \
+             (id, source_file, embedded_file, original_file, browse_file, large_file, content_type) \
+         VALUES (?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT(id) DO UPDATE SET \
              source_file = excluded.source_file, \
+             embedded_file = excluded.embedded_file, \
              original_file = excluded.original_file, \
              browse_file = excluded.browse_file, \
              large_file = excluded.large_file, \
@@ -658,6 +661,7 @@ pub fn upsert_cover_row(
         params![
             cover.release_id,
             source_file,
+            embedded_file,
             staged.original,
             staged.browse,
             staged.large,

@@ -153,20 +153,6 @@ impl LibraryManager {
             .map(Some)
     }
 
-    /// The release's cover original, the picture the viewer opens: the
-    /// catalog image or embedded art the cover keeps. `None` when the release
-    /// has no cover, or its cover is one of its image files, which the viewer
-    /// opens as it opens any of them.
-    pub async fn read_cover_original(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<Vec<u8>>, LibraryError> {
-        let Some(file) = self.records.cover_original_file(release_id).await? else {
-            return Ok(None);
-        };
-        self.read_image_file(&format!("original of {release_id}'s cover"), &file).await.map(Some)
-    }
-
     /// Read a library image's bytes by its subject id and kind; for a cover,
     /// its large copy. `None` when this device has no file for it.
     pub async fn read_library_image_bytes(

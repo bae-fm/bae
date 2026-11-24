@@ -839,6 +839,7 @@ dependencies = [
  "coven",
  "ffmpeg-next",
  "ffmpeg-sys-next",
+ "lofty",
  "rtrb",
  "thiserror 2.0.21",
  "tokio",

@@ -549,7 +549,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     .await
     .expect("the import succeeds");
 
-    f.library.records().cover_source_for_test(&release_id).await.unwrap().expect(
+    f.library.records().cover_source(&release_id).await.unwrap().expect(
         "the release document says the archive holds a front image, so the import \
              must land one",
     );

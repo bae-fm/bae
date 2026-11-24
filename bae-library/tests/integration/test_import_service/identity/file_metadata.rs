@@ -215,12 +215,32 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
     let (release_id, _) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    f.library
+    // The cover names the audio file whose tags hold the art, and keeps no
+    // second copy of the art.
+    let files = f.library.manager().get_files_for_release(&release_id).await.unwrap();
+    let audio = files
+        .iter()
+        .find(|file| file.original_filename == "01.flac")
+        .expect("the release holds the audio file");
+    let source = f
+        .library
         .records()
-        .cover_source_for_test(&release_id)
+        .cover_source(&release_id)
         .await
         .unwrap()
         .expect("embedded cover should be written when no folder/remote image exists");
+    assert_eq!(source, bae_records::CoverSource::Embedded { file_id: audio.id.clone() });
+    assert!(f.library.records().cover_original_file(&release_id).await.unwrap().is_none());
+
+    // The viewer opens the art as the audio file's tags hold it.
+    let cover = f.library.manager().cover_ref(&release_id).await.unwrap().expect("a cover");
+    let art = f
+        .library
+        .manager()
+        .read_gallery_bytes(&release_id, &bae_records::GallerySource::Cover(cover), None)
+        .await
+        .expect("the viewer reads the embedded art");
+    assert_eq!(art, embedded_cover_jpeg());
 
     // The embedded picture (≤600) keeps its dimensions but the store path
     // re-encodes it to JPEG, so assert on the decoded image, not raw bytes.
@@ -274,7 +294,7 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
 
     f.library
         .records()
-        .cover_source_for_test(&release_id)
+        .cover_source(&release_id)
         .await
         .unwrap()
         .expect("a cover should be written");

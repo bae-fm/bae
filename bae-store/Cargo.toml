@@ -30,8 +30,9 @@ tokio-util = { workspace = true }
 time = { workspace = true }
 # Stored paths are hex-encoded bytes.
 hex = { workspace = true }
-# The select and channels the sync-state follower waits on.
-tokio = { workspace = true, features = ["sync"] }
+# The select and channels the sync-state follower waits on, and the runtime a
+# blocking reader of a stored file waits on.
+tokio = { workspace = true, features = ["rt", "sync"] }
 # A test store's app directory.
 bae-app-dir = { workspace = true, features = ["test-utils"], optional = true }
 # The schema checks read the triggers' `UPDATE OF` columns.

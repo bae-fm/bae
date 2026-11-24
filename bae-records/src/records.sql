@@ -439,25 +439,30 @@ CREATE TABLE IF NOT EXISTS release_media (
 ) STRICT;
 
 -- One cover per release; `id` is the release's id. A cover is a choice of
--- one picture: one of the release's image files (`source_file`), or a
--- picture the cover keeps as its own original (`original_file`, in
--- `cover_originals`): the catalog image the person picked, or art embedded
--- in one of the release's audio files. The viewer opens that picture. The
+-- one picture, and names it in exactly one of three columns: one of the
+-- release's image files (`source_file`), the art embedded in one of the
+-- release's audio files (`embedded_file`, the audio file's id), or the
+-- catalog image the person picked, which the cover keeps as its own original
+-- (`original_file`, in `cover_originals`). The viewer opens that picture. The
 -- grids and the album panel draw two copies made from it, a browse copy at
 -- 768 pixels (`browse_file`) and a large copy at 1536 (`large_file`). A new
 -- cover replaces the row; each file is a coven file (`coven_files`).
 CREATE TABLE IF NOT EXISTS covers (
     id TEXT PRIMARY KEY,
     source_file TEXT,
+    embedded_file TEXT,
     original_file TEXT,
     browse_file TEXT NOT NULL,
     large_file TEXT NOT NULL,
     -- The format of both copies: they come from one picture, so a picture
     -- with transparency makes two PNGs and any other two JPEGs.
     content_type TEXT NOT NULL,
-    CHECK ((source_file IS NULL) <> (original_file IS NULL)),
+    CHECK (
+        (source_file IS NOT NULL) + (embedded_file IS NOT NULL) + (original_file IS NOT NULL) = 1
+    ),
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE,
-    FOREIGN KEY (source_file) REFERENCES release_files (id) ON DELETE CASCADE
+    FOREIGN KEY (source_file) REFERENCES release_files (id) ON DELETE CASCADE,
+    FOREIGN KEY (embedded_file) REFERENCES release_files (id) ON DELETE CASCADE
 ) STRICT;
 
 -- A cover's row by each of its files, which coven's pending records name.
@@ -465,6 +470,7 @@ CREATE INDEX IF NOT EXISTS idx_covers_browse_file ON covers (browse_file);
 CREATE INDEX IF NOT EXISTS idx_covers_large_file ON covers (large_file);
 CREATE INDEX IF NOT EXISTS idx_covers_original_file ON covers (original_file);
 CREATE INDEX IF NOT EXISTS idx_covers_source_file ON covers (source_file);
+CREATE INDEX IF NOT EXISTS idx_covers_embedded_file ON covers (embedded_file);
 
 -- A small copy of each image file of a release (a scan, a booklet page,
 -- artwork), 384 pixels on its longer side, which the device that imports the

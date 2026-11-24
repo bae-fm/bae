@@ -44,12 +44,6 @@ pub(crate) enum TagReadFailure {
 
 pub(crate) struct LoftyFileTagReader;
 
-/// The tag a file's other tags defer to: its format's own, else the first it
-/// carries.
-fn primary_tag(tagged: &lofty::file::TaggedFile) -> Option<&lofty::tag::Tag> {
-    tagged.primary_tag().or_else(|| tagged.first_tag())
-}
-
 impl FileTagReader for LoftyFileTagReader {
     /// Opens and parses `path` once: the concrete format's own reading, for
     /// the ID3v2 frames and MP4 atoms only it keeps, is the one the generic
@@ -65,7 +59,7 @@ impl FileTagReader for LoftyFileTagReader {
         })?;
         let mut reader = BufReader::new(&mut *file);
         let parsed = parse(&mut reader, path, file_type)?;
-        let tag = primary_tag(&parsed.tagged);
+        let tag = bae_audio::tag_art::primary_tag(&parsed.tagged);
         let store = store_marker(parsed.itunes_purchase, tag);
         let Some(tag) = tag else {
             return Ok(FileTagRead {
@@ -117,7 +111,7 @@ impl FileTagReader for LoftyFileTagReader {
                 copyrights: values(legacy.copyrights, ItemKey::CopyrightMessage),
                 store,
             },
-            embedded_cover: embedded_cover_from_tag(tag),
+            embedded_cover: bae_audio::tag_art::tag_art(tag),
         })
     }
 }
@@ -383,22 +377,6 @@ pub(crate) fn non_empty(value: Option<String>) -> Option<String> {
         let trimmed = value.trim();
         (!trimmed.is_empty()).then(|| trimmed.to_string())
     })
-}
-
-fn embedded_cover_from_tag(tag: &lofty::tag::Tag) -> Option<(Vec<u8>, ContentType)> {
-    let mut pictures = tag.pictures().iter().filter_map(|picture| {
-        picture.mime_type().and_then(image_content_type).map(|content_type| (picture, content_type))
-    });
-    let (picture, content_type) = pictures
-        .clone()
-        .find(|(picture, _)| picture.pic_type() == lofty::picture::PictureType::CoverFront)
-        .or_else(|| pictures.next())?;
-    Some((picture.data().to_vec(), content_type))
-}
-
-pub(crate) fn image_content_type(mime: &lofty::picture::MimeType) -> Option<ContentType> {
-    let content_type = ContentType::from_mime(mime.as_str());
-    content_type.is_supported_cover().then_some(content_type)
 }
 
 /// Every year the dates `tag` states name, each once, in the order stated:

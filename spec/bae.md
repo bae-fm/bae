@@ -2543,22 +2543,25 @@ Two kinds of file, matching coven's
   PNG, which takes twice the memory to decode, up to about 5,800 pixels square.
 
 **A cover is a choice of a picture.** A release's cover names the picture it is
-made from: one of the release's image files, or a picture of its own that the
-cover keeps, the catalog image the person picked or art embedded in one of the
-release's audio files. The cover keeps two copies of that picture, made when
+made from: one of the release's image files, the art embedded in one of the
+release's audio files, or the catalog image the person picked, which the cover
+keeps as a picture of its own. The cover keeps two copies of that picture, made when
 the cover is set: a browse copy that fits 768 pixels, which grids and rows
 draw, and a large copy that fits 1536, which the Mac's album panel, Android's
 full player and Now Playing draw. Each fits its size and is never larger than
 the picture. A picture with transparency makes two PNGs, any other two JPEGs,
 and the cover's row names the format of both. A slot asks for the copy that
 covers its size in pixels, and the apps decode no more than that copy. The
-viewer opens the picture itself, at full quality: the release's image file, or
-the cover's original. Every writer of a cover makes the copies and names the
-picture: the import, and the *Change cover* sheet of a library release.
-A catalog image or embedded art that the cover keeps is stored once, in the
+viewer opens the picture itself, at full quality: the release's image file,
+the art read from the audio file's tags, or the cover's original. bae reads the
+art from the stored audio file in plain chunked reads, never memory-mapped, and
+reads only the file's tags, none of its audio. Every writer of a cover makes the
+copies and names the picture: the import, and the *Change cover* sheet of a
+library release. A catalog image that the cover keeps is stored once, in the
 `cover_originals` namespace, and bae downloads it once, when it makes the
 cover; another device fetches it only when its viewer opens the cover.
-A cover made from an image file keeps no second copy of the file.
+A cover made from an image file or from embedded art keeps no second copy of
+the picture.
 
 **A release's image files have previews.** Every image file of a release (a
 scan, a booklet page, artwork; never audio, a log or a CUE sheet) has a preview
@@ -2904,7 +2907,7 @@ pushes the covers out:
 | Audio and the folder's other files | 20 GB, as Keep up to sets it (§4.7) |
 | Cover browse copies (768 pixels) | 1 GiB |
 | Cover large copies (1536 pixels) | 1 GiB |
-| Cover originals (catalog images and embedded art) | 512 MiB |
+| Cover originals (catalog images) | 512 MiB |
 | Release image previews (384 pixels) | 1 GiB |
 | Artist images | 256 MiB |
 | Avatars | 64 MiB |
@@ -6302,7 +6305,7 @@ All sync.
 | `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
 | `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
-| `covers` | release's cover, keyed by the release: the picture it is made from, either one of the release's files (`source_file`) or a coven file of its own (`original_file`), exactly one; its browse copy and large copy, each a coven file it references (`browse_file`, `large_file`), with an index by each file; and the type of both copies |
+| `covers` | release's cover, keyed by the release: the picture it is made from, exactly one of: one of the release's image files (`source_file`), the audio file whose tags hold the art (`embedded_file`), or a coven file of its own holding a catalog image (`original_file`); its browse copy and large copy, each a coven file it references (`browse_file`, `large_file`), with an index by each file; and the type of both copies |
 | `release_file_previews` | preview of an image file of a release, keyed by the release file: the coven file it references (`file`), with an index by it, and its type; deleting the file deletes it |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1; none of its `/`-separated names empty), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, with the role it holds (a key of bae's list, `instrument` with an instrument's id, `voice` with a voice's id, `performer` with the catalog's words for its part, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |

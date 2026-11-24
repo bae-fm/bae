@@ -20,10 +20,11 @@ pub(super) enum ImportCover {
     /// An image file in the folder, by its path under the candidate's folder,
     /// read when the release is written.
     Local(String),
-    /// The artwork embedded in the candidate's audio, as the file-tag
-    /// snapshot that seeded the pane captured it, so the import never opens
-    /// the tags a second time.
-    Embedded(Vec<u8>),
+    /// The artwork embedded in one of the candidate's audio files, by the
+    /// file's path under the candidate's folder, with the art's bytes as the
+    /// file-tag snapshot that seeded the pane captured them, so the import
+    /// never opens the tags a second time.
+    Embedded { source_relative_path: String, art: Vec<u8> },
 }
 
 impl ImportCover {
@@ -50,7 +51,10 @@ impl ImportCover {
                 };
                 match &snapshot.embedded_cover {
                     Some(cover) if cover.source_relative_path == source_file_id => {
-                        Ok(Some(Self::Embedded(cover.data.clone())))
+                        Ok(Some(Self::Embedded {
+                            source_relative_path: source_file_id,
+                            art: cover.data.clone(),
+                        }))
                     }
                     Some(cover) => Err(internal(format!(
                         "Selected embedded cover {source_file_id} does not match snapshot source {}",
@@ -68,9 +72,11 @@ impl ImportCover {
     /// The cover as the import writes it: the picture it is made from and its
     /// browse and large copies. A folder's image is the release's own file
     /// `release_file_ids` names, and its copies come from the copies its
-    /// candidate keeps, read from the folder only when none exists. A
-    /// catalog's image and embedded art become the cover's original, which
-    /// the import keeps in the cover's own namespace beside the copies.
+    /// candidate keeps, read from the folder only when none exists. Embedded
+    /// art names the release's audio file that holds it, and its copies come
+    /// from the art the snapshot captured. A catalog's image becomes the
+    /// cover's original, which the import keeps in the cover's own namespace
+    /// beside the copies.
     pub(super) async fn made(
         self,
         pictures: &crate::pictures::ImportPictures,
@@ -82,12 +88,7 @@ impl ImportCover {
         let (picture, copies) = match self {
             Self::Local(path) => {
                 let file = folder_cover(discovered_files, &path)?;
-                let file_id =
-                    release_file_ids.get(&file.version.path).cloned().ok_or_else(|| {
-                        ImportError::Internal {
-                            detail: format!("the selected cover {path} has no release file"),
-                        }
-                    })?;
+                let file_id = release_file_id(release_file_ids, file, &path)?;
                 let picture = crate::ImportPicture::Folder { file: file.version.clone() };
                 let browse = pictures
                     .read_copy(
@@ -101,16 +102,61 @@ impl ImportCover {
                     .await?;
                 (NewCoverPicture::ReleaseFile { file_id }, crate::cover_copies_of(browse, large)?)
             }
-            Self::Remote(bytes) | Self::Embedded(bytes) => {
-                // Names the format it refuses before libvips fails on it.
-                bae_util::stored_image::inspect_image(&bytes)
-                    .map_err(|detail| ImportError::CoverArt { detail })?;
-                let copies = make_cover_copies(bytes.clone(), diagnostics).await?;
+            Self::Embedded { source_relative_path, art } => {
+                let file = art_source(discovered_files, &source_relative_path)?;
+                let file_id = release_file_id(release_file_ids, file, &source_relative_path)?;
+                (NewCoverPicture::Embedded { file_id }, copies_of_bytes(art, diagnostics).await?)
+            }
+            Self::Remote(bytes) => {
+                let copies = copies_of_bytes(bytes.clone(), diagnostics).await?;
                 (NewCoverPicture::Original { bytes }, copies)
             }
         };
         Ok(NewCover { release_id: release_id.to_string(), picture, copies })
     }
+}
+
+/// The cover's copies made from a picture held in memory, refused with the
+/// format it names before libvips fails on it.
+async fn copies_of_bytes(
+    bytes: Vec<u8>,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<bae_records::CoverCopies, ImportError> {
+    bae_util::stored_image::inspect_image(&bytes)
+        .map_err(|detail| ImportError::CoverArt { detail })?;
+    make_cover_copies(bytes, diagnostics).await
+}
+
+/// The id the release gives `file`, the cover's picture at `path` under the
+/// candidate's folder.
+fn release_file_id(
+    release_file_ids: &std::collections::HashMap<std::path::PathBuf, String>,
+    file: &crate::folder_scanner::ScannedFile,
+    path: &str,
+) -> Result<String, ImportError> {
+    release_file_ids.get(&file.version.path).cloned().ok_or_else(|| ImportError::Internal {
+        detail: format!("the selected cover {path} has no release file"),
+    })
+}
+
+/// The audio file at `source_relative_path` among the folder's discovered
+/// files, whose tags hold the selected cover's art. The path is the
+/// candidate's stored selection, which the file-tag snapshot matched, so a
+/// folder that no longer holds that file is stated.
+fn art_source<'a>(
+    discovered_files: &'a [CandidateFile],
+    source_relative_path: &str,
+) -> Result<&'a crate::folder_scanner::ScannedFile, ImportError> {
+    discovered_files
+        .iter()
+        .find(|entry| entry.file.relative_path == source_relative_path)
+        .map(|entry| &entry.file)
+        .ok_or_else(|| ImportError::Internal {
+            detail: format!(
+                "the audio file {source_relative_path} whose art is the cover is not among the \
+                 discovered files"
+            ),
+        })
 }
 
 /// One downloaded cover's bytes. Its content type is checked and dropped: the

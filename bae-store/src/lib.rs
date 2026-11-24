@@ -16,7 +16,7 @@ pub use error::{DbError, WriteError};
 mod file_budget;
 pub use file_budget::lease_one;
 mod file_stream;
-pub use file_stream::FileStream;
+pub use file_stream::{BlockingFileReader, FileStream};
 mod file_version;
 pub use file_version::file_version_sql;
 pub mod list_windows;

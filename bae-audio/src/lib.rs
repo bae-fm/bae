@@ -4,7 +4,8 @@
 //! import's verifying decode also takes scrub points), encoding (PCM to
 //! FLAC/MP3/AAC/Opus/WAV/AIFF, streamed frame by frame into an output sink),
 //! and probing (a file's audio facts, and the byte a seek to a sample lands
-//! on). A decode for playback writes into one track's [`track_stream`].
+//! on). A decode for playback writes into one track's [`track_stream`]. It
+//! also reads the art an audio file's tags carry ([`tag_art`]).
 
 mod avio;
 mod decode;
@@ -14,6 +15,7 @@ mod resample;
 mod sample_clock;
 pub mod sparse_buffer;
 pub mod stream_wake;
+pub mod tag_art;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
 #[cfg(any(test, feature = "test-utils"))]

@@ -214,7 +214,7 @@ async fn delete_release_removes_its_cover_image() {
     manager.delete_release(&release1.id).await.unwrap();
 
     // Row removed (the `covers` FK to `releases` cascade-deletes it).
-    assert!(manager.records.cover_source_for_test(&release1.id).await.unwrap().is_none());
+    assert!(manager.records.cover_source(&release1.id).await.unwrap().is_none());
 }
 
 /// A delete is planned against the release's rows and files before its write

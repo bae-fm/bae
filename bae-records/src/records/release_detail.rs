@@ -87,6 +87,8 @@ pub fn release_details_on<X>(
                 {cover_version} AS cover_version, \
                 (SELECT cover.source_file FROM covers AS cover WHERE cover.id = rel.id) \
                     AS cover_source_file, \
+                (SELECT cover.embedded_file FROM covers AS cover WHERE cover.id = rel.id) \
+                    AS cover_embedded_file, \
                 (SELECT number FROM release_number_in_album WHERE release_id = rel.id) \
                     AS release_number{extra_columns} \
          FROM releases rel \
@@ -139,14 +141,16 @@ pub fn release_details_on<X>(
     })?)
 }
 
-/// The cover the columns `cover_version` and `cover_source_file` of a release
-/// detail row state: both are NULL for a release with no cover.
+/// The cover the columns `cover_version`, `cover_source_file` and
+/// `cover_embedded_file` of a release detail row state: all are NULL for a
+/// release with no cover.
 fn cover_in_row(row: &Row) -> rusqlite::Result<Option<DbReleaseCover>> {
     let version: Option<String> = row.get("cover_version")?;
     let source_file: Option<String> = row.get("cover_source_file")?;
+    let embedded_file: Option<String> = row.get("cover_embedded_file")?;
     Ok(version.map(|version| DbReleaseCover {
         version,
-        source: CoverSource::of_source_file(source_file),
+        source: CoverSource::of_columns(source_file, embedded_file),
     }))
 }
 

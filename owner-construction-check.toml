@@ -92,6 +92,7 @@ capability_types = [
     "bae_catalogs::remote_image::cache::DiskImageCache",
     "bae_track_audio::data_source::FetchArbiter",
     "bae_store::file_stream::FileStream",
+    "bae_store::file_stream::BlockingFileReader",
     "bae_import::watching::folder_watcher::FolderWatcher",
     "tokio::runtime::Handle",
     "coven::IdSource",
@@ -264,8 +265,10 @@ task_types = [
     "bae_playback::audio_output::AudioOutput",
     "bae_playback::audio_output::AudioStream",
     "bae_playback::airplay_output::AirPlayStreamControl",
-    # One open file's bytes from coven, reporting a bug a read carries.
+    # One open file's bytes from coven, reporting a bug a read carries, and
+    # the same stream read by a thread that may block.
     "bae_store::file_stream::FileStream",
+    "bae_store::file_stream::BlockingFileReader",
     # A client asking Discogs with the library's stored key, for one call.
     "bae_catalogs::discogs::client::DiscogsClient",
     # The guard that cancels one call the app may stop when the call's future

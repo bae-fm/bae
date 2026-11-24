@@ -24,6 +24,8 @@ rtrb = { workspace = true }
 # The fill's wake signal (src/sparse_buffer.rs) and a track's ready signal
 # (src/track_stream.rs).
 tokio = { workspace = true, features = ["sync"] }
+# Reads the art an audio file's tags carry (src/tag_art.rs).
+lofty = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 

@@ -10,9 +10,8 @@ pub const COVER_BROWSE_NAMESPACE: &str = "cover_browse";
 /// A release's cover at 1536 pixels, for the album panel, the full player and
 /// Now Playing.
 pub const COVER_LARGE_NAMESPACE: &str = "cover_large";
-/// The picture a cover is made from when that picture is no file of the
-/// release: the catalog image the person picked, or art embedded in an audio
-/// file.
+/// The picture a cover is made from when that picture is in no file of the
+/// release: the catalog image the person picked.
 pub const COVER_ORIGINALS_NAMESPACE: &str = "cover_originals";
 /// A small copy of each image file of a release, which every device shows the
 /// release's pictures from.

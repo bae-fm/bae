@@ -94,18 +94,24 @@ impl DbArtistImage {
 pub enum CoverSource {
     /// One of the release's image files, by its release file id.
     ReleaseFile { file_id: String },
-    /// A picture of the cover's own, kept as its original: a catalog's
-    /// image or art embedded in one of the release's audio files.
+    /// The art embedded in one of the release's audio files, by the audio
+    /// file's release file id.
+    Embedded { file_id: String },
+    /// The catalog image the person picked, which the cover keeps as its
+    /// original.
     Original,
 }
 
 impl CoverSource {
-    /// The source a row's `source_file` column states: the release file it
-    /// names, or none for a cover that keeps its own picture.
-    pub fn of_source_file(source_file: Option<String>) -> Self {
-        match source_file {
-            Some(file_id) => Self::ReleaseFile { file_id },
-            None => Self::Original,
+    /// The source a row's `source_file` and `embedded_file` columns state:
+    /// the image file or the audio file one of them names, or neither for a
+    /// cover that keeps its own picture. The table's CHECK lets at most one
+    /// be set.
+    pub fn of_columns(source_file: Option<String>, embedded_file: Option<String>) -> Self {
+        match (source_file, embedded_file) {
+            (Some(file_id), _) => Self::ReleaseFile { file_id },
+            (None, Some(file_id)) => Self::Embedded { file_id },
+            (None, None) => Self::Original,
         }
     }
 }
@@ -162,7 +168,10 @@ pub struct NewCover {
 pub enum NewCoverPicture {
     /// One of the release's image files, by its release file id.
     ReleaseFile { file_id: String },
-    /// A picture the cover keeps as its own original: these bytes.
+    /// The art embedded in one of the release's audio files, by the audio
+    /// file's release file id.
+    Embedded { file_id: String },
+    /// A catalog image the cover keeps as its own original: these bytes.
     Original { bytes: Vec<u8> },
 }
 

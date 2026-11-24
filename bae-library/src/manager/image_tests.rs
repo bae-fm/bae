@@ -63,7 +63,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         .await
         .expect_err("bytes that are no image make no cover");
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ImportData, "{error}");
-    assert!(manager.records.cover_source_for_test(&release.id).await.unwrap().is_none());
+    assert!(manager.records.cover_source(&release.id).await.unwrap().is_none());
 }
 
 async fn assert_changed_cover(
@@ -118,7 +118,7 @@ async fn assert_changed_cover(
     // The cover is made from the release file it was picked from, which it
     // names, and keeps no original of its own. Its large copy fits 1536 pixels
     // and is never larger than the picture.
-    let source = manager.records.cover_source_for_test(&release.id).await.unwrap();
+    let source = manager.records.cover_source(&release.id).await.unwrap();
     assert_eq!(source, Some(bae_records::CoverSource::ReleaseFile { file_id: file.id }));
     assert!(manager.records.cover_original_file(&release.id).await.unwrap().is_none());
     let large = manager
@@ -178,7 +178,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
             .await
     };
     let cover_row = async || {
-        manager.records.cover_source_for_test(&release.id).await.unwrap().expect("cover row stored")
+        manager.records.cover_source(&release.id).await.unwrap().expect("cover row stored")
     };
 
     let cover_version =

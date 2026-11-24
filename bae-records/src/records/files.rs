@@ -172,22 +172,17 @@ impl Records {
     }
 
     /// What the release's cover is made from; `None` when it has no cover.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn cover_source_for_test(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<CoverSource>, DbError> {
+    pub async fn cover_source(&self, release_id: &str) -> Result<Option<CoverSource>, DbError> {
         let release_id = release_id.to_string();
         self.store
             .read(move |sql| {
                 Ok(sql
                     .query_row(
-                        "SELECT source_file FROM covers WHERE id = ?",
+                        "SELECT source_file, embedded_file FROM covers WHERE id = ?",
                         params![release_id],
-                        |row| row.get::<_, Option<String>>(0),
+                        |row| Ok(CoverSource::of_columns(row.get(0)?, row.get(1)?)),
                     )
-                    .optional()?
-                    .map(CoverSource::of_source_file))
+                    .optional()?)
             })
             .await
     }
@@ -207,8 +202,8 @@ impl Records {
     }
 
     /// The coven file of the release's cover original, as this device reads
-    /// it now; `None` when the release has no cover or the cover is one of
-    /// the release's files.
+    /// it now; `None` when the release has no cover or the cover is made from
+    /// one of the release's files.
     pub async fn cover_original_file(
         &self,
         release_id: &str,

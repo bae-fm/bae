@@ -218,12 +218,18 @@ impl ReleaseDetail {
         // The gallery shows the cover first, then each of the release's other
         // image files. A cover made from one of the release's image files is
         // that file's entry, named Cover, so the picture shows once; a cover
-        // that keeps a picture of its own is an entry of its own.
+        // made from art in an audio file, or that keeps a catalog image of its
+        // own, is an entry of its own.
         let mut gallery = Vec::new();
-        let mut own_picture = false;
+        let mut own_entry = false;
         let cover_file = match (&ctx.cover, raw.cover.as_ref().map(|cover| &cover.source)) {
-            (Some(cover_ref), Some(bae_records::CoverSource::Original)) => {
-                own_picture = true;
+            (
+                Some(cover_ref),
+                Some(
+                    bae_records::CoverSource::Original | bae_records::CoverSource::Embedded { .. },
+                ),
+            ) => {
+                own_entry = true;
                 gallery.push(GalleryItem {
                     id: "cover".to_string(),
                     label: GalleryLabel::Cover,
@@ -253,8 +259,8 @@ impl ReleaseDetail {
             });
         }
         // The count is the files statement's count of images, with the cover's
-        // slot when the cover keeps a picture of its own.
-        let gallery_item_count = raw.files.image_count + u32::from(own_picture);
+        // slot when the cover is an entry of its own.
+        let gallery_item_count = raw.files.image_count + u32::from(own_entry);
 
         let name = ReleaseName::of(
             release.release_name.as_deref(),
