@@ -435,8 +435,14 @@ extension PreviewData {
     static func fieldRecordingsCatalogCover() throws
         -> BridgeCoverChoice
     {
+        try catalogCover(named: "Field Recordings")
+    }
+
+    /// The cover the catalog serves for the album `name`, a file the scene's
+    /// image store reads.
+    static func catalogCover(named name: String) throws -> BridgeCoverChoice {
         let cover = BridgeRemoteImageSet(
-            url: try BoardArtwork.fileURL(named: "Field Recordings").path,
+            url: try BoardArtwork.fileURL(named: name).path,
             downscaled: []
         )
         return PreviewData.catalogCoverChoice(cover, source: .musicBrainz)
@@ -643,57 +649,52 @@ extension PreviewData {
         )
     }
 
-    /// Copper Sky's typed search, as the sources answer it: MusicBrainz has
-    /// its album in two pressings, and Discogs has not answered.
-    static let copperSkySearch: BridgeCandidateSearch = {
-        func pressing(
-            _ year: Int32,
-            _ catalog: String,
-            _ id: String,
-            _ facts: BridgePressingFacts
-        ) -> BridgePressing {
-            BridgePressing(
-                releases: [
-                    BridgeMetadataResult(
-                        source: .musicBrainz,
-                        releaseId: id,
-                        year: year,
-                        facts: facts,
-                        barcodes: [],
-                        sourceGroupId: "board-copper-sky"
-                    )
-                ],
-                sources: [.musicBrainz],
-                labels: [
-                    BridgeLabelLine(
-                        names: ["Fen Records"],
-                        catalogNumbers: [catalog]
-                    )
-                ],
-                pick: BridgePressingLink(
-                    record: BridgeLookupRef(catalog: .musicBrainz, key: id),
-                    partners: []
+    /// One of Copper Sky's pressings on MusicBrainz.
+    private static func copperSkyPressing(
+        _ year: Int32,
+        _ catalog: String,
+        _ id: String,
+        _ facts: BridgePressingFacts
+    ) -> BridgePressing {
+        BridgePressing(
+            releases: [
+                BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: id,
+                    year: year,
+                    facts: facts,
+                    barcodes: [],
+                    sourceGroupId: "board-copper-sky"
                 )
+            ],
+            sources: [.musicBrainz],
+            labels: [
+                BridgeLabelLine(
+                    names: ["Fen Records"],
+                    catalogNumbers: [catalog]
+                )
+            ],
+            pick: BridgePressingLink(
+                record: BridgeLookupRef(catalog: .musicBrainz, key: id),
+                partners: []
             )
-        }
-        let group = BridgeReleaseGroup(
+        )
+    }
+
+    /// Copper Sky's release group, its album in two pressings.
+    private static func copperSkyGroup() throws -> BridgeReleaseGroup {
+        BridgeReleaseGroup(
             id: "board-copper-sky",
             titles: [copperSky.album],
             artists: [.named(copperSky.artist)],
             labels: ["Fen Records"],
             // The catalog serves the cover as a file the scene's image store
             // reads, so the card draws it as the board does.
-            coverArt: (try? BoardArtwork.fileURL(named: copperSky.album))
-                .map {
-                    BridgeRemoteCover(
-                        coverChoice: PreviewData.catalogCoverChoice(
-                            BridgeRemoteImageSet(url: $0.path, downscaled: []),
-                            source: .musicBrainz
-                        ),
-                        sourceName: "Cover Art Archive",
-                        label: .lead(releaseGroup: true)
-                    )
-                },
+            coverArt: BridgeRemoteCover(
+                coverChoice: try catalogCover(named: copperSky.album),
+                sourceName: "Cover Art Archive",
+                label: .lead(releaseGroup: true)
+            ),
             sources: [
                 BridgeReleaseGroupSource(
                     source: .musicBrainz,
@@ -706,13 +707,13 @@ extension PreviewData {
                 BridgePressingSection(
                     album: nil,
                     pressings: [
-                        pressing(
+                        copperSkyPressing(
                             1972,
                             "FR-12",
                             "board-copper-sky-lp",
                             pressingFacts(country: "GB", media: media(.vinyl))
                         ),
-                        pressing(
+                        copperSkyPressing(
                             1995,
                             "FRCD-12",
                             "board-copper-sky-cd",
@@ -726,17 +727,22 @@ extension PreviewData {
                 )
             ]
         )
-        return BridgeCandidateSearch(
+    }
+
+    /// Copper Sky's typed search, as the sources answer it: MusicBrainz has
+    /// its album in two pressings, and Discogs has not answered.
+    static func copperSkySearch() throws -> BridgeCandidateSearch {
+        BridgeCandidateSearch(
             query: .general(artist: copperSky.artist, album: copperSky.album),
             unusableBarcode: nil,
             sources: searchSources(
                 musicbrainz: .done(count: 2),
                 discogs: .searching
             ),
-            groups: [group],
+            groups: [try copperSkyGroup()],
             status: .searching
         )
-    }()
+    }
 
     // MARK: - Skipped
 

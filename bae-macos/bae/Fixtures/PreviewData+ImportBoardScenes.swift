@@ -117,14 +117,14 @@ extension PreviewData {
     /// MusicBrainz alone.
     static func boardRuntimes(
         _ board: ImportBoard
-    ) -> [Data: BridgeCandidateRuntimeSnapshot] {
+    ) throws -> [Data: BridgeCandidateRuntimeSnapshot] {
         switch board {
         case .found(_, .copperSky?):
             [
                 BoardFolder.copperSky.key: notFoundRuntime(
                     copperSky,
                     providers: [.musicBrainz, .discogs],
-                    search: copperSkySearch
+                    search: try copperSkySearch()
                 )
             ]
         case .found(_, .winterKitchen?):
@@ -260,7 +260,7 @@ extension PreviewData {
             let artwork = try boardImage("folder.jpg", art: "Glass Harbor")
             (items, selection) = skippedBoard(artwork: artwork, in: store)
         }
-        return makeImportBoardScene(
+        return try makeImportBoardScene(
             board,
             store: store,
             items: items,
@@ -337,7 +337,7 @@ extension PreviewData {
         store: ImportStore,
         items: [BridgeImportListItem],
         selection: ImportSelection
-    ) -> ImportBoardScene {
+    ) throws -> ImportBoardScene {
         ImportBoardScene(
             fixture: ImportPreviewFixture(
                 store: store,
@@ -349,7 +349,7 @@ extension PreviewData {
                 )
             ),
             selection: selection,
-            runtimes: boardRuntimes(board),
+            runtimes: try boardRuntimes(board),
             importPercents: .importPercents(
                 holding: [BoardFolder.northbound.key: 60]
             ),
