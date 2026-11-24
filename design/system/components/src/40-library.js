@@ -102,9 +102,9 @@
       h(Glyph, { set: 'mac', name: props.icon, size: props.size || 'large' }));
   }
 
-  // A row's ⋯ button with the row's actions in its menu: a row offers its actions here, not as a button of each. `open` draws the menu under it, `items` its entries ("-" for a line between groups), `highlighted` the one under the pointer; `off` dims it while none of its actions can run. `boxed` fills it as a push button, for a page's header; `overlay` makes it a round button on a dark fill, for a place on a cover.
+  // A row's ⋯ button with the row's actions in its menu: a row offers its actions here, not as a button of each. `open` draws the menu under it, the button as it is while closed, as AppKit leaves a menu's button, `items` its entries ("-" for a line between groups), `highlighted` the one under the pointer; `off` dims it while none of its actions can run. `boxed` fills it as a push button, for a page's header; `overlay` makes it a round button on a dark fill, for a place on a cover.
   function MacMoreMenu(props) {
-    var btn = h(MacIconButton, { icon: 'ellipsis', size: 'medium', label: props.label || 'More', active: props.open, menu: true, off: props.off, boxed: props.boxed, overlay: props.overlay });
+    var btn = h(MacIconButton, { icon: 'ellipsis', size: 'medium', label: props.label || 'More', menu: true, off: props.off, boxed: props.boxed, overlay: props.overlay });
     if (!props.open) return btn;
     return h('span', { className: 'bae-m-moremenu' }, btn, h('div', { className: 'bae-m-moremenu-pop' }, h(MacMenu, null, list(props.items).map(function (t, i) {
       return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, highlighted: t === props.highlighted }, t);
