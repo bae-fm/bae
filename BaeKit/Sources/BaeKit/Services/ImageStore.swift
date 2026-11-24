@@ -89,42 +89,8 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     }
 }
 
-/// Per-kind byte budgets for the decoded cache. Eviction never crosses buckets,
-/// so a native-size release image cannot evict the album grid's covers.
-public struct ImageStoreBudgets: Equatable, Sendable {
-    public var libraryImage: Int
-    public var releaseImage: Int
-    public var remote: Int
-    public var localFile: Int
-    public var embeddedCover: Int
-
-    public init(
-        libraryImage: Int,
-        releaseImage: Int,
-        remote: Int,
-        localFile: Int,
-        embeddedCover: Int
-    ) {
-        self.libraryImage = libraryImage
-        self.releaseImage = releaseImage
-        self.remote = remote
-        self.localFile = localFile
-        self.embeddedCover = embeddedCover
-    }
-
-    private static let megabyte = 1024 * 1024
-
-    public static let `default` = ImageStoreBudgets(
-        libraryImage: 192 * megabyte,
-        releaseImage: 48 * megabyte,
-        remote: 16 * megabyte,
-        localFile: 16 * megabyte,
-        embeddedCover: 16 * megabyte
-    )
-}
-
-/// The app's image pipeline: bytes → decode at the slot's pixel size → bounded
-/// decoded cache → synchronous first-frame read. One instance per running
+/// The app's image pipeline: bytes → decode at the slot's pixel size on the
+/// decode queue → one bounded decoded cache → synchronous first-frame read. One instance per running
 /// library, read from the SwiftUI environment; views hold no fetch, cache, or
 /// decode logic of their own.
 ///
@@ -160,8 +126,13 @@ public final class ImageStore: Sendable, Observable {
     private let fetchAvatarBytes:
         @Sendable (_ person: String) async throws -> Data?
 
-    private let buckets: Buckets
+    private let cache: DecodedImageCache
+    private let decodeQueue: ImageDecodeQueue
     private let inFlightLoads = InFlightImageLoads()
+
+    /// What the decoded cache holds at most, in decoded bytes, for every kind
+    /// of content together.
+    public static let defaultDecodedByteBudget = 256 * 1024 * 1024
 
     #if DEBUG
         /// Posted after each image enters the decoded cache, for a test to
@@ -194,14 +165,16 @@ public final class ImageStore: Sendable, Observable {
             },
         fetchAvatarBytes:
             @escaping @Sendable (String) async throws -> Data? = { _ in nil },
-        budgets: ImageStoreBudgets = .default
+        decodedByteBudget: Int = ImageStore.defaultDecodedByteBudget,
+        decodeQueue: ImageDecodeQueue = .shared
     ) {
         self.fetchLibraryImageBytes = fetchLibraryImageBytes
         self.fetchReleaseImageBytes = fetchReleaseImageBytes
         self.fetchRemoteImage = fetchRemoteImage
         self.fetchEmbeddedCover = fetchEmbeddedCover
         self.fetchAvatarBytes = fetchAvatarBytes
-        buckets = Buckets(budgets: budgets)
+        cache = DecodedImageCache(totalCostLimit: decodedByteBudget)
+        self.decodeQueue = decodeQueue
     }
 
     // The provider-art fetch is absent from the iOS bindings.
@@ -267,12 +240,14 @@ public final class ImageStore: Sendable, Observable {
             pointSize: pointSize,
             displayScale: displayScale
         )
-        return buckets[content.bucket].image(for: key)
+        return cache.image(for: key)
     }
 
     /// Decoded image for `content` at `pointSize`: the cached decode when there
-    /// is one, otherwise fetch the bytes, decode off the main thread at
-    /// `pointSize × displayScale`, and store the result. Returns nil when no
+    /// is one, otherwise fetch the bytes, decode them on the decode queue at
+    /// `pointSize × displayScale`, and store the result. Requests for the same
+    /// content and size share one load, including a decode that is already
+    /// running after every earlier request for it was cancelled. Returns nil when no
     /// such image exists (a library image with no bytes); a fetch or decode
     /// failure surfaces, not masked.
     public func image(
@@ -289,23 +264,20 @@ public final class ImageStore: Sendable, Observable {
             pointSize: pointSize,
             displayScale: displayScale
         )
-        if let cached = buckets[content.bucket].image(for: key) {
+        if let cached = cache.image(for: key) {
             return cached
         }
 
-        let loadKey = InFlightImageLoadKey(
-            bucket: content.bucket,
-            cacheKey: key
-        )
-        let waiter = inFlightLoads.join(loadKey) { [self] in
-            if let cached = buckets[content.bucket].image(for: key) {
+        let waiter = inFlightLoads.join(key) { [self] control in
+            if let cached = cache.image(for: key) {
                 return cached
             }
             return try await loadImage(
                 content,
                 cacheKey: key,
                 pointSize: pointSize,
-                displayScale: displayScale
+                displayScale: displayScale,
+                control: control
             )
         }
         return try await withTaskCancellationHandler {
@@ -327,7 +299,8 @@ public final class ImageStore: Sendable, Observable {
         _ content: ImageContent,
         cacheKey: String,
         pointSize: CGFloat,
-        displayScale: CGFloat
+        displayScale: CGFloat,
+        control: LoadControl
     ) async throws -> PlatformImage? {
         let pixels = Int((pointSize * displayScale).rounded())
         guard
@@ -341,9 +314,11 @@ public final class ImageStore: Sendable, Observable {
         let image = try await ImageLoader.load(
             source: source,
             size: .fitTo(points: pointSize),
-            displayScale: displayScale
+            displayScale: displayScale,
+            queue: decodeQueue,
+            shouldStart: { control.beginDecoding() }
         )
-        buckets[content.bucket].store(image, for: cacheKey)
+        cache.store(image, for: cacheKey)
         return image
     }
 
@@ -508,73 +483,63 @@ public struct ImageStoreUnavailable: Error {
     public init() {}
 }
 
-extension ImageContent {
-    /// Which cache the decodes of this content live in. Derived here so callers
-    /// never pass a bucket.
-    fileprivate var bucket: DecodedImageBucket {
-        switch self {
-        case .libraryImage: .libraryImage
-        case .releaseImage: .releaseImage
-        case .remote: .remote
-        case .localFile: .localFile
-        case .embeddedCover: .embeddedCover
-        case .avatar: .libraryImage
+/// How far one load has come, which decides whether the last request to
+/// leave it may cancel it. A decode that has started can't be interrupted, so
+/// its load stays, and the next request for the same image joins it; a load
+/// still fetching or waiting for a decode thread is cancelled and forgotten.
+private final class LoadControl: @unchecked Sendable {
+    private enum State {
+        case waiting
+        case decoding
+        case cancelled
+    }
+
+    private let lock = NSLock()
+    private var state = State.waiting
+
+    /// The decode is about to start: false when the load was cancelled first.
+    func beginDecoding() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if state == .cancelled {
+            return false
         }
-    }
-}
-
-/// The decoded cache's five independent budgets, one per content kind.
-enum DecodedImageBucket: CaseIterable, Hashable, Sendable {
-    case libraryImage
-    case releaseImage
-    case remote
-    case localFile
-    case embeddedCover
-}
-
-/// The five per-kind caches, addressed by bucket.
-private struct Buckets: Sendable {
-    private let caches: [DecodedImageBucket: DecodedImageCache]
-
-    init(budgets: ImageStoreBudgets) {
-        caches = [
-            .libraryImage: DecodedImageCache(
-                totalCostLimit: budgets.libraryImage
-            ),
-            .releaseImage: DecodedImageCache(
-                totalCostLimit: budgets.releaseImage
-            ),
-            .remote: DecodedImageCache(totalCostLimit: budgets.remote),
-            .localFile: DecodedImageCache(totalCostLimit: budgets.localFile),
-            .embeddedCover: DecodedImageCache(
-                totalCostLimit: budgets.embeddedCover
-            ),
-        ]
+        state = .decoding
+        return true
     }
 
-    subscript(bucket: DecodedImageBucket) -> DecodedImageCache {
-        guard let cache = caches[bucket] else {
-            preconditionFailure("every bucket is built in init")
+    /// Cancel the load unless its decode has started; true when cancelled.
+    func cancelUnlessDecoding() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if state == .decoding {
+            return false
         }
-        return cache
+        state = .cancelled
+        return true
     }
-}
-
-private struct InFlightImageLoadKey: Hashable, Sendable {
-    let bucket: DecodedImageBucket
-    let cacheKey: String
 }
 
 private final class InFlightImageLoad: @unchecked Sendable {
+    let control: LoadControl
     let task: Task<PlatformImage?, Error>
     /// The requests still waiting on this load. Guarded by the owning
     /// `InFlightImageLoads`' lock.
     fileprivate var waiters = 0
 
+    /// `onEnd` runs when the load's task ends, however it ends.
     init(
-        operation: @escaping @Sendable () async throws -> PlatformImage?
+        operation:
+            @escaping @Sendable (LoadControl) async throws ->
+            PlatformImage?,
+        onEnd: @escaping @Sendable (LoadControl) -> Void
     ) {
-        task = Task { try await operation() }
+        let control = LoadControl()
+        self.control = control
+        task = Task {
+            defer { onEnd(control) }
+            return try await operation(control)
+        }
     }
 }
 
@@ -582,28 +547,31 @@ private final class InFlightImageLoad: @unchecked Sendable {
 /// whether its request finishes or is cancelled.
 private final class InFlightImageWaiter: @unchecked Sendable {
     let load: InFlightImageLoad
-    let key: InFlightImageLoadKey
+    let key: String
     fileprivate var left = false
 
-    init(load: InFlightImageLoad, key: InFlightImageLoadKey) {
+    init(load: InFlightImageLoad, key: String) {
         self.load = load
         self.key = key
     }
 }
 
-/// Requests for one decoded cache entry share the same fetch and decode. The
-/// first waiter that observes completion removes the task; reference equality
-/// prevents an older completion from removing a replacement. The load runs
-/// while some request still wants it: when the last waiting request is
-/// cancelled, the load is cancelled and removed, so a tile scrolled away does
-/// not keep its read waiting in core.
+/// Requests for one decoded cache entry share the same fetch and decode. A
+/// load is forgotten when its task ends, and a later request finds the image
+/// in the cache or, after a failure, starts a new load. The load runs while
+/// some request still wants it. When the last waiting request is cancelled,
+/// the load is cancelled and forgotten if its decode has not started, so a
+/// tile scrolled away does not keep its read waiting in core. A load whose
+/// decode has started stays, so the next request for it joins that decode.
 private final class InFlightImageLoads: @unchecked Sendable {
     private let lock = NSLock()
-    private var loads: [InFlightImageLoadKey: InFlightImageLoad] = [:]
+    private var loads: [String: InFlightImageLoad] = [:]
 
     func join(
-        _ key: InFlightImageLoadKey,
-        operation: @escaping @Sendable () async throws -> PlatformImage?
+        _ key: String,
+        operation:
+            @escaping @Sendable (LoadControl) async throws ->
+            PlatformImage?
     ) -> InFlightImageWaiter {
         lock.lock()
         defer { lock.unlock() }
@@ -612,35 +580,48 @@ private final class InFlightImageLoads: @unchecked Sendable {
             load = existing
         }
         else {
-            load = InFlightImageLoad(operation: operation)
+            load = InFlightImageLoad(operation: operation) {
+                [self] control in
+                ended(key, control: control)
+            }
             loads[key] = load
         }
         load.waiters += 1
         return InFlightImageWaiter(load: load, key: key)
     }
 
-    /// The waiter's load ended: it is no longer shared with later requests.
+    /// The waiter's request has its answer.
     func finish(_ waiter: InFlightImageWaiter) {
         lock.lock()
         defer { lock.unlock() }
-        remove(waiter)
         departed(waiter)
     }
 
     /// The waiter's request was cancelled. The last one to go cancels the
-    /// load.
+    /// load, unless its decode has started.
     func leave(_ waiter: InFlightImageWaiter) {
         lock.lock()
         defer { lock.unlock() }
-        if departed(waiter), waiter.load.waiters == 0 {
-            remove(waiter)
+        if departed(waiter), waiter.load.waiters == 0,
+            waiter.load.control.cancelUnlessDecoding()
+        {
+            forget(waiter.load, forKey: waiter.key)
             waiter.load.task.cancel()
         }
     }
 
-    private func remove(_ waiter: InFlightImageWaiter) {
-        if loads[waiter.key] === waiter.load {
-            loads.removeValue(forKey: waiter.key)
+    /// The task of the load with `control` ended.
+    private func ended(_ key: String, control: LoadControl) {
+        lock.lock()
+        defer { lock.unlock() }
+        if loads[key]?.control === control {
+            loads.removeValue(forKey: key)
+        }
+    }
+
+    private func forget(_ load: InFlightImageLoad, forKey key: String) {
+        if loads[key] === load {
+            loads.removeValue(forKey: key)
         }
     }
 
@@ -656,8 +637,8 @@ private final class InFlightImageLoads: @unchecked Sendable {
     }
 }
 
-/// One bucket of the decoded cache: images by key, bounded by their decoded
-/// byte cost.
+/// The decoded cache: images by key (the source's key and the pixel size),
+/// bounded by their decoded byte cost.
 ///
 /// `@unchecked Sendable` over `NSCache`: `PlatformImage` (NSImage/UIImage) is
 /// documented thread-safe for reads after construction, and `NSCache` is

@@ -5,27 +5,6 @@ import Testing
 @testable import BaeKit
 @testable import bae
 
-/// PNG bytes of a solid-color image, for feeding `ImageStore` fetch closures.
-private func makePngBytes(width: Int, height: Int) throws -> Data {
-    let colorSpace = CGColorSpaceCreateDeviceRGB()
-    let context = try #require(
-        CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        )
-    )
-    context.setFillColor(CGColor(gray: 0, alpha: 1))
-    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-    let cgImage = try #require(context.makeImage())
-    let rep = NSBitmapImageRep(cgImage: cgImage)
-    return try #require(rep.representation(using: .png, properties: [:]))
-}
-
 private func makeDecodedImage(width: Int, height: Int) throws -> NSImage {
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     let context = try #require(
@@ -368,49 +347,191 @@ struct ImageStoreCacheTests {
     }
 }
 
-@Suite("ImageStore bucket isolation")
-struct ImageStoreBucketTests {
-    @Test("filling the release-image bucket never evicts a library image")
-    func releaseImagePressureLeavesLibraryImagesAlone() async throws {
-        let bytes = try makePngBytes(width: 64, height: 64)
-        // The release bucket holds roughly one decode; the library bucket has
-        // room to spare. Pressure on one must not reach the other.
-        let store = ImageStore(
-            fetchLibraryImageBytes: { _ in bytes },
-            fetchReleaseImageBytes: { _, _ in bytes },
-            budgets: ImageStoreBudgets(
-                libraryImage: 4 * 1024 * 1024,
-                releaseImage: 64 * 64 * 4,
-                remote: 1024,
-                localFile: 1024,
-                embeddedCover: 1024
-            )
-        )
-        let libraryContent = ImageContent.libraryImage(coverRef(version: "1"))
-        _ = try await store.image(
-            libraryContent,
-            pointSize: 64,
-            displayScale: 1
-        )
+@Suite("ImageStore decoding")
+struct ImageStoreDecodingTests {
+    private let content = ImageContent.libraryImage(coverRef(version: "1"))
 
-        for index in 0..<32 {
-            _ = try await store.image(
-                .releaseImage(
-                    releaseId: "rel-1",
-                    source: .releaseFile(fileId: "file-\(index)")
-                ),
-                pointSize: 64,
-                displayScale: 1
-            )
+    /// Holds each decode that starts on a queue until `release`, and says
+    /// when one has started.
+    private final class DecodeHold: Sendable {
+        private let started = DispatchSemaphore(value: 0)
+        private let released = DispatchSemaphore(value: 0)
+
+        func install(on queue: ImageDecodeQueue) {
+            queue.beforeRun = { [started, released] in
+                started.signal()
+                released.wait()
+            }
         }
 
-        #expect(
-            store.cachedImage(
-                libraryContent,
-                pointSize: 64,
-                displayScale: 1
-            ) != nil
+        func waitUntilStarted() async {
+            await withCheckedContinuation { continuation in
+                DispatchQueue.global()
+                    .async { [started] in
+                        started.wait()
+                        continuation.resume()
+                    }
+            }
+        }
+
+        func release() {
+            released.signal()
+        }
+    }
+
+    @Test("every decode runs on the decode queue, off Swift's shared threads")
+    func decodesRunOnTheDecodeQueue() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let queue = ImageDecodeQueue(width: 2)
+        let store = ImageStore(
+            fetchLibraryImageBytes: { _ in bytes },
+            decodeQueue: queue
         )
+
+        _ = try await store.image(content, pointSize: 56, displayScale: 2)
+
+        #expect(queue.runs.count == 1)
+        #expect(queue.runs.allSatisfy { $0.onQueue && !$0.onMainThread })
+    }
+
+    @Test("a decode of a file on disk runs on the decode queue too")
+    func localFileDecodesRunOnTheDecodeQueue() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("candidate.png")
+        let bytes = try makePngBytes(width: 8, height: 8)
+        try bytes.write(to: file)
+        let queue = ImageDecodeQueue(width: 2)
+        let store = ImageStore(decodeQueue: queue)
+
+        _ = try await store.image(
+            .localFile(
+                BridgeFileVersion(
+                    path: file.pathBytes,
+                    size: UInt64(bytes.count),
+                    modifiedAtNs: 1_000
+                )
+            ),
+            pointSize: 56,
+            displayScale: 2
+        )
+
+        #expect(queue.runs.count == 1)
+        #expect(queue.runs.allSatisfy { $0.onQueue && !$0.onMainThread })
+    }
+
+    @Test("no more decodes run at once than the queue's width")
+    func decodesRunAtMostWidthAtOnce() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let queue = ImageDecodeQueue(width: 2)
+        let running = Counter()
+        let widest = Counter()
+        queue.beforeRun = {
+            running.increment()
+            widest.raise(to: running.count)
+            Thread.sleep(forTimeInterval: 0.02)
+            running.decrement()
+        }
+        let store = ImageStore(
+            fetchLibraryImageBytes: { _ in bytes },
+            decodeQueue: queue
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for index in 0..<8 {
+                group.addTask {
+                    _ = try await store.image(
+                        .libraryImage(coverRef(version: "v\(index)")),
+                        pointSize: 56,
+                        displayScale: 2
+                    )
+                }
+            }
+            try await group.waitForAll()
+        }
+
+        #expect(queue.runs.count == 8)
+        #expect(widest.count == 2)
+    }
+
+    /// The last request for a decode that is under way is cancelled, and the
+    /// same image is asked for again: the second request takes the running
+    /// decode instead of starting another.
+    @Test("a request after the last one was cancelled joins the running decode")
+    func requestAfterCancelJoinsTheRunningDecode() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let queue = ImageDecodeQueue(width: 2)
+        let hold = DecodeHold()
+        hold.install(on: queue)
+        let fetches = Counter()
+        let store = ImageStore(
+            fetchLibraryImageBytes: { _ in
+                fetches.increment()
+                return bytes
+            },
+            decodeQueue: queue
+        )
+        let content = content
+
+        let first = Task {
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        }
+        await hold.waitUntilStarted()
+        first.cancel()
+        let second = Task {
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        }
+        hold.release()
+
+        #expect(try await second.value != nil)
+        _ = try? await first.value
+        #expect(queue.runs.count == 1)
+        #expect(fetches.count == 1)
+    }
+
+    /// A decode that has not started when its last request leaves is dropped:
+    /// the request that follows starts the one decode.
+    @Test(
+        "cancelling the last request before its decode starts drops the decode"
+    )
+    @MainActor
+    func cancelBeforeTheDecodeStartsDropsIt() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let queue = ImageDecodeQueue(width: 1)
+        let hold = DecodeHold()
+        hold.install(on: queue)
+        let store = ImageStore(
+            fetchLibraryImageBytes: { _ in bytes },
+            decodeQueue: queue
+        )
+        let blocker = Task {
+            try await store.image(
+                .libraryImage(coverRef(version: "blocker")),
+                pointSize: 56,
+                displayScale: 2
+            )
+        }
+        await hold.waitUntilStarted()
+        let content = content
+
+        let waiting = Task {
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        }
+        try await Wait.until { store.unansweredImages == 2 }
+        waiting.cancel()
+        await #expect(throws: CancellationError.self) {
+            try await waiting.value
+        }
+        hold.release()
+        _ = try await blocker.value
+
+        // Nothing waits for the dropped decode, so the next request runs it.
+        hold.release()
+        #expect(
+            try await store.image(content, pointSize: 56, displayScale: 2)
+                != nil
+        )
+        #expect(queue.runs.count == 2)
     }
 }
 

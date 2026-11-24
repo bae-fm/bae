@@ -8,4 +8,9 @@ final class Counter: @unchecked Sendable {
     var count: Int { lock.withLock { raised } }
 
     func increment() { lock.withLock { raised += 1 } }
+
+    func decrement() { lock.withLock { raised -= 1 } }
+
+    /// Raise the count to `value` if it is below it.
+    func raise(to value: Int) { lock.withLock { raised = max(raised, value) } }
 }
