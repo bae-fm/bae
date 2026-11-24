@@ -4693,7 +4693,8 @@
   "row-play-pin-android",
   "row-play-pin-mac",
   "code-casting-pin",
-  "code-unplayable-tiles"
+  "code-unplayable-tiles",
+  "code-long-catalog"
  ],
  "notes": {
   "canvas-key-library": {
@@ -6006,6 +6007,14 @@
    "x": 1928,
    "y": 240,
    "text": "What the code needs for these boards:\n- An album this device can't play shows its tile dimmed in the library: the cover and words at opacity-dimmed, and the tile still opens the album. Today no tile has that state: MacAlbumTile (bae-macos/bae/bae/Views/Library/Grid/MacAlbumTile.swift:6), MacArtistAlbumTile (bae-macos/bae/bae/Views/Library/Browse/MacArtistAlbumTile.swift:5) and AndroidAlbumTile (bae-android/app/src/main/java/fm/bae/app/ui/library/AndroidAlbumTile.kt:23) draw every album alike."
+  },
+  "code-long-catalog": {
+   "page": "import",
+   "size": 24,
+   "w": 420,
+   "x": 5936,
+   "y": 4700,
+   "text": "What the code needs for this board:\n- Each catalog number the folder offers that no release confirms is its own outlined Catalog # chip, which puts the number into the run (decision #2237).\n- The band folds these chips after its other chips, behind a +N more button with their count; opened, the button reads Show fewer.\n- Today MacIdentifierBand's catalogCandidatesChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierBand.swift:222) draws one chip that lists every number, with no fold."
   }
  },
  "order": [
