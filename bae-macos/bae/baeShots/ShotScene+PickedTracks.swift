@@ -1,5 +1,6 @@
 import BaeKit
 import SwiftUI
+import Testing
 
 @testable import bae
 
@@ -22,9 +23,8 @@ extension ShotScene {
             let images = coverGalleryImages()
             let tracks = PreviewData.boardAlbumDetail().releases[0].tracks
                 .map(Track.init(from:))
-            for index in [1, 3, 4] {
-                uiStore.pickedTracks.set(tracks[index].id, picked: true)
-            }
+            let picked = [1, 3, 4].map { tracks[$0].id }
+            var didPick = false
             return ShotStage(
                 ZStack(alignment: .topLeading) {
                     ShotScenes.libraryWindow(
@@ -72,10 +72,38 @@ extension ShotScene {
                     .padding(.leading, 520)
                     .padding(.top, 600)
                 },
-                images: images
-            ) {
-                (backing.session.albums.list?.positionCount ?? 0) > 0
-            }
+                images: images,
+                isReady: { backing.session.albums.list?.delivered != nil },
+                isDrawn: { host in
+                    // The album clears its picks when the first release
+                    // appears. Pick the rows after the view draws that release.
+                    if didPick { return true }
+                    guard let window = host.window else { return false }
+                    do {
+                        let list = try ShotElementList.read(
+                            board: "mac.album.play-picked-tracks",
+                            window: window,
+                            size: size,
+                            scale: ShotRenderer.scale
+                        )
+                        guard
+                            list.elements.contains(where: {
+                                $0.role == "popup"
+                                    && $0.label == "Album options"
+                            })
+                        else { return false }
+                        for id in picked {
+                            uiStore.pickedTracks.set(id, picked: true)
+                        }
+                        didPick = true
+                        return false
+                    }
+                    catch {
+                        Issue.record(error)
+                        return true
+                    }
+                }
+            )
         }
     ]
 }
