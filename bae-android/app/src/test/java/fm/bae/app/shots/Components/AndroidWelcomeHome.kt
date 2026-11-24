@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.onboarding.AndroidWelcomeHome
 import fm.bae.app.ui.onboarding.WelcomeDamagedJoinScene
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
@@ -23,7 +24,7 @@ class AndroidWelcomeHomeShots : BoardShot() {
             ScreenScene {
                 AndroidWelcomeHome(
                     libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) },
-                    savedCodes = { PreviewSlot("Content") },
+                    savedCodes = { PreviewSlot("Content", style = ThemeText.body.style) },
                 )
             }
         }
