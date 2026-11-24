@@ -25,7 +25,7 @@ extension ShotScene {
         ),
         identifierBandScene(
             "mac.component.identifier-band.left-out",
-            PreviewData.identifyRunBandBoard
+            leftOutRun
         ),
         identifierBandScene(
             "mac.component.identifier-band.catalog-numbers",
@@ -33,9 +33,79 @@ extension ShotScene {
         ),
         identifierBandScene(
             "mac.component.identifier-band.struck",
-            PreviewData.identifyRunBandBoard
+            struckRun
         ),
     ]
+
+    /// A catalog number whose release both catalogs name, with the Disc ID
+    /// and the barcode left out of the run.
+    private static let leftOutRun = BridgeIdentifyRun(
+        providers: [.musicBrainz, .discogs],
+        discId: .read(discs: [
+            BridgeDiscIdRow(
+                discId: "v8n2Kq1Z…",
+                lookup: .notAsked(reason: .leftOut)
+            )
+        ]),
+        barcode: .rows(rows: [
+            BridgeSignalValueRow(
+                value: sampleBarcode,
+                excluded: true,
+                cells: [.musicBrainz, .discogs]
+                    .map {
+                        BridgeProviderCell(
+                            source: $0,
+                            lookup: .notAsked(reason: .leftOut)
+                        )
+                    }
+            )
+        ]),
+        catalog: .numbers(
+            rows: [
+                BridgeSignalValueRow(
+                    value: "HR-1042",
+                    excluded: false,
+                    cells: [.musicBrainz, .discogs]
+                        .map {
+                            BridgeProviderCell(
+                                source: $0,
+                                lookup: .found(count: 1, groups: [])
+                            )
+                        }
+                )
+            ],
+            candidates: []
+        ),
+        isrc: .absent,
+        search: .notNeeded,
+        readingArtwork: false
+    )
+
+    /// A Disc ID that two MusicBrainz releases carry, and a catalog number
+    /// the person struck out of the run.
+    private static let struckRun = BridgeIdentifyRun(
+        providers: [.musicBrainz, .discogs],
+        discId: .read(discs: [
+            BridgeDiscIdRow(
+                discId: "v8n2Kq1Z…",
+                lookup: .found(count: 2, groups: [])
+            )
+        ]),
+        barcode: .rows(rows: []),
+        catalog: .numbers(
+            rows: [
+                BridgeSignalValueRow(
+                    value: "HR-1042",
+                    excluded: true,
+                    cells: []
+                )
+            ],
+            candidates: []
+        ),
+        isrc: .absent,
+        search: .notNeeded,
+        readingArtwork: false
+    )
 
     /// No Disc ID, barcode or ISRC, and two catalog numbers that no
     /// release confirms, each a button that puts it into the run.
