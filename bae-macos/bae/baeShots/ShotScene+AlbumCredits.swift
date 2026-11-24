@@ -10,9 +10,9 @@ extension ShotScene {
     static let albumCreditsScenes: [ShotScene] = [
         ShotScene(
             id: "mac.album.credits",
-            size: CGSize(width: 1_200, height: 1_200)
+            size: CGSize(width: 1_200, height: 1_220)
         ) {
-            let size = CGSize(width: 1_200, height: 1_200)
+            let size = CGSize(width: 1_200, height: 1_220)
             let uiStore = UiStore()
             let backing = boardLibraryBacking(
                 uiStore: uiStore,

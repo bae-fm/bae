@@ -14,12 +14,14 @@ extension ShotScene {
         ratingSystemScene(
             "mac.album.rating.heart",
             system: .heart,
-            menu: .album(highlighted: 5)
+            menu: .album(highlighted: 5),
+            height: 1_000
         ),
         ratingSystemScene(
             "mac.album.rating.none",
             system: .hidden,
-            menu: .album(highlighted: nil)
+            menu: .album(highlighted: nil),
+            height: 1_000
         ),
         ratingSystemScene(
             "mac.album.track-menu-heart",
@@ -47,9 +49,10 @@ extension ShotScene {
     private static func ratingSystemScene(
         _ id: String,
         system: BridgeRatingSystem,
-        menu: OpenMenu
+        menu: OpenMenu,
+        height: CGFloat = 1_020
     ) -> ShotScene {
-        let size = CGSize(width: 1_200, height: 1_020)
+        let size = CGSize(width: 1_200, height: height)
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
             let detail = boardAlbum(ratedUnder: system)
