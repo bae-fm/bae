@@ -59,6 +59,9 @@ fun Modifier.liftsSnackbar(): Modifier {
     return onSizeChanged { lift.report(key, it.height) }
 }
 
+/** Material's SnackbarData overload pads the snackbar 12dp on each side, and the board keeps it. */
+private val SNACKBAR_MARGIN = 12.dp
+
 /** The box the board gives the close glyph, and the glyph in it. */
 private val CLOSE_BOX = 32.dp
 
@@ -92,6 +95,7 @@ fun AndroidSnackbarHost(
 private fun AndroidSnackbar(data: SnackbarData) {
     val visuals = data.visuals
     Snackbar(
+        modifier = Modifier.padding(SNACKBAR_MARGIN),
         action =
             visuals.actionLabel?.let { label ->
                 { TextButton(onClick = data::performAction) { Text(label) } }
