@@ -149,11 +149,15 @@ private struct SavedCodeRow: View {
             // The name and its line read together, before the buttons.
             .accessibilityElement(children: .contain)
             Spacer(minLength: ThemeSpace.group)
-            if case .readable(let saved) = entry {
-                MacButton("Restore") { onRestore(saved) }
-            }
-            MacMoreMenu {
-                MacMenuItem("Delete…", action: onDelete)
+            // The row's controls sit a related space apart, as the board's row
+            // trail does.
+            HStack(spacing: ThemeSpace.related) {
+                if case .readable(let saved) = entry {
+                    MacButton("Restore") { onRestore(saved) }
+                }
+                MacMoreMenu {
+                    MacMenuItem("Delete…", action: onDelete)
+                }
             }
         }
         .padding(.horizontal, ThemeSpace.group)
