@@ -50,10 +50,13 @@ class AndroidMenuItemShots : BoardShot() {
         }
 }
 
-/** The menu's own window isn't drawn in a test: its surface is drawn here, as the menu makes it. */
+/**
+ * The menu's own window isn't drawn in a test: its surface is drawn here, as the menu makes it, at the frame's
+ * top left, where the board puts it.
+ */
 @Composable
 private fun MenuSurface(content: @Composable () -> Unit) {
-    Box(Modifier.padding(ThemeSpace.related)) {
+    Box {
         Surface(
             shape = AndroidMenuShape,
             color = androidMenuColor(),

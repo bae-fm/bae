@@ -28,7 +28,7 @@ class AndroidMenuShots : BoardShot() {
     @Test
     fun androidComponentMenuDefault() =
         component("android.component.menu.default") {
-            Box(Modifier.padding(ThemeSpace.related)) {
+            Box {
                 Surface(
                     shape = AndroidMenuShape,
                     color = androidMenuColor(),
