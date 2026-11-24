@@ -50,7 +50,7 @@ extension ShotScene {
         },
     ]
 
-    private static let storageWindowSize = CGSize(width: 900, height: 400)
+    private static let storageWindowSize = CGSize(width: 1100, height: 300)
 
     /// The Storage Manager window over the preview's three releases, with
     /// no transfer running, or over `rows` for a search.
