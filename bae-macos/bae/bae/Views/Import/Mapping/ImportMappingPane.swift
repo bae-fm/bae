@@ -114,8 +114,10 @@ struct ImportMappingPane: View {
                     }()
                 ),
                 tracks: ReleaseEditorTracks(
-                    images: draft.mapping.images?.map(ImportImage.init),
-                    onOpenImages: mappingActions.openImages,
+                    images: draft.mapping.images?
+                        .map {
+                            ImportImage($0, open: mappingActions.openImages)
+                        },
                     sides: draft.mapping.trackSides,
                     files: draft.mapping.files,
                     previewingTarget: previewingTarget,

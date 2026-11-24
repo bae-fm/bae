@@ -32,10 +32,10 @@ extension ShotScene {
                         try PreviewData.boardImage(
                             "\($0).jpg",
                             art: "Low Tide Hours\(art[$0] ?? "")"
-                        )
+                        ),
+                        open: { _ in }
                     )
-                },
-                onOpen: { _ in }
+                }
             )
             .frame(width: 580, alignment: .leading)
         }

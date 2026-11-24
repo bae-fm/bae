@@ -507,7 +507,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             ),
             tracks: ReleaseEditorTracks(
                 images: nil,
-                onOpenImages: { _ in },
                 sides: nil,
                 files: nil,
                 previewingTarget: nil,

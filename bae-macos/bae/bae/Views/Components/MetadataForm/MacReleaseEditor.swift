@@ -36,10 +36,7 @@ struct MacReleaseEditor<Search: View>: View {
                 )
             }
             if let images = tracks.images {
-                MacImportImages(
-                    images: images,
-                    onOpen: tracks.onOpenImages
-                )
+                MacImportImages(images: images)
             }
             if let sides = tracks.sides {
                 MacImportTable(
@@ -197,8 +194,6 @@ struct ReleaseCover {
 struct ReleaseEditorTracks {
     /// The release's images; `nil` where there are none to show.
     let images: [ImportImage]?
-    /// Open the images at the one whose file id it gets.
-    let onOpenImages: (String) -> Void
     /// The track table's sides; `nil` while the release has no track.
     let sides: [BridgeTrackTableSide]?
     /// The files no track plays from; `nil` while there are none.

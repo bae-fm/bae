@@ -6,7 +6,7 @@ import SwiftUI
 enum EditorImages {
     /// The images of the folder the release was imported from, as the scan
     /// read them, which open in the folder's lightbox.
-    case folder([BridgeMappingImage], open: (String) -> Void)
+    case folder([BridgeMappingImage]?, open: (String) -> Void)
     /// The images among the release's own files, which open in the Change
     /// cover sheet's lightbox.
     case release
@@ -71,7 +71,6 @@ struct ReleaseEditorView: View {
                     card: card(draft),
                     tracks: ReleaseEditorTracks(
                         images: images(of: draft),
-                        onOpenImages: { openImage($0, of: draft) },
                         sides: draft.sides,
                         files: draft.files,
                         previewingTarget: nil,
@@ -102,27 +101,20 @@ struct ReleaseEditorView: View {
         }
     }
 
-    /// The images the editor draws, from the source the host chose.
+    /// The images the editor draws, from the source the host chose, each
+    /// with what a click on it does.
     private func images(of draft: BridgeReleaseEditDraft) -> [ImportImage]? {
         switch images {
-        case .folder(let images, _):
-            return images.isEmpty ? nil : images.map(ImportImage.init)
+        case .folder(let images, let open):
+            return images?.map { ImportImage($0, open: open) }
         case .release:
             let releaseId = session.releaseId
-            return draft.images?.map { ImportImage($0, releaseId: releaseId) }
-        }
-    }
-
-    /// What a click on an image does, by the file id of the image.
-    private func openImage(_ fileId: String, of draft: BridgeReleaseEditDraft) {
-        switch images {
-        case .folder(_, let open):
-            open(fileId)
-        case .release:
-            guard
-                let image = draft.images?.first(where: { $0.fileId == fileId })
-            else { return }
-            presentImageViewer(at: image.key)
+            return draft.images?
+                .map { image in
+                    ImportImage(image, releaseId: releaseId) { key in
+                        presentImageViewer(at: key)
+                    }
+                }
         }
     }
 
