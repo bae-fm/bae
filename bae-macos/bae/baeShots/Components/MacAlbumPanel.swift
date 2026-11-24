@@ -191,8 +191,10 @@ extension ShotScene {
                 onSetTrackHearted: { _, _ in },
                 showsUnplayableHelp: showsUnplayableHelp
             )
-            .albumDetailPreviewEnvironment()
+            // The shot's art store goes in under the preview environment,
+            // which sets a stub one that would hide it.
             .environment(browsePanelImages)
+            .albumDetailPreviewEnvironment()
         }
     }
 
