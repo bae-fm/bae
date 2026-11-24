@@ -20,7 +20,7 @@ extension ShotScene {
             "mac.component.release-file-row.damaged",
             name: "02 Margins.flac",
             size: "31.8 MB",
-            damage: "Cannot decode"
+            damage: "No audio bae can read"
         ),
         releaseFileRow(
             "mac.component.release-file-row.audio",
