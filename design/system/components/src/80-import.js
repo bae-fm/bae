@@ -332,16 +332,16 @@
       auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty bae-m-fo-empty-below' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s'), found) : null,
       auto === 'nothing-found' ? null : h(React.Fragment, { key: 'f' }, found)];
   }
-  // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip; with `pick`, each of several a button.
+  // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip; with `pick`, each value a button, a lone one too.
   function chipValues(value, pick) {
     var values = String(value || '').split(' · ');
-    if (values.length < 2) return h('span', { className: 'bae-mono bae-m-idchip-value' }, value || '');
+    if (values.length < 2) return pick ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono bae-m-idchip-value' }, value || '') : h('span', { className: 'bae-mono bae-m-idchip-value' }, value || '');
     if (!pick) return h('span', { className: 'bae-mono bae-m-idchip-values' }, value);
     return h('span', { className: 'bae-m-idchip-values' }, values.map(function (v, i) {
       return h(React.Fragment, { key: i }, h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, v), i < values.length - 1 ? h('span', { className: 'bae-mono' }, '·') : null);
     }));
   }
-  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `pick`: each of its several values is a button that puts that one into the run. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are.
+  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `pick`: each of its values is a button that puts that one into the run. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are.
   function MacIdentifierChip(props) {
     var st = props.state || 'filled';
     // A chip that toggles is one button, which VoiceOver reads as its parts with a comma between: "Barcode, 0 41234 56789 2, Discogs, 1".
