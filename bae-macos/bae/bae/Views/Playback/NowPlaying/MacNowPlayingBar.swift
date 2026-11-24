@@ -67,7 +67,6 @@ struct MacNowPlayingBar: View {
 
             trailingControls
                 .frame(maxWidth: .infinity, alignment: .trailing)
-                .accessibilitySortPriority(ReadingOrder.rightControls)
         }
         .padding(.vertical, ThemeSpace.group)
         .padding(.horizontal, ThemeSpace.section)
@@ -197,11 +196,16 @@ private enum ReadingOrder {
 // MARK: - Right: queue + volume
 
 extension MacNowPlayingBar {
+    /// Each control says its own place in the reading order: with the place
+    /// on the row, the Queue button's element takes the row's frame in some
+    /// launches.
     fileprivate var trailingControls: some View {
         HStack(spacing: ThemeSpace.group) {
             castControl
+                .accessibilitySortPriority(ReadingOrder.rightControls)
 
             queueButton
+                .accessibilitySortPriority(ReadingOrder.rightControls)
 
             MacVolumeSlider(
                 controls: volumeControls,
@@ -209,6 +213,7 @@ extension MacNowPlayingBar {
                 onChange: onVolumeChange,
                 onSetMuted: onSetMuted
             )
+            .accessibilitySortPriority(ReadingOrder.rightControls)
         }
     }
 
