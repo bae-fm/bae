@@ -75,7 +75,6 @@ struct MacImportWindow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider()
             ZStack {
                 if let failure = listSlot.loadFailure {
                     ImportListFailedView(
