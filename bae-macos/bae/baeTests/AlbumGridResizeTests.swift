@@ -165,37 +165,44 @@ struct AlbumGridResizeTests {
         }
     }
 
+    /// An open album's detail, and how far the grid scrolls its top above the
+    /// top of the visible area. The grid places the rows it has not drawn by
+    /// estimate, so no offset puts the detail there; where the detail reports
+    /// itself does.
+    struct OpenDetail: Sendable {
+        let albumId: String
+        var scrolledPast: CGFloat = 0
+    }
+
     /// How the grid stands when the panel comes and goes.
     struct Scene: Sendable, CustomTestStringConvertible {
         /// Every page loaded up front, or each page loading as its rows show.
         let preloaded: Bool
-        let openAlbumId: String?
+        let open: OpenDetail?
         let scrolledTo: CGFloat
-        /// With a detail open, how far the grid then scrolls the detail's top
-        /// above the top of the visible area. The grid places the rows it has
-        /// not drawn by estimate, so no offset puts the detail there; where
-        /// the detail reports itself does.
-        var detailScrolledPast: CGFloat = 0
 
         var testDescription: String {
-            "preloaded \(preloaded), open \(openAlbumId ?? "none"), at \(scrolledTo), detail \(detailScrolledPast) past the top"
+            "preloaded \(preloaded), open \(open?.albumId ?? "none"), at \(scrolledTo), detail \(open?.scrolledPast ?? 0) past the top"
         }
     }
 
     @Test(
         "a column change keeps the slot on top",
         arguments: [
-            Scene(preloaded: false, openAlbumId: nil, scrolledTo: 6000),
-            Scene(preloaded: true, openAlbumId: nil, scrolledTo: 6000),
+            Scene(preloaded: false, open: nil, scrolledTo: 6000),
+            Scene(preloaded: true, open: nil, scrolledTo: 6000),
             // The detail under the row holding album 100, the row just under
             // the top.
-            Scene(preloaded: false, openAlbumId: "grid-100", scrolledTo: 6000),
+            Scene(
+                preloaded: false,
+                open: OpenDetail(albumId: "grid-100"),
+                scrolledTo: 6000
+            ),
             // The same detail partly scrolled past, so it is the slot on top.
             Scene(
                 preloaded: true,
-                openAlbumId: "grid-100",
-                scrolledTo: 6000,
-                detailScrolledPast: 60
+                open: OpenDetail(albumId: "grid-100", scrolledPast: 60),
+                scrolledTo: 6000
             ),
         ]
     )
@@ -204,13 +211,13 @@ struct AlbumGridResizeTests {
         var hostedList: AlbumList?
         let hosted = try await HostedAlbumGrid.host(
             preloaded: scene.preloaded,
-            openAlbumId: scene.openAlbumId
+            openAlbumId: scene.open?.albumId
         ) { list in
             hostedList = list
             return Harness(stage: stage, list: list)
         }
         let list = try #require(hostedList)
-        let detailOpen = scene.openAlbumId != nil
+        let detailOpen = scene.open != nil
         let move = { (show: Bool) in
             try await stage.movePanel(
                 show: show,
@@ -225,7 +232,7 @@ struct AlbumGridResizeTests {
         // With a detail open the grid places the rows it has not drawn by
         // estimate, so the offset is no measure; where the detail sits is.
         let place = {
-            scene.openAlbumId == nil ? offset() : stage.detailTop ?? .nan
+            scene.open == nil ? offset() : stage.detailTop ?? .nan
         }
 
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: scene.scrolledTo))
@@ -237,7 +244,7 @@ struct AlbumGridResizeTests {
             detailOpen: detailOpen
         )
         try await stage.scrollDetailPast(
-            scene.detailScrolledPast,
+            scene.open?.scrolledPast ?? 0,
             in: hosted,
             list: list
         )
@@ -250,7 +257,7 @@ struct AlbumGridResizeTests {
 
         try await move(true)
         let narrowed = place()
-        if scene.openAlbumId == nil {
+        if scene.open == nil {
             // Fewer columns put the slot on top further down the content.
             #expect(narrowed > before)
         }
@@ -267,7 +274,7 @@ struct AlbumGridResizeTests {
         try await move(false)
         #expect(abs(place() - back) < 1)
 
-        if scene.detailScrolledPast > 0 {
+        if (scene.open?.scrolledPast ?? 0) > 0 {
             // The detail was the slot on top, and stays there.
             #expect(abs(narrowed) < 1)
             #expect(abs(back) < 1)
