@@ -95,7 +95,10 @@ internal fun interface ReadingOrder {
                 reached.getOrPut(id) {
                     (children[id].orEmpty().map(::earliest) + listOfNotNull(rank[id])).minOrNull() ?: Int.MAX_VALUE
                 }
-            return ReadingOrder { parent -> children[parent]?.sortedBy(::earliest) }
+            val full = ReadingOrder { parent -> children[parent]?.sortedBy(::earliest) }
+            // A node of the screen keeps the order it has with no window up: a window is read apart from the screen.
+            val screen = ShotWindows.pageOrder ?: return full
+            return ReadingOrder { parent -> screen.childrenOf(parent) ?: full.childrenOf(parent) }
         }
 
         private fun find(view: View): View? =

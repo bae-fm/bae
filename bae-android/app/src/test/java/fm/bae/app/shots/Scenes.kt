@@ -97,20 +97,22 @@ internal fun SheetOverScrim(
     top: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(
-        modifier = Modifier.fillMaxSize().windowOverScreen().background(BaeTheme.colors.scrim),
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .dialogPane(heading.title)
-                    .then(if (top == null) Modifier else Modifier.fillMaxHeight().padding(top = top)),
-            shape = BottomSheetDefaults.ExpandedShape,
-            color = BottomSheetDefaults.ContainerColor,
+    WindowOverScreen {
+        Box(
+            modifier = Modifier.fillMaxSize().windowOverScreen().background(BaeTheme.colors.scrim),
+            contentAlignment = Alignment.BottomCenter,
         ) {
-            SheetWithHandle(heading, content)
+            Surface(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .dialogPane(heading.title)
+                        .then(if (top == null) Modifier else Modifier.fillMaxHeight().padding(top = top)),
+                shape = BottomSheetDefaults.ExpandedShape,
+                color = BottomSheetDefaults.ContainerColor,
+            ) {
+                SheetWithHandle(heading, content)
+            }
         }
     }
 }
@@ -220,16 +222,18 @@ internal fun InPlaceDialogScene(
     ScreenScene {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = if (keyboardUp) KEYBOARD_HEIGHT else 0.dp)) {
             behind()
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .windowOverScreen()
-                        .background(BaeTheme.colors.scrim)
-                        .padding(horizontal = ThemeSpace.page),
-                contentAlignment = Alignment.Center,
-            ) {
-                InPlaceDialog(dialog())
+            WindowOverScreen {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .windowOverScreen()
+                            .background(BaeTheme.colors.scrim)
+                            .padding(horizontal = ThemeSpace.page),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    InPlaceDialog(dialog())
+                }
             }
         }
     }
@@ -264,11 +268,13 @@ internal fun InPlaceDialog(parts: DialogParts) {
  */
 @Composable
 internal fun DialogInCell(parts: DialogParts) {
-    Box(
-        modifier = Modifier.fillMaxSize().windowOverScreen().background(BaeTheme.colors.scrim),
-        contentAlignment = Alignment.Center,
-    ) {
-        InPlaceDialog(parts)
+    WindowOverScreen {
+        Box(
+            modifier = Modifier.fillMaxSize().windowOverScreen().background(BaeTheme.colors.scrim),
+            contentAlignment = Alignment.Center,
+        ) {
+            InPlaceDialog(parts)
+        }
     }
 }
 
@@ -369,19 +375,21 @@ internal fun BoxScope.OpenMenu(
     end: Dp = 0.dp,
     items: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
-        shape = MenuDefaults.shape,
-        color = MenuDefaults.containerColor,
-        tonalElevation = MenuDefaults.TonalElevation,
-        shadowElevation = MenuDefaults.ShadowElevation,
-        modifier =
-            Modifier
-                .align(Alignment.TopEnd)
-                .windowOverScreen()
-                .padding(end = end)
-                .offset(y = top),
-    ) {
-        Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max), content = items)
+    WindowOverScreen {
+        Surface(
+            shape = MenuDefaults.shape,
+            color = MenuDefaults.containerColor,
+            tonalElevation = MenuDefaults.TonalElevation,
+            shadowElevation = MenuDefaults.ShadowElevation,
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .windowOverScreen()
+                    .padding(end = end)
+                    .offset(y = top),
+        ) {
+            Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max), content = items)
+        }
     }
 }
 
