@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,7 +32,10 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidInlineIconButton
 
-/** The search field's height; its pill shape is half of it. */
+/**
+ * The search field's height; its pill shape is half of it. The field's own box has it, as the board's field does,
+ * not only its decoration.
+ */
 private val SEARCH_FIELD_HEIGHT = 56.dp
 
 @Composable
@@ -56,7 +60,7 @@ internal fun AndroidSearchBar(
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                modifier = Modifier.weight(1f).height(SEARCH_FIELD_HEIGHT).focusRequester(focusRequester),
                 textStyle = ThemeText.androidBodyLarge.style.copy(color = MaterialTheme.colorScheme.onSurface),
                 singleLine = true,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -64,8 +68,7 @@ internal fun AndroidSearchBar(
                     Row(
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .height(SEARCH_FIELD_HEIGHT)
+                                .fillMaxSize()
                                 .background(BaeTheme.surfaces.elevated, CircleShape)
                                 .padding(horizontal = ThemeSpace.edge),
                         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
