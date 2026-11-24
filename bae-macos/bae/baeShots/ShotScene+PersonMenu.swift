@@ -76,8 +76,7 @@ extension ShotScene {
                     },
                     highlighted: highlighted
                 )
-                .frame(width: 200)
-                .padding(.trailing, 10)
+                .padding(.trailing, 16)
                 .padding(.top, 44)
             }
         ) {
