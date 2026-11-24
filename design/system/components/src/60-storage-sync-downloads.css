@@ -23,7 +23,7 @@
 .bae-m-table { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); padding: 0 calc(var(--space-related) + var(--space-line)); }
 .bae-m-table-head, .bae-m-table-row { display: grid; grid-template-columns: var(--bae-cols); align-items: center; }
 .bae-m-table-head { height: 28px; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); border-bottom: 1px solid var(--hairline); }
-.bae-m-table-th { padding: 0 var(--space-compact); display: flex; align-items: center; gap: var(--space-inline); border: 0; border-left: 1px solid var(--hairline); background: none; font: inherit; color: inherit; text-align: left; cursor: default; }
+.bae-m-table-th { align-self: stretch; padding: 0 var(--space-compact); display: flex; align-items: center; gap: var(--space-inline); border: 0; border-left: 1px solid var(--hairline); background: none; font: inherit; color: inherit; text-align: left; cursor: default; }
 .bae-m-table-th:first-child { border-left: 0; }
 .bae-m-table-right { justify-content: flex-end; text-align: right; }
 .bae-m-table-body { flex: 1; min-height: 0; overflow: hidden; }
