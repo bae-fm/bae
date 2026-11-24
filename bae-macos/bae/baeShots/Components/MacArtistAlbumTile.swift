@@ -13,15 +13,19 @@ extension ShotScene {
         ),
     ]
 
+    /// The preview's wide cell, which its grid fills with five columns of at
+    /// least 140 pt, the group space apart.
+    private static let gridWidth: CGFloat = 842
+    private static let tileWidth = (gridWidth - 4 * ThemeSpace.group) / 5
+
     private static func artistAlbumTileScene(
         _ id: String,
         firstUnplayable: Bool = false
     ) -> ShotScene {
         component(
             id,
-            page: true,
-            width: 524,
-            height: 250,
+            width: gridWidth,
+            height: 202,
             images: coverStore()
         ) {
             HStack(alignment: .top, spacing: ThemeSpace.group) {
@@ -45,6 +49,6 @@ extension ShotScene {
             entry: artistAlbum(title, year, unplayable: unplayable),
             onTap: {}
         )
-        .frame(width: 160)
+        .frame(width: tileWidth)
     }
 }
