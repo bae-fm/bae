@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 
 /**
  * How much of the screen's bottom the now-playing bars take, for the snackbar to float above. Each bar that is
@@ -61,7 +62,11 @@ fun Modifier.liftsSnackbar(): Modifier {
 /** Material's SnackbarData overload pads the snackbar 12dp on each side, and the board keeps it. */
 private val SNACKBAR_MARGIN = 12.dp
 
-/** The box the board gives the close glyph, and the glyph in it. */
+/**
+ * The box the board gives the close glyph, and the glyph in it. Material's one-row layout pads the end of a
+ * snackbar that has a dismiss action by nothing, expecting a 48dp icon button, so the close takes the board's
+ * 8dp on each side itself.
+ */
 private val CLOSE_BOX = 32.dp
 
 /** The snackbar host over the whole screen, at its bottom. */
@@ -110,7 +115,7 @@ private fun AndroidSnackbar(data: SnackbarData) {
                         icon = SymbolIcons.Close,
                         contentDescription = stringResource(R.string.close),
                         onClick = data::dismiss,
-                        modifier = Modifier.size(CLOSE_BOX),
+                        modifier = Modifier.padding(horizontal = ThemeSpace.related).size(CLOSE_BOX),
                         glyph = ThemeIcon.medium,
                     )
                 }
