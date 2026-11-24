@@ -81,6 +81,8 @@ struct MacTable: NSViewRepresentable {
         tableView.allowsColumnResizing = true
         tableView.columnAutoresizingStyle =
             .firstColumnOnlyAutoresizingStyle
+        // The style first: choosing it sets the spacing between cells.
+        tableView.style = .fullWidth
         tableView.rowHeight = 28
         // Each cell holds its own side padding, so the columns touch and
         // each column is as wide as its layout says.
@@ -88,7 +90,6 @@ struct MacTable: NSViewRepresentable {
             width: 0,
             height: tableView.intercellSpacing.height
         )
-        tableView.style = .fullWidth
         tableView.backgroundColor = .clear
 
         for column in StorageTableColumn.allCases {
