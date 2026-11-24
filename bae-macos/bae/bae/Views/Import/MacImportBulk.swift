@@ -37,6 +37,9 @@ struct MacImportBulk: View {
                                     action: running.action,
                                     progress: running.progress
                                 )
+                                // The label and its bar read together, then Cancel,
+                                // though Cancel sits level with the label.
+                                .accessibilityElement(children: .contain)
                             }
                             else {
                                 Spacer(minLength: 0)
