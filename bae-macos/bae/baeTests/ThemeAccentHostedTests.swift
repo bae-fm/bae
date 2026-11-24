@@ -8,16 +8,19 @@ import Testing
 @Suite("Theme accent in a hosted window")
 @MainActor
 struct ThemeAccentHostedTests {
-    /// `Theme.accent` in a window drawn in a chosen accent is that accent, not
-    /// the accent colour the Mac is set to. The chosen accents here are ones no
-    /// Mac offers, so a Mac's own accent never passes by chance.
+    /// `Theme.accent` is the accent the window is drawn in, and not the accent
+    /// SwiftUI holds, which a Mac with an accent of its own set replaces. The
+    /// test fills SwiftUI's accent and tint with red, which no accent of bae's
+    /// is, so a view that reads either draws red or the Mac's accent.
     @Test(
         "a view filled with Theme.accent draws the window's chosen accent",
         arguments: [AccentChoice.mint, .orchid]
     )
     func themeAccentIsTheChosenAccent(accent: AccentChoice) async throws {
         let drawn = try await centrePixel(
-            of: Rectangle().fill(Theme.accent),
+            of: Rectangle().fill(Theme.accent)
+                .accentColor(.red)
+                .tint(.red),
             accent: accent
         )
         let wanted = try await centrePixel(
