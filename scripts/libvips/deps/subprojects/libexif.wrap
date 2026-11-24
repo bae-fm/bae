@@ -1,0 +1,14 @@
+[wrap-file]
+directory = libexif-0.6.26
+source_url = https://github.com/libexif/libexif/releases/download/v0.6.26/libexif-0.6.26.tar.bz2
+source_filename = libexif-0.6.26.tar.gz
+source_hash = 0830ed253fceeb60444fb309598bc8a9491d3007dc054aad3a50a347c5597c57
+source_fallback_url = https://wrapdb.mesonbuild.com/v2/libexif_0.6.26-1/get_source/libexif-0.6.26.tar.gz
+patch_filename = libexif_0.6.26-1_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/libexif_0.6.26-1/get_patch
+patch_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/libexif_0.6.26-1/libexif_0.6.26-1_patch.zip
+patch_hash = 6ee0fba2da4754164e51d537a29f1e885af88077523ea283765bfa1a232efdce
+wrapdb_version = 0.6.26-1
+
+[provide]
+dependency_names = libexif

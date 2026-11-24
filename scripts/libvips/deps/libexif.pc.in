@@ -1,0 +1,9 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libexif
+Description: EXIF tag parsing library
+Version: @version@
+Libs: -L${libdir} -lexif
+Cflags: -I${includedir}

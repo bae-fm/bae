@@ -132,6 +132,10 @@ AGENTS.md
 # the main checkout, so the path has no trailing slash.
 /bae-ffmpeg
 
+# libvips dists, built by scripts/prepare-libvips.sh and
+# scripts/build-libvips-android.sh. A worktree links its own to the cache folder.
+/bae-libvips
+
 # Coverage/profiling + Kotlin build cache artifacts
 *.profraw
 bae-android/.kotlin/

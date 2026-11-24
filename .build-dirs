@@ -70,6 +70,11 @@ installed owner-construction-check scripts/owner-construction-check.sh
 # folders of releases no checkout pins.
 installed bae-ffmpeg scripts/bae-ffmpeg-release
 prepare scripts/prepare-ffmpeg.sh
+# The same for libvips: scripts/prepare-libvips.sh links the checkout's
+# bae-libvips to the folder of ~/.cache/bae-libvips named for the pinned
+# release and, on a Mac, builds the desktop dist there when it is missing.
+installed bae-libvips scripts/bae-libvips-release
+prepare scripts/prepare-libvips.sh
 # The Debian packages a Linux build host needs beyond the ones builds installs
 # for itself: clang and libclang-dev for bindgen (ffmpeg-sys-next and
 # libsqlite3-sys run it), libasound2-dev for cpal's ALSA backend, and python3
