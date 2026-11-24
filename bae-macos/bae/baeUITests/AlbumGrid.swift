@@ -97,7 +97,7 @@ extension XCTestCase {
         // The field's element type is a search field, so XCUIElement lists
         // it in `searchFields` and not in `textFields`.
         let field = app.searchFields
-            .matching(NSPredicate(format: "placeholderValue == %@", "Search"))
+            .matching(NSPredicate(format: "label == %@", "Search"))
             .firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: HangGuard.seconds))
         field.click()

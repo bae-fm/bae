@@ -68,7 +68,7 @@ final class EditMenuSelectAllTests: XCTestCase {
         )
         let filter = app.searchFields
             .matching(
-                NSPredicate(format: "placeholderValue == %@", "Filter")
+                NSPredicate(format: "label == %@", "Filter")
             )
             .firstMatch
         XCTAssertTrue(filter.waitForExistence(timeout: HangGuard.seconds))
