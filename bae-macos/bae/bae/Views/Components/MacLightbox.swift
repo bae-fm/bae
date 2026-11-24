@@ -46,6 +46,12 @@ struct LightboxPlace<Item: LightboxImage>: Equatable {
     var canCycle: Bool { neighbors != nil }
 }
 
+/// The close button's circle, which the top row of the stage is as tall as,
+/// with the space round it.
+private let lightboxCloseButtonDiameter: CGFloat = 36
+private let lightboxStageTopInset =
+    lightboxCloseButtonDiameter + 2 * ThemeSpace.group
+
 struct MacLightbox<Item: LightboxImage>: View {
     let place: LightboxPlace<Item>
     /// The current item's image as it loads, owned by whoever shows the
@@ -81,7 +87,11 @@ struct MacLightbox<Item: LightboxImage>: View {
             VStack(spacing: 0) {
                 GeometryReader { geo in
                     ZStack {
+                        // The stage under the row that holds the close
+                        // button: the image, its messages and the arrows
+                        // share its middle.
                         imageContent
+                            .padding(.top, lightboxStageTopInset)
                         if place.canCycle {
                             cycleNavButtons
                         }
@@ -200,8 +210,7 @@ struct MacLightbox<Item: LightboxImage>: View {
                     },
             )
             .padding(.horizontal, ThemeSpace.page)
-            .padding(.top, ThemeSpace.page)
-            .padding(.bottom, ThemeSpace.edge)
+            .padding(.vertical, ThemeSpace.edge)
             .shadow(color: Theme.shadow, radius: 20)
     }
 }
@@ -250,6 +259,9 @@ extension MacLightbox {
             )
         }
         .padding(.horizontal, ThemeSpace.edge)
+        // The arrows sit level with the middle of the stage under the row
+        // that holds the close button.
+        .padding(.top, lightboxStageTopInset)
         .fadesWhenZoomed(at: magnification)
     }
 
@@ -263,18 +275,19 @@ extension MacLightbox {
                                 .themeIcon(.stageBrowse)
                             Text("Browse all images")
                         }
+                        .padding(.horizontal, ThemeSpace.group)
+                        // As tall as the close button beside it.
+                        .frame(height: lightboxCloseButtonDiameter)
+                        .background(Theme.scrim, in: Capsule())
                     }
-                    .buttonStyle(.accentBorderless)
+                    .buttonStyle(.accentPlain)
                     .foregroundStyle(Theme.onFill)
-                    .padding(.vertical, ThemeSpace.compact)
-                    .padding(.horizontal, ThemeSpace.group)
-                    .background(Theme.scrim, in: Capsule())
                     .padding(ThemeSpace.group)
                 }
                 Spacer()
                 circleIconButton(
                     systemName: "xmark",
-                    diameter: 36,
+                    diameter: lightboxCloseButtonDiameter,
                     icon: .stageClose
                 ) {
                     onDismiss()
