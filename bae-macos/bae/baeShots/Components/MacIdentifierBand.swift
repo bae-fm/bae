@@ -69,9 +69,10 @@ extension ShotScene {
                 BridgeSignalValueRow(
                     value: sampleBarcode,
                     excluded: false,
-                    cells: [
-                        BridgeProviderCell(source: .discogs, lookup: lookup)
-                    ]
+                    cells: barcodeSources(lookup)
+                        .map {
+                            BridgeProviderCell(source: $0, lookup: lookup)
+                        }
                 )
             ]),
             catalog: .numbers(rows: [], candidates: []),
@@ -79,6 +80,15 @@ extension ShotScene {
             search: .notNeeded,
             readingArtwork: false
         )
+    }
+
+    /// A barcode that nothing matched was asked of both catalogs; one still
+    /// being looked up waits on Discogs alone.
+    private static func barcodeSources(
+        _ lookup: BridgeLookupState
+    ) -> [BridgeLookupCatalog] {
+        if case .noMatch = lookup { return [.musicBrainz, .discogs] }
+        return [.discogs]
     }
 
     private static func identifierBandScene(
