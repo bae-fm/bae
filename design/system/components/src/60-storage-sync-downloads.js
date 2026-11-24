@@ -33,9 +33,10 @@
     trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
     edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
   };
+  // A line symbol `size` points square. `height`: a shorter box, for a symbol whose frame is wider than tall, as SF Symbols frames its folder; the symbol keeps its size and centres on the box's height.
   function Sym(props) {
-    var s = Number(props.size || 14);
-    return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: cx('bae-sym', props.className), fill: 'none', stroke: 'currentColor', strokeWidth: props.weight || 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: props.style }, h('path', { d: SYM[props.name] || '' }));
+    var s = Number(props.size || 14), high = Number(props.height || s);
+    return h('svg', { width: s, height: high, viewBox: '0 ' + (12 - 12 * high / s) + ' 24 ' + (24 * high / s), 'aria-hidden': true, className: cx('bae-sym', props.className), fill: 'none', stroke: 'currentColor', strokeWidth: props.weight || 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: props.style }, h('path', { d: SYM[props.name] || '' }));
   }
   function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
