@@ -50,7 +50,8 @@ extension ShotScene {
                     packaging: .jewelCase,
                     details: [.remastered]
                 )
-            )
+            ),
+            countryMenuOpen: true
         ),
         releaseFieldsScene(
             "mac.component.release-fields.off",
@@ -81,7 +82,8 @@ extension ShotScene {
     private static func releaseFieldsScene(
         _ id: String,
         _ values: BridgeRawReleaseEdit,
-        off: Bool = false
+        off: Bool = false,
+        countryMenuOpen: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -97,6 +99,27 @@ extension ShotScene {
                     off: off
                 )
                 .frame(width: 560, alignment: .leading)
+                .overlay(alignment: .topLeading) {
+                    if countryMenuOpen {
+                        // The Country menu under its button, a few of its
+                        // countries, as the board draws it.
+                        MacMenuInPlace(
+                            {
+                                MacMenuItem(verbatim: "—") {}
+                                MacMenuItem(verbatim: "Canada") {}
+                                MacMenuItem(verbatim: "Japan") {}
+                                MacMenuItem(verbatim: "United Kingdom") {}
+                                MacMenuItem(
+                                    verbatim: "United States",
+                                    checked: true
+                                ) {}
+                            },
+                            highlighted: 4
+                        )
+                        .padding(.leading, 68)
+                        .padding(.top, 176)
+                    }
+                }
             )
         }
     }
