@@ -40,7 +40,7 @@
       covers.slice(0, 4).map(function (t, i) { return h(Artwork, { key: i, title: t, radius: 0 }); }));
   }
 
-  // The Mac app's symbols, each the outline of the SF Symbol the app draws, in its weight, at the 24 point size the Glyph's 24 by 24 box stands for, centred on the symbol's own box. A Glyph of size s is the symbol at s points, and it may reach past its box, as the symbol does past its frame.
+  // The Mac app's symbols, each the outline of the SF Symbol the app draws, in its weight, at the 24 point size the Glyph's 24 by 24 box stands for, centred on the symbol's own box. A Glyph of size s is the symbol at s points, in a box s tall and as wide as the symbol's frame (`SFWidth`, else s), and it may reach past its box, as the symbol does past its frame.
   // play play.fill, pause pause.fill, previous backward.fill, next forward.fill, shuffle shuffle, repeat repeat, queue list.bullet, speaker speaker.wave.2.fill, cast hifispeaker, search magnifyingglass, ellipsis ellipsis, warning exclamationmark.circle, close xmark, airplay airplayvideo, tv tv, down chevron.down, add plus, sidebar sidebar.trailing, lock lock.fill, people person.2.fill, removefill xmark.circle.fill.
   var SF = {
     play: 'M5.59 2.27C5 2.43 4.62 2.89 4.52 3.56C4.49 3.8 4.49 20.32 4.52 20.56C4.7 21.77 5.79 22.24 6.99 21.62C7.4 21.4 20.77 13.59 21.08 13.38C21.65 13 21.92 12.66 21.98 12.24C22.06 11.66 21.8 11.22 21.08 10.74C20.77 10.54 7.18 2.6 6.9 2.46C6.48 2.25 5.95 2.18 5.59 2.27Z',
@@ -64,9 +64,10 @@
     if (props.point != null && !(props.point === 'forward' && props.name === 'down')) throw new Error('Glyph turns only the `down` chevron, to point `forward`');
     var cls = cx('bae-glyph', props.point && 'bae-glyph-forward', props.className);
     if (props.set !== 'mac') return h(MSymbol, { name: props.name, size: props.size, className: cls, fill: 'currentColor', label: props.label });
-    var set = SF, box = iconBox(props.size);
+    var set = SF, box = iconBox(props.size), wide = SFWidth[props.name];
     var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
-    return h('svg', Object.assign({ viewBox: '0 0 24 24', className: cls, fill: 'currentColor', style: { width: box.width, height: box.height, overflow: 'visible' } }, named), h('path', { d: set[props.name] || set.ellipsis || '', fillRule: 'evenodd' }));
+    var frame = wide ? { viewBox: (12 - wide / 2) + ' 0 ' + wide + ' 24', width: 'calc(' + box.width + ' * ' + wide + ' / 24)' } : { viewBox: '0 0 24 24', width: box.width };
+    return h('svg', Object.assign({ viewBox: frame.viewBox, className: cls, fill: 'currentColor', style: { width: frame.width, height: box.height, overflow: 'visible' } }, named), h('path', { d: set[props.name] || set.ellipsis || '', fillRule: 'evenodd' }));
   }
 
   // `large` is Android's full player's bar: a tall track with a tall thumb, and no held parts.
@@ -410,6 +411,8 @@
   // Who sees a playlist of the person's own: a lock for Only me, two people for Everyone.
   SF.lock = 'M11.46 1.34C8.66 1.48 6.56 3.28 6.02 6.01C5.88 6.69 5.87 6.84 5.86 8.67L5.84 10.37L5.7 10.4C4.68 10.6 4.1 11.18 3.87 12.23L3.81 12.49L3.81 16.88C3.81 21.06 3.82 21.27 3.86 21.51C4.06 22.58 4.61 23.16 5.66 23.41L5.89 23.46L11.62 23.47C15.77 23.48 17.43 23.47 17.61 23.45C18.84 23.31 19.52 22.67 19.75 21.45C19.81 21.07 19.81 12.74 19.74 12.35C19.59 11.5 19.22 10.95 18.59 10.63C18.37 10.53 17.98 10.4 17.87 10.4C17.75 10.4 17.76 10.44 17.74 8.66C17.73 6.85 17.72 6.72 17.59 6.04C17.05 3.31 15.03 1.54 12.2 1.35C11.85 1.33 11.79 1.32 11.46 1.34ZM12.16 3.05C13.93 3.21 15.22 4.26 15.7 5.94C15.87 6.54 15.91 7.04 15.9 8.91L15.89 10.34L11.8 10.34L7.71 10.34L7.71 8.65C7.71 6.89 7.72 6.77 7.83 6.24C8.16 4.62 9.32 3.45 10.89 3.12C11.36 3.03 11.73 3.01 12.16 3.05Z';
   SF.people = 'M17.81 0.75C15.27 0.99 13.33 3.31 13.43 6C13.57 9.66 17.16 12.01 20.24 10.46C22.32 9.42 23.43 6.98 22.91 4.6C22.38 2.2 20.18 0.53 17.81 0.75ZM3.87 2.36C1.76 2.66 0.2 4.52 0.2 6.74C0.2 9.55 2.64 11.68 5.22 11.12C6.64 10.81 7.84 9.7 8.32 8.23C9.2 5.62 7.71 2.9 5.13 2.4C4.78 2.33 4.21 2.31 3.87 2.36ZM3.85 13.02C1.41 13.14 -0.8 14.09 -2.39 15.7C-3.45 16.76 -4.15 18.07 -4.36 19.38C-4.42 19.75 -4.44 20.3 -4.39 20.55C-4.26 21.27 -3.73 21.67 -2.77 21.77C-2.61 21.79 -0.9 21.8 2.16 21.8L6.85 21.8L6.77 21.65C6.41 20.92 6.38 19.86 6.69 18.73C7.07 17.31 7.93 15.98 9.29 14.71L9.58 14.43L9.36 14.3C8.33 13.69 7.06 13.27 5.76 13.1C5.42 13.05 4.48 12.99 4.3 13C4.27 13 4.06 13.02 3.85 13.02ZM17.46 13.07C17.41 13.07 17.22 13.09 17.04 13.1C15.81 13.2 14.48 13.53 13.36 14C10.44 15.24 8.31 17.66 8.12 19.96C8.03 21.15 8.58 21.66 10.1 21.77C10.36 21.8 12.67 21.8 18.49 21.79C25.8 21.78 26.53 21.78 26.74 21.74C27.69 21.57 28.11 21.29 28.29 20.69C28.33 20.57 28.34 20.46 28.34 20.2C28.33 18.29 26.78 16.09 24.47 14.71C22.98 13.82 21.33 13.29 19.46 13.1C19.19 13.07 17.66 13.04 17.46 13.07Z';
+  // The width at 24 points of each symbol whose frame is wider than tall, as SwiftUI frames it: person.2.fill at 11 points is 16 wide.
+  var SFWidth = { people: 35 };
   // The filled circle with an × that removes one entry of a list (xmark.circle.fill).
   SF.removefill = 'M11.01 0.93C7.34 1.1 3.98 3.02 1.94 6.1C-0.02 9.05 -0.5 12.73 0.62 16.1C1.77 19.51 4.49 22.23 7.9 23.38C10.48 24.24 13.27 24.16 15.81 23.16C16.27 22.98 17.22 22.51 17.63 22.24C19.35 21.16 20.72 19.73 21.69 17.97C22.98 15.64 23.4 12.87 22.89 10.22C21.8 4.63 16.71 0.65 11.01 0.93ZM7.75 7.57C8.04 7.63 8.02 7.61 9.82 9.41C10.77 10.35 11.55 11.12 11.57 11.12C11.59 11.12 12.38 10.35 13.32 9.41C14.69 8.05 15.06 7.69 15.16 7.65C15.64 7.44 16.18 7.63 16.4 8.1C16.45 8.22 16.46 8.27 16.46 8.49C16.46 8.89 16.57 8.77 14.61 10.74L12.9 12.46L14.62 14.19C16.59 16.16 16.46 16.01 16.46 16.44C16.46 16.74 16.4 16.91 16.2 17.11C16.01 17.3 15.84 17.36 15.55 17.36C15.13 17.36 15.28 17.48 13.31 15.51L11.57 13.79L9.86 15.5C7.89 17.46 8.01 17.36 7.59 17.36C7.39 17.36 7.34 17.35 7.22 17.3C6.73 17.06 6.52 16.48 6.77 15.99C6.81 15.9 7.25 15.45 8.54 14.17L10.25 12.46L8.53 10.74C7.21 9.42 6.8 8.98 6.75 8.9C6.5 8.35 6.8 7.71 7.38 7.59C7.58 7.54 7.59 7.54 7.75 7.57Z';
 
