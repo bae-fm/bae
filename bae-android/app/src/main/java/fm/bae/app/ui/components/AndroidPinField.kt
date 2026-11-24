@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -45,7 +46,8 @@ private val cellDigit = ThemeText.androidFigure.style.withTabularDigits()
  * showing its digit as it is typed. While the field has focus, the box where the next digit goes has the accent
  * outline. The field takes digits only, keeps leading zeros and stops at [digits]. With an [error], every box is
  * outlined in red and the error is the line under them. Off ([enabled] false), the field dims and takes nothing,
- * as it does while bae pairs. A focus request on [modifier] gives the field the keyboard.
+ * as it does while bae pairs. The field's box spans the width it is given, as the
+ * board's does, with the boxes at its start. A focus request on [modifier] gives the field the keyboard.
  */
 @Composable
 internal fun AndroidPinField(
@@ -68,6 +70,7 @@ internal fun AndroidPinField(
             onValueChange = { typed -> onValueChange(typed.filter { it in '0'..'9' }.take(digits)) },
             modifier =
                 Modifier
+                    .fillMaxWidth()
                     .onFocusChanged { focused = it.isFocused }
                     .semantics { contentDescription = label },
             singleLine = true,
