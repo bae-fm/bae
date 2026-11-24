@@ -313,12 +313,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::StorageSetupFinishing => "core.error.storage_setup_finishing",
         BridgeErrorCategory::DeletionUnfinished => "core.error.deletion_unfinished",
         BridgeErrorCategory::DeletionSignInRequired => "core.error.deletion_sign_in_required",
-        BridgeErrorCategory::SignedOut { provider } => match provider {
-            BridgeCloudProvider::Dropbox => "core.sync.status.signed_out_dropbox",
-            BridgeCloudProvider::OneDrive => "core.sync.status.signed_out_onedrive",
-            BridgeCloudProvider::S3 => "core.sync.status.signed_out_s3",
-            BridgeCloudProvider::CloudKit => "core.sync.status.signed_out_icloud",
-        },
+        BridgeErrorCategory::SignedOut { provider } => provider.signed_out_key(),
         BridgeErrorCategory::UnfinishedInstallationUnreadable { .. } => {
             "core.error.unfinished_installation_unreadable"
         }

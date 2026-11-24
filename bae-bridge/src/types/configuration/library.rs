@@ -776,10 +776,16 @@ impl BridgeSyncStatusWord {
             BridgeSyncStatusWord::OfflineWithUnsentChanges => "core.sync.status.offline_unsent",
             BridgeSyncStatusWord::Offline => "core.sync.offline",
             BridgeSyncStatusWord::UpdateNeeded => "core.sync.status.update_needed",
-            BridgeSyncStatusWord::SignedOutOfDropbox => "core.sync.status.signed_out_dropbox",
-            BridgeSyncStatusWord::SignedOutOfOneDrive => "core.sync.status.signed_out_onedrive",
-            BridgeSyncStatusWord::SignedOutOfICloud => "core.sync.status.signed_out_icloud",
-            BridgeSyncStatusWord::SignedOutOfS3 => "core.sync.status.signed_out_s3",
+            BridgeSyncStatusWord::SignedOutOfDropbox => {
+                BridgeCloudProvider::Dropbox.signed_out_key()
+            }
+            BridgeSyncStatusWord::SignedOutOfOneDrive => {
+                BridgeCloudProvider::OneDrive.signed_out_key()
+            }
+            BridgeSyncStatusWord::SignedOutOfICloud => {
+                BridgeCloudProvider::CloudKit.signed_out_key()
+            }
+            BridgeSyncStatusWord::SignedOutOfS3 => BridgeCloudProvider::S3.signed_out_key(),
             BridgeSyncStatusWord::DeviceNeedsReset => "core.sync.status.device_needs_reset",
             BridgeSyncStatusWord::NewRestoreCode => "core.sync.status.new_restore_code",
             BridgeSyncStatusWord::NoAccess => "core.sync.status.no_access",

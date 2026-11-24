@@ -600,6 +600,19 @@ mirror_enum! {
     variants: { S3, Dropbox, OneDrive, CloudKit },
 }
 
+impl BridgeCloudProvider {
+    /// The catalog key of the words that say this device is signed out of
+    /// the provider, such as "Signed out of Dropbox".
+    pub(crate) fn signed_out_key(self) -> &'static str {
+        match self {
+            BridgeCloudProvider::Dropbox => "core.sync.status.signed_out_dropbox",
+            BridgeCloudProvider::OneDrive => "core.sync.status.signed_out_onedrive",
+            BridgeCloudProvider::CloudKit => "core.sync.status.signed_out_icloud",
+            BridgeCloudProvider::S3 => "core.sync.status.signed_out_s3",
+        }
+    }
+}
+
 mirror_enum! {
     BridgeStorageSortField = bae_views::StorageSortField,
     from_core: fn,
