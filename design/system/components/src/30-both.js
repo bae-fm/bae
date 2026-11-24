@@ -235,7 +235,7 @@
     return drawing
       ? h('svg', { className: cls, style: props.inline ? null : iconBox(props.size), viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
           h('path', { d: drawing.ring, fillRule: 'evenodd' }), statusMark(drawing[tone]))
-      : h(MSymbol, { name: STATUS_MATERIAL[tone], size: props.size, filled: false, className: cls, fill: 'currentColor' });
+      : h(MSymbol, { name: STATUS_MATERIAL[tone], size: props.size, className: cls, fill: 'currentColor' });
   }
   // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. A Mac notice draws the SF Symbol's stand-in, an Android notice its ring.
   // `look.quiet` draws it with no fill, the screen's text; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box). `look.android` leads with Android's ring (`set: 'ring'`) in place of the macOS glyph.
