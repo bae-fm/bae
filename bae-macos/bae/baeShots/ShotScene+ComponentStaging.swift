@@ -138,14 +138,20 @@ extension ShotScene {
         "Low Tide Hours booklet",
     ]
 
+    /// The names the lightbox shows for its four images, in the strip's order.
+    private static let lightboxNames = [
+        "cover.jpg", "back.jpg", "disc.jpg", "booklet.jpg",
+    ]
+
     static func lightboxItems() -> [LightboxItem] {
-        lightboxImages.map {
-            LightboxItem(
-                id: $0,
-                label: "cover.jpg",
-                image: .libraryImage(cover($0))
-            )
-        }
+        zip(lightboxImages, lightboxNames)
+            .map { image, name in
+                LightboxItem(
+                    id: image,
+                    label: name,
+                    image: .libraryImage(cover(image))
+                )
+            }
     }
 
     static func playlistSummary(

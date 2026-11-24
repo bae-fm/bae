@@ -111,6 +111,7 @@ struct MacLightbox<Item: LightboxImage>: View {
                         current: place.current.id,
                         centered: true,
                         onSelect: onSelect,
+                        name: \.label,
                         stroke: { _, isActive in
                             (
                                 isActive

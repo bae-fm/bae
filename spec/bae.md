@@ -2371,7 +2371,9 @@ PNG, GIF and WebP images the scan could read. On the Mac, clicking an image
 opens the folder's lightbox at that image. The lightbox shows the image the person last
 moved to while the folder holds it, otherwise the folder's first image, and its
 arrows move to the images before and after it, wrapping around the ends; a lone
-image has none.
+image has none. On the Mac, the lightbox's strip shows a thumbnail of each image
+when it holds more than one, and VoiceOver reads each thumbnail button by its
+image's name, the caption the lightbox shows for it.
 
 **Files.** A release's *Files* list is one list, the same in all three places:
 the files no track plays from, such as a rip log, a track sheet that carves no

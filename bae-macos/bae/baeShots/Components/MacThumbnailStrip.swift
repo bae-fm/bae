@@ -23,6 +23,7 @@ extension ShotScene {
                 current: items[current].id,
                 centered: true,
                 onSelect: { _ in },
+                name: \.label,
                 stroke: { _, isActive in
                     (
                         isActive ? Theme.onFill : Theme.onFillSecondary,

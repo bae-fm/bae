@@ -16,6 +16,8 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
     /// Centers a short row and scrolls to the current item on appear.
     let centered: Bool
     let onSelect: (Item.ID) -> Void
+    /// The item's name, which VoiceOver reads for its thumbnail button.
+    let name: (Item) -> String
     /// Stroke (color, line width) for an item given whether it is the
     /// current item.
     let stroke: (Item, Bool) -> (Color, CGFloat)
@@ -78,5 +80,6 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                 )
         }
         .buttonStyle(.accentPlain)
+        .accessibilityLabel(Text(verbatim: name(item)))
     }
 }
