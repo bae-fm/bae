@@ -12,7 +12,15 @@ struct MacArtistOtherNames: View {
     @Environment(UiStore.self)
     private var uiStore
     @State
-    private var newName = ""
+    private var newName: String
+
+    /// `typed` is the text the field to add a name starts with.
+    init(artistId: String, names: [BridgeArtistCreditName], typed: String = "")
+    {
+        self.artistId = artistId
+        self.names = names
+        _newName = State(initialValue: typed)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
