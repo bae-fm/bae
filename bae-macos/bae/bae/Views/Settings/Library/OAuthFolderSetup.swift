@@ -43,21 +43,16 @@
         /// A provider call runs: its name over a bar, with only Cancel under
         /// it, as the screen of a setup step runs.
         private func working(_ work: StorageFolderBrowser.Work) -> some View {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                    FolderBrowserWorkLine(
-                        work: work,
-                        provider: browser.provider
+            VStack(
+                alignment: .leading,
+                spacing: ThemeSpace.related + ThemeSpace.line
+            ) {
+                FolderBrowserWorkLine(work: work, provider: browser.provider)
+                if work == .signingIn {
+                    MacNote(
+                        "Finish signing in in the browser window that opened, then come back here."
                     )
-                    if work == .signingIn {
-                        Text(
-                            "Finish signing in in the browser window that opened, then come back here."
-                        )
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.textSecondary)
-                    }
                 }
-                .padding(.bottom, ThemeSpace.related + ThemeSpace.line)
                 MacSheetFooter {
                     MacButton("Cancel") { leave() }
                 }
