@@ -333,7 +333,7 @@ private struct OpenedCard: Equatable {
 }
 
 /// The grid's columns at one available width.
-private struct AlbumGridMetrics {
+struct AlbumGridMetrics {
     /// The width a row spans: every column and the gaps between them.
     let rowWidth: CGFloat
     let columnCount: Int

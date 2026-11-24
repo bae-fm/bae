@@ -31,15 +31,13 @@ extension ShotScene {
         year: Int32? = 1992,
         artist: String? = "Mara Quill"
     ) -> ShotScene {
-        // The preview puts the tile in the first of six grid columns.
-        let columns: CGFloat = 6
-        let width =
-            (wideColumn - 2 * ThemeSpace.edge - (columns - 1) * ThemeSpace.page)
-            / columns
+        // The width the album grid gives a tile in the wide column.
+        let width = AlbumGridMetrics(width: wideColumn, fullWidth: false)
+            .cardWidth
         return component(
             id,
             width: wideColumn,
-            height: 184,
+            height: 330,
             images: coverStore()
         ) {
             albumTile(
