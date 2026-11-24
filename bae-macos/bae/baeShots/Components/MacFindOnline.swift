@@ -28,10 +28,7 @@ extension ShotScene {
             height: 450,
             images: PreviewData.artImageStore()
         ) {
-            findOnline(
-                state: PreviewData.searchStateIdle,
-                showsDiscogsBar: false
-            )
+            findOnline(state: PreviewData.searchStateIdle)
         },
     ]
 
