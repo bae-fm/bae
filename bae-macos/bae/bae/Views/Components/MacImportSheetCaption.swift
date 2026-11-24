@@ -25,8 +25,8 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
             nameButton
             // The arrow joins the sheet to its audio for the eye; what
             // follows it says what it is.
-            Image(systemName: "arrow.forward")
-                .themeIcon(.small)
+            Text(verbatim: "→")
+                .themeText(.body)
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize()
                 .accessibilityHidden(true)
