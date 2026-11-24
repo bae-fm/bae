@@ -21,12 +21,27 @@ extension ShotScene {
         ) {
             findOnline(showsDiscogsBar: false)
         },
+        component(
+            "mac.component.find-online.not-started",
+            page: true,
+            width: 842,
+            height: 450,
+            images: PreviewData.artImageStore()
+        ) {
+            findOnline(
+                state: PreviewData.searchStateIdle,
+                showsDiscogsBar: false
+            )
+        },
     ]
 
-    private static func findOnline(showsDiscogsBar: Bool = true) -> some View {
+    private static func findOnline(
+        state: ImportSearchState = PreviewData.searchStateNotFound,
+        showsDiscogsBar: Bool = true
+    ) -> some View {
         importStores(
             MacFindOnline.preview(
-                state: PreviewData.searchStateNotFound,
+                state: state,
                 showsDiscogsBar: showsDiscogsBar
             )
             .frame(width: 842, height: 420, alignment: .top)

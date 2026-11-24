@@ -301,14 +301,15 @@
   // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time.
   function MacFindOnline(props) {
     var open = props.open || 'Automatic';
-    var head = function (t, status) { return h('button', { type: 'button', 'aria-expanded': open === t, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status); };
+    var head = function (t, status) { return h('button', { type: 'button', 'aria-expanded': open === t, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status ? h('span', { className: 'bae-m-fo-status' }, status) : null); };
     var k = kids(props.children);
     return h('div', { className: 'bae-m-card bae-m-fo' },
       h('div', { className: 'bae-m-fo-head' }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent bae-m-fo-back' }, h(Sym, { name: 'left', size: 12 }), 'Back'), h('span', { className: 'bae-strong', style: { position: 'absolute', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' } }, 'Identify')),
       h('div', { className: 'bae-divider' }),
       // The Discogs bar is the shared notice: its title, what to do, Open settings and the × that dismisses it.
       props.discogsBar ? h('div', { style: { padding: 'var(--space-group)' } }, h(MacNotice, { tone: 'info', title: 'Add Discogs to find more pressings', subtitle: 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.', action: 'Open settings', dismiss: true })) : null,
-      head('Automatic', props.autoStatus === 'working' ? h(MacSpinner, { size: 11 }) : props.autoStatus === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'chip' }) : null),
+      // `autoStatus`: `working` (the spinner), `failed` (the warning glyph) or `empty` (0, nothing matched), at the header's end.
+      head('Automatic', props.autoStatus === 'working' ? h(MacSpinner, { size: 11 }) : props.autoStatus === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'chip' }) : props.autoStatus === 'empty' ? h(StatusChip, null, '0') : null),
       open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, k) : null,
       h('div', { className: 'bae-divider' }),
       head('Search', null),
