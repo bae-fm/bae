@@ -103,10 +103,10 @@
 .bae-a-seg-field { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-a-seg-label { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-seg-helper { font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); }
-/* Each segment takes Material's 48dp touch target; its 40dp outline and fill sit inside it. */
 /* Each segment draws its 40 px pill; the 4 px above and below make the 48 px touch target, as Material's segmented button does. */
 .bae-a-seg { display: flex; padding: var(--space-inline) 0; }
-.bae-a-seg-btn { position: relative; isolation: isolate; flex: 1; height: 40px; display: flex; align-items: center; justify-content: center; gap: var(--space-compact); font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); fill: currentColor; }
+/* A segment's words and check are the primary text wherever the control sits, as the app colours both, so a dialog's secondary text never greys them. */
+.bae-a-seg-btn { position: relative; isolation: isolate; flex: 1; height: 40px; display: flex; align-items: center; justify-content: center; gap: var(--space-compact); font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); color: var(--text-primary); fill: currentColor; }
 .bae-a-seg-btn::before { content: ''; position: absolute; z-index: -1; inset: 0; border: 1px solid var(--hairline-strong); border-left-width: 0; }
 .bae-a-seg-btn:first-child::before { border-left-width: 1px; border-radius: 999px 0 0 999px; }
 .bae-a-seg-btn:last-child::before { border-radius: 0 999px 999px 0; }
