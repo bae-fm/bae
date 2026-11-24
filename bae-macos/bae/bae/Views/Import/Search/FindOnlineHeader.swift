@@ -12,10 +12,10 @@ struct FindOnlineHeader: View {
                 .themeText(.strong)
             HStack(spacing: ThemeSpace.group) {
                 if let onBack {
-                    Button(action: onBack) {
+                    MacButton(kind: .borderless, action: onBack) {
                         Label("Back", systemImage: "chevron.backward")
                     }
-                    .buttonStyle(.accentBorderless)
+                    .accent()
                     .themeText(.body)
                 }
                 Spacer(minLength: ThemeSpace.group)
