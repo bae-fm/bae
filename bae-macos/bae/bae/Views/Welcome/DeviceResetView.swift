@@ -6,8 +6,8 @@ import SwiftUI
 /// reset, whose warning an alert shows before the reset runs. When a reset
 /// fails, the screen says so, and Retry runs it again without the warning
 /// the person already accepted. The screen also offers finishing a reset
-/// that stopped partway, once finishing it failed. Cancel leaves either
-/// without resetting.
+/// that stopped partway, once finishing it failed. Cancel leaves the
+/// first without resetting; Close leaves the second waiting.
 struct DeviceResetView: View {
     /// Why the screen asks for a reset.
     enum Prompt {
@@ -86,7 +86,7 @@ struct DeviceResetView: View {
                     .frame(maxWidth: WelcomeLayout.columnWidth)
             }
             MacStepActions {
-                MacButton("Cancel", action: onCancel)
+                MacButton("Close", action: onCancel)
                     .keyboardShortcut(.cancelAction)
                 MacButton("Finish reset from cloud", action: onReset)
                     .destructive()
