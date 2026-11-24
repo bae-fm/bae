@@ -11,7 +11,7 @@ import Testing
 @MainActor
 @Suite("Opens without field focus")
 struct OpensWithoutFieldFocusTests {
-    /// A borderless window that can be key without the app being active, as
+    /// A titled panel that can be key without the app being active, as
     /// the shot renderer's windows are.
     private final class KeyPanel: NSPanel {
         override var canBecomeKey: Bool { true }
