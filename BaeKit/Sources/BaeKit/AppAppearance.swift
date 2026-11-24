@@ -97,6 +97,9 @@ extension View {
             .environment(\.surfaceTone, tone)
             .environment(\.accentChoice, accent)
             .accentColor(accentColor)
+            // `accentColor` alone leaves `Color.accentColor` at the Mac's own
+            // accent where the Mac sets one; the tint is what it reads.
+            .tint(accentColor)
             #if os(macOS)
                 .background(AccentTextSelection(accent: accent))
             #endif
