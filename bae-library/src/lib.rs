@@ -31,8 +31,8 @@ pub use activity_bars::{ActivityBars, ActivityBarsWatch};
 pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection};
 pub use assembly::open_library_manager;
 pub use bootstrap::{
-    create_library, discard_unfinished_installation, join_cancellable, join_with_invite,
-    join_with_pairing, replacement_cancellable, reset_device, restore_from_code,
+    create_library, discard_unfinished_installation, finish_reset_signed_in, join_cancellable,
+    join_with_invite, join_with_pairing, replacement_cancellable, reset_device, restore_from_code,
     restore_from_saved_code, restore_replacing_device, resume_join, resume_replacement,
     resume_restore, unfinished_join_for, unfinished_joins, unfinished_restores, JoinControl,
     JoinedLibrary, RestoreFromCodeError,

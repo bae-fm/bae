@@ -4742,8 +4742,13 @@ call that began it, and opening it fails with that call's own line:
 "Restoring this library on this device did not finish." or "Reset from cloud
 did not finish." Coven keeps what finishing needs on
 the device: a reset's device name, and a restore's code, its S3 key inside
-the code, and its provider sign-in. So bae finishes either without the code
-or a sign-in, and so does running the call that began it again. The other call is refused before anything changes: a reset would load
+the code, and its provider sign-in. A reset goes on with the library's own
+sign-in. So bae finishes either without the code or a sign-in, and so does
+running the call that began it again, unless Dropbox or OneDrive refuses the
+sign-in coven kept. Then finishing needs a new sign-in. A restore takes it
+with the code, from the provider the code names. For a reset, bae signs in to
+the provider of the library's location, then finishes the reset through
+that sign-in. The other call is refused before anything changes: a reset would load
 a restore's library under the keys the restore replaced, and a restore would
 delete the copy a reset keeps.
 

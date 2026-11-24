@@ -510,8 +510,9 @@ pub async fn restore_replacing_device(
 /// person's restore code nor a new sign-in. The settings a restore carries
 /// were written before its record, so finishing writes nothing more. A
 /// Dropbox or OneDrive sign-in the provider refuses even after its refresh
-/// fails as `OAuthError::Reauthorize`, the replacement still unfinished, and
-/// the call that began it, with its sign-in, finishes it then. How far the
+/// fails as `OAuthError::Reauthorize`, the replacement still unfinished:
+/// `finish_reset_signed_in` finishes a reset then, and calling
+/// `restore_replacing_device` again, with its sign-in, finishes a restore. How far the
 /// load has come goes to `on_status`. A failure leaves the replacement
 /// unfinished for the next call. A cancel stops only a restore, as
 /// `replacement_cancellable` says: before this device registered, coven
@@ -528,6 +529,29 @@ pub async fn resume_replacement(
         .resume_replacement(store, on_status, cancel)
         .await
         .map_err(|error| reported_restore_error(diagnostics, error))
+}
+
+/// Finish this device's reset of `store` that stopped after it recorded
+/// itself, once the provider refused the Dropbox or OneDrive sign-in coven
+/// kept for it: sign in to the provider of the library's location, with the
+/// access that location needs, then finish the reset through the new
+/// sign-in, which coven keeps. A location with no sign-in finishes as
+/// `resume_replacement` does. A cancel stops only the sign-in: coven goes on
+/// with a reset once it is under way.
+pub async fn finish_reset_signed_in(
+    installation: &coven::Coven,
+    mut builder: coven::CovenBuilder,
+    store: coven::StoreId,
+    on_status: impl Fn(coven::BootstrapStatus),
+    cancel: &watch::Receiver<bool>,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    let location = coven::Coven::storage_config(&installation.store_dir(&store))
+        .await
+        .map_err(|error| reported_restore_error(diagnostics, coven::BootstrapError::Sync(error)))?;
+    let access = location.and_then(|location| location.oauth_access());
+    auth::authenticate(&mut builder, access, cancel, diagnostics).await?;
+    resume_replacement(builder, store, on_status, cancel, diagnostics).await
 }
 
 /// Whether a cancel can stop the call finishing a replacement that `by`

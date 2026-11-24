@@ -201,6 +201,44 @@ impl BridgeHost {
             )
             .await
     }
+    /// Finish this device's reset of a library that stopped partway, once
+    /// the provider refused the Dropbox or OneDrive sign-in core kept for it:
+    /// sign in again to the provider of the library's location, then finish
+    /// the reset. `cancellation` stops only the sign-in: a reset under way
+    /// goes on.
+    pub async fn finish_reset_signed_in(
+        self: Arc<Self>,
+        library_id: String,
+        setup: Arc<crate::BridgeLibrarySetup>,
+        cancellation: Arc<BridgeCancellation>,
+    ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let store = crate::from_app::store(&library_id)?;
+        let (cancel, _cancel_on_drop) = cancellation.watched();
+        let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
+        self.operations
+            .clone()
+            .run_to_completion(
+                self.clone(),
+                "sign in again and finish the reset",
+                move || async move {
+                    self.closed(store).await?;
+                    match bae_library::finish_reset_signed_in(
+                        &self.coven,
+                        self.library_builder(),
+                        store,
+                        |status| steps.bootstrap(status, false),
+                        &cancel,
+                        &self.diagnostics,
+                    )
+                    .await
+                    {
+                        Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self)),
+                        Err(error) => BridgeBootstrapResult::failure(error, self),
+                    }
+                },
+            )
+            .await
+    }
     pub async fn restore_from_saved_code(
         self: Arc<Self>,
         saved: Arc<BridgeSavedRestoreCode>,
