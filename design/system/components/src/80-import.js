@@ -286,9 +286,10 @@
     return h('div', { className: 'bae-m-itable-scroll' }, h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), rows));
   }
   // `start`: a CUE image's track, its source cell where the track starts in the image (the sheet's caption names the image once). `listed`: the length the source lists, after the measured `length` in the warning colour, when the two are over 3 s apart, so the row says what disagrees. The title and the artist are fields; an artist the track inherits from the album leaves its field empty, showing Album artist.
+  // `added`: a track a save adds and has not made yet, which plays nothing, so it has no Play button.
   function MacImportTrackRow(props) {
     return h('div', { className: cx('bae-m-itable-row', 'bae-m-itable-track', props.playing && 'bae-m-itable-playing') },
-      h('span', { className: 'bae-m-isrc' }, h('button', { type: 'button', className: cx('bae-plainbtn', props.playing ? 'bae-accent' : 'bae-muted'), 'aria-label': props.playing ? 'Stop' : 'Play' }, h(Sym, { name: props.playing ? 'stop' : 'play', size: 10 })), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
+      h('span', { className: 'bae-m-isrc' }, props.added ? null : h('button', { type: 'button', className: cx('bae-plainbtn', props.playing ? 'bae-accent' : 'bae-muted'), 'aria-label': props.playing ? 'Stop' : 'Play' }, h(Sym, { name: props.playing ? 'stop' : 'play', size: 10 })), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
       h('span', { className: 'bae-num' }, props.position),
       h('span', { className: 'bae-m-itable-cell' }, h(MacInlineField, { label: 'Title', value: props.title, placeholder: 'Untitled' })),
       h('span', { className: 'bae-m-itable-cell' }, h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, inherited: props.inherited, placeholder: 'Artist', column: true })),
