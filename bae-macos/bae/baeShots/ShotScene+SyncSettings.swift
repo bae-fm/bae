@@ -14,7 +14,7 @@ extension ShotScene {
         [
             ShotScene(
                 id: "mac.settings.sync.pending",
-                size: CGSize(width: 690, height: 600),
+                size: CGSize(width: 690, height: 820),
                 frame: .window(title: "Settings", titleBar: .hidden)
             ) {
                 ShotStage(

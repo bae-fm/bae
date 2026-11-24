@@ -79,8 +79,6 @@ struct SettingsWindowLayout<Pane: View>: View {
         .windowBackground()
         .settingsWindowButtonsInSidebar()
         .ignoresSafeArea(.container, edges: .top)
-        // The sidebar's width plus the width every pane was drawn against.
-        .frame(width: 690, height: 600)
     }
 }
 
@@ -108,6 +106,7 @@ struct MacSettingsWindow: View {
         SettingsWindowLayout(navigation: navigation) {
             pane(for: navigation.selectedTab)
         }
+        .frame(width: 690, height: 600)
     }
 
     @ViewBuilder
