@@ -23,12 +23,12 @@ struct MacIdentifyBar<Trailing: View>: View {
             HStack(alignment: .center, spacing: spacing) {
                 identifyGroup
                 Spacer(minLength: ThemeSpace.group)
-                trailing()
+                trailing().accessibilitySortPriority(1)
             }
             VStack(alignment: .trailing, spacing: ThemeSpace.related) {
                 identifyGroup
                     .frame(maxWidth: .infinity, alignment: .leading)
-                trailing()
+                trailing().accessibilitySortPriority(1)
             }
         }
     }
@@ -40,10 +40,13 @@ struct MacIdentifyBar<Trailing: View>: View {
                 .foregroundStyle(Theme.textSecondary)
                 // The label is centred on the buttons, 4 pt lower than their
                 // tops, which would read it after them.
-                .accessibilitySortPriority(1)
-            MacButton("Automatic") { onAutomatic() }
-            MacButton("Search") { onSearch() }
-            metadataMenu(onMetadataCommand)
+                .accessibilitySortPriority(3)
+            Group {
+                MacButton("Automatic") { onAutomatic() }
+                MacButton("Search") { onSearch() }
+                metadataMenu(onMetadataCommand)
+            }
+            .accessibilitySortPriority(2)
         }
         .disabled(identifyDisabled)
     }
