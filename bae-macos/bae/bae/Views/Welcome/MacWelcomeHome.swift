@@ -4,7 +4,7 @@ import SwiftUI
 /// The first screen: open a library on this device, restore one from a code
 /// saved in iCloud Keychain, create one, or scan or enter a code that joins
 /// someone's library or adds this Mac to one of the person's own.
-struct MacWelcomeHome: View {
+struct MacWelcomeHome<RestoreCodes: View>: View {
     /// A failed library open or dev reset, shown as a callout under the
     /// tagline, titled by the step that failed.
     let loadError: LoadError?
@@ -26,7 +26,9 @@ struct MacWelcomeHome: View {
     let onDiscardInstallation: (String) async -> Void
     /// Go to the step that asks the creator's name and creates a library.
     let onCreate: () -> Void
-    let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
+    /// What follows the libraries: the restore codes saved in iCloud
+    /// Keychain, read from the listing, drawn disabled while a removal runs.
+    let restoreCodes: (SavedRestoreCodes, _ disabled: Bool) -> RestoreCodes
     let onScanCode: () -> Void
     let onEnterCode: () -> Void
 
@@ -159,11 +161,8 @@ struct MacWelcomeHome: View {
         return loadError
     }
 
-    /// The gap under the logo block, which the boards draw as 40pt.
-    private static let belowLogo = ThemeSpace.page + ThemeSpace.related
-
     private var content: some View {
-        VStack(spacing: Self.belowLogo) {
+        VStack(spacing: WelcomeLayout.belowLogo) {
             VStack(
                 spacing: showsFirstRunActions
                     ? ThemeSpace.group : ThemeSpace.related + ThemeSpace.line
@@ -259,12 +258,7 @@ struct MacWelcomeHome: View {
                             )
                             .frame(maxWidth: WelcomeLayout.columnWidth)
                         }
-                        KeychainRestoreContainer(
-                            codes: listings.savedCodes,
-                            disabled: isBusy,
-                            onRestore: { onRestoreSaved($0.code) }
-                        )
-                        .padding(.top, ThemeSpace.group + ThemeSpace.line)
+                        restoreCodes(listings.savedCodes, isBusy)
                     }
                 }
                 // The boards draw the libraries 2 pt lower under the tagline
@@ -300,6 +294,8 @@ struct MacWelcomeHome: View {
 /// The choose screen's shared column width.
 enum WelcomeLayout {
     static let columnWidth: CGFloat = 420
+    /// The gap under the logo block, which the boards draw as 40pt.
+    static let belowLogo = ThemeSpace.page + ThemeSpace.related
 }
 
 /// Why a removal left this Mac's files for a library it already left, or why

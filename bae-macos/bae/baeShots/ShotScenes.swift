@@ -32,6 +32,33 @@ enum ShotScenes {
         .environment(removals)
     }
 
+    /// The welcome window's content alone, with `restoreCodes` after the
+    /// libraries in place of the saved codes it reads.
+    static func welcomeHome(
+        setup: LibrarySetup,
+        removals: LibraryRemovals = PreviewData.welcomeRemovals(),
+        @ViewBuilder restoreCodes:
+            @escaping (SavedRestoreCodes, Bool) -> some View
+    ) -> some View {
+        MacWelcomeWindow {
+            MacWelcomeHome(
+                loadError: nil,
+                canDeleteActiveLibrary: true,
+                onOpenLibrary: { _ in },
+                onFinishReplacement: { _, _ in },
+                onResetFromCloud: { _ in },
+                unreadableInstallation: nil,
+                onDiscardInstallation: { _ in },
+                onCreate: {},
+                restoreCodes: restoreCodes,
+                onScanCode: {},
+                onEnterCode: {}
+            )
+        }
+        .environment(setup)
+        .environment(removals)
+    }
+
     /// What the details popover of `library` holds, its status read
     /// through `readStanding`.
     static func welcomeLibraryDetails(

@@ -25,7 +25,7 @@ extension ShotScene {
             size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            welcomeStage(
+            welcomeChildrenStage(
                 libraries: PreviewData.boardLibraries,
                 savedCodes: welcomeSavedCodes
             )
@@ -85,7 +85,7 @@ extension ShotScene {
         return removals
     }
 
-    /// The restore code iCloud Keychain holds for a Dropbox library.
+    /// One saved restore code, so the listing has children to draw.
     private static var welcomeSavedCodes: [BridgeSavedRestoreEntry] {
         [
             .readable(
@@ -104,5 +104,28 @@ extension ShotScene {
                 )
             )
         ]
+    }
+}
+
+/// A dashed box with a word in it, drawn where a component's preview draws
+/// `bae-preview-slot` for content the component does not own.
+struct PreviewSlot: View {
+    let label: String
+
+    init(_ label: String) { self.label = label }
+
+    var body: some View {
+        Text(verbatim: label)
+            .foregroundStyle(Theme.textSecondary)
+            .padding(ThemeSpace.group)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay {
+                RoundedRectangle(cornerRadius: ThemeRadius.card)
+                    .strokeBorder(
+                        Theme.hairlineStrong,
+                        style: StrokeStyle(lineWidth: 1, dash: [4, 3])
+                    )
+            }
+            .frame(maxWidth: WelcomeLayout.columnWidth)
     }
 }

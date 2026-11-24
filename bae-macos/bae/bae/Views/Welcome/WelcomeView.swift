@@ -124,7 +124,14 @@ struct WelcomeView: View {
                 unreadableInstallation: unreadableInstallation,
                 onDiscardInstallation: discardInstallation,
                 onCreate: { mode = .create },
-                onRestoreSaved: { mode = .restoreSaved($0) },
+                restoreCodes: { codes, disabled in
+                    KeychainRestoreContainer(
+                        codes: codes,
+                        disabled: disabled,
+                        onRestore: { mode = .restoreSaved($0.code) }
+                    )
+                    .padding(.top, ThemeSpace.group + ThemeSpace.line)
+                },
                 onScanCode: { mode = .code(scanning: true) },
                 onEnterCode: { mode = .code(scanning: false) }
             )

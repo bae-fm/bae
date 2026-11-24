@@ -521,6 +521,26 @@ extension ShotScene {
         ) { reads.answered == reads.reads }
     }
 
+    /// The welcome window's content over `libraries`, with a placeholder
+    /// where the restore codes `savedCodes` list would draw, as the
+    /// component's preview draws a slot.
+    static func welcomeChildrenStage(
+        libraries: [BridgeLibrary],
+        savedCodes: [BridgeSavedRestoreEntry]
+    ) -> ShotStage {
+        let reads = CountedReads(
+            libraries: libraries,
+            savedCodes: savedCodes,
+            unreadableInstallation: nil
+        )
+        return ShotStage(
+            ShotScenes.welcomeHome(
+                setup: reads.setup,
+                restoreCodes: { _, _ in AnyView(PreviewSlot("Content")) }
+            )
+        ) { reads.answered == reads.reads }
+    }
+
     /// A native sheet over the first-run welcome window. The sheet draws
     /// its own scrim over the window, including the window buttons.
     private static func welcomeSheetStage(_ sheet: some View) -> ShotStage {
