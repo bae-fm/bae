@@ -4,9 +4,9 @@
   function MacModal(props) {
     return h('div', { className: 'bae-m-scrim bae-m-scrim-centred' }, h('div', { className: 'bae-m-face-sheet bae-m-modal', style: { width: Number(props.width || 760), height: props.height ? Number(props.height) : null } }, props.children));
   }
-  // A modal's header: title, a second line, its buttons on the right.
+  // A modal's header: title, a second line space-line under it, its buttons on the right. The title is heading (title with `large`) and the second line detail, each a line of its token's height, as the app's MacModalHeader draws them.
   function MacModalHeader(props) {
-    return h('div', { className: 'bae-m-modalhead' }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-strong', style: props.large ? null : { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 'var(--type-detail-size)' } }, props.subtitle) : null), props.children);
+    return h('div', { className: 'bae-m-modalhead' }, h('div', { className: 'bae-m-modalhead-text' }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-m-modalhead-title' }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis bae-m-modalhead-sub' }, props.subtitle) : null), props.children);
   }
   // One cover in the cover gallery: its image over its name, with no source line, since the section heading says where it comes from. `image` stands for the picture (the board draws it as artwork seeded by it, the name unless given); `selected` rings the one the preview shows.
   // The tile is one button, named by the image's name; the shown one is the current one, which the Mac reads as selected.

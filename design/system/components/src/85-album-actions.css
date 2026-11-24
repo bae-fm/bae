@@ -1,6 +1,9 @@
 /* ==== part: album ==== */.bae-m-modal { overflow: hidden; display: flex; flex-direction: column; max-height: calc(100% - 40px); }
 .bae-m-modalhead { display: flex; align-items: center; gap: var(--space-related); padding: calc(var(--space-group) + var(--space-line)) var(--space-edge); border-bottom: 1px solid var(--hairline); }
 .bae-m-modalhead-large { font: var(--type-title-weight) var(--type-title-size) var(--font-sans); }
+.bae-m-modalhead-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-line); }
+.bae-m-modalhead-title { font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); }
+.bae-m-modalhead-sub { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-m-cgal { display: flex; flex-direction: column; height: 100%; }
 .bae-m-cgal-body { flex: 1; min-height: 0; display: flex; }
 .bae-m-cgal-left { flex: 1; overflow: hidden; padding: var(--space-section); display: flex; flex-direction: column; gap: var(--space-section); }
