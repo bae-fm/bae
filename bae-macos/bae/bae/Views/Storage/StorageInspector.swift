@@ -28,7 +28,7 @@ struct StorageInspector: View {
         .frame(
             minWidth: 360,
             idealWidth: 440,
-            maxWidth: 520,
+            maxWidth: 440,
             maxHeight: .infinity,
             alignment: .top
         )
