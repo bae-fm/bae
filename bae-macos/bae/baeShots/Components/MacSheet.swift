@@ -12,27 +12,17 @@ extension ShotScene {
             height: 240
         ) {
             OverWindow.sheet(
-                MacSheet("Set up a cloud home", width: 460) {
-                    Text(verbatim: "Content")
-                        .foregroundStyle(Theme.textSecondary)
-                        .padding(ThemeSpace.group)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: ThemeRadius.card)
-                                .strokeBorder(
-                                    Theme.hairlineStrong,
-                                    style: StrokeStyle(
-                                        lineWidth: 1,
-                                        dash: [4, 3]
-                                    )
-                                )
-                        }
-                } footer: {
-                    MacSheetFooter {
-                        MacButton("Cancel") {}
-                        MacButton("Set up", kind: .primary) {}
-                    }
-                },
+                cloudHomeSheet(),
+                over: Rectangle().fill(Theme.background)
+            )
+        },
+        component(
+            "mac.component.sheet.centred",
+            width: 600,
+            height: 240
+        ) {
+            OverWindow.centredSheet(
+                cloudHomeSheet(),
                 over: Rectangle().fill(Theme.background)
             )
         },
@@ -51,4 +41,29 @@ extension ShotScene {
             }
         },
     ]
+
+    /// The sheet the default and centred rows show.
+    private static func cloudHomeSheet() -> some View {
+        MacSheet("Set up a cloud home", width: 460) {
+            Text(verbatim: "Content")
+                .foregroundStyle(Theme.textSecondary)
+                .padding(ThemeSpace.group)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay {
+                    RoundedRectangle(cornerRadius: ThemeRadius.card)
+                        .strokeBorder(
+                            Theme.hairlineStrong,
+                            style: StrokeStyle(
+                                lineWidth: 1,
+                                dash: [4, 3]
+                            )
+                        )
+                }
+        } footer: {
+            MacSheetFooter {
+                MacButton("Cancel") {}
+                MacButton("Set up", kind: .primary) {}
+            }
+        }
+    }
 }

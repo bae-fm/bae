@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 </helmet>
 <x-import component-from-global-scope="Bae.MacWelcomeWindow">
   <x-import component-from-global-scope="Bae.MacWelcomeHome" empty="{{yes}}"></x-import>
-  <x-import component-from-global-scope="Bae.MacSheet" title="S3 key" overlay="{{yes}}" width="440" message="Enter your credentials for your S3 storage.">
+  <x-import component-from-global-scope="Bae.MacSheet" centred="{{yes}}" title="S3 key" overlay="{{yes}}" width="440" message="Enter your credentials for your S3 storage.">
     <x-import component-from-global-scope="Bae.MacS3KeyFields" key-id="AKIA4EXAMPLE"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Back</x-import><x-import component-from-global-scope="Bae.MacButton" kind="primary">Add</x-import></x-import>
   </x-import>

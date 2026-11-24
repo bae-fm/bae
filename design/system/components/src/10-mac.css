@@ -155,6 +155,8 @@
 .bae-m-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
 .bae-m-code-digits { font: var(--type-figure-weight) var(--type-figure-size) var(--font-sans); letter-spacing: 3px; color: var(--text-primary); }
 .bae-m-sheet { margin-top: calc(var(--space-page) + var(--space-inline)); display: flex; flex-direction: column; }
+.bae-m-scrim-centred { align-items: center; }
+.bae-m-sheet-centred { margin-top: 0; }
 .bae-m-sheet-title { padding: calc(var(--space-edge) + var(--space-line)) var(--space-edge) 0; font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); }
 .bae-m-sheet-body { padding: var(--space-group) var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); }
 .bae-m-sheet-message { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }

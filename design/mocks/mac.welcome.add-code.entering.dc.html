@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 </helmet>
 <x-import component-from-global-scope="Bae.MacWelcomeWindow">
   <x-import component-from-global-scope="Bae.MacWelcomeHome" empty="{{yes}}"></x-import>
-  <x-import component-from-global-scope="Bae.MacSheet" title="Enter code" overlay="{{yes}}" width="400" message="Enter your restore code, or an invite to a library.">
+  <x-import component-from-global-scope="Bae.MacSheet" centred="{{yes}}" title="Enter code" overlay="{{yes}}" width="400" message="Enter your restore code, or an invite to a library.">
     <x-import component-from-global-scope="Bae.MacTextField" label="Restore code or invite" label-hidden="{{yes}}" code="{{yes}}" state="focused"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import><x-import component-from-global-scope="Bae.MacButton" kind="primary" off="{{yes}}">Continue</x-import></x-import>
   </x-import>

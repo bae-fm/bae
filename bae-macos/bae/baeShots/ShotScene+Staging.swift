@@ -34,6 +34,25 @@ enum OverWindow {
         }
     }
 
+    /// A sheet centred over the scrim that dims the whole window, as macOS
+    /// places a sheet over the welcome window.
+    @MainActor
+    static func centredSheet(
+        _ dialog: some View,
+        over window: some View
+    ) -> some View {
+        ZStack {
+            window
+            MacScrim()
+            dialog
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
+                // The app's sheet is a window of its own, read after the
+                // window it covers.
+                .accessibilitySortPriority(-1)
+        }
+    }
+
     /// An alert, raised over `window` as the app raises it: `.macAlert`'s
     /// own panel, a child window of the window. The shot captures the window
     /// and the panel from the window server, so the scene presents the alert
