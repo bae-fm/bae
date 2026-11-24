@@ -21,13 +21,17 @@ struct MacModalHeader<Buttons: View>: View {
     private var content: some View {
         HStack(spacing: ThemeSpace.related) {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                // VoiceOver reads the title and the line under it before the
+                // buttons, which sit level with the title's middle.
                 Text(title)
                     .themeText(large ? .title : .heading)
+                    .accessibilitySortPriority(1)
                 if let subtitle {
                     Text(subtitle)
                         .themeText(.detail)
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
+                        .accessibilitySortPriority(1)
                 }
             }
             Spacer()
