@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// One bulk action: the action's symbol, its name, and how many of
+/// One bulk action: its name and how many of
 /// the selected folders it applies to. The Import row also holds where the
 /// import goes, before its count.
 struct MacBulkActionRow: View {
@@ -18,7 +18,7 @@ struct MacBulkActionRow: View {
             // make the whole row read as a pop-up.
             HStack(spacing: ImportBulkActionRowMetrics.spacing) {
                 Button(action: action) {
-                    nameAndSymbol
+                    name
                 }
                 .buttonStyle(.accentPlain)
                 .modifier(
@@ -35,7 +35,7 @@ struct MacBulkActionRow: View {
         else {
             Button(action: action) {
                 HStack(spacing: ImportBulkActionRowMetrics.spacing) {
-                    nameAndSymbol
+                    name
                     count
                 }
             }
@@ -46,23 +46,14 @@ struct MacBulkActionRow: View {
         }
     }
 
-    /// The action's symbol and its name, the part that takes the row's width.
-    private var nameAndSymbol: some View {
-        HStack(spacing: ImportBulkActionRowMetrics.spacing) {
-            Image(systemName: offer.action.symbol)
-                .themeIcon(ImportBulkActionRowMetrics.icon)
-                .foregroundStyle(
-                    isConstructive ? Theme.accent : Theme.textSecondary
-                )
-                .frame(width: ImportBulkActionRowMetrics.iconWidth)
-            Text(verbatim: offer.action.label)
-                .themeText(isConstructive ? .strong : .body)
-                .foregroundStyle(
-                    isConstructive
-                        ? Theme.textPrimary : Theme.textSecondary
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
+    /// The action's name, the part that takes the row's width.
+    private var name: some View {
+        Text(verbatim: offer.action.label)
+            .themeText(isConstructive ? .strong : .body)
+            .foregroundStyle(
+                isConstructive ? Theme.textPrimary : Theme.textSecondary
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var count: some View {

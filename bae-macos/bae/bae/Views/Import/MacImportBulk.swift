@@ -177,8 +177,4 @@ enum ImportBulkActionRowMetrics {
     static let horizontal = ThemeSpace.group
     static let vertical = ThemeSpace.related
     static let spacing = ThemeSpace.group
-    static let icon = ThemeIcon.medium
-    /// Fixed, so every row's label starts at the same place whatever its
-    /// symbol measures.
-    static let iconWidth = icon.size
 }

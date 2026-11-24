@@ -58,20 +58,4 @@ extension BridgeCandidateAction {
             false
         }
     }
-
-    var symbol: String {
-        switch self {
-        case .import: "square.and.arrow.down"
-        case .identify: "magnifyingglass"
-        case .cancelIdentification, .cancelImport: "xmark.circle"
-        case .retryIdentification: "arrow.clockwise"
-        case .resetToFileMetadata: "doc.text"
-        case .clearMetadata: "eraser"
-        case .combine: "square.stack.3d.up"
-        case .separate: "square.split.1x2"
-        case .skip: "minus.circle"
-        case .restore: "arrow.uturn.backward"
-        case .revealFolder: "folder"
-        }
-    }
 }
