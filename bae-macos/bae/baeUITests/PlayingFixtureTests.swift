@@ -15,7 +15,7 @@ final class PlayingFixtureTests: XCTestCase {
         let window = app.windows.firstMatch
         // The now-playing bar names the track, paused: it offers Play.
         XCTAssertTrue(
-            window.buttons["Pregap Track"]
+            window.nowPlayingButton("Pregap Track")
                 .waitForExistence(timeout: HangGuard.seconds)
         )
         XCTAssertTrue(window.buttons["Play"].exists)
@@ -35,7 +35,7 @@ final class PlayingFixtureTests: XCTestCase {
 
         let window = app.windows.firstMatch
         XCTAssertTrue(
-            window.buttons["Pregap Track"]
+            window.nowPlayingButton("Pregap Track")
                 .waitForExistence(timeout: HangGuard.seconds)
         )
         XCTAssertTrue(
@@ -50,17 +50,17 @@ final class PlayingFixtureTests: XCTestCase {
                 .waitForExistence(timeout: HangGuard.seconds),
             "the track starts over"
         )
-        XCTAssertTrue(window.buttons["Pregap Track"].exists)
+        XCTAssertTrue(window.nowPlayingButton("Pregap Track").exists)
         // Paused as it was, so the track stays at its start.
         XCTAssertTrue(window.buttons["Play"].exists)
 
         previous.click()
         XCTAssertTrue(
-            window.buttons["Opening Track"]
+            window.nowPlayingButton("Opening Track")
                 .waitForExistence(timeout: HangGuard.seconds),
             "the track before plays"
         )
-        XCTAssertFalse(window.buttons["Pregap Track"].exists)
+        XCTAssertFalse(window.nowPlayingButton("Pregap Track").exists)
     }
 
     /// Launch with playback paused `positionMs` into the second track's

@@ -47,7 +47,8 @@ final class GoToNowPlayingTests: XCTestCase {
         let grid = AlbumGrid(app: app)
         let playing = Self.playingTracks[Self.playingNumber - 1].title
         XCTAssertTrue(
-            window.buttons[playing].waitForExistence(timeout: HangGuard.seconds)
+            window.nowPlayingButton(playing)
+                .waitForExistence(timeout: HangGuard.seconds)
         )
         let oldest = Self.albums[0].title
         XCTAssertTrue(waitUntil { grid.shows(oldest) })

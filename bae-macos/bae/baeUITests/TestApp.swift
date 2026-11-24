@@ -268,5 +268,20 @@ extension XCUIElement {
     }
 }
 
+extension XCUIElement {
+    /// The now-playing bar's button for the track titled `title`, whose name
+    /// also says the artist, such as "Now playing, Harbor Lights by Mara Quill".
+    func nowPlayingButton(_ title: String) -> XCUIElement {
+        buttons
+            .matching(
+                NSPredicate(
+                    format: "label BEGINSWITH %@",
+                    "Now playing, \(title) by "
+                )
+            )
+            .firstMatch
+    }
+}
+
 /// The launched app never showed its library.
 private struct LibraryDidNotOpen: Error {}
