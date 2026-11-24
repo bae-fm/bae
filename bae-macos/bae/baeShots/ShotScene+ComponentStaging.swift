@@ -691,17 +691,13 @@ extension ShotScene {
         libraryId: PreviewData.homeMusic.id
     )
 
-    /// A library whose storage settings bae cannot read.
+    /// A library whose name bae cannot read, as the boards draw it: its
+    /// store id under the fixed title.
     static let unreadableLibrary = BridgeLibrary(
-        id: "lib-garden",
-        name: "Garden",
-        path: "/Users/preview/Music/bae/Garden",
-        state: .unreadable(
-            error: .Diagnostic(
-                category: .internal,
-                detail: "storage.json: expected value at line 1"
-            )
-        ),
+        id: "6f1c2a9e-4b7d-4e21-9a0c-3d5e8b2f7c14",
+        name: nil,
+        path: "/Users/preview/Music/bae/6f1c2a9e-4b7d-4e21-9a0c-3d5e8b2f7c14",
+        state: .nameUnreadable,
         isActive: false
     )
 }
