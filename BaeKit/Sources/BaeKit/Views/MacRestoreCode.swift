@@ -53,7 +53,10 @@ public struct MacRestoreCode: View {
         } footer: {
             switch reveal.state {
             case .masked, .shown:
+                // The boards put 4 points over the first note and between
+                // the notes, as they do under the code's box.
                 caption
+                    .footerNoteSpace(ThemeSpace.line * 2)
             case .closed, .loading, .failed:
                 EmptyView()
             }
@@ -114,7 +117,7 @@ public struct MacRestoreCode: View {
     }
 
     private var caption: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line * 2) {
             Text(
                 "Print this code or save it in a password manager. It gets you back into your library if you lose all your devices."
             )

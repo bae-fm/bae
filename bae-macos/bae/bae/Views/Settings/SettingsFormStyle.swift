@@ -102,10 +102,14 @@ private struct SettingsFormSection: View {
                     footer.padding(.top, ThemeSpace.compact)
                 }
                 else {
-                    // 8pt under the box, in line with the rows' labels.
+                    // 8pt under the box, in line with the rows' labels,
+                    // unless the note asks for another space.
                     footer
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .noteText(above: ThemeSpace.related)
+                        .noteText(
+                            above: footer.containerValues.footerNoteSpace
+                                ?? ThemeSpace.related
+                        )
                 }
             }
         }

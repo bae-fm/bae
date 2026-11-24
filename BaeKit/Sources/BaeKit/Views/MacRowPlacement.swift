@@ -41,6 +41,11 @@ extension ContainerValues {
     /// a button presses from its edges, as a System Settings row does.
     @Entry
     public var placesItselfInRow = false
+
+    /// The space a form puts above this footer note, where it differs from
+    /// the form's own; nil takes the form's.
+    @Entry
+    public var footerNoteSpace: CGFloat?
 }
 
 extension View {
@@ -61,6 +66,20 @@ extension View {
         frame(maxWidth: .infinity, alignment: .leading)
             .padding(placement.insets)
             .frame(minHeight: placement.minHeight)
+    }
+}
+
+extension View {
+    /// Sets the space a form puts above this footer note, in place of the
+    /// form's own.
+    @ViewBuilder
+    public func footerNoteSpace(_ space: CGFloat) -> some View {
+        if #available(macOS 15, iOS 18, *) {
+            containerValue(\.footerNoteSpace, space)
+        }
+        else {
+            self
+        }
     }
 }
 
