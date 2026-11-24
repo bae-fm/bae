@@ -32,9 +32,15 @@ struct MacS3KeyFields<Above: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+        VStack(
+            alignment: .leading,
+            spacing: ThemeSpace.related + ThemeSpace.line
+        ) {
             above
-            FieldColumn(labelWidth: 120) {
+            FieldColumn(
+                labelWidth: 120,
+                rowSpacing: ThemeSpace.related + ThemeSpace.line
+            ) {
                 MacTextField("Access key ID") {
                     BoxedField(
                         text: $accessKey,

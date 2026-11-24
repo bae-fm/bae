@@ -9,10 +9,16 @@ import SwiftUI
 /// draws it.
 struct FieldColumn<Rows: View>: View {
     let labelWidth: CGFloat?
+    let rowSpacing: CGFloat
     private let rows: Rows
 
-    init(labelWidth: CGFloat? = nil, @ViewBuilder rows: () -> Rows) {
+    init(
+        labelWidth: CGFloat? = nil,
+        rowSpacing: CGFloat = ThemeSpace.related,
+        @ViewBuilder rows: () -> Rows
+    ) {
         self.labelWidth = labelWidth
+        self.rowSpacing = rowSpacing
         self.rows = rows()
     }
 
@@ -20,7 +26,7 @@ struct FieldColumn<Rows: View>: View {
         Grid(
             alignment: .leading,
             horizontalSpacing: ThemeSpace.group,
-            verticalSpacing: ThemeSpace.related
+            verticalSpacing: rowSpacing
         ) {
             rows
         }
