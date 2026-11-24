@@ -18,6 +18,7 @@ extension ShotScene {
         component(id, height: 110) {
             MacFormField("Who sees it", note: note) {
                 MacPlaceholderLine(width: 388, height: 24)
+                    .accessibilityHidden(true)
             }
             .frame(width: 388, alignment: .leading)
         }
