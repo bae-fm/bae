@@ -80,7 +80,7 @@ struct InvitePersonSheet: View {
     var body: some View {
         Group {
             if let storage {
-                MacInviteFields(
+                InvitePersonSheetContent(
                     storage: storage,
                     email: $email,
                     accessKeyId: $accessKeyId,
@@ -115,6 +115,68 @@ struct InvitePersonSheet: View {
                 )
                 self.error = DisplayError(error)
             }
+        }
+    }
+}
+
+/// The Invite a person sheet: the invite's fields, and in its footer Create
+/// invite and, on S3, the button that switches between a key made for the
+/// invited person and this device's own.
+struct InvitePersonSheetContent: View {
+    let storage: InviteStorage
+    @Binding
+    var email: String
+    @Binding
+    var accessKeyId: String
+    @Binding
+    var secretAccessKey: String
+    @Binding
+    var usesOwnKey: Bool
+    @Binding
+    var role: BridgeMemberRole
+    @Binding
+    var lifetime: BridgeInviteLifetime
+    let error: DisplayError?
+    let canCreate: Bool
+    let onCreate: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        MacSheet("Invite a person", width: 440) {
+            MacInviteFields(
+                storage: storage,
+                email: $email,
+                accessKeyId: $accessKeyId,
+                secretAccessKey: $secretAccessKey,
+                usesOwnKey: $usesOwnKey,
+                role: $role,
+                lifetime: $lifetime,
+                error: error
+            )
+        } footer: {
+            MacSheetFooter(
+                lead: {
+                    if storage == .s3 {
+                        if usesOwnKey {
+                            MacButton("Use their own key instead") {
+                                usesOwnKey = false
+                            }
+                        }
+                        else {
+                            MacButton("Use my key instead") {
+                                usesOwnKey = true
+                            }
+                        }
+                    }
+                },
+                trailing: {
+                    MacButton("Cancel", action: onCancel)
+                        .keyboardShortcut(.cancelAction)
+                    MacButton("Create invite", kind: .primary, action: onCreate)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(!canCreate)
+                }
+            )
         }
     }
 }

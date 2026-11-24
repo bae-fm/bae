@@ -2,11 +2,9 @@ import BaeKit
 import SwiftUI
 import os.log
 
-/// The invite form: one field for the account email, or on S3 the two key
-/// fields with a line saying why, the role and how long the invite lasts, and
-/// Create invite. On S3 a button beside
-/// the footer switches between a key made for the invited person and this
-/// device's own.
+/// The invite form's fields: one for the account email, or on S3 the two key
+/// fields with a line saying why, then the role and how long the invite lasts.
+/// `InvitePersonSheet` holds them in its sheet.
 struct MacInviteFields: View {
     let storage: InviteStorage
     @Binding
@@ -22,49 +20,20 @@ struct MacInviteFields: View {
     @Binding
     var lifetime: BridgeInviteLifetime
     let error: DisplayError?
-    let canCreate: Bool
-    let onCreate: () -> Void
-    let onCancel: () -> Void
 
     @FocusState
     private var focused: Bool
 
     var body: some View {
-        MacSheet("Invite a person", width: 440) {
-            VStack(
-                alignment: .leading,
-                spacing: ThemeSpace.related + ThemeSpace.line
-            ) {
-                fields
-                choices
-                if let error {
-                    MacNotice(error: error)
-                }
+        VStack(
+            alignment: .leading,
+            spacing: ThemeSpace.related + ThemeSpace.line
+        ) {
+            fields
+            choices
+            if let error {
+                MacNotice(error: error)
             }
-        } footer: {
-            MacSheetFooter(
-                lead: {
-                    if storage == .s3 {
-                        if usesOwnKey {
-                            MacButton("Use their own key instead") {
-                                usesOwnKey = false
-                            }
-                        }
-                        else {
-                            MacButton("Use my key instead") {
-                                usesOwnKey = true
-                            }
-                        }
-                    }
-                },
-                trailing: {
-                    MacButton("Cancel", action: onCancel)
-                        .keyboardShortcut(.cancelAction)
-                    MacButton("Create invite", kind: .primary, action: onCreate)
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(!canCreate)
-                }
-            )
         }
         .onAppear { focused = true }
     }

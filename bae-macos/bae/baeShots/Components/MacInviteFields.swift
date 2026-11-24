@@ -4,7 +4,7 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacInviteFields` for each storage, in its sheet.
+    /// `MacInviteFields` for each storage, with no sheet round them.
     static let macInviteFieldsScenes: [ShotScene] = [
         inviteFields("mac.component.invite-fields.s3-their-key", .s3),
         inviteFields(
@@ -31,10 +31,7 @@ extension ShotScene {
                 usesOwnKey: .constant(usesOwnKey),
                 role: .constant(.member),
                 lifetime: .constant(.sevenDays),
-                error: nil,
-                canCreate: true,
-                onCreate: {},
-                onCancel: {}
+                error: nil
             )
         }
     }
