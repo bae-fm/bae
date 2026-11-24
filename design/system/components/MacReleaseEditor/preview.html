@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=12150 -->
+<!-- @dsCard group="Import" height=12450 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacReleaseEditor</title></head>
@@ -9,6 +9,8 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
 
+  // The Identifying row's Find online, as the release editor's shot stages it: nothing found, no Discogs bar, MacFindOnline's identifier band.
+  var chips = 'Disc ID|Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-|filled|MusicBrainz=0,Barcode|0123456789012|filled|MusicBrainz=0+Discogs=0,ISRC||dash,Title search|Artist Name · Album Title One|filled|MusicBrainz=0+Discogs=0,Catalog #|LC 6006 · BN-4055|outlined';
   function editor(options) {
     if (options.unread) return box(720, h(B.MacReleaseEditor, { actions: 'import', blank: true }));
     var props = {
@@ -25,7 +27,7 @@
         inherited: !options.blank, length: length, listed: options.check || options.blank ? null : listed });
     }
     return box(720, h(B.MacReleaseEditor, Object.assign(props, options),
-      options.searching ? h('div', { className: 'bae-preview-slot' }, 'Identify') : null,
+      options.searching ? h(B.MacFindOnline, { automatic: 'nothing-found', chips: chips }) : null,
       h(B.MacImportSheetCaption, { disc: 'Disc 1', sheet: 'Northbound.cue', bound: 'Northbound (2019 rip).flac' }),
       track('0:00', '1', 'Northbound', '4:51'), track('4:51', '2', 'Margins', '3:58'),
       track('8:49', '3', 'Salt Road', '5:20', '5:27'), track('14:09', '4', 'Winter Light', '4:07')));
