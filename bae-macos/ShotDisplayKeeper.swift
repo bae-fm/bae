@@ -8,7 +8,13 @@ struct ShotDisplayKeeper {
     @MainActor
     static func main() {
         let app = NSApplication.shared
-        app.setActivationPolicy(.prohibited)
+        guard app.setActivationPolicy(.prohibited) else {
+            let error =
+                "AppKit refused to disable activation for the shot display keeper."
+            Logger.bae("ShotDisplayKeeper").error(error)
+            FileHandle.standardOutput.write(Data("\(error)\n".utf8))
+            exit(EXIT_FAILURE)
+        }
         Task { @MainActor in
             await holdDisplay()
             exit(EXIT_SUCCESS)
@@ -68,8 +74,7 @@ struct ShotDisplayKeeper {
             try active.close()
         }
         catch {
-            Logger(subsystem: "fm.bae.shots", category: "ShotDisplayKeeper")
-                .error("\(String(describing: error), privacy: .public)")
+            Logger.bae("ShotDisplayKeeper").error(String(describing: error))
             if output.fileDescriptor >= 0 {
                 try? output.write(contentsOf: Data("\(error)\n".utf8))
             }

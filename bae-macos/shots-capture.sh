@@ -23,6 +23,7 @@ source scripts/xcode-trees.sh
 keeper_dir="$(mktemp -d)"
 trap 'rm -rf "$keeper_dir"' EXIT
 xcrun swiftc -swift-version 6 -o "$keeper_dir/shot-display-keeper" \
+    BaeKit/Sources/BaeKit/BaeLogger.swift \
     bae-macos/ShotDisplayKeeper.swift \
     bae-macos/bae/baeShots/ShotDisplay.swift \
     bae-macos/bae/bae/Shell/NSScreen+DisplayNumber.swift \
