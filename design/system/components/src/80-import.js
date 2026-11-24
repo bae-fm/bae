@@ -334,21 +334,21 @@
       auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty bae-m-fo-empty-below' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s'), found) : null,
       auto === 'nothing-found' ? null : h(React.Fragment, { key: 'f' }, found)];
   }
-  // A chip's values in mono, from " · "-separated `value`. One value is cut at the chip's value width. Several are each an item of the chip, followed by its "·", so they wrap across the band's width under the label; a value too wide for the band ends in an ellipsis, and its help tag gives it whole. With `pick`, each value is a button, a lone one too.
+  // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip; with `pick`, each value a button, a lone one too.
   function chipValues(value, pick) {
-    var values = splitValues(value);
+    var values = String(value || '').split(' · ');
     if (values.length < 2) return pick ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono bae-m-idchip-value' }, value || '') : h('span', { className: 'bae-mono bae-m-idchip-value' }, value || '');
-    return values.map(function (v, i) {
-      return h('span', { key: i, className: 'bae-m-idchip-item' }, h(pick ? 'button' : 'span', { type: pick ? 'button' : null, title: v, className: cx(pick && 'bae-plainbtn', 'bae-mono') }, v), i < values.length - 1 ? h('span', { className: 'bae-mono' }, '·') : null);
-    });
+    if (!pick) return h('span', { className: 'bae-mono bae-m-idchip-values' }, value);
+    return h('span', { className: 'bae-m-idchip-values' }, values.map(function (v, i) {
+      return h(React.Fragment, { key: i }, h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, v), i < values.length - 1 ? h('span', { className: 'bae-mono' }, '·') : null);
+    }));
   }
-  function splitValues(value) { return String(value || '').split(' · '); }
   // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `pick`: each of its values is a button that puts that one into the run. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are.
   function MacIdentifierChip(props) {
     var st = props.state || 'filled';
     // A chip that toggles is one button, which VoiceOver reads as its parts with a comma between: "Barcode, 0 41234 56789 2, Discogs, 1".
     var name = props.toggles ? [props.label, props.value].concat(props.sources ? list(props.sources).map(function (cc) { var q = cc.split('='); return q[0] + ', ' + (q[1] === '…' ? 'Searching…' : q[1]); }) : []).filter(Boolean).join(', ') : null;
-    return h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, 'aria-label': name, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st, st !== 'dash' && !props.editable && splitValues(props.value).length > 1 && 'bae-m-idchip-list') }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)', lineHeight: 'var(--type-chip-line-height)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : props.editable ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.value || '') : chipValues(props.value, props.pick),
+    return h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, 'aria-label': name, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)', lineHeight: 'var(--type-chip-line-height)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : props.editable ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.value || '') : chipValues(props.value, props.pick),
       props.sources ? list(props.sources).map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
   }
   // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated. A Disc ID, Barcode or filled Catalog # chip that holds a value toggles; an outlined Catalog # chip's numbers are each a button, and a Title search chip's words are a button that opens its fields.
