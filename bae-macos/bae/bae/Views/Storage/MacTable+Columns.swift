@@ -31,6 +31,9 @@ extension MacTable.Coordinator {
         table.columnAutoresizingStyle = .noColumnAutoresizing
         defer {
             table.columnAutoresizingStyle = autoresizing
+            // The release column takes the width the others leave, as the
+            // table's autoresizing does when its width changes.
+            table.sizeToFit()
             // The table takes the width of its columns as they are now.
             table.tile()
         }
