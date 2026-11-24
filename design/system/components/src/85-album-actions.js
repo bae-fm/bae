@@ -69,7 +69,7 @@
     var s = props.state || 'cloud';
     return h('span', { className: 'bae-m-sband-rest' }, { local: 'Local', pinned: 'Pinned', cloud: 'In cloud' }[s]);
   }
-  // The release's Storage sheet, as MacStorageBand draws it: one line, the release's state at rest (Local, Pinned, In cloud) and beside it at most one pill for a change on its way, `MacStorageChip` with `long`: Queued to upload or Uploading (`state`: waiting, uploading; the release is Local), Queued to pin or Pinning (`download`: queued, downloading), Queued to move to This Mac or Moving to This Mac… (`moveToThisDevice`: queued, moving); the moving ones fill with `progress`. A failed pin (Couldn’t pin) or move to This Mac is a danger notice under the line, with Details; an upload held by a missing original (`missing`, the file's name) is a warning notice naming it. What holds a whole queue back shows on the Storage Manager's footer, not here. Then why this Mac can't play it, and the storage actions. Nothing says how many wait ahead or what holds the queue back.
+  // The release's Storage sheet, as MacStorageBand draws it: one line, the release's state at rest (Local, Pinned, In cloud) and beside it at most one pill for a change on its way, `MacStorageChip` with `long`: Queued to upload or Uploading (`state`: waiting, uploading; the release is Local), Queued to pin or Pinning (`download`: queued, downloading), Queued to move to This Mac or Moving to This Mac… (`moveToThisDevice`: queued, moving); the moving ones fill with `progress`. A failed pin (Couldn’t pin) or move to This Mac is a danger notice under the line, with Details; an upload held by a missing original (`missing`, the file's name) is a warning notice naming it. What holds a whole queue back shows on the Storage Manager's footer, not here. Then why this Mac can't play it, and the storage actions: none while something moves; Cancel pinning in Pin's place while a pin is queued. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageBand(props) {
     var s = props.state || 'cloud';
     var d = props.download, m = props.moveToThisDevice;
@@ -90,6 +90,6 @@
       missing,
       failed ? h(MacNotice, { tone: 'danger', title: failed, secondary: 'Details' }) : null,
       props.why ? h('div', { className: 'bae-muted bae-m-detail' }, props.why) : null,
-      still ? null : h('div', { style: { display: 'flex', gap: 'var(--space-related)', flexWrap: 'wrap' } }, list(props.actions || 'Pin,Move to This Mac…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
+      still ? null : h('div', { style: { display: 'flex', gap: 'var(--space-related)', flexWrap: 'wrap' } }, list(props.actions || 'Pin,Move to This Mac…,Export…,Save as…').map(function (a) { return d === 'queued' && a === 'Pin' ? 'Cancel pinning' : a; }).map(function (a) { return h(MacButton, { key: a }, a); })));
   }
 
