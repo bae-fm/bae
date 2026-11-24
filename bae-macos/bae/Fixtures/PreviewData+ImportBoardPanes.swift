@@ -681,7 +681,19 @@ extension PreviewData {
             titles: [copperSky.album],
             artists: [.named(copperSky.artist)],
             labels: ["Fen Records"],
-            coverArt: nil,
+            // The catalog serves the cover as a file the scene's image store
+            // reads, so the card draws it as the board does.
+            coverArt: (try? BoardArtwork.fileURL(named: copperSky.album))
+                .map {
+                    BridgeRemoteCover(
+                        coverChoice: PreviewData.catalogCoverChoice(
+                            BridgeRemoteImageSet(url: $0.path, downscaled: []),
+                            source: .musicBrainz
+                        ),
+                        sourceName: "Cover Art Archive",
+                        label: .lead(releaseGroup: true)
+                    )
+                },
             sources: [
                 BridgeReleaseGroupSource(
                     source: .musicBrainz,
