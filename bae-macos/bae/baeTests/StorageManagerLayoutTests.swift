@@ -243,6 +243,8 @@ final class StorageManagerLayoutTests: XCTestCase {
         }
     }
 
+    /// The release column takes the width the others leave wherever the
+    /// person moves it, and the others keep theirs.
     func testTableUsesIntentionalColumnSizing() async throws {
         let size = NSSize(width: 1_440, height: 900)
         let scene = StorageManagerPreviewScene()
@@ -260,7 +262,13 @@ final class StorageManagerLayoutTests: XCTestCase {
 
             XCTAssertEqual(
                 tableView.columnAutoresizingStyle,
-                .firstColumnOnlyAutoresizingStyle
+                .uniformColumnAutoresizingStyle
+            )
+            XCTAssertEqual(
+                tableView.tableColumns
+                    .filter { $0.resizingMask.contains(.autoresizingMask) }
+                    .map(\.identifier.rawValue),
+                [StorageTableColumn.release.rawValue]
             )
             XCTAssertTrue(scrollView.hasHorizontalScroller)
         }
