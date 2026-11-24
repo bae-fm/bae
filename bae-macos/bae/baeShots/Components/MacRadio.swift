@@ -22,11 +22,24 @@ extension ShotScene {
     ) -> ShotScene {
         component(id, width: 580, height: 100) {
             ShotBox {
-                MacRadio(
-                    title: Text("iCloud"),
-                    note: note.map { Text($0) },
-                    checked: checked
-                )
+                // The choice as a settings sheet draws it: a button round
+                // the radio, and one radio button for VoiceOver over it.
+                Button {
+                } label: {
+                    MacRadio(
+                        title: Text("iCloud"),
+                        note: note.map { Text($0) },
+                        checked: checked
+                    )
+                }
+                .buttonStyle(.accentPlain)
+                .accessibilityHidden(true)
+                .overlay {
+                    MacRadioAccessibility(
+                        label: note.map { "iCloud \($0)" } ?? "iCloud",
+                        selected: checked
+                    ) {}
+                }
             }
         }
     }
