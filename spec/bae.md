@@ -2104,8 +2104,25 @@ pane shows no text or invitation to add an image.
 The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
-fetches them (step 2). Every stored image is downscaled to at most 600 pixels
-on a side and stored as JPEG.
+fetches them (step 2). Every image that syncs through coven today (covers,
+artist images and avatars) is downscaled to at most 600 pixels on a side and
+stored as JPEG.
+
+The Mac shows a candidate's folder images and the art embedded in its tags as
+copies that core makes, and its app never reads those files. A screen asks core
+for a picture at a pixel size, and core rounds the size up to the next step: 192,
+384, 768 or 1536 pixels on the longer side. It reads the original once, in
+chunks, turns it upright by its orientation flag, converts its colours to sRGB
+and shrinks it, as a JPEG, or as a PNG when the picture has transparency.
+Requests for one picture and size share one read, and the read stops between two
+chunks when no request wants the picture any more. A disk is read a few pictures
+at a time, a network share fewer, and a picture a screen shows goes before one
+it only expects to show. The candidate keeps each copy on this device until it is
+imported or set aside, so showing the picture again reads the copy, and nothing
+syncs a copy. The lightbox's zoom asks core for the original's own bytes through
+the same reader. Core refuses a file that is not an image of a candidate in the
+import list. A build without libvips (Windows and Linux, so far) makes no copies,
+and a request for one fails.
 
 A library release's picker and a candidate's each show, under the source the
 person chose (all, the release's files, or one catalog): a library release's
@@ -2531,7 +2548,8 @@ The device that made the image shows it at once, read from
 coven's own copy. Until the file is stored, that device's later writes wait
 behind it too, a rating made right after included, which is why a bound file
 must be small: coven refuses a write naming a file over 1.5 MiB. Every image
-bae stores is a JPEG at most 600 pixels across, which stays under that limit.
+that syncs through coven (a cover, an artist image or an avatar) is a JPEG at
+most 600 pixels across, which stays under that limit.
 
 When an image changes, every device and every Subsonic client shows the new
 one, and an image a device couldn't read shows once its file is stored.
@@ -6083,7 +6101,7 @@ the desktop's secret service.
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the panic hook that reports each panic once, the tasks and threads that end what a panicking one served, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
 | bae-audio | the audio codec over FFmpeg (decode, encode, probe, resample), the sparse buffer a decode reads a file's bytes from, and the stream a decoded track plays from |
-| bae-pictures | pictures through libvips: a small JPEG and a tile pyramid of a large picture, each cut as the file's rows arrive from plain reads, never a mapped file |
+| bae-pictures | copies of pictures at fixed sizes through libvips: the names of a picture and of a size, the copy made from one read of the original in chunks a job stops between, with orientation and colour applied, the job that requests for one picture and size share, and how many reads a volume takes at once |
 | bae-types | the domain values the catalogs, identification and the library share: what a pressing is, how two pieces of written text name one thing, and how a barcode is read |
 | bae-util | what the other crates build on, with no library vocabulary and nothing else in bae beneath it: content types, duration labels, outbound HTTP and its retries, error text, the natural order of names and the folding library search compares text by, stored images, text encodings, the embedded-server lifecycle, the log subscriber every app installs |
 | bae-bridge | the uniffi exports for the apps |
@@ -6291,6 +6309,7 @@ All sync (§5), except `admin_operations`.
 | `folder_scan_held` | what bae holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store); it lasts only as long as the process, so the library empties it as it opens (§3.1) |
 | `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files) and, for a broken one, why bae can't import it (which the scan also writes with its files), with an index on each watched folder's candidates by the folder each reads its files from; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
+| `import_picture_copy` | the copies of a candidate's pictures that this device made, one for each version of a picture's file and each step, deleted with the candidate: when a scan stops finding it, when it is imported and when it is set aside; never synced |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |

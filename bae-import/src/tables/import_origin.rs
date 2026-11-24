@@ -32,7 +32,12 @@ pub(super) fn record_on(
         "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
         params![release_id, content_hash],
     ) {
-        Ok(_) => Ok(OriginRecord::Recorded),
+        Ok(_) => {
+            // Imported, its candidates leave the import list, and their
+            // pictures' copies with them.
+            super::picture_copies::forget_for_hash_on(sql, content_hash)?;
+            Ok(OriginRecord::Recorded)
+        }
         // The unique hash is the one unique constraint the insert can break:
         // the release id is the one the commit just made.
         Err(rusqlite::Error::SqliteFailure(failure, message))

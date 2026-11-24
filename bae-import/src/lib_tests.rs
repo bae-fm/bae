@@ -253,6 +253,9 @@ pub(crate) mod reads {
         ImageCheck,
         /// It was parsed as a CUE sheet.
         CueParse,
+        /// It was opened to make a copy of the picture it holds, or to read
+        /// the picture whole.
+        PictureOriginal,
     }
 
     fn counts() -> &'static Mutex<HashMap<(FileRead, PathBuf), u64>> {

@@ -1053,6 +1053,7 @@ dependencies = [
  "bae-desktop-cfg",
  "bae-diagnostics",
  "bae-identify",
+ "bae-pictures",
  "bae-preferences",
  "bae-records",
  "bae-store",
@@ -1186,11 +1187,13 @@ dependencies = [
 name = "bae-pictures"
 version = "0.0.0-dev"
 dependencies = [
+ "bae-diagnostics",
  "bae-util",
  "jpeg-decoder",
  "libc",
  "png",
  "thiserror 2.0.21",
+ "tokio",
  "tracing",
 ]
 

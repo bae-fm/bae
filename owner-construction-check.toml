@@ -31,9 +31,9 @@ crate_order = [
     "bae-theme",
     "bae-types",
     "bae-util",
-    "bae-pictures",
     "bae-audio",
     "bae-diagnostics",
+    "bae-pictures",
     "bae-app-dir",
     "bae-store",
     "bae-catalogs",
@@ -197,6 +197,15 @@ non_owner_types = [
     # app's object, held for the one call, and the call's writer made from it.
     "bae_bridge::screens::closing::ClosingFeed",
     "bae_bridge::screens::setup::SetupFeed",
+    # What a running picture job and a volume's reads hold behind the lock
+    # of the owner that holds them, and what a source reads its picture from
+    # while libvips owns the source.
+    "bae_pictures::flights::Flight",
+    "bae_pictures::gate::Gate",
+    "bae_pictures::gate::GateState",
+    "bae_pictures::gate::Pending",
+    "bae_pictures::gate::Waiting",
+    "bae_pictures::source::Reader",
     # Plain data the owner that holds it guards with its own lock: the
     # holder is built at its root, the data starts empty inside it.
     "bae_import::candidate_runtime::work::WorkInFlight",
@@ -247,6 +256,8 @@ non_owner_types = [
 task_types = [
     # One read of a file's audio, one output stream, and the stream's control.
     "bae_track_audio::data_source::AudioDataReader",
+    # The flag that ends one picture job, made when the job starts.
+    "bae_pictures::cancel::CancelFlag",
     # A place of the open-files budget, taken for one piece of work.
     "coven::FileLease",
     "coven::LeasePlace",
@@ -558,6 +569,11 @@ task_types = [
 # for before it runs.
 "bae_bridge::host::library_sessions::OpenCalls" = "bae_bridge::host::library_sessions::LibrarySessions"
 
+# One request's place among those waiting on a picture job, and one read's
+# place among a volume's, each held for its one piece of work.
+"bae_pictures::flights::Waiter" = "bae_pictures::flights::Flights"
+"bae_pictures::gate::Permit" = "bae_pictures::gate::Volumes"
+
 # Where the app opens: the bootstrap builds the runtime, the clock, the ids,
 # the HTTP client and the library's owners once, and starts the services that
 # run while the library is open. The bridge's opening calls are where the
@@ -707,6 +723,10 @@ task_types = [
 # Starts a list view's task with the list's reads; its handle stops it.
 "bae-app/src/app_services/list_reads.rs" = ["AppServices::open_list_view"]
 # Starts the identification queue's task; its handle stops it.
+# The service that makes the import list's pictures starts with the import
+# handle that asks it.
+"bae-import/src/handle/mod.rs" = ["ImportServiceHandle::new"]
+"bae-import/src/pictures.rs" = ["ImportPictures::new"]
 "bae-import/src/handle/identification.rs" = [
     "ImportServiceHandle::start_identification_queue",
 ]
@@ -726,9 +746,15 @@ task_types = [
 # process is their scope.
 "bae-util/src/name_key.rs" = ["COLLATORS"]
 
+# The jobs that make pictures, which start with the service that asks them, and
+# each job's flag, which the service makes as it starts the job; the reads a
+# volume takes at once, built with the service.
+"bae-pictures/src/flights.rs" = ["Flights::new", "Flights::join"]
+"bae-pictures/src/gate.rs" = ["Volumes::new"]
+
 # The outcome of starting libvips, which one start per process makes and which
 # every picture job reads: the process is its scope.
-"bae-pictures/src/lib.rs" = ["START"]
+"bae-pictures/src/vips.rs" = ["START"]
 
 # An owner's constructor, clone or inner struct builds the owner, and the
 # parts it holds that nothing else shares; a static holds what the process
@@ -1156,6 +1182,15 @@ homes = [
     "bae-import/src/tables/skipped_candidates.sql",
 ]
 tables = ["skipped_import_candidates"]
+
+[[database.domains]]
+name = "import picture copies"
+owner = "bae_import::tables::ImportTables"
+homes = [
+    "bae-import/src/tables/picture_copies.rs",
+    "bae-import/src/tables/picture_copies.sql",
+]
+tables = ["import_picture_copy"]
 
 [[database.domains]]
 name = "folder scans"

@@ -1,40 +1,38 @@
-//! A libvips source that reads a file with plain `read` and `seek` calls.
+//! A libvips source that reads its picture with plain `read` and `seek` calls.
 //! libvips' own file sources map some formats into memory, and a mapped read
 //! of a file on a network share stalls on a page fault that nothing can
-//! cancel. A source that answers `read` and `seek` is never mapped.
+//! cancel. A source that answers `read` and `seek` is never mapped, and the
+//! `read` is where a job notices that nobody wants its picture any more.
 
 use std::ffi::{c_int, c_void};
-use std::fs::File;
-use std::io::{ErrorKind, Read, Seek, SeekFrom};
-use std::path::Path;
+use std::io::{ErrorKind, SeekFrom};
 use std::slice;
 use std::sync::{Mutex, PoisonError};
 
 use crate::ffi::{self, VipsSource};
-use crate::PicturesError;
+use crate::{IsCancelled, PictureOrigin, PicturesError};
 
-/// The file behind one source. libvips reads from its own worker threads, one
-/// call at a time.
+/// The origin behind one source. libvips reads from its own worker threads,
+/// one call at a time.
 struct Reader {
-    file: Mutex<File>,
+    origin: Mutex<Box<dyn PictureOrigin>>,
+    cancelled: IsCancelled,
 }
 
-/// A source over one file. Dropping it releases this handle, and libvips frees
-/// the file once the images made from the source are gone.
-pub(crate) struct FileSource {
+/// A source over one origin. Dropping it releases this handle, and libvips
+/// frees the origin once the images made from the source are gone.
+pub(crate) struct OriginSource {
     source: *mut VipsSource,
 }
 
-impl FileSource {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: the picture is the person's own file or a catalog download, which no library holds"
-    )]
-    pub(crate) fn open(path: &Path) -> Result<Self, PicturesError> {
-        let file = File::open(path)
-            .map_err(|source| PicturesError::Open { path: path.to_path_buf(), source })?;
-        crate::init()?;
-        let reader = Box::into_raw(Box::new(Reader { file: Mutex::new(file) }));
+impl OriginSource {
+    pub(crate) fn new(
+        origin: impl PictureOrigin,
+        cancelled: IsCancelled,
+    ) -> Result<Self, PicturesError> {
+        crate::vips::init()?;
+        let reader =
+            Box::into_raw(Box::new(Reader { origin: Mutex::new(Box::new(origin)), cancelled }));
         // SAFETY: the signal handlers match the argument lists of
         // VipsSourceCustom's `read` and `seek` signals, and `reader` lives
         // until libvips calls `free_reader` as the source is finalized.
@@ -72,15 +70,15 @@ impl FileSource {
     }
 }
 
-impl Drop for FileSource {
+impl Drop for OriginSource {
     fn drop(&mut self) {
-        // SAFETY: `source` is the reference `open` took.
+        // SAFETY: `source` is the reference `new` took.
         unsafe { ffi::g_object_unref(self.source.cast()) };
     }
 }
 
-/// Fills `buffer` from the file's current position, and returns the number of
-/// bytes read, 0 at the end of the file and -1 on a read error.
+/// Fills `buffer` from the origin's current position, and returns the number
+/// of bytes read, 0 at the end and -1 on a read error or a cancelled job.
 unsafe extern "C" fn read(
     _source: *mut c_void,
     buffer: *mut c_void,
@@ -91,14 +89,17 @@ unsafe extern "C" fn read(
         tracing::error!(length, "libvips asked for a read of negative length");
         return -1;
     };
-    // SAFETY: `data` is the Reader that `open` leaked, and libvips passes a
+    // SAFETY: `data` is the Reader that `new` leaked, and libvips passes a
     // buffer of `length` writable bytes.
     let (reader, buffer) = unsafe {
         (&*data.cast::<Reader>(), slice::from_raw_parts_mut(buffer.cast::<u8>(), length))
     };
-    let mut file = reader.file.lock().unwrap_or_else(PoisonError::into_inner);
+    if (reader.cancelled)() {
+        return -1;
+    }
+    let mut origin = reader.origin.lock().unwrap_or_else(PoisonError::into_inner);
     loop {
-        match file.read(buffer) {
+        match origin.read(buffer) {
             Ok(count) => return i64::try_from(count).unwrap_or(-1),
             Err(error) if error.kind() == ErrorKind::Interrupted => {}
             Err(error) => {
@@ -109,16 +110,16 @@ unsafe extern "C" fn read(
     }
 }
 
-/// Moves the file's position as `lseek` does, and returns the new position or
-/// -1. `whence` is 0 from the start, 1 from the current position and 2 from
-/// the end.
+/// Moves the origin's position as `lseek` does, and returns the new position
+/// or -1. `whence` is 0 from the start, 1 from the current position and 2
+/// from the end.
 unsafe extern "C" fn seek(
     _source: *mut c_void,
     offset: i64,
     whence: c_int,
     data: *mut c_void,
 ) -> i64 {
-    // SAFETY: `data` is the Reader that `open` leaked.
+    // SAFETY: `data` is the Reader that `new` leaked.
     let reader = unsafe { &*data.cast::<Reader>() };
     let target = match whence {
         0 => u64::try_from(offset).map(SeekFrom::Start).ok(),
@@ -127,8 +128,8 @@ unsafe extern "C" fn seek(
         _ => None,
     };
     let Some(target) = target else { return -1 };
-    let mut file = reader.file.lock().unwrap_or_else(PoisonError::into_inner);
-    match file.seek(target) {
+    let mut origin = reader.origin.lock().unwrap_or_else(PoisonError::into_inner);
+    match origin.seek(target) {
         Ok(position) => i64::try_from(position).unwrap_or(-1),
         Err(error) => {
             tracing::warn!(%error, "seeking in a picture's file failed");
@@ -140,6 +141,6 @@ unsafe extern "C" fn seek(
 /// Frees the Reader once libvips finalizes the source and its two signal
 /// handlers are gone.
 unsafe extern "C" fn free_reader(data: *mut c_void, _closure: *mut c_void) {
-    // SAFETY: `data` is the Reader that `open` leaked, and this runs once.
+    // SAFETY: `data` is the Reader that `new` leaked, and this runs once.
     drop(unsafe { Box::from_raw(data.cast::<Reader>()) });
 }

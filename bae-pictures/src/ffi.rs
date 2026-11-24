@@ -16,8 +16,6 @@ pub(crate) struct VipsSource {
     _opaque: [u8; 0],
 }
 
-/// `VipsAccess`: the picture is read once, top to bottom.
-pub(crate) const VIPS_ACCESS_SEQUENTIAL: c_int = 1;
 /// `VipsSize`: shrink a larger picture and never enlarge a smaller one.
 pub(crate) const VIPS_SIZE_DOWN: c_int = 2;
 
@@ -26,6 +24,7 @@ pub(crate) type DestroyNotify = unsafe extern "C" fn(*mut c_void, *mut c_void);
 
 extern "C" {
     pub(crate) fn vips_init(argv0: *const c_char) -> c_int;
+    pub(crate) fn vips_concurrency_set(concurrency: c_int);
     pub(crate) fn vips_error_buffer() -> *const c_char;
     pub(crate) fn vips_error_clear();
     pub(crate) fn vips_source_custom_new() -> *mut VipsSource;
@@ -35,13 +34,20 @@ extern "C" {
         width: c_int,
         ...
     ) -> c_int;
-    pub(crate) fn vips_image_new_from_source(
-        source: *mut VipsSource,
-        options: *const c_char,
+    pub(crate) fn vips_image_hasalpha(image: *mut VipsImage) -> c_int;
+    pub(crate) fn vips_jpegsave_buffer(
+        image: *mut VipsImage,
+        buffer: *mut *mut c_void,
+        length: *mut usize,
         ...
-    ) -> *mut VipsImage;
-    pub(crate) fn vips_jpegsave(image: *mut VipsImage, filename: *const c_char, ...) -> c_int;
-    pub(crate) fn vips_dzsave(image: *mut VipsImage, name: *const c_char, ...) -> c_int;
+    ) -> c_int;
+    pub(crate) fn vips_pngsave_buffer(
+        image: *mut VipsImage,
+        buffer: *mut *mut c_void,
+        length: *mut usize,
+        ...
+    ) -> c_int;
+    pub(crate) fn g_free(memory: *mut c_void);
     pub(crate) fn g_object_unref(object: *mut c_void);
     pub(crate) fn g_signal_connect_data(
         instance: *mut c_void,

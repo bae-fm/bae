@@ -85,6 +85,10 @@ pub use track_table::{
 #[cfg(desktop)]
 pub mod pane;
 #[cfg(desktop)]
+mod pictures;
+#[cfg(desktop)]
+pub use pictures::PictureError;
+#[cfg(desktop)]
 pub mod preparations;
 #[cfg(desktop)]
 pub mod probe;

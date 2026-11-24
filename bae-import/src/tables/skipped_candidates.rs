@@ -104,6 +104,9 @@ impl ImportTables {
                         &CandidateKey::folder(&candidate_path),
                         &crate::candidate_runtime::IdentificationChange::Ended,
                     )?;
+                    // Set aside, the candidate is out of the import list, and its
+                    // pictures' copies go.
+                    super::picture_copies::forget_for_folder_on(sql, &candidate_path)?;
                     sql.execute(
                         "INSERT INTO skipped_import_candidates (candidate_path) VALUES (?) \
                      ON CONFLICT DO NOTHING",

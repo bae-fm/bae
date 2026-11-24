@@ -97,6 +97,7 @@ bae-cast = { path = "bae-cast" }
 bae-catalogs = { path = "bae-catalogs" }
 bae-library = { path = "bae-library" }
 bae-people = { path = "bae-people" }
+bae-pictures = { path = "bae-pictures" }
 bae-sync-status = { path = "bae-sync-status" }
 bae-records = { path = "bae-records" }
 bae-store = { path = "bae-store" }

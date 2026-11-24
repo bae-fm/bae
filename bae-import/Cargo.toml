@@ -64,6 +64,8 @@ libc = { workspace = true }
 # `desktop` cfg's (bae-desktop-cfg): a mobile build compiles only import's
 # error, session and release-edit types, and none of this.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+# The copies of a candidate's pictures, made at the sizes a screen asks for.
+bae-pictures = { workspace = true }
 lofty = { workspace = true }
 # A scanned file's name is matched against a sheet's or a tag's with its
 # Unicode composition set aside (src/folder_scanner/sheet_references.rs).

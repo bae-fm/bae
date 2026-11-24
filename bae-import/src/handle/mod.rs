@@ -25,6 +25,7 @@ mod list;
 mod lookup_choices;
 mod pane_commands;
 mod picks;
+mod pictures;
 mod release_file_tags;
 mod release_identification;
 mod runtime;
@@ -72,6 +73,8 @@ pub struct ImportServiceHandle {
     extraction: crate::extraction::ExtractionService,
     /// What each library release's re-identify session asks about.
     release_lookup_choices: release_identification::ReleaseLookupChoices,
+    /// The jobs that make the import list's pictures.
+    pictures: crate::pictures::ImportPictures,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
 }
@@ -129,6 +132,10 @@ impl ImportServiceHandle {
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
         Self {
+            pictures: crate::pictures::ImportPictures::new(
+                services.diagnostics.clone(),
+                runtime_handle.clone(),
+            ),
             worker,
             services,
             release_reads,

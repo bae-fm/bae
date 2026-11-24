@@ -219,6 +219,11 @@ pub enum ImportError {
     #[error(transparent)]
     Document(#[from] crate::DocumentRefusal),
 
+    /// A picture of the import list could not be read.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    Picture(std::sync::Arc<crate::PictureError>),
+
     /// A pane's edit of a draft's tracks named what the draft doesn't hold.
     #[cfg(desktop)]
     #[error(transparent)]
@@ -616,6 +621,16 @@ impl ImportError {
                 crate::DocumentRefusal::CandidateGone(_)
                 | crate::DocumentRefusal::FileGone { .. } => C::ChangedMeanwhile,
                 crate::DocumentRefusal::NotADocument(_) => C::Internal,
+            },
+            // The picture's file or candidate left after the screen asked; a
+            // failed read or decode is the file's own.
+            #[cfg(desktop)]
+            Self::Picture(error) => match **error {
+                crate::PictureError::NotInImport(_) | crate::PictureError::NoArt(_) => {
+                    C::ChangedMeanwhile
+                }
+                crate::PictureError::Open { .. } | crate::PictureError::Pictures(_) => C::Import,
+                crate::PictureError::Task(_) | crate::PictureError::Db(_) => C::Internal,
             },
             #[cfg(desktop)]
             Self::TrackEdit(_) => C::Internal,

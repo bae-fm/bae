@@ -17,6 +17,7 @@ mod import_list;
 mod import_origin;
 pub(crate) mod import_state;
 mod layout_bindings;
+mod picture_copies;
 mod release_edit;
 mod release_groupings;
 mod release_sheet_decisions;
@@ -41,6 +42,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     cover_gallery::SCHEMA,
     catalog_apply_steps::SCHEMA,
     credit_resolutions::SCHEMA,
+    picture_copies::SCHEMA,
 ];
 
 pub use cover_gallery::{

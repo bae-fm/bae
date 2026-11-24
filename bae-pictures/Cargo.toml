@@ -11,11 +11,17 @@ name = "bae_pictures"
 path = "src/lib.rs"
 
 [dependencies]
+# Runs a picture's job under the reporter that tells of a panic in it.
+bae-diagnostics = { workspace = true }
+# What a job waits on while it shares its result.
+tokio = { workspace = true, features = ["rt", "sync"] }
 thiserror = { workspace = true }
 # What a failed read or seek says, which libvips reduces to its own message.
 tracing = { workspace = true }
 
 [dev-dependencies]
+# The runtime the job tests run their requests on.
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 # The test folder the test pictures are made in.
 bae-util = { workspace = true, features = ["test-utils"] }
 # Decodes the thumbnail a test makes, to read its pixels.

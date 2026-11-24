@@ -18,7 +18,7 @@ pub(super) fn volume_text(volume: VolumeKind) -> &'static str {
     }
 }
 
-pub(super) fn volume_of(stored: &str) -> Result<VolumeKind, DbError> {
+pub(crate) fn volume_of(stored: &str) -> Result<VolumeKind, DbError> {
     match stored {
         "local" => Ok(VolumeKind::Local),
         "network" => Ok(VolumeKind::Network),

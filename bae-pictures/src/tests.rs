@@ -4,21 +4,21 @@
 
 use std::borrow::Cow;
 use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Instant;
 
 use bae_util::test_files::TestFolder;
 
-use crate::{cut_tiles, thumbnail_jpeg};
+use crate::{make_copy, CancelFlag, CopyFormat, PictureStep, PicturesError};
 
 const WIDTH: u32 = 6000;
 const HEIGHT: u32 = 5600;
 /// The marker in the stored picture's top-left corner, in pixels.
 const MARKER: u32 = 600;
-const THUMBNAIL_EDGE: u16 = 256;
-const TILE_EDGE: u16 = 512;
 const ORIGINAL: &str = "BAE_PICTURES_ORIGINAL";
 const OUTPUT: &str = "BAE_PICTURES_OUTPUT";
 
@@ -119,6 +119,11 @@ fn run_in_child(job: &str, original: &Path, output: &Path) -> Cost {
     Cost { peak_bytes: u64::try_from(usage.ru_maxrss).unwrap() * unit, seconds }
 }
 
+/// The flag that ends a copy.
+fn flag() -> CancelFlag {
+    CancelFlag::new()
+}
+
 fn mebibytes(bytes: u64) -> f64 {
     bytes as f64 / (1024.0 * 1024.0)
 }
@@ -136,41 +141,42 @@ fn child_paths() -> (PathBuf, PathBuf) {
 }
 
 #[test]
-#[ignore = "runs as the child of thumbnail_of_a_large_png"]
-fn thumbnail_job() {
+#[ignore = "runs as the child of a_large_png_makes_an_upright_copy"]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the child opens the file its parent made in a test folder"
+)]
+fn copy_job() {
     let (original, output) = child_paths();
-    thumbnail_jpeg(&original, &output, THUMBNAIL_EDGE).unwrap();
+    let step = PictureStep::covering(256);
+    let copy = make_copy(std::fs::File::open(original).unwrap(), flag().watcher(), step).unwrap();
+    assert_eq!(copy.format, CopyFormat::Jpeg);
+    std::fs::write(output, copy.bytes).unwrap();
 }
 
 #[test]
-#[ignore = "runs as the child of tiles_of_a_large_png"]
-fn tiles_job() {
-    let (original, output) = child_paths();
-    cut_tiles(&original, &output, TILE_EDGE).unwrap();
-}
-
-#[test]
-fn thumbnail_of_a_large_png() {
+fn a_large_png_makes_an_upright_copy() {
     let folder = TestFolder::new();
     let (original, original_bytes) = make_original(&folder);
-    let thumbnail = folder.join("thumbnail.jpg");
-    let cost = run_in_child("tests::thumbnail_job", &original, &thumbnail);
+    let copy_path = folder.join("copy.jpg");
+    let cost = run_in_child("tests::copy_job", &original, &copy_path);
 
-    let mut decoder = jpeg_decoder::Decoder::new(folder.open("thumbnail.jpg"));
+    let mut decoder = jpeg_decoder::Decoder::new(folder.open("copy.jpg"));
     let pixels = decoder.decode().unwrap();
     let info = decoder.info().unwrap();
     let (width, height) = (usize::from(info.width), usize::from(info.height));
     println!(
-        "thumbnail: {WIDTH}x{HEIGHT} PNG of {:.1} MiB -> {width}x{height} JPEG of {} bytes; peak memory {:.1} MiB, {:.2} s",
+        "copy: {WIDTH}x{HEIGHT} PNG of {:.1} MiB -> {width}x{height} JPEG of {} bytes; peak memory {:.1} MiB, {:.2} s",
         mebibytes(original_bytes),
-        folder.metadata("thumbnail.jpg").len(),
+        folder.metadata("copy.jpg").len(),
         mebibytes(cost.peak_bytes),
         cost.seconds,
     );
-    // The stored picture is wider than tall and says "rotate clockwise", so
-    // the thumbnail is taller than wide and 256 high.
-    assert_eq!(height, THUMBNAIL_EDGE as usize);
-    assert!((238..=240).contains(&width), "{width} is not 256 * 5600 / 6000, rounded");
+    // A request for 256 pixels rounds up to the 384 step. The stored picture
+    // is wider than tall and says "rotate clockwise", so the copy is taller
+    // than wide and 384 high.
+    assert_eq!(height, 384);
+    assert!((357..=359).contains(&width), "{width} is not 384 * 5600 / 6000, rounded");
     // The red square, stored top-left, shows top-right once upright.
     let pixel = |x: usize, y: usize| &pixels[(y * width + x) * 3..][..3];
     let [red, green, blue] = <[u8; 3]>::try_from(pixel(width - 8, 8)).unwrap();
@@ -182,42 +188,100 @@ fn thumbnail_of_a_large_png() {
 }
 
 #[test]
-fn tiles_of_a_large_png() {
-    let folder = TestFolder::new();
-    let (original, original_bytes) = make_original(&folder);
-    let tiles = folder.join("tiles");
-    let cost = run_in_child("tests::tiles_job", &original, &tiles);
+fn a_request_rounds_up_to_the_next_step() {
+    assert_eq!(PictureStep::covering(1), PictureStep::S192);
+    assert_eq!(PictureStep::covering(192), PictureStep::S192);
+    assert_eq!(PictureStep::covering(193), PictureStep::S384);
+    assert_eq!(PictureStep::covering(768), PictureStep::S768);
+    assert_eq!(PictureStep::covering(769), PictureStep::S1536);
+    assert_eq!(PictureStep::covering(4000), PictureStep::S1536);
+}
 
-    let mut count = 0usize;
-    let mut tile_bytes = 0u64;
-    let mut level_count = 0usize;
-    // libvips also writes a properties file beside the level folders.
-    for level in
-        folder.entries("tiles_files").into_iter().filter(|name| name.parse::<u32>().is_ok())
-    {
-        level_count += 1;
-        for tile in folder.entries(format!("tiles_files/{level}")) {
-            let path = format!("tiles_files/{level}/{tile}");
-            let mut decoder = jpeg_decoder::Decoder::new(folder.open(&path));
-            decoder.read_info().unwrap();
-            let info = decoder.info().unwrap();
-            assert!(info.width <= TILE_EDGE && info.height <= TILE_EDGE, "{path}");
-            count += 1;
-            tile_bytes += folder.metadata(&path).len();
+/// A PNG of `width` x `height` pixels, each `pixel`.
+fn small_png(width: u32, height: u32, color: png::ColorType, pixel: &[u8]) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let mut encoder = png::Encoder::new(&mut bytes, width, height);
+    encoder.set_color(color);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().unwrap();
+    let data: Vec<u8> = pixel
+        .iter()
+        .copied()
+        .cycle()
+        .take(width as usize * height as usize * pixel.len())
+        .collect();
+    writer.write_image_data(&data).unwrap();
+    drop(writer);
+    bytes
+}
+
+#[test]
+fn a_picture_with_transparency_keeps_it_as_a_png() {
+    let original = small_png(64, 48, png::ColorType::Rgba, &[200, 30, 30, 128]);
+    let copy = make_copy(Cursor::new(original), flag().watcher(), PictureStep::S192).unwrap();
+    assert_eq!(copy.format, CopyFormat::Png);
+    assert_eq!(&copy.bytes[1..4], b"PNG");
+}
+
+#[test]
+fn a_picture_without_transparency_is_a_jpeg_never_larger_than_the_original() {
+    let original = small_png(64, 48, png::ColorType::Rgb, &[200, 30, 30]);
+    let copy = make_copy(Cursor::new(original), flag().watcher(), PictureStep::S192).unwrap();
+    assert_eq!(copy.format, CopyFormat::Jpeg);
+    let mut decoder = jpeg_decoder::Decoder::new(Cursor::new(copy.bytes));
+    decoder.read_info().unwrap();
+    let info = decoder.info().unwrap();
+    assert_eq!((info.width, info.height), (64, 48));
+}
+
+/// A picture that counts how many times it is read and cancels its job after
+/// the third read.
+struct CancellingOrigin {
+    inner: Cursor<Vec<u8>>,
+    reads: Arc<AtomicUsize>,
+    cancel: CancelFlag,
+}
+
+impl Read for CancellingOrigin {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        if self.reads.fetch_add(1, Ordering::SeqCst) + 1 == 3 {
+            self.cancel.cancel();
         }
+        // Small chunks, so the picture takes many reads.
+        let end = buffer.len().min(512);
+        self.inner.read(&mut buffer[..end])
     }
-    println!(
-        "tiles: {WIDTH}x{HEIGHT} PNG of {:.1} MiB -> {count} tiles in {level_count} levels, {:.1} MiB in all ({:.0}% of the original); peak memory {:.1} MiB, {:.2} s",
-        mebibytes(original_bytes),
-        mebibytes(tile_bytes),
-        tile_bytes as f64 * 100.0 / original_bytes as f64,
-        mebibytes(cost.peak_bytes),
-        cost.seconds,
-    );
-    // 6000 x 5600 at 512: 12 x 11 tiles on the full-size level, and a level
-    // for every halving down to one pixel (levels 0 to 13).
-    assert_eq!(level_count, 14);
-    assert!(count >= 12 * 11, "{count} tiles");
-    assert!(folder.exists("tiles.dzi"));
-    assert!(cost.peak_bytes < DECODED_BYTES, "peak memory held the whole picture");
+}
+
+impl Seek for CancellingOrigin {
+    fn seek(&mut self, position: SeekFrom) -> std::io::Result<u64> {
+        self.inner.seek(position)
+    }
+}
+
+#[test]
+fn a_cancelled_copy_stops_reading_its_original() {
+    let original = small_png(2000, 2000, png::ColorType::Rgb, &[10, 120, 200]);
+    let cancel = flag();
+    let reads = Arc::new(AtomicUsize::new(0));
+    let origin = CancellingOrigin {
+        inner: Cursor::new(original),
+        reads: reads.clone(),
+        cancel: cancel.clone(),
+    };
+    let result = make_copy(origin, cancel.watcher(), PictureStep::S192);
+    assert!(matches!(result, Err(PicturesError::Cancelled)), "{result:?}");
+    // The read that cancelled was the third. libvips may already have asked
+    // for the next read, and no read starts once the flag is set.
+    assert!(reads.load(Ordering::SeqCst) <= 4, "{} reads", reads.load(Ordering::SeqCst));
+}
+
+#[test]
+fn reading_the_whole_original_stops_when_cancelled() {
+    let cancel = flag();
+    let all = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancel.watcher()).unwrap();
+    assert_eq!(all.len(), 300_000);
+    cancel.cancel();
+    let result = crate::read_original(Cursor::new(vec![7u8; 300_000]), &cancel.watcher());
+    assert!(matches!(result, Err(PicturesError::Cancelled)));
 }
