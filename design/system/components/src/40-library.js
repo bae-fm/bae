@@ -480,14 +480,13 @@
       h(AndroidSeekBar, { held: props.held, elapsed: props.elapsed, duration: props.duration }));
   }
 
-  // The library header while searching: Close search, and the search field, an editable text field holding what was typed (`search`) with its Clear search button. While the field is empty the prompt shows as text under it, as AndroidSearchBar.kt draws its placeholder Text behind the BasicTextField, and the prompt also names the field, as Android names an empty field by the text its decoration box draws.
+  // The library header while searching: Close search, and the search field, an editable text field holding what was typed (`search`) with its Clear search button. The field is the whole pill, as AndroidSearchBar.kt's BasicTextField takes its decoration box, and holds Clear search. While the field is empty the prompt shows as text under it, as the app draws its placeholder Text behind the field, and the prompt also names the field, as Android names an empty field by the text its decoration box draws.
   function AndroidSearchBar(props) {
     const prompt = 'Search albums, tracks, composers, and works';
     return h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Close search' }),
       h('div', { className: 'bae-a-searchfield' },
-        h('span', { className: 'bae-a-searchbox' },
-          props.search ? null : h('span', { className: 'bae-a-search-prompt' }, prompt),
-          h('input', { className: 'bae-a-searchinput', type: 'text', defaultValue: props.search || '', spellCheck: false, 'aria-label': props.search ? null : prompt })),
+        props.search ? null : h('span', { className: 'bae-a-search-prompt' }, prompt),
+        h('input', { className: cx('bae-a-searchinput', props.search && 'bae-a-searchinput-clearable'), type: 'text', defaultValue: props.search || '', spellCheck: false, 'aria-label': props.search ? null : prompt }),
         props.search ? h(AndroidInlineIconButton, { icon: 'close', label: 'Clear search' }) : null));
   }
 
