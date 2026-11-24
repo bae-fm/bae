@@ -152,21 +152,23 @@ struct SyncSetupWizard: View {
                                 note: Text(provider.setupSummary),
                                 checked: provider == choice
                             )
+                            .placedInRow(RowMetrics.placement)
                         }
                         .buttonStyle(.accentPlain)
-                        // The row is a radio button of the provider group,
-                        // as the board draws it, and says so to VoiceOver.
-                        .accessibilityRepresentation {
-                            Picker(selection: $choice) {
-                                Text(
-                                    "\(provider.displayName) \(provider.setupSummary)"
-                                )
-                                .tag(provider)
-                            } label: {
-                                EmptyView()
+                        // The row is one radio button as tall and wide as the
+                        // row, as the board draws it, and says so to
+                        // VoiceOver.
+                        .accessibilityHidden(true)
+                        .overlay {
+                            MacRadioAccessibility(
+                                label:
+                                    "\(provider.displayName) \(provider.setupSummary)",
+                                selected: provider == choice
+                            ) {
+                                choice = provider
                             }
-                            .pickerStyle(.radioGroup)
                         }
+                        .containerValue(\.placesItselfInRow, true)
                     }
                 }
             }
