@@ -11,6 +11,15 @@ enum SearchOverlaySpace {
 
 /// Reads the stores for `MacMainWindow` and holds what surrounds it: the
 /// overlays, the search dropdown, the file importer and the alerts.
+/// The sort priority of the `rank`th part VoiceOver reads after the window and
+/// its side pane, which keep the default 0: below it, and above the -2 of an
+/// open menu, which the boards list last.
+private enum ReadingPriority {
+    static func of(rank: Int) -> Double {
+        -Double(rank) / 10
+    }
+}
+
 struct MacMainWindowContainer: View {
     @Environment(Queue.self)
     var queue
@@ -106,8 +115,8 @@ struct MacMainWindowContainer: View {
                 // the default.
                 .accessibilityElement(children: .contain)
                 .accessibilitySortPriority(
-                    -Double(
-                        uiStore.modalStack.count
+                    ReadingPriority.of(
+                        rank: uiStore.modalStack.count
                             + (uiStore.document == nil ? 1 : 2)
                     )
                 )
@@ -144,7 +153,9 @@ struct MacMainWindowContainer: View {
                     onDismiss: { uiStore.dismissModal() },
                     sizedContent: builder
                 )
-                .accessibilitySortPriority(-Double(index + 1))
+                .accessibilitySortPriority(
+                    ReadingPriority.of(rank: index + 1)
+                )
             }
 
             // Document viewer, over the modal it may have been opened from
@@ -157,7 +168,7 @@ struct MacMainWindowContainer: View {
                     )
                 }
                 .accessibilitySortPriority(
-                    -Double(uiStore.modalStack.count + 1)
+                    ReadingPriority.of(rank: uiStore.modalStack.count + 1)
                 )
             }
         }
