@@ -101,13 +101,14 @@ struct MacMainWindowContainer: View {
                         )
                     },
                 )
-                // VoiceOver reads the bar after every modal and the document,
-                // as the boards list it.
+                // VoiceOver reads the bar after every modal and the document.
+                // A modal's priority is below the side pane's and the
+                // window's, which keep the default.
                 .accessibilityElement(children: .contain)
                 .accessibilitySortPriority(
                     -Double(
                         uiStore.modalStack.count
-                            + (uiStore.document == nil ? 0 : 1)
+                            + (uiStore.document == nil ? 1 : 2)
                     )
                 )
             }
@@ -133,8 +134,9 @@ struct MacMainWindowContainer: View {
             }
 
             // Modal overlay
-            // VoiceOver reads each modal after the modals under it, as the
-            // boards do: an earlier modal's priority is the higher.
+            // VoiceOver reads each modal after the side pane and after the
+            // modals under it, as the boards do: an earlier modal's priority
+            // is the higher.
             ForEach(Array(uiStore.modalStack.enumerated()), id: \.offset) {
                 index,
                 builder in
@@ -142,7 +144,7 @@ struct MacMainWindowContainer: View {
                     onDismiss: { uiStore.dismissModal() },
                     sizedContent: builder
                 )
-                .accessibilitySortPriority(-Double(index))
+                .accessibilitySortPriority(-Double(index + 1))
             }
 
             // Document viewer, over the modal it may have been opened from
@@ -154,7 +156,9 @@ struct MacMainWindowContainer: View {
                         onClose: { uiStore.dismissDocument() }
                     )
                 }
-                .accessibilitySortPriority(-Double(uiStore.modalStack.count))
+                .accessibilitySortPriority(
+                    -Double(uiStore.modalStack.count + 1)
+                )
             }
         }
         .animation(.easeInOut(duration: 0.2), value: uiStore.lightbox != nil)
