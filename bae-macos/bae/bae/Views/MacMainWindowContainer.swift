@@ -102,8 +102,8 @@ struct MacMainWindowContainer: View {
                     },
                 )
                 // VoiceOver reads the bar after every modal and the document.
-                // A modal's priority is below the side pane's and the
-                // window's, which keep the default.
+                // A modal's priority is below the side pane's, which keeps
+                // the default.
                 .accessibilityElement(children: .contain)
                 .accessibilitySortPriority(
                     -Double(
