@@ -21,6 +21,9 @@ struct FieldChrome: ViewModifier {
     /// How far an inline field's text sits inside its chrome.
     static let inlineHorizontalPadding = ThemeSpace.compact
     static let inlineVerticalPadding = ThemeSpace.line
+    /// An inline field is at least as tall as the board's, which no spacing
+    /// token names.
+    static let inlineMinHeight: CGFloat = 22
 
     @State
     private var hovering = false
@@ -32,7 +35,7 @@ struct FieldChrome: ViewModifier {
         content
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
-            .frame(minHeight: style == .boxed ? ThemeSize.field : nil)
+            .frame(minHeight: minHeight)
             // Round the fill, not a clip: a clip cuts the text off when AppKit
             // remounts the field with a too-short height.
             .background(fill, in: outline)
@@ -83,6 +86,14 @@ struct FieldChrome: ViewModifier {
                 width: inlineHorizontalPadding,
                 height: inlineVerticalPadding
             )
+        }
+    }
+
+    private var minHeight: CGFloat? {
+        switch style {
+        case .boxed: ThemeSize.field
+        case .boxedMultiline: nil
+        case .inline: Self.inlineMinHeight
         }
     }
 
