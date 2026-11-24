@@ -128,6 +128,17 @@ struct FindOnlineAutomaticSection: View {
                             onRetryFailed: onRetryFailed,
                             onEditTitleSearch: onEditTitleSearch
                         )
+                        // The section's own space round the band, as the
+                        // board's section body sets it: the first child of
+                        // the body sits an inline space down, and a child
+                        // after the sentence's rule a group space.
+                        .padding(
+                            .top,
+                            headerSentence == nil
+                                ? ThemeSpace.inline : ThemeSpace.group
+                        )
+                        .padding(.bottom, ThemeSpace.group)
+                        .padding(.horizontal, ThemeSpace.group)
                         Divider()
                             .padding(.horizontal, ThemeSpace.group)
                     }

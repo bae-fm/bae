@@ -29,8 +29,6 @@ struct MacIdentifierBand: View {
                 ScanningChip(wait: wait)
             }
         }
-        .padding(.vertical, ThemeSpace.related)
-        .padding(.horizontal, ThemeSpace.group)
     }
 
     // MARK: - Disc ID
