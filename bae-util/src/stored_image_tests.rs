@@ -178,3 +178,20 @@ fn a_large_jpeg_is_stored_at_600_pixels_from_its_scaled_decode() {
     let out = stored_jpeg(&jpeg_source(4800, 3600)).unwrap();
     assert_eq!(decoded_dims(&out), (600, 450));
 }
+
+#[test]
+fn inspecting_an_image_reads_its_header_and_decodes_nothing() {
+    let png = png_source(64, 48);
+    assert_eq!(inspect_image(&png).unwrap(), ContentType::Png);
+    // Cut off after its header, the picture cannot be decoded, and inspecting
+    // it does not try.
+    let cut = &png[..png.len() - 8];
+    assert!(decode_image(cut).is_err());
+    assert_eq!(inspect_image(cut).unwrap(), ContentType::Png);
+}
+
+#[test]
+fn inspecting_refuses_what_is_no_image_or_too_large() {
+    assert!(inspect_image(&[b'x'; 256]).unwrap_err().contains("Unrecognized"));
+    assert!(inspect_image(&png_source(8193, 1)).unwrap_err().contains("limit"));
+}

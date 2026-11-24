@@ -20,6 +20,29 @@ const MAX_DECODE_DIMENSION: u32 = 8_192;
 /// about 5,800 pixels square.
 const MAX_DECODE_ALLOC_BYTES: u64 = MAX_DECODE_DIMENSION as u64 * MAX_DECODE_DIMENSION as u64 * 4;
 
+/// The format of the image in `data`, from its header alone: no pixel is
+/// decoded, so a download is checked for being an image of a format bae can
+/// store and of a size it can decode without paying a decode. Making a copy of
+/// it, when a screen asks, is what tells a truncated or damaged one.
+pub fn inspect_image(data: &[u8]) -> Result<ContentType, String> {
+    let reader = ImageReader::new(Cursor::new(data))
+        .with_guessed_format()
+        .map_err(|e| format!("Failed to read image: {}", e))?;
+    let format = reader.format().ok_or_else(|| "Unrecognized image format".to_string())?;
+    let content_type = ContentType::from_mime(format.to_mime_type());
+    if !content_type.is_supported_cover() {
+        return Err(format!("Image format {format:?} is not supported"));
+    }
+    let (width, height) =
+        reader.into_dimensions().map_err(|e| format!("Failed to read image size: {}", e))?;
+    if width > MAX_DECODE_DIMENSION || height > MAX_DECODE_DIMENSION {
+        return Err(format!(
+            "Image is {width} by {height} pixels, over the limit of {MAX_DECODE_DIMENSION}"
+        ));
+    }
+    Ok(content_type)
+}
+
 /// Decode the first image using the formats and resource limits shared by
 /// remote validation and [`stored_jpeg`]. A JPEG decodes at the largest 1/2,
 /// 1/4 or 1/8 scale whose longer side is still at least [`STORED_MAX_EDGE`]

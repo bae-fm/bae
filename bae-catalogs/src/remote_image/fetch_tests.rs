@@ -147,29 +147,20 @@ async fn remote_cover_dimensions_are_bounded() {
     );
 }
 
-/// A GIF canvas at the dimension limit, 8192 by 8192, is refused for its
-/// decode allocation: the limit is that pixel count at 8-bit RGBA, and the GIF
-/// decode needs more.
+/// A download is checked by its header, not decoded: one that is cut off after
+/// its header is kept as served, and the copy made when a screen asks for it
+/// is what finds it damaged.
 #[tokio::test]
-async fn remote_cover_decode_allocation_is_bounded() {
-    let mut bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
-    bytes[6..8].copy_from_slice(&8192u16.to_le_bytes());
-    bytes[8..10].copy_from_slice(&8192u16.to_le_bytes());
-    let url = start_mock(vec![(200, bytes)]).await;
-    let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
-    assert!(
-        matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("Memory limit")),
-        "{error}"
-    );
-}
-
-#[tokio::test]
-async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
-    for bytes in [bae_util::test_cover_art::SOLID_GIF, bae_util::test_cover_art::SOLID_WEBP] {
-        let truncated = &bytes[..20];
-        assert!(bae_util::stored_image::stored_jpeg(truncated).is_err());
-        let url = start_mock(vec![(200, truncated.to_vec())]).await;
-        let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
-        assert!(matches!(error, RemoteImageError::Unusable { .. }));
+async fn a_download_cut_off_after_its_header_is_kept_and_not_decoded() {
+    let png = test_png();
+    for (bytes, content_type) in [
+        (bae_util::test_cover_art::SOLID_GIF[..45].to_vec(), ContentType::Gif),
+        (png[..png.len() - 8].to_vec(), ContentType::Png),
+    ] {
+        assert!(bae_util::stored_image::stored_jpeg(&bytes).is_err(), "it cannot be decoded");
+        let url = start_mock(vec![(200, bytes.clone())]).await;
+        let image = test_cache().await.0.fetch_required(&url).await.unwrap();
+        assert_eq!(image.bytes, bytes);
+        assert_eq!(image.content_type, content_type);
     }
 }

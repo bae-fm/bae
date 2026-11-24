@@ -112,7 +112,7 @@ async fn read_image_response(
     let bytes = bae_util::http::read_body_capped(response, bae_util::http::MAX_IMAGE_BYTES)
         .await
         .map_err(|error| artwork_body_error(error, "Failed to read image response"))?;
-    let (_, content_type) = bae_util::stored_image::decode_image(&bytes).map_err(|error| {
+    let content_type = bae_util::stored_image::inspect_image(&bytes).map_err(|error| {
         RemoteImageError::Unusable {
             detail: format!("Downloaded file is not a valid image: {error}"),
         }
