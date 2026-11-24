@@ -43,12 +43,12 @@ struct CastCodeSheet: View {
             ),
             width: 420
         ) {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                field
-                    .disabled(sheet.pairing)
-                if sheet.pairing {
-                    MacSpinner("Pairing…")
-                }
+            // Two parts of the sheet, with the 10 points the sheet puts
+            // between its parts, as the board draws them.
+            field
+                .disabled(sheet.pairing)
+            if sheet.pairing {
+                MacSpinner("Pairing…")
             }
         } footer: {
             MacSheetFooter {
