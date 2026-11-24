@@ -46,7 +46,7 @@
     return h('div', { className: 'bae-a-relfiles' },
       h('div', { className: 'bae-a-relfiles-head' }, h(AndroidEyebrow, null, 'Files')),
       files.map(function (f, i) {
-        return h(React.Fragment, { key: i }, h(AndroidDivider), h('div', { className: 'bae-a-relfiles-row' }, h('span', null, f[0]), h('span', { className: 'bae-muted' }, f[1])));
+        return h(React.Fragment, { key: i }, h(AndroidDivider), h('div', { className: 'bae-a-relfiles-row' }, h('span', { className: 'bae-a-relfiles-name' }, f[0]), h('span', { className: 'bae-muted bae-a-relfiles-kind' }, f[1])));
       }));
   }
 
