@@ -95,25 +95,38 @@ public enum NoticeLook: Sendable, Equatable {
 
 /// A tone's glyph, an outline, in the tone's icon colour; nothing
 /// for a tone with no glyph. The token carries the calmer danger: still red,
-/// quieter beside a warning's amber.
+/// quieter beside a warning's amber. VoiceOver gets no name from the symbol:
+/// the words beside the glyph say what it means, or the caller's `name` does
+/// where the glyph stands alone.
 public struct StatusGlyph: View {
     private let tone: StatusTone
     private let muted: Bool
+    private let name: Text?
 
     /// `muted` draws the glyph in the grey of the words beside it (secondary
-    /// text), for a failure that should not call attention to itself.
+    /// text), for a failure that should not call attention to itself. `name`
+    /// is what VoiceOver reads for a glyph with no words beside it; with none,
+    /// VoiceOver skips the glyph.
     public init(
         _ tone: StatusTone,
-        muted: Bool = false
+        muted: Bool = false,
+        name: Text? = nil
     ) {
         self.tone = tone
         self.muted = muted
+        self.name = name
     }
 
     public var body: some View {
         if let symbol = tone.symbol {
-            Image(systemName: symbol)
+            let image = Image(systemName: symbol)
                 .foregroundStyle(color)
+            if let name {
+                image.accessibilityLabel(name)
+            }
+            else {
+                image.accessibilityHidden(true)
+            }
         }
     }
 

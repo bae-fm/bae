@@ -158,9 +158,7 @@ private struct StorageFileMark: View {
         case .stored:
             Color.clear.accessibilityHidden(true)
         case .stopped(let problem):
-            StatusGlyph(problem.tone)
-                .accessibilityElement()
-                .accessibilityLabel(Text(verbatim: problem.words))
+            StatusGlyph(problem.tone, name: Text(verbatim: problem.words))
         case .queued(let label):
             Circle()
                 .inset(by: TransferRingNSView.lineWidth)

@@ -33,8 +33,7 @@ struct MacSearchSourceLine: View {
                 }
             case .failed(let reason):
                 HStack(spacing: ThemeSpace.compact) {
-                    StatusGlyph(.warning)
-                        .accessibilityLabel("Failed")
+                    StatusGlyph(.warning, name: Text("Failed"))
                     Text(catalog)
                         .foregroundStyle(Theme.textTertiary)
                         .help(reason)

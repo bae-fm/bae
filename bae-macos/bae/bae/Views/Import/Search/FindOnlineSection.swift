@@ -131,9 +131,8 @@ struct FindOnlineSectionGlyphView: View {
             case .empty:
                 StatusChip(verbatim: 0.formatted())
             case .failed:
-                StatusGlyph(.warning)
+                StatusGlyph(.warning, name: Text("Failed"))
                     .themeIcon(.small)
-                    .accessibilityLabel("Failed")
             case .nothing:
                 IdentifierDash()
             }
