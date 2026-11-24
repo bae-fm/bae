@@ -3,7 +3,7 @@ import SwiftUI
 
 /// One cell of a release's row in the Storage Manager's table, for its
 /// column: the cover and title, the artist, the media, the storage, or one of
-/// the numbers. The table's cell holds the side padding (`StorageListCell`),
+/// the numbers. The table's cell (`HostingTableCell`) holds the side padding,
 /// as the board's table cell does. Needs `DownloadStore`, `OutboxStore` and `ImageStore` in the
 /// environment.
 struct MacStorageCell: View {

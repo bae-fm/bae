@@ -30,7 +30,7 @@ enum StorageTableColumn: String, CaseIterable, Codable {
         case .release:
             Spec(
                 title: String(localized: "Release"),
-                width: 280,
+                width: 300,
                 minWidth: 160,
                 sortField: .albumTitle
             )

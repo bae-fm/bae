@@ -11,7 +11,7 @@ struct StorageListCell: View {
     let column: StorageTableColumn
 
     var body: some View {
-        content.padding(.horizontal, ThemeSpace.inline)
+        content
     }
 
     @ViewBuilder
