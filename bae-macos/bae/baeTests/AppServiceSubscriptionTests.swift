@@ -317,7 +317,7 @@ struct LibraryNameStoreTests {
         appService.startCommonSubscriptions()
 
         #expect(!handle.subscribed.contains("libraryName"))
-        #expect(handle.subscribed == ["members"])
+        #expect(Set(handle.subscribed) == ["members", "people"])
     }
 }
 
