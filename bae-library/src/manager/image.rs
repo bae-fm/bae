@@ -5,9 +5,10 @@ use super::*;
 impl LibraryManager {
     /// Bytes of one gallery slot, dispatching the read on its [`GallerySource`]
     /// so no caller picks the byte source itself. With a size, a cover slot
-    /// reads the copy that covers it; with none, a slot reads the picture
-    /// itself, which only the viewer asks for: a cover's kept original, or the
-    /// image file as the release holds it.
+    /// reads the copy that covers it and an image file's slot reads its
+    /// preview; with none, a slot reads the picture itself, which only the
+    /// viewer asks for: a cover's kept original, or the image file as the
+    /// release holds it.
     /// The gallery carries a cover slot only when a cover exists, so a `Cover`
     /// with no bytes here is exceptional and surfaces rather than being masked.
     pub async fn read_gallery_bytes(
@@ -27,10 +28,23 @@ impl LibraryManager {
                     LibraryError::Storage(format!("gallery cover {} has no original", image.id))
                 })
             }
-            (GallerySource::ReleaseFile { file_id }, _) => {
+            (GallerySource::ReleaseFile { file_id }, Some(_)) => {
+                self.read_release_preview(file_id).await
+            }
+            (GallerySource::ReleaseFile { file_id }, None) => {
                 self.load_gallery_image(release_id, file_id).await
             }
         }
+    }
+
+    /// The preview of one of a release's image files, which the device that
+    /// imported the release made from the original. A file with no preview is
+    /// an error: every image file is written with its preview.
+    async fn read_release_preview(&self, file_id: &str) -> Result<Vec<u8>, LibraryError> {
+        let file = self.records.release_preview_file(file_id).await?.ok_or_else(|| {
+            LibraryError::Storage(format!("release file {file_id} has no preview"))
+        })?;
+        self.read_image_file(&format!("preview of release file {file_id}"), &file).await
     }
 
     /// Bytes of one of a release's image files, read from the local copy when it

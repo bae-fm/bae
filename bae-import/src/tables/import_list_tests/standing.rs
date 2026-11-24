@@ -342,6 +342,7 @@ pub(crate) async fn commit_import(
             crate::tables::ImportRows { mediums: &mediums, records, ..Default::default() },
             files,
             None,
+            &[],
             crate::tables::NewArtistImages::default(),
         )
         .await

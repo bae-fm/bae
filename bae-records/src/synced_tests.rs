@@ -36,6 +36,7 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
             "audio_segment_scrub_points",
             "carved_tracks",
             "covers",
+            "release_file_previews",
             "artist_images",
         ])
     );
@@ -53,6 +54,7 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
                 | "work_artists"
                 | "work_parts"
                 | "covers"
+                | "release_file_previews"
                 | "artist_images"
         );
         assert_eq!(
@@ -81,7 +83,7 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
         let large_bound = Binding::Bound { limit: 16 * 1024 * 1024 };
         let expected: &[(&str, &Binding, bool)] = match table.name() {
             "release_files" => &[("file", &Binding::Trailing, false)],
-            "artist_images" => &[("file", &bound, false)],
+            "artist_images" | "release_file_previews" => &[("file", &bound, false)],
             "covers" => &[
                 ("browse_file", &browse_bound, false),
                 ("large_file", &large_bound, false),
@@ -107,6 +109,7 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
             (COVER_BROWSE_NAMESPACE, &Provenance::AppProvided, 1024 * 1024 * 1024),
             (COVER_LARGE_NAMESPACE, &Provenance::AppProvided, 1024 * 1024 * 1024),
             (COVER_ORIGINALS_NAMESPACE, &Provenance::AppProvided, 512 * 1024 * 1024),
+            (RELEASE_PREVIEWS_NAMESPACE, &Provenance::AppProvided, 1024 * 1024 * 1024),
             (ARTIST_IMAGES_NAMESPACE, &Provenance::AppProvided, 256 * 1024 * 1024),
         ]
     );

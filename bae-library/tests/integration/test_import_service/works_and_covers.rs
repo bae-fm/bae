@@ -191,6 +191,57 @@ async fn import_with_cover_art() {
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
+/// A cover picked from the folder's images names that image's release file as
+/// its source and keeps no original of its own, and every image file of the
+/// release has a preview that fits 384 pixels.
+#[tokio::test]
+async fn an_import_names_the_cover_s_file_and_writes_a_preview_of_each_image() {
+    bae_util::test_logs::install();
+
+    let f = ImportFixture::new().await;
+    let release_id_key =
+        f.fakes.seed_discogs_test_release(discogs_release("Preview Album", &["Track"]));
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    let cover_path = generate_album_with_oversized_cover(&f.temp, &album_dir, &["01 Track.flac"]);
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
+    f.handle
+        .send_command(ImportCommand {
+            selected_cover: Some(CoverSelection::Local(cover_path.clone())),
+            ..bae_import::test_imports::folder_import(
+                &import_id,
+                album_dir,
+                bae_import::test_imports::discogs_release(release_id_key),
+            )
+        })
+        .await
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+
+    let files = f.library.manager().get_files_for_release(&release_id).await.unwrap();
+    let image = files
+        .iter()
+        .find(|file| file.original_filename == cover_path)
+        .expect("the release holds the folder's image");
+    let cover = f.library.records().find_cover(&release_id).await.unwrap().expect("the cover row");
+    assert_eq!(cover.source, bae_records::CoverSource::ReleaseFile { file_id: image.id.clone() });
+    assert!(f.library.records().cover_original_file(&release_id).await.unwrap().is_none());
+    let preview = f
+        .library
+        .manager()
+        .read_gallery_bytes(
+            &release_id,
+            &bae_records::GallerySource::ReleaseFile { file_id: image.id.clone() },
+            Some(384),
+        )
+        .await
+        .expect("the image has a preview");
+    let decoded = image::load_from_memory(&preview).unwrap();
+    assert_eq!((decoded.width(), decoded.height()), (384, 384));
+}
+
 /// An oversized folder cover is made into JPEG copies at import: the browse copy
 /// decodes to 768×768 and the large copy keeps the 1000×1000 PNG source's size,
 /// and the `covers` row records JPEG, not the source PNG.

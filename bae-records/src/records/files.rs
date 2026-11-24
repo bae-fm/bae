@@ -217,6 +217,31 @@ impl Records {
         self.cover_file_in(release_id, "original_file").await
     }
 
+    /// The coven file of the preview of the release file `file_id`, as this
+    /// device reads it now; `None` when the file has no preview.
+    pub async fn release_preview_file(
+        &self,
+        file_id: &str,
+    ) -> Result<Option<coven::FileRef>, DbError> {
+        let file_id = file_id.to_string();
+        let Some(file) = self
+            .store
+            .read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        "SELECT file FROM release_file_previews WHERE id = ?",
+                        params![file_id],
+                        |row| row.get::<_, coven::FileId>(0),
+                    )
+                    .optional()?)
+            })
+            .await?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(self.store.file_ref(file).await?))
+    }
+
     async fn cover_file_in(
         &self,
         release_id: &str,

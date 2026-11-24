@@ -14,6 +14,9 @@ pub const COVER_LARGE_NAMESPACE: &str = "cover_large";
 /// release: the catalog image the person picked, or art embedded in an audio
 /// file.
 pub const COVER_ORIGINALS_NAMESPACE: &str = "cover_originals";
+/// A small copy of each image file of a release, which every device shows the
+/// release's pictures from.
+pub const RELEASE_PREVIEWS_NAMESPACE: &str = "release_previews";
 /// The picture bae keeps for an artist.
 pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
 
@@ -34,7 +37,9 @@ const COVER_LARGE_LIMIT: u64 = 16 * 1024 * 1024;
 /// library's, and a device downloads a large copy (about 400 KB) only for a
 /// cover shown large, so 1 GiB of `cover_large` holds about 2,500 of them. A
 /// cover's original is read only by the viewer, so `cover_originals` keeps
-/// 512 MiB, about 250 originals of 2 MB.
+/// 512 MiB, about 250 originals of 2 MB. A release image's preview is about
+/// 30 KB, so the 1 GiB of `release_previews` holds about 35,000 of them, the
+/// previews of 2,300 releases with 15 scans each.
 pub fn namespaces() -> Vec<Namespace> {
     vec![
         Namespace::new(
@@ -45,6 +50,7 @@ pub fn namespaces() -> Vec<Namespace> {
         Namespace::new(COVER_BROWSE_NAMESPACE, Provenance::AppProvided, 1024 * 1024 * 1024),
         Namespace::new(COVER_LARGE_NAMESPACE, Provenance::AppProvided, 1024 * 1024 * 1024),
         Namespace::new(COVER_ORIGINALS_NAMESPACE, Provenance::AppProvided, 512 * 1024 * 1024),
+        Namespace::new(RELEASE_PREVIEWS_NAMESPACE, Provenance::AppProvided, 1024 * 1024 * 1024),
         Namespace::new(ARTIST_IMAGES_NAMESPACE, Provenance::AppProvided, 256 * 1024 * 1024),
     ]
 }
@@ -94,6 +100,8 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .file_column(FileColumn::new("browse_file").bound_with_limit(COVER_BROWSE_LIMIT))
             .file_column(FileColumn::new("large_file").bound_with_limit(COVER_LARGE_LIMIT))
             .file_column(FileColumn::new("original_file")),
+        SyncedTable::new("release_file_previews", RowIdentity::SharedKey)
+            .file_column(FileColumn::new("file").bound()),
         SyncedTable::new("artist_images", RowIdentity::SharedKey)
             .file_column(FileColumn::new("file").bound()),
     ]

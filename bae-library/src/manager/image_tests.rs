@@ -247,3 +247,37 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
         b"second cover"
     );
 }
+
+/// Every image file is written with its preview, so one with none is a defect
+/// that a slot's read reports rather than draws from the original.
+#[tokio::test]
+async fn an_image_file_with_no_preview_fails_a_sized_read_and_still_opens_whole() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.records.insert_album(&album).await.unwrap();
+    insert_release(manager, &release).await;
+    let source_dir = TestFolder::new();
+    let source_path = source_dir.path().join("scan.png");
+    source_dir.write(&source_path, b"scan bytes");
+    let file = NewReleaseFile::new(
+        &release.id,
+        "scan.png",
+        ContentType::Png,
+        bae_records::ReleaseFileRole::Artwork,
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        UtcDateTime::now(),
+    );
+    manager.add_external_file_for_test(&file, &source_path).await.unwrap();
+    let slot = bae_records::GallerySource::ReleaseFile { file_id: file.id.clone() };
+
+    let sized = manager.read_gallery_bytes(&release.id, &slot, Some(360)).await;
+    let whole = manager.read_gallery_bytes(&release.id, &slot, None).await.unwrap();
+
+    assert!(
+        matches!(&sized, Err(LibraryError::Storage(detail)) if detail.contains("has no preview")),
+        "{sized:?}"
+    );
+    assert_eq!(whole, b"scan bytes");
+}

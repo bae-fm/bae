@@ -157,3 +157,19 @@ pub enum NewCoverPicture {
     /// A picture the cover keeps as its own original: these bytes.
     Original { bytes: Vec<u8> },
 }
+
+/// A preview of one image file of a release, as the import writes it: the
+/// release file it is made from, and the copy's bytes and format.
+#[derive(Debug, Clone)]
+pub struct NewReleasePreview {
+    /// The id of the release file the preview is made from.
+    pub release_file_id: String,
+    pub bytes: Vec<u8>,
+    /// A picture with transparency makes a PNG, any other a JPEG.
+    pub content_type: ContentType,
+}
+
+impl NewReleasePreview {
+    /// The longer edge in pixels a preview is made at.
+    pub const EDGE: u32 = 384;
+}

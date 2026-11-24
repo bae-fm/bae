@@ -185,7 +185,7 @@ impl LibraryManager {
         }
     }
 
-    async fn read_image_file(
+    pub(super) async fn read_image_file(
         &self,
         what: &str,
         file: &coven::FileRef,

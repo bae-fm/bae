@@ -581,6 +581,8 @@ impl ImportService {
             None => None,
         };
 
+        let previews = self.release_previews(discovered_files, &file_ids).await?;
+
         // Past here the release is written in one transaction, which a cancel
         // no longer interrupts; one that came first stops the import here.
         self.import_cancels.begin_writing(candidate_key, import_id)?;
@@ -632,6 +634,7 @@ impl ImportService {
                 },
                 prepared_files,
                 cover_winner.as_ref(),
+                &previews,
                 artist_images,
             )
             .await?;
@@ -676,6 +679,7 @@ impl ImportService {
         rows: crate::tables::ImportRows<'_>,
         files: Vec<PreparedImportFile>,
         cover: Option<&bae_records::NewCover>,
+        previews: &[bae_records::NewReleasePreview],
         artist_images: &[DiscogsArtistImage],
     ) -> Result<String, crate::ImportError> {
         let pictures = self.staged_artist_pictures(&rows.artists, artist_images).await?;
@@ -691,6 +695,7 @@ impl ImportService {
                 rows,
                 files,
                 cover,
+                previews,
                 crate::tables::NewArtistImages {
                     expected_new_artists: &pictures.expected_new_artists,
                     images: &images,

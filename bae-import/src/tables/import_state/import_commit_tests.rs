@@ -98,6 +98,7 @@ struct Commit<'a> {
     rows: crate::tables::ImportRows<'a>,
     files: Vec<crate::service::PreparedImportFile>,
     cover: Option<&'a bae_records::NewCover>,
+    previews: &'a [bae_records::NewReleasePreview],
     artist_images: crate::tables::NewArtistImages<'a>,
 }
 
@@ -158,6 +159,7 @@ async fn commit_import(db: &Store, release: &DbRelease, commit: Commit<'_>) {
             crate::tables::ImportRows { mediums: &mediums, ..commit.rows },
             commit.files,
             commit.cover,
+            commit.previews,
             commit.artist_images,
         )
         .await
@@ -235,6 +237,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             crate::tables::ImportRows::default(),
             Vec::new(),
             None,
+            &[],
             crate::tables::NewArtistImages::default(),
         )
         .await
@@ -276,6 +279,7 @@ async fn finalize_refuses_an_album_deleted_since_the_import_was_prepared() {
             crate::tables::ImportRows::default(),
             Vec::new(),
             None,
+            &[],
             crate::tables::NewArtistImages::default(),
         )
         .await

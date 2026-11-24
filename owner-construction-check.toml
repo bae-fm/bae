@@ -1074,6 +1074,7 @@ tables = [
     "release_media",
     "covers",
     "release_files",
+    "release_file_previews",
     "release_artist_roles",
     "release_records",
     "release_mediums",

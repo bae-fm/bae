@@ -665,6 +665,30 @@ pub fn upsert_cover_row(
     .map_err(DbError::from)
 }
 
+/// Stage a release image's preview as a coven file for the cloud.
+pub fn stage_preview(w: &mut coven::WriteBatch<'_>, preview: &NewReleasePreview) -> coven::FileId {
+    w.put_file(
+        crate::synced::RELEASE_PREVIEWS_NAMESPACE,
+        preview.bytes.clone(),
+        coven::Place::Cloud,
+    )
+}
+
+/// Write a release file's preview row, pointing it at `file`, the coven file
+/// its write staged.
+pub fn insert_preview_row(
+    conn: &CovenWrite<'_>,
+    preview: &NewReleasePreview,
+    file: &coven::FileId,
+) -> Result<(), DbError> {
+    conn.execute(
+        "INSERT INTO release_file_previews (id, file, content_type) VALUES (?, ?, ?)",
+        params![preview.release_file_id, file, preview.content_type.as_str()],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
 /// Write `records` as `release_id`'s records, replacing any it had, and set the
 /// catalog its draft was read from. Shared by an import's commit, a records
 /// change (`set_records_atomic`) and the test seam `insert_release_records`. Each row's id is its

@@ -466,6 +466,21 @@ CREATE INDEX IF NOT EXISTS idx_covers_large_file ON covers (large_file);
 CREATE INDEX IF NOT EXISTS idx_covers_original_file ON covers (original_file);
 CREATE INDEX IF NOT EXISTS idx_covers_source_file ON covers (source_file);
 
+-- A small copy of each image file of a release (a scan, a booklet page,
+-- artwork), 384 pixels on its longer side, which the device that imports the
+-- release makes from the original. Every device shows the release's pictures
+-- from these copies, and downloads an original only for the viewer. `id` is
+-- the release file's id; `file` is the copy's coven file (`coven_files`).
+CREATE TABLE IF NOT EXISTS release_file_previews (
+    id TEXT PRIMARY KEY,
+    file TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    FOREIGN KEY (id) REFERENCES release_files (id) ON DELETE CASCADE
+) STRICT;
+
+-- A preview's row by its file, which coven's pending records name.
+CREATE INDEX IF NOT EXISTS idx_release_file_previews_file ON release_file_previews (file);
+
 -- The files a release's audio and artwork are stored as, with the facts of the
 -- audio they were imported from.
 CREATE TABLE IF NOT EXISTS release_files (

@@ -7,12 +7,12 @@ use super::*;
 use bae_records::records::artist_resolution::{relink, relink_album_artists, relink_track_artists};
 use bae_records::records::label_resolution::pressing_write;
 use bae_records::records::write::{
-    insert_audio_format_row, insert_audio_segment_row, insert_carved_track_row,
+    insert_audio_format_row, insert_audio_segment_row, insert_carved_track_row, insert_preview_row,
     insert_release_artist_role_row, insert_release_file_row, insert_release_medium_row,
     insert_release_row, insert_scrub_points_row, insert_track_artist_role_row,
     insert_track_artist_row, insert_track_row, insert_track_work_row, insert_work_artist_row,
-    insert_work_part_row, insert_work_row, replace_album_artists, stage_cover, upsert_album_row,
-    upsert_artist_image_row, upsert_cover_row, write_release_records,
+    insert_work_part_row, insert_work_row, replace_album_artists, stage_cover, stage_preview,
+    upsert_album_row, upsert_artist_image_row, upsert_cover_row, write_release_records,
 };
 use bae_records::GonePicked;
 use bae_util::timestamp::StoredTimestamp as _;
@@ -391,6 +391,7 @@ impl ImportTables {
         rows: ImportRows<'_>,
         files: Vec<crate::service::PreparedImportFile>,
         cover: Option<&bae_records::NewCover>,
+        previews: &[bae_records::NewReleasePreview],
         artist_images: NewArtistImages<'_>,
     ) -> Result<String, ImportCommitError> {
         let album = album.map(|album| (album.row.clone(), album.picked_new));
@@ -414,6 +415,7 @@ impl ImportTables {
         let audio_segments = rows.audio_segments.to_vec();
         let scrub_points = rows.scrub_points.to_vec();
         let cover = cover.cloned();
+        let previews = previews.to_vec();
         let artist_images: Vec<(bae_records::DbArtistImage, Vec<u8>)> = artist_images
             .images
             .iter()
@@ -422,6 +424,7 @@ impl ImportTables {
         // The cover's copies and each artist image's bytes are staged as coven
         // files, which the rows then reference.
         let cover_to_stage = cover.clone();
+        let previews_to_stage = previews.clone();
         let artist_images_to_stage: Vec<Vec<u8>> =
             artist_images.iter().map(|(_, bytes)| bytes.clone()).collect();
         // Each original is staged as a coven file, on this device only or for
@@ -450,9 +453,13 @@ impl ImportTables {
                             )
                         })
                         .collect::<Vec<coven::FileId>>();
-                    Ok((staged_cover, artist_files))
+                    let preview_files = previews_to_stage
+                        .iter()
+                        .map(|preview| stage_preview(w, preview))
+                        .collect::<Vec<coven::FileId>>();
+                    Ok((staged_cover, artist_files, preview_files))
                 },
-                move |sql, (staged_cover, artist_file_ids)| {
+                move |sql, (staged_cover, artist_file_ids, preview_file_ids)| {
                     let original_file_ids = originals
                         .into_iter()
                         .map(|(original, place)| {
@@ -577,6 +584,9 @@ impl ImportTables {
 
                     for (row, file) in rows_to_insert.iter().zip(original_file_ids) {
                         insert_release_file_row(tx, row, file).map_err(commit_error)?;
+                    }
+                    for (preview, file) in previews.iter().zip(&preview_file_ids) {
+                        insert_preview_row(tx, preview, file)?;
                     }
 
                     // The commit copies the person's decisions about the
