@@ -130,9 +130,11 @@
                 if let suppression = words.suppression {
                     // The board's checkbox is in the body size and spans the
                     // alert's width, so a click anywhere on its row ticks it.
-                    MacCheckbox(isOn: suppression.isOn) { suppression.label }
-                        .themeText(.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    MacCheckbox(isOn: suppression.isOn) {
+                        suppression.label
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .themeText(.body)
                 }
                 buttonRow
                     .padding(.top, ThemeSpace.compact)
