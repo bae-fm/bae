@@ -94,7 +94,10 @@ struct MacIdentifierChip<Trailing: View>: View {
                     .cutLine(.prose)
                     .frame(maxWidth: identifierValueWidth, alignment: .leading)
             }
+            // The catalogs' capsules keep their full width: only the value
+            // above gives way when the chip is short of room.
             trailing
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, ThemeSpace.compact)
         .padding(.vertical, ThemeSpace.line)
