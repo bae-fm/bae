@@ -29,6 +29,22 @@ runs:
         echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_DIR/include" >> $GITHUB_ENV
         echo "$FFMPEG_DIR/bin" >> $GITHUB_PATH
 
+    - name: Cache bae-libvips
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cache/bae-libvips
+          ~/.cache/bae-libvips-build
+        key: bae-libvips-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/bae-libvips-release', 'scripts/build-libvips.sh', 'scripts/libvips/**') }}
+
+    - name: Build bae-libvips
+      shell: bash
+      run: |
+        # The release scripts/bae-libvips-release pins, built from source into
+        # ~/.cache/bae-libvips when the cache holds none, and linked at
+        # bae-libvips, where .cargo/config.toml and the Xcode project find it.
+        ./scripts/prepare-libvips.sh
+
     - name: Setup virtual audio device
       shell: bash
       run: |

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Copy the FFmpeg dylibs the app loads into its Frameworks folder.
+"""Copy the dylibs of the native libraries the app loads into its Frameworks folder.
 
 Runs as the bae target's last build phase. The app links FFmpeg from the
-bae-ffmpeg dist on LIBRARY_SEARCH_PATHS and loads it as @rpath/<name>, which
-the target's runpaths resolve only inside the bundle. For each such name that a
+bae-ffmpeg dist and libvips from the bae-libvips dist on LIBRARY_SEARCH_PATHS
+and loads them as @rpath/<name>, which the target's runpaths resolve only
+inside the bundle. For each such name that a
 binary in Contents/MacOS, or a library copied here, loads, the first search
-folder holding it supplies the file. The dist names each library by its full
+folder holding it supplies the file. Each dist names each library by its full
 version and links the shorter names to it; the copy keeps those links, so every
 name resolves to one file and dyld loads each library once. What it copies is
 signed when the build signs.

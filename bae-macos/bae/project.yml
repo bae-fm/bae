@@ -102,11 +102,12 @@ targets:
       - sdk: MediaPlayer.framework
       - sdk: SystemConfiguration.framework
     postBuildScripts:
-      # Copies the FFmpeg dylibs the app links from the dist on
-      # LIBRARY_SEARCH_PATHS into Contents/Frameworks, every build.
-      - name: Embed FFmpeg
+      # Copies the dylibs the app links (FFmpeg's and libvips's, with the
+      # libraries those load) from their dists on LIBRARY_SEARCH_PATHS into
+      # Contents/Frameworks, every build.
+      - name: Embed native libraries
         basedOnDependencyAnalysis: false
-        script: python3 "$SRCROOT/../scripts/embed_ffmpeg.py"
+        script: python3 "$SRCROOT/../scripts/embed_dylibs.py"
     settings:
       base:
         # Only this target maps the private BAE_APP_* inputs (passed by run.sh
@@ -148,19 +149,25 @@ targets:
         # bae-ffmpeg/dist; /opt/bae-ffmpeg is where the setup-macos CI action
         # unpacks the same release. Non-existent search paths are harmless to the
         # linker.
+        # libvips is built from source into bae-libvips/dist
+        # (scripts/prepare-libvips.sh), also never a Homebrew install.
         LIBRARY_SEARCH_PATHS:
           - $(SRCROOT)/../../bae-ffmpeg/dist/lib
           - /opt/bae-ffmpeg/lib
+          - $(SRCROOT)/../../bae-libvips/dist/lib
         OTHER_LDFLAGS:
           - -lavcodec
           - -lavformat
           - -lavutil
           - -lswresample
+          - -lvips
+          - -lgobject-2.0
+          - -lglib-2.0
           - -lc++
-        # The fork's libav* dylibs carry @rpath install names
-        # (@rpath/libavcodec.*.dylib); the Embed FFmpeg phase below copies them
-        # into Contents/Frameworks, so @rpath resolves only inside the bundle,
-        # in every configuration.
+        # The fork's libav* dylibs and the libvips dist's dylibs carry @rpath
+        # install names (@rpath/libavcodec.*.dylib); the Embed native libraries
+        # phase above copies them into Contents/Frameworks, so @rpath resolves
+        # only inside the bundle, in every configuration.
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/../Frameworks"

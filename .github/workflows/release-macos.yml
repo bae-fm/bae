@@ -190,7 +190,7 @@ jobs:
         sentry-cli debug-files upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" "$BAE_DSYM_PATH"
 
     - name: Check the app loads only bundled or system libraries
-      # The build's Embed FFmpeg phase copied the dist's dylibs into
+      # The build's Embed native libraries phase copied the dists' dylibs into
       # Contents/Frameworks; anything else outside the bundle or macOS fails.
       run: python3 scripts/check-bundled-libraries.py "$APP_PATH"
 
