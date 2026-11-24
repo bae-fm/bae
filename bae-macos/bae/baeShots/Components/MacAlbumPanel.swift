@@ -43,7 +43,7 @@ extension ShotScene {
     ]
 
     /// The album the panel and the track list draw: "Low Tide Hours" on a
-    /// release named `name`, side A with two tracks.
+    /// release named `name`, one track.
     private static func panelRelease(
         id: String,
         name: String,
@@ -78,22 +78,15 @@ extension ShotScene {
             browseTrack(
                 "a1",
                 "Harbor Lights",
-                position: "A1",
+                position: "1",
                 minutes: 4,
                 seconds: 32
-            ),
-            browseTrack(
-                "a2",
-                "The Long Way Home",
-                position: "A2",
-                minutes: 5,
-                seconds: 12
-            ),
+            )
         ]
         release.tracks = tracks
         release.trackGroups = [
             BridgeTrackGroup(
-                side: .sided(sideLetter: "A"),
+                side: .flat,
                 tracks: tracks,
                 totalDuration: nil,
                 showsTime: false,
