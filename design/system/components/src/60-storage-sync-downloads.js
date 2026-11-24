@@ -397,11 +397,13 @@
   var AndroidUsageKey = usageKey('a');
   function storageUsage(props, p) {
     var parts = storageParts(props);
+    // The segments fill the whole bar in the shares' proportions, as the app splits the width left after the gaps.
+    var sum = parts.reduce(function (n, x) { return n + x.share; }, 0) || 1;
     var Key = p === 'm' ? MacUsageKey : AndroidUsageKey;
     return h('div', { className: 'bae-usage bae-usage-' + p },
       h('div', { className: 'bae-usage-total' }, h('span', { className: 'bae-usage-num' }, props.total || '8.5 GB'), h('span', { className: 'bae-usage-of' }, props.of || (p === 'm' ? 'on this Mac' : 'on this phone'))),
       h('div', { className: 'bae-usage-bar', role: 'img', 'aria-label': parts.map(function (x) { return x.label + ' ' + x.size; }).join(', ') },
-        parts.map(function (x, i) { return h('span', { key: i, className: 'bae-usage-seg bae-usage-seg-' + (USAGE_KIND[x.label] || 5), style: { flexGrow: x.share } }); })),
+        parts.map(function (x, i) { return h('span', { key: i, className: 'bae-usage-seg bae-usage-seg-' + (USAGE_KIND[x.label] || 5), style: { flex: (x.share / sum) + ' 0 0' } }); })),
       h('div', { className: 'bae-usage-legend' }, parts.map(function (x, i) { return h(Key, { key: i, label: x.label, size: x.size }); })));
   }
   function MacStorageUsage(props) { return storageUsage(props, 'm'); }
