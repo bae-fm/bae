@@ -67,7 +67,7 @@ class ProgressTrackNSView: NSView {
     /// progress bar draws it.
     static let trackHeight: CGFloat = 4
 
-    let height: CGFloat
+    var height: CGFloat { Self.trackHeight }
 
     var progress: Double? {
         didSet {
@@ -91,12 +91,10 @@ class ProgressTrackNSView: NSView {
 
     init(
         progress: Double?,
-        accent: NSColor,
-        height: CGFloat = ProgressTrackNSView.trackHeight
+        accent: NSColor
     ) {
         self.progress = progress
         self.accent = accent
-        self.height = height
         super.init(frame: .zero)
         wantsLayer = true
 
