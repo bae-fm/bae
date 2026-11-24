@@ -9,17 +9,17 @@ enum SearchOverlaySpace {
     static let name = "searchOverlay"
 }
 
-/// Reads the stores for `MacMainWindow` and holds what surrounds it: the
-/// overlays, the search dropdown, the file importer and the alerts.
-/// The sort priority of the `rank`th part VoiceOver reads after the window and
-/// its side pane, which keep the default 0: below it, and above the -2 of an
-/// open menu, which the boards list last.
+/// The sort priority of the `rank`th part VoiceOver reads after the window's
+/// parts and its side pane: below the side pane's default 0, and above the -2
+/// of an open menu, which the boards list last.
 private enum ReadingPriority {
     static func of(rank: Int) -> Double {
         -Double(rank) / 10
     }
 }
 
+/// Reads the stores for `MacMainWindow` and holds what surrounds it: the
+/// overlays, the search dropdown, the file importer and the alerts.
 struct MacMainWindowContainer: View {
     @Environment(Queue.self)
     var queue
