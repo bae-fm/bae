@@ -297,7 +297,7 @@ public struct MacNotice: View {
                 .themeText(.body)
                 .foregroundStyle(
                     tone == .neutral
-                        ? Theme.textSecondary
+                        ? look.secondaryText
                         : Theme.textPrimary
                 )
         case .titled(let title, let advice, _):
@@ -307,7 +307,7 @@ public struct MacNotice: View {
             if let shownAdvice {
                 Text(verbatim: shownAdvice)
                     .themeText(.body)
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(look.secondaryText)
             }
         }
     }
@@ -553,8 +553,7 @@ extension MacNotice {
     private var centeredSecondary: Color? {
         switch look {
         case .filled, .quiet: nil
-        case .centered: Theme.textSecondary
-        case .centeredOnStage: Theme.onFillSecondary
+        case .centered, .centeredOnStage: look.secondaryText
         }
     }
 

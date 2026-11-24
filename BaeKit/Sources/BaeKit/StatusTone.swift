@@ -134,6 +134,20 @@ public struct StatusGlyph: View {
     }
 }
 
+extension NoticeLook {
+    /// The colour of the notice's secondary words, such as a subtitle. On a
+    /// fill, grey is the primary text made see-through, so it takes the
+    /// fill's tint, as the boards draw it; the looks with no fill keep the
+    /// plain secondary text.
+    public var secondaryText: Color {
+        switch self {
+        case .filled: Theme.textPrimary.opacity(0.72)
+        case .quiet, .centered: Theme.textSecondary
+        case .centeredOnStage: Theme.onFillSecondary
+        }
+    }
+}
+
 extension View {
     /// Pads the content as a notice in its tone, and in the filled look fills
     /// and rounds it; the quiet look has no fill and pads only above and
