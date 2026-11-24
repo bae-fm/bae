@@ -4,23 +4,45 @@
 
 use super::*;
 
-/// An import candidate's picture, by what it comes from and the version of
-/// the file it comes from.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgePictureSource {
-    /// An image file of the candidate's folder, as the scan read it.
-    FolderFile { file: BridgeFileVersion },
-    /// Art embedded in the tags of one of the candidate's audio files: `source`
-    /// is that file as the scan read it.
-    EmbeddedArt { source: BridgeFileVersion, candidate_key: Vec<u8>, source_file_id: String },
-}
-
 /// Whether a screen shows a picture now, or may show it soon. Core reads what
 /// is shown first.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgePictureTurn {
     Visible,
     Prefetch,
+}
+
+mirror_enum! {
+    #[cfg(desktop)]
+    BridgePictureTurn = bae_import::PicturePriority,
+    into_core: pub(crate) fn,
+    variants: { Visible, Prefetch },
+}
+
+#[cfg(desktop)]
+impl BridgeCoverImageSource {
+    /// The picture of the import list this source names: an image file of a
+    /// candidate's folder or art in its tags. A library or catalog image is
+    /// not one, and core refuses it.
+    pub(crate) fn into_picture(self) -> Result<bae_import::CoverImageSource, BridgeError> {
+        match self {
+            Self::Local { file } => {
+                Ok(bae_import::CoverImageSource::Local { file: file.into_core()? })
+            }
+            Self::Embedded { source, candidate_key, source_file_id } => {
+                Ok(bae_import::CoverImageSource::Embedded {
+                    source: source.into_core()?,
+                    candidate: candidate_key.into(),
+                    source_file_id,
+                })
+            }
+            Self::Library { .. } | Self::ReleaseImage { .. } | Self::Remote { .. } => {
+                Err(BridgeError::internal(
+                    "a library or catalog image is no picture of the import list".to_string(),
+                ))
+            }
+        }
+    }
 }
 
 #[cfg(desktop)]
@@ -31,31 +53,5 @@ impl BridgeFileVersion {
             size: self.size,
             modified_at_ns: self.modified_at_ns,
         })
-    }
-}
-
-#[cfg(desktop)]
-impl BridgePictureSource {
-    pub(crate) fn into_core(self) -> Result<bae_import::PictureSource, BridgeError> {
-        Ok(match self {
-            Self::FolderFile { file } => bae_import::PictureSource::FolderFile(file.into_core()?),
-            Self::EmbeddedArt { source, candidate_key, source_file_id } => {
-                bae_import::PictureSource::EmbeddedArt {
-                    candidate: candidate_key.into(),
-                    file: source.into_core()?,
-                    source_file_id,
-                }
-            }
-        })
-    }
-}
-
-#[cfg(desktop)]
-impl BridgePictureTurn {
-    pub(crate) fn into_core(self) -> bae_import::PicturePriority {
-        match self {
-            Self::Visible => bae_import::PicturePriority::Visible,
-            Self::Prefetch => bae_import::PicturePriority::Prefetch,
-        }
     }
 }

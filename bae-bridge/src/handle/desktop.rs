@@ -422,12 +422,12 @@ forward! {
         /// is dropped. `turn` says whether a screen shows the picture now or
         /// may show it soon.
         fn picture(
-            source: crate::types::BridgePictureSource,
+            source: crate::types::BridgeCoverImageSource,
             pixels: Option<u32>,
             turn: crate::types::BridgePictureTurn,
         ) -> Vec<u8> {
             this.services
-                .import_read_picture(source.into_core()?, pixels, turn.into_core())
+                .import_read_picture(source.into_picture()?, pixels, turn.into_core())
                 .await
                 .map_err(BridgeError::from)
         }

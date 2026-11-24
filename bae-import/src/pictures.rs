@@ -16,20 +16,7 @@ use bae_pictures::{
 use coven::LeasedFile;
 
 use crate::folder_scanner::FileVersion;
-use crate::{CandidateKey, CoverRefusal, ImportError, ImportServices};
-
-/// One picture of the import list, named by where it comes from and the
-/// version of the file it comes from, so that a file the person replaced is
-/// another picture.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PictureSource {
-    /// An image file of a candidate's folder, as the scan read it.
-    FolderFile(FileVersion),
-    /// Art embedded in the tags of one of the candidate's audio files: `file`
-    /// is that file as the scan read it, and `source_file_id` names it among
-    /// the candidate's files.
-    EmbeddedArt { candidate: CandidateKey, file: FileVersion, source_file_id: String },
-}
+use crate::{CandidateKey, CoverImageSource, CoverRefusal, ImportError, ImportServices};
 
 /// Why a picture could not be read.
 #[derive(Debug, thiserror::Error)]
@@ -38,12 +25,20 @@ pub enum PictureError {
     /// list or its folder after the screen asked, or was never one of them.
     #[error("{} is not an image of a candidate in the import list", .0.display())]
     NotInImport(std::path::PathBuf),
+    /// The source is no file of the import list: a library image or a
+    /// catalog's, which core serves another way.
+    #[error("the source is no picture of the import list")]
+    NotAnImportPicture,
     /// The file is not the version the scan read: the person changed it
     /// since, and a copy of it would be kept under the old version.
     #[error("{} changed after its import candidate was scanned", .0.display())]
     ChangedSinceScan(std::path::PathBuf),
     #[error("opening {} failed: {error}", path.display())]
     Open { path: std::path::PathBuf, error: std::io::Error },
+    /// The opened file's modification time could not be read to compare it
+    /// with the scan's.
+    #[error(transparent)]
+    ModifiedTime(#[from] crate::folder_scanner::FolderScanError),
     #[error(transparent)]
     Pictures(#[from] bae_pictures::PicturesError),
     #[error(transparent)]
@@ -57,16 +52,25 @@ pub enum PictureError {
 /// The jobs making pictures now, and the reads each volume takes at once.
 #[derive(Clone)]
 pub(crate) struct ImportPictures {
-    flights: Flights<(PictureSource, PictureSize), Vec<u8>, PictureError>,
+    flights: Flights<(PictureKey, PictureSize), Vec<u8>, PictureError>,
     volumes: Volumes,
 }
 
-impl PictureSource {
-    /// The file the picture is read from, or whose tags carry it.
-    pub(crate) fn file(&self) -> &FileVersion {
-        match self {
-            Self::FolderFile(file) | Self::EmbeddedArt { file, .. } => file,
+/// What names one picture: the version of the file it is read from, and for
+/// art embedded in a file's tags the candidate and the file's id among its
+/// files.
+type PictureKey = (FileVersion, Option<(CandidateKey, String)>);
+
+/// The key of `source`, when it is a picture of the import list.
+fn key_of(source: &CoverImageSource) -> Option<PictureKey> {
+    match source {
+        CoverImageSource::Local { file } => Some((file.clone(), None)),
+        CoverImageSource::Embedded { source, candidate, source_file_id } => {
+            Some((source.clone(), Some((candidate.clone(), source_file_id.clone()))))
         }
+        CoverImageSource::Library { .. }
+        | CoverImageSource::ReleaseImage { .. }
+        | CoverImageSource::Remote { .. } => None,
     }
 }
 
@@ -84,17 +88,19 @@ impl ImportPictures {
     pub(crate) async fn read(
         &self,
         services: &ImportServices,
-        source: PictureSource,
+        source: CoverImageSource,
         pixels: Option<u32>,
         priority: Priority,
     ) -> Result<Vec<u8>, ImportError> {
         let size = PictureSize::covering(pixels);
+        let key = key_of(&source)
+            .ok_or_else(|| ImportError::Picture(Arc::new(PictureError::NotAnImportPicture)))?;
         let job = {
             let (services, volumes, source) =
                 (services.clone(), self.volumes.clone(), source.clone());
             move |cancelled: IsCancelled| make(services, volumes, source, size, priority, cancelled)
         };
-        match self.flights.request((source, size), job).await {
+        match self.flights.request((key, size), job).await {
             Ok(bytes) => Ok(Arc::try_unwrap(bytes).unwrap_or_else(|shared| (*shared).clone())),
             Err(FlightError::Failed(error)) => Err(ImportError::Picture(error)),
             Err(FlightError::Panicked) => Err(ImportError::Internal {
@@ -134,24 +140,24 @@ enum Origin {
 async fn make(
     services: ImportServices,
     volumes: Volumes,
-    source: PictureSource,
+    source: CoverImageSource,
     size: PictureSize,
     priority: Priority,
     cancelled: IsCancelled,
 ) -> Result<Vec<u8>, PictureError> {
-    let owner = services
-        .tables
-        .picture_owner(&source)
-        .await?
-        .ok_or_else(|| PictureError::NotInImport(source.file().path.clone()))?;
+    let owner = services.tables.picture_owner(&source).await?.ok_or_else(|| match &source {
+        CoverImageSource::Local { file } | CoverImageSource::Embedded { source: file, .. } => {
+            PictureError::NotInImport(file.path.clone())
+        }
+        _ => PictureError::NotAnImportPicture,
+    })?;
     if let PictureSize::Copy(step) = size {
-        if let Some(kept) = services.tables.load_picture_copy(&owner, &source, step).await? {
+        if let Some(kept) = services.tables.load_picture_copy(&owner, step).await? {
             return Ok(kept);
         }
     }
     let origin = match &source {
-        PictureSource::FolderFile(file) => Origin::File(file.clone()),
-        PictureSource::EmbeddedArt { candidate, source_file_id, .. } => Origin::Art(
+        CoverImageSource::Embedded { candidate, source_file_id, .. } => Origin::Art(
             services
                 .tables
                 .load_embedded_cover_bytes(candidate, source_file_id)
@@ -160,6 +166,9 @@ async fn make(
                     source_file_id: source_file_id.clone(),
                 })?,
         ),
+        CoverImageSource::Local { file } => Origin::File(file.clone()),
+        // A source of another kind has no owner.
+        _ => return Err(PictureError::NotAnImportPicture),
     };
     // Visible pictures read before prefetched ones, and a share is read a few
     // files at a time.
@@ -171,7 +180,7 @@ async fn make(
         .blocking("make a picture copy", move || read_picture(origin, size, cancelled, lease))
         .await??;
     if let (PictureSize::Copy(step), Made::Copy(copy)) = (size, &bytes) {
-        services.tables.store_picture_copy(&owner, &source, step, copy).await?;
+        services.tables.store_picture_copy(&owner, step, copy).await?;
     }
     Ok(match bytes {
         Made::Copy(copy) => copy.bytes,
@@ -233,8 +242,7 @@ fn open(version: &FileVersion, lease: &coven::FileLease) -> Result<FileOrigin, P
     // The opened file is the one that is read, so its size and time are the
     // ones to compare.
     let metadata = file.metadata().map_err(open_error)?;
-    let modified_at_ns = crate::folder_scanner::file_modified_at_ns(path, &metadata)
-        .map_err(|_unreadable| PictureError::ChangedSinceScan(path.clone()))?;
+    let modified_at_ns = crate::folder_scanner::file_modified_at_ns(path, &metadata)?;
     if metadata.len() != version.size || modified_at_ns != version.modified_at_ns {
         return Err(PictureError::ChangedSinceScan(path.clone()));
     }

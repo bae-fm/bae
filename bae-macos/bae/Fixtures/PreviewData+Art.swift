@@ -74,9 +74,9 @@ extension PreviewData {
             },
             fetchPicture: { source, _, _ in
                 switch source {
-                case .folderFile(let file):
+                case .local(let file):
                     try Data(contentsOf: file.url)
-                case .embeddedArt:
+                default:
                     throw ImageStoreUnavailable()
                 }
             }

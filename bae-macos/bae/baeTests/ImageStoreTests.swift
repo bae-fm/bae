@@ -730,7 +730,7 @@ struct ImageStoreContentIdentityTests {
         let fetches = Counter()
         let store = ImageStore(fetchPicture: { source, _, _ in
             guard
-                case .embeddedArt(_, let candidateKey, let sourceFileId) =
+                case .embedded(_, let candidateKey, let sourceFileId) =
                     source
             else {
                 Issue.record("embedded artwork asked for as \(source)")

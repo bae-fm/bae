@@ -124,7 +124,7 @@ public final class ImageStore: Sendable, Observable {
     /// stops when the call is cancelled and no other call wants the picture.
     private let fetchPicture:
         @Sendable (
-            _ source: BridgePictureSource,
+            _ source: BridgeCoverImageSource,
             _ pixels: UInt32?,
             _ turn: BridgePictureTurn
         ) async throws -> Data
@@ -167,7 +167,7 @@ public final class ImageStore: Sendable, Observable {
             Data? = { _, _ in throw ImageStoreUnavailable() },
         fetchPicture:
             @escaping @Sendable (
-                BridgePictureSource,
+                BridgeCoverImageSource,
                 UInt32?,
                 BridgePictureTurn
             ) async throws -> Data = { _, _, _ in
@@ -443,13 +443,13 @@ extension ImageStore {
             return bytes
         case .localFile(let file):
             return try await fetchPicture(
-                .folderFile(file: file),
+                .local(file: file),
                 target.pictureEdge,
                 turn
             )
         case .embeddedCover(let source, let candidateKey, let sourceFileId):
             return try await fetchPicture(
-                .embeddedArt(
+                .embedded(
                     source: source,
                     candidateKey: candidateKey,
                     sourceFileId: sourceFileId

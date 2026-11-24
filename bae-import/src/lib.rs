@@ -89,7 +89,7 @@ mod pictures;
 #[cfg(desktop)]
 pub use bae_pictures::Priority as PicturePriority;
 #[cfg(desktop)]
-pub use pictures::{PictureError, PictureSource};
+pub use pictures::PictureError;
 #[cfg(desktop)]
 pub mod preparations;
 #[cfg(desktop)]
