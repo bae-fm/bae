@@ -13,7 +13,8 @@ struct MacImportBulkTests {
     private static let paneSize = NSSize(width: 900, height: 700)
 
     /// The card keeps its own width and sits at the pane's center on both
-    /// axes, so a pane far wider than the card doesn't strand it in a corner.
+    /// axes, below the pane's top inset, so a pane far wider than the card
+    /// doesn't strand it in a corner.
     @Test("the card is centered in the pane at its own width")
     func theCardIsCenteredInThePane() async throws {
         // Where the destination pop-up lands in the pane, less where it sits
@@ -45,7 +46,11 @@ struct MacImportBulkTests {
             "the card's leading edge is at \(origin.x)"
         )
         #expect(
-            abs(origin.y - (Self.paneSize.height - cardSize.height) / 2) <= 1,
+            abs(
+                origin.y
+                    - (Self.paneSize.height + ThemeSpace.section
+                        - cardSize.height) / 2
+            ) <= 1,
             "the card's top edge is at \(origin.y)"
         )
     }
