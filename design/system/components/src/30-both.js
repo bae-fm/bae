@@ -1,34 +1,90 @@
   // ---- Both ----
 
-  // The QR code each app's own component shot draws, a row of modules per string (1 a dark module), without its quiet zone, so a phone's camera reads the board's code as it reads the app's. Both are at the low error-correction level the apps encode at.
-  // The Mac's: the pairing code bae-pairing-4F7K-2M9Q, as Core Image encodes it (QRCode.swift), version 2.
-  var MAC_QR = [
-    '1111111000100101101111111',
-    '1000001001000101001000001',
-    '1011101010010010001011101',
-    '1011101001001101101011101',
-    '1011101001001101101011101',
-    '1000001000111000001000001',
-    '1111111010101010101111111',
-    '0000000010010000100000000',
-    '1110111110001101111000100',
-    '1010000001011111111000011',
-    '1111111010111010010111111',
-    '1111010011101101111111000',
-    '1011001000110010011000001',
-    '0010100100110001111000111',
-    '1010101111100100011001111',
-    '0111010010010001001100011',
-    '1000001110101001111111001',
-    '0000000010011100100011011',
-    '1111111011011011101010111',
-    '1000001011001111100010001',
-    '1011101010010010111110000',
-    '1011101000110010110011010',
-    '1011101010100101100111101',
-    '1000001010010000010000010',
-    '1111111011001001101000011'
-  ];
+  // The QR codes the apps' shots draw, a row of modules per string (1 a dark module), without the quiet zone, so a phone's camera reads the board's code as it reads the app's. All are at the low error-correction level the apps encode at.
+  // The Mac's, by the text each holds, as Core Image encodes it (QRCode.swift), version 2: the pairing code of the component's own shot, then the device and invite codes Add device's and the invite's shots show.
+  var MAC_QR = {
+    'bae-pairing-4F7K-2M9Q': [
+      '1111111000100101101111111',
+      '1000001001000101001000001',
+      '1011101010010010001011101',
+      '1011101001001101101011101',
+      '1011101001001101101011101',
+      '1000001000111000001000001',
+      '1111111010101010101111111',
+      '0000000010010000100000000',
+      '1110111110001101111000100',
+      '1010000001011111111000011',
+      '1111111010111010010111111',
+      '1111010011101101111111000',
+      '1011001000110010011000001',
+      '0010100100110001111000111',
+      '1010101111100100011001111',
+      '0111010010010001001100011',
+      '1000001110101001111111001',
+      '0000000010011100100011011',
+      '1111111011011011101010111',
+      '1000001011001111100010001',
+      '1011101010010010111110000',
+      '1011101000110010110011010',
+      '1011101010100101100111101',
+      '1000001010010000010000010',
+      '1111111011001001101000011'
+    ],
+    'CVP1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567': [
+      '1111111001000010001111111',
+      '1000001011011111101000001',
+      '1011101001110111101011101',
+      '1011101011010100101011101',
+      '1011101000101011101011101',
+      '1000001010100100001000001',
+      '1111111010101010101111111',
+      '0000000000001000100000000',
+      '1111101111101111010101010',
+      '0111000011000010110000101',
+      '1010101111011110110000010',
+      '0010000101110110111110101',
+      '0011001011011100100011000',
+      '1011110100101111010100110',
+      '1000001111101111111010100',
+      '1011010100101010111100110',
+      '1010111100110001111111001',
+      '0000000010011011100010100',
+      '1111111010001011101010100',
+      '1000001001010100100010100',
+      '1011101010111001111110001',
+      '1011101010100101000101111',
+      '1011101010110001110101101',
+      '1000001010101100110110000',
+      '1111111010000100001100001'
+    ],
+    'CVI1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567': [
+      '1111111000100001101111111',
+      '1000001011100111001000001',
+      '1011101010000110001011101',
+      '1011101001001000101011101',
+      '1011101011101100101011101',
+      '1000001010101010001000001',
+      '1111111010101010101111111',
+      '0000000010110000000000000',
+      '1101001100011110101110110',
+      '0100110011011110101100000',
+      '0010011000011001110111111',
+      '1110000111111000110000101',
+      '0000011000111111000000111',
+      '0110100000010111101100001',
+      '1001111100011110001011010',
+      '0110000100110110100000101',
+      '1100101110110110111110001',
+      '0000000011110101100010101',
+      '1111111011101000101011000',
+      '1000001001101100100010011',
+      '1011101001001000111111111',
+      '1011101011011001011001100',
+      '1011101000110110110010101',
+      '1000001010100010111000001',
+      '1111111010100111101111101'
+    ]
+  };
   // Android's: an invite code with no S3 key, CVI1- and 64 letters and digits, as ZXing encodes it (QRCodeImage), version 3.
   var ANDROID_QR = [
     '11111110001011110110001111111',
@@ -75,10 +131,10 @@
     return h('div', { className: 'bae-scan-qr' },
       h('svg', { width: size, height: size, viewBox: '0 0 ' + n + ' ' + n, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, cells));
   }
-  // Without `size`, a code is as wide as its modules need, as the apps draw it. On Android, `size` is the side of the whole code, quiet zone included, as QRCodeImage draws it; on the Mac, it sets the picture's side on a printed page.
+  // Without `size`, a code is as wide as its modules need, as the apps draw it. On the Mac, `code` is the text the QR code holds, one of MAC_QR's. On Android, `size` is the side of the whole code, quiet zone included, as QRCodeImage draws it; on the Mac, it sets the picture's side on a printed page.
   function ScanCode(prefix) {
     return function (props) {
-      var rows = prefix === 'bae-a' ? ANDROID_QR : MAC_QR;
+      var rows = prefix === 'bae-a' ? ANDROID_QR : MAC_QR[props.code || 'bae-pairing-4F7K-2M9Q'];
       var qr = props.size == null ? { rows: rows, module: QR_MODULE }
         : prefix === 'bae-a' ? { rows: rows, module: Number(props.size) / (rows.length + 2 * QR_QUIET) }
         : { rows: rows, size: props.size };
