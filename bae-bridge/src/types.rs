@@ -24,7 +24,6 @@ mod message;
 mod open_error;
 mod operation_rejection;
 mod pending;
-#[cfg(desktop)]
 mod picture;
 mod play_outcome;
 mod playback_values;
@@ -60,7 +59,6 @@ pub use message::*;
 pub use open_error::*;
 pub use operation_rejection::*;
 pub use pending::*;
-#[cfg(desktop)]
 pub use picture::*;
 pub use play_outcome::*;
 pub use playback_values::*;

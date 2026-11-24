@@ -2,6 +2,7 @@
 //! bindings, the shared Swift package's among them; only the desktop core reads
 //! them.
 
+#[cfg(desktop)]
 use super::*;
 
 /// Whether a screen shows a picture now, or may show it soon. Core reads what
