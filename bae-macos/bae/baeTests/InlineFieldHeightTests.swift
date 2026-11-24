@@ -5,14 +5,15 @@ import Testing
 
 @testable import bae
 
-/// An inline field is as tall as a Text of its font, on every hosting.
+/// An inline field is as tall as a Text of its font inside the field's
+/// padding, on every hosting.
 ///
 /// The text field behind it clips to its own bounds, and a SwiftUI
 /// `TextField` now and then handed it the height of another field in the
-/// same tree, cutting the top off a title. The field now lays itself out
-/// from a Text of the same font and edits in exactly that frame, so its
-/// height is that Text's on the first hosting, on a remount, and everywhere
-/// in between.
+/// same tree, cutting the top off a title. The field lays itself out from a
+/// Text of the same font, pads it as its chrome does and edits in exactly
+/// that frame, so its height is that box's on the first hosting, on a
+/// remount, and everywhere in between.
 @MainActor
 @Suite("Inline field height")
 struct InlineFieldHeightTests {
@@ -25,8 +26,17 @@ struct InlineFieldHeightTests {
         var textHeight: CGFloat?
     }
 
+    /// The box of an inline field holding a line `textHeight` tall.
+    private static func boxHeight(_ textHeight: CGFloat) -> CGFloat {
+        max(
+            FieldChrome.inlineMinHeight,
+            textHeight + 2 * FieldChrome.padding(of: .inline).height
+        )
+    }
+
     /// The header's title field, hosted twice in one process with a remount
-    /// between, is exactly as tall as a Text of the title's font each time.
+    /// between, is exactly as tall as the box of a Text of the title's font
+    /// each time.
     @Test("the title field takes its height from its text, remount or not")
     func theTitleFieldTakesItsHeightFromItsText() async throws {
         let first = try await hostedTitleFieldHeight()
@@ -49,14 +59,16 @@ struct InlineFieldHeightTests {
             size: Self.size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let textHeight = try #require(measured.textHeight)
-            #expect(first == textHeight)
-            #expect(second == textHeight)
+            let boxHeight = Self.boxHeight(
+                try #require(measured.textHeight)
+            )
+            #expect(first == boxHeight)
+            #expect(second == boxHeight)
         }
     }
 
-    /// Every field in the header is exactly as tall as AppKit measures a
-    /// line of the field's own font, on every one of many hostings. The
+    /// Every field in the header is exactly as tall as the box of a line of
+    /// the field's own font, on every one of many hostings. The
     /// borrowed height came a few hostings in a thousand, so the check is
     /// made of many hostings rather than one.
     @Test("every field is as tall as its own font, hosting after hosting")
@@ -74,7 +86,10 @@ struct InlineFieldHeightTests {
                 #expect(fields.count == 4 + 2 * labelRows)
                 for field in fields {
                     #expect(
-                        field.frame.height == field.intrinsicContentSize.height,
+                        field.frame.height
+                            == Self.boxHeight(
+                                field.intrinsicContentSize.height
+                            ),
                         "\(field.font?.pointSize ?? 0)-point field is \(field.frame.height) tall"
                     )
                 }
