@@ -626,9 +626,9 @@ impl ImportError {
             // failed read or decode is the file's own.
             #[cfg(desktop)]
             Self::Picture(error) => match **error {
-                crate::PictureError::NotInImport(_) | crate::PictureError::NoArt(_) => {
-                    C::ChangedMeanwhile
-                }
+                crate::PictureError::NotInImport(_)
+                | crate::PictureError::ChangedSinceScan(_)
+                | crate::PictureError::NoArt(_) => C::ChangedMeanwhile,
                 crate::PictureError::Open { .. } | crate::PictureError::Pictures(_) => C::Import,
                 crate::PictureError::Task(_) | crate::PictureError::Db(_) => C::Internal,
             },

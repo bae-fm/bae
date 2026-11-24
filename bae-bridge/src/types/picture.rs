@@ -25,8 +25,8 @@ pub enum BridgePictureTurn {
 
 #[cfg(desktop)]
 impl BridgeFileVersion {
-    fn into_core(self) -> Result<bae_import::PictureFile, BridgeError> {
-        Ok(bae_import::PictureFile {
+    fn into_core(self) -> Result<bae_import::folder_scanner::FileVersion, BridgeError> {
+        Ok(bae_import::folder_scanner::FileVersion {
             path: crate::from_app::path(self.path)?,
             size: self.size,
             modified_at_ns: self.modified_at_ns,
@@ -41,7 +41,7 @@ impl BridgePictureSource {
             Self::FolderFile { file } => bae_import::PictureSource::FolderFile(file.into_core()?),
             Self::EmbeddedArt { source, candidate_key, source_file_id } => {
                 bae_import::PictureSource::EmbeddedArt {
-                    candidate_key,
+                    candidate: candidate_key.into(),
                     file: source.into_core()?,
                     source_file_id,
                 }

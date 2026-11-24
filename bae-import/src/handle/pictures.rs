@@ -11,7 +11,7 @@ impl ImportServiceHandle {
     /// wants the same picture and size.
     pub async fn read_picture(
         &self,
-        source: bae_pictures::PictureSource,
+        source: crate::PictureSource,
         pixels: Option<u32>,
         priority: bae_pictures::Priority,
     ) -> Result<Vec<u8>, crate::ImportError> {

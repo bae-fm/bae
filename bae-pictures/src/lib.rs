@@ -23,7 +23,7 @@ pub use gate::{Permit, Priority, Volumes};
 pub use origin::PictureOrigin;
 pub use original::read_original;
 pub use step::PictureStep;
-pub use types::{PictureSize, PictureSource, SourceFile};
+pub use types::PictureSize;
 
 /// Asks whether the job that holds it should stop: what a reader checks before
 /// each read of the original.

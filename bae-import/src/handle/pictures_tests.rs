@@ -5,7 +5,8 @@
 
 use crate::handle::tests::*;
 use crate::tests::reads::{self, FileRead};
-use bae_pictures::{PictureSource, Priority, SourceFile};
+use crate::PictureSource;
+use bae_pictures::Priority;
 
 /// `fixture`'s folder holding a GIF named `name`, stored as a scan reads it,
 /// and the picture that names it.
@@ -32,12 +33,7 @@ async fn with_image(
         .version
         .clone();
     let path = version.path.clone();
-    let file = SourceFile {
-        path: version.path,
-        size: version.size,
-        modified_at_ns: version.modified_at_ns,
-    };
-    (PictureSource::FolderFile(file), path)
+    (PictureSource::FolderFile(version), path)
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -108,8 +104,11 @@ async fn a_candidate_set_aside_keeps_no_copies() {
 async fn a_file_the_import_list_does_not_hold_is_refused() {
     let fixture = stored_candidate().await;
     let stray = fixture.tmp.write("stray.gif", bae_util::test_cover_art::SOLID_GIF);
-    let picture =
-        PictureSource::FolderFile(SourceFile { path: stray, size: 51, modified_at_ns: 1 });
+    let picture = PictureSource::FolderFile(crate::folder_scanner::FileVersion {
+        path: stray,
+        size: 51,
+        modified_at_ns: 1,
+    });
 
     let refused = fixture.handle.read_picture(picture, Some(100), Priority::Visible).await;
     shut_down(fixture.handle).await;
@@ -144,4 +143,42 @@ async fn an_imported_candidate_keeps_no_copies() {
     shut_down(fixture.handle).await;
 
     assert_eq!(kept, 0);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_file_replaced_after_its_scan_makes_no_copy() {
+    let mut fixture = stored_candidate().await;
+    let (picture, path) = with_image(&mut fixture, "cover.gif").await;
+    // The person saves another picture over the file after the scan read it.
+    fixture.tmp.write(&path, bae_util::test_cover_art::SOLID_WEBP);
+
+    let refused = fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await;
+    let owner = fixture.handle.services.tables.picture_owner(&picture).await.unwrap().unwrap();
+    let kept = fixture.handle.services.tables.picture_copy_count(&owner).await.unwrap();
+    shut_down(fixture.handle).await;
+
+    assert!(
+        matches!(&refused, Err(crate::ImportError::Picture(error)) if matches!(**error, crate::PictureError::ChangedSinceScan(_))),
+        "{refused:?}"
+    );
+    assert_eq!(kept, 0, "a copy of the new file would be kept under the old file's version");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_file_touched_after_its_scan_makes_no_copy() {
+    let mut fixture = stored_candidate().await;
+    let (picture, path) = with_image(&mut fixture, "cover.gif").await;
+    fixture
+        .tmp
+        .open_with(&path, std::fs::OpenOptions::new().write(true))
+        .set_modified(std::time::SystemTime::now())
+        .expect("set the file's modification time");
+
+    let refused = fixture.handle.read_picture(picture, Some(100), Priority::Visible).await;
+    shut_down(fixture.handle).await;
+
+    assert!(
+        matches!(&refused, Err(crate::ImportError::Picture(error)) if matches!(**error, crate::PictureError::ChangedSinceScan(_))),
+        "{refused:?}"
+    );
 }

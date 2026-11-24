@@ -8,15 +8,28 @@
 
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use std::path::Path;
 use std::sync::Arc;
 
 use bae_pictures::{
-    FlightError, Flights, IsCancelled, PictureCopy, PictureSize, PictureSource, Priority, Volumes,
+    FlightError, Flights, IsCancelled, PictureCopy, PictureSize, Priority, Volumes,
 };
 use coven::LeasedFile;
 
+use crate::folder_scanner::FileVersion;
 use crate::{CandidateKey, CoverRefusal, ImportError, ImportServices};
+
+/// One picture of the import list, named by where it comes from and the
+/// version of the file it comes from, so that a file the person replaced is
+/// another picture.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PictureSource {
+    /// An image file of a candidate's folder, as the scan read it.
+    FolderFile(FileVersion),
+    /// Art embedded in the tags of one of the candidate's audio files: `file`
+    /// is that file as the scan read it, and `source_file_id` names it among
+    /// the candidate's files.
+    EmbeddedArt { candidate: CandidateKey, file: FileVersion, source_file_id: String },
+}
 
 /// Why a picture could not be read.
 #[derive(Debug, thiserror::Error)]
@@ -25,6 +38,10 @@ pub enum PictureError {
     /// list or its folder after the screen asked, or was never one of them.
     #[error("{} is not an image of a candidate in the import list", .0.display())]
     NotInImport(std::path::PathBuf),
+    /// The file is not the version the scan read: the person changed it
+    /// since, and a copy of it would be kept under the old version.
+    #[error("{} changed after its import candidate was scanned", .0.display())]
+    ChangedSinceScan(std::path::PathBuf),
     #[error("opening {} failed: {error}", path.display())]
     Open { path: std::path::PathBuf, error: std::io::Error },
     #[error(transparent)]
@@ -42,6 +59,15 @@ pub enum PictureError {
 pub(crate) struct ImportPictures {
     flights: Flights<(PictureSource, PictureSize), Vec<u8>, PictureError>,
     volumes: Volumes,
+}
+
+impl PictureSource {
+    /// The file the picture is read from, or whose tags carry it.
+    pub(crate) fn file(&self) -> &FileVersion {
+        match self {
+            Self::FolderFile(file) | Self::EmbeddedArt { file, .. } => file,
+        }
+    }
 }
 
 impl ImportPictures {
@@ -96,8 +122,8 @@ impl Seek for FileOrigin {
 
 /// Where the bytes of one picture are read from.
 enum Origin {
-    /// The image file.
-    File(std::path::PathBuf),
+    /// The image file, at the version the scan read.
+    File(FileVersion),
     /// The art the candidate's tag snapshot stored.
     Art(Vec<u8>),
 }
@@ -113,29 +139,22 @@ async fn make(
     priority: Priority,
     cancelled: IsCancelled,
 ) -> Result<Vec<u8>, PictureError> {
-    let path = match &source {
-        PictureSource::FolderFile(file) => file.path.clone(),
-        PictureSource::EmbeddedArt { file, .. } => file.path.clone(),
-    };
     let owner = services
         .tables
         .picture_owner(&source)
         .await?
-        .ok_or_else(|| PictureError::NotInImport(path.clone()))?;
+        .ok_or_else(|| PictureError::NotInImport(source.file().path.clone()))?;
     if let PictureSize::Copy(step) = size {
         if let Some(kept) = services.tables.load_picture_copy(&owner, &source, step).await? {
             return Ok(kept);
         }
     }
     let origin = match &source {
-        PictureSource::FolderFile(_) => Origin::File(path),
-        PictureSource::EmbeddedArt { candidate_key, source_file_id, .. } => Origin::Art(
+        PictureSource::FolderFile(file) => Origin::File(file.clone()),
+        PictureSource::EmbeddedArt { candidate, source_file_id, .. } => Origin::Art(
             services
                 .tables
-                .load_embedded_cover_bytes(
-                    &CandidateKey::from(candidate_key.clone()),
-                    source_file_id,
-                )
+                .load_embedded_cover_bytes(candidate, source_file_id)
                 .await?
                 .ok_or_else(|| CoverRefusal::NoTagArtwork {
                     source_file_id: source_file_id.clone(),
@@ -184,12 +203,12 @@ fn read_picture(
 ) -> Result<Made, PictureError> {
     let read = |origin: Box<dyn Read + Send>| bae_pictures::read_original(origin, &cancelled);
     match (origin, size) {
-        (Origin::File(path), PictureSize::Copy(step)) => {
-            let file = open(&path, &lease)?;
+        (Origin::File(version), PictureSize::Copy(step)) => {
+            let file = open(&version, &lease)?;
             Ok(Made::Copy(bae_pictures::make_copy(file, cancelled, step)?))
         }
-        (Origin::File(path), PictureSize::Original) => {
-            Ok(Made::Original(read(Box::new(open(&path, &lease)?))?))
+        (Origin::File(version), PictureSize::Original) => {
+            Ok(Made::Original(read(Box::new(open(&version, &lease)?))?))
         }
         (Origin::Art(art), PictureSize::Copy(step)) => {
             Ok(Made::Copy(bae_pictures::make_copy(Cursor::new(art), cancelled, step)?))
@@ -198,16 +217,26 @@ fn read_picture(
     }
 }
 
+/// Opens the file the scan read as `version`, refused when it is no longer that
+/// version: a copy of a file the person replaced since would be kept under the
+/// version the scan read.
 #[expect(
     clippy::disallowed_methods,
     reason = "file system: the picture is the person's own file in a watched folder, read before coven records anything of it"
 )]
-fn open(path: &Path, lease: &coven::FileLease) -> Result<FileOrigin, PictureError> {
+fn open(version: &FileVersion, lease: &coven::FileLease) -> Result<FileOrigin, PictureError> {
+    let path = &version.path;
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::PictureOriginal, path);
-    lease
-        .place_blocking()
-        .open(path)
-        .map(FileOrigin)
-        .map_err(|error| PictureError::Open { path: path.to_path_buf(), error })
+    let open_error = |error| PictureError::Open { path: path.clone(), error };
+    let file = lease.place_blocking().open(path).map_err(open_error)?;
+    // The opened file is the one that is read, so its size and time are the
+    // ones to compare.
+    let metadata = file.metadata().map_err(open_error)?;
+    let modified_at_ns = crate::folder_scanner::file_modified_at_ns(path, &metadata)
+        .map_err(|_unreadable| PictureError::ChangedSinceScan(path.clone()))?;
+    if metadata.len() != version.size || modified_at_ns != version.modified_at_ns {
+        return Err(PictureError::ChangedSinceScan(path.clone()));
+    }
+    Ok(FileOrigin(file))
 }

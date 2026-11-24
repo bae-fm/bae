@@ -5,8 +5,10 @@
 
 use super::folder_scans::columns::volume_of;
 use super::*;
+use crate::folder_scanner::FileVersion;
+use crate::PictureSource;
 use crate::VolumeKind;
-use bae_pictures::{CopyFormat, PictureCopy, PictureSource, PictureStep, SourceFile};
+use bae_pictures::{CopyFormat, PictureCopy, PictureStep};
 use std::path::Path;
 
 /// The picture copies' part of the library's schema.
@@ -72,7 +74,7 @@ impl ImportTables {
                     ))
                 };
                 let found = match &source {
-                    PictureSource::FolderFile(SourceFile { path, size, modified_at_ns }) => sql
+                    PictureSource::FolderFile(FileVersion { path, size, modified_at_ns }) => sql
                         .query_row(
                             "SELECT f.watched_folder_path, f.candidate_path, r.volume \
                              FROM scan_candidate_file AS f \
@@ -89,14 +91,14 @@ impl ImportTables {
                             row,
                         )
                         .optional()?,
-                    PictureSource::EmbeddedArt { candidate_key, .. } => sql
+                    PictureSource::EmbeddedArt { candidate, .. } => sql
                         .query_row(
                             "SELECT c.watched_folder_path, c.path, r.volume \
                              FROM scan_candidate AS c \
                              JOIN folder_scan_roots AS r \
                                ON r.watched_folder_path = c.watched_folder_path \
                              WHERE c.path = ? LIMIT 1",
-                            [candidate_key],
+                            [candidate],
                             row,
                         )
                         .optional()?,
