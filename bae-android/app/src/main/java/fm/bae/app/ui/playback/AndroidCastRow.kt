@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import fm.bae.app.R
 import fm.bae.app.data.CastStart
@@ -132,7 +134,8 @@ private fun CastReceiverLabel(
     wait: CastWait?,
     modifier: Modifier,
 ) {
-    Column(modifier = modifier) {
+    // One traversal group: TalkBack reads the name and its line together before the row's trailing control.
+    Column(modifier = modifier.semantics { isTraversalGroup = true }) {
         Text(
             text = receiver.name,
             style = ThemeText.rowTitle.style,

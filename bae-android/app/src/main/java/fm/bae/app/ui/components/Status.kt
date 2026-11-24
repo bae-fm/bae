@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -246,7 +248,8 @@ internal fun AndroidItem(
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         lead?.let { FirstLine(content = it) }
-        Column(modifier = Modifier.weight(1f), content = content)
+        // One traversal group: TalkBack reads the text lines together before the trailing control.
+        Column(modifier = Modifier.weight(1f).semantics { isTraversalGroup = true }, content = content)
         trail?.let { FirstLine(content = it) }
     }
 }

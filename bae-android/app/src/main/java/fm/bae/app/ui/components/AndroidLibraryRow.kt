@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
@@ -64,10 +66,12 @@ internal fun AndroidLibraryRow(
             RowArt(art = art, playlistCover = playlistCover, missing = missing)
             Spacer(modifier = Modifier.width(ThemeSpace.group))
         }
+        // One traversal group: TalkBack reads the title and subtitle together before the trailing duration.
         Column(
             modifier =
                 Modifier
                     .weight(1f)
+                    .semantics { isTraversalGroup = true }
                     .then(
                         if (inset) {
                             Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)

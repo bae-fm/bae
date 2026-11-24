@@ -26,6 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
@@ -371,10 +374,12 @@ fun AndroidErrorDetails(
     modifier: Modifier = Modifier,
 ) {
     val copy = rememberCopyText()
+    // One traversal group, whose copy button comes after the causes it copies.
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
+                .semantics { isTraversalGroup = true }
                 .background(BaeTheme.colors.insetPanel, RoundedCornerShape(ThemeRadius.field)),
     ) {
         SelectionContainer(
@@ -396,7 +401,8 @@ fun AndroidErrorDetails(
                 Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = ThemeSpace.related, end = ThemeSpace.related)
-                    .size(COPY_BOX),
+                    .size(COPY_BOX)
+                    .semantics { traversalIndex = 1f },
             tone = IconTone.MUTED,
             glyph = ThemeIcon.small,
         )
