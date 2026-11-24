@@ -33,6 +33,7 @@ private struct MacSwitchStyle: ToggleStyle {
     private static let width: CGFloat = 32
     private static let height: CGFloat = 18
     private static let inset: CGFloat = 2
+    private static let disabledOpacity = 0.45
 
     func makeBody(configuration: Configuration) -> some View {
         let knob = Self.height - Self.inset * 2
@@ -52,7 +53,8 @@ private struct MacSwitchStyle: ToggleStyle {
                     .padding(Self.inset)
             }
             .frame(width: Self.width, height: Self.height)
-            .opacity(isEnabled ? 1 : ThemeOpacity.off)
+            .compositingGroup()
+            .opacity(isEnabled ? 1 : Self.disabledOpacity)
             .contentShape(Capsule())
             .onTapGesture {
                 guard isEnabled else { return }
