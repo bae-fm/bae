@@ -66,7 +66,7 @@ private struct MediumCountRow: View {
     }
 
     var body: some View {
-        HStack(spacing: ThemeSpace.inline) {
+        HStack(spacing: ThemeSpace.compact) {
             Text(name)
             Text("\u{00D7}\(Int(counted.count))")
                 .monospacedDigit()

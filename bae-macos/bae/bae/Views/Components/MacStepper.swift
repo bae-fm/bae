@@ -16,6 +16,9 @@ struct MacStepper: View {
             EmptyView()
         }
         .labelsHidden()
+        .controlSize(.small)
+        // The board's stepper box.
+        .frame(width: 16, height: 22)
         .disabled(off)
         .opacity(off ? ThemeOpacity.off : 1)
         .accessibilityLabel(label)
