@@ -53,7 +53,8 @@
 .bae-m-reclinks { display: flex; flex-wrap: wrap; gap: var(--space-inline) var(--space-group); min-width: 0; }
 .bae-m-reclink { display: inline-flex; align-items: center; gap: var(--space-inline); font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-itable-scroll { overflow-x: auto; }
-.bae-m-itable { display: flex; flex-direction: column; min-width: 560px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+/* The table is never narrower than its columns' floors and the four gaps between them, as the app's table is. */
+.bae-m-itable { display: flex; flex-direction: column; min-width: calc(160px + 52px + 120px + 100px + 88px + 4 * var(--space-related)); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-itable-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) 52px minmax(120px, 1fr) minmax(100px, 1fr) 88px; gap: var(--space-related); align-items: center; }
 .bae-m-itable-head { padding-bottom: var(--space-compact); }
 .bae-m-itable-side { padding: var(--space-edge) 0 var(--space-compact); }
