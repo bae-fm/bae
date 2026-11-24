@@ -147,6 +147,13 @@ private val PHONE_WIDTH = 412.dp
 
 internal const val PHONE_QUALIFIERS = "w412dp-h916dp-night-420dpi"
 private const val SETTLE_MILLIS = 100L
+
+/**
+ * The extra time a shot of an indeterminate spinner advances, as `enterMillis`. The board draws the arc from 12 to
+ * 3 o'clock. On the stopped clock the spinner's arc starts at 12 o'clock only at 3.46 s (settle plus this), and
+ * covers about 50 degrees there: the nearest the real animation comes. The spinner turns in the app.
+ */
+internal const val SPINNER_ARC_MILLIS = 3_360L
 private const val FOCUS_SETTLE_MILLIS = 200L
 private const val JSON_INDENT = 2
 

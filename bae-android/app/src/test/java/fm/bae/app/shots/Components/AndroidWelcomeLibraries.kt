@@ -17,7 +17,7 @@ class AndroidWelcomeLibrariesShots : BoardShot() {
 
     @Test
     fun androidComponentWelcomeLibrariesRemoving() =
-        component("android.component.welcome-libraries.removing") {
+        component("android.component.welcome-libraries.removing", enterMillis = SPINNER_ARC_MILLIS) {
             InsideScreenEdges { WelcomeLibrariesSceneContent(onAdd = {}, running = sceneLeavingRemoval()) }
         }
 

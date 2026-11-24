@@ -6,9 +6,11 @@ import org.junit.Test
 /** The component shots of `AndroidSpinner`, one for each row of its preview. */
 class AndroidSpinnerShots : BoardShot() {
     @Test
-    fun androidComponentSpinnerAlone() = component("android.component.spinner.alone") { AndroidSpinner() }
+    fun androidComponentSpinnerAlone() = component("android.component.spinner.alone", enterMillis = SPINNER_ARC_MILLIS) { AndroidSpinner() }
 
     @Test
     fun androidComponentSpinnerWithWords() =
-        component("android.component.spinner.with-words") { AndroidSpinner(text = "Looking for receivers…") }
+        component("android.component.spinner.with-words", enterMillis = SPINNER_ARC_MILLIS) {
+            AndroidSpinner(text = "Looking for receivers…")
+        }
 }

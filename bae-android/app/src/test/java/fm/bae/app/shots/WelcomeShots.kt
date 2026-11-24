@@ -128,7 +128,10 @@ class WelcomeShots : BoardShot() {
 
     /** The welcome while a library is being removed: its row shows the step, with a spinner where the ⋮ was. */
     @Test
-    fun androidWelcomeRemoveRemoving() = shot("android.welcome.remove.removing") { ScreenScene { WelcomeRemovingScene() } }
+    fun androidWelcomeRemoveRemoving() =
+        shot("android.welcome.remove.removing", enterMillis = SPINNER_ARC_MILLIS) {
+            ScreenScene { WelcomeRemovingScene() }
+        }
 
     /** The dialog for a removal that failed. */
     @Test

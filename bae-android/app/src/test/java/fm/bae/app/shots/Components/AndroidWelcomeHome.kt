@@ -29,7 +29,8 @@ class AndroidWelcomeHomeShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentWelcomeHomeRemoving() = shot("android.component.welcome-home.removing") { ScreenScene { WelcomeRemovingScene() } }
+    fun androidComponentWelcomeHomeRemoving() =
+        shot("android.component.welcome-home.removing", enterMillis = SPINNER_ARC_MILLIS) { ScreenScene { WelcomeRemovingScene() } }
 
     @Test
     fun androidComponentWelcomeHomeUnreadable() =
