@@ -52,7 +52,8 @@ struct MacTrackLead: View {
                 .foregroundStyle(Theme.accent)
                 .opacity(isCurrent && !hover ? 1 : 0)
                 .accessibilityLabel("Now playing")
-                .accessibilityHidden(!isCurrent)
+                // Under the pointer the button takes the speaker's place.
+                .accessibilityHidden(!isCurrent || hover)
         }
         // The Play icon is wider than a one-digit number's column: the extra
         // width hangs to the left, so the number ends where the column ends.
