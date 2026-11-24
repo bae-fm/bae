@@ -12,7 +12,10 @@ struct PlaylistFields: View {
     private static let choices: [BridgeSharing] = [.private, .household]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+        VStack(
+            alignment: .leading,
+            spacing: ThemeSpace.related + ThemeSpace.line
+        ) {
             MacFormField("Name") {
                 BoxedField(text: $name)
             }

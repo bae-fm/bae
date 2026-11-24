@@ -22,7 +22,10 @@ struct NewPlaylistSheet: View {
 
     var body: some View {
         MacSheet("New playlist", width: 420) {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            VStack(
+                alignment: .leading,
+                spacing: ThemeSpace.related + ThemeSpace.line
+            ) {
                 PlaylistFields(name: $state.name, sharing: $state.sharing)
                 if let error = state.error {
                     MacNotice(error: error)
