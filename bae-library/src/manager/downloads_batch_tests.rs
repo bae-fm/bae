@@ -57,7 +57,7 @@ async fn queue_pins(manager: &LibraryManager, releases: &[String]) {
 /// in the write that pins every file. The queue is paused again after, as
 /// the test found it.
 async fn pin(manager: &LibraryManager, release: &str) {
-    let entry = started_pin_entry(manager, release).await;
+    let entry = manager.started_pin_entry_for_test(release).await;
     manager.pin_release_files_with_progress(release, entry, |_| {}).await.unwrap();
     manager.set_downloads_paused(true).await.unwrap();
 }
@@ -137,7 +137,7 @@ async fn pins_and_moves_to_this_device_are_counted_apart() {
     // The move-to-this-device of the third release, as the worker runs it: its files
     // switched to this device in the write that ends its entry. Starting it
     // resumes the queue, so the worker must have read the paused one first.
-    settled_download_worker(manager).await;
+    manager.settle_download_worker_for_test().await;
     let moved_to_this_device = releases[2].clone();
     let activated = manager
         .store

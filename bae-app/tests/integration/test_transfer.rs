@@ -76,21 +76,7 @@ async fn pin_with_events(
     release_id: &str,
 ) -> (Vec<TransferProgress>, Result<bae_transfers::Finished, bae_library::LibraryError>) {
     let manager = library.manager();
-    manager.set_downloads_paused(true).await.unwrap();
-    manager.enqueue_pins(vec![release_id.to_string()]).await.unwrap();
-    let started = release_id.to_string();
-    library
-        .store()
-        .call(move |sql| {
-            bae_transfers::tables::worker_moves::activate_on::<bae_transfers::DownloadRequest>(
-                sql, &started,
-            )
-        })
-        .await
-        .unwrap();
-    let entry = bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(
-        release_id,
-    );
+    let entry = manager.started_pin_entry_for_test(release_id).await;
     let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let sink = events.clone();
     let outcome = manager

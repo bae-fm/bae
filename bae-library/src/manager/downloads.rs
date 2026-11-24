@@ -39,6 +39,38 @@ impl LibraryManager {
         missing_releases_error("pin", queued.missing).map_or(Ok(()), Err)
     }
 
+    /// Wait until the download worker has read the queue as the last wake left
+    /// it, so it takes nothing a test starts by hand next.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn settle_download_worker_for_test(&self) {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, self.downloads.settled())
+            .await
+            .expect("the download worker parks on the paused queue");
+    }
+
+    /// The queue entry a test's direct pin of `release_id` ends in its write:
+    /// the release queued and started as the download worker starts it, with
+    /// the queue paused so the worker leaves the entry to the test.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn started_pin_entry_for_test(
+        &self,
+        release_id: &str,
+    ) -> bae_transfers::ActiveEntry<DownloadRequest> {
+        self.set_downloads_paused(true).await.unwrap();
+        self.enqueue_pins(vec![release_id.to_string()]).await.unwrap();
+        self.settle_download_worker_for_test().await;
+        let started = release_id.to_string();
+        let activated = self
+            .store
+            .call(move |sql| {
+                bae_transfers::tables::worker_moves::activate_on::<DownloadRequest>(sql, &started)
+            })
+            .await
+            .unwrap();
+        assert!(activated, "the pin's release is in the download queue");
+        bae_transfers::tables::worker_moves::active_entry::<DownloadRequest>(release_id)
+    }
+
     /// Pause or resume the download queue. Pausing stops the running download at
     /// once and leaves its entry queued; while paused the worker parks instead of
     /// starting the next release. Resuming wakes the worker, which starts the

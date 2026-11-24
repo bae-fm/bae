@@ -310,7 +310,7 @@ pub(super) async fn uploaded_release_with_files(
 /// started, and ended in the write that pins every file. The queue is left
 /// paused.
 pub(super) async fn pin_directly(manager: &LibraryManager, release_id: &str) {
-    let entry = started_pin_entry(manager, release_id).await;
+    let entry = manager.started_pin_entry_for_test(release_id).await;
     manager.pin_release_files_with_progress(release_id, entry, |_| {}).await.unwrap();
 }
 
@@ -510,38 +510,6 @@ pub(super) async fn insert_pinnable_release(manager: &TestManager) -> String {
     let file = release_files(manager.library.manager(), &release).await.remove(0);
     manager.library.manager().evict_file_for_test(file.file).await.unwrap();
     release
-}
-
-/// Wait until the download worker has read the queue as the last wake left
-/// it, so it takes nothing a test starts by hand next.
-pub(super) async fn settled_download_worker(manager: &LibraryManager) {
-    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, manager.downloads.settled())
-        .await
-        .expect("the download worker parks on the paused queue");
-}
-
-/// The queue entry a test's direct pin of `release_id` ends in its write: the
-/// release queued and started as the download worker starts it, with the
-/// queue paused so the worker leaves the entry to the test.
-pub(super) async fn started_pin_entry(
-    manager: &LibraryManager,
-    release_id: &str,
-) -> bae_transfers::ActiveEntry<bae_transfers::DownloadRequest> {
-    manager.set_downloads_paused(true).await.unwrap();
-    manager.enqueue_pins(vec![release_id.to_string()]).await.unwrap();
-    settled_download_worker(manager).await;
-    let started = release_id.to_string();
-    let activated = manager
-        .store
-        .call(move |sql| {
-            bae_transfers::tables::worker_moves::activate_on::<bae_transfers::DownloadRequest>(
-                sql, &started,
-            )
-        })
-        .await
-        .unwrap();
-    assert!(activated, "the pin's release is in the download queue");
-    bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(release_id)
 }
 
 /// Insert `n` plain track rows on the release's one CD. Mirrors the row shape

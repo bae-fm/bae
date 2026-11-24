@@ -191,7 +191,7 @@ async fn a_pin_waits_while_the_network_is_down() {
     .expect("the queue hears that the network is down");
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     // The worker has read the queue the enqueue woke it to, and taken nothing.
-    settled_download_worker(manager).await;
+    manager.settle_download_worker_for_test().await;
     let queue = download_queue_now(manager).await;
     assert_eq!(
         queue.rows.iter().map(|row| &row.op.state).collect::<Vec<_>>(),
@@ -829,7 +829,7 @@ async fn a_pin_and_its_entry_end_in_one_write() {
         let manager = manager.clone();
         let release_id = release_id.clone();
         async move {
-            let entry = started_pin_entry(&manager, &release_id).await;
+            let entry = manager.started_pin_entry_for_test(&release_id).await;
             manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
         }
     });
@@ -846,7 +846,7 @@ async fn a_pin_and_its_entry_end_in_one_write() {
     assert!(download_queue_now(manager).await.rows.is_empty());
 
     // Uncancelled, the same pin pins the release and ends its entry.
-    let entry = started_pin_entry(manager, &release_id).await;
+    let entry = manager.started_pin_entry_for_test(&release_id).await;
     manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await.unwrap();
     assert_eq!(manager.store.files_pinned(&[file.file]).await.unwrap(), vec![Some(true)]);
     assert!(download_queue_now(manager).await.rows.is_empty());
@@ -907,7 +907,7 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
         let manager = manager.clone();
         let release_id = release_id.clone();
         async move {
-            let entry = started_pin_entry(&manager, &release_id).await;
+            let entry = manager.started_pin_entry_for_test(&release_id).await;
             manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
         }
     });

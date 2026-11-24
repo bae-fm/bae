@@ -240,7 +240,7 @@ fn a_release_s_storage_counts_its_pins_and_queued_files_on_each_device() {
         manager
             .pin_release_files_with_progress(
                 &theirs.id,
-                started_pin_entry(manager, &theirs.id).await,
+                manager.started_pin_entry_for_test(&theirs.id).await,
                 |_| {},
             )
             .await
@@ -307,7 +307,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
         let manager = test.library.manager().clone();
         let release_id = release_id.clone();
         async move {
-            let entry = started_pin_entry(&manager, &release_id).await;
+            let entry = manager.started_pin_entry_for_test(&release_id).await;
             manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
         }
     });
@@ -442,7 +442,7 @@ async fn a_pin_the_provider_refuses_is_a_storage_setup_failure() {
         let error = manager
             .pin_release_files_with_progress(
                 &release.id,
-                started_pin_entry(manager, &release.id).await,
+                manager.started_pin_entry_for_test(&release.id).await,
                 |_| {},
             )
             .await
@@ -481,7 +481,7 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     let error = manager
         .pin_release_files_with_progress(
             &release.id,
-            started_pin_entry(manager, &release.id).await,
+            manager.started_pin_entry_for_test(&release.id).await,
             |_| {},
         )
         .await
