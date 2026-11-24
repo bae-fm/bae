@@ -23,12 +23,12 @@ struct MacIdentifyBar<Trailing: View>: View {
             HStack(alignment: .center, spacing: spacing) {
                 identifyGroup
                 Spacer(minLength: ThemeSpace.group)
-                trailing().accessibilitySortPriority(1)
+                trailing()
             }
             VStack(alignment: .trailing, spacing: ThemeSpace.related) {
                 identifyGroup
                     .frame(maxWidth: .infinity, alignment: .leading)
-                trailing().accessibilitySortPriority(1)
+                trailing()
             }
         }
     }
