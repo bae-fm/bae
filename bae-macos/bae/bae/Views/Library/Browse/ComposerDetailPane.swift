@@ -140,7 +140,6 @@ struct ComposerDetailPane: View {
                     MacLibraryRow(
                         title: credit.albumTitle,
                         subtitle: credit.role.text,
-                        bleed: true,
                         credit: true
                     )
                     .padding(
@@ -151,7 +150,6 @@ struct ComposerDetailPane: View {
                     MacLibraryRow(
                         title: credit.trackTitle,
                         subtitle: credit.albumTitle,
-                        bleed: true,
                         credit: true
                     )
                     .padding(

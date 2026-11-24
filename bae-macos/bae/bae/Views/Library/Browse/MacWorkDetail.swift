@@ -50,7 +50,6 @@ struct MacWorkDetail: View {
                         MacLibraryRow(
                             title: track.trackTitle,
                             subtitle: track.albumTitle,
-                            bleed: true,
                             credit: true
                         )
                     }

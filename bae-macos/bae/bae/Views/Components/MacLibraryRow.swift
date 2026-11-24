@@ -30,7 +30,8 @@ struct MacLibraryRow: View {
 
     var body: some View {
         content
-            .padding(.horizontal, ThemeSpace.related)
+            // A credit has no fill to pad: its words start at the row's edge.
+            .padding(.horizontal, credit ? 0 : ThemeSpace.related)
             .padding(.vertical, credit ? ThemeSpace.inline : ThemeSpace.related)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
