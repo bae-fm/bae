@@ -8,21 +8,21 @@ extension ShotScene {
     static let macWelcomeHomeScenes: [ShotScene] = [
         ShotScene(
             id: "mac.component.welcome-home.libraries",
-            size: WelcomeWindow.size,
+            size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             welcomeStage(libraries: PreviewData.boardLibraries)
         },
         ShotScene(
             id: "mac.component.welcome-home.empty",
-            size: WelcomeWindow.size,
+            size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             welcomeStage(libraries: [])
         },
         ShotScene(
             id: "mac.component.welcome-home.children",
-            size: WelcomeWindow.size,
+            size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             welcomeStage(
@@ -32,7 +32,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.component.welcome-home.removing",
-            size: WelcomeWindow.size,
+            size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             welcomeStage(
@@ -42,7 +42,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.component.welcome-home.open-failed",
-            size: WelcomeWindow.size,
+            size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             welcomeStage(
@@ -52,7 +52,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.component.welcome-home.unreadable",
-            size: WelcomeWindow.size,
+            size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             welcomeStage(
@@ -61,7 +61,7 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.component.welcome-home.damaged-join",
-            size: WelcomeWindow.size,
+            size: CGSize(width: 842, height: WelcomeWindow.size.height),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             welcomeStage(
