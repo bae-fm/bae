@@ -32,7 +32,6 @@ extension ShotScene {
                 lead: lead,
                 onClose: {}
             )
-            .frame(width: 380, alignment: .leading)
         }
     }
 }

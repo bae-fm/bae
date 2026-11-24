@@ -11,7 +11,6 @@ extension ShotScene {
                 MacButton("Cancel") {}
                 MacButton("Join", kind: .primary) {}
             }
-            .frame(width: 380, alignment: .leading)
         }
     ]
 }

@@ -12,7 +12,6 @@ extension ShotScene {
                 code: "412 778",
                 waiting: "Waiting for your other device…"
             )
-            .frame(width: 380)
         },
         // `MacMatchCode`, the digits.
         component("mac.component.match-code.alone", height: 70) {
@@ -23,7 +22,6 @@ extension ShotScene {
                 code: "412 778",
                 waiting: "Waiting for your other device…"
             )
-            .frame(width: 380)
         },
     ]
 }

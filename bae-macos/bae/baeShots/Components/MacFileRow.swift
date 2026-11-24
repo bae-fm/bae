@@ -158,7 +158,6 @@ extension ShotScene {
                     MacFileRow(row: row)
                 }
             }
-            .frame(width: 380, alignment: .leading)
             .environment(
                 OutboxStore(
                     uploadsPaused: false,

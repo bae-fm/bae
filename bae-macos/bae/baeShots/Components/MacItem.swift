@@ -26,7 +26,6 @@ extension ShotScene {
                 )
                 itemFile("02 The Long Way Home.flac", size: 38_900_000)
             }
-            .frame(width: 380, alignment: .leading)
         },
         // `MacItem`, a row's lead, text and trailing end.
         component("mac.component.item.icon-text-trailing", height: 60) {
@@ -38,7 +37,6 @@ extension ShotScene {
             } trail: {
                 Text("2m ago")
             }
-            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.item.empty-lead-keeps-the-edge", height: 100) {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
@@ -55,7 +53,6 @@ extension ShotScene {
                     Text("34.1 MB").themeText(.fine)
                 }
             }
-            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.item.two-lines", height: 70) {
             MacItem {
@@ -69,7 +66,6 @@ extension ShotScene {
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
-            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.item.center-lead", height: 60) {
             itemCentered()
@@ -86,7 +82,6 @@ extension ShotScene {
             } trail: {
                 Text("2m ago")
             }
-            .frame(width: 380, alignment: .leading)
         },
     ]
 
@@ -101,7 +96,6 @@ extension ShotScene {
         } trail: {
             Text("2m ago")
         }
-        .frame(width: 380, alignment: .leading)
     }
 
     /// A stored audio file's row.

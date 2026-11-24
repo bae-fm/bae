@@ -32,7 +32,6 @@ extension ShotScene {
                             .inlineMenu(action: false) { _ in } : nil
                 )
             )
-            .frame(width: 380, alignment: .leading)
         }
     }
 
@@ -57,7 +56,6 @@ extension ShotScene {
                     )
                 )
             )
-            .frame(width: 380, alignment: .leading)
         }
     }
 }

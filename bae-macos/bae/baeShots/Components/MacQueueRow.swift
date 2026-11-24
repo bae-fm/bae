@@ -38,7 +38,6 @@ extension ShotScene {
                 onSkipTo: { _ in },
                 onRemove: { _ in }
             )
-            .frame(width: 380, alignment: .leading)
             .environment(images)
         }
     }

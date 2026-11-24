@@ -24,7 +24,7 @@ extension ShotScene {
                 )
                 .padding(.top, ThemeSize.hitTarget + 4)
             }
-            .frame(width: 380, alignment: .topTrailing)
+            .frame(maxWidth: .infinity, alignment: .topTrailing)
         },
         // `MacMoreMenu` off, boxed and over a cover, at the end of a row.
         component("mac.component.more-menu.off", width: 580, height: 60) {

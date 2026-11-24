@@ -146,7 +146,7 @@ extension ShotScene {
         notice: @escaping @MainActor () -> MacNotice
     ) -> ShotScene {
         component(id, height: height) {
-            notice().frame(width: 380, alignment: .leading)
+            notice()
         }
     }
 }
