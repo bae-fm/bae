@@ -18,7 +18,8 @@ struct MacTrackRow: View {
     let isPlaying: Bool
     /// Whether the pointer is over the row.
     var hover = false
-    /// Whether the row is among the tracks picked together.
+    /// Whether the row is among the tracks picked together: it sits on the
+    /// soft accent, and VoiceOver reads its texts as selected.
     var picked = false
     /// How much of the accent the jump's flash fills the row with.
     var highlight: Double = 0
@@ -103,5 +104,6 @@ struct MacTrackRow: View {
         // The hover fill bleeds past the text column so the text stays aligned
         // with the header above the list.
         .padding(.horizontal, -ThemeSpace.related)
+        .accessibilityAddTraits(picked ? .isSelected : [])
     }
 }

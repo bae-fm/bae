@@ -72,7 +72,6 @@ struct TrackRowView: View {
         .simultaneousGesture(
             TapGesture().onEnded { handleTap(rowPicked: picked) }
         )
-        .accessibilityAddTraits(picked ? .isSelected : [])
         .contentShape(Rectangle())
         .onHover { hovering in
             hoverWorkItem?.cancel()
