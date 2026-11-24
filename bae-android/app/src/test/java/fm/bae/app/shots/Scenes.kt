@@ -410,13 +410,16 @@ internal fun Covers(content: @Composable () -> Unit) =
         LocalImageStore provides
             ImageStore(
                 fetchLibraryImageBytes = { ref, _ ->
-                    val resource = BoardShot::class.java.getResourceAsStream("/${ref.id}.png")
-                    if (resource != null) resource.use { it.readBytes() } else fallbackCover(ref.id)
+                    boardArtwork(ref.id)
                 },
                 dispatcher = Dispatchers.Unconfined,
             ),
         content = content,
     )
+
+/** The artwork the board draws for [title]: its picture when the design system has one, else the gradient for it. */
+internal fun boardArtwork(title: String): ByteArray =
+    BoardShot::class.java.getResourceAsStream("/$title.png")?.use { it.readBytes() } ?: fallbackCover(title)
 
 /**
  * The artwork the board draws for a title it has no picture of: a 135 degree gradient from `hsl(hue 42% 52%)` to

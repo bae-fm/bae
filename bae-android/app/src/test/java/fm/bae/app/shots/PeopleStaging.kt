@@ -6,7 +6,6 @@ import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.data.TestImages
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.settings.AndroidSettingsDevices
 import fm.bae.app.ui.settings.AndroidSettingsPeople
@@ -65,8 +64,15 @@ internal fun PeoplePageScene(
     )
 }
 
-/** The store that hands every avatar the same picture, as the boards' people all have one. */
-internal fun avatarStore() = ImageStore(fetchAvatarBytes = { TestImages.png(64) }, dispatcher = Dispatchers.Unconfined)
+/** The store that hands each person the picture the boards draw for them: the artwork seeded by their name. */
+internal fun avatarStore() =
+    ImageStore(
+        fetchAvatarBytes = { person -> boardArtwork(avatarSeeds[person] ?: person) },
+        dispatcher = Dispatchers.Unconfined,
+    )
+
+/** The names the boards seed their avatars' pictures with, by person. */
+private val avatarSeeds = mapOf(ANA_ID to "Ana", BEN_ID to "Ben", "ana" to "Ana", "mara" to "Mara")
 
 /** [person]'s page, as an admin sees it, with the [adminChanges] this phone asked for. */
 @Composable
