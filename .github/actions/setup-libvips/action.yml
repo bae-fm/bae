@@ -1,0 +1,61 @@
+name: 'Setup libvips (Linux and Windows)'
+description: 'Build the pinned libvips dist for this runner from source, once per cache, and point LIBVIPS_DIR at it'
+
+inputs:
+  target:
+    description: 'The dist to build: linux, windows-x86_64 or windows-aarch64'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cache bae-libvips
+      id: libvips-cache
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cache/bae-libvips
+          ~/.cache/bae-libvips-build
+        key: bae-libvips-${{ inputs.target }}-${{ hashFiles('scripts/bae-libvips-release', 'scripts/build-libvips.sh', 'scripts/check-bundled-libraries.py', 'scripts/libvips/**') }}
+
+    - name: Build bae-libvips (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        # The release scripts/bae-libvips-release pins, built from source into
+        # ~/.cache/bae-libvips when the cache holds none. The script leaves a
+        # dist that already holds the release as it is.
+        dist="$HOME/.cache/bae-libvips/$(cat scripts/bae-libvips-release)/dist"
+        ./scripts/build-libvips.sh '${{ inputs.target }}' "$dist"
+        echo "LIBVIPS_DIR=$dist" >> "$GITHUB_ENV"
+        # Shared libraries, which the test binaries and the bridge need at run
+        # time. Set after FFmpeg's step, so this keeps FFmpeg's folder.
+        echo "LD_LIBRARY_PATH=$dist/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+    - name: Build bae-libvips (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # meson needs the MSVC compiler on PATH for the dist's architecture,
+        # which vcvarsall sets up for this one command only, so the Rust
+        # steps after it see the environment they always saw.
+        $version = (Get-Content scripts\bae-libvips-release -Raw).Trim()
+        $dist = "$HOME/.cache/bae-libvips/$version/dist" -replace '\\', '/'
+        $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+        if (-not $vs) { Write-Host "FAIL: no Visual Studio installation found"; exit 1 }
+        $arch = if ('${{ inputs.target }}' -eq 'windows-aarch64') { 'arm64' } else { 'x64' }
+        # Git's own bash: System32's bash is the WSL launcher.
+        $bash = Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin\bash.exe'
+        $script = Join-Path $env:RUNNER_TEMP 'build-libvips.cmd'
+        @(
+          '@echo off',
+          "call `"$vs\VC\Auxiliary\Build\vcvarsall.bat`" $arch",
+          'if errorlevel 1 exit /b 1',
+          "`"$bash`" scripts/build-libvips.sh ${{ inputs.target }} $dist"
+        ) | Set-Content -Path $script -Encoding ascii
+        cmd /c $script
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        $native = $dist -replace '/', '\'
+        echo "LIBVIPS_DIR=$native" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        # The DLLs, which the test binaries and the bridge need at run time.
+        echo "$native\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8

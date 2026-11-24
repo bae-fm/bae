@@ -8,6 +8,7 @@ name: Windows build
 # cross-compile the native deps, so this is the verification loop. Each arch builds
 # natively on its own runner (the ARM64 runner is arm64, so aarch64 is its host
 # target — no cross-compile).
+# libvips is built from source once per cache (scripts/build-libvips.sh).
 # FFmpeg is a prebuilt release CI fetches (bae-ffmpeg) — no compiling here. The
 # MusicBrainz disc ID is computed in pure Rust (bae-library), so there is no
 # libdiscid to fetch or link.
@@ -65,6 +66,12 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Setup libvips (Windows ${{ matrix.arch }})
+        # Built from source once per cache, as the Mac's dist is.
+        uses: ./.github/actions/setup-libvips
+        with:
+          target: windows-${{ matrix.arch }}
+
       - name: Fetch bae-ffmpeg (Windows ${{ matrix.ffmpeg_arch }})
         shell: pwsh
         run: |
@@ -114,11 +121,12 @@ jobs:
             if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
             else { Write-Host "FAIL: $dll not found"; exit 1 }
           }
-          # The bridge and the FFmpeg DLLs it links, side by side as the app
-          # ships them, may import only each other and Windows' own DLLs.
+          # The bridge and the FFmpeg and libvips DLLs it links, side by side as
+          # the app ships them, may import only each other and Windows' own
+          # DLLs.
           $staged = "$env:RUNNER_TEMP\bridge-libraries"
           New-Item -ItemType Directory -Force -Path $staged | Out-Null
-          Copy-Item "$dir\uniffi_bae_bridge.dll", "$env:FFMPEG_DIR\bin\*.dll" $staged
+          Copy-Item "$dir\uniffi_bae_bridge.dll", "$env:FFMPEG_DIR\bin\*.dll", "$env:LIBVIPS_DIR\bin\*.dll" $staged
           python scripts\check-bundled-libraries.py $staged
           if ($LASTEXITCODE -ne 0) { exit 1 }
           # Put the bridge on PATH for every later step, the same way the FFmpeg

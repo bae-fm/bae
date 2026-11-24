@@ -30,10 +30,16 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "ti
 bae-util = { workspace = true, features = ["test-utils"] }
 # Decodes the thumbnail a test makes, to read its pixels.
 jpeg-decoder = { workspace = true }
-# Measures a job's peak memory: wait4 returns the child's resource usage.
-libc = { workspace = true }
 # Writes the large test picture one row at a time.
 png = { workspace = true }
+
+# Measures a job's peak memory: wait4 returns the child's resource usage.
+[target.'cfg(unix)'.dev-dependencies]
+libc = { workspace = true }
+
+# On Windows, the peak working set of the child's process.
+[target.'cfg(windows)'.dev-dependencies]
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_ProcessStatus"] }
 
 [lints]
 workspace = true

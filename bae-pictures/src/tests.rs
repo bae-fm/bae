@@ -93,16 +93,20 @@ struct Cost {
 /// the output path through its environment.
 fn run_in_child(job: &str, original: &Path, output: &Path) -> Cost {
     let started = Instant::now();
-    #[expect(
-        clippy::zombie_processes,
-        reason = "wait4 below reaps the child, which is how its resource usage is read"
-    )]
     let child = Command::new(std::env::current_exe().unwrap())
         .args([job, "--exact", "--ignored", "--nocapture", "--test-threads=1"])
         .env(ORIGINAL, original)
         .env(OUTPUT, output)
         .spawn()
         .unwrap();
+    let peak_bytes = wait_for_peak_bytes(child, job);
+    Cost { peak_bytes, seconds: started.elapsed().as_secs_f64() }
+}
+
+/// Waits for the child to succeed and reads its peak resident memory from
+/// the system, which keeps it for the child's parent.
+#[cfg(unix)]
+fn wait_for_peak_bytes(child: std::process::Child, job: &str) -> u64 {
     let mut status = 0;
     // SAFETY: an all-zero rusage is a valid value for wait4 to fill in, and
     // the child is this process's own and is waited for only here.
@@ -112,11 +116,31 @@ fn run_in_child(job: &str, original: &Path, output: &Path) -> Cost {
         assert_eq!(libc::wait4(pid, &mut status, 0, &mut usage), pid);
         usage
     };
-    let seconds = started.elapsed().as_secs_f64();
     assert!(libc::WIFEXITED(status) && libc::WEXITSTATUS(status) == 0, "{job} failed");
     // macOS counts ru_maxrss in bytes, Linux and Android in kilobytes.
     let unit = if cfg!(target_os = "macos") { 1 } else { 1024 };
-    Cost { peak_bytes: u64::try_from(usage.ru_maxrss).unwrap() * unit, seconds }
+    u64::try_from(usage.ru_maxrss).unwrap() * unit
+}
+
+/// Waits for the child to succeed and reads its peak working set, which
+/// Windows keeps for as long as a handle to the process is open.
+#[cfg(windows)]
+fn wait_for_peak_bytes(mut child: std::process::Child, job: &str) -> u64 {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::System::ProcessStatus::{
+        GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
+
+    let status = child.wait().unwrap();
+    assert!(status.success(), "{job} failed: {status}");
+    let mut counters = PROCESS_MEMORY_COUNTERS::default();
+    let size = u32::try_from(std::mem::size_of::<PROCESS_MEMORY_COUNTERS>()).unwrap();
+    counters.cb = size;
+    // SAFETY: the child's handle stays open until `child` drops, and
+    // `counters` is a valid, sized PROCESS_MEMORY_COUNTERS.
+    let read = unsafe { GetProcessMemoryInfo(child.as_raw_handle(), &mut counters, size) };
+    assert_ne!(read, 0, "reading the peak memory of {job} failed");
+    u64::try_from(counters.PeakWorkingSetSize).unwrap()
 }
 
 /// A job that nothing ends.

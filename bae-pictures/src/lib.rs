@@ -35,7 +35,7 @@ pub enum PicturesError {
     Read(std::io::Error),
     #[error("libvips: {0}")]
     Vips(String),
-    /// This build has no libvips: only macOS and Android link it.
+    /// This build has no libvips: every target but iOS links it.
     #[error("this build of bae makes no picture copies")]
     NoLibvips,
     /// Nobody wants the picture any more, and the job stopped between two

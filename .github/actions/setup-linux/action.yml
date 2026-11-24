@@ -52,6 +52,11 @@ runs:
         echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_DIR/include" >> $GITHUB_ENV
         echo "$FFMPEG_DIR/bin" >> $GITHUB_PATH
 
+    - name: Setup libvips
+      uses: ./.github/actions/setup-libvips
+      with:
+        target: linux
+
     - name: Start virtual audio device
       shell: bash
       run: |

@@ -31,9 +31,11 @@ DYLD_LIBRARY_PATH = { value = "bae-ffmpeg/dist/lib", relative = true, force = fa
 # (scripts/build-libvips.sh) into the folder of the pinned release in
 # ~/.cache/bae-libvips, which bae-libvips links to. bae-pictures' build script
 # links it, and on a Mac links the dist's dylibs from its output folder, which
-# cargo puts on the fallback path of every test and `cargo run` binary. The
-# Android build overrides this inline with the per-ABI dist
-# (scripts/build-libvips-android.sh).
+# cargo puts on the fallback path of every test and `cargo run` binary. On
+# Linux and Windows the dist's libraries are on that path as they are. CI's
+# Windows jobs build their dist with scripts/build-libvips.sh and set
+# LIBVIPS_DIR to it. The Android build overrides this inline with the per-ABI
+# dist (scripts/build-libvips-android.sh).
 LIBVIPS_DIR = { value = "bae-libvips/dist", relative = true, force = false }
 # SQLite as coven builds it, set here because the workspace that builds
 # libsqlite3-sys decides. bae reads none of SQLite's process-wide allocation

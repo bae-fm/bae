@@ -57,11 +57,12 @@ ANDROID_SYSTEM = {
     "libsync.so", "libvulkan.so", "libz.so",
 }
 
-# glibc's own libraries, plus zlib, which every glibc distribution's base
-# system installs.
+# glibc's own libraries, plus zlib and libgcc_s, which every glibc
+# distribution's base system installs.
 LINUX_SYSTEM = {
     "ld-linux-aarch64.so.1", "ld-linux-x86-64.so.2", "libc.so.6", "libdl.so.2",
-    "libm.so.6", "libpthread.so.0", "libresolv.so.2", "librt.so.1", "libz.so.1",
+    "libgcc_s.so.1", "libm.so.6", "libpthread.so.0", "libresolv.so.2",
+    "librt.so.1", "libz.so.1",
 }
 
 # DLLs Windows 10 and later install in System32. The Universal CRT

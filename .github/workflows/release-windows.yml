@@ -99,6 +99,11 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Setup libvips (Windows ${{ matrix.arch.name }})
+        uses: ./.github/actions/setup-libvips
+        with:
+          target: windows-${{ matrix.arch.ffmpeg_arch }}
+
       - name: Fetch bae-ffmpeg (Windows ${{ matrix.arch.ffmpeg_arch }})
         shell: pwsh
         run: |
@@ -192,6 +197,10 @@ jobs:
           # FFmpeg DLLs (the bridge links them). Self-contained as of
           # v8.1.2-bae7 — their codec deps and toolchain runtime are linked in.
           Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $stage -Force
+
+          # libvips DLLs (the bridge links them), which import only each other
+          # and Windows' own DLLs (scripts/build-libvips.sh checks that).
+          Copy-Item "$env:LIBVIPS_DIR\bin\*.dll" $stage -Force
 
           $sentryDll = Get-ChildItem sentry-native-build -Recurse -Filter sentry.dll | Select-Object -First 1
           $crashpadHandler = Get-ChildItem sentry-native-build -Recurse -Filter crashpad_handler.exe | Select-Object -First 1

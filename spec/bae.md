@@ -2134,8 +2134,7 @@ it only expects to show. The candidate keeps each copy on this device until it i
 imported or set aside, so showing the picture again reads the copy, and nothing
 syncs a copy. The lightbox's zoom asks core for the original's own bytes through
 the same reader. Core refuses a file that is not an image of a candidate in the
-import list. A build without libvips (Windows and Linux) makes no copies,
-and a request for one fails.
+import list.
 
 A library release's picker and a candidate's each show, under the source the
 person chose (all, the release's files, or one catalog): a library release's
