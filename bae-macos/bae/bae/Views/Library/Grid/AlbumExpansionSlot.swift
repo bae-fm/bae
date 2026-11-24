@@ -14,6 +14,10 @@ struct AlbumExpansionSlot<ExpansionContent: View>: View {
 
     var body: some View {
         expansionContent(albumId)
+            // The grid puts its row spacing above the detail as above any
+            // row; the board puts only the edge between a row of cards and
+            // the panel under it.
+            .padding(.top, ThemeSpace.edge - ThemeSpace.page)
             .frame(width: rowWidth)
             .frame(width: slotWidth, alignment: .leading)
     }
