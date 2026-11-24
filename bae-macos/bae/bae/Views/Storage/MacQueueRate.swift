@@ -15,9 +15,11 @@ struct MacQueueRate<Progress: View>: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
-            HStack(spacing: ThemeSpace.inline) {
+            // The board spaces the glyph, the rate and the button alike.
+            HStack(spacing: ThemeSpace.compact) {
                 glyph
                     .themeIcon(.small)
+                    .frame(width: 11, height: 11)
                 if let hold {
                     Text(hold)
                 }
