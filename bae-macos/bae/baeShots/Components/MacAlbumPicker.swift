@@ -81,7 +81,7 @@ extension ShotScene {
                 )
                 .frame(width: 380, alignment: .leading)
                 if open {
-                    albumMenu(album, x: 41, y: 0)
+                    albumMenu(album, x: 46.6, y: ThemeSpace.compact)
                 }
             }
         }

@@ -64,7 +64,6 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
             )
             audioFacts()
             albumRow()
-                .padding(.top, ThemeSpace.compact)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
