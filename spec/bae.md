@@ -6590,6 +6590,9 @@ and Accent and names each accent. The app uses Pink when it cannot find the
 stored accent. On the Mac, Theme and Tone are pop-up buttons. Changing the
 app's Accent leaves system controls such as the menu bar and the save
 panel's Format pop-up as they were.
+On the Mac, VoiceOver reads the accent swatches as a radio group named
+*Accent*, with one radio button for each accent, and reads the chosen one
+as selected.
 
 On the Mac, the app indicates which item a pop-up currently selects.
 The app highlights an enabled menu item when you point anywhere on its row,

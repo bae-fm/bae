@@ -115,9 +115,7 @@ public struct MacAccentPicker: View {
                     ),
                     labels: AccentChoice.allCases.map(\.title),
                     frames: AccentChoice.allCases.map { frames[$0] },
-                    selectedIndex: AccentChoice.allCases.firstIndex(
-                        of: selected
-                    ) ?? 0,
+                    selectedIndex: selectedIndex,
                     select: { onSelect(AccentChoice.allCases[$0]) }
                 )
             }
@@ -160,6 +158,17 @@ public struct MacAccentPicker: View {
         .accessibilityAddTraits(chosen ? .isSelected : [])
         .help(accent.title)
     }
+
+    #if os(macOS)
+        /// The chosen accent's place among the swatches.
+        private var selectedIndex: Int {
+            guard let index = AccentChoice.allCases.firstIndex(of: selected)
+            else {
+                preconditionFailure("every accent is one of the swatches")
+            }
+            return index
+        }
+    #endif
 
     private static let space = "accent-picker"
 
