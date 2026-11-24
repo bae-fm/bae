@@ -80,8 +80,10 @@ extension ShotScene {
                     actions: inertAlbumActions
                 )
                 .frame(width: 380, alignment: .leading)
+                // The board's cell sets the picker in by the compact space.
+                .padding(.top, ThemeSpace.compact)
                 if open {
-                    albumMenu(album, x: 41, y: 0)
+                    albumMenu(album, x: 47, y: ThemeSpace.compact)
                 }
             }
         }
