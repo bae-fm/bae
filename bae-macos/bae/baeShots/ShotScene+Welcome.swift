@@ -273,6 +273,25 @@ extension ShotScene {
             )
         },
         ShotScene(
+            id: "mac.welcome.reset.unfinished-failed",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            ShotStage(
+                MacWelcomeWindow {
+                    DeviceResetView(
+                        prompt: .unfinished,
+                        error: LoadError(
+                            .deviceReset,
+                            PreviewData.displayErrorRetryable
+                        ),
+                        onReset: {},
+                        onCancel: {}
+                    )
+                }
+            )
+        },
+        ShotScene(
             id: "mac.welcome.create.name",
             size: WelcomeWindow.size,
             frame: .window(title: "bae", titleBar: .hidden)
