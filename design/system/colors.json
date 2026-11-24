@@ -133,9 +133,10 @@
     },
     {
       "name": "Accent",
-      "about": "The accent the person chose, as text, a fill and a selection. The boards draw pink.",
+      "about": "The accent the person chose, as text, as text on the inverse surface, a fill and a selection. The boards draw pink.",
       "clusters": [
         { "colors": ["accent"], "text": true },
+        { "colors": ["accent-inverse"], "text": true },
         { "colors": ["accent-fill", "on-accent-fill", "on-accent-fill-secondary"] },
         { "colors": ["accent-selection", "accent-tint", "accent-tint-strong"] }
       ],
