@@ -75,11 +75,12 @@ extension ShotScene {
                 endedFailure: nil,
                 onDisconnect: {}
             )
-            // The board puts the popover at the cell's end, 10 points
-            // above its bottom.
+            // The board puts the popover at the end of its cell, which
+            // reaches 32 points past the wide column, 10 points above its
+            // bottom.
             .padding(.bottom, 10)
             .frame(
-                width: wideColumn,
+                width: wideColumn + 32,
                 height: 260,
                 alignment: .bottomTrailing
             )
