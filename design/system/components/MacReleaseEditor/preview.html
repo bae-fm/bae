@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=11450 -->
+<!-- @dsCard group="Import" height=12150 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacReleaseEditor</title></head>
@@ -25,6 +25,7 @@
         inherited: !options.blank, length: length, listed: options.check || options.blank ? null : listed });
     }
     return box(720, h(B.MacReleaseEditor, Object.assign(props, options),
+      options.searching ? h('div', { className: 'bae-preview-slot' }, 'Identify') : null,
       h(B.MacImportSheetCaption, { disc: 'Disc 1', sheet: 'Northbound.cue', bound: 'Northbound (2019 rip).flac' }),
       track('0:00', '1', 'Northbound', '4:51'), track('4:51', '2', 'Margins', '3:58'),
       track('8:49', '3', 'Salt Road', '5:20', '5:27'), track('14:09', '4', 'Winter Light', '4:07')));
@@ -39,6 +40,7 @@
     W('Retry import', editor({ retry: true })),
     W('Nothing to import', editor({ blank: true })),
     W('Import, nothing read', editor({ unread: true })),
+    W('Identifying', editor({ searching: true })),
     W('Save', editor({ actions: 'save' })),
     W('Save, changed', editor({ actions: 'save', changed: true })),
     W('Save, reading a file', editor({ actions: 'save', changed: true, reading: 'Reading Northbound (2019 rip).flac…' })),
