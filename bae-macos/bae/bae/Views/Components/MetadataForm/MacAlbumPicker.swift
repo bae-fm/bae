@@ -50,9 +50,6 @@ struct MacAlbumPicker: View {
                 .disabled(!canEdit)
             Spacer(minLength: 0)
         }
-        // The board's row holds the space above it, as it stands under the
-        // folder's audio line.
-        .padding(.top, ThemeSpace.compact)
     }
 
     /// The pop-up's options for `album`: the album as it stands, then what
