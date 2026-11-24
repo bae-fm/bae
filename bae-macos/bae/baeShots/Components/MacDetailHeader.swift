@@ -14,14 +14,6 @@ extension ShotScene {
         ) {
             MacDetailHeader(summary: artistSummary("Mara Quill", albums: 12))
                 .frame(width: 380, alignment: .leading)
-        },
-        component(
-            "mac.component.detail-header.options-open",
-            height: 100,
-            images: coverStore()
-        ) {
-            MacDetailHeader(summary: artistSummary("Mara Quill", albums: 12))
-                .frame(width: 380, alignment: .leading)
-        },
+        }
     ]
 }
