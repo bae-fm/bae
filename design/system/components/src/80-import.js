@@ -38,7 +38,8 @@
       props.filter ? ind('Close', 'bae-m-tertiary', h(Glyph, { set: 'mac', name: 'removefill', size: 'medium' })) : null,
       props.identifying ? ind('Identifying', null, identifyingRing(props.identifying)) : null,
       props.importing ? ind('Importing…', 'bae-muted', h(Sym, { name: 'saveAs', size: 14 })) : null,
-      props.scanning ? ind('Scanning folders', null, h(MacSpinner, { size: 12 })) : null,
+      // The button's name says what the spinner shows, so the spinner is not read on its own, as the app's button reads.
+      props.scanning ? ind('Scanning folders', null, h('span', { 'aria-hidden': true, style: { display: 'flex' } }, h(MacSpinner, { size: 12 }))) : null,
       ind('Sorting, filtering and watched folders', 'bae-muted', [h(Glyph, { key: 'g', set: 'mac', name: 'ellipsis', size: 'medium' }), props.filtered ? h('span', { key: 'd', className: 'bae-m-isb-dot' }) : null], { 'aria-haspopup': 'menu' }));
   }
   // The left column: the tabs, the filter row, then the rows, or `empty`, the line an empty list shows.
