@@ -10,18 +10,23 @@ extension ShotScene {
     static let macBrowseSplitScenes: [ShotScene] = [
         component(
             "mac.component.browse-split.default",
-            width: 700,
+            width: 1_000,
             height: 360,
             images: coverStore()
         ) {
             MacBrowseSplit {
                 VStack(spacing: 0) {
-                    MacLibraryRow(
+                    MacLibraryRowButton(
                         title: "Mara Quill",
                         subtitle: "12 albums",
-                        selected: true
+                        selected: true,
+                        action: {}
                     )
-                    MacLibraryRow(title: "Odile Fen", subtitle: "3 albums")
+                    MacLibraryRowButton(
+                        title: "Odile Fen",
+                        subtitle: "3 albums",
+                        action: {}
+                    )
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
             } detail: {
