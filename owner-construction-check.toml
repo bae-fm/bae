@@ -726,6 +726,10 @@ task_types = [
 # process is their scope.
 "bae-util/src/name_key.rs" = ["COLLATORS"]
 
+# The outcome of starting libvips, which one start per process makes and which
+# every picture job reads: the process is its scope.
+"bae-pictures/src/lib.rs" = ["START"]
+
 # An owner's constructor, clone or inner struct builds the owner, and the
 # parts it holds that nothing else shares; a static holds what the process
 # shares. Each row is the owner's own construction.

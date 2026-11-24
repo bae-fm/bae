@@ -10,6 +10,7 @@ use std::ffi::{c_char, c_int, CStr, CString};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::ptr;
+use std::sync::OnceLock;
 
 use source::FileSource;
 
@@ -24,11 +25,22 @@ pub enum PicturesError {
     Path { path: PathBuf, source: std::ffi::NulError },
 }
 
-/// Starts libvips. libvips counts the calls, so starting it again is safe and
-/// only the first call does the work.
+/// Starts libvips once for the process, and gives every caller the result of
+/// that start: libvips reports a failed start only to its first caller.
 fn init() -> Result<(), PicturesError> {
-    // SAFETY: argv0 is a valid C string.
-    check(unsafe { ffi::vips_init(c"bae-pictures".as_ptr()) })
+    static START: OnceLock<Result<(), String>> = OnceLock::new();
+    START
+        .get_or_init(|| {
+            // SAFETY: argv0 is a valid C string, and this runs once.
+            let status = unsafe { ffi::vips_init(c"bae-pictures".as_ptr()) };
+            if status == 0 {
+                Ok(())
+            } else {
+                Err(take_error())
+            }
+        })
+        .clone()
+        .map_err(PicturesError::Vips)
 }
 
 /// libvips' description of its last failure, which it then forgets.
