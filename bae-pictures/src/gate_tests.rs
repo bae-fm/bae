@@ -1,14 +1,19 @@
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 use crate::{Priority, Volumes};
 
 const LOCAL: usize = 4;
 const NETWORK: usize = 2;
 
+/// Whether `request` is queued: it decides on its first poll, so one poll tells.
 async fn is_waiting<T>(
     request: &mut std::pin::Pin<Box<impl std::future::Future<Output = T>>>,
 ) -> bool {
-    tokio::time::timeout(Duration::from_millis(30), request).await.is_err()
+    tokio::select! {
+        biased;
+        _ = request => false,
+        () = async {} => true
+    }
 }
 
 #[tokio::test]
@@ -50,13 +55,12 @@ async fn a_visible_request_goes_before_a_prefetch() {
 
     let [first, second] = held;
     drop(first);
-    let place = tokio::time::timeout(Duration::from_secs(1), visible)
-        .await
-        .expect("the visible request got the place");
+    let place =
+        tokio::time::timeout(HANG_GUARD, visible).await.expect("the visible request got the place");
     assert!(is_waiting(&mut prefetch).await, "the prefetch went first");
     drop(second);
     drop(place);
-    tokio::time::timeout(Duration::from_secs(1), prefetch).await.expect("the prefetch got a place");
+    tokio::time::timeout(HANG_GUARD, prefetch).await.expect("the prefetch got a place");
 }
 
 #[tokio::test]
@@ -72,7 +76,7 @@ async fn a_request_that_stops_waiting_passes_its_place_on() {
     assert!(is_waiting(&mut staying).await);
     drop(leaving);
     drop(held);
-    tokio::time::timeout(Duration::from_secs(1), staying)
+    tokio::time::timeout(HANG_GUARD, staying)
         .await
         .expect("the place reached the request still waiting");
 }
