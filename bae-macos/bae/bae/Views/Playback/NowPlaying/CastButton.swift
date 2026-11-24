@@ -102,7 +102,7 @@ struct MacCastPopover: View {
                     .themeText(.body)
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.vertical, ThemeSpace.compact)
-                    .padding(.horizontal, ThemeSpace.inline)
+                    .padding(.horizontal, ThemeSpace.group)
             }
             else {
                 MacCastRows(
