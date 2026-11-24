@@ -90,9 +90,9 @@ final class ImportListGroupRowView: NSTableRowView {
 final class ImportListEntryCell: NSTableCellView {
     private var hosting: NSHostingView<ImportListEntryView>?
     private var entry: ImportListEntry?
-    /// The decode of the shown row's cover, which starts when the table gives
-    /// the cell its row, before the table puts the row on screen.
-    private var coverDecode: Task<Void, Never>?
+    /// The cover the cell is decoding, and the decode, which starts when the
+    /// table gives the cell its row, before the table puts the row on screen.
+    private var coverDecode: CoverDecode?
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -116,19 +116,40 @@ final class ImportListEntryCell: NSTableCellView {
         render()
     }
 
+    /// One decode of a cover at a scale. The table gives a cell the same row
+    /// again on each redraw; a decode that is already under way for the same
+    /// cover at the same scale keeps running.
+    private struct CoverDecode {
+        let cover: ImageContent
+        let displayScale: CGFloat
+        let task: Task<Void, Never>
+    }
+
     private func decodeCover(at displayScale: CGFloat?) {
-        coverDecode?.cancel()
-        coverDecode = nil
         guard let entry, let cover = entry.coverContent, let displayScale
-        else { return }
-        let imageStore = entry.environment.imageStore
-        coverDecode = Task {
-            await imageStore.warm(
-                [cover],
-                pointSize: MacImportRow.coverPointSize,
-                displayScale: displayScale
-            )
+        else {
+            coverDecode?.task.cancel()
+            coverDecode = nil
+            return
         }
+        if let coverDecode, coverDecode.cover == cover,
+            coverDecode.displayScale == displayScale
+        {
+            return
+        }
+        coverDecode?.task.cancel()
+        let imageStore = entry.environment.imageStore
+        coverDecode = CoverDecode(
+            cover: cover,
+            displayScale: displayScale,
+            task: Task {
+                await imageStore.warm(
+                    [cover],
+                    pointSize: MacImportRow.coverPointSize,
+                    displayScale: displayScale
+                )
+            }
+        )
     }
 
     private func render() {
