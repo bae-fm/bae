@@ -314,24 +314,29 @@
       head('Search', null),
       open === 'Search' ? h('div', { className: 'bae-m-fo-body' }, k) : null);
   }
-  // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip.
-  function chipValues(value) {
+  // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip; with `pick`, each of several a button.
+  function chipValues(value, pick) {
     var values = String(value || '').split(' · ');
     if (values.length < 2) return h('span', { className: 'bae-mono bae-m-idchip-value' }, value || '');
-    return h('span', { className: 'bae-mono bae-m-idchip-values' }, value);
+    if (!pick) return h('span', { className: 'bae-mono bae-m-idchip-values' }, value);
+    return h('span', { className: 'bae-m-idchip-values' }, values.map(function (v, i) {
+      return h(React.Fragment, { key: i }, h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, v), i < values.length - 1 ? h('span', { className: 'bae-mono' }, '·') : null);
+    }));
   }
-  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are.
+  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `pick`: each of its several values is a button that puts that one into the run. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are.
   function MacIdentifierChip(props) {
     var st = props.state || 'filled';
-    return h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)', lineHeight: 'var(--type-chip-line-height)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : props.editable ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.value || '') : chipValues(props.value),
+    return h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)', lineHeight: 'var(--type-chip-line-height)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : props.editable ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.value || '') : chipValues(props.value, props.pick),
       props.sources ? list(props.sources).map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
   }
-  // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated. A Disc ID, Barcode or Catalog # chip that holds a value toggles, and a Title search chip's words are a button that opens its fields.
+  // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated. A Disc ID, Barcode or filled Catalog # chip that holds a value toggles; an outlined Catalog # chip's numbers are each a button, and a Title search chip's words are a button that opens its fields.
   var TOGGLED_IDENTIFIERS = ['Disc ID', 'Barcode', 'Catalog #'];
   function MacIdentifierBand(props) {
     return h('div', { className: 'bae-m-band' }, list(props.chips).map(function (c, i) {
       var p = c.split('|');
-      return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], sources: p[3] ? p[3].split('+').join(',') : null, toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash', editable: p[0] === 'Title search' && !!p[1] });
+      // An outlined Catalog # chip lists the catalog numbers no release confirms, each a button that puts it into the run.
+      var pick = p[0] === 'Catalog #' && p[2] === 'outlined';
+      return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], sources: p[3] ? p[3].split('+').join(',') : null, toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash' && !pick, pick: pick, editable: p[0] === 'Title search' && !!p[1] });
     }));
   }
   // Every catalog that describes a release, as a wrapped row of links to each catalog's page, in the order core lists them (`records`: catalog names, comma-separated).

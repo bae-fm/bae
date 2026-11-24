@@ -28,10 +28,32 @@ extension ShotScene {
             PreviewData.identifyRunBandBoard
         ),
         identifierBandScene(
+            "mac.component.identifier-band.catalog-numbers",
+            catalogNumbersRun
+        ),
+        identifierBandScene(
             "mac.component.identifier-band.struck",
             PreviewData.identifyRunBandBoard
         ),
     ]
+
+    /// No Disc ID, barcode or ISRC, and two catalog numbers that no
+    /// release confirms, each a button that puts it into the run.
+    private static let catalogNumbersRun = BridgeIdentifyRun(
+        providers: [.musicBrainz, .discogs],
+        discId: .absent,
+        barcode: .absent,
+        catalog: .numbers(
+            rows: [],
+            candidates: [
+                BridgeCatalogCandidate(value: "HR-1042"),
+                BridgeCatalogCandidate(value: "HR-1042-2"),
+            ]
+        ),
+        isrc: .absent,
+        search: .notNeeded,
+        readingArtwork: false
+    )
 
     /// The run where Disc ID and barcode each wait on, or found nothing
     /// from, the catalog that answers them.
