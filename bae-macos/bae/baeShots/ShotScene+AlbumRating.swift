@@ -58,10 +58,12 @@ extension ShotScene {
                 // The track menu boards draw the album unhearted.
                 detail.rating = .heart(hearted: false, hearters: [])
             }
+            let detailAnswered = AlbumDetailAnswered()
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
                 albumCount: 4,
                 openAlbum: true,
+                detailAnswered: detailAnswered,
                 detail: detail
             )
             let images = coverGalleryImages()
@@ -80,6 +82,7 @@ extension ShotScene {
                 images: images
             ) {
                 backing.session.albums.list?.delivered != nil
+                    && detailAnswered.answered
             }
         }
     }
