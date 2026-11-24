@@ -46,27 +46,32 @@ struct AccentPlainButtonStyleTests {
             abs(popUpShown - popUpWanted) < 0.02,
             "pop-up \(popUpShown) wanted \(popUpWanted)"
         )
-        // The value and the chevron sit in the right of the row, away from
-        // the name, so their own dimming shows.
+        // The name sits in the left of the row, the value and the chevron in
+        // the right, so each one's own dimming shows apart.
         for press in [
             MacRowPress.opens {}, .removes {},
         ] {
-            let shown = try brightest(
-                row(press, enabled: false),
-                rightOf: 0.6
-            )
-            let wanted = try brightest(
-                row(press, enabled: true).opacity(ThemeOpacity.off),
-                rightOf: 0.6
-            )
-            #expect(abs(shown - wanted) < 0.02, "row \(shown) wanted \(wanted)")
+            for span in [0.0..<0.5, 0.6..<1.0] {
+                let shown = try brightest(
+                    row(press, enabled: false),
+                    within: span
+                )
+                let wanted = try brightest(
+                    row(press, enabled: true).opacity(ThemeOpacity.off),
+                    within: span
+                )
+                #expect(
+                    abs(shown - wanted) < 0.02,
+                    "row \(shown) wanted \(wanted) in \(span)"
+                )
+            }
         }
     }
 
     /// The brightest colour component of `content` drawn on black.
     private func brightest<Content: View>(
         _ content: Content,
-        rightOf fraction: Double = 0
+        within span: Range<Double> = 0..<1
     ) throws -> Double {
         let renderer = ImageRenderer(
             content:
@@ -79,7 +84,9 @@ struct AccentPlainButtonStyleTests {
         let image = try #require(renderer.cgImage)
         let bitmap = NSBitmapImageRep(cgImage: image)
         var brightest = 0.0
-        for x in Int(Double(image.width) * fraction)..<image.width {
+        for x in Int(
+            Double(image.width) * span.lowerBound
+        )..<Int(Double(image.width) * span.upperBound) {
             for y in 0..<image.height {
                 let colour = try #require(
                     bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)
