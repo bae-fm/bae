@@ -59,7 +59,7 @@ fun Modifier.liftsSnackbar(): Modifier {
     return onSizeChanged { lift.report(key, it.height) }
 }
 
-/** Material's SnackbarData overload pads the snackbar 12dp on each side, and the board keeps it. */
+/** Material's SnackbarData overload pads the snackbar 12dp on each side, and the board keeps it, outside its alert. */
 private val SNACKBAR_MARGIN = 12.dp
 
 /**
@@ -98,31 +98,34 @@ fun AndroidSnackbarHost(
 @Composable
 private fun AndroidSnackbar(data: SnackbarData) {
     val visuals = data.visuals
-    Snackbar(
-        modifier = Modifier.padding(SNACKBAR_MARGIN),
-        action =
-            visuals.actionLabel?.let { label ->
-                {
-                    AndroidButton(onClick = data::performAction, kind = ButtonKind.TEXT, tone = ButtonTone.INVERSE) {
-                        Text(label)
+    Box(modifier = Modifier.padding(SNACKBAR_MARGIN)) {
+        Snackbar(
+            action =
+                visuals.actionLabel?.let { label ->
+                    {
+                        AndroidButton(
+                            onClick = data::performAction,
+                            kind = ButtonKind.TEXT,
+                            tone = ButtonTone.INVERSE,
+                        ) { Text(label) }
                     }
-                }
-            },
-        dismissAction =
-            if (visuals.withDismissAction) {
-                {
-                    AndroidIconButton(
-                        icon = SymbolIcons.Close,
-                        contentDescription = stringResource(R.string.close),
-                        onClick = data::dismiss,
-                        modifier = Modifier.padding(horizontal = ThemeSpace.related).size(CLOSE_BOX),
-                        glyph = ThemeIcon.medium,
-                    )
-                }
-            } else {
-                null
-            },
-    ) {
-        Text(visuals.message)
+                },
+            dismissAction =
+                if (visuals.withDismissAction) {
+                    {
+                        AndroidIconButton(
+                            icon = SymbolIcons.Close,
+                            contentDescription = stringResource(R.string.close),
+                            onClick = data::dismiss,
+                            modifier = Modifier.padding(horizontal = ThemeSpace.related).size(CLOSE_BOX),
+                            glyph = ThemeIcon.medium,
+                        )
+                    }
+                } else {
+                    null
+                },
+        ) {
+            Text(visuals.message)
+        }
     }
 }
