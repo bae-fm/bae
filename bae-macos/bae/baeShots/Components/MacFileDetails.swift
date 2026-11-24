@@ -29,7 +29,7 @@ extension ShotScene {
                 ),
                 onClose: {}
             )
-            .frame(width: 380, alignment: .leading)
+            .frame(width: 440, alignment: .leading)
         },
         component("mac.component.file-details.other-file", height: 160) {
             MacFileDetails(
@@ -46,7 +46,7 @@ extension ShotScene {
                 ),
                 onClose: {}
             )
-            .frame(width: 380, alignment: .leading)
+            .frame(width: 440, alignment: .leading)
         },
     ]
 }
