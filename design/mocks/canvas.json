@@ -2474,7 +2474,7 @@
    "x": 3920,
    "y": 12192
   },
-  "mac.welcome.reset.unfinished.failed.dc.html": {
+  "mac.welcome.reset.unfinished-failed.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: finishing the reset failed",
@@ -2482,7 +2482,7 @@
    "x": 4900,
    "y": 12192
   },
-  "mac.welcome.reset.unfinished.sign-in-refused.dc.html": {
+  "mac.welcome.reset.unfinished-sign-in-refused.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: finishing the reset needs a sign-in",
@@ -6451,8 +6451,8 @@
   "mac.welcome.opening.resetting.dc.html",
   "mac.welcome.reset.failed.dc.html",
   "mac.welcome.reset.unfinished.dc.html",
-  "mac.welcome.reset.unfinished.failed.dc.html",
-  "mac.welcome.reset.unfinished.sign-in-refused.dc.html",
+  "mac.welcome.reset.unfinished-failed.dc.html",
+  "mac.welcome.reset.unfinished-sign-in-refused.dc.html",
   "android.welcome.libraries.none.dc.html",
   "mac.welcome.libraries.none.dc.html",
   "brand.logo.forms.dc.html",
