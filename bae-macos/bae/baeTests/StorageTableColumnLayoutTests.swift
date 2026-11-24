@@ -101,7 +101,7 @@ struct StorageTableColumnLayoutTests {
     }
 
     /// The layout that shows the columns `widths` names at those widths and
-    /// hides the rest.
+    /// hides the rest but Release, which always shows.
     private static func layout(
         showing widths: [StorageTableColumn: CGFloat]
     ) -> StorageTableLayout? {
@@ -110,7 +110,7 @@ struct StorageTableColumnLayoutTests {
                 StorageTableLayout.Column(
                     column: $0,
                     width: widths[$0] ?? $0.width,
-                    hidden: widths[$0] == nil
+                    hidden: widths[$0] == nil && $0 != .release
                 )
             }
         )
