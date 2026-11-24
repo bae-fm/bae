@@ -51,14 +51,39 @@ fi
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/bae-libvips-build"
 mkdir -p "$cache/downloads" "$(dirname "$dist")"
 
-# meson and ninja, at pinned versions, in a virtual environment of their own.
-venv="$cache/tools/meson-$meson_version-ninja-$ninja_version"
-if [[ ! -x "$venv/bin/meson" || ! -x "$venv/bin/ninja" ]]; then
-    rm -rf "$venv"
-    python3 -m venv "$venv"
-    "$venv/bin/pip" install --quiet "meson==$meson_version" "ninja==$ninja_version"
+# meson and ninja at pinned versions, from their own releases, which need only
+# the python3 and the macOS the build already needs: no pip, which a host's
+# system python may lack. meson runs from its unpacked source.
+meson_sha256="ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743"
+ninja_sha256="c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b"
+tools="$cache/tools/meson-$meson_version-ninja-$ninja_version"
+
+download_checked() { # URL SHA256 FILE
+    if [[ ! -f "$3" ]]; then
+        curl -fL --retry 3 --retry-delay 2 -o "$3.part" "$1"
+        mv "$3.part" "$3"
+    fi
+    if [[ "$(shasum -a 256 "$3" | cut -d' ' -f1)" != "$2" ]]; then
+        echo "$3 does not match the pinned SHA-256; deleting it." >&2
+        rm -f "$3"
+        exit 1
+    fi
+}
+
+if [[ ! -x "$tools/bin/meson" || ! -x "$tools/bin/ninja" ]]; then
+    rm -rf "$tools"
+    mkdir -p "$tools/bin"
+    download_checked "https://github.com/mesonbuild/meson/releases/download/$meson_version/meson-$meson_version.tar.gz" \
+        "$meson_sha256" "$cache/downloads/meson-$meson_version.tar.gz"
+    download_checked "https://github.com/ninja-build/ninja/releases/download/v$ninja_version/ninja-mac.zip" \
+        "$ninja_sha256" "$cache/downloads/ninja-$ninja_version-mac.zip"
+    tar -xzf "$cache/downloads/meson-$meson_version.tar.gz" -C "$tools"
+    unzip -q -o "$cache/downloads/ninja-$ninja_version-mac.zip" -d "$tools/bin"
+    chmod 755 "$tools/bin/ninja"
+    printf '#!/bin/sh\nexec python3 "%s/meson-%s/meson.py" "$@"\n' "$tools" "$meson_version" > "$tools/bin/meson"
+    chmod 755 "$tools/bin/meson"
 fi
-export PATH="$venv/bin:$PATH"
+export PATH="$tools/bin:$PATH"
 
 tarball="$cache/downloads/vips-$libvips_version.tar.xz"
 if [[ ! -f "$tarball" ]]; then
