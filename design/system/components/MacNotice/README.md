@@ -7,9 +7,9 @@ macOS's notice: a tinted box in its tone, the tone's glyph at the top left. It s
 | `tone` | `info`, `success`, `warning`, `danger` or `neutral` (the default, with no glyph). |
 | `title` | What happened. |
 | `subtitle` | What to do about it. |
-| `action` | The primary button's label (Retry). |
+| `action` | The label of the notice's own button (Retry, Open settings): a secondary button, tinted on a filled notice, last in the row. |
 | `quiet` | Drawn as a row: no fill, the screen's text. For a list of problems, such as the Activity panel's Needs attention. Also inside an alert or dialog, always: a filled box there stands out from everything else in it.|
-| `secondary` | The secondary button's label: Dismiss, or Details (opens the error's causes in a popup). Secondary comes first, before the primary. |
+| `secondary` | Details, a borderless button in the accent that opens the error's causes in a popup. It comes first, before the action. |
 | `leave` | Centred only: the label of a button that leaves the screen the notice fills (Cancel), first in the row, where the notice is the screen's only way back: a failed Reset from cloud. |
 | `layout` | `paragraph` (the default) or `centered`: in the middle of the space it's given, the glyph (an outline, in grey) in front of the title, the title in secondary text when it stands alone and in primary over a subtitle, the button's label in secondary text and Details in the accent, centred under it. For a view that failed whole (the album grid, the import list, a composer's page, the lightbox's image), or a part of one (the rest of the queue). |
 | `buttons` | Where the buttons go in the paragraph layout: `inline` (the default), on the text's line at the right, centred on it, the text wrapping beside them; or `below`, on a line of their own under the text, in line with it, for a long button in a narrow place (the Activity panel's Open Sync Settings). The centred layout always puts them in one row under the title. |
