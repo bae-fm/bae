@@ -132,7 +132,7 @@ extension ShotScene {
                         : .libraryTrack,
                     position: "\(index + 1)",
                     lengthMs: track.durationMs,
-                    listedMs: index == 2 ? 327_000 : nil
+                    listedMs: example != .original && index == 2 ? 327_000 : nil
                 )
             }
         release.draft.sides = [
