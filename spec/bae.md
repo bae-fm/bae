@@ -2230,7 +2230,10 @@ button.
 
 **The audio line.** The release's audio line lists the codec, sample rate,
 bit depth (the bitrate for a lossy codec) and channels, in the order a track's audio format
-lists them (§2.2), as in `FLAC · 44.1 kHz · 16-bit · Stereo`. The line gives no
+lists them (§2.2), as in `FLAC · 44.1 kHz · 16-bit · Stereo`. When the files
+are in more than one format, the line names only the facts they disagree on,
+each with every value the files hold, as in `FLAC and MP3 · 44.1 kHz and 48 kHz`,
+and leaves out the facts every file shares. The line gives no
 count of files or tracks: the table lists the tracks. A Found folder's pane
 reads the line from the scan's rows, and a library release's editor from the
 release's stored audio.
