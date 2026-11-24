@@ -26,15 +26,11 @@ extension ShotScene {
             stage: .saving,
             release: cueRelease(.rebound)
         ),
-        // The alert is a panel of its own, which the shot takes from the
-        // window server with the window.
-        ShotScene(
+        albumEditorScene(
             id: "mac.album.edit.drop-tracks",
-            size: editorSceneSize(.dropTracksAlert),
-            frame: .window(title: "bae", titleBar: .hidden)
-        ) {
-            albumEditorStage(.dropTracksAlert, release: ignoredCueRelease)
-        },
+            stage: .dropTracksAlert,
+            release: ignoredCueRelease
+        ),
     ]
 
     private enum AlbumEditorStage {
@@ -208,76 +204,64 @@ extension ShotScene {
         )
     }
 
-    private static func editorSceneSize(_ stage: AlbumEditorStage) -> CGSize {
-        CGSize(
-            width: 1_200,
-            height: stage == .dropTracksAlert ? 1_300 : 1_320
-        )
-    }
-
     private static func albumEditorScene(
         id: String,
         stage: AlbumEditorStage,
         release: PreviewReleaseEdit = editedRelease
     ) -> ShotScene {
-        ShotScene(id: id, size: editorSceneSize(stage)) {
-            albumEditorStage(stage, release: release)
-        }
-    }
-
-    @MainActor
-    private static func albumEditorStage(
-        _ stage: AlbumEditorStage,
-        release: PreviewReleaseEdit
-    ) -> ShotStage {
-        let size = editorSceneSize(stage)
-        let uiStore = UiStore()
-        let detailAnswered = AlbumDetailAnswered()
-        let backing = boardLibraryBacking(
-            uiStore: uiStore,
-            albumCount: 4,
-            albums: boardAlbums(first: ("Northbound", 1974)),
-            openAlbum: true,
-            detailAnswered: detailAnswered,
-            detail: northboundAlbumDetail
+        let size = CGSize(
+            width: 1_200,
+            height: stage == .dropTracksAlert ? 1_300 : 1_320
         )
-        let images = coverGalleryImages(of: "Northbound")
-        let session = editorSession(
-            release: release,
-            saving: stage == .saving
-        )
-        presentEditor(on: uiStore, images: images, session: session)
-        if stage == .coverSheet {
-            presentCoverSheet(on: uiStore, images: images)
-        }
-        let window = ZStack(alignment: .topLeading) {
-            ShotScenes.libraryWindow(
+        return ShotScene(id: id, size: size) {
+            let uiStore = UiStore()
+            let detailAnswered = AlbumDetailAnswered()
+            let backing = boardLibraryBacking(
                 uiStore: uiStore,
-                backing: backing,
-                playbackStore: boardPlayback(),
-                size: size
+                albumCount: 4,
+                albums: boardAlbums(first: ("Northbound", 1974)),
+                openAlbum: true,
+                detailAnswered: detailAnswered,
+                detail: northboundAlbumDetail
             )
-            if stage == .albumMenu {
-                albumMenu
+            let images = coverGalleryImages(of: "Northbound")
+            let session = editorSession(
+                release: release,
+                saving: stage == .saving
+            )
+            presentEditor(on: uiStore, images: images, session: session)
+            if stage == .coverSheet {
+                presentCoverSheet(on: uiStore, images: images)
             }
-        }
-        return ShotStage(
-            Group {
-                if stage == .dropTracksAlert {
-                    OverWindow.alert(
-                        DropTracksConfirmation.alert {},
-                        over: window
-                    )
+            let window = ZStack(alignment: .topLeading) {
+                ShotScenes.libraryWindow(
+                    uiStore: uiStore,
+                    backing: backing,
+                    playbackStore: boardPlayback(),
+                    size: size
+                )
+                if stage == .albumMenu {
+                    albumMenu
                 }
-                else {
-                    window
-                }
-            },
-            images: images
-        ) {
-            (backing.session.albums.list?.positionCount ?? 0) > 0
-                && detailAnswered.answered
-                && (stage != .saving || session.readingLine != nil)
+            }
+            return ShotStage(
+                Group {
+                    if stage == .dropTracksAlert {
+                        OverWindow.alert(
+                            DropTracksConfirmation.alert {},
+                            over: window
+                        )
+                    }
+                    else {
+                        window
+                    }
+                },
+                images: images
+            ) {
+                (backing.session.albums.list?.positionCount ?? 0) > 0
+                    && detailAnswered.answered
+                    && (stage != .saving || session.readingLine != nil)
+            }
         }
     }
 
