@@ -8,9 +8,9 @@ struct ShotDisplayKeeper {
     @MainActor
     static func main() {
         let app = NSApplication.shared
-        guard app.setActivationPolicy(.prohibited) else {
+        guard app.setActivationPolicy(.accessory) else {
             let error =
-                "AppKit refused to disable activation for the shot display keeper."
+                "AppKit refused to make the shot display keeper a background process."
             Logger.bae("ShotDisplayKeeper").error(error)
             FileHandle.standardOutput.write(Data("\(error)\n".utf8))
             exit(EXIT_FAILURE)
