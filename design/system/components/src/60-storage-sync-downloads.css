@@ -151,7 +151,8 @@
 .bae-usage-size { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 /* AndroidStorageUsage.kt draws each size in body type, with Roboto's own digit widths. */
 .bae-usage-key-a .bae-usage-size { font-variant-numeric: normal; }
-.bae-usage-m { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
+/* On a Mac the usage fills a settings form's row, so it keeps a row's insets. */
+.bae-usage-m { padding: calc(var(--space-related) + var(--space-line)) var(--space-group); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-usage-m .bae-usage-num { font-size: var(--type-figure-size); font-weight: var(--type-figure-weight); line-height: normal; }
 .bae-usage-a { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
 .bae-usage-a .bae-usage-num { font-size: var(--type-android-figure-size); font-weight: var(--type-android-figure-weight); line-height: var(--type-android-figure-line-height); }
