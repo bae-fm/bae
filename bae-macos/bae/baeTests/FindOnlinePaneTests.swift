@@ -294,7 +294,8 @@ struct FindOnlineFormFocusTests {
                 SnapshotTestSupport.descendants(of: host)
                     .compactMap { $0 as? NSTextField }
                     .first {
-                        $0.placeholderString == String(localized: "Artist")
+                        $0.placeholderAttributedString?.string
+                            == String(localized: "Artist")
                     }
             )
             #expect(artist.currentEditor() === window.firstResponder)
