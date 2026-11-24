@@ -9,7 +9,6 @@ import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -98,7 +97,11 @@ private fun AndroidSnackbar(data: SnackbarData) {
         modifier = Modifier.padding(SNACKBAR_MARGIN),
         action =
             visuals.actionLabel?.let { label ->
-                { TextButton(onClick = data::performAction) { Text(label) } }
+                {
+                    AndroidButton(onClick = data::performAction, kind = ButtonKind.TEXT, tone = ButtonTone.INVERSE) {
+                        Text(label)
+                    }
+                }
             },
         dismissAction =
             if (visuals.withDismissAction) {

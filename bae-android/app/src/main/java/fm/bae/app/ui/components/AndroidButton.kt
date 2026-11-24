@@ -29,8 +29,11 @@ import fm.bae.app.ui.appearance.ThemeSpace
 /** How loud a button is: [FILLED] is the action a screen is for, [OUTLINED] sits beside it, [TONAL] stands alone. */
 enum class ButtonKind { FILLED, TONAL, OUTLINED, TEXT }
 
-/** [DESTRUCTIVE] is in the danger colour; [NEUTRAL] is in the screen's text colour, beside a destructive one. */
-enum class ButtonTone { DEFAULT, DESTRUCTIVE, NEUTRAL }
+/**
+ * [DESTRUCTIVE] is in the danger colour; [NEUTRAL] is in the screen's text colour, beside a destructive one;
+ * [INVERSE] is a text button on the inverse surface, as a snackbar's Retry, in Material's inverse primary.
+ */
+enum class ButtonTone { DEFAULT, DESTRUCTIVE, NEUTRAL, INVERSE }
 
 /**
  * Where a [ButtonKind.TEXT] button on its own line lines its words up: [TEXT] flush with the plain text
@@ -141,6 +144,7 @@ private fun ButtonTone.color(): Color? =
         ButtonTone.DEFAULT -> null
         ButtonTone.DESTRUCTIVE -> MaterialTheme.colorScheme.error
         ButtonTone.NEUTRAL -> MaterialTheme.colorScheme.onSurface
+        ButtonTone.INVERSE -> MaterialTheme.colorScheme.inversePrimary
     }
 
 /** The button's label [content], after the [icon] and a gap when there is one. */

@@ -1,12 +1,17 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
@@ -67,6 +72,20 @@ class AndroidButtonShots : BoardShot() {
 
     @Test
     fun androidComponentButtonTonal() = component("android.component.button.tonal") { JoinButton(ButtonKind.TONAL) }
+
+    @Test
+    fun androidComponentButtonInverse() =
+        component("android.component.button.inverse") {
+            Box(
+                Modifier
+                    .background(
+                        MaterialTheme.colorScheme.inverseSurface,
+                        RoundedCornerShape(4.dp),
+                    ).padding(horizontal = ThemeSpace.related),
+            ) {
+                JoinButton(ButtonKind.TEXT, tone = ButtonTone.INVERSE)
+            }
+        }
 
     @Test
     fun androidComponentButtonNeutral() =
