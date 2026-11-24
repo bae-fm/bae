@@ -106,7 +106,7 @@
       rows.push(h('div', { key: k, className: cx('bae-m-table-tr', k % 2 && 'bae-m-table-alt') },
         h('div', { className: 'bae-m-table-row' }, h('span', { className: 'bae-m-table-td' }, h(MacPlaceholderLine, { width: 180, height: 14, radius: 'radius-bar' })))));
     }
-    return h('div', { className: 'bae-m-table', style: { '--bae-cols': tableTemplate(cs), minWidth: cs.reduce(function (n, c) { return n + c.w; }, 20) } }, tableHead(cs), h('div', { className: 'bae-m-table-body' }, rows));
+    return h('div', { className: 'bae-m-table', style: { '--bae-cols': tableTemplate(cs), minWidth: cs.reduce(function (n, c) { return n + c.w; }, 0) } }, tableHead(cs), h('div', { className: 'bae-m-table-body' }, rows));
   }
   // The Release column's cell: the release's 24pt cover beside its title.
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 'radius-bar' }), h('span', { className: 'bae-ellipsis' }, props.title)); }
