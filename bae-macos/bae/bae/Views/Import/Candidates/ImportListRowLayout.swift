@@ -28,8 +28,10 @@ struct ImportListRowLayout<Meta: View, Trailing: View>: View {
             // group, whichever sits higher.
             meta()
                 .accessibilityElement(children: .contain)
-            Spacer(minLength: ThemeSpace.inline)
-            trailing()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            // The trailing column keeps its place, and the space before it,
+            // when it is empty, as the board's does.
+            HStack(spacing: 0) { trailing() }
         }
         .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
