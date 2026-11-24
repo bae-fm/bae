@@ -101,6 +101,36 @@ extension ShotScene {
 
     private static let editorWidth: CGFloat = 720
 
+    /// Find online for the editor's release, which nothing answered to: its
+    /// Disc ID, its title search, and its catalog number left to activate,
+    /// with no barcode or ISRC.
+    private static let northboundNotFound = PreviewData.searchState(
+        identifyState: .notFoundAnywhere(
+            run: BridgeIdentifyRun(
+                providers: [.musicBrainz, .discogs],
+                discId: .read(discs: [
+                    BridgeDiscIdRow(
+                        discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                        lookup: .noMatch
+                    )
+                ]),
+                barcode: .rows(rows: []),
+                catalog: .numbers(
+                    rows: [],
+                    candidates: [BridgeCatalogCandidate(value: "HR-0412")]
+                ),
+                isrc: .absent,
+                search: .searched(
+                    album: "Northbound",
+                    artist: "Mara Quill",
+                    cells: PreviewData.cells(.noMatch, .noMatch)
+                ),
+                readingArtwork: false
+            )
+        ),
+        signals: PreviewData.settledSignals
+    )
+
     private enum EditorContent { case identified, unlisted, blank, unread }
 
     private static func editorScene(
@@ -155,11 +185,9 @@ extension ShotScene {
                         editable: editable,
                         searching: searching,
                         search: {
-                            MacFindOnline.preview(
-                                state: PreviewData.searchStateNotFound
-                            )
-                            .frame(maxWidth: .infinity)
-                            .card()
+                            MacFindOnline.preview(state: northboundNotFound)
+                                .frame(maxWidth: .infinity)
+                                .card()
                         }
                     ),
                     syncs: syncs
