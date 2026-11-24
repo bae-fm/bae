@@ -54,7 +54,10 @@ struct MacIdentifierChip<Trailing: View>: View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
             if !values.isEmpty, let onValue {
-                FlowLayout(spacing: ThemeSpace.line) {
+                FlowLayout(
+                    spacing: ThemeSpace.line,
+                    maxWidth: identifierListWidth
+                ) {
                     ForEach(Array(values.enumerated()), id: \.offset) {
                         index,
                         value in
@@ -75,7 +78,6 @@ struct MacIdentifierChip<Trailing: View>: View {
                         }
                     }
                 }
-                .frame(maxWidth: identifierListWidth, alignment: .leading)
             }
             else if !values.isEmpty {
                 Text(MacIdentifierChipValues.text(values))

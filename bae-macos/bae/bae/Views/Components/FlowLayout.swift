@@ -9,13 +9,16 @@ struct FlowLayout: Layout {
     /// otherwise: a row of links sits closer to the next row than its links
     /// sit to each other.
     var rowSpacing: CGFloat?
+    /// The widest a row grows, where the layout is to take only the width its
+    /// items need up to there, and never the whole width offered.
+    var maxWidth: CGFloat = .infinity
 
     func sizeThatFits(
         proposal: ProposedViewSize,
         subviews: Subviews,
         cache: inout Void
     ) -> CGSize {
-        let width = proposal.width ?? .infinity
+        let width = min(proposal.width ?? .infinity, maxWidth)
         return arrange(subviews, in: width).size
     }
 
@@ -25,7 +28,7 @@ struct FlowLayout: Layout {
         subviews: Subviews,
         cache: inout Void
     ) {
-        let arrangement = arrange(subviews, in: bounds.width)
+        let arrangement = arrange(subviews, in: min(bounds.width, maxWidth))
         for (subview, frame) in zip(subviews, arrangement.frames) {
             subview.place(
                 at: CGPoint(
