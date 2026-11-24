@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.AndroidSpinner
 import org.junit.Test
 
@@ -12,5 +13,11 @@ class AndroidSpinnerShots : BoardShot() {
     fun androidComponentSpinnerWithWords() =
         component("android.component.spinner.with-words", enterMillis = SPINNER_ARC_MILLIS) {
             AndroidSpinner(text = "Looking for receivers…")
+        }
+
+    @Test
+    fun androidComponentSpinnerOnTheBackdrop() =
+        component("android.component.spinner.on-the-backdrop", enterMillis = SPINNER_ARC_MILLIS) {
+            OnTheBackdrop { AndroidSpinner(color = BaeTheme.colors.onFill) }
         }
 }

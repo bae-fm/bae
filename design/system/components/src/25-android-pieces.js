@@ -68,7 +68,7 @@
   function AndroidLightbox(props) {
     return h('div', { className: 'bae-a-screen bae-a-lightbox', role: 'dialog', 'aria-label': props.label },
       h('span', { className: 'bae-a-lightbox-close' }, h(AndroidIconButton, { icon: 'close', label: 'Close', tone: 'onfill' })),
-      props.loading ? h('div', { className: 'bae-a-lightbox-wait' }, h(AndroidSpinner), h('span', { className: 'bae-a-lightbox-secondary' }, 'Loading the image…'))
+      props.loading ? h('div', { className: 'bae-a-lightbox-wait' }, h(AndroidSpinner, { onfill: true }), h('span', { className: 'bae-a-lightbox-secondary' }, 'Loading the image…'))
         : h(Artwork, { title: props.title, label: props.title, size: 412, radius: 0 }),
       h(AndroidGalleryCaption, { label: props.label, page: props.page, count: props.count }));
   }

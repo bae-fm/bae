@@ -74,3 +74,4 @@
 .bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-a-spinner { display: flex; width: fit-content; align-items: center; gap: var(--space-group); color: var(--accent); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-spinner > span { color: var(--text-secondary); }
+.bae-a-spinner-onfill { color: var(--on-fill); }

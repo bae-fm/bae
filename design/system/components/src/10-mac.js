@@ -346,7 +346,9 @@
         : h('svg', { className: 'bae-spinner', width: s, height: s, viewBox: '0 0 24 24', role: 'progressbar', 'aria-label': props.label || 'Loading', fill: 'none' },
           h('circle', { cx: 12, cy: 12, r: 10.5, stroke: 'currentColor', strokeOpacity: 0.2, strokeWidth: 2.5 }),
           h('path', { d: 'M12 1.5a10.5 10.5 0 0 1 10.5 10.5', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' }));
-      return props.label ? h('span', { className: prefix + '-spinner' }, spin, h('span', null, props.label)) : h('span', { className: prefix + '-spinner' }, spin);
+      // `onfill` draws the ring in the on-fill colour, for a spinner on the dark backdrop.
+      var cls = cx(prefix + '-spinner', props.onfill && prefix + '-spinner-onfill');
+      return props.label ? h('span', { className: cls }, spin, h('span', null, props.label)) : h('span', { className: cls }, spin);
     };
   }
   var MacSpinner = Spinner('bae-m', 16);
