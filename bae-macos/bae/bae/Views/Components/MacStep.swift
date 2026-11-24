@@ -95,18 +95,20 @@ private struct BalancedText: NSViewRepresentable {
         guard let cell = field.cell else {
             preconditionFailure("a text field made with a label has a cell")
         }
-        let height =
-            cell
-            .cellSize(
-                forBounds: NSRect(
-                    x: 0,
-                    y: 0,
-                    width: width,
-                    height: .greatestFiniteMagnitude
-                )
+        let size = cell.cellSize(
+            forBounds: NSRect(
+                x: 0,
+                y: 0,
+                width: width,
+                height: .greatestFiniteMagnitude
             )
-            .height
-        return CGSize(width: width, height: ceil(height))
+        )
+        // The view is as wide as its widest line, so the parent centres the
+        // text and its box matches the text it holds, as the board's does.
+        return CGSize(
+            width: min(ceil(size.width), width),
+            height: ceil(size.height)
+        )
     }
 }
 
