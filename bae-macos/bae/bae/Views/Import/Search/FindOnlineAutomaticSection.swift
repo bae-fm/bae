@@ -323,7 +323,10 @@ private struct NeedsYouSentence: View {
             .themeText(.body)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, ThemeSpace.group)
-            .padding(.vertical, ThemeSpace.related)
+            // The section body's own space, as the board sets it: the first
+            // child sits an inline space down, and a group space follows it.
+            .padding(.top, ThemeSpace.inline)
+            .padding(.bottom, ThemeSpace.group)
     }
 }
 
