@@ -32,9 +32,9 @@ struct AccentPlainButtonStyleTests {
             }
             .disabled(!enabled)
         }
-        func row(enabled: Bool) -> some View {
+        func row(_ press: MacRowPress, enabled: Bool) -> some View {
             MacRow("Storage", value: "Cloud")
-                .pressing(.opens {})
+                .pressing(press)
                 .disabled(!enabled)
                 .frame(width: 300)
         }
@@ -42,22 +42,32 @@ struct AccentPlainButtonStyleTests {
         let popUpWanted = try brightest(
             popUp(enabled: true).opacity(ThemeOpacity.off)
         )
-        let rowShown = try brightest(row(enabled: false))
-        let rowWanted = try brightest(
-            row(enabled: true).opacity(ThemeOpacity.off)
-        )
         #expect(
             abs(popUpShown - popUpWanted) < 0.02,
             "pop-up \(popUpShown) wanted \(popUpWanted)"
         )
-        #expect(
-            abs(rowShown - rowWanted) < 0.02,
-            "row \(rowShown) wanted \(rowWanted)"
-        )
+        // The value and the chevron sit in the right of the row, away from
+        // the name, so their own dimming shows.
+        for press in [
+            MacRowPress.opens {}, .removes {},
+        ] {
+            let shown = try brightest(
+                row(press, enabled: false),
+                rightOf: 0.6
+            )
+            let wanted = try brightest(
+                row(press, enabled: true).opacity(ThemeOpacity.off),
+                rightOf: 0.6
+            )
+            #expect(abs(shown - wanted) < 0.02, "row \(shown) wanted \(wanted)")
+        }
     }
 
     /// The brightest colour component of `content` drawn on black.
-    private func brightest<Content: View>(_ content: Content) throws -> Double {
+    private func brightest<Content: View>(
+        _ content: Content,
+        rightOf fraction: Double = 0
+    ) throws -> Double {
         let renderer = ImageRenderer(
             content:
                 content
@@ -69,7 +79,7 @@ struct AccentPlainButtonStyleTests {
         let image = try #require(renderer.cgImage)
         let bitmap = NSBitmapImageRep(cgImage: image)
         var brightest = 0.0
-        for x in 0..<image.width {
+        for x in Int(Double(image.width) * fraction)..<image.width {
             for y in 0..<image.height {
                 let colour = try #require(
                     bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)
