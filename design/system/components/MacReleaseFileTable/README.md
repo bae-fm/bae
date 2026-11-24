@@ -1,6 +1,6 @@
 # MacReleaseFileTable
 
-A release's files in its Storage sheet: the Files heading (`MacEyebrow`) over the table of each file's name, audio format, size and kind. The name is in the text colour, the audio format and size in secondary text and the kind in tertiary. Name, Size and Kind sort the table; Audio doesn't.
+A release's files in its Storage sheet: the Files heading (`MacEyebrow`) over the table of each file's name, audio format, size and kind. The name is in the text colour, the audio format and size in secondary text and the kind in tertiary. Name, Size and Kind sort the table; Audio doesn't. Every heading is a button, as each header cell of AppKit's table is.
 
 | Prop | What it does |
 | --- | --- |

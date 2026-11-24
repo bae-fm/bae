@@ -86,7 +86,7 @@
   // Entries: one row a ";"-separated entry, one cell a "|"-separated field.
   function entries(s) { return String(s || '').split(';').map(function (x) { return x.trim(); }).filter(Boolean).map(function (r) { return r.split('|').map(function (x) { return x.trim(); }); }); }
   function tableHead(cs) {
-    return h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h(c.plain ? 'span' : 'button', { key: i, type: c.plain ? null : 'button', className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' }) : null); }));
+    return h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h('button', { key: i, type: 'button', className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' }) : null); }));
   }
   function tableTemplate(cs) { return cs.map(function (c, i) { return i === 0 ? 'minmax(' + c.w + 'px, 1fr)' : c.w + 'px'; }).join(' '); }
   // The Storage Manager's release table, AppKit's NSTableView: the header (`columns`), then one row a release, every other row on the hover fill, the `selected` rows (their numbers, from 1, separated by commas) in the accent's tint. `rows` holds the releases, one entry a row with a field a column in the columns' order: the release's title, its artist, media, storage (a MacStorageChip state, and its progress for a state that moves: "uploading 0.62"), files, size and date added. The Release column draws MacReleaseCell and every other column MacStorageCell. `loading`: that many rows still on their way after the given ones, each a placeholder bar in its Release column.
@@ -116,10 +116,10 @@
     if (props.state) return h(MacStorageChip, { state: props.state, progress: props.progress });
     return h('span', { className: props.numeric ? 'bae-num bae-m-storecell-num' : null }, props.value);
   }
-  // A release's files in its Storage sheet: the Files heading over the columns Name, Audio, Size and Kind, the file name in the text colour, its audio format (empty for a file that isn't audio) and size in secondary text, its kind in tertiary. Name, Size and Kind sort the table, Audio doesn't; `sort` is the column it sorts by and its direction (Name:up unless given), marked in its header. `files` lists them, one "name|audio|size|kind" each, separated by semicolons.
+  // A release's files in its Storage sheet: the Files heading over the columns Name, Audio, Size and Kind, the file name in the text colour, its audio format (empty for a file that isn't audio) and size in secondary text, its kind in tertiary. Name, Size and Kind sort the table, Audio doesn't, but every heading is a button, as each header cell of AppKit's table is; `sort` is the column it sorts by and its direction (Name:up unless given), marked in its header. `files` lists them, one "name|audio|size|kind" each, separated by semicolons.
   function MacReleaseFileTable(props) {
     var sort = String(props.sort || 'Name:up').split(':');
-    var cs = cols('Name:200,Audio:120,Size:80,Kind:130').map(function (c) { if (c.title === sort[0]) c.sort = sort[1] || 'up'; c.plain = c.title === 'Audio'; return c; });
+    var cs = cols('Name:200,Audio:120,Size:80,Kind:130').map(function (c) { if (c.title === sort[0]) c.sort = sort[1] || 'up'; return c; });
     var rows = entries(props.files).map(function (f, i) {
       return h('div', { key: i, className: cx('bae-m-table-tr', i % 2 && 'bae-m-table-alt') },
         h('div', { className: 'bae-m-table-row' },
