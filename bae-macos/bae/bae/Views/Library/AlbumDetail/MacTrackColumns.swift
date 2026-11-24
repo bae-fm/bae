@@ -55,8 +55,10 @@ struct MacTrackColumns: View {
                         trackColumn(tracks: group.tracks)
                         // Not a `Spacer`: its default minimum length would
                         // claim its own width rather than take the share a
-                        // sibling column takes.
-                        Color.clear.frame(maxWidth: .infinity)
+                        // sibling column takes. No height of its own, so it
+                        // never stretches the list when it is given more
+                        // height than the rows need.
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
                     }
                 }
                 // The album's play time sits in the header; only a multi-side
