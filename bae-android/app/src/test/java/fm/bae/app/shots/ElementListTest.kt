@@ -217,6 +217,36 @@ class ElementListTest : BoardShot() {
     }
 
     @Test
+    fun aWindowDrawnOverTheScreenIsListedBeforeTheScreensOwnElements() {
+        compose.settle {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Text("Page", modifier = Modifier.offset(0.dp, 40.dp))
+                // A menu, sheet or dialog is a window of its own in the app, which TalkBack reads first. The shot draws
+                // it inside the screen, below the page's text, and marks it as a window.
+                Column(modifier = Modifier.offset(0.dp, 300.dp).windowOverScreen()) {
+                    Text("First item")
+                    Text("Second item")
+                }
+                Text("Footer", modifier = Modifier.offset(0.dp, 500.dp))
+            }
+        }
+        val elements =
+            ElementList
+                .of(
+                    "android.test.window",
+                    compose.onRoot().fetchSemanticsNode(),
+                    reading = ReadingOrder.of(compose.activity.window.decorView),
+                ).getJSONArray("elements")
+                .objects()
+
+        assertEquals(
+            listOf("First item", "Second item", "Page", "Footer"),
+            elements.filterNot { it.isNull("label") }.map { it.getString("label") },
+        )
+        assertTrue(elements.all { it.isNull("parent") })
+    }
+
+    @Test
     fun aMergedNodeOfTwoTextsKeepsItsReadingAndListsEachTextAsItsChild() {
         compose.settle {
             Column(modifier = Modifier.clickable {}) {

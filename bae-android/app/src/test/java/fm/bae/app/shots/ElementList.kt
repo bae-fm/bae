@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.LayoutInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsConfiguration
@@ -71,7 +72,10 @@ internal object ElementList {
         fun visit(
             node: SemanticsNode,
             parent: Listed?,
+            inWindows: Boolean = false,
         ) {
+            // A window drawn over the screen is listed first, on its own (below), and not again in its place.
+            if (node.inWindow() != inWindows) return
             // A node with no visible part (below the screen's edge, past a scrolling area's edge or under the
             // drawn keyboard) is not listed, as the board reader leaves out such a node of a board. Its children
             // are visited: they hang from the nearest listed node above.
@@ -85,7 +89,7 @@ internal object ElementList {
                 listed.add(here)
                 // A child that asks to be read first (a negative traversal index, such as a track row's lead) comes
                 // before the merged node's own texts, as the board lists its image before the row's words.
-                inReadingOrder(node).filter { it.readsFirst() }.forEach { visit(it, here) }
+                inReadingOrder(node).filter { it.readsFirst() }.forEach { visit(it, here, inWindows) }
                 mergedTexts(
                     node,
                     unmerged,
@@ -93,8 +97,14 @@ internal object ElementList {
             }
             // The list visits a node's children in reading order, the order TalkBack reads them in, not the order
             // Compose draws them in.
-            inReadingOrder(node).filterNot { here != null && here !== parent && it.readsFirst() }.forEach { visit(it, here) }
+            inReadingOrder(node).filterNot { here != null && here !== parent && it.readsFirst() }.forEach { visit(it, here, inWindows) }
         }
+
+        // TalkBack moves its focus into a window that opens over a screen (a menu, a sheet, a dialog), so each such
+        // window's elements come before the screen's own, in the chain's order inside the window.
+        fun windows(node: SemanticsNode): List<SemanticsNode> =
+            if (node.inWindow()) listOf(node) else inReadingOrder(node).flatMap(::windows)
+        inReadingOrder(root, ReadingOrder.HOST).flatMap(::windows).forEach { visit(it, null, inWindows = true) }
         inReadingOrder(root, ReadingOrder.HOST).forEach { visit(it, null) }
         // The tree keeps a bare, childless node where an embedded view sits. The element list puts the view's
         // elements at that node, in the view's order. When the tree has no such node, the list puts the view where
@@ -145,6 +155,9 @@ internal object ElementList {
         val box = node.wholeBox()
         return !box.isEmpty && (node.boundsInRoot.isEmpty || !box.overlaps(frame))
     }
+
+    /** Whether the node is in a layout the scene marks as a window the app opens over its screen ([windowOverScreen]). */
+    private fun SemanticsNode.inWindow(): Boolean = generateSequence<LayoutInfo>(layoutInfo) { it.parentInfo }.any { it.isWindow() }
 
     /** Whether the node asks to be read before the texts of the merged node that holds it. */
     private fun SemanticsNode.readsFirst(): Boolean = (config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f) < 0f

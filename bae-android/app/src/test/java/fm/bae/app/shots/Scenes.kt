@@ -98,7 +98,7 @@ internal fun SheetOverScrim(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(
-        modifier = Modifier.fillMaxSize().background(BaeTheme.colors.scrim),
+        modifier = Modifier.fillMaxSize().windowOverScreen().background(BaeTheme.colors.scrim),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Surface(
@@ -220,6 +220,7 @@ internal fun InPlaceDialogScene(
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        .windowOverScreen()
                         .background(BaeTheme.colors.scrim)
                         .padding(horizontal = ThemeSpace.page),
                 contentAlignment = Alignment.Center,
@@ -260,7 +261,7 @@ internal fun InPlaceDialog(parts: DialogParts) {
 @Composable
 internal fun DialogInCell(parts: DialogParts) {
     Box(
-        modifier = Modifier.fillMaxSize().background(BaeTheme.colors.scrim),
+        modifier = Modifier.fillMaxSize().windowOverScreen().background(BaeTheme.colors.scrim),
         contentAlignment = Alignment.Center,
     ) {
         InPlaceDialog(parts)
@@ -355,8 +356,8 @@ internal val sceneLibrary =
 /**
  * An open menu's [items] on the menu's surface, [end] in from the box's right edge and [top] down from its top:
  * layoutlib draws an open menu's popup blank, so the menu's contents are drawn in a surface like its own. A menu is a
- * window of its own, which TalkBack reads after the page it opens over, so a scene draws it after the page in the
- * same box.
+ * window of its own, which TalkBack reads before the page it opens over, so the surface is marked as a window and the
+ * element list reads it first.
  */
 @Composable
 internal fun BoxScope.OpenMenu(
@@ -369,7 +370,12 @@ internal fun BoxScope.OpenMenu(
         color = MenuDefaults.containerColor,
         tonalElevation = MenuDefaults.TonalElevation,
         shadowElevation = MenuDefaults.ShadowElevation,
-        modifier = Modifier.align(Alignment.TopEnd).padding(end = end).offset(y = top),
+        modifier =
+            Modifier
+                .align(Alignment.TopEnd)
+                .windowOverScreen()
+                .padding(end = end)
+                .offset(y = top),
     ) {
         Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max), content = items)
     }
