@@ -98,7 +98,12 @@ struct SavePresetEditor: View {
         MacFieldRow("Name", labelWidth: 90) {
             MacTextField(
                 "Name",
-                error: nameTaken ? "Another format has this name." : nil,
+                error: nameTaken
+                    ? String(
+                        localized: "Another format has this name.",
+                        comment:
+                            "Format editor, under the name field: the name is taken."
+                    ) : nil,
                 labelHidden: true
             ) {
                 BoxedField(

@@ -70,9 +70,16 @@ struct FieldNote: View {
     private let text: Text
     private let isError: Bool
 
-    init(_ text: LocalizedStringKey, isError: Bool = false) {
+    init(_ text: LocalizedStringKey) {
         self.text = Text(text)
-        self.isError = isError
+        isError = false
+    }
+
+    /// An error line says what the failure said, so it is shown as given:
+    /// a key would read its markdown and format specifiers.
+    init(error: String) {
+        text = Text(verbatim: error)
+        isError = true
     }
 
     var body: some View {

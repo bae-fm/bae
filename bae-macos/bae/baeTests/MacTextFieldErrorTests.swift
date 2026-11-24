@@ -17,7 +17,7 @@ struct MacTextFieldErrorTests {
     func showsAnErrorLineUnchanged(message: String) async throws {
         try await SnapshotTestSupport.withHostedWindow(
             FieldColumn {
-                MacTextField("Region", error: LocalizedStringKey(message)) {
+                MacTextField("Region", error: message) {
                     BoxedField(text: .constant("us-east-1"), invalid: true)
                 }
             }

@@ -76,7 +76,7 @@ extension ShotScene {
     private static func textField(
         _ id: String,
         note: LocalizedStringKey? = nil,
-        error: LocalizedStringKey? = nil,
+        error: String? = nil,
         text: String = "Home music",
         state: FieldState = .resting,
         labelColumn: Bool = false

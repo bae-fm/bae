@@ -6,8 +6,8 @@ import SwiftUI
 struct MacTextField<Field: View>: View {
     let label: LocalizedStringKey
     let note: LocalizedStringKey?
-    /// What is wrong with the field, which replaces the note.
-    let error: LocalizedStringKey?
+    /// What is wrong with the field, shown as given, which replaces the note.
+    let error: String?
     /// The field takes no typing, and its label dims with it.
     let off: Bool
     /// The label only names the field to assistive technology, and the field
@@ -21,7 +21,7 @@ struct MacTextField<Field: View>: View {
     init(
         _ label: LocalizedStringKey,
         note: LocalizedStringKey? = nil,
-        error: LocalizedStringKey? = nil,
+        error: String? = nil,
         off: Bool = false,
         labelHidden: Bool = false,
         @ViewBuilder field: () -> Field
@@ -52,7 +52,7 @@ struct MacTextField<Field: View>: View {
                     .opacity(off ? ThemeOpacity.off : 1)
                     .alignmentGuide(.fieldLine) { $0[VerticalAlignment.center] }
                 if let error {
-                    FieldNote(error, isError: true)
+                    FieldNote(error: error)
                 }
                 else if let note {
                     FieldNote(note)

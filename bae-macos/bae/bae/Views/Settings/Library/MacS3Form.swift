@@ -109,10 +109,7 @@ struct MacS3Form: View {
         return MacFieldRow(title, labelWidth: 120) {
             MacTextField(
                 title,
-                error: failed
-                    ? fields.fieldFailure.map {
-                        LocalizedStringKey($0.error.line)
-                    } : nil,
+                error: failed ? fields.fieldFailure?.error.line : nil,
                 labelHidden: true
             ) {
                 BoxedField(text: text, secret: secret, invalid: failed)
