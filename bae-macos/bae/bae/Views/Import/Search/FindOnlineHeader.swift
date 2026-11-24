@@ -12,9 +12,17 @@ struct FindOnlineHeader: View {
                 .themeText(.strong)
             HStack(spacing: ThemeSpace.group) {
                 if let onBack {
-                    MacButton(kind: .borderless, action: onBack) {
-                        Label("Back", systemImage: "chevron.backward")
+                    // A plain accent button, as the board draws it: the
+                    // chevron and the word with no box round them.
+                    MacButton(kind: .plain, action: onBack) {
+                        HStack(spacing: ThemeSpace.inline) {
+                            Image(systemName: "chevron.backward")
+                                .themeIcon(.small)
+                                .accessibilityHidden(true)
+                            Text("Back")
+                        }
                     }
+                    .accent()
                     .themeText(.body)
                 }
                 Spacer(minLength: ThemeSpace.group)
