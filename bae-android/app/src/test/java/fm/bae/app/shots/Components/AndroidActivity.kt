@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import fm.bae.app.DisplayError
 import fm.bae.app.data.SyncActivityStore
+import fm.bae.app.ui.ActivityProblemId
+import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.sync.ActivityWords
 import fm.bae.app.ui.sync.AndroidActivity
@@ -54,7 +56,9 @@ class AndroidActivityShots : BoardShot() {
 
     @Test
     fun androidComponentActivityAScreenSProblem() =
-        component("android.component.activity.a-screen-s-problem") { Sheet(activity = idleActivity) }
+        component("android.component.activity.a-screen-s-problem") {
+            Sheet(activity = idleActivity, app = listOf(screenProblem))
+        }
 }
 
 @Composable
@@ -64,6 +68,7 @@ private fun Sheet(
     pins: Double = 0.0,
     words: ActivityWords = ActivityWords(failure = null, uploadsWait = null, pinsWait = null),
     error: DisplayError? = null,
+    app: List<AppProblem> = emptyList(),
 ) {
     val store =
         remember {
@@ -77,8 +82,8 @@ private fun Sheet(
             )
         }
     AndroidActivity(
-        problems = activityProblems(emptyList(), activity, null, emptySet()),
-        app = emptyList(),
+        problems = activityProblems(app, activity, null, emptySet()),
+        app = app,
         activity = activity,
         words = words,
         error = error,
@@ -90,6 +95,15 @@ private fun Sheet(
         onSetDownloadsPaused = {},
     )
 }
+
+/** The problem a screen reported, which the preview's row draws as a quiet danger notice with its dismiss button. */
+private val screenProblem =
+    AppProblem(
+        id = ActivityProblemId.SIGN_IN_SETTINGS,
+        title = "Could not pin Glass Harbor",
+        advice = null,
+        error = DisplayError("Could not pin Glass Harbor"),
+    )
 
 /** Sync with nothing moving, held or failing. */
 internal val idleActivity =
