@@ -490,9 +490,9 @@
         props.search ? h(AndroidInlineIconButton, { icon: 'close', label: 'Clear search' }) : null));
   }
 
-  // The Activity button, by what the sync queue does (`state`): moving spins, attention shows the warning mark, and paused (a queue held with nothing moving) shows a pause symbol so the hold can be seen. With nothing moving or held there is no button.
+  // The Activity button, by what the sync queue does (`state`): moving spins, attention shows the warning mark, and paused (a queue held with nothing moving) shows a pause symbol so the hold can be seen. With nothing moving or held there is no button. Every state is one button named Activity, as Activity.kt's AndroidIconButton is; the moving spinner inside it stays a progress indicator, as TalkBack reads it.
   function AndroidActivityButton(props) {
-    if (props.state === 'moving') return h('span', { className: 'bae-a-iconbtn' }, h(AndroidSpinner, { size: 16 }));
+    if (props.state === 'moving') return h('button', { type: 'button', className: 'bae-a-iconbtn', 'aria-label': 'Activity' }, h(AndroidSpinner, { size: 16 }));
     if (props.state === 'attention') return h(AndroidIconButton, { icon: 'warning', label: 'Activity', tone: 'warning' });
     if (props.state === 'paused') return h(AndroidIconButton, { icon: 'pause', label: 'Activity' });
     return null;
