@@ -98,25 +98,33 @@ extension ShotScene {
         }
     }
 
-    /// A stored audio file's row.
-    private static func itemFile(_ name: String, size: UInt64) -> MacFileRow {
-        MacFileRow(
-            row: BridgeStorageInspectorFile(
-                file: BridgeFile(
-                    id: name,
-                    originalFilename: name,
-                    name: name,
-                    folder: nil,
-                    kind: .audio(format: "FLAC"),
-                    fileSize: size,
-                    contentType: "application/octet-stream",
-                    isImage: false,
-                    audioFormat: nil
-                ),
-                upload: nil,
-                download: nil,
-                problem: nil
-            )
-        )
+    /// A stored audio file's row, in the inspector's list, which makes it
+    /// a button as it does in the app.
+    private static func itemFile(_ name: String, size: UInt64) -> some View {
+        AccentSelectionList(
+            rows: [
+                BridgeStorageInspectorFile(
+                    file: BridgeFile(
+                        id: name,
+                        originalFilename: name,
+                        name: name,
+                        folder: nil,
+                        kind: .audio(format: "FLAC"),
+                        fileSize: size,
+                        contentType: "application/octet-stream",
+                        isImage: false,
+                        audioFormat: nil
+                    ),
+                    upload: nil,
+                    download: nil,
+                    problem: nil
+                )
+            ],
+            id: \.file.id,
+            selection: Binding<String?>.constant(nil)
+        ) { row in
+            MacFileRow(row: row)
+        }
+        .frame(height: 32)
     }
 }
