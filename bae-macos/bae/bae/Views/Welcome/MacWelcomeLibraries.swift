@@ -202,7 +202,11 @@ private struct LibraryRow: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
+            // VoiceOver reads the name and the step under it before what
+            // sits at the row's end: the step's line is a native view, which
+            // it would otherwise read after the spinner.
             label
+                .accessibilitySortPriority(1)
             if removalSteps != nil || openSteps != nil {
                 MacSpinner()
                     .frame(
@@ -217,6 +221,7 @@ private struct LibraryRow: View {
                 moreMenu
             }
         }
+        .accessibilityElement(children: .contain)
         .padding(.horizontal, ThemeSpace.group)
         .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
         .frame(maxWidth: .infinity, alignment: .leading)
