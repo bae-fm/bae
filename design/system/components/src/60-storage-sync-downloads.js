@@ -50,12 +50,11 @@
   function MacPlaceholderLine(props) { return placeholderLine(props); }
 
   // ---- Storage Manager (macOS) ----
-  // The Storage Manager's toolbar, past the traffic lights: the window's title, All / Local / Cloud (`filter`, All unless given), the Filter field (`search`, the text typed) and the Inspector toggle (`inspector`, on while the inspector shows). `disabled` (no library open): the filter, the search field and the inspector button are off, each drawn by its own off state.
+  // The Storage Manager's toolbar, as macOS 26 draws a window's toolbar: 52pt tall with no line under it, the traffic lights centred in it, then the window's title in the heading type, All / Local / Cloud at the window's centre (`filter`, All unless given), the Filter field (`search`, the text typed) and the Inspector toggle (`inspector`, on while the inspector shows). `disabled` (no library open): the filter, the search field and the inspector button are off, each drawn by its own off state.
   function MacStorageToolbar(props) {
     return h('header', { className: 'bae-m-storewin-bar' },
       h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
-      h('span', { style: { flex: 1 } }),
-      h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All', off: props.disabled }),
+      h('span', { className: 'bae-m-storewin-centre' }, h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All', off: props.disabled })),
       h('span', { style: { flex: 1 } }),
       h(MacSearchField, { kind: 'filter', label: 'Filter', value: props.search, off: props.disabled }),
       // The Inspector toggle is a native toolbar item: macOS gives it a box 36pt wide and as tall as the bar, 4pt from the window's edge, and VoiceOver reads that box as the button; the 28pt icon button sits at its centre.

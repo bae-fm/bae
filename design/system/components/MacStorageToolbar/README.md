@@ -1,6 +1,6 @@
 # MacStorageToolbar
 
-The Storage Manager's toolbar, past the traffic lights: the window's title, All, Local and Cloud (`MacSegmentedControl`), the Filter field (`MacSearchField`) and the Inspector toggle. The Inspector toggle is a native toolbar item: macOS gives it a box 36pt wide and as tall as the bar, 4pt from the window's edge, with the 28pt `MacIconButton` at its centre, and VoiceOver reads the box as the Inspector button. `MacStorageWindow` draws it.
+The Storage Manager's toolbar, as macOS 26 draws a window's toolbar: 52pt tall with no line under it and the traffic lights centred in it. Past the lights come the window's title in the heading type, All, Local and Cloud (`MacSegmentedControl`) at the window's centre, then the Filter field (`MacSearchField`) and the Inspector toggle side by side at the end. The Inspector toggle is a native toolbar item: macOS gives it a box 36pt wide and as tall as the bar, 4pt from the window's edge, with the 28pt `MacIconButton` at its centre, and VoiceOver reads the box as the Inspector button. `MacStorageWindow` draws it.
 
 | Prop | |
 | --- | --- |
