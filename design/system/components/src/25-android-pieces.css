@@ -22,7 +22,7 @@
 .bae-a-sidepause { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-a-sidepause-count { font: var(--type-android-strong-weight) var(--type-android-strong-size)/var(--type-android-strong-line-height) var(--font-android); color: var(--text-primary); }
 .bae-a-errline { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--danger); }
-.bae-a-item { display: flex; align-items: flex-start; gap: var(--space-group); }
+.bae-a-item { display: flex; align-items: flex-start; gap: var(--space-related); }
 .bae-a-item-lead { flex: none; height: 20px; display: flex; align-items: center; justify-content: center; }
 .bae-a-item-body { flex: 1; min-width: 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-item-trail { flex: none; height: 20px; display: flex; align-items: center; gap: var(--space-inline); }
