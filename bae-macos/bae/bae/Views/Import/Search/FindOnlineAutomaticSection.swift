@@ -205,9 +205,7 @@ struct FindOnlineAutomaticSection: View {
         if let needsYou = state.needsYou, let onKeepOwnDraft {
             MacAnswerAction(
                 title: Self.keepOwnDraftTitle(needsYou),
-                subtitle: String(
-                    localized: "Keep my info; it is not in the catalogs"
-                ),
+                subtitle: Self.keepOwnDraftSubtitle(needsYou),
                 off: state.isImporting,
                 action: onKeepOwnDraft
             )
@@ -220,6 +218,16 @@ struct FindOnlineAutomaticSection: View {
         needsYou.offeredReleases
             ? String(localized: "None of these")
             : String(localized: "Keep my info")
+    }
+
+    /// The line under the button: where the page offered releases, it says
+    /// what the button does, since "None of these" doesn't; where it offered
+    /// none, the button's own title says that, so the line gives only why.
+    static func keepOwnDraftSubtitle(_ needsYou: BridgeNeedsYouReason) -> String
+    {
+        needsYou.offeredReleases
+            ? String(localized: "Keep my info; it is not in the catalogs")
+            : String(localized: "It is not in the catalogs")
     }
 
     /// The way to answer a folder whose copy is one of several pressings of

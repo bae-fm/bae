@@ -76,6 +76,10 @@ final class FindOnlinePaneTests: XCTestCase {
             FindOnlineAutomaticSection.keepOwnDraftTitle(matches),
             String(localized: "None of these")
         )
+        XCTAssertEqual(
+            FindOnlineAutomaticSection.keepOwnDraftSubtitle(matches),
+            String(localized: "Keep my info; it is not in the catalogs")
+        )
 
         // Nothing matched anywhere, waiting on the person.
         let notFound = BridgeNeedsYouReason.notFound
@@ -91,6 +95,10 @@ final class FindOnlinePaneTests: XCTestCase {
         XCTAssertEqual(
             FindOnlineAutomaticSection.keepOwnDraftTitle(notFound),
             String(localized: "Keep my info")
+        )
+        XCTAssertEqual(
+            FindOnlineAutomaticSection.keepOwnDraftSubtitle(notFound),
+            String(localized: "It is not in the catalogs")
         )
     }
 
