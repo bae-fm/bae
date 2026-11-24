@@ -12,6 +12,9 @@ final class MacSavePanelFormat: NSView {
         label.frame = NSRect(x: 0, y: 7, width: 50, height: 20)
         addSubview(label)
         addSubview(popup)
+        // VoiceOver reads a control by the label beside it only when the
+        // control names that label.
+        popup.setAccessibilityTitleUIElement(label)
     }
 
     @available(*, unavailable)

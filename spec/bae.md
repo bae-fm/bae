@@ -3085,6 +3085,7 @@ Two ways put a release back on disk, from desktop:
   another has. The edit sheet associates that refusal with the name field. Save as… offers every format, for a track
   and for a release, starting with the one last used; its Format menu ends in
   Edit Formats…, which opens Settings at Save as and keeps the panel open.
+  On the Mac, VoiceOver reads the Format menu as *Format*, then the chosen format.
   The menu follows any change made there, and a format
   added there becomes the choice of every Save as… panel open at that time. A
   panel opened later starts with the format last used. Deleting the format last used makes the
