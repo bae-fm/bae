@@ -170,7 +170,7 @@
   }
   // The folder's audio as the scan read it (spec §3.6: codec, sample rate, bit depth or bitrate, channels), the identity's line under the year.
   function audioLine(audio) { return audio ? h('div', { key: 'audio', className: 'bae-m-tertiary bae-m-idraft-audio' }, audio) : null; }
-  // What Discogs says about the pressing that no other field holds: each detail with its remove button, then the menu that adds one more: named Details and showing — while there are none, named Add detail and showing + Add after.
+  // What Discogs says about the pressing that no other field holds: each detail with its remove button, then the menu that adds one more: named Details and showing — while there are none, named Add detail and showing + Add in the accent after.
   // ⊗, which removes one entry of a list, named for the entry (`what`), as xmark.circle.fill in the editor. `off`: dimmed and disabled.
   function removeEntry(what, off) { return h(MacIconButton, { icon: 'removefill', size: 'medium', small: true, faint: true, label: 'Remove ' + what, off: off }); }
   // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added, and says Add. `off`: dimmed and disabled.
@@ -180,7 +180,7 @@
   function discogsDetails(details, off) {
     return h('span', { className: 'bae-m-idraft-details' },
       details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d, off)); }),
-      h('button', { type: 'button', disabled: off || null, className: cx('bae-plainbtn', 'bae-m-idraft-detail', !details.length && 'bae-m-tertiary', off && 'bae-off'), 'aria-haspopup': 'menu', 'aria-label': details.length ? 'Add detail' : 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 'small' }), 'Add'] : '—'));
+      h('button', { type: 'button', disabled: off || null, className: cx('bae-plainbtn', 'bae-m-idraft-detail', details.length ? 'bae-accent' : 'bae-m-tertiary', off && 'bae-off'), 'aria-haspopup': 'menu', 'aria-label': details.length ? 'Add detail' : 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 'small' }), 'Add'] : '—'));
   }
   // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty. `off`: every field, stepper and button is disabled, as while a save reads a file.
   function MacReleaseFields(props) {
