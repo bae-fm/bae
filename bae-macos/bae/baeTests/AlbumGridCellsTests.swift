@@ -62,7 +62,12 @@ struct AlbumGridCellsTests {
         ]
         #expect(texts.map(\.0).filter(tileTexts.contains) == tileTexts)
         #expect(!texts.contains { $0.0 == "Artist A and Artist B" })
-        #expect(!texts.contains { $0.0 == "Artist A" })
+        // The group's artist is named once, by the heading above the cards,
+        // and by no card.
+        let names = texts.filter { $0.0 == "Artist A" }
+        #expect(names.count == 1)
+        let name = try #require(names.first?.1)
+        #expect(name.y < duet.y && name.y < solo.y)
     }
 
     private var groupedCreditRows: [BridgeAlbumAppearance] {
