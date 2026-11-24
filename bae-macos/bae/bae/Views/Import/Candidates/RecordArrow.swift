@@ -11,17 +11,14 @@ import SwiftUI
 struct RecordArrow: View {
     let readFromRecord: Bool
 
-    /// The board draws the arrow 13 points across in the title's 16-point
-    /// line.
-    private static let width: CGFloat = 13
-    private static let height: CGFloat = 16
+    /// The icon's square, the width the title line keeps with no arrow.
+    private static let width = ThemeIcon.medium.size
 
     var body: some View {
         Group {
             if readFromRecord {
                 Image(systemName: "arrow.up.right")
-                    .font(.system(size: Self.width))
-                    .frame(width: Self.width, height: Self.height)
+                    .themeIcon(.medium)
                     .foregroundStyle(Theme.textSecondary)
                     .accessibilityIdentifier("identified-glyph")
                     .accessibilityLabel(
@@ -32,7 +29,7 @@ struct RecordArrow: View {
                 Color.clear
             }
         }
-        .frame(width: Self.width, height: Self.height)
+        .frame(width: Self.width, height: Self.width)
         .allowsHitTesting(false)
         .fixedSize()
     }
