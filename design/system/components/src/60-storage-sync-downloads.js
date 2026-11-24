@@ -228,7 +228,7 @@
   }
   function MacFileDetails(props) {
     return h('div', { className: 'bae-m-filedet' },
-      h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h('span', { className: 'bae-muted', title: 'Close file details' }, h(Sym, { name: 'xcircle', size: 15 }))),
+      h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Close file details', title: 'Close file details' }, h(Sym, { name: 'xcircle', size: 15 }))),
       h(MacFactsGrid, { facts: [['Folder', props.folder], ['Kind', props.kind], ['Format', props.format], ['Size', props.size]], numeric: 'Size' }));
   }
   // An error's causes, one a line, in an inset panel with Copy in its corner, in an alert (`MacAlert`'s `details`).
