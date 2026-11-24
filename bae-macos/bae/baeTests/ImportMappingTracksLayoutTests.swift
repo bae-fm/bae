@@ -280,7 +280,8 @@ extension ImportMappingTracksLayoutTests {
                 .fixedSize()
             )
             ideal.layoutSubtreeIfNeeded()
-            readable = ideal.fittingSize.width
+            // fittingSize rounds up to whole points.
+            readable = ideal.fittingSize.width - 1
         }
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseSheetCaption(
