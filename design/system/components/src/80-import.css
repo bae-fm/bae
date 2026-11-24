@@ -56,6 +56,8 @@
 .bae-m-itable { display: flex; flex-direction: column; min-width: 560px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-itable-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) 52px minmax(120px, 1fr) minmax(100px, 1fr) 88px; gap: var(--space-related); align-items: center; }
 .bae-m-itable-head { padding-bottom: var(--space-compact); }
+.bae-m-itable-side { padding: var(--space-edge) 0 var(--space-compact); }
+.bae-m-itable-side-first { padding-top: var(--space-line); }
 .bae-m-itable-track { min-height: 40px; border-top: 1px solid var(--hairline); }
 .bae-m-itable-playing { background: var(--accent-tint); }
 .bae-m-isrc { display: flex; align-items: center; gap: var(--space-related); min-width: 0; }

@@ -1,4 +1,4 @@
-<!-- @dsCard group="Album page" height=130 -->
+<!-- @dsCard group="Album page" height=90 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacEyebrow</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Default', h(B.MacEyebrow, null, 'Side A')), N('Flush', h(B.MacEyebrow, { flush: true }, 'Play on'))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacEyebrow, null, 'Side A')));
 </script>
 </body>
 </html>

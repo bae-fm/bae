@@ -121,7 +121,7 @@
     return h(MacPopover, { width: 260, right: props.right != null ? props.right : 120, bottom: props.bottom != null ? props.bottom : 92, arrow: 130, flush: true },
       h('div', { className: 'bae-m-castpop' },
         // The popover's header, Play on, on the rows' inset.
-        h('div', { className: 'bae-m-castpop-head' }, h(MacEyebrow, { flush: true }, 'Play on')),
+        h('div', { className: 'bae-m-castpop-head' }, h(MacEyebrow, null, 'Play on')),
         devices.length ? devices.map(function (d, i) { return h(MacCastRow, { key: i, name: d.name, kind: d.kind, active: d.name === props.casting, waiting: d.name === props.connecting ? waiting : null }); })
           : h('div', { className: 'bae-m-castpop-none' }, 'No receivers found')));
   }

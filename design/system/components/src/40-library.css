@@ -93,9 +93,7 @@
 .bae-m-track-title { font: var(--type-row-title-weight) var(--type-row-title-size) var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-track-artist { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-track-time { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
-.bae-m-eyebrow { padding: var(--space-edge) 0 var(--space-compact); font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--text-secondary); }
-.bae-m-eyebrow:first-child:not(.sc-host-x > *), .sc-host-x:first-child > .bae-m-eyebrow { padding-top: 0; }
-.bae-m-eyebrow-flush { padding: 0; }
+.bae-m-eyebrow { font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-dethead { display: flex; align-items: center; gap: var(--space-edge); }
 .bae-m-dethead-name { font: var(--type-title-weight) var(--type-title-size) var(--font-sans); letter-spacing: -0.3px; }
 .bae-m-dethead-count { margin-top: var(--space-inline); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
@@ -199,6 +197,9 @@
 .bae-m-albumpanel-tracks { padding-top: var(--space-edge); }
 .bae-m-albumpanel-tracks-rated { padding-top: var(--space-edge); }
 .bae-m-trackcols { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--space-page); }
+/* A side's heading: 16pt above it, except over the first side, and 6pt under it. */
+.bae-m-trackcols-heading { padding: var(--space-edge) 0 var(--space-compact); }
+.bae-m-trackcols-heading:first-child:not(.sc-host-x > *), .sc-host-x:first-child > .bae-m-trackcols-heading { padding-top: 0; }
 .bae-m-trackcols > div { min-width: 0; }
 .bae-m-split { display: flex; height: 100%; min-height: 0; }
 .bae-m-split-list { width: 320px; flex: none; padding: var(--space-inline) var(--space-related) var(--space-section); box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-hairline); box-shadow: inset -1px 0 0 var(--hairline); }

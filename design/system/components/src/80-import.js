@@ -271,8 +271,14 @@
       })));
   }
   // The mapping table: Source | Track | Title | Artist | Length, a side's eyebrow, CUE captions and rows.
+  // The table spaces each side's eyebrow, as the app's table does: 2pt above the first side and 16pt above the others, 6pt under each.
   function MacImportTable(props) {
-    return h('div', { className: 'bae-m-itable-scroll' }, h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), props.children));
+    var side = 0;
+    var rows = kids(props.children).map(function (c, i) {
+      var p = inner(c);
+      return p && p.type === MacEyebrow ? h('div', { key: 'side' + i, className: cx('bae-m-itable-side', side++ === 0 && 'bae-m-itable-side-first') }, c) : c;
+    });
+    return h('div', { className: 'bae-m-itable-scroll' }, h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), rows));
   }
   // `start`: a CUE image's track, its source cell where the track starts in the image (the sheet's caption names the image once). `listed`: the length the source lists, after the measured `length` in the warning colour, when the two are over 3 s apart, so the row says what disagrees. The title and the artist are fields; an artist the track inherits from the album leaves its field empty, showing Album artist.
   function MacImportTrackRow(props) {

@@ -5,7 +5,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacTrackColumns`: two tracks, one in each column.
+    /// `MacTrackColumns`, one shot for each row of its preview: two tracks,
+    /// one in each column, then the same under its side's heading.
     static let macTrackColumnsScenes: [ShotScene] = [
         component(
             "mac.component.track-columns.default",
@@ -13,26 +14,41 @@ extension ShotScene {
             width: 580,
             height: 100
         ) {
-            MacTrackColumns(
-                release: twoColumnRelease(),
-                isCompilation: false,
-                currentTrackId: nil,
-                isPlaying: false,
-                onPlayFromTrack: { _ in },
-                onTogglePlayPause: {},
-                onAddNext: { _ in },
-                onAddToQueue: { _ in },
-                onExportTrack: { _ in },
-                onRateTrack: { _, _ in },
-                onSetTrackHearted: { _, _ in }
-            )
-            .frame(width: 580, alignment: .leading)
-            .environment(UiStore())
-        }
+            columns(side: .flat)
+        },
+        component(
+            "mac.component.track-columns.side-heading",
+            page: true,
+            width: 580,
+            height: 100
+        ) {
+            columns(side: .sided(sideLetter: "A"))
+        },
     ]
 
-    /// The release `MacTrackColumns` lists: two tracks, one in each column.
-    private static func twoColumnRelease() -> ReleaseDetail {
+    /// The two columns of `twoColumnRelease(side:)`.
+    private static func columns(side: BridgeTrackSide) -> some View {
+        MacTrackColumns(
+            release: twoColumnRelease(side: side),
+            isCompilation: false,
+            currentTrackId: nil,
+            isPlaying: false,
+            onPlayFromTrack: { _ in },
+            onTogglePlayPause: {},
+            onAddNext: { _ in },
+            onAddToQueue: { _ in },
+            onExportTrack: { _ in },
+            onRateTrack: { _, _ in },
+            onSetTrackHearted: { _, _ in }
+        )
+        .frame(width: 580, alignment: .leading)
+        .environment(UiStore())
+    }
+
+    /// The release `MacTrackColumns` lists: two tracks on `side`, one in
+    /// each column.
+    private static func twoColumnRelease(side: BridgeTrackSide) -> ReleaseDetail
+    {
         var release = PreviewData.boardAlbumDetail().releases[0]
         let tracks = [
             browseTrack(
@@ -53,7 +69,7 @@ extension ShotScene {
         release.tracks = tracks
         release.trackGroups = [
             BridgeTrackGroup(
-                side: .flat,
+                side: side,
                 tracks: tracks,
                 totalDuration: nil,
                 showsTime: false,

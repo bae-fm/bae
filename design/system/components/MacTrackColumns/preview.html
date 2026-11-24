@@ -8,8 +8,9 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function tracks() { return [h('div', { key: 1 }, h(B.MacTrackRow, { position: '1', title: 'Harbor Lights', duration: '4:32' })), h('div', { key: 2 }, h(B.MacTrackRow, { position: '6', title: 'Low Tide Hours', duration: '5:03' }))]; }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacTrackColumns, null, h('div', null, h(B.MacTrackRow, { position: '1', title: 'Harbor Lights', duration: '4:32' })), h('div', null, h(B.MacTrackRow, { position: '6', title: 'Low Tide Hours', duration: '5:03' })))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Default', h(B.MacTrackColumns, null, tracks())), W('Side heading', h(B.MacTrackColumns, { heading: 'Side A' }, tracks()))));
 </script>
 </body>
 </html>
