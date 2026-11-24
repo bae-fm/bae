@@ -103,8 +103,11 @@ final class ImportListEntryCell: NSTableCellView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// The task decoding the shown cover, while there is one.
-    var coverLoad: Task<Void, Never>? { coverDecode?.task }
+    #if DEBUG
+        /// The task decoding the shown cover, while there is one, for a test
+        /// to see whether a redraw replaced it.
+        var coverLoad: Task<Void, Never>? { coverDecode?.task }
+    #endif
 
     /// The item the cell draws now.
     var shownItem: BridgeImportListItem? { entry?.item }
