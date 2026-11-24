@@ -68,9 +68,11 @@ public struct MacRestoreCode: View {
     {
         HStack(spacing: ThemeSpace.related) {
             if shown {
-                Text(share.code)
-                    .themeText(.mono)
+                Text(Self.spacedGroups(share.code))
                     .selectableCode(share.code)
+                    // After `selectableCode`, so the text VoiceOver reads and
+                    // the shots measure takes the mono font too.
+                    .themeText(.mono)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             else {
@@ -114,6 +116,21 @@ public struct MacRestoreCode: View {
             .accessibilityLabel(copied ? "Copied" : "Copy")
             .help(copied ? "Copied" : "Copy")
         }
+    }
+
+    /// The code with 4 points more after each space, as the boards' word
+    /// spacing sets its groups apart.
+    private static func spacedGroups(_ code: String) -> AttributedString {
+        var spaced = AttributedString(code)
+        var index = spaced.startIndex
+        while index < spaced.endIndex {
+            let next = spaced.index(afterCharacter: index)
+            if spaced[index..<next].characters.first == " " {
+                spaced[index..<next].kern = 4
+            }
+            index = next
+        }
+        return spaced
     }
 
     private var caption: some View {
