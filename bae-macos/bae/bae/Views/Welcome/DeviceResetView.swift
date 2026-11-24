@@ -6,8 +6,9 @@ import SwiftUI
 /// reset, whose warning an alert shows before the reset runs. When a reset
 /// fails, the screen says so, and Retry runs it again without the warning
 /// the person already accepted. The screen also offers finishing a reset
-/// that stopped partway, once finishing it failed. Cancel leaves the
-/// first without resetting; Close leaves the second waiting.
+/// that stopped partway, once finishing it failed, and signing in again
+/// first when the provider refused the sign-in the reset kept. Cancel
+/// leaves the first without resetting; Close leaves the second waiting.
 struct DeviceResetView: View {
     /// Why the screen asks for a reset.
     enum Prompt {
@@ -15,8 +16,9 @@ struct DeviceResetView: View {
         /// edits, which the warning says before the person chooses.
         case offered
         /// A reset already under way stopped partway, and finishing it
-        /// failed; finishing tries again.
-        case unfinished
+        /// failed; finishing tries again, or `signIn` signs in to the
+        /// provider again and then finishes it.
+        case unfinished(signIn: () -> Void)
     }
 
     let prompt: Prompt
@@ -31,7 +33,7 @@ struct DeviceResetView: View {
     var body: some View {
         switch prompt {
         case .offered: offered
-        case .unfinished: unfinished
+        case .unfinished(let signIn): unfinished(signIn: signIn)
         }
     }
 
@@ -75,7 +77,7 @@ struct DeviceResetView: View {
         }
     }
 
-    private var unfinished: some View {
+    private func unfinished(signIn: @escaping () -> Void) -> some View {
         MacStep(
             String(localized: "Finish reset from cloud?"),
             text: BridgeErrorCategory.replacementUnfinished(by: .reset)
@@ -88,8 +90,14 @@ struct DeviceResetView: View {
             MacStepActions {
                 MacButton("Close", action: onCancel)
                     .keyboardShortcut(.cancelAction)
-                MacButton("Finish reset from cloud", action: onReset)
-                    .destructive()
+                if case .deviceReset(offersSignIn: true) = error?.step {
+                    MacButton("Sign in again…", action: signIn)
+                        .destructive()
+                }
+                else {
+                    MacButton("Finish reset from cloud", action: onReset)
+                        .destructive()
+                }
             }
         }
     }

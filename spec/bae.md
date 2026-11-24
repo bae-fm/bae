@@ -4760,7 +4760,11 @@ needs nothing from the person unless Dropbox or OneDrive refused the sign-in
 coven kept, and the library can't open until it is done,
 as a join under way goes on at launch (§5.6). A reset finishes on the screen
 a reset shows, with no warning, which the person accepted when it began; if
-it fails, the screen says why and *Finish reset from cloud* tries again. A restore
+it fails, the screen says why and *Finish reset from cloud* tries again. When
+Dropbox or OneDrive refused the sign-in coven kept, the Mac's screen says the
+Mac is signed out of that provider, such as "Signed out of Dropbox", and
+offers *Sign in again…* in place of *Finish reset from cloud*: it opens the
+provider's sign-in, then finishes the reset. A restore
 finishes on the screen that asks for the person's current restore code,
 which shows how far it has come and offers *Cancel*. If it fails, the screen
 says why and the code finishes it too, signing in to the provider again, as a

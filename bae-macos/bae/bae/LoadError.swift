@@ -16,8 +16,10 @@ struct LoadError: Equatable {
         case libraryList
         /// Closing the open library to restore it over this Mac's copy.
         case restoreClose
-        /// Resetting this Mac's copy of a library.
-        case deviceReset
+        /// Resetting this Mac's copy of a library. `offersSignIn` says whether
+        /// the failure offers Sign in again: the provider refused the sign-in
+        /// the reset started from.
+        case deviceReset(offersSignIn: Bool)
         /// Closing the open library.
         case shutdown
         #if BAE_DEV_RESET
@@ -95,6 +97,23 @@ struct LoadError: Equatable {
     init?(_ step: Step, _ error: any Error, libraryId: String? = nil) {
         guard let error = DisplayError(error) else { return nil }
         self.init(step, error, libraryId: libraryId)
+    }
+
+    /// The failed reset, which offers Sign in again when core failed it as
+    /// `BridgeErrorCategory.signedOut`. Fails when core says the error has
+    /// nothing to show: a cancellation.
+    init?(resetFailedWith error: any Error) {
+        guard let shown = DisplayError(error) else { return nil }
+        let offersSignIn =
+            if case BridgeError.Diagnostic(category: .signedOut, detail: _) =
+                error
+            {
+                true
+            }
+            else {
+                false
+            }
+        self.init(.deviceReset(offersSignIn: offersSignIn), shown)
     }
 
     /// The failed open of `libraryId`, which offers Reset from cloud when

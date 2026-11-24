@@ -489,7 +489,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Device reset failed: \(String(reflecting: error))"
                 )
-                self.loadError = LoadError(.deviceReset, error)
+                self.loadError = LoadError(resetFailedWith: error)
                 self.screen = startedFrom
             }
         }
@@ -513,6 +513,29 @@ extension AppDelegate {
     /// library opens; a failed finish lands on the screen that finishes it,
     /// saying why.
     func finishReset(libraryId: String) {
+        finishReset(libraryId: libraryId) { host, setup in
+            try await host.finishReset(libraryId: libraryId, setup: setup)
+        }
+    }
+
+    /// Finish a reset that stopped partway after the provider refused the
+    /// sign-in core kept for it: sign in again to the library's provider,
+    /// then finish the reset, as `finishReset` does.
+    func signInAndFinishReset(libraryId: String) {
+        finishReset(libraryId: libraryId) { host, setup in
+            try await host.finishResetSignedIn(
+                libraryId: libraryId,
+                setup: setup
+            )
+        }
+    }
+
+    private func finishReset(
+        libraryId: String,
+        by finish:
+            @escaping @MainActor (BridgeHost, BridgeLibrarySetup)
+            async throws -> (library: OpenedLibrary, warning: BridgeError?)
+    ) {
         let host = requiredApplicationServices.host
         loadError = nil
         showAddLibrarySheet = false
@@ -525,17 +548,14 @@ extension AppDelegate {
                 self.resetSteps = nil
             }
             do {
-                let reset = try await host.finishReset(
-                    libraryId: libraryId,
-                    setup: steps.setup
-                )
+                let reset = try await finish(host, steps.setup)
                 self.openOpenedLibrary(reset.library, warning: reset.warning)
             }
             catch {
                 baeAppLogger.error(
                     "Finishing the device reset failed: \(String(reflecting: error))"
                 )
-                self.loadError = LoadError(.deviceReset, error)
+                self.loadError = LoadError(resetFailedWith: error)
                 self.screen = .resetUnfinished(libraryId: libraryId)
             }
         }

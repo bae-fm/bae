@@ -250,7 +250,7 @@ extension ShotScene {
             ShotStage(
                 ShotScenes.deviceReset(
                     error: LoadError(
-                        .deviceReset,
+                        .deviceReset(offersSignIn: false),
                         PreviewData.displayErrorRetryable
                     )
                 )
@@ -264,7 +264,7 @@ extension ShotScene {
             ShotStage(
                 MacWelcomeWindow {
                     DeviceResetView(
-                        prompt: .unfinished,
+                        prompt: .unfinished(signIn: {}),
                         error: nil,
                         onReset: {},
                         onCancel: {}
@@ -280,14 +280,37 @@ extension ShotScene {
             ShotStage(
                 MacWelcomeWindow {
                     DeviceResetView(
-                        prompt: .unfinished,
+                        prompt: .unfinished(signIn: {}),
                         error: LoadError(
-                            .deviceReset,
+                            .deviceReset(offersSignIn: false),
                             DisplayError(
                                 line:
                                     "Could not reach the cloud. Check your connection and try again.",
                                 detail:
                                     "timed out connecting to the library's storage"
+                            )
+                        ),
+                        onReset: {},
+                        onCancel: {}
+                    )
+                }
+            )
+        },
+        ShotScene(
+            id: "mac.welcome.reset.unfinished-sign-in-refused",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            ShotStage(
+                MacWelcomeWindow {
+                    DeviceResetView(
+                        prompt: .unfinished(signIn: {}),
+                        error: LoadError(
+                            .deviceReset(offersSignIn: true),
+                            DisplayError(
+                                line: "Signed out of Dropbox",
+                                detail:
+                                    "Dropbox refused the sign-in this Mac kept for the library"
                             )
                         ),
                         onReset: {},

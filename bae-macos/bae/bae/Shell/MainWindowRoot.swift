@@ -101,7 +101,9 @@ struct MainWindowRoot: View {
             deviceRestoreView(libraryId: libraryId)
         case .resetUnfinished(let libraryId):
             deviceResetView(
-                prompt: .unfinished,
+                prompt: .unfinished(signIn: {
+                    appDelegate.signInAndFinishReset(libraryId: libraryId)
+                }),
                 onReset: { appDelegate.finishReset(libraryId: libraryId) }
             )
         case .restoreUnfinished(let libraryId):
@@ -216,7 +218,9 @@ struct MainWindowRoot: View {
             deviceRestoreView(libraryId: libraryId)
         case .resetUnfinished(let libraryId):
             deviceResetView(
-                prompt: .unfinished,
+                prompt: .unfinished(signIn: {
+                    appDelegate.signInAndFinishReset(libraryId: libraryId)
+                }),
                 onReset: { appDelegate.finishReset(libraryId: libraryId) }
             )
         case .restoreUnfinished(let libraryId):

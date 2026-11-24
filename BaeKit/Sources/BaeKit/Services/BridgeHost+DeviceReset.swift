@@ -37,6 +37,23 @@ extension BridgeHost {
         )
     }
 
+    /// Finish a reset that stopped partway after the provider refused the
+    /// sign-in core kept for it: sign in again to the provider of the
+    /// library's location, then finish the reset through that sign-in.
+    /// Returns as `resetDevice` does.
+    public func finishResetSignedIn(
+        libraryId: String,
+        setup: BridgeLibrarySetup
+    ) async throws -> (library: OpenedLibrary, warning: BridgeError?) {
+        Self.reset(
+            try await finishResetSignedIn(
+                libraryId: libraryId,
+                setup: setup,
+                cancellation: BridgeCancellation()
+            )
+        )
+    }
+
     /// A reset's open store, and the error a partly finished reset reported.
     private static func reset(_ result: BridgeBootstrapResult) -> (
         library: OpenedLibrary, warning: BridgeError?
