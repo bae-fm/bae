@@ -2104,8 +2104,8 @@ pane shows no text or invitation to add an image.
 The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
-fetches them (step 2). Every image that syncs through coven today (covers,
-artist images and avatars) is downscaled to at most 600 pixels on a side and
+fetches them (step 2). Every image that syncs through coven (covers, artist
+images and avatars) is downscaled to at most 600 pixels on a side and
 stored as JPEG.
 
 The Mac shows a candidate's folder images and the art embedded in its tags as
@@ -2121,7 +2121,7 @@ it only expects to show. The candidate keeps each copy on this device until it i
 imported or set aside, so showing the picture again reads the copy, and nothing
 syncs a copy. The lightbox's zoom asks core for the original's own bytes through
 the same reader. Core refuses a file that is not an image of a candidate in the
-import list. A build without libvips (Windows and Linux, so far) makes no copies,
+import list. A build without libvips (Windows and Linux) makes no copies,
 and a request for one fails.
 
 A library release's picker and a candidate's each show, under the source the
