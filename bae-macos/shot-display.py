@@ -34,6 +34,7 @@ def display_id(root, keeper, startup):
         except BlockingIOError:
             return int(identity.read_text())
 
+        (root / "result").unlink(missing_ok=True)
         # The keeper inherits the locks before it adds the display. The startup
         # lock stays held until it publishes the ID, even if this client dies.
         process = subprocess.Popen(
@@ -67,9 +68,16 @@ def release_display(root, active):
                 except BlockingIOError:
                     pass  # The keeper is removing the display.
                 else:
-                    return  # Another capture holds the display or the keeper already ended.
+                    with (root / "owner").open("a") as owner:
+                        try:
+                            lock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        except BlockingIOError:
+                            return  # Another capture still holds the display.
         with (root / "owner").open("a") as owner:
             lock(owner, fcntl.LOCK_EX)
+        failure = (root / "result").read_text().strip()
+        if failure:
+            raise RuntimeError(failure)
 
 
 def hold_display(keeper):

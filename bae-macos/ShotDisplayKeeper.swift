@@ -38,6 +38,8 @@ struct ShotDisplayKeeper {
         }
         let root = URL(fileURLWithPath: args[1], isDirectory: true)
         let output = FileHandle.standardOutput
+        let result = root.appendingPathComponent("result")
+        var announced = false
         do {
             let active = try FileHandle(
                 forReadingFrom: root.appendingPathComponent("active")
@@ -56,29 +58,43 @@ struct ShotDisplayKeeper {
                 // Publish the identity before letting another capture join.
                 close(startup)
                 try output.write(contentsOf: identity)
+                announced = true
                 try output.close()
                 try await waitForCaptures(active)
                 withExtendedLifetime(display) {}
             }
             // Keep the exclusive activity lock until AppKit sees the display
             // go away, so the next owner does not change the layout mid-shot.
-            try await Wait.until(notices: [
-                Wait.Notice(
-                    NSApplication.didChangeScreenParametersNotification,
-                    of: nil
-                )
-            ]) {
-                ShotDisplay.screen(for: id) == nil
-            }
+            try await ShotDisplay.waitUntilRemoved(id)
+            try Data().write(to: result, options: .atomic)
             close(owner)
             try active.close()
         }
         catch {
-            Logger.bae("ShotDisplayKeeper").error(String(describing: error))
-            if output.fileDescriptor >= 0 {
-                try? output.write(contentsOf: Data("\(error)\n".utf8))
-            }
+            report(error, to: announced ? .file(result) : .pipe(output))
             exit(EXIT_FAILURE)
+        }
+    }
+
+    private enum FailureOutput {
+        case file(URL)
+        case pipe(FileHandle)
+    }
+
+    private static func report(_ error: any Error, to output: FailureOutput) {
+        let logger = Logger.bae("ShotDisplayKeeper")
+        logger.error(String(describing: error))
+        let failure = Data("\(error)\n".utf8)
+        do {
+            switch output {
+            case .file(let result):
+                try failure.write(to: result, options: .atomic)
+            case .pipe(let pipe):
+                try pipe.write(contentsOf: failure)
+            }
+        }
+        catch {
+            logger.error("The keeper could not report its failure. \(error)")
         }
     }
 

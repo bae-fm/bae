@@ -83,14 +83,7 @@ struct ShotRendererTests {
             }
             _ = try await ShotRenderer.render(scene, on: other)
         }
-        try await Wait.until(notices: [
-            Wait.Notice(
-                NSApplication.didChangeScreenParametersNotification,
-                of: nil
-            )
-        ]) {
-            ShotDisplay.screen(for: otherID) == nil
-        }
+        try await ShotDisplay.waitUntilRemoved(otherID)
 
         let screen = try display.screen()
         #expect(screen.frame.size == CGSize(width: 1_600, height: 1_200))

@@ -79,6 +79,11 @@ final class ShotDisplay {
         NSScreen.screens.first { $0.displayNumber == id }
     }
 
+    private static let screenChanges = Wait.Notice(
+        NSApplication.didChangeScreenParametersNotification,
+        of: nil
+    )
+
     /// The process's display, added by the first call and kept until the
     /// process ends. One display per process means no display is created
     /// within milliseconds of another's destruction, which WindowServer can
@@ -161,12 +166,7 @@ final class ShotDisplay {
     ) async throws {
         do {
             try await Wait.until(
-                notices: [
-                    Wait.Notice(
-                        NSApplication.didChangeScreenParametersNotification,
-                        of: nil
-                    )
-                ]
+                notices: [screenChanges]
             ) {
                 screen(for: id).map { holds($0) } == true
             }
@@ -320,6 +320,12 @@ final class ShotDisplay {
 }
 
 extension ShotDisplay {
+    static func waitUntilRemoved(_ id: CGDirectDisplayID) async throws {
+        try await Wait.until(notices: [screenChanges]) {
+            screen(for: id) == nil
+        }
+    }
+
     /// WindowServer restores the session's display configuration when
     /// another virtual display closes. Save the shot display's 2x mode in
     /// that configuration so it keeps the same size and scale.
