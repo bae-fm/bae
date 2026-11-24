@@ -145,9 +145,9 @@ fn a_medium_and_a_year_is_no_number() {
 /// A composer's work number names a piece, not a pressing.
 #[test]
 fn a_work_number_is_no_number() {
-    assert!(printed_catalog_numbers("Suite No. 5 In E Minor, BWV 810 - Prelude").is_empty());
-    assert!(printed_catalog_numbers("Prelude No. 1 in C major, BWV846").is_empty());
-    assert!(printed_catalog_numbers("Suites BWV 806-811 1994").is_empty());
+    assert!(printed_catalog_numbers("Track Title, BWV 123 - Part One").is_empty());
+    assert!(printed_catalog_numbers("Track Title in C major, BWV456").is_empty());
+    assert!(printed_catalog_numbers("Collection BWV 120-125 1994").is_empty());
 }
 
 /// A store's image size in the file name of a scan.
