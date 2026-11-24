@@ -14,7 +14,7 @@ extension ShotScene {
         answerAction(
             "mac.component.answer-action.keep-my-info",
             title: "Keep my info",
-            subtitle: "Keep my info; it is not in the catalogs"
+            subtitle: "It is not in the catalogs"
         ),
         answerAction(
             "mac.component.answer-action.not-sure",
