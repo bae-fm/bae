@@ -60,7 +60,7 @@ extension ShotScene {
         height: CGFloat = 190
     ) -> ShotScene {
         component(id, height: height) {
-            ShotForm {
+            ShotForm(afterSection: true) {
                 MacCloudHome(location: location, shown: .section(key: key))
             }
         }

@@ -265,14 +265,22 @@ struct ShotBox<Content: View>: View {
 }
 
 /// A settings form drawn in a component's frame: the form style's sections
-/// without the page margin a pane puts round them.
+/// without the page margin a pane puts round them. A board draws a section
+/// with the gap a form puts above each section after the first, so
+/// `afterSection` draws the form's first section with that gap above it.
 struct ShotForm<Content: View>: View {
+    var afterSection = false
     @ViewBuilder
     let content: Content
 
     var body: some View {
         Form { content }
-            .formStyle(SettingsFormStyle(sideInset: 0))
+            .formStyle(
+                SettingsFormStyle(
+                    sideInset: 0,
+                    topInset: afterSection ? RowMetrics.sectionGap : 0
+                )
+            )
             .scrollDisabled(true)
     }
 }

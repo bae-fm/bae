@@ -5,7 +5,7 @@ import SwiftUI
 
 extension ShotScene {
     /// `MacWelcomeLibraries`, the list of this Mac's libraries with Add
-    /// library… under it, in the column the welcome window gives it.
+    /// library… under it, across the board's wide column.
     static let macWelcomeLibrariesScenes: [ShotScene] = [
         welcomeLibraries(
             "mac.component.welcome-libraries.open",
@@ -41,7 +41,7 @@ extension ShotScene {
         openFailure: LoadError? = nil,
         unreadableInstallation: String? = nil
     ) -> ShotScene {
-        component(id, width: 420, height: height) {
+        component(id, width: wideColumn, height: height) {
             let standing = PreviewData.standingSynced
             MacWelcomeLibraries(
                 libraries: PreviewData.boardLibraries + extra,
@@ -69,6 +69,9 @@ extension ShotScene {
                 onScanCode: {},
                 onEnterCode: {}
             )
+            // The board draws the section with the gap a form puts above
+            // each section after the first.
+            .padding(.top, RowMetrics.sectionGap)
         }
     }
 }
