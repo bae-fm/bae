@@ -67,28 +67,31 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_settings() {
 
 /// Resetting this device's copy starts it at a new library's settings: a
 /// reset is the clean slate, and a bad setting may be part of what it
-/// clears.
-#[tokio::test]
-async fn a_reset_starts_at_a_new_librarys_settings() {
-    let app_dir = AppDir::temporary().unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
-    let (store, _, _) = connected_library(&installation, &storage, "Household").await;
-    let builder = || {
-        bae_store::test_devices::test_builder(&installation)
-            .storage_connector(std::sync::Arc::new(storage.for_device()))
-    };
-    change_settings(builder(), store).await;
+/// clears. The reset loads the store from storage, which needs a deeper
+/// stack than a test thread's.
+#[test]
+fn a_reset_starts_at_a_new_librarys_settings() {
+    bae_store::test_devices::on_device_runtime(async || {
+        let app_dir = AppDir::temporary().unwrap();
+        let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+        let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+        let (store, _, _) = connected_library(&installation, &storage, "Household").await;
+        let builder = || {
+            bae_store::test_devices::test_builder(&installation)
+                .storage_connector(std::sync::Arc::new(storage.for_device()))
+        };
+        change_settings(builder(), store).await;
 
-    let reset = reset_device(
-        builder(),
-        store,
-        "Replacement",
-        |_| {},
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap();
-    assert_eq!(settings(&reset).await, bae_preferences::Preferences::default());
-    reset.close().await.unwrap();
+        let reset = reset_device(
+            builder(),
+            store,
+            "Replacement",
+            |_| {},
+            &bae_diagnostics::Diagnostics::noop(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(settings(&reset).await, bae_preferences::Preferences::default());
+        reset.close().await.unwrap();
+    });
 }
