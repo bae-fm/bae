@@ -14,6 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -94,7 +97,11 @@ internal fun AndroidQueueRow(
                 imageVector = SymbolIcons.DragHandle,
                 contentDescription = stringResource(R.string.queue_drag_to_reorder),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = dragHandleModifier.size(ThemeIcon.medium),
+                // The handle is a node of its own: the clickable row would merge its name into the row's.
+                modifier =
+                    dragHandleModifier
+                        .semantics(mergeDescendants = true) { role = Role.Image }
+                        .size(ThemeIcon.medium),
             )
         }
     }
