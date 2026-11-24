@@ -28,13 +28,13 @@ struct MacReleaseFiles: View {
                 ForEach(Array(rows.enumerated()), id: \.element.rowId) {
                     index,
                     row in
-                    line(row)
-                        .overlay(alignment: .top) {
-                            // A sheet's caption draws its own hairline.
-                            if index > 0, case .file = row {
-                                MacHairline()
-                            }
+                    VStack(alignment: .leading, spacing: 0) {
+                        // A sheet's caption draws its own hairline.
+                        if index > 0, case .file = row {
+                            MacHairline()
                         }
+                        line(row)
+                    }
                 }
             }
         }
