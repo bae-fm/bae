@@ -41,7 +41,7 @@ extension ShotScene {
     /// `MacStorageFooter` over the board's twelve releases, whose sizes sum to
     /// 4.8 GB, with the
     /// transfer queues `queues` names and the streams their rates read:
-    /// uploads at 6.4 MB/s, pins at 3.1 MB/s and exports 18 percent written.
+    /// uploads at 6.4 MB/s, pins at 3.1 MB/s and exports 42 percent written.
     private static func storageFooter(
         _ id: String,
         queues: BridgeStorageQueues

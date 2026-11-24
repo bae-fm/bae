@@ -210,7 +210,7 @@ extension ShotScene {
 
 /// The streams the board's Storage Manager footer reads: the release
 /// `pinning` pins at 3.1 MB/s, the files being uploaded go at 6.4 MB/s, and
-/// the release `exporting`, when there is one, is 18 percent written.
+/// the release `exporting`, when there is one, is 42 percent written.
 @MainActor
 struct BoardTransferStreams {
     let downloads: DownloadStore
@@ -232,7 +232,7 @@ struct BoardTransferStreams {
         )
         outputs = OutputStore(
             percents: .exportPercents(
-                holding: exporting.map { [$0: 18] } ?? [:]
+                holding: exporting.map { [$0: 42] } ?? [:]
             )
         )
         outbox = OutboxStore(
