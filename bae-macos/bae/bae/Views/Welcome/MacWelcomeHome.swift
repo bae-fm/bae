@@ -267,6 +267,10 @@ struct MacWelcomeHome: View {
                         .padding(.top, ThemeSpace.group + ThemeSpace.line)
                     }
                 }
+                // The boards draw the libraries 2 pt lower under the tagline
+                // than the 40 pt gap does: the tagline's text box is 19 pt
+                // in the app and 18 pt on the boards.
+                .padding(.top, ThemeSpace.line)
             }
             if showsFirstRunActions {
                 MacWelcomeActions(
