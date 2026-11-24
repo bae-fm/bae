@@ -10,7 +10,7 @@
 
 /* Storage Manager */
 .bae-m-storewin { position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
-.bae-m-storewin-bar { flex: none; position: relative; height: 52px; display: flex; align-items: center; padding: 0 var(--space-inline) 0 108px; }
+.bae-m-storewin-bar { flex: none; position: relative; height: 52px; background: var(--background); display: flex; align-items: center; padding: 0 var(--space-inline) 0 108px; }
 .bae-m-storewin > .bae-m-lights { top: 19px; left: 19px; }
 .bae-m-storewin-centre { position: absolute; inset: 0; width: fit-content; height: fit-content; margin: auto; }
 .bae-m-storewin-item { width: 36px; align-self: stretch; display: flex; align-items: center; justify-content: center; }
