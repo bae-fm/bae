@@ -6,8 +6,9 @@ import SwiftUI
 extension ShotScene {
     /// `MacMainWindow` around an empty section, where the preview draws a
     /// slot, with "Low Tide Hours" playing 1:42 into 5:03 or nothing played, and
-    /// nothing in the Activity button. With `waitsOnStorage`, the track waits on
-    /// a download and the bar draws the waiting arc.
+    /// nothing in the Activity button unless `activity` gives it something to
+    /// show. With `waitsOnStorage`, the track waits on a download and the bar
+    /// draws the waiting arc.
     static let macMainWindowScenes: [ShotScene] = [
         ShotScene(
             id: "mac.component.main-window.library",
@@ -49,21 +50,33 @@ extension ShotScene {
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: true)
+            mainWindow(
+                section: .library,
+                playing: true,
+                activity: attentionActivity
+            )
         },
         ShotScene(
             id: "mac.component.main-window.sync-moving",
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: true)
+            mainWindow(
+                section: .library,
+                playing: true,
+                activity: movingActivity
+            )
         },
         ShotScene(
             id: "mac.component.main-window.sync-paused",
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: true)
+            mainWindow(
+                section: .library,
+                playing: true,
+                activity: pausedActivity
+            )
         },
         ShotScene(
             id: "mac.component.main-window.track-no-cover",
@@ -87,7 +100,8 @@ extension ShotScene {
     private static func mainWindow(
         section: MainSection,
         playing: Bool,
-        waitsOnStorage: Bool = false
+        waitsOnStorage: Bool = false,
+        activity: BridgeSyncActivity? = nil
     ) -> ShotStage {
         let uiStore = storeShowing(section)
         let backing = boardLibraryBacking(uiStore: uiStore)
@@ -97,7 +111,7 @@ extension ShotScene {
                 backing: backing,
                 playbackStore: playing
                     ? boardPlayback(waitsOnStorage: waitsOnStorage)
-                    : PlaybackStore(),
+                    : nothingPlayed(),
                 size: CGSize(width: 1100, height: 520),
                 window: AnyView(
                     MacMainWindow(showSidePane: false) {
@@ -112,10 +126,24 @@ extension ShotScene {
                     } nowPlayingBar: {
                         MacNowPlayingBarContainer(onDropToQueue: { _ in })
                     }
+                    .environment(activityStore(activity))
                 )
             )
         ) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
         }
+    }
+
+    /// A store with nothing played and the settings core always reports: the
+    /// bar draws its Repeat, Mute and Volume.
+    @MainActor
+    private static func nothingPlayed() -> PlaybackStore {
+        let store = PlaybackStore()
+        store.settings = PlaybackSettings(
+            volume: 0.7,
+            isMuted: false,
+            repeatMode: .off
+        )
+        return store
     }
 }
