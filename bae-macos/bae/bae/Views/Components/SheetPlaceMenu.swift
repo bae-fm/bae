@@ -39,6 +39,9 @@ struct SheetPlaceMenu: View {
                     .themeText(.strong)
                 Image(systemName: "chevron.down")
                     .themeIcon(.badge)
+                    // The glyph's box is the icon token's width, as the
+                    // board's is, not the 10.2 pt advance the symbol has.
+                    .frame(width: ThemeIcon.badge.size)
                     .foregroundStyle(Theme.textSecondary)
             }
             .padding(.horizontal, ThemeSpace.compact)
