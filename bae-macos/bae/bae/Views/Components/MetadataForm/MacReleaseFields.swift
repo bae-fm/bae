@@ -20,7 +20,7 @@ struct MacReleaseFields: View {
     /// The least height of a row: the inline fields are 22 points tall.
     static let rowHeight: CGFloat = 24
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             MacFormHeading(title: String(localized: "Release"))
             // Each row's label sits on the baseline of its value's first
             // line, as the boards draw it, whatever the value's height.
