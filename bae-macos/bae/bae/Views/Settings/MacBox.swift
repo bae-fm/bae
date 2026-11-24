@@ -34,6 +34,12 @@ extension ContainerValues {
     @Entry
     var isSectionButtons = false
 
+    /// Whether a section's footer is a notice, such as the line after a key
+    /// call, which the boards draw as wide as the box with the section's gap
+    /// above it: set by `noticeFooter`.
+    @Entry
+    var isNoticeFooter = false
+
     /// Whether the view sits over its section's box, as the boards draw a
     /// notice about the section: set by `aboveBox`.
     @Entry
@@ -52,6 +58,14 @@ extension View {
     /// a field.
     func settingsRowInset(_ inset: CGFloat) -> some View {
         containerValue(\.rowVerticalInset, inset)
+    }
+}
+
+extension View {
+    /// Draws this view as its section's footer notice: as wide as the box,
+    /// not inset like a note.
+    func noticeFooter() -> some View {
+        containerValue(\.isNoticeFooter, true)
     }
 }
 

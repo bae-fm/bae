@@ -52,6 +52,7 @@ struct MacCloudHome: View {
                         line: line,
                         onDismiss: { key?.onDismissLine() }
                     )
+                    .noticeFooter()
                 }
             }
         }

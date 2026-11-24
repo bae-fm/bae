@@ -96,9 +96,11 @@ private struct SettingsFormSection: View {
                 MacBoxRows(rows: boxed)
             }
             ForEach(section.footer) { footer in
-                if footer.containerValues.isSectionButtons {
-                    // The section's space between its parts; the buttons
-                    // keep their own space above them.
+                if footer.containerValues.isSectionButtons
+                    || footer.containerValues.isNoticeFooter
+                {
+                    // The section's space between its parts; the buttons or
+                    // the notice keep their own width.
                     footer.padding(.top, ThemeSpace.compact)
                 }
                 else {
