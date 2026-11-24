@@ -324,7 +324,7 @@
     if (centered) {
       // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.
       var title = h(React.Fragment, null,
-        h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
+        h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true, android: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
         props.subtitle ? h('div', { className: 'bae-notice-centered-sub' }, props.subtitle) : null);
       return NoticeBox(tone, props.icon, h('div', { className: 'bae-a-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-a-notice-box', quiet: props.quiet, centered: true, stage: props.stage });
     }
@@ -335,7 +335,7 @@
     // One top row, aligned to the title's line: the words, inline buttons, the ×; `below` buttons are a second row.
     var top = h('div', { className: 'bae-a-notice-top' }, words, below ? null : buttons, dismiss);
     var body = h('div', { className: 'bae-a-notice' }, top, below ? buttons : null);
-    return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', quiet: props.quiet, centered: false, stage: props.stage });
+    return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', android: true, quiet: props.quiet, centered: false, stage: props.stage });
   }
 
   // A transfer in the Activity sheet, as MacTransferLine on Mac: `label`, `count`, a bar filled to `progress` (none: a moving bar). `pausable` ends the line in a tonal Pause, or Resume while `paused`; a phone never uploads release files, so Uploading has none. `opens`: the line opens a screen when tapped (Pinning opens the Pinning screen).

@@ -113,33 +113,46 @@
   }
 
   // The glyph each tone leads with, a ring with its mark inside, the one form every status glyph takes: BaeKit's `StatusTone.symbol` (SF Symbols) on macOS, Status.kt's `StatusTone.icon` on Android.
-  // macOS draws stand-ins for info.circle, checkmark.circle and exclamationmark.circle (warning and danger alike, told apart by colour).
-  var STATUS_CIRCLE = 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z';
-  var STATUS_BANG = 'M10.9 6.5h2.2l-.3 8h-1.6zM12 15.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z';
-  var STATUS_MARK = {
-    info: 'M10.9 10h2.2v7.5h-2.2zM12 5.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z',
-    success: 'M10.4 16.6 6.4 12.6l1.5-1.5 2.5 2.5 5.7-5.7 1.5 1.5z',
-    warning: STATUS_BANG,
-    danger: STATUS_BANG
+  // Two drawings, each across a 20-unit box: `mac`, the stand-ins for info.circle, checkmark.circle and exclamationmark.circle (warning and danger alike, told apart by colour), measured from the app's shots (the ring 1.017 times the icon size across, its stroke 0.112 times it); and `ring`, the ring with its solid mark that Android's notices lead with (Status.kt's StatusRingIcons).
+  // Each mark is a filled shape (`fill`) or a line drawn 2 units thick with round ends (`stroke`).
+  var MAC_BANG = { fill: 'M10.85 8.45a1.15 1.15 0 0 1 2.3 0L13 12.75a1 1 0 0 1-2 0zM12 14.6a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 1 0 0-2.5z' };
+  var RING_BANG = { fill: 'M10.9 6.5h2.2l-.3 8h-1.6zM12 15.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z' };
+  var STATUS_DRAWING = {
+    mac: {
+      ring: 'M12 1.83a10.17 10.17 0 1 0 0 20.34 10.17 10.17 0 1 0 0-20.34zM12 4.07a7.93 7.93 0 1 1 0 15.86 7.93 7.93 0 1 1 0-15.86z',
+      info: { fill: 'M11.75 6.35a1.35 1.35 0 1 0 0 2.7 1.35 1.35 0 1 0 0-2.7zM9 10.6h4.25v5.45h2.15v1.45H9v-1.45h2.15v-4.15H9z' },
+      success: { stroke: 'M7.4 12.6 9.4 15.6 14.7 8.6' },
+      warning: MAC_BANG,
+      danger: MAC_BANG
+    },
+    ring: {
+      ring: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z',
+      info: { fill: 'M10.9 10h2.2v7.5h-2.2zM12 5.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z' },
+      success: { fill: 'M10.4 16.6 6.4 12.6l1.5-1.5 2.5 2.5 5.7-5.7 1.5 1.5z' },
+      warning: RING_BANG,
+      danger: RING_BANG
+    }
   };
-  // The ring, the mark solid inside it.
-  var STATUS_RING = STATUS_CIRCLE + 'M12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z';
+  function statusMark(m) {
+    return m.stroke ? h('path', { d: m.stroke, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }) : h('path', { d: m.fill });
+  }
   var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
-  // A tone's glyph in the tone's colour; set="mac" for macOS. `size` is an icon role; `inline` (macOS) sizes it at 1.19 times the text beside it instead; `muted` draws it in secondary text. Neutral, accent and activity have none.
+  // A tone's glyph in the tone's colour; set="mac" for macOS, set="ring" for the ring an Android notice leads with, none for Android's Material symbol. `size` is an icon role; `inline` (macOS) sizes it at 1.19 times the text beside it instead; `muted` draws it in secondary text. Neutral, accent and activity have none.
   function StatusGlyph(props) {
     var tone = props.tone;
     if (!STATUS_MATERIAL[tone]) return null;
     var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.muted && 'bae-status-glyph-muted', props.inline && 'bae-status-glyph-inline', props.className);
-    return props.set === 'mac'
+    var drawing = STATUS_DRAWING[props.set];
+    return drawing
       ? h('svg', { className: cls, style: props.inline ? null : iconBox(props.size), viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
-          h('path', { d: STATUS_RING, fillRule: 'evenodd' }), h('path', { d: STATUS_MARK[tone] }))
+          h('path', { d: drawing.ring, fillRule: 'evenodd' }), statusMark(drawing[tone]))
       : h(MSymbol, { name: STATUS_MATERIAL[tone], size: props.size, filled: false, className: cls, fill: 'currentColor' });
   }
-  // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One glyph drawing serves both apps: the SF Symbol and Material's filled circle look alike.
-  // `look.quiet` draws it with no fill, the screen's text; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box).
+  // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. A Mac notice draws the SF Symbol's stand-in, an Android notice its ring.
+  // `look.quiet` draws it with no fill, the screen's text; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box). `look.android` leads with Android's ring (`set: 'ring'`) in place of the macOS glyph.
   // The notice's glyph; centred, grey, in front of the title (it says something went wrong and nothing more).
   function noticeGlyph(tone, icon, look) {
-    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: 'mac', inline: true, muted: !!look.centered })) : null;
+    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: look.android ? 'ring' : 'mac', inline: true, muted: !!look.centered })) : null;
   }
   function NoticeBox(tone, icon, body, look) {
     var quiet = look.quiet;

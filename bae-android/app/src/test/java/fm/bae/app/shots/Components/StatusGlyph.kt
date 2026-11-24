@@ -8,7 +8,7 @@ import fm.bae.app.ui.components.StatusGlyphSet
 import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
-/** The component shots of `StatusGlyph` on Android: its macOS and muted rows draw the ring a notice leads with. */
+/** The component shots of `StatusGlyph` on Android: its ring rows draw the ring a notice leads with. */
 class StatusGlyphShots : BoardShot() {
     @Test
     fun androidComponentStatusGlyphAndroid() =
@@ -22,8 +22,8 @@ class StatusGlyphShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentStatusGlyphMacos() =
-        component("android.component.status-glyph.macos") {
+    fun androidComponentStatusGlyphRing() =
+        component("android.component.status-glyph.ring") {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
                     // The preview sets the ring 20 across; the icon's box is 1.2 times that.
@@ -43,8 +43,8 @@ class StatusGlyphShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentStatusGlyphMuted() =
-        component("android.component.status-glyph.muted") {
+    fun androidComponentStatusGlyphRingMuted() =
+        component("android.component.status-glyph.ring-muted") {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
                     StatusGlyph(tone, size = 24.dp, muted = true, set = StatusGlyphSet.RING)
