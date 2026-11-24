@@ -24,14 +24,8 @@ extension ShotScene {
             [
                 releaseFile(
                     "01 Harbor Lights (Recorded Live at the Harbor Hall, Second Night).flac",
-                    audio: BridgeAudioFormat(
-                        codec: "FLAC",
-                        sampleRateHz: 96_000,
-                        bitsPerSample: 24,
-                        bitrateKbps: nil,
-                        channels: 2
-                    ),
-                    size: 98_400_000,
+                    audio: flac1644,
+                    size: 34_100_000,
                     contentType: "audio/flac"
                 )
             ],
