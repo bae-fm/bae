@@ -32,6 +32,7 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidS3KeyFields
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.DialogAction
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -108,7 +109,7 @@ internal class S3KeyInput(
 
 /**
  * The S3 access key a restore code lacks, asked for in a dialog over the code
- * screen: Add restores with it, Back returns to the code screen. A failed
+ * screen: Add restores with it, Cancel returns to the code screen. A failed
  * restore returns here, so the dialog shows the error.
  */
 @Composable
@@ -119,9 +120,20 @@ internal fun S3KeyDialog(
     onRestore: (BridgeS3Credentials) -> Unit,
     onBack: () -> Unit,
 ) {
-    AndroidDialog(
+    AndroidDialog(onDismissRequest = onBack, parts = s3KeyDialogParts(text, keys, error, onRestore, onBack))
+}
+
+/** The parts of [S3KeyDialog]: the two key fields over [error], with Cancel and the code's action. */
+@Composable
+internal fun s3KeyDialogParts(
+    text: RestoreText,
+    keys: S3KeyInput,
+    error: DisplayError?,
+    onRestore: (BridgeS3Credentials) -> Unit,
+    onBack: () -> Unit,
+): DialogParts =
+    DialogParts(
         width = WIDE_DIALOG_WIDTH,
-        onDismissRequest = onBack,
         title = stringResource(R.string.s3_key_title),
         message = stringResource(R.string.onboarding_s3_key_prompt),
         content = {
@@ -139,12 +151,10 @@ internal fun S3KeyDialog(
             DialogAction(
                 stringResource(text.action),
                 { onRestore(BridgeS3Credentials(keys.accessKeyId, keys.secretAccessKey)) },
-                enabled =
-                    keys.accessKeyId.isNotEmpty() && keys.secretAccessKey.isNotEmpty(),
+                enabled = keys.accessKeyId.isNotEmpty() && keys.secretAccessKey.isNotEmpty(),
             ),
-        dismiss = DialogAction(stringResource(R.string.back), onBack),
+        dismiss = DialogAction(stringResource(R.string.cancel), onBack),
     )
-}
 
 /**
  * A restore code saved on this phone, picked from the welcome's list: the

@@ -27,6 +27,8 @@ import fm.bae.app.ui.onboarding.OnboardingProgress
 import fm.bae.app.ui.onboarding.OnboardingStep
 import fm.bae.app.ui.onboarding.PairingEndedStep
 import fm.bae.app.ui.onboarding.PairingWaitingStep
+import fm.bae.app.ui.onboarding.RestoreText
+import fm.bae.app.ui.onboarding.S3KeyInput
 import fm.bae.app.ui.onboarding.StandingRead
 import fm.bae.app.ui.onboarding.WelcomeDamagedJoinScene
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
@@ -34,6 +36,7 @@ import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
 import fm.bae.app.ui.onboarding.deleteSavedCodeParts
 import fm.bae.app.ui.onboarding.removalFailedParts
+import fm.bae.app.ui.onboarding.s3KeyDialogParts
 import fm.bae.app.ui.onboarding.sceneSavedEntries
 import fm.bae.app.ui.testRecoveryLines
 import fm.bae.fastvalues.LatestStream
@@ -311,6 +314,21 @@ class WelcomeShots : BoardShot() {
                             steps = loadingSteps(),
                         ),
                     onCancel = {},
+                    onBack = {},
+                )
+            }
+        }
+
+    /** An S3 restore code without its key, read on the welcome: the key dialog over the welcome, the key ID typed, the secret empty. */
+    @Test
+    fun androidWelcomeAddCodeS3KeyNeeded() =
+        shot("android.welcome.add-code.s3-key-needed") {
+            InPlaceDialogScene(behind = { AndroidWelcomeHome() }, keyboardUp = true) {
+                s3KeyDialogParts(
+                    text = RestoreText.of(CodeEntry.NewDevice),
+                    keys = S3KeyInput(accessKeyId = "AKIA4EXAMPLE"),
+                    error = null,
+                    onRestore = {},
                     onBack = {},
                 )
             }

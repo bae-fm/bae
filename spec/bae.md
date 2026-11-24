@@ -3690,7 +3690,7 @@ or on an Android phone, and a restore over this device's copy (§6.4), say
 when the person chooses **Restore**, not as it is typed, so a half-typed code
 shows no error; **Restore** is off until the field holds something. A scanned code on Android starts at once, as an invite does, and
 only an S3 code without the key stops first, to ask for it over the access
-key's two fields. A code that doesn't read says so on the code screen, and a
+key's two fields, with **Cancel**, which goes back to the code, and **Add**. A code that doesn't read says so on the code screen, and a
 restore that fails shows its error and offers **Add** again. The code screens on both platforms do not show where the library is stored.
 On Android, text fields remain visible while the keyboard is open, including
 when the person enters a name for a join or the S3 key for a saved code.
