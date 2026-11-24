@@ -11,6 +11,11 @@ struct StorageListCell: View {
     let column: StorageTableColumn
 
     var body: some View {
+        content.padding(.horizontal, ThemeSpace.inline)
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if let row = list.row(at: position) {
             MacStorageCell(
                 release: ReleaseSummary(from: row.release),
@@ -37,6 +42,5 @@ struct StorageListCell: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, ThemeSpace.inline)
     }
 }
