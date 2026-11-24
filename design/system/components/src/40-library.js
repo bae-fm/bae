@@ -480,11 +480,13 @@
       h(AndroidSeekBar, { held: props.held, elapsed: props.elapsed, duration: props.duration }));
   }
 
-  // The library header while searching: Close search, and the search field, an editable text field holding what was typed (`search`) with its Clear search button, or showing the prompt while empty.
+  // The library header while searching: Close search, and the search field, an editable text field holding what was typed (`search`) with its Clear search button. While the field is empty the prompt shows as text under it, as AndroidSearchBar.kt draws its placeholder Text behind the BasicTextField, so the field itself has no name.
   function AndroidSearchBar(props) {
     return h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Close search' }),
       h('div', { className: 'bae-a-searchfield' },
-        h('input', { className: 'bae-a-searchinput', type: 'text', defaultValue: props.search || '', placeholder: 'Search albums, tracks, composers, and works', spellCheck: false }),
+        h('span', { className: 'bae-a-searchbox' },
+          props.search ? null : h('span', { className: 'bae-a-search-prompt' }, 'Search albums, tracks, composers, and works'),
+          h('input', { className: 'bae-a-searchinput', type: 'text', defaultValue: props.search || '', spellCheck: false })),
         props.search ? h(AndroidInlineIconButton, { icon: 'close', label: 'Clear search' }) : null));
   }
 
