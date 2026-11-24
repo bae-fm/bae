@@ -3,6 +3,7 @@ package fm.bae.app.shots
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -45,7 +46,8 @@ private fun RingRow(ring: Dp) {
         modifier = Modifier.offset(-margin, -margin),
     ) {
         listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
-            StatusGlyph(tone, size = box, set = StatusGlyphSet.RING)
+            // The frame is shorter than the glyph's box, which a plain size would shrink to fit.
+            StatusGlyph(tone, modifier = Modifier.requiredSize(box), size = box, set = StatusGlyphSet.RING)
         }
     }
 }
