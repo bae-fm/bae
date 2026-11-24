@@ -3,15 +3,10 @@ package fm.bae.app.shots
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidS3KeyFields
-import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.focusOnShow
 import org.junit.Test
 
 /** The component shots of `AndroidS3KeyFields`, one for each row of its preview. */
@@ -24,11 +19,7 @@ class AndroidS3KeyFieldsShots : BoardShot() {
 
     @Test
     fun androidComponentS3KeyFieldsIdFocused() =
-        component("android.component.s3-key-fields.id-focused") {
-            val focus = remember { FocusRequester() }
-            KeyFields(KEY_ID, SECRET, idModifier = Modifier.focusRequester(focus))
-            LaunchedEffect(Unit) { focus.requestFocus() }
-        }
+        component("android.component.s3-key-fields.id-focused") { KeyFields(KEY_ID, SECRET, idFocused = true) }
 
     @Test
     fun androidComponentS3KeyFieldsRefused() =
@@ -41,11 +32,12 @@ private const val KEY_ID = "AKIA4EXAMPLENEW"
 
 private const val SECRET = "abcdefghijkl"
 
+/** The fields, with the focus on the secret key's, as the preview has it, unless [idFocused] puts it on the access key ID's. */
 @Composable
 private fun KeyFields(
     id: String,
     secret: String,
-    idModifier: Modifier = Modifier,
+    idFocused: Boolean = false,
     refused: Boolean = false,
 ) = Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
     AndroidS3KeyFields(
@@ -54,6 +46,7 @@ private fun KeyFields(
         onAccessKeyIdChange = {},
         onSecretAccessKeyChange = {},
         refused = refused,
-        accessKeyIdModifier = idModifier,
+        accessKeyIdModifier = if (idFocused) Modifier.focusOnShow() else Modifier,
+        secretAccessKeyModifier = if (idFocused) Modifier else Modifier.focusOnShow(),
     )
 }
