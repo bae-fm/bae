@@ -138,8 +138,7 @@ struct ImportSearchFormView: View {
             }
         }
         .padding(.horizontal, ThemeSpace.group)
-        .padding(.top, ThemeSpace.line)
-        .padding(.bottom, ThemeSpace.related)
+        .padding(.top, ThemeSpace.inline)
         .animation(nil, value: activeTab)
         .onChange(of: form, initial: true) { _, stored in
             if !isEditing {

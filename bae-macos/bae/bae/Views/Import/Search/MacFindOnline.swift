@@ -200,7 +200,7 @@ struct MacFindOnline: View {
 
     /// The form, with what it turned up beneath it.
     private var searchContent: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: ThemeSpace.group) {
             ImportSearchFormView(
                 form: form,
                 onCommit: onCommitForm,
@@ -209,8 +209,6 @@ struct MacFindOnline: View {
                 onSearch: onSearch,
             )
             if let search = state.search {
-                Divider()
-                    .padding(.horizontal, ThemeSpace.group)
                 FindOnlineSearchResults(
                     search: search,
                     isImporting: state.isImporting,
@@ -221,5 +219,6 @@ struct MacFindOnline: View {
                 )
             }
         }
+        .padding(.bottom, ThemeSpace.group)
     }
 }
