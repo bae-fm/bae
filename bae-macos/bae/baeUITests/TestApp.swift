@@ -257,6 +257,13 @@ extension XCTestCase {
     }
 }
 
+/// A user default the app stores as JSON, for `launchApp`'s `defaults`: the
+/// property list data of `json`.
+func storedDefault(json: String) -> String {
+    let hex = json.utf8.map { String(format: "%02x", $0) }.joined()
+    return "<\(hex)>"
+}
+
 extension XCUIElement {
     /// The title bar's tab that selects the section named `name`: the strip
     /// reports each tab as a radio button with the tab subrole, which

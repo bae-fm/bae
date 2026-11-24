@@ -16,13 +16,10 @@ final class GoToNowPlayingTests: XCTestCase {
     private static let playingNumber = 38
     /// The grid's sort, oldest added first, which puts the playing album,
     /// the newest, last: the JSON of the bridge's sort criteria the app
-    /// stores, as property list data.
-    private static let oldestFirst: String = {
-        let json =
-            #"[{"field":{"dateAdded":{}},"direction":{"ascending":{}}}]"#
-        let hex = json.utf8.map { String(format: "%02x", $0) }.joined()
-        return "<\(hex)>"
-    }()
+    /// stores.
+    private static let oldestFirst = storedDefault(
+        json: #"[{"field":{"dateAdded":{}},"direction":{"ascending":{}}}]"#
+    )
 
     override func setUp() {
         continueAfterFailure = false

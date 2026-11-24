@@ -6,6 +6,10 @@ import XCTest
 final class EditMenuSelectAllTests: XCTestCase {
     /// More rows than the list loads in one page.
     private static let albumCount = 120
+    /// The list's order, by path, which puts Album 000 at the top: the JSON
+    /// of the bridge's list order the app stores. By default the list sorts
+    /// by when it first saw each folder, which the fixture's writes decide.
+    private static let byPath = storedDefault(json: #"{"pathAscending":{}}"#)
 
     @MainActor
     func testSelectAllReachesEveryListedRowAndStillSelectsText() throws {
@@ -24,7 +28,8 @@ final class EditMenuSelectAllTests: XCTestCase {
                             }
                     )
                 ]
-            )
+            ),
+            defaults: ["importCandidateSortOrder": Self.byPath]
         )
         let selectedAll = app.staticTexts["\(Self.albumCount) selected"]
 
@@ -42,7 +47,7 @@ final class EditMenuSelectAllTests: XCTestCase {
             list.staticTexts["Album 000"]
                 .waitForExistence(timeout: HangGuard.seconds)
         )
-        // The top row, wherever the list's order put it.
+        // The top row.
         let topRow = list.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: 120, dy: 30))
 
