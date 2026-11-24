@@ -156,14 +156,16 @@
       h(MacNotice, { quiet: true, tone: props.tone || 'danger', title: notice, subtitle: props.subtitle, secondary: props.secondary === undefined ? 'Details' : props.secondary || null, action: props.action || 'Retry', buttons: props.subtitle ? 'below' : null }));
   }
 
-  // One transfer queue under the Storage Manager's list (`kind`: uploads, pins or exports): its arrow, then its rate (`rate`) or in its place what holds the whole queue back (`wait`: Paused, Waiting for network, Waiting for Wi-Fi, Retrying at 6:40 PM), and Pause, or Resume while the person has paused it (`wait` Paused).
+  // One transfer queue under the Storage Manager's list (`kind`: uploads, pins or exports), in secondary text: its arrow, an image named for its queue, then its rate (`rate`) or in its place what holds the whole queue back (`wait`: Paused, Waiting for network, Waiting for Wi-Fi, Retrying at 6:40 PM), and the Pause button, or Resume while the person has paused it (`wait` Paused).
   var QUEUE_PAUSE = { uploads: 'Pause uploads', pins: 'Pause downloads', exports: 'Pause exports' };
+  // The arrow names its queue, as the app's glyph does.
+  var QUEUE_NAME = { uploads: 'Uploads', pins: 'Downloads', exports: 'Exports' };
   function MacQueueRate(props) {
     var kind = props.kind || 'uploads', wait = props.wait, paused = wait === 'Paused', label = QUEUE_PAUSE[kind];
     return h('span', { className: 'bae-m-storefoot-q' },
-      h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'exports' ? null : 'bae-accent' }),
+      h('span', { role: 'img', 'aria-label': QUEUE_NAME[kind], style: { display: 'inline-flex' } }, h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'exports' ? null : 'bae-accent' })),
       wait ? h('span', null, wait) : props.rate ? h('span', { className: 'bae-num' }, props.rate) : null,
-      h('span', { title: paused ? label.replace('Pause', 'Resume') : label }, h(Sym, { name: paused ? 'play' : 'pause', size: 10 })));
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': paused ? label.replace('Pause', 'Resume') : label, title: paused ? label.replace('Pause', 'Resume') : label }, h(Sym, { name: paused ? 'play' : 'pause', size: 10 })));
   }
   // Under the list: how many releases, the total, then each queue with work (`uploads`, `pins`, `exports`: its rate) as MacQueueRate, with what holds it back (`uploadsWait`, `pinsWait`, `exportsWait`).
   function MacStorageFooter(props) {

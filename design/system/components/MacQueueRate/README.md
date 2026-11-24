@@ -1,6 +1,6 @@
 # MacQueueRate
 
-One transfer queue under the Storage Manager's list (`MacStorageFooter`): its arrow, its rate or what holds the whole queue back, and Pause, or Resume while the person has paused it.
+One transfer queue under the Storage Manager's list (`MacStorageFooter`), in secondary text: its arrow, an image named for its queue (Uploads, Downloads, Exports), its rate or what holds the whole queue back, and the Pause button, or Resume while the person has paused it.
 
 | Prop | |
 | --- | --- |

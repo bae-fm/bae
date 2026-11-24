@@ -41,7 +41,7 @@
 .bae-m-progchip-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent-tint-strong); }
 .bae-m-progchip-label { position: relative; }
 .bae-m-storefoot { flex: none; display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-edge); border-top: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
-.bae-m-storefoot-q { display: inline-flex; align-items: center; gap: var(--space-compact); }
+.bae-m-storefoot-q { display: inline-flex; align-items: center; gap: var(--space-compact); color: var(--text-secondary); }
 .bae-m-tsum { display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); padding: calc(var(--space-group) + var(--space-line)) var(--space-edge); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); border-bottom: 1px solid var(--hairline); }
 .bae-m-tsum-line { display: flex; align-items: center; gap: var(--space-related); }
 .bae-m-readout { display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); }
