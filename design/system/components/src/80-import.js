@@ -329,7 +329,7 @@
       sentence ? h('div', { key: 'r', className: 'bae-divider' }) : null,
       chips ? h(MacIdentifierBand, { key: 'b', chips: chips }) : null,
       chips ? h('div', { key: 'd', className: 'bae-divider' }) : null,
-      auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s'), found) : null,
+      auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty bae-m-fo-empty-below' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s'), found) : null,
       auto === 'nothing-found' ? null : h(React.Fragment, { key: 'f' }, found)];
   }
   // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip; with `pick`, each of several a button.
