@@ -79,6 +79,19 @@ extension ShotScene {
         detail.album.cover = image
         detail.releases[0].cover = image
         detail.shownRelease.cover = image
+        // The bar plays a track of Low Tide Hours, so none of these tracks
+        // is the current one, as the boards draw them.
+        var release = detail.releases[0]
+        for index in release.tracks.indices {
+            release.tracks[index].id = "northbound-track-\(index)"
+        }
+        release.trackGroups = release.trackGroups.map { group in
+            var group = group
+            group.tracks = release.tracks
+            return group
+        }
+        detail.releases = [release]
+        detail.shownRelease = release
         return detail
     }
 
