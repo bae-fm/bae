@@ -4529,6 +4529,14 @@
    "w": 1400,
    "x": 2976,
    "y": 4700
+  },
+  "mac.import.identify.long-catalog.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Identify, Automatic found several: thirty catalog numbers no release confirms",
+   "w": 1400,
+   "x": 4456,
+   "y": 4700
   }
  },
  "createdOnFiles": {
@@ -6520,6 +6528,7 @@
   "mac.import.identify.records-differ.dc.html",
   "mac.import.list.folder-not-watched.dc.html",
   "mac.import.folder.audio-left-out.dc.html",
+  "mac.import.identify.long-catalog.dc.html",
   "mac.playback.casting.no-volume.dc.html",
   "android.playback.full-player.no-volume.dc.html",
   "mac.welcome.libraries.damaged-join.dc.html",
