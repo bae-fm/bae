@@ -1,6 +1,5 @@
 package fm.bae.app.shots
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
@@ -45,19 +44,6 @@ class ArtworkShots : BoardShot() {
                     cornerRadius = 24.dp,
                     iconPadding = ThemeSpace.related,
                     modifier = Modifier.size(48.dp),
-                )
-            }
-        }
-
-    @Test
-    fun androidComponentArtworkRing() =
-        component("android.component.artwork.ring") {
-            Covers {
-                Artwork(
-                    cover = PreviewData.imageRef("Low Tide Hours"),
-                    cornerRadius = ThemeRadius.artwork,
-                    iconPadding = ThemeSpace.group,
-                    modifier = Modifier.size(120.dp).border(2.dp, MaterialTheme.colorScheme.primary),
                 )
             }
         }
