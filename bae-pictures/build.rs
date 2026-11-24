@@ -26,7 +26,8 @@ fn main() {
     }
     // A host binary finds the dist where it was built. An Android binary runs
     // from the folder its libraries were pushed to.
-    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let target_os =
+        std::env::var("CARGO_CFG_TARGET_OS").expect("cargo sets the target OS of a build script");
     if target_os == "android" {
         println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN");
     } else {

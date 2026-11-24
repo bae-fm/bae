@@ -33,7 +33,7 @@ impl FileSource {
     pub(crate) fn open(path: &Path) -> Result<Self, PicturesError> {
         let file = File::open(path)
             .map_err(|source| PicturesError::Open { path: path.to_path_buf(), source })?;
-        crate::init();
+        crate::init()?;
         let reader = Box::into_raw(Box::new(Reader { file: Mutex::new(file) }));
         // SAFETY: the signal handlers match the argument lists of
         // VipsSourceCustom's `read` and `seek` signals, and `reader` lives
@@ -87,20 +87,24 @@ unsafe extern "C" fn read(
     length: i64,
     data: *mut c_void,
 ) -> i64 {
+    let Ok(length) = usize::try_from(length) else {
+        tracing::error!(length, "libvips asked for a read of negative length");
+        return -1;
+    };
     // SAFETY: `data` is the Reader that `open` leaked, and libvips passes a
     // buffer of `length` writable bytes.
     let (reader, buffer) = unsafe {
-        (
-            &*data.cast::<Reader>(),
-            slice::from_raw_parts_mut(buffer.cast::<u8>(), usize::try_from(length).unwrap_or(0)),
-        )
+        (&*data.cast::<Reader>(), slice::from_raw_parts_mut(buffer.cast::<u8>(), length))
     };
     let mut file = reader.file.lock().unwrap_or_else(PoisonError::into_inner);
     loop {
         match file.read(buffer) {
             Ok(count) => return i64::try_from(count).unwrap_or(-1),
             Err(error) if error.kind() == ErrorKind::Interrupted => {}
-            Err(_) => return -1,
+            Err(error) => {
+                tracing::warn!(%error, "reading a picture's file failed");
+                return -1;
+            }
         }
     }
 }
@@ -126,7 +130,10 @@ unsafe extern "C" fn seek(
     let mut file = reader.file.lock().unwrap_or_else(PoisonError::into_inner);
     match file.seek(target) {
         Ok(position) => i64::try_from(position).unwrap_or(-1),
-        Err(_) => -1,
+        Err(error) => {
+            tracing::warn!(%error, "seeking in a picture's file failed");
+            -1
+        }
     }
 }
 

@@ -12,6 +12,8 @@ path = "src/lib.rs"
 
 [dependencies]
 thiserror = { workspace = true }
+# What a failed read or seek says, which libvips reduces to its own message.
+tracing = { workspace = true }
 
 [dev-dependencies]
 # The test folder the test pictures are made in.

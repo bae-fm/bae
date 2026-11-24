@@ -1,5 +1,5 @@
-//! Pictures through libvips: the two jobs the picture plan needs, a small
-//! JPEG of a large picture and a tile pyramid of it. Each reads the original
+//! Pictures through libvips: a small JPEG of a large picture and a tile
+//! pyramid of it. Each reads the original
 //! once, top to bottom, through plain reads, and holds a few rows of it in
 //! memory rather than the whole picture.
 
@@ -10,7 +10,6 @@ use std::ffi::{c_char, c_int, CStr, CString};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::ptr;
-use std::sync::Once;
 
 use source::FileSource;
 
@@ -25,14 +24,11 @@ pub enum PicturesError {
     Path { path: PathBuf, source: std::ffi::NulError },
 }
 
-/// Starts libvips once for the process.
-fn init() {
-    static START: Once = Once::new();
-    START.call_once(|| {
-        // SAFETY: argv0 is a valid C string, and this runs once.
-        let status = unsafe { ffi::vips_init(c"bae-pictures".as_ptr()) };
-        assert_eq!(status, 0, "libvips failed to start: {}", take_error());
-    });
+/// Starts libvips. libvips counts the calls, so starting it again is safe and
+/// only the first call does the work.
+fn init() -> Result<(), PicturesError> {
+    // SAFETY: argv0 is a valid C string.
+    check(unsafe { ffi::vips_init(c"bae-pictures".as_ptr()) })
 }
 
 /// libvips' description of its last failure, which it then forgets.
@@ -82,8 +78,8 @@ fn check(status: c_int) -> Result<(), PicturesError> {
 /// Writes `thumbnail` as a JPEG that fits in a square of `edge` pixels, from
 /// the picture at `original`. libvips shrinks the picture as the rows arrive,
 /// turns it upright by its orientation flag, and converts its colours to sRGB.
-pub fn thumbnail_jpeg(original: &Path, thumbnail: &Path, edge: u32) -> Result<(), PicturesError> {
-    let edge = c_int::try_from(edge).unwrap_or(c_int::MAX);
+pub fn thumbnail_jpeg(original: &Path, thumbnail: &Path, edge: u16) -> Result<(), PicturesError> {
+    let edge = c_int::from(edge);
     let output = c_path(thumbnail)?;
     let source = FileSource::open(original)?;
     let mut image = ptr::null_mut();
@@ -120,8 +116,8 @@ pub fn thumbnail_jpeg(original: &Path, thumbnail: &Path, edge: u32) -> Result<()
 /// folder `<tiles>_files` holds one folder per zoom level of JPEG tiles of
 /// `tile_edge` pixels, and `<tiles>.dzi` names their sizes. The picture is
 /// cut as its rows arrive, one band of tiles at a time.
-pub fn cut_tiles(original: &Path, tiles: &Path, tile_edge: u32) -> Result<(), PicturesError> {
-    let tile_edge = c_int::try_from(tile_edge).unwrap_or(c_int::MAX);
+pub fn cut_tiles(original: &Path, tiles: &Path, tile_edge: u16) -> Result<(), PicturesError> {
+    let tile_edge = c_int::from(tile_edge);
     let output = c_path(tiles)?;
     let source = FileSource::open(original)?;
     // SAFETY: the options are name and value pairs that end in a null pointer.

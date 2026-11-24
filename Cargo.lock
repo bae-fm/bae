@@ -1191,6 +1191,7 @@ dependencies = [
  "libc",
  "png",
  "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]

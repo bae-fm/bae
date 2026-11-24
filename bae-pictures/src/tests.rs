@@ -17,8 +17,8 @@ const WIDTH: u32 = 6000;
 const HEIGHT: u32 = 5600;
 /// The marker in the stored picture's top-left corner, in pixels.
 const MARKER: u32 = 600;
-const THUMBNAIL_EDGE: u32 = 256;
-const TILE_EDGE: u32 = 512;
+const THUMBNAIL_EDGE: u16 = 256;
+const TILE_EDGE: u16 = 512;
 const ORIGINAL: &str = "BAE_PICTURES_ORIGINAL";
 const OUTPUT: &str = "BAE_PICTURES_OUTPUT";
 
@@ -201,10 +201,7 @@ fn tiles_of_a_large_png() {
             let mut decoder = jpeg_decoder::Decoder::new(folder.open(&path));
             decoder.read_info().unwrap();
             let info = decoder.info().unwrap();
-            assert!(
-                u32::from(info.width) <= TILE_EDGE && u32::from(info.height) <= TILE_EDGE,
-                "{path}"
-            );
+            assert!(info.width <= TILE_EDGE && info.height <= TILE_EDGE, "{path}");
             count += 1;
             tile_bytes += folder.metadata(&path).len();
         }
