@@ -52,7 +52,9 @@
         h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 'radius-artwork', shadow: 'bar', missing: props.noCover }),
         h('div', { className: 'bae-m-np-text' },
           h('div', { className: 'bae-m-nptrack-eyebrow' }, 'Now playing'),
-          h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist)),
+          h('div', { className: 'bae-m-np-title' }, props.title),
+          // A track with no artist has no artist line, as in the app, so the position strip sits right under the title.
+          props.artist ? h('div', { className: 'bae-m-np-sub' }, props.artist) : null),
         h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-np-play', 'aria-label': props.playing ? 'Pause' : 'Play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'medium' })),
         h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar', role: 'progressbar', 'aria-label': 'Playback position', 'aria-valuenow': Math.round(Number(props.position || 0) * 100) }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || '')),
         // A click anywhere else on the card goes to what is playing: a button under the card's content, as wide and tall as the card. `goOff` turns it off while the track has no album to go to, as when the library no longer holds it.
