@@ -238,9 +238,9 @@
         : h('span', { className: 'bae-m-track-pos' }, props.position));
   }
 
-  // One track of an album's list. `picked`: among the tracks picked together, on the soft accent. `rating`: the row of an album's list, which keeps a slot for the track's stars after the row (0 leaves the slot empty, as the app does for a track nobody rated). `ratingSystem`: the library's system for tracks; `heart` fills the slot with a heart when the stars are three or more, `none` draws no slot.
+  // One track of an album's list. `picked`: among the tracks picked together, on the soft accent, and marked selected, as the app marks the row's texts. `rating`: the row of an album's list, which keeps a slot for the track's stars after the row (0 leaves the slot empty, as the app does for a track nobody rated). `ratingSystem`: the library's system for tracks; `heart` fills the slot with a heart when the stars are three or more, `none` draws no slot.
   function MacTrackRow(props) {
-    var row = h('div', { className: cx('bae-m-track', props.picked ? 'bae-m-track-picked' : props.hover && 'bae-m-track-hover', props.artist && 'bae-m-track-two') },
+    var row = h('div', { className: cx('bae-m-track', props.picked ? 'bae-m-track-picked' : props.hover && 'bae-m-track-hover', props.artist && 'bae-m-track-two'), 'aria-selected': props.picked ? 'true' : null },
       h(MacTrackLead, { position: props.position, hover: props.hover, current: props.current, playing: props.playing }),
       h('div', { className: 'bae-m-track-text' },
         h('div', { className: cx('bae-m-track-title', props.current && 'bae-accent') }, props.title),
