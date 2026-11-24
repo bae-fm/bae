@@ -193,9 +193,9 @@ final class SnapshotTestWindow: NSWindow {
     override var canBecomeMain: Bool { false }
 }
 
-/// Hands each notice the window server sends the app, and each event of the
-/// pointer's tracking, to AppKit inside an autorelease pool of its own,
-/// whoever takes it off the queue.
+/// Hands each notice the window server sends the app, each event of the app
+/// becoming active, and each event of the pointer's tracking, to AppKit inside
+/// an autorelease pool of its own, whoever takes it off the queue.
 ///
 /// Handling one autoreleases the window it names. One that comes while a
 /// Swift Testing test waits is handled by XCTest's waiter, which runs the
@@ -211,6 +211,10 @@ final class SnapshotTestWindow: NSWindow {
 /// watch them, and the tests send them to a window themselves.
 @MainActor
 private enum NoticePools {
+    /// The events that come as the app becomes active. AppKit's headers name
+    /// no event of their type, 21.
+    private static let activation = NSEvent.EventTypeMask(rawValue: 1 << 21)
+
     private static var monitor: Any?
     /// Whether the monitor is handing a notice back to AppKit, which calls
     /// the monitor again for it.
@@ -220,8 +224,8 @@ private enum NoticePools {
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(
             matching: [
-                .appKitDefined, .mouseEntered, .mouseExited, .mouseMoved,
-                .cursorUpdate,
+                .appKitDefined, activation, .mouseEntered, .mouseExited,
+                .mouseMoved, .cursorUpdate,
             ]
         ) { notice in
             let handed = MainActor.assumeIsolated { hand(notice) }
