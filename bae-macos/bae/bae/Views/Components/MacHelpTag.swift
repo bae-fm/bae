@@ -17,6 +17,19 @@ struct MacHelpTag<Content: View>: View {
     private static var gap: CGFloat { 6 }
 
     var body: some View {
+        if showing {
+            // VoiceOver reads the system's tag with its control. The drawn
+            // tag hangs below the row, so left alone it reads by position,
+            // after whatever sits beside the control. One container reads
+            // the control and then its tag.
+            tagged.accessibilityElement(children: .contain)
+        }
+        else {
+            tagged
+        }
+    }
+
+    private var tagged: some View {
         content()
             .help(text)
             .overlay(alignment: .bottomLeading) {
