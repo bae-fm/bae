@@ -10,7 +10,11 @@ extension ShotScene {
     /// saving that release after its sheet's Audio file pop-up picked the
     /// rip, while the save reads the rip.
     static let albumEditorScenes: [ShotScene] = [
-        albumEditorScene(id: "mac.album.edit", stage: .editor),
+        albumEditorScene(
+            id: "mac.album.edit",
+            stage: .editor,
+            release: filledRelease
+        ),
         albumEditorScene(id: "mac.album.edit.cover", stage: .coverSheet),
         albumEditorScene(
             id: "mac.album.edit.album-picker",
@@ -99,6 +103,41 @@ extension ShotScene {
             )
         ]
         release.draft.changed = true
+        return release
+    }
+
+    /// The edited release with every field the editor offers filled, as the
+    /// first board draws it: a second label, a barcode, two details, and
+    /// the second track by an artist of its own.
+    private static var filledRelease: PreviewReleaseEdit {
+        var release = editedRelease
+        var pressing = release.values.pressing
+        // The heading is on the first label row and Add under the last.
+        pressing.labels[0].place = BridgeListPlace(
+            labelled: true,
+            addsRow: false
+        )
+        pressing.labels.append(
+            BridgeLabelRow(
+                label: BridgeRawLabelEdit(
+                    name: "Tidewater Music",
+                    catalogNumber: "TW-88"
+                ),
+                place: BridgeListPlace(labelled: false, addsRow: true)
+            )
+        )
+        pressing.barcodes = [.alone("0 41234 56789 2")]
+        pressing.facts.discogsDetails = [.reissue, .remastered]
+        release.values.pressing = pressing
+        let artist = "Odile Fen"
+        release.values.tracks[1].artistAssignments = .explicit(
+            assignments: [PreviewData.boardArtist(artist)]
+        )
+        if case .track(var row)? = release.draft.sides?[0].runs[1] {
+            row.track = release.values.tracks[1]
+            row.artist = .own(field: PreviewData.boardLibraryArtists(artist))
+            release.draft.sides?[0].runs[1] = .track(row: row)
+        }
         return release
     }
 
