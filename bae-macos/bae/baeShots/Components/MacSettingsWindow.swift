@@ -4,8 +4,9 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacSettingsWindow`'s frame: the Library pane, a page pushed over it,
-    /// and the Library pane while sync is offline, which marks its row.
+    /// `MacSettingsWindow`'s frame with only the heading of its pane: the
+    /// Library pane, a page pushed over it, the Library pane while sync is
+    /// offline, which marks its row, and the Save as pane in front.
     static let macSettingsWindowScenes: [ShotScene] = [
         ShotScene(
             id: "mac.component.settings-window.a-pane",
@@ -13,7 +14,7 @@ extension ShotScene {
             frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
-                SettingsWindowShot(page: libraryPane())
+                SettingsWindowShot(page: pane("Library"))
             )
         },
         ShotScene(
@@ -22,14 +23,7 @@ extension ShotScene {
             frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
-                SettingsWindowShot(
-                    page: syncSettingsPagePreview(
-                        LibrarySettingsTabPreviewFixture(
-                            storage: PreviewData.previewDropboxStorage
-                        ),
-                        shown: .fixtureSynced
-                    )
-                )
+                SettingsWindowShot(page: pane("Sync", back: "Library"))
             )
         },
         ShotScene(
@@ -38,7 +32,10 @@ extension ShotScene {
             frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
-                SettingsWindowShot(shown: .fixtureOffline, page: libraryPane())
+                SettingsWindowShot(
+                    shown: .fixtureOffline,
+                    page: pane("Library")
+                )
             )
         },
         ShotScene(
@@ -47,7 +44,7 @@ extension ShotScene {
             frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
-                SettingsWindowShot(page: libraryPane())
+                SettingsWindowShot(tab: .formats, page: pane("Save as"))
             )
         },
         ShotScene(
@@ -66,11 +63,22 @@ extension ShotScene {
                         fix: nil,
                         lastSynced: ShotClock.moment(secondsAgo: 2 * 3_600)
                     ),
-                    page: libraryPane()
+                    page: pane("Library")
                 )
             )
         },
     ]
+
+    /// A pane with only its heading, as the design's preview draws the
+    /// window, and a back button to `back` on a page inside a pane.
+    private static func pane(_ title: String, back: String? = nil) -> some View
+    {
+        MacPageHeading(
+            title: Text(verbatim: title),
+            back: back.map { MacPageHeading.Back(title: $0, action: {}) }
+        )
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
 
     private static let settingsWindowSize = CGSize(width: 690, height: 600)
 
