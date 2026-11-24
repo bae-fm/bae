@@ -17,7 +17,7 @@ import SwiftUI
 enum ShotRenderer {
     /// Backing-store scale for every capture. Fixed rather than read from the
     /// screen so a headless or non-Retina host produces the same pixels.
-    nonisolated static let scale = 2
+    nonisolated static let scale = ShotDisplay.scale
 
     /// What one capture of a scene yields: its pixels, and the elements its
     /// hosted view's accessibility tree lists, read in the same settled state.
@@ -35,23 +35,15 @@ enum ShotRenderer {
     /// `scene` captured; a scene shown in its window is drawn on `display`.
     static func render(
         _ scene: ShotScene,
-        on display: ShotDisplay
+        on display: ShotDisplay?
     ) async throws -> Capture {
-        let suite = "fm.bae.appearance-shots"
-        guard let defaults = UserDefaults(suiteName: suite) else {
-            preconditionFailure("Cannot create screenshot preferences")
-        }
-        defaults.set(mode.rawValue, forKey: "appearance.mode")
-        defaults.set(accent.rawValue, forKey: "appearance.accent")
-        defaults.set(tone.rawValue, forKey: "appearance.tone")
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let windowScene = try WindowScene(scene: scene, display: display)
         let stage = try scene.stage()
         // A view that opens or moves after the window shows, such as an album
         // grid's detail opening on its place's first answer, lands at once,
         // so the capture never holds a frame partway through.
         let rootView = scene.frame.applyTitleBar(to: stage.view)
-            .appAppearance()
-            .defaultAppStorage(defaults)
+            .appearance(mode: mode, accent: accent, tone: tone)
             .transaction {
                 $0.animation = nil
                 $0.disablesAnimations = true
@@ -60,7 +52,7 @@ enum ShotRenderer {
             rootView,
             for: scene,
             size: try frameSize(of: scene),
-            on: display
+            windowScene: windowScene
         )
         window.appearance = NSAppearance(
             named: mode == .dark ? .darkAqua : .aqua
@@ -78,19 +70,19 @@ enum ShotRenderer {
             window.contentView = nil
             window.close()
         }
-        switch scene.frame {
-        case .content, .component:
+        if let windowScene {
+            try place(window, on: windowScene.display, scene: scene)
+            // The window is a non-activating panel, key without the app
+            // taking the focus from the app that holds it.
+            window.makeKeyAndOrderFront(nil)
+            window.makeMain()
+        }
+        else {
             // The renderer makes the window key without activating the app.
             // The window sits past every display, and a focused field draws
             // its ring only in a key window.
             window.orderFront(nil)
             window.makeKey()
-        case .window:
-            try place(window, on: display, scene: scene)
-            // The window is a non-activating panel, key without the app
-            // taking the focus from the app that holds it.
-            window.makeKeyAndOrderFront(nil)
-            window.makeMain()
         }
 
         try await settle(
@@ -103,7 +95,7 @@ enum ShotRenderer {
             window,
             host: captured,
             scene: scene,
-            on: display
+            windowScene: windowScene
         )
     }
 
@@ -112,13 +104,10 @@ enum ShotRenderer {
         _ window: NSWindow,
         host: NSView,
         scene: ShotScene,
-        on display: ShotDisplay
+        windowScene: WindowScene?
     ) async throws -> Capture {
         let pixels: Data
-        switch scene.frame {
-        case .content, .component:
-            pixels = try png(of: host, size: host.bounds.size, scene: scene)
-        case .window:
+        if let windowScene {
             // The app shows the alerts a few run loop passes after AppKit
             // orders the window in, so the renderer waits for them before it
             // makes the top one key.
@@ -132,9 +121,12 @@ enum ShotRenderer {
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
                 overlays: sheets.map { CGWindowID($0.windowNumber) } + alerts,
-                on: display.id,
+                on: windowScene.display.id,
                 sceneId: scene.id
             )
+        }
+        else {
+            pixels = try png(of: host, size: host.bounds.size, scene: scene)
         }
         // Nothing awaits between the pixels and the tree, so both read the
         // same settled state.
@@ -157,39 +149,22 @@ enum ShotRenderer {
         _ rootView: some View,
         for scene: ShotScene,
         size: CGSize,
-        on display: ShotDisplay
+        windowScene: WindowScene?
     ) throws -> (NSWindow, NSView) {
         let bounds = NSRect(origin: .zero, size: size)
-        switch scene.frame {
-        case .content, .component:
-            // Drawn as in the key window of the active app, as the app is
-            // seen in use, without making it either: a window of an app that
-            // is not active is never key, and draws its controls inactive.
-            let host = NSHostingView(
-                rootView: rootView.environment(\.controlActiveState, .key)
-            )
-            host.frame = bounds
-            let window = contentWindow(for: scene, size: size)
-            // Ordering a window in plays its zoom-in on a thread of its own,
-            // paced by the display it is on; past every display there is
-            // none, and the animation would never end.
-            window.animationBehavior = .none
-            window.contentView = host
-            return (window, host)
-        case .window(let title, let titleBar):
+        if let windowScene {
             let hosting = NSHostingController(rootView: rootView)
             // A window with a hidden title bar has no toolbar either: its
             // content holds what a toolbar would.
             hosting.sceneBridgingOptions =
-                titleBar == .hidden ? [] : .toolbars
+                windowScene.titleBar == .hidden ? [] : .toolbars
             // The window's size is the scene's, whatever the content asks for.
             hosting.sizingOptions = []
             // Made on the shot display, so AppKit sizes it against that
             // display rather than the Mac's own.
-            let origin = try display.screen().visibleFrame
-                .origin
+            let origin = try windowScene.display.visibleFrame().origin
             let window = shownWindow(for: scene, at: origin)
-            if titleBar == .hidden {
+            if windowScene.titleBar == .hidden {
                 // SwiftUI's hidden-title-bar window lets its content reach
                 // the top edge; the hosting view otherwise keeps the title
                 // bar's height as a safe area and shifts the content down.
@@ -200,7 +175,7 @@ enum ShotRenderer {
             // server's capture can catch partway.
             window.animationBehavior = .none
             window.contentViewController = hosting
-            if titleBar == .hidden {
+            if windowScene.titleBar == .hidden {
                 // The content reaches under the title bar, so the frame is
                 // the scene's size; sizing the content would add the title
                 // bar's height below it, an empty strip in the capture.
@@ -212,12 +187,26 @@ enum ShotRenderer {
             else {
                 window.setContentSize(scene.size)
             }
-            window.title = title
+            window.title = windowScene.title
             guard let frame = window.contentView?.superview else {
                 preconditionFailure("A titled window has a frame view")
             }
             return (window, frame)
         }
+        // Drawn as in the key window of the active app, as the app is
+        // seen in use, without making it either: a window of an app that
+        // is not active is never key, and draws its controls inactive.
+        let host = NSHostingView(
+            rootView: rootView.environment(\.controlActiveState, .key)
+        )
+        host.frame = bounds
+        let window = contentWindow(for: scene, size: size)
+        // Ordering a window in plays its zoom-in on a thread of its own,
+        // paced by the display it is on; past every display there is
+        // none, and the animation would never end.
+        window.animationBehavior = .none
+        window.contentView = host
+        return (window, host)
     }
 
     /// The borderless window that holds a scene's view alone, past the edge
@@ -368,7 +357,6 @@ enum ShotError: Error, CustomStringConvertible {
     /// as the front app when the wait ended.
     case windowNotKey(String, focus: FocusHolder)
     case noScreen(String)
-    case noShotDisplay(String)
     case noContentView(String)
     case windowTooLarge(
         String,
@@ -411,9 +399,6 @@ enum ShotError: Error, CustomStringConvertible {
             "ScreenCaptureKit shares no shot display for scene \(id)'s window"
         case .noContentView(let id):
             "scene \(id)'s window has no content view"
-        case .noShotDisplay(let why):
-            "the renderer has no shot display for the scenes shown in their "
-                + "windows: \(why)"
         case .windowTooLarge(
             let id,
             let content,
@@ -433,6 +418,25 @@ enum ShotError: Error, CustomStringConvertible {
         case .unknownSelection(let kind, let name):
             "no \(kind) matches \(name)"
         }
+    }
+}
+
+@MainActor
+private struct WindowScene {
+    let display: ShotDisplay
+    let title: String
+    let titleBar: ShotFrame.TitleBar
+
+    init?(scene: ShotScene, display: ShotDisplay?) throws {
+        guard case .window(let title, let titleBar) = scene.frame else {
+            return nil
+        }
+        guard let display else {
+            throw ShotDisplayError("No display lease exists for \(scene.id).")
+        }
+        self.display = display
+        self.title = title
+        self.titleBar = titleBar
     }
 }
 

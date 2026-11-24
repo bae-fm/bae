@@ -15,7 +15,7 @@ enum ShotDisplaySerial {
 
     /// The result of `make` for the first serial in `serials` that it makes
     /// something for, where nil means CoreGraphics refused that serial. When
-    /// it refuses every serial, throws `ShotError.noShotDisplay` with what
+    /// it refuses every serial, throws `ShotDisplayError` with what
     /// `heldDisplays` says.
     static func claim<Display>(
         _ make: (UInt32) throws -> Display?,
@@ -26,7 +26,7 @@ enum ShotDisplaySerial {
                 return display
             }
         }
-        throw ShotError.noShotDisplay(
+        throw ShotDisplayError(
             "CoreGraphics refused serials \(serials.lowerBound) to "
                 + "\(serials.upperBound), held by: \(heldDisplays())"
         )

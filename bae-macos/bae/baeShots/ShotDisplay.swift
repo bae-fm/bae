@@ -1,11 +1,9 @@
 import AppKit
 import ObjectiveC
 
-@testable import bae
-
-/// The display every scene shown in its window is drawn on: a virtual display
-/// of 1600 by 1200 points at 2 pixels a point, beside whatever displays the
-/// Mac has, which a shot test process adds once and hands to each render. A shot taken from a real display
+/// A virtual display beside the Mac's own displays. A capture draws its
+/// windows in a 1600 by 1200 point area at two pixels per point. The capture
+/// borrows one area from the keeper. Renderer tests own a display. A shot taken from a real display
 /// would depend on that display: a small display leaves less free area than the
 /// library window's scenes need, and a display at 1 pixel a
 /// point would back the window at half the shot's scale. On this display
@@ -17,27 +15,58 @@ import ObjectiveC
 /// `CGVirtualDisplaySettings` and `CGVirtualDisplay`, which no SDK header
 /// declares, so this type reaches them through the Objective-C runtime. It is
 /// the only code that does. When macOS lacks them, or makes no display from
-/// them, every window scene fails with `ShotError.noShotDisplay`.
+/// them, every window scene fails with `ShotDisplayError`.
 @MainActor
 final class ShotDisplay {
     /// The display's size, in points.
     static let size = CGSize(width: 1_600, height: 1_200)
     /// The display draws at the scale every shot is captured at.
-    private static let scale = ShotRenderer.scale
+    nonisolated static let scale = 2
+    static let sharedSize = CGSize(width: size.width * 2, height: size.height)
 
     let id: CGDirectDisplayID
-    /// The `CGVirtualDisplay`; the display lasts as long as this object.
-    private let display: NSObject
 
-    private init(id: CGDirectDisplayID, display: NSObject) {
+    private enum Backing {
+        case owned(NSObject)
+        case borrowed(slot: Int)
+    }
+
+    private let backing: Backing
+
+    private init(id: CGDirectDisplayID, backing: Backing) {
         self.id = id
-        self.display = display
+        self.backing = backing
+    }
+
+    /// The leased slot of a display held by the capture process's keeper.
+    static func borrow(id: CGDirectDisplayID, slot: Int) async throws
+        -> ShotDisplay
+    {
+        try await listed(id, at: sharedSize)
+        return ShotDisplay(id: id, backing: .borrowed(slot: slot))
+    }
+
+    func visibleFrame() throws -> CGRect {
+        let screen = try screen()
+        switch backing {
+        case .owned:
+            return screen.visibleFrame
+        case .borrowed(let slot):
+            let frame = screen.frame
+            let slotFrame = CGRect(
+                x: frame.minX + CGFloat(slot) * Self.size.width,
+                y: frame.minY,
+                width: Self.size.width,
+                height: Self.size.height
+            )
+            return screen.visibleFrame.intersection(slotFrame)
+        }
     }
 
     /// The screen AppKit lists for the display, with its free area.
     func screen() throws -> NSScreen {
         guard let screen = Self.screen(for: id) else {
-            throw ShotError.noShotDisplay("AppKit no longer lists it")
+            throw ShotDisplayError("AppKit no longer lists it")
         }
         return screen
     }
@@ -63,7 +92,7 @@ final class ShotDisplay {
     }
 
     /// Add the display, once AppKit lists it at its size and scale.
-    static func add() async throws -> ShotDisplay {
+    static func add(size: CGSize = size) async throws -> ShotDisplay {
         let width = Int(size.width)
         let height = Int(size.height)
         let display = try virtualDisplay(
@@ -75,7 +104,7 @@ final class ShotDisplay {
             let id = display.value(forKey: "displayID") as? CGDirectDisplayID,
             id != 0
         else {
-            throw ShotError.noShotDisplay("CoreGraphics gave it no display ID")
+            throw ShotDisplayError("CoreGraphics gave it no display ID")
         }
         // CoreGraphics lists the display's modes once the display is
         // connected, which AppKit announces by listing its screen.
@@ -87,7 +116,7 @@ final class ShotDisplay {
             let modes = CGDisplayCopyAllDisplayModes(id, options)
                 as? [CGDisplayMode]
         else {
-            throw ShotError.noShotDisplay("CoreGraphics lists no modes for it")
+            throw ShotDisplayError("CoreGraphics lists no modes for it")
         }
         guard
             let mode = modes.first(where: {
@@ -96,19 +125,27 @@ final class ShotDisplay {
                     && $0.pixelHeight == height * scale
             })
         else {
-            throw ShotError.noShotDisplay(
+            throw ShotDisplayError(
                 "it offers no mode of \(width) by \(height) points at "
                     + "\(scale) pixels a point"
             )
         }
         try select(mode, for: id)
+        try await listed(id, at: size)
+        return ShotDisplay(id: id, backing: .owned(display))
+    }
+
+    private static func listed(
+        _ id: CGDirectDisplayID,
+        at size: CGSize
+    ) async throws {
         try await listed(
             id,
-            as: "\(width) by \(height) points at \(scale) pixels a point"
+            as:
+                "\(Int(size.width)) by \(Int(size.height)) points at \(scale) pixels a point"
         ) {
             $0.backingScaleFactor == CGFloat(scale) && $0.frame.size == size
         }
-        return ShotDisplay(id: id, display: display)
     }
 
     /// Wait for AppKit to list display `id` with a screen that `holds`, which
@@ -131,7 +168,7 @@ final class ShotDisplay {
             }
         }
         catch is Wait.TimedOut {
-            throw ShotError.noShotDisplay(
+            throw ShotDisplayError(
                 "AppKit never listed it as \(described)"
             )
         }
@@ -183,7 +220,7 @@ final class ShotDisplay {
             try settings(offering: mode)
         )
         guard applied else {
-            throw ShotError.noShotDisplay("CoreGraphics refused its settings")
+            throw ShotDisplayError("CoreGraphics refused its settings")
         }
         return display
     }
@@ -244,7 +281,7 @@ final class ShotDisplay {
 
     private static func privateClass(_ name: String) throws -> NSObject.Type {
         guard let found = NSClassFromString(name) as? NSObject.Type else {
-            throw ShotError.noShotDisplay("macOS has no class \(name)")
+            throw ShotDisplayError("macOS has no class \(name)")
         }
         return found
     }
@@ -254,7 +291,7 @@ final class ShotDisplay {
             let allocated = type.perform(NSSelectorFromString("alloc"))?
                 .takeUnretainedValue()
         else {
-            throw ShotError.noShotDisplay("\(type) allocated nothing")
+            throw ShotDisplayError("\(type) allocated nothing")
         }
         return allocated
     }
@@ -270,7 +307,7 @@ final class ShotDisplay {
             type.instancesRespond(to: selector),
             let implementation = class_getMethodImplementation(type, selector)
         else {
-            throw ShotError.noShotDisplay(
+            throw ShotDisplayError(
                 "\(type) has no method \(NSStringFromSelector(selector))"
             )
         }
@@ -289,7 +326,7 @@ extension ShotDisplay {
         var configuration: CGDisplayConfigRef?
         let begin = CGBeginDisplayConfiguration(&configuration)
         guard begin == .success, let configuration else {
-            throw ShotError.noShotDisplay(
+            throw ShotDisplayError(
                 "CoreGraphics could not start the mode change for display \(id) "
                     + "(error \(begin.rawValue))"
             )
@@ -302,7 +339,7 @@ extension ShotDisplay {
         )
         guard change == .success else {
             CGCancelDisplayConfiguration(configuration)
-            throw ShotError.noShotDisplay(
+            throw ShotDisplayError(
                 "CoreGraphics refused the mode for display \(id) "
                     + "(error \(change.rawValue))"
             )
@@ -312,10 +349,20 @@ extension ShotDisplay {
             .forSession
         )
         guard complete == .success else {
-            throw ShotError.noShotDisplay(
+            throw ShotDisplayError(
                 "CoreGraphics could not save the session mode for display \(id) "
                     + "(error \(complete.rawValue))"
             )
         }
     }
+}
+
+struct ShotDisplayError: Error, CustomStringConvertible {
+    let reason: String
+
+    init(_ reason: String) {
+        self.reason = reason
+    }
+
+    var description: String { "The renderer needs a shot display. \(reason)" }
 }

@@ -61,15 +61,15 @@ struct ShotDisplaySerialTests {
             )
             Issue.record("expected no serial to be free")
         }
-        catch ShotError.noShotDisplay(let why) {
+        catch let error as ShotDisplayError {
             #expect(
-                why
+                error.reason
                     == "CoreGraphics refused serials 1 to 8, held by: "
                     + "display 7 (serial 3)"
             )
         }
         catch {
-            Issue.record("expected noShotDisplay: \(error)")
+            Issue.record("expected ShotDisplayError: \(error)")
         }
     }
 }

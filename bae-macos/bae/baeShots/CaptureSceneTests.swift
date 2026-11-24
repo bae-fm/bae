@@ -16,21 +16,38 @@ import Testing
 /// `BUILDS_SHOTS_SELECT` (comma-separated board-name prefixes) narrows the run to
 /// the scenes a change touches; unset, every scene renders.
 ///
-/// A scene shown in its window brings the app to the front and makes its
-/// window key, taking the focus from whatever the person at the machine is
-/// doing, so those scenes render only when `BUILDS_SHOTS_WINDOWS` is `1`, as
-/// builds shots sets it for a run given `--windows`.
+/// Scenes shown in their windows render only when `BUILDS_SHOTS_WINDOWS` is
+/// `1`. Their capture leases a slot on the host's shot display.
 @MainActor
 struct CaptureSceneTests {
     @Test
     func captureAllScenes() async throws {
         let out = try Self.outputDirectory()
-        let display = try await ShotDisplay.shared()
+        let scenes = try Self.selectedScenes()
+        let lease =
+            if scenes.contains(where: { scene in
+                if case .window = scene.frame {
+                    true
+                }
+                else {
+                    false
+                }
+            }) {
+                try await ShotDisplayLease.acquire(
+                    ProcessInfo.processInfo.environment
+                )
+            }
+            else {
+                nil as ShotDisplayLease?
+            }
 
         var failures: [String] = []
-        for scene in try Self.selectedScenes() {
+        for scene in scenes {
             do {
-                let capture = try await ShotRenderer.render(scene, on: display)
+                let capture = try await ShotRenderer.render(
+                    scene,
+                    on: lease?.display
+                )
                 guard !capture.png.isEmpty else {
                     failures.append("\(scene.id): rendered no bytes")
                     continue
@@ -48,6 +65,7 @@ struct CaptureSceneTests {
             }
         }
 
+        try lease?.close()
         #expect(failures.isEmpty, "scene capture failed: \(failures)")
     }
 

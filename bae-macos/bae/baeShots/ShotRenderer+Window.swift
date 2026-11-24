@@ -21,7 +21,7 @@ extension ShotRenderer {
         scene: ShotScene
     ) throws {
         let screen = try display.screen()
-        let room = screen.visibleFrame
+        let room = try display.visibleFrame()
         logger.info(
             "The renderer is placing scene \(scene.id), window \(window.windowNumber) with frame \(window.frame), "
                 + "on display \(display.id) with frame \(screen.frame) at \(screen.backingScaleFactor)x "

@@ -18,7 +18,22 @@ cd "$(dirname "$0")/.."
 (cd bae-macos/bae && xcodegen)
 source scripts/xcode-trees.sh
 
+# The keeper lives independently of the test process that starts it. Each
+# process that draws windows holds its own lease until that process exits.
+keeper_dir="$(mktemp -d)"
+trap 'rm -rf "$keeper_dir"' EXIT
+xcrun swiftc -swift-version 6 -o "$keeper_dir/shot-display-keeper" \
+    bae-macos/ShotDisplayKeeper.swift \
+    bae-macos/bae/baeShots/ShotDisplay.swift \
+    bae-macos/bae/bae/Shell/NSScreen+DisplayNumber.swift \
+    bae-macos/bae/baeShots/ShotDisplaySerial.swift \
+    bae-macos/bae/baeTestSupport/Wait.swift \
+    bae-macos/bae/baeTestSupport/HangGuard.swift
+export TEST_RUNNER_BAE_SHOT_DISPLAY_LEASE="$PWD/bae-macos/shot-display.py"
+export TEST_RUNNER_BAE_SHOT_DISPLAY_KEEPER="$keeper_dir/shot-display-keeper"
+
 cd bae-macos/bae
 xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO BAE_SKIP_RUST_BRIDGE=YES \
-    "${XCODE_MACOS_SHOTS_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" test
+    "${XCODE_MACOS_SHOTS_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
+    -only-testing:baeShots/CaptureSceneTests test

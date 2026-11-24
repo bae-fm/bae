@@ -54,6 +54,7 @@ step android android-tests ./bae-android/test-unit.sh
 # builds app-build refuses them: an app build runs only the test classes of
 # the screens a change touches.
 ci-only macos-tests-run macos-tests-all android-tests
+shared-shot-display mac
 shots mac builds shots run --platform mac --windows --select {select}
 shots android builds shots run --platform android --select {select}
 
