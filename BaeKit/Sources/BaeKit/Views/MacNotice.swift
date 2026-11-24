@@ -239,7 +239,10 @@ public struct MacNotice: View {
                 wordsOpeningDetails
                     .accessibilitySortPriority(2)
                 if buttons == .below, hasChoiceButtons {
-                    choiceButtons.padding(.top, ThemeSpace.inline)
+                    choiceButtons.padding(
+                        .top,
+                        look == .quiet ? ThemeSpace.inline : ThemeSpace.related
+                    )
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
