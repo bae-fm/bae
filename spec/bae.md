@@ -4756,7 +4756,8 @@ The apps show such a library with that line, in red, where they list
 libraries that can't open: the Mac's library list, and the library switcher
 on phones. Its row offers *Finish restoring* or *Finish reset from cloud*, and that,
 or opening the library, such as at launch, finishes it at once: finishing
-needs nothing from the person, and the library can't open until it is done,
+needs nothing from the person unless Dropbox or OneDrive refused the sign-in
+coven kept, and the library can't open until it is done,
 as a join under way goes on at launch (§5.6). A reset finishes on the screen
 a reset shows, with no warning, which the person accepted when it began; if
 it fails, the screen says why and *Finish reset from cloud* tries again. A restore
