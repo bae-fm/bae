@@ -8,7 +8,6 @@ extension ShotScene {
     static let macImportGroupHeaderScenes: [ShotScene] = [
         component(
             "mac.component.import-group-header.default",
-            page: true,
             height: 60
         ) {
             MacImportGroupHeader(
@@ -25,7 +24,6 @@ extension ShotScene {
         },
         component(
             "mac.component.import-group-header.folded",
-            page: true,
             height: 60
         ) {
             MacImportGroupHeader(

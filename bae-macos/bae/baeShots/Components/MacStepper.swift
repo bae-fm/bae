@@ -6,10 +6,10 @@ import SwiftUI
 extension ShotScene {
     /// `MacStepper`, named by what it counts.
     static let macStepperScenes: [ShotScene] = [
-        component("mac.component.stepper.default", page: true, height: 40) {
+        component("mac.component.stepper.default", height: 40) {
             MacStepper(label: "Number of CD", value: .constant(1))
         },
-        component("mac.component.stepper.off", page: true, height: 40) {
+        component("mac.component.stepper.off", height: 40) {
             MacStepper(label: "Number of CD", value: .constant(1), off: true)
         },
     ]

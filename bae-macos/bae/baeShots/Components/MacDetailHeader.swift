@@ -9,7 +9,6 @@ extension ShotScene {
     static let macDetailHeaderScenes: [ShotScene] = [
         component(
             "mac.component.detail-header.default",
-            page: true,
             height: 100,
             images: coverStore()
         ) {
@@ -18,7 +17,6 @@ extension ShotScene {
         },
         component(
             "mac.component.detail-header.options-open",
-            page: true,
             height: 100,
             images: coverStore()
         ) {
