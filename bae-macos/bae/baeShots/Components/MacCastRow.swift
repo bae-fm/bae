@@ -8,23 +8,29 @@ extension ShotScene {
     static let macCastRowScenes: [ShotScene] = [
         component("mac.component.cast-row.receivers", height: 270) {
             ShotBox {
-                MacCastRow(
-                    receiver: castReceiver("Living Room", .cast),
-                    role: .casting(onDisconnect: {}),
-                    place: .picker,
-                    wait: nil
+                popoverRow(
+                    MacCastRow(
+                        receiver: castReceiver("Living Room", .cast),
+                        role: .casting(onDisconnect: {}),
+                        place: .picker,
+                        wait: nil
+                    )
                 )
-                MacCastRow(
-                    receiver: castReceiver("Kitchen", .airPlay),
-                    role: .found(onCast: {}),
-                    place: .picker,
-                    wait: nil
+                popoverRow(
+                    MacCastRow(
+                        receiver: castReceiver("Kitchen", .airPlay),
+                        role: .found(onCast: {}),
+                        place: .picker,
+                        wait: nil
+                    )
                 )
-                MacCastRow(
-                    receiver: castReceiver("Den receiver", .dlna),
-                    role: .found(onCast: {}),
-                    place: .picker,
-                    wait: nil
+                popoverRow(
+                    MacCastRow(
+                        receiver: castReceiver("Den receiver", .dlna),
+                        role: .found(onCast: {}),
+                        place: .picker,
+                        wait: nil
+                    )
                 )
             }
         },
@@ -33,14 +39,16 @@ extension ShotScene {
         castRow("mac.component.cast-row.menu", place: .page, wait: nil),
         component("mac.component.cast-row.long-name", height: 140) {
             ShotBox {
-                MacCastRow(
-                    receiver: castReceiver(
-                        "Denon AVR-X3800H Home Theater Receiver (Basement)",
-                        .dlna
-                    ),
-                    role: .found(onCast: {}),
-                    place: .picker,
-                    wait: nil
+                popoverRow(
+                    MacCastRow(
+                        receiver: castReceiver(
+                            "Denon AVR-X3800H Home Theater Receiver (Basement)",
+                            .dlna
+                        ),
+                        role: .found(onCast: {}),
+                        place: .picker,
+                        wait: nil
+                    )
                 )
             }
         },
@@ -56,13 +64,27 @@ extension ShotScene {
     ) -> ShotScene {
         component(id, height: 100) {
             ShotBox {
-                MacCastRow(
-                    receiver: castReceiver("Kitchen", .airPlay),
-                    role: .found(onCast: {}),
-                    place: place,
-                    wait: wait
+                popoverRow(
+                    MacCastRow(
+                        receiver: castReceiver("Kitchen", .airPlay),
+                        role: .found(onCast: {}),
+                        place: place,
+                        wait: wait
+                    )
                 )
             }
+        }
+    }
+
+    /// A row as the popover lists it: its own padding is the row's room, and
+    /// no box pads it again, which `.page` rows leave to their box.
+    @ViewBuilder
+    private static func popoverRow(_ row: MacCastRow) -> some View {
+        if row.place == .picker {
+            row.containerValue(\.placesItselfInRow, true)
+        }
+        else {
+            row
         }
     }
 }
