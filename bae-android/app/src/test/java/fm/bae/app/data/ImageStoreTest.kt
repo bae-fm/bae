@@ -1,13 +1,26 @@
 package fm.bae.app.data
 
+import android.graphics.Bitmap
 import fm.bae.app.BaeRobolectricTestRunner
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -15,11 +28,15 @@ import org.robolectric.annotation.GraphicsMode
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryImageType
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * What the store promises its callers: a cached decode is pinned to the exact
- * bytes it came from, one kind's decodes can't evict another's, and a completed
- * load leaves something the next first frame can read synchronously.
+ * bytes it came from, one budget bounds every kind of decode, requests for one
+ * image share one load, and a completed load leaves something the next first
+ * frame can read synchronously.
  *
  * Native graphics so `BitmapFactory` really decodes and `allocationByteCount`
  * really reports what a bitmap costs — the cache budgets mean nothing against
@@ -30,6 +47,13 @@ import uniffi.bae_bridge.BridgeLibraryImageType
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ImageStoreTest {
     private val fitTo64 = DecodeSize.FitTo(64)
+    private val decodePool =
+        Executors
+            .newFixedThreadPool(2) { Thread(it, "$DECODE_THREAD_PREFIX-test") }
+            .asCoroutineDispatcher()
+
+    @After
+    fun closeDecodePool() = decodePool.close()
 
     @Test
     fun servesALoadedDecodeSynchronouslyOnTheNextLook() =
@@ -78,78 +102,135 @@ class ImageStoreTest {
         }
 
     @Test
-    fun evictionNeverCrossesBuckets() =
+    fun oneBudgetBoundsEveryKindOfContent() =
         runBlocking {
-            // A 128px source at 64px costs 64 × 64 × 4 = 16 KB; a 256px source at
-            // 128px costs 64 KB, which fills the release bucket on its own. So
-            // filling that bucket over and over must leave the library bucket's one
-            // entry where it is.
+            // A 128px source at 64px costs 64 × 64 × 4 = 16 KB, so a 32 KB budget holds
+            // two decodes. A third, of another kind, pushes out the least recently used.
             val store =
                 storeOf(
                     library = { TestImages.png(128) },
-                    release = { TestImages.png(256) },
-                    decodedBudgets =
-                        DecodedImageBudgets(
-                            libraryImage = 64 * 1024,
-                            releaseImage = 64 * 1024,
-                        ),
+                    release = { TestImages.png(128) },
+                    decodedBudget = 32 * 1024,
                 )
             val cover = ImageContent.LibraryImage(coverRef("rel-1"))
-            val libraryDecode = store.image(cover, fitTo64).orFail("cover decode")
+            store.image(cover, fitTo64).orFail("cover decode")
 
-            repeat(8) { i ->
-                store.image(
-                    ImageContent.ReleaseImage("rel-$i", BridgeGallerySource.ReleaseFile("file-$i")),
-                    DecodeSize.FitTo(128),
-                )
-            }
+            store.image(ImageContent.ReleaseImage("rel-1", BridgeGallerySource.ReleaseFile("file-1")), fitTo64)
+            store.image(ImageContent.ReleaseImage("rel-1", BridgeGallerySource.ReleaseFile("file-2")), fitTo64)
 
-            assertSame(
-                "release-image decodes evict only each other",
-                libraryDecode,
-                store.cachedImage(cover, fitTo64),
-            )
+            assertNull("the cover is the oldest decode, so a release image evicts it", store.cachedImage(cover, fitTo64))
         }
 
     @Test
-    fun theByteCacheSpendsOneBridgeCrossingPerImage() =
+    fun concurrentRequestsShareOneLoad() =
         runBlocking {
             var crossings = 0
-            val bytes = TestImages.png(256)
-            val store =
-                storeOf(library = {
-                    crossings++
-                    bytes
-                })
-            val content = ImageContent.LibraryImage(coverRef("rel-1"))
-
-            store.image(content, DecodeSize.FitTo(32))
-            store.image(content, DecodeSize.FitTo(64))
-            store.image(content, DecodeSize.FitTo(128))
-
-            assertEquals("three sizes, one read of the bytes they all decode from", 1, crossings)
-        }
-
-    @Test
-    fun theByteCacheIsBoundedByItsBudget() =
-        runBlocking {
-            var crossings = 0
-            // A 256px noise PNG is far larger than this budget, so no entry survives
-            // the next put and every look reads again.
+            val decodes = AtomicInteger()
+            val release = CompletableDeferred<Unit>()
             val store =
                 storeOf(
                     library = {
                         crossings++
-                        TestImages.png(256)
+                        release.await()
+                        TestImages.png(128)
                     },
-                    byteBudgets = ImageByteBudgets(libraryImage = 4 * 1024),
+                    decode = { bytes, size ->
+                        decodes.incrementAndGet()
+                        decodeBytes(bytes, size)
+                    },
+                )
+            val content = ImageContent.LibraryImage(coverRef("rel-1"))
+
+            // Each request runs until it waits on the load, so both are in flight
+            // before the fetch is let go.
+            val first = async(start = CoroutineStart.UNDISPATCHED) { store.image(content, fitTo64) }
+            val second = async(start = CoroutineStart.UNDISPATCHED) { store.image(content, fitTo64) }
+            release.complete(Unit)
+
+            assertSame("both requests get the one decode", first.await(), second.await())
+            assertEquals(1, crossings)
+            assertEquals(1, decodes.get())
+        }
+
+    @Test
+    fun cancellingTheLastRequestBeforeTheDecodeStartsCancelsTheFetch() =
+        runBlocking {
+            val fetching = CompletableDeferred<Unit>()
+            val cancelled = CompletableDeferred<Unit>()
+            val store =
+                ImageStore(
+                    fetchLibraryImageBytes = {
+                        fetching.complete(Unit)
+                        try {
+                            awaitCancellation()
+                        } finally {
+                            cancelled.complete(Unit)
+                        }
+                    },
+                    dispatcher = Dispatchers.Unconfined,
+                )
+            val request = launch { store.image(ImageContent.LibraryImage(coverRef("rel-1")), fitTo64) }
+            fetching.await()
+
+            request.cancel()
+
+            withTimeout(5_000) { cancelled.await() }
+        }
+
+    @Test
+    fun aRequestAfterTheLastWasCancelledJoinsTheRunningDecode() =
+        runBlocking {
+            val decodeStarted = CompletableDeferred<Unit>()
+            val letDecodeFinish = CountDownLatch(1)
+            val decodes = AtomicInteger()
+            var crossings = 0
+            val store =
+                storeOf(
+                    library = {
+                        crossings++
+                        TestImages.png(128)
+                    },
+                    dispatcher = decodePool,
+                    decode = { bytes, size ->
+                        decodes.incrementAndGet()
+                        decodeStarted.complete(Unit)
+                        letDecodeFinish.await()
+                        decodeBytes(bytes, size)
+                    },
+                )
+            val content = ImageContent.LibraryImage(coverRef("rel-1"))
+
+            val first = launch { store.image(content, fitTo64) }
+            decodeStarted.await()
+            first.cancel()
+            val second = async { store.image(content, fitTo64) }
+            letDecodeFinish.countDown()
+
+            assertNotNull("the second request is answered by the running decode", second.await())
+            first.join()
+            assertEquals("one decode for both requests", 1, decodes.get())
+            assertEquals("one read of the bytes", 1, crossings)
+        }
+
+    @Test
+    fun decodesRunOnTheDecodeThreadsNotTheCallers() =
+        runBlocking {
+            val decodeThreads = mutableListOf<String>()
+            val store =
+                storeOf(
+                    library = { TestImages.png(128) },
+                    dispatcher = decodePool,
+                    decode = { bytes, size ->
+                        synchronized(decodeThreads) { decodeThreads += Thread.currentThread().name }
+                        decodeBytes(bytes, size)
+                    },
                 )
 
-            store.imageBytes(ImageContent.LibraryImage(coverRef("rel-1")))
-            store.imageBytes(ImageContent.LibraryImage(coverRef("rel-2")))
-            store.imageBytes(ImageContent.LibraryImage(coverRef("rel-1")))
+            store.image(ImageContent.LibraryImage(coverRef("rel-1")), fitTo64).orFail("decode")
 
-            assertEquals("an evicted entry is read again rather than served stale", 3, crossings)
+            assertEquals(1, decodeThreads.size)
+            assertTrue(decodeThreads.single(), decodeThreads.single().startsWith(DECODE_THREAD_PREFIX))
+            assertNotEquals(Thread.currentThread().name, decodeThreads.single())
         }
 
     @Test
@@ -218,19 +299,24 @@ class ImageStoreTest {
      * instead of quietly resolving to nothing.
      */
     private fun storeOf(
-        library: (() -> ByteArray?)? = null,
-        release: (() -> ByteArray)? = null,
-        decodedBudgets: DecodedImageBudgets = DecodedImageBudgets(),
-        byteBudgets: ImageByteBudgets = ImageByteBudgets(),
+        library: (suspend () -> ByteArray?)? = null,
+        release: (suspend () -> ByteArray)? = null,
+        decodedBudget: Int = 48 * 1024 * 1024,
+        // Unconfined keeps every fetch and decode on the test's own thread, so
+        // assertions run after the work rather than racing it.
+        dispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
+        decode: (ByteArray, DecodeSize) -> Bitmap? = ::decodeBytes,
     ) = ImageStore(
         fetchLibraryImageBytes = { checkNotNull(library) { "no library-image fetch in this store" }() },
         fetchReleaseImageBytes = { _, _ -> checkNotNull(release) { "no release-image fetch in this store" }() },
-        decodedBudgets = decodedBudgets,
-        byteBudgets = byteBudgets,
-        // Unconfined keeps every fetch and decode on the test's own thread, so
-        // assertions run after the work rather than racing it.
-        dispatcher = Dispatchers.Unconfined,
+        decodedBudget = decodedBudget,
+        dispatcher = dispatcher,
+        decode = decode,
     )
 
     private fun <T : Any> T?.orFail(what: String): T = checkNotNull(this) { "expected $what to resolve" }
+
+    private companion object {
+        const val DECODE_THREAD_PREFIX = "image-decode"
+    }
 }

@@ -8,12 +8,19 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.exifinterface.media.ExifInterface
 import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import java.io.ByteArrayInputStream
+import kotlin.coroutines.cancellation.CancellationException
 
 private const val TAG = "bae.ImageStore"
 private val logger = BaeLogger(TAG)
@@ -79,55 +86,24 @@ sealed interface DecodeSize {
             }
 }
 
-/** The decoded cache's independent budgets, one per content kind. */
-enum class ImageBucket {
-    LIBRARY_IMAGE,
-    RELEASE_IMAGE,
-}
-
-/** Which cache the decodes of this content live in. */
-private val ImageContent.bucket: ImageBucket
-    get() =
-        when (this) {
-            is ImageContent.LibraryImage, is ImageContent.Avatar -> ImageBucket.LIBRARY_IMAGE
-            is ImageContent.ReleaseImage -> ImageBucket.RELEASE_IMAGE
-        }
-
 private const val MEGABYTE = 1024 * 1024
 
-private const val DECODED_LIBRARY_IMAGE_BUDGET = 48 * MEGABYTE
-private const val DECODED_RELEASE_IMAGE_BUDGET = 16 * MEGABYTE
-private const val ENCODED_LIBRARY_IMAGE_BUDGET = 16 * MEGABYTE
-private const val ENCODED_RELEASE_IMAGE_BUDGET = 8 * MEGABYTE
+/** What the decoded cache holds at most, in bitmap bytes, for every kind of content together. */
+private const val DECODED_IMAGE_BUDGET = 64 * MEGABYTE
+
+/** How many decodes run at once. */
+private const val DECODE_WIDTH = 3
 
 /**
- * Per-kind byte budgets for the decoded cache. Eviction never crosses buckets, so
- * a native-size release image cannot evict the album grid's covers.
- *
+ * The threads picture decodes run on: at most [DECODE_WIDTH] at a time, apart from
+ * the threads that draw and the ones other coroutines share.
  */
-data class DecodedImageBudgets(
-    val libraryImage: Int = DECODED_LIBRARY_IMAGE_BUDGET,
-    val releaseImage: Int = DECODED_RELEASE_IMAGE_BUDGET,
-)
+@OptIn(ExperimentalCoroutinesApi::class)
+private val decodeDispatcher: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(DECODE_WIDTH)
 
 /**
- * Per-kind byte budgets for the encoded-byte cache that sits in front of the
- * bridge. Android keeps this extra layer because an FFI crossing (plus, for a
- * release image, a cloud download and decrypt) dominates the cost of re-showing
- * an image the app has already read.
- *
- * Both kinds are held because their tokens carry
- * content identity — a version that moves with the bytes, an immutable file id —
- * so a held entry can never come to name different bytes.
- */
-data class ImageByteBudgets(
-    val libraryImage: Int = ENCODED_LIBRARY_IMAGE_BUDGET,
-    val releaseImage: Int = ENCODED_RELEASE_IMAGE_BUDGET,
-)
-
-/**
- * The app's image pipeline: bytes → decode at the slot's pixel size → bounded
- * decoded cache → synchronous first-frame read. One instance per open library,
+ * The app's image pipeline: bytes → decode at the slot's pixel size on a bounded
+ * dispatcher → one bounded decoded cache → synchronous first-frame read. One instance per open library,
  * read from the composition through [LocalImageStore]; views hold no fetch,
  * cache, or decode logic of their own.
  *
@@ -148,11 +124,14 @@ class ImageStore(
         { _, _ -> throw ImageStoreUnavailable() },
     /** Bytes of a person's avatar, or null when they have none. */
     private val fetchAvatarBytes: suspend (person: String) -> ByteArray? = { null },
-    decodedBudgets: DecodedImageBudgets = DecodedImageBudgets(),
-    byteBudgets: ImageByteBudgets = ImageByteBudgets(),
+    /** What the decoded cache holds at most, in bitmap bytes. */
+    decodedBudget: Int = DECODED_IMAGE_BUDGET,
     /** Where fetches and decodes run. Injected so tests drive them on their own
      *  scheduler. */
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val dispatcher: CoroutineDispatcher = decodeDispatcher,
+    /** Turns bytes into a bitmap at a size, on a thread of [dispatcher]. Injected so a
+     *  test can see where decodes run. */
+    private val decode: (ByteArray, DecodeSize) -> Bitmap? = ::decodeBytes,
 ) {
     constructor(handle: AppHandleInterface) : this(
         fetchLibraryImageBytes = { handle.fetchLibraryImageBytes(it) },
@@ -160,8 +139,8 @@ class ImageStore(
         fetchAvatarBytes = { handle.avatar(it) },
     )
 
-    private val decoded = DecodedCaches(decodedBudgets)
-    private val bytes = ByteCaches(byteBudgets)
+    private val decoded = bitmapCache(decodedBudget)
+    private val loads = SharedLoads<Bitmap?>(CoroutineScope(SupervisorJob() + dispatcher))
 
     /**
      * The already-decoded bitmap for [content] at this size, or null when it isn't
@@ -174,62 +153,57 @@ class ImageStore(
     fun cachedImage(
         content: ImageContent,
         size: DecodeSize,
-    ): Bitmap? {
-        val key = cacheKey(content, size)
-        return decoded[content.bucket].get(key)
-    }
+    ): Bitmap? = decoded.get(cacheKey(content, size))
 
     /**
      * Decoded bitmap for [content] at [size]: the cached decode when there is one,
-     * otherwise fetch the bytes, decode off the main thread at that size, and
+     * otherwise fetch the bytes, decode them off the main thread at that size, and
      * store the result. Returns null when no such image exists (a library image
      * with no bytes); a fetch failure throws, and so do bytes that aren't an
      * image this device decodes ([UnreadableImage]), rather than resolving to a
      * blank slot.
+     *
+     * Requests for the same content and size share one load. When the last of them
+     * is cancelled, the load is cancelled too unless its decode has started: a
+     * decode can't be interrupted, so the next request for it joins that decode
+     * instead of starting another.
      */
     suspend fun image(
         content: ImageContent,
         size: DecodeSize,
     ): Bitmap? {
         val key = cacheKey(content, size)
-        val cached = decoded[content.bucket].get(key)
-        if (cached != null) return cached
+        decoded.get(key)?.let { return it }
+        return loads.join(key) { control ->
+            decoded.get(key) ?: loadImage(content, size, key, control)
+        }
+    }
+
+    private suspend fun loadImage(
+        content: ImageContent,
+        size: DecodeSize,
+        key: String,
+        control: LoadControl,
+    ): Bitmap? {
+        val bytes = imageBytes(content) ?: return null
+        control.beginDecoding()
         val bitmap =
             withContext(dispatcher) {
-                imageBytes(content)?.let { bytes ->
-                    decodeBytes(bytes, size) ?: throw UnreadableImage(content.description, bytes.size)
-                }
+                decode(bytes, size) ?: throw UnreadableImage(content.description, bytes.size)
             }
-        if (bitmap != null) {
-            decoded[content.bucket].put(key, bitmap)
-        }
+        decoded.put(key, bitmap)
         return bitmap
     }
 
     /**
-     * The encoded bytes [content] decodes from: served from the byte cache when
-     * they're still held, otherwise read across the bridge and cached under the
-     * content's token. Null when no such image exists.
+     * The encoded bytes [content] decodes from, read across the bridge. Null when no
+     * such image exists.
      *
      * Consumers that hand encoded bytes to something else — the artwork
      * `ContentProvider` streaming to a media-browse client — read them here rather
      * than opening a second path to core.
      */
-    suspend fun imageBytes(content: ImageContent): ByteArray? = heldOrFetchedBytes(content)
-
-    /** The bytes held for [content] in the byte cache, else the ones core hands
-     *  back — held under the content's token when there is one. */
-    private suspend fun heldOrFetchedBytes(content: ImageContent): ByteArray? {
-        val token = token(content)
-        val cache = bytes[content.bucket]
-        val held = cache.get(token)
-        if (held != null) return held
-        val fetched = withContext(dispatcher) { fetchBytes(content) }
-        if (fetched != null) {
-            cache.put(token, fetched)
-        }
-        return fetched
-    }
+    suspend fun imageBytes(content: ImageContent): ByteArray? = withContext(dispatcher) { fetchBytes(content) }
 
     /** Read [content]'s bytes from core. Null when core reports no such image. */
     private suspend fun fetchBytes(content: ImageContent): ByteArray? =
@@ -320,49 +294,112 @@ val LocalImageStore =
         error("LocalImageStore not provided")
     }
 
-/** The per-kind decoded caches, addressed by bucket. Cost is the bitmap's
- *  own allocation, so a budget is a real memory ceiling. */
-private class DecodedCaches(
-    budgets: DecodedImageBudgets,
-) {
-    private val caches =
-        mapOf(
-            ImageBucket.LIBRARY_IMAGE to bitmapCache(budgets.libraryImage),
-            ImageBucket.RELEASE_IMAGE to bitmapCache(budgets.releaseImage),
-        )
+/** A cache of decoded bitmaps. Cost is the bitmap's own allocation, so a budget is a
+ *  real memory ceiling. */
+private fun bitmapCache(maxBytes: Int) =
+    object : LruCache<String, Bitmap>(maxBytes) {
+        override fun sizeOf(
+            key: String,
+            value: Bitmap,
+        ): Int = value.allocationByteCount
+    }
 
-    /** Every bucket is built in init, so a missing one is a broken map, not a
-     *  cache miss — [Map.getValue] throws rather than answering null. */
-    operator fun get(bucket: ImageBucket): LruCache<String, Bitmap> = caches.getValue(bucket)
+/**
+ * How far one load has come, which decides whether the last request to leave it may
+ * cancel it. A load still fetching is cancelled; one whose decode has started stays.
+ */
+private class LoadControl {
+    private var decoding = false
+    private var cancelled = false
 
-    private fun bitmapCache(maxBytes: Int) =
-        object : LruCache<String, Bitmap>(maxBytes) {
-            override fun sizeOf(
-                key: String,
-                value: Bitmap,
-            ): Int = value.allocationByteCount
-        }
+    /** The decode is about to start: throws when the load was cancelled first. */
+    @Synchronized
+    fun beginDecoding() {
+        if (cancelled) throw CancellationException("the load was cancelled before its decode started")
+        decoding = true
+    }
+
+    /** Cancel the load unless its decode has started; true when cancelled. */
+    @Synchronized
+    fun cancelUnlessDecoding(): Boolean {
+        if (decoding) return false
+        cancelled = true
+        return true
+    }
 }
 
-/** The per-kind encoded-byte caches. */
-private class ByteCaches(
-    budgets: ImageByteBudgets,
+/**
+ * Loads that requests for one key share. A load is forgotten when it ends, and a
+ * later request finds its result in the cache or, after a failure, starts a new
+ * load.
+ */
+private class SharedLoads<T>(
+    private val scope: CoroutineScope,
 ) {
-    private val caches =
-        mapOf(
-            ImageBucket.LIBRARY_IMAGE to byteCache(budgets.libraryImage),
-            ImageBucket.RELEASE_IMAGE to byteCache(budgets.releaseImage),
-        )
+    private class Load<T>(
+        val control: LoadControl,
+    ) {
+        lateinit var result: Deferred<T>
+        var waiters = 0
+    }
 
-    operator fun get(bucket: ImageBucket): LruCache<String, ByteArray> = caches.getValue(bucket)
+    private val lock = Any()
+    private val loads = HashMap<String, Load<T>>()
 
-    private fun byteCache(maxBytes: Int) =
-        object : LruCache<String, ByteArray>(maxBytes) {
-            override fun sizeOf(
-                key: String,
-                value: ByteArray,
-            ): Int = value.size
+    /** The result of the load for [key], started with [operation] when none runs. */
+    suspend fun join(
+        key: String,
+        operation: suspend (LoadControl) -> T,
+    ): T {
+        val load = enter(key, operation)
+        try {
+            return load.result.await()
+        } finally {
+            leave(key, load)
         }
+    }
+
+    private fun enter(
+        key: String,
+        operation: suspend (LoadControl) -> T,
+    ): Load<T> =
+        synchronized(lock) {
+            val load =
+                loads.getOrPut(key) {
+                    Load<T>(LoadControl()).also { created ->
+                        created.result =
+                            scope.async(start = CoroutineStart.LAZY) {
+                                try {
+                                    operation(created.control)
+                                } finally {
+                                    ended(key, created)
+                                }
+                            }
+                    }
+                }
+            load.waiters++
+            load
+        }
+
+    private fun ended(
+        key: String,
+        load: Load<T>,
+    ) = synchronized(lock) {
+        if (loads[key] === load) loads.remove(key)
+    }
+
+    /** The request's wait is over, with its answer or cancelled. The last request to
+     *  leave cancels the load, unless its decode has started. */
+    private fun leave(
+        key: String,
+        load: Load<T>,
+    ) = synchronized(lock) {
+        load.waiters--
+        if (load.waiters == 0 && load.control.cancelUnlessDecoding()) {
+            if (loads[key] === load) loads.remove(key)
+            load.result.cancel()
+        }
+    }
 }
 
 /**
