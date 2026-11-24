@@ -67,11 +67,16 @@ struct FieldBoxRow<Field: View>: View {
 /// between secondary and tertiary text, starting where the field's text does.
 /// An error line says what is wrong with the field, in the danger colour.
 struct FieldNote: View {
-    private let text: LocalizedStringKey
+    private let text: Text
     private let isError: Bool
 
     init(_ text: LocalizedStringKey, isError: Bool = false) {
-        self.text = text
+        self.text = Text(text)
+        self.isError = isError
+    }
+
+    init(verbatim text: String, isError: Bool) {
+        self.text = Text(verbatim: text)
         self.isError = isError
     }
 
@@ -84,12 +89,12 @@ struct FieldNote: View {
     @ViewBuilder
     private var line: some View {
         if isError {
-            Text(text)
+            text
                 .themeText(.detail)
                 .foregroundStyle(Theme.danger)
         }
         else {
-            Text(text).fieldNote()
+            text.fieldNote()
         }
     }
 }

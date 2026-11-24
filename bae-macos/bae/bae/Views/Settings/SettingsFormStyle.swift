@@ -10,11 +10,14 @@ extension FormStyle where Self == SettingsFormStyle {
     /// sides and between its parts: a section under a title keeps the space
     /// the boards put over it, even the first, and the form ends the 10
     /// points that a sheet's parts have between them above what follows.
-    static var settingsInSheet: SettingsFormStyle {
+    static func settingsInSheet(
+        sectionGap: CGFloat = RowMetrics.sectionGap
+    ) -> SettingsFormStyle {
         SettingsFormStyle(
             sideInset: 0,
             topInset: RowMetrics.sectionGap,
-            bottomInset: ThemeSpace.related + ThemeSpace.line
+            bottomInset: ThemeSpace.related + ThemeSpace.line,
+            sectionGap: sectionGap
         )
     }
 
@@ -44,6 +47,8 @@ struct SettingsFormStyle: FormStyle {
     var topInset: CGFloat = 0
     /// The space below the last section.
     var bottomInset = SettingsPaneMetrics.topInset
+    /// The space before each section after the first.
+    var sectionGap = RowMetrics.sectionGap
 
     func makeBody(configuration: Configuration) -> some View {
         ScrollView {
@@ -55,7 +60,7 @@ struct SettingsFormStyle: FormStyle {
                         SettingsFormSection(section: section)
                             .padding(
                                 .top,
-                                index == 0 ? 0 : RowMetrics.sectionGap
+                                index == 0 ? 0 : sectionGap
                             )
                     }
                 }

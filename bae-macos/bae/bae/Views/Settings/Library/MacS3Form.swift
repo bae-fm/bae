@@ -79,7 +79,12 @@ struct MacS3Form: View {
                         )
                     }
                 }
-                .formStyle(.settingsInSheet)
+                .formStyle(
+                    .settingsInSheet(
+                        sectionGap: RowMetrics.sectionGap + ThemeSpace.related
+                            + ThemeSpace.line
+                    )
+                )
                 .fitsItsContent()
             }
         )
@@ -102,13 +107,11 @@ struct MacS3Form: View {
         let failed =
             field.map { fields.fieldFailure?.field == $0 } ?? false
         return MacFieldRow(title, labelWidth: 120) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 BoxedField(text: text, secret: secret, invalid: failed)
                     .accessibilityLabel(Text(title))
                 if failed, let failure = fields.fieldFailure {
-                    Text(failure.error.line)
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.danger)
+                    FieldNote(verbatim: failure.error.line, isError: true)
                 }
             }
         }

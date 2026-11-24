@@ -299,7 +299,7 @@ private struct RestoreCodeStep: View {
                     }
                 )
             }
-            .formStyle(.settingsInSheet)
+            .formStyle(.settingsInSheet())
             .fitsItsContent()
 
             MacSheetFooter {
