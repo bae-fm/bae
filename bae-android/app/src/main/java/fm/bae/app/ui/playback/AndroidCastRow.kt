@@ -99,6 +99,8 @@ internal fun AndroidCastRow(
         Icon(
             imageVector = deviceIcon(receiver.kind),
             contentDescription = null,
+            // The icon is a row-edge's width from the name, the other gaps a group's.
+            modifier = Modifier.padding(end = ThemeSpace.edge - ThemeSpace.group),
             tint =
                 if (casting) {
                     MaterialTheme.colorScheme.primary
