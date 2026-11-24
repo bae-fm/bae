@@ -130,7 +130,7 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         label.lineBreakMode = .byTruncatingTail
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = look == .stage ? ThemeSpace.related : ThemeSpace.inline
+        stack.spacing = ThemeSpace.related
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         NSLayoutConstraint.activate([
@@ -250,7 +250,7 @@ struct MacProgress<Bar: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text(title)
                 .cutLine(.prose)
                 .foregroundStyle(Theme.textPrimary)
