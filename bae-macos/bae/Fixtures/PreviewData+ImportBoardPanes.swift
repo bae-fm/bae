@@ -252,7 +252,7 @@ extension PreviewData {
             ),
             cover: boardCover(cover),
             placement: .pending(folderCheck: nil, records: records),
-            live: needsYou(.matches(count: 3)).paneFixtureState,
+            live: BridgeCandidateLiveState(actions: boardDraftActions),
             libraryStatus: lowTideHoursInLibrary,
             album: .named(
                 albumId: "board-0",

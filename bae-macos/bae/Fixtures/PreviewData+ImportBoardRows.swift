@@ -184,8 +184,7 @@ extension PreviewData {
                 artistLine: .named("Mara Quill")
             ),
             record: "board-low-tide-hours",
-            cover: .local(file: cover),
-            live: needsYou(.matches(count: 3))
+            cover: .local(file: cover)
         )
     }
 
