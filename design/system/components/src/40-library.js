@@ -529,7 +529,7 @@
   function AndroidDetailScreen(props) {
     var split = splitOverlays(props.children);
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
-      h(AndroidTopBar, { back: true, backLabel: props.back ? 'Back to ' + props.back : 'Back to library', more: props.menu ? (props.menuLabel || 'Album options') : null }),
+      h(AndroidTopBar, { backLabel: props.back ? 'Back to ' + props.back : 'Back to library', more: props.menu ? (props.menuLabel || 'Album options') : null }),
       h('main', { className: 'bae-a-libbody' }, split.content),
       h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }),
       split.over);

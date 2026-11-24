@@ -10,11 +10,10 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Back', h(B.AndroidScreen, { title: 'Storage', back: true, height: 360 }, slot('The screen’s content'))),
-    W('No back', h(B.AndroidScreen, { title: 'Storage', height: 360 }, slot('The screen’s content'))),
-    W('Menu', h(B.AndroidScreen, { title: 'History', back: true, menu: 'Everyone', height: 360 }, slot('The screen’s content'))),
-    W('Dialog', h(B.AndroidScreen, { title: 'Storage', back: true, height: 360 }, slot('The screen’s content'), h(B.AndroidDialog, { title: 'Remove library from this device?' }, h(B.AndroidDialogActions, null, h(B.AndroidButton, { kind: 'text', neutral: true }, 'Cancel'), h(B.AndroidButton, { kind: 'text' }, 'Remove'))))),
-    W('Keyboard', h(B.AndroidScreen, { title: 'Name', back: true, keyboard: true }, h('div', { style: { padding: 'var(--space-edge)' } }, h(B.AndroidTextField, { label: 'Library name', state: 'focused', value: 'Home' }))))));
+    W('Back', h(B.AndroidScreen, { title: 'Storage', height: 360 }, slot('The screen’s content'))),
+    W('Menu', h(B.AndroidScreen, { title: 'History', menu: 'Everyone', height: 360 }, slot('The screen’s content'))),
+    W('Dialog', h(B.AndroidScreen, { title: 'Storage', height: 360 }, slot('The screen’s content'), h(B.AndroidDialog, { title: 'Remove library from this device?' }, h(B.AndroidDialogActions, null, h(B.AndroidButton, { kind: 'text', neutral: true }, 'Cancel'), h(B.AndroidButton, { kind: 'text' }, 'Remove'))))),
+    W('Keyboard', h(B.AndroidScreen, { title: 'Name', keyboard: true }, h('div', { style: { padding: 'var(--space-edge)' } }, h(B.AndroidTextField, { label: 'Library name', state: 'focused', value: 'Home' }))))));
 </script>
 </body>
 </html>

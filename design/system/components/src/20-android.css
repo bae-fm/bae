@@ -2,8 +2,7 @@
 
 .bae-a-screen { position: relative; overflow: hidden; display: flex; flex-direction: column; background: var(--background); color: var(--text-primary); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-topbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); height: 64px; box-sizing: border-box; padding: 0 var(--space-inline); background: var(--background); }
-.bae-a-topbar h1 { margin: 0; padding-left: var(--space-group); font: var(--type-android-bar-title-weight) var(--type-android-bar-title-size)/var(--type-android-bar-title-line-height) var(--font-android); }
-.bae-a-topbar h1.bae-a-topbar-title-after-back { padding-left: 0; }
+.bae-a-topbar h1 { margin: 0; font: var(--type-android-bar-title-weight) var(--type-android-bar-title-size)/var(--type-android-bar-title-line-height) var(--font-android); }
 .bae-a-topbar-more { margin-left: auto; }
 .bae-a-screen-above { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .bae-a-keyboard { flex: none; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); padding: calc(var(--space-related) + var(--space-line)) var(--space-inline) 0; background: var(--surface); }

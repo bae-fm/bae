@@ -10,11 +10,11 @@
     return { content: content, over: over };
   }
 
-  // A screen's bar, 64dp on the page's own colour: the back button (`back`), named Back, or `backLabel` where it names where it goes (Back to library on a screen opened from the library), the title, and `menu`, a choice that applies to the whole screen (History's whose plays), at the bar's end, opening a menu of its choices.
+  // A screen's bar, 64dp on the page's own colour: the back button, which every bar has, named Back, or `backLabel` where it names where it goes (Back to library on a screen opened from the library), the title, and `menu`, a choice that applies to the whole screen (History's whose plays), at the bar's end, opening a menu of its choices.
   function AndroidTopBar(props) {
     return h('header', { className: 'bae-a-topbar' },
-      props.back ? h(AndroidIconButton, { icon: 'back', label: props.backLabel || 'Back' }) : null,
-      props.title ? h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title) : null,
+      h(AndroidIconButton, { icon: 'back', label: props.backLabel || 'Back' }),
+      props.title ? h('h1', null, props.title) : null,
       props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-topbar-menu' }, props.menu, h(Glyph, { name: 'down', size: 'medium' })) : null,
       props.more ? h('span', { className: 'bae-a-topbar-more' }, h(AndroidIconButton, { icon: 'more', label: props.more })) : null);
   }
@@ -22,7 +22,7 @@
   function AndroidScreen(props) {
     var split = splitOverlays(props.children);
     var top = [
-      props.title ? h(AndroidTopBar, { key: 'top', title: props.title, back: props.back, backLabel: props.backLabel, menu: props.menu }) : null,
+      props.title ? h(AndroidTopBar, { key: 'top', title: props.title, backLabel: props.backLabel, menu: props.menu }) : null,
       h('main', { key: 'main', className: 'bae-a-main' }, split.content),
       split.over.length ? h(React.Fragment, { key: 'over' }, split.over) : null];
     // keyboard: a field has focus, so the keyboard is up and the screen, a dialog over it included, fits in the space above it.
