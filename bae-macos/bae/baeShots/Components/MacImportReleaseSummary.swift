@@ -140,7 +140,7 @@ extension ShotScene {
                 labels: [
                     .alone(
                         name: "Harbor Records",
-                        catalogNumber: "HR-0412-A-DELUXE"
+                        catalogNumber: "HR-0412"
                     )
                 ],
                 barcodes: [],
