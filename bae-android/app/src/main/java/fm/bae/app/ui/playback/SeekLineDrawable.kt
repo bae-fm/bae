@@ -31,7 +31,7 @@ enum class SeekLineLook {
     val rowHeightDp: Float
         get() =
             when (this) {
-                BAR -> BAR_THUMB_DP
+                BAR -> BAR_ROW_DP
                 LARGE -> LARGE_LINE_DP
             }
 
@@ -60,6 +60,9 @@ enum class SeekLineLook {
 
     companion object {
         const val BAR_THUMB_DP = 14f
+
+        /** The bar's row is as tall as its time labels' line; the thumb stands out past it. */
+        const val BAR_ROW_DP = 13f
         const val LARGE_THUMB_WIDTH_DP = 4f
         const val LARGE_THUMB_HEIGHT_DP = 44f
         const val LARGE_LINE_DP = 16f
