@@ -2,7 +2,9 @@ package fm.bae.app.ui.components
 
 import android.app.Activity
 import android.app.Application
+import android.content.Intent
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.View
@@ -111,6 +113,46 @@ class AndroidProgressBarViewTest {
 
             assertFalse(rest.sameAs(bar.drawToBitmap()))
         }
+    }
+
+    @Test
+    @Config(sdk = [32], application = Application::class)
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun anOlderAndroidBarFollowsBatterySaverChanges() {
+        Robolectric.buildActivity(Activity::class.java).setup().use { controller ->
+            val activity = controller.get()
+            val bar = AndroidProgressBarView(activity)
+            bar.applyAccent(Color.Red)
+            activity.setContentView(bar)
+            val main = shadowOf(Looper.getMainLooper())
+            attach(bar, main)
+            Settings.Global.putFloat(activity.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+
+            setBatterySaver(activity, true)
+            bar.showMoving()
+            val rest = bar.drawToBitmap()
+            drawNextFrame(main)
+            drawNextFrame(main)
+            assertTrue(rest.sameAs(bar.drawToBitmap()))
+
+            setBatterySaver(activity, false)
+            drawNextFrame(main)
+            drawNextFrame(main)
+            assertFalse(rest.sameAs(bar.drawToBitmap()))
+
+            setBatterySaver(activity, true)
+            main.idle()
+            assertTrue(rest.sameAs(bar.drawToBitmap()))
+        }
+    }
+
+    private fun setBatterySaver(
+        activity: Activity,
+        enabled: Boolean,
+    ) {
+        val power = checkNotNull(activity.getSystemService(PowerManager::class.java))
+        shadowOf(power).setIsPowerSaveMode(enabled)
+        activity.sendBroadcast(Intent(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
     }
 
     private fun attach(
