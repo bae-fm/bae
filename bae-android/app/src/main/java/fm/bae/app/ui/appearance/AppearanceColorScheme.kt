@@ -47,7 +47,7 @@ fun appearanceColorScheme(
         outlineVariant = semantics.hairline,
         inverseSurface = semantics.textPrimary,
         inverseOnSurface = surfaces.background,
-        inversePrimary = accentColors.fill,
+        inversePrimary = if (dark) accentColors.light else accentColors.dark,
         scrim = semantics.scrim,
         errorContainer = semantics.danger.copy(alpha = ThemeOpacity.tint).compositeOver(surfaces.surface),
         onErrorContainer = semantics.danger,
