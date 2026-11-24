@@ -334,27 +334,28 @@
       auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty bae-m-fo-empty-below' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s'), found) : null,
       auto === 'nothing-found' ? null : h(React.Fragment, { key: 'f' }, found)];
   }
-  // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip.
+  // A chip's value in mono, cut at the chip's value width: the first of several (" · "-separated), as the ISRC chip shows the files' first code.
   function chipValues(value) {
-    var values = String(value || '').split(' · ');
-    if (values.length < 2) return h('span', { className: 'bae-mono bae-m-idchip-value' }, value || '');
-    return h('span', { className: 'bae-mono bae-m-idchip-values' }, value);
+    return h('span', { className: 'bae-mono bae-m-idchip-value' }, String(value || '').split(' · ')[0]);
   }
-  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are.
+  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are. A chip of several values (" · "-separated, the files' ISRCs) shows the first, then a +N button that opens a popover listing every one, a line each; `moreShown` draws that popover open.
   function MacIdentifierChip(props) {
     var st = props.state || 'filled';
+    var values = String(props.value || '').split(' · '), several = !props.editable && values.length > 1;
     // A chip that toggles is one button, which VoiceOver reads as its parts with a comma between: "Barcode, 0 41234 56789 2, Discogs, 1".
     var name = props.toggles ? [props.label, props.value].concat(props.sources ? list(props.sources).map(function (cc) { var q = cc.split('='); return q[0] + ', ' + (q[1] === '…' ? 'Searching…' : q[1]); }) : []).filter(Boolean).join(', ') : null;
     return h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, 'aria-label': name, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)', lineHeight: 'var(--type-chip-line-height)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : props.editable ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.value || '') : chipValues(props.value),
+      several ? h('span', { className: 'bae-m-idchip-more' }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent', 'aria-expanded': !!props.moreShown }, '+' + (values.length - 1)),
+        props.moreShown ? h('span', { className: 'bae-m-idchip-pop' }, h(MacPopover, { width: 150, top: 10, right: -75, arrow: 75 }, h('div', { className: 'bae-m-idchip-codes' }, values.map(function (v, i) { return h('div', { key: i, className: 'bae-mono' }, v); })))) : null) : null,
       props.sources ? list(props.sources).map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
   }
   // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated. A Disc ID, Barcode or Catalog # chip that holds a value toggles, and a Title search chip's words are a button that opens its fields.
-  // An outlined Catalog # chip is a catalog number the folder offers that no release confirms; pressing it puts the number into the run. The band folds these after the other chips, behind a "+N more" button with their count. `candidates`: `folded` (the default) or `shown`, which draws every one, then the button, which reads Fewer.
+  // An outlined Catalog # chip is a catalog number the folder offers that no release confirms; pressing it puts the number into the run. The band folds these after the other chips, behind a "+N more" button with their count. `candidates`: `folded` (the default) or `shown`, which draws every one, then the button, which reads Fewer. `open`: the label of the chip whose +N popover is drawn open, such as ISRC.
   var TOGGLED_IDENTIFIERS = ['Disc ID', 'Barcode', 'Catalog #'];
   function MacIdentifierBand(props) {
     var parts = list(props.chips).map(function (c) { return c.split('|'); });
     var isCandidate = function (p) { return p[0] === 'Catalog #' && p[2] === 'outlined'; };
-    var chip = function (p, i) { return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], sources: p[3] ? p[3].split('+').join(',') : null, toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash', editable: p[0] === 'Title search' && !!p[1] }); };
+    var chip = function (p, i) { return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], sources: p[3] ? p[3].split('+').join(',') : null, toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash', editable: p[0] === 'Title search' && !!p[1], moreShown: p[0] === props.open }); };
     var candidates = parts.filter(isCandidate), shown = props.candidates === 'shown';
     return h('div', { className: 'bae-m-band' },
       parts.filter(function (p) { return !isCandidate(p); }).map(chip),
