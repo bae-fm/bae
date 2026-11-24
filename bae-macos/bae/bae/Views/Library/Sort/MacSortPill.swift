@@ -1,6 +1,10 @@
 import BaeKit
 import SwiftUI
 
+/// The box the board gives a pill's direction arrow. An unframed symbol lays
+/// out wider than the glyph the board's box holds.
+private let sortArrowSize = CGSize(width: 8.5, height: 11)
+
 /// One sort criterion as a pill: a field menu that re-points it, an arrow that
 /// flips its direction, and an "x" that removes it. A field another pill sorts
 /// by shows disabled in the menu.
@@ -27,6 +31,10 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
                 )
                 .themeIcon(.small)
                 .foregroundStyle(Theme.textSecondary)
+                .frame(
+                    width: sortArrowSize.width,
+                    height: sortArrowSize.height
+                )
             }
             .buttonStyle(.accentPlain)
             .accessibilityLabel(
@@ -39,6 +47,10 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
                     Image(systemName: "xmark")
                         .themeIcon(.badge)
                         .foregroundStyle(Theme.textSecondary)
+                        .frame(
+                            width: ThemeIcon.badge.size,
+                            height: ThemeIcon.badge.size
+                        )
                 }
                 .buttonStyle(.accentPlain)
                 .accessibilityLabel(Text("Remove sort criterion"))
