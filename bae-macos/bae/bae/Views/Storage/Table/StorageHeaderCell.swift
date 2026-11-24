@@ -11,6 +11,10 @@ final class StorageHeaderCell: NSTableHeaderCell {
     /// The chevron is this far after the title.
     private static let chevronGap = ThemeSpace.inline
 
+    /// The sort descriptor key of this header's column, which the table's
+    /// sort names when it sorts by the column.
+    var sortKey: String?
+
     private var titleFont: NSFont { ThemeText.detail.nsFont }
 
     override init(textCell: String) {
@@ -39,6 +43,17 @@ final class StorageHeaderCell: NSTableHeaderCell {
             .fill()
         }
         drawInterior(withFrame: cellFrame, in: controlView)
+        if let table = (controlView as? NSTableHeaderView)?.tableView,
+            let sort = table.sortDescriptors.first,
+            sort.key == sortKey
+        {
+            drawSortIndicator(
+                withFrame: sortIndicatorRect(forBounds: cellFrame),
+                in: controlView,
+                ascending: sort.ascending,
+                priority: 0
+            )
+        }
     }
 
     override func drawInterior(

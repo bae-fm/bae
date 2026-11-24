@@ -81,15 +81,14 @@ struct MacTable: NSViewRepresentable {
         tableView.allowsColumnResizing = true
         tableView.columnAutoresizingStyle =
             .firstColumnOnlyAutoresizingStyle
-        // The style first: choosing it sets the spacing between cells.
-        tableView.style = .fullWidth
+        // The style first: choosing it sets the spacing between cells. The
+        // plain style puts no inset in front of the first column's cells,
+        // whose 10-point inset from the pane is the pane's padding.
+        tableView.style = .plain
         tableView.rowHeight = 28
         // Each cell holds its own side padding, so the columns touch and
         // each column is as wide as its layout says.
-        tableView.intercellSpacing = NSSize(
-            width: 0,
-            height: tableView.intercellSpacing.height
-        )
+        tableView.intercellSpacing = .zero
         tableView.backgroundColor = .clear
 
         for column in StorageTableColumn.allCases {
@@ -100,6 +99,7 @@ struct MacTable: NSViewRepresentable {
             let headerCell = StorageHeaderCell(textCell: column.title)
             headerCell.alignment =
                 cellAlignment(column) == .trailing ? .right : .left
+            headerCell.sortKey = column.rawValue
             tableColumn.headerCell = headerCell
             tableColumn.width = column.width
             tableColumn.minWidth = column.minWidth
@@ -663,6 +663,27 @@ final class StorageTable: HeaderFirstTableView {
 /// The storage table's header, whose right click opens bae's columns menu.
 final class StorageTableHeader: NSTableHeaderView {
     weak var menus: MacTable.Coordinator?
+
+    /// The columns' own headers over the table's surface, with a hairline
+    /// under them, and none of AppKit's header fill.
+    override func draw(_ dirtyRect: NSRect) {
+        guard let table = tableView else { return }
+        for (index, column) in table.tableColumns.enumerated()
+        where !column.isHidden {
+            column.headerCell.draw(
+                withFrame: headerRect(ofColumn: index),
+                in: self
+            )
+        }
+        NSColor(Theme.hairline).setFill()
+        NSRect(
+            x: bounds.minX,
+            y: bounds.minY,
+            width: bounds.width,
+            height: ThemeSpace.hairline
+        )
+        .fill()
+    }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         menus?.showColumnsMenu(in: self)
