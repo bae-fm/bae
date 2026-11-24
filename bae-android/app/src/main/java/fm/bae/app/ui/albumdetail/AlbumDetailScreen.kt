@@ -383,7 +383,7 @@ internal fun AndroidReleasePicker(
     val shape = MaterialTheme.shapes.small
     val label = stringResource(R.string.release_picker_label)
     Row(
-        modifier = Modifier.selectableGroup().semantics { contentDescription = label },
+        modifier = Modifier.fillMaxWidth().selectableGroup().semantics { contentDescription = label },
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         detail.releases.forEachIndexed { index, rel ->
