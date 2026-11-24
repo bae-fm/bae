@@ -3601,7 +3601,7 @@ joins someone's library, and the person's own restore code adds this device to
 theirs. An Android phone that holds libraries lists them under **Your libraries**,
 ending in **Add library**, which opens a sheet with **Scan code** and **Enter
 code** in place of the buttons, each library opening on a tap, with a ⋮ menu holding
-**Details…** for a library that opens, and **Remove…** (§6.4). **Details…** shows, in a sheet, the library's sync
+**Details…** for a library that opens, and **Remove…** (§6.4); a library whose name the phone cannot read has a **Remove…** button on its row in place of the menu. **Details…** shows, in a sheet, the library's sync
 status as this phone last knew it (as on a Mac, below), when it last synced, and
 its provider, account and folder. The Sync page offers *Open in browser*.
 If the phone holds saved restore codes, it lists them after the libraries.
@@ -3611,7 +3611,7 @@ right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first. A
 store whose name bae cannot read appears in the same list as *Library
-that cannot be read*. The entry shows its store id and offers only **Remove…** (on Android, a button on its row). A join or restore that stopped before it finished and whose saved
+that cannot be read*. The entry shows its store id and offers only **Remove…**. A join or restore that stopped before it finished and whose saved
 settings can't be read can't resume, and coven fails listing the joins and
 restores under way, naming its library, instead of listing none. The first
 screen shows that failure as a row after the libraries, in the same list, even
