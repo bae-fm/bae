@@ -9,17 +9,17 @@ extension ShotScene {
         [
             component(
                 "mac.component.import-bulk.several",
-                width: 580,
-                height: 620
+                width: 842,
+                height: 568
             ) {
-                importBulk()
+                importBulk(height: 568)
             },
             component(
                 "mac.component.import-bulk.to-the-cloud",
-                width: 580,
-                height: 620
+                width: 842,
+                height: 568
             ) {
-                importBulk(syncs: true)
+                importBulk(syncs: true, height: 568)
             },
         ] + importBulkRunningScenes
 
@@ -30,13 +30,13 @@ extension ShotScene {
         return [
             component(
                 "mac.component.import-bulk.running",
-                width: 580,
-                height: 716,
+                width: 842,
+                height: 601,
                 isReady: { running.selection?.running != nil }
             ) {
                 let selection = runningSelection()
                 running.selection = selection
-                return importBulk(selection: selection, height: 700)
+                return importBulk(selection: selection, height: 601)
             }
         ]
     }()
@@ -76,7 +76,7 @@ extension ShotScene {
                 onPerform: { _ in }
             )
             .environment(selection)
-            .frame(width: 580, height: height),
+            .frame(width: 842, height: height),
             syncs: syncs
         )
     }
