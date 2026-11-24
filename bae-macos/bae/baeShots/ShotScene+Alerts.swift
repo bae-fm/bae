@@ -31,45 +31,6 @@ extension ShotScene {
                     openAlbum: true
                 )
             },
-            ShotScene(
-                id: "mac.album.storage.unpin",
-                size: CGSize(width: 1_200, height: 1_020),
-                frame: .window(title: "bae", titleBar: .hidden)
-            ) {
-                libraryAlertStage(
-                    UnpinConfirmation.alert(
-                        for: PendingUnpin(
-                            releaseIds: ["release"],
-                            title: "Low Tide Hours"
-                        ),
-                        dontShowAgain: .constant(false)
-                    ) { _ in },
-                    height: 1_020,
-                    openAlbum: true,
-                    modal: { uiStore in
-                        // The Storage sheet the alert asks over: Unpin
-                        // is on the sheet.
-                        uiStore.presentModal {
-                            ReleaseStorageSheet(
-                                release: ReleaseDetail(
-                                    bridge: PreviewData.boardAlbumDetail()
-                                        .releases[0]
-                                ),
-                                albumTitle: "Low Tide Hours",
-                                asksBeforeUnpinning: true,
-                                onAction: { _ in },
-                                onUnpinConfirmed: { _ in },
-                                onCancelPin: {},
-                                onExport: {},
-                                onSaveAs: {},
-                                onDone: {}
-                            )
-                            .frame(width: 640, height: 600)
-                            .background(Theme.surfaceElevated)
-                        }
-                    }
-                )
-            },
             unpinSeveral(),
             ShotScene(
                 id: "mac.errors.alert",
@@ -339,11 +300,9 @@ extension ShotScene {
     private static func libraryAlertStage(
         _ alert: (MacAlertWords, [MacAlertButton]),
         height: CGFloat,
-        openAlbum: Bool = false,
-        modal: (UiStore) -> Void = { _ in }
+        openAlbum: Bool = false
     ) -> ShotStage {
         let uiStore = UiStore()
-        modal(uiStore)
         let backing = boardLibraryBacking(
             uiStore: uiStore,
             albumCount: openAlbum ? 4 : nil,

@@ -37,7 +37,8 @@ struct ShotScene {
         + personMenuScenes + castingScenes + settingsPlaybackScenes
         + peopleScenes + albumCoverScenes + playbackScenes
         + albumEditorScenes + pickedTracksScenes
-        + albumRatingScenes + albumCreditsScenes + searchScenes
+        + albumRatingScenes + albumCreditsScenes + albumStorageScenes
+        + searchScenes
         + [groupedAlbumsScene]
 }
 

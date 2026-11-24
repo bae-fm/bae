@@ -147,6 +147,7 @@ extension ShotScene {
         openAlbum: Bool = false,
         detailAnswered: AlbumDetailAnswered? = nil,
         detail: BridgeAlbumDetail = boardAlbumDetail(),
+        releaseFiles: [BridgeFile] = PreviewData.previewReleaseFiles,
         playlists: [BridgePlaylistSummary] = [],
         playlistDetails: [String: BridgePlaylistDetail] = [:],
         history: [BridgeHistoryPlay] = [],
@@ -192,7 +193,7 @@ extension ShotScene {
             },
             releaseFiles: {
                 .fixed(
-                    PreviewData.previewReleaseFiles,
+                    releaseFiles,
                     answers: UnansweredCount()
                 )
             }
