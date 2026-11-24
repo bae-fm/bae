@@ -305,6 +305,7 @@ extension ShotScene {
                 uiStore: uiStore,
                 backing: backing,
                 playbackStore: boardPlayback(),
+                images: images,
                 size: size
             )
             if stage == .albumMenu {
