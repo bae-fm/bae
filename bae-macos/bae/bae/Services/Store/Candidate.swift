@@ -33,10 +33,27 @@ enum CandidateFolders: Equatable {
 
 // MARK: - SearchTab
 
-enum SearchTab: Hashable {
+enum SearchTab: Hashable, CaseIterable {
     case general
     case catalogNumber
     case barcode
+
+    /// The tab's place among the segments of the search form.
+    var segment: Int {
+        guard let index = Self.allCases.firstIndex(of: self) else {
+            preconditionFailure("\(self) is missing from SearchTab.allCases")
+        }
+        return index
+    }
+
+    /// The label of the tab's segment in the search form.
+    var title: String {
+        switch self {
+        case .general: String(localized: "General")
+        case .catalogNumber: String(localized: "Catalog #")
+        case .barcode: String(localized: "Barcode")
+        }
+    }
 }
 
 enum CandidateMetadataPresentation: Equatable {

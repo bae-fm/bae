@@ -99,25 +99,21 @@ struct ImportSearchFormView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                Picker(
-                    "Search by",
-                    selection: Binding(
-                        get: { draft.activeTab },
-                        set: { tab in
-                            draft.activeTab = tab
+                MacSegmentedControl(
+                    selectedIndex: Binding(
+                        get: { draft.activeTab.segment },
+                        set: { index in
+                            draft.activeTab = SearchTab.allCases[index]
                             commit()
                         }
-                    )
-                ) {
-                    Text("General").tag(SearchTab.general)
-                    Text("Catalog #").tag(SearchTab.catalogNumber)
-                    Text("Barcode").tag(SearchTab.barcode)
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .accentFocusRing(cornerRadius: .infinity)
-                .controlSize(.small)
-                .fixedSize()
+                    ),
+                    segments: SearchTab.allCases.map {
+                        MacSegmentedControl.Segment(
+                            label: $0.title,
+                            systemImage: nil
+                        )
+                    }
+                )
 
                 fields
 
