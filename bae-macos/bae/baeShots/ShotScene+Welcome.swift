@@ -283,7 +283,12 @@ extension ShotScene {
                         prompt: .unfinished,
                         error: LoadError(
                             .deviceReset,
-                            PreviewData.displayErrorRetryable
+                            DisplayError(
+                                line:
+                                    "Could not reach the cloud. Check your connection and try again.",
+                                detail:
+                                    "timed out connecting to the library's storage"
+                            )
                         ),
                         onReset: {},
                         onCancel: {}
