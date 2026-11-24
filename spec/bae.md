@@ -4741,7 +4741,8 @@ finishes on the screen that asks for the person's current restore code,
 which shows how far it has come and offers *Cancel*. If it fails, the screen
 says why and the code finishes it too, signing in to the provider again, as a
 refused Dropbox or OneDrive sign-in needs. A reset under way can't be
-cancelled, so finishing one offers *Close*, which leaves the reset waiting. Cancelling a restore before
+cancelled, so finishing one offers no *Cancel*. The Mac's screen offers *Close*, which
+leaves the reset waiting. Cancelling a restore before
 its new device registered gives it up, and this device's copy is the library
 again; after, coven keeps it, and the cancel shows "The restore cannot be
 cancelled: this device was already added to the library. Finish restoring to
