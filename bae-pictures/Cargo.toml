@@ -1,0 +1,27 @@
+[package]
+name = "bae-pictures"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_pictures"
+path = "src/lib.rs"
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# The test folder the test pictures are made in.
+bae-util = { workspace = true, features = ["test-utils"] }
+# Decodes the thumbnail a test makes, to read its pixels.
+jpeg-decoder = { workspace = true }
+# Measures a job's peak memory: wait4 returns the child's resource usage.
+libc = { workspace = true }
+# Writes the large test picture one row at a time.
+png = { workspace = true }
+
+[lints]
+workspace = true

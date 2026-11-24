@@ -1183,6 +1183,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-pictures"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-util",
+ "jpeg-decoder",
+ "libc",
+ "png",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "bae-playback"
 version = "0.0.0-dev"
 dependencies = [

@@ -9,6 +9,7 @@ members = [
     "bae-cast",
     "bae-library",
     "bae-people",
+    "bae-pictures",
     "bae-sync-status",
     "bae-records",
     "bae-store",
@@ -159,6 +160,7 @@ notify = "8.2.0"
 num-bigint = "0.4"
 objc2-core-audio = { version = "0.3", default-features = false }
 objc2-core-audio-types = { version = "0.3", default-features = false }
+png = "0.18"
 prost = "0.14.4"
 rand = "0.9"
 rcgen = { version = "0.14.10", default-features = false, features = ["aws_lc_rs"] }
