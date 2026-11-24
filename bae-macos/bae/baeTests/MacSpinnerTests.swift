@@ -71,6 +71,7 @@ struct MacSpinnerTests {
             defer: false
         )
         panel.isReleasedWhenClosed = false
+        panel.animationBehavior = .none
         panel.contentView = NSHostingView(rootView: MacSpinner())
         return panel
     }
