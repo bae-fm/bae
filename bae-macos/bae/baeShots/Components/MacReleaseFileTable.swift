@@ -55,6 +55,9 @@ extension ShotScene {
                 order: .constant(order),
                 presentationError: .constant(nil)
             )
+            // The sheet pads the table in from its margin, as the board
+            // draws it.
+            .padding(.horizontal, ThemeSpace.fieldInset)
             .frame(width: 544, alignment: .leading)
         }
     }
