@@ -13,7 +13,6 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
-import androidx.core.content.ContextCompat
 
 /** Reports the current platform setting and its changes on the UI thread until the caller unsubscribes. */
 @MainThread
@@ -74,12 +73,8 @@ private fun observeLegacyScale(
                 report()
             }
         }
-    ContextCompat.registerReceiver(
-        context,
-        batterySaver,
-        IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
-        ContextCompat.RECEIVER_NOT_EXPORTED,
-    )
+    // Only Android can send this protected broadcast. This path runs before Android added receiver flags.
+    context.registerReceiver(batterySaver, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
     val scaleUri = Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE)
     resolver.registerContentObserver(scaleUri, false, scaleSetting)
     report()
