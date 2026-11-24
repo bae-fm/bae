@@ -23,11 +23,11 @@
     return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.dimmed && 'bae-art-dimmed', props.className), style: style, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true }, props.children);
   }
 
-  // A person's picture, round: their image when they have one, or the initials of their name on a tint. `image` stands for the picked image (the board draws it as artwork seeded by it).
+  // A person's picture, round: their image when they have one, or the initials of their name on a tint. `image` stands for the picked image (the board draws it as artwork seeded by it). `android`: the initials centred as Compose centres them, where the Mac's sit higher, as SwiftUI sets them.
   function Avatar(props) {
     var s = Number(props.size || 32), name = String(props.name || '?');
     var ini = name.split(/\s+/).map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase();
-    return props.image ? h(Artwork, { title: props.image, size: s, round: true }) : h('span', { className: 'bae-avatar', 'aria-hidden': true, style: { width: s, height: s, fontSize: s * 0.4 } }, ini);
+    return props.image ? h(Artwork, { title: props.image, size: s, round: true }) : h('span', { className: cx('bae-avatar', props.android && 'bae-avatar-android'), 'aria-hidden': true, style: { width: s, height: s, fontSize: s * 0.4 } }, h('span', { className: 'bae-avatar-initials' }, ini));
   }
 
   // A playlist's picture: the covers of its first four different releases in a 2×2 square, as playlists show on both platforms; with fewer than four, its first entry's cover; empty, the missing tile. `covers` lists the releases' titles in the playlist's order, each once. One cover alone would make a playlist look like that album, and two playlists that start on one album alike.
@@ -528,7 +528,7 @@
       h(AndroidActivityButton, { state: props.sync }),
       h(AndroidIconButton, { icon: 'more', label: 'More options' }),
       // The person's picture, or initials, ends the bar and opens their menu: Add device, Invite someone, Playlists, History, Settings. `avatar`: their name (the boards' person is Ana); `avatarImage`: their picture.
-      h('button', { type: 'button', 'aria-haspopup': 'menu', 'aria-label': 'Your menu', className: 'bae-a-iconbtn' }, h(Avatar, { name: props.avatar || 'Ana', image: props.avatarImage, size: 32 })));
+      h('button', { type: 'button', 'aria-haspopup': 'menu', 'aria-label': 'Your menu', className: 'bae-a-iconbtn' }, h(Avatar, { name: props.avatar || 'Ana', image: props.avatarImage, size: 32, android: true })));
   }
 
   function AndroidLibraryScreen(props) {

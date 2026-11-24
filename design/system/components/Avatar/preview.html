@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Initials', h(B.Avatar, { name: 'Mara Quill', size: 32 })), N('Picture', h(B.Avatar, { name: 'Mara Quill', image: 'Mara', size: 32 }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Initials', h(B.Avatar, { name: 'Mara Quill', size: 32 })), N('Android initials', h(B.Avatar, { name: 'Mara Quill', size: 32, android: true })), N('Picture', h(B.Avatar, { name: 'Mara Quill', image: 'Mara', size: 32 }))));
 </script>
 </body>
 </html>
