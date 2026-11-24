@@ -179,6 +179,9 @@ struct ReleaseStorageSheet: View {
                     order: $fileOrder,
                     presentationError: $tableError
                 )
+                // The rows and their stripes sit inside the sheet's margin,
+                // as the board draws them.
+                .padding(.horizontal, ThemeSpace.fieldInset)
             }
         }
         .onAppear { showFiles() }

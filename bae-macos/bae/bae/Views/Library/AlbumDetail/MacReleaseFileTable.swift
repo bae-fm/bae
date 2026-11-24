@@ -33,7 +33,9 @@ struct MacReleaseFileTable: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let table = context.coordinator.table
-        table.style = .inset
+        // The columns span the whole width, and the stripes span the columns,
+        // as the board draws the table.
+        table.style = .fullWidth
         // The sheet supplies the surface behind the rows and their stripes.
         table.backgroundColor = .clear
         table.rowHeight = 28
