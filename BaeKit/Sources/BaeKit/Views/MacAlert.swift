@@ -134,7 +134,6 @@
                         suppression.label
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .themeText(.body)
                 }
                 buttonRow
                     .padding(.top, ThemeSpace.compact)

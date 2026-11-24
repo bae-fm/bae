@@ -17,6 +17,7 @@ public struct MacCheckbox<Label: View>: View {
 
     public var body: some View {
         Toggle(isOn: $isOn) { label }
+            .themeText(.body)
             #if os(macOS)
                 .toggleStyle(.accentCheckbox)
             #endif
