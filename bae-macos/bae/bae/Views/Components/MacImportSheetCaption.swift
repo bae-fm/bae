@@ -15,6 +15,8 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
 
     @State
     private var hoveringName = false
+    @Environment(\.layoutDirection)
+    private var layoutDirection
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
@@ -28,6 +30,9 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
             Text(verbatim: "→")
                 .themeText(.body)
                 .foregroundStyle(Theme.textTertiary)
+                // The arrow points from the sheet to its audio, so it turns
+                // round where the row reads right to left.
+                .scaleEffect(x: layoutDirection == .rightToLeft ? -1 : 1)
                 .fixedSize()
                 .accessibilityHidden(true)
             audio
