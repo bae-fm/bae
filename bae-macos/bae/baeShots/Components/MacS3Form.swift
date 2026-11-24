@@ -5,24 +5,37 @@ import SwiftUI
 
 extension ShotScene {
     /// `MacS3Form` with the preview's endpoint, region, bucket and key typed
-    /// in, and the reason a failed setup gives under the field it names.
+    /// in, the reason a failed setup gives under the field it names, and the
+    /// words at the top for a key the service refused.
     static let macS3FormScenes: [ShotScene] = [
         s3Form("mac.component.s3-form.none", failing: nil),
         s3Form("mac.component.s3-form.region", failing: .regionMismatch),
         s3Form("mac.component.s3-form.bucket", failing: .containerNotFound),
         s3Form("mac.component.s3-form.occupied", failing: .ownLocationRequired),
-        s3Form("mac.component.s3-form.key", failing: .authentication),
-        s3Form("mac.component.s3-form.denied", failing: .permissionDenied),
+        s3Form(
+            "mac.component.s3-form.key",
+            failing: .authentication,
+            rejection: .notAccepted
+        ),
+        s3Form(
+            "mac.component.s3-form.denied",
+            failing: .permissionDenied,
+            rejection: .cannotUseBucket
+        ),
     ]
 
     private static func s3Form(
         _ id: String,
-        failing failure: BridgeStorageFailure?
+        failing failure: BridgeStorageFailure?,
+        rejection: S3SetupFields.KeyRejection? = nil
     ) -> ShotScene {
         component(id, width: 520, height: 470) {
-            MacS3Form(staged: s3Fields(failing: failure))
-                .environment(Sync.stub())
-                .environment(StorageSetupRun())
+            MacS3Form(
+                staged: s3Fields(failing: failure),
+                failure: rejection.map { DisplayError(line: $0.words) }
+            )
+            .environment(Sync.stub())
+            .environment(StorageSetupRun())
         }
     }
 
