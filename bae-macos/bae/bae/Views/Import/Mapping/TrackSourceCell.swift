@@ -51,7 +51,14 @@ struct TrackSourceCell: View {
                 }
             }
         case .unsaved:
-            EmptyView()
+            // A track a save adds plays nothing yet; its column stays, so
+            // its file name starts where every other row's does.
+            Color.clear
+                .frame(
+                    width: ThemeIcon.chip.size,
+                    height: Self.auditionLineHeight
+                )
+                .accessibilityHidden(true)
         }
     }
 }
