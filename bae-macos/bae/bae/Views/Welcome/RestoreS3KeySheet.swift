@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The sheet that asks for the S3 key a restore needs when its code holds
-/// none. Back returns to the code; Add starts the restore.
+/// none. Cancel returns to the code; Add starts the restore.
 struct RestoreS3KeySheet: View {
     @Bindable
     var form: BootstrapCodeForm
@@ -23,7 +23,7 @@ struct RestoreS3KeySheet: View {
             }
         } footer: {
             MacSheetFooter {
-                MacButton("Back") { form.clearReading() }
+                MacButton("Cancel") { form.clearReading() }
                     .keyboardShortcut(.cancelAction)
                 MacButton("Add", kind: .primary) { form.start() }
                     .keyboardShortcut(.defaultAction)

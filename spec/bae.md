@@ -3667,7 +3667,8 @@ confirm it, and a typed code starts when the person chooses **Continue**: the
 person scanned or entered it to add this device, or to join. Only an S3 code
 without the key stops first, to ask for it on a second sheet, **S3 key**, in a
 few words ("Enter your credentials for your S3 storage.") over the access key's
-two fields, with **Back** to the code and **Add**. The running restore takes the
+two fields, with **Cancel**, which goes back to the code, and **Add**. The
+running restore takes the
 window in place of the sheet, with its step, a bar and **Cancel**, and a running
 join takes it with its wait for approval. A code that doesn't read, and a
 restore or join that fails, says so on the sheet, to try again; a join
