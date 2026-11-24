@@ -33,6 +33,7 @@ internal object ElementList {
     private const val HEX_RADIX = 16
     private const val RGB_DIGITS = 8
     private const val FIELD_LABEL_RISE_DP = 8f
+    private const val OUTLINE_HEIGHT_DP = 56f
 
     /**
      * The list for the tree under [root], with each node's children in [reading] order (the root has no semantics of its own and is not listed), with the
@@ -245,12 +246,20 @@ internal object ElementList {
         // shot's frame, as a board's box does.
         val bounds =
             when {
-                kind == "text" -> textBox(drawn)
+                kind == "text" -> {
+                    textBox(drawn)
+                }
 
                 // Material's outlined field includes the 8dp in which its visible label floats.
-                hasOutlineLabel -> node.wholeBox().let { Rect(it.left, it.top + FIELD_LABEL_RISE_DP * density, it.right, it.bottom) }
+                // A field shorter than its outline and that rise has no floating label: the search field, whose
+                // box is the whole pill.
+                hasOutlineLabel && node.wholeBox().height >= (OUTLINE_HEIGHT_DP + FIELD_LABEL_RISE_DP) * density -> {
+                    node.wholeBox().let { Rect(it.left, it.top + FIELD_LABEL_RISE_DP * density, it.right, it.bottom) }
+                }
 
-                else -> node.wholeBox()
+                else -> {
+                    node.wholeBox()
+                }
             }
         val out =
             JSONObject()

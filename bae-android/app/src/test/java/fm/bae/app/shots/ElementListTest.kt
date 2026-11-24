@@ -39,8 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.takahirom.roborazzi.captureRoboImage
+import fm.bae.app.ui.TestTheme
 import fm.bae.app.ui.components.AndroidPinField
 import fm.bae.app.ui.components.AndroidTextField
+import fm.bae.app.ui.library.AndroidSearchBar
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -403,6 +405,18 @@ class ElementListTest : BoardShot() {
         assertTrue(elements.indexOf(label) < elements.indexOf(field))
         assertEquals(56.0, field.getJSONObject("bounds").getDouble("height"), 0.0)
         assertEquals(8.0, field.getJSONObject("bounds").getDouble("y"), 0.0)
+    }
+
+    @Test
+    fun recordsTheFullHeightOfTheSearchFieldWhichHasNoOutlineLabel() {
+        compose.settle { TestTheme { AndroidSearchBar(query = "", onQueryChange = {}, onClose = {}) } }
+        val root = compose.onRoot().fetchSemanticsNode()
+        val unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()
+        val elements = ElementList.of("android.test.search", root, unmerged = unmerged).getJSONArray("elements").objects()
+
+        val bounds = elements.single { it.getString("role") == "field" }.getJSONObject("bounds")
+        assertEquals(56.0, bounds.getDouble("height"), 0.0)
+        assertEquals(8.0, bounds.getDouble("y"), 0.0)
     }
 
     @Test
