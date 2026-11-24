@@ -1,12 +1,12 @@
 #if canImport(AppKit)
     import SwiftUI
 
-    /// Sizes of a bae menu: a face 12 points rounded with 6 points of
+    /// Sizes of a bae menu: a face rounded as a card with 6 points of
     /// padding, items 22 points tall as a native menu's rows are, a divider
     /// 11 points tall.
     enum MacMenuMetrics {
         static let padding: CGFloat = 6
-        static let cornerRadius: CGFloat = 12
+        static let cornerRadius: CGFloat = ThemeRadius.card
         static let itemCornerRadius: CGFloat = 6
         static let itemHeight: CGFloat = 22
         static let headerHeight: CGFloat = 22
