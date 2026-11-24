@@ -132,12 +132,25 @@ pub fn release_details_on<X>(
             pinned: row.get("pinned")?,
             remote: row.get("remote")?,
             upload: super::queued_uploads::release_upload_in_row(row)?,
-            cover_version: row.get("cover_version")?,
-            cover_source_file: row.get("cover_source_file")?,
+            cover: cover_in_row(row)?,
             release_number: row.get("release_number")?,
         };
         Ok((detail, extra(row)?))
     })?)
+}
+
+/// The cover the columns `cover_version` and `cover_source_file` of a release
+/// detail row state: both are NULL for a release with no cover.
+fn cover_in_row(row: &Row) -> rusqlite::Result<Option<DbReleaseCover>> {
+    let version: Option<String> = row.get("cover_version")?;
+    let source_file: Option<String> = row.get("cover_source_file")?;
+    Ok(version.map(|version| DbReleaseCover {
+        version,
+        source: match source_file {
+            Some(file_id) => CoverSource::ReleaseFile { file_id },
+            None => CoverSource::Original,
+        },
+    }))
 }
 
 /// A release's rows as [`release_details_on`] read them.
@@ -156,8 +169,7 @@ pub struct DbReleaseDetailRows {
     pinned: bool,
     remote: bool,
     upload: Option<DbReleaseUpload>,
-    cover_version: Option<String>,
-    cover_source_file: Option<String>,
+    cover: Option<DbReleaseCover>,
     release_number: i64,
 }
 
@@ -183,8 +195,7 @@ impl DbReleaseDetailRows {
             pinned: self.pinned,
             remote: self.remote,
             upload: self.upload,
-            cover_version: self.cover_version,
-            cover_source_file: self.cover_source_file,
+            cover: self.cover,
             release_number: self.release_number,
         }
     }

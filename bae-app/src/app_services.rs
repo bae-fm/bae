@@ -521,7 +521,7 @@ impl AppServices {
     delegate_lib!(records, get_numbered_track => get_numbered_track(track_id: &str) -> Option<bae_records::DbNumberedTrack>);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<bae_records::DbFile>, bae_library::LibraryError>);
     delegate_lib!(records, get_file_by_id => find_file_by_id(file_id: &str) -> Option<bae_records::DbFile>);
-    delegate_lib!(records, get_cover => find_cover(release_id: &str) -> Option<bae_records::DbCover>);
+    delegate_lib!(records, get_cover_content_type => cover_content_type(release_id: &str) -> Option<bae_util::content_type::ContentType>);
     delegate_lib!(records, get_artist_image => find_artist_image(artist_id: &str) -> Option<bae_records::DbArtistImage>);
     delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_records::ImageRef>, bae_library::LibraryError>);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_records::ImageRef, pixels: Option<u32>) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);

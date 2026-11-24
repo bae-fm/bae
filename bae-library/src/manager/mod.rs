@@ -29,8 +29,6 @@ use bae_records::{NewCover, NewCoverPicture};
 use bae_store::Store;
 use bae_sync_status::SyncStatus;
 use bae_types::release_storage::ReleaseStorageAction;
-#[cfg(desktop)]
-use bae_util::content_type::ContentType;
 use bae_util::task_failure::{caught, Bug, TaskFailed};
 use coven::ClockRef;
 use coven::IdSourceRef;

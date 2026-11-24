@@ -52,8 +52,7 @@ fn detail_raw() -> bae_records::DbReleaseDetail {
         pinned: false,
         remote: false,
         upload: None,
-        cover_version: None,
-        cover_source_file: None,
+        cover: None,
         release_number: 1,
     }
 }
@@ -164,7 +163,13 @@ fn gallery_of(cover_source: Option<&str>, has_cover: bool) -> ReleaseDetail {
     let mut raw = detail_raw();
     raw.files.images = vec![image_file("back", "back.jpg"), image_file("front", "front.jpg")];
     raw.files.image_count = 2;
-    raw.cover_source_file = cover_source.map(str::to_string);
+    raw.cover = has_cover.then(|| bae_records::DbReleaseCover {
+        version: "v1".to_string(),
+        source: match cover_source {
+            Some(file_id) => bae_records::CoverSource::ReleaseFile { file_id: file_id.to_string() },
+            None => bae_records::CoverSource::Original,
+        },
+    });
     let cover = has_cover.then(|| bae_records::ImageRef {
         id: "release-id".to_string(),
         version: "v1".to_string(),

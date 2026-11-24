@@ -19,7 +19,9 @@ impl LibraryManager {
         pixels: Option<u32>,
     ) -> Result<Vec<u8>, LibraryError> {
         match (source, pixels) {
-            (GallerySource::Cover(image), Some(pixels)) if pixels <= CoverCopy::Large.edge() => {
+            (GallerySource::Cover(image), Some(pixels))
+                if pixels <= u32::from(CoverCopy::Large.step().edge()) =>
+            {
                 self.read_image_bytes(image, Some(pixels)).await?.ok_or_else(|| {
                     LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
                 })
@@ -30,7 +32,7 @@ impl LibraryManager {
                 })
             }
             (GallerySource::ReleaseFile { file_id }, Some(pixels))
-                if pixels <= NewReleasePreview::EDGE =>
+                if pixels <= u32::from(NewReleasePreview::STEP.edge()) =>
             {
                 self.read_release_preview(file_id).await
             }
@@ -89,6 +91,15 @@ impl LibraryManager {
 
                 // Read the chosen release image file through coven's locality-aware
                 // read (the user's own file when Local, the cache/cloud when Remote).
+                if file.release_id != release_id || !file.content_type.is_supported_cover() {
+                    return Err(bae_import::ImportError::CoverArt {
+                        detail: format!(
+                            "{} is no image of release {release_id} that a cover can be made from",
+                            file.original_filename
+                        ),
+                    }
+                    .into());
+                }
                 let bytes = self.read_release_file(&file).await?;
                 (NewCoverPicture::ReleaseFile { file_id }, bytes)
             }
@@ -103,35 +114,14 @@ impl LibraryManager {
             }
         };
 
-        // Decoding and shrinking the picture is CPU work.
-        let (browse, large) = self
-            .diagnostics
-            .blocking("make a cover's copies", move || {
-                let copy =
-                    |bytes: &Vec<u8>, step| bae_pictures::make_copy_of_bytes(bytes.clone(), step);
-                Ok::<_, bae_pictures::PicturesError>((
-                    copy(&bytes, bae_pictures::PictureStep::S768)?,
-                    copy(&bytes, bae_pictures::PictureStep::S1536)?,
-                ))
-            })
-            .await?
-            .map_err(|error| bae_import::ImportError::CoverArt { detail: error.to_string() })?;
-        let content_type = match (browse.format, large.format) {
-            (bae_pictures::CopyFormat::Jpeg, bae_pictures::CopyFormat::Jpeg) => ContentType::Jpeg,
-            (bae_pictures::CopyFormat::Png, bae_pictures::CopyFormat::Png) => ContentType::Png,
-            _ => {
-                return Err(LibraryError::Storage(format!(
-                    "the copies of {release_id}'s cover are in different formats"
-                )))
-            }
-        };
+        let copies = bae_import::CoverCopies::of_picture(bytes, &self.diagnostics).await?;
         self.records
             .write_cover(NewCover {
                 release_id: release_id.to_string(),
                 picture,
-                browse: browse.bytes,
-                large: large.bytes,
-                content_type,
+                browse: copies.browse,
+                large: copies.large,
+                content_type: copies.content_type,
             })
             .await?;
 

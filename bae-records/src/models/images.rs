@@ -99,16 +99,6 @@ pub enum CoverSource {
     Original,
 }
 
-/// A cover's row: the picture it is made from and the format of its copies.
-/// The copies' bytes are coven files the row references.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbCover {
-    /// The release's id.
-    pub release_id: String,
-    pub source: CoverSource,
-    pub content_type: ContentType,
-}
-
 /// The copy of a cover a slot draws: the browse copy for grids and rows, the
 /// large copy for the album panel, the full player and Now Playing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -118,18 +108,18 @@ pub enum CoverCopy {
 }
 
 impl CoverCopy {
-    /// The longer edge in pixels a copy is made at.
-    pub fn edge(self) -> u32 {
+    /// The step the copy is made at.
+    pub fn step(self) -> bae_pictures::PictureStep {
         match self {
-            Self::Browse => 768,
-            Self::Large => 1536,
+            Self::Browse => bae_pictures::PictureStep::S768,
+            Self::Large => bae_pictures::PictureStep::S1536,
         }
     }
 
     /// The smaller copy that holds a slot `pixels` wide on its longer side,
     /// or the large copy for a slot above the browse copy.
     pub fn covering(pixels: u32) -> Self {
-        if pixels <= Self::Browse.edge() {
+        if pixels <= u32::from(Self::Browse.step().edge()) {
             Self::Browse
         } else {
             Self::Large
@@ -170,6 +160,6 @@ pub struct NewReleasePreview {
 }
 
 impl NewReleasePreview {
-    /// The longer edge in pixels a preview is made at.
-    pub const EDGE: u32 = 384;
+    /// The step a preview is made at.
+    pub const STEP: bae_pictures::PictureStep = bae_pictures::PictureStep::S384;
 }

@@ -36,15 +36,19 @@ pub struct DbReleaseDetail {
     pub remote: bool,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
-    /// The version of the release's cover; `None` when it has none.
-    pub cover_version: Option<String>,
-    /// The id of the release file the cover is made from, when the cover is
-    /// one of the release's image files; `None` when the release has no
-    /// cover or its cover keeps a picture of its own.
-    pub cover_source_file: Option<String>,
+    /// The release's cover; `None` when it has none.
+    pub cover: Option<DbReleaseCover>,
     /// The release's place among its album's releases, counted from 1 by
     /// album order, then id.
     pub release_number: i64,
+}
+
+/// A release's cover as its detail reads it: the version of its browse copy
+/// and what it is made from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbReleaseCover {
+    pub version: String,
+    pub source: crate::CoverSource,
 }
 
 /// A track as the release editor reads its audio: the track, its place on the

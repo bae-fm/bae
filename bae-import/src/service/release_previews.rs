@@ -39,20 +39,26 @@ impl ImportService {
             let picture = ImportPicture::Folder { file: entry.file.version.clone() };
             let pictures = self.pictures.clone();
             reads.spawn(async move {
-                let bytes =
-                    pictures.read(picture, Some(NewReleasePreview::EDGE), Priority::Visible).await;
-                (position, release_file_id, bytes)
+                let copy =
+                    pictures.read_copy(picture, NewReleasePreview::STEP, Priority::Visible).await;
+                (position, release_file_id, copy)
             });
         }
         let mut made = Vec::new();
         while let Some(joined) = reads.join_next().await {
-            let (position, release_file_id, bytes) =
+            let (position, release_file_id, copy) =
                 joined.map_err(|error| ImportError::Internal {
                     detail: format!("reading a release image's preview ended: {error}"),
                 })?;
-            let bytes = bytes?;
-            let content_type = super::cover_image::copy_content_type(&bytes)?;
-            made.push((position, NewReleasePreview { release_file_id, bytes, content_type }));
+            let copy = copy?;
+            made.push((
+                position,
+                NewReleasePreview {
+                    release_file_id,
+                    content_type: crate::content_type_of(copy.format),
+                    bytes: copy.bytes,
+                },
+            ));
         }
         made.sort_by_key(|(position, _)| *position);
         Ok(made.into_iter().map(|(_, preview)| preview).collect())

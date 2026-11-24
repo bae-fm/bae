@@ -25,20 +25,6 @@ impl Records {
         self.write_artist_image_after_planning(image, bytes, || async {}).await
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn write_artist_image_after_planning_for_test<F, Fut>(
-        &self,
-        image: &DbArtistImage,
-        bytes: &[u8],
-        after_planning: F,
-    ) -> Result<(), ImageWriteError>
-    where
-        F: FnOnce() -> Fut,
-        Fut: std::future::Future<Output = ()>,
-    {
-        self.write_artist_image_after_planning(image, bytes, after_planning).await
-    }
-
     async fn write_artist_image_after_planning<F, Fut>(
         &self,
         image: &DbArtistImage,
@@ -166,29 +152,45 @@ impl Records {
             .await
     }
 
-    /// The release's cover row; `None` when the release has no cover.
-    pub async fn find_cover(&self, release_id: &str) -> Result<Option<DbCover>, DbError> {
+    /// The format of the release's cover copies; `None` when it has no cover.
+    pub async fn cover_content_type(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<ContentType>, DbError> {
         let release_id = release_id.to_string();
         self.store
             .read(move |sql| {
                 sql.query_row(
-                    "SELECT id, source_file, content_type FROM covers WHERE id = ?",
+                    "SELECT content_type FROM covers WHERE id = ?",
                     params![release_id],
-                    |row| {
-                        Ok(DbCover {
-                            release_id: row.get("id")?,
-                            source: match row.get::<_, Option<String>>("source_file")? {
-                                Some(file_id) => CoverSource::ReleaseFile { file_id },
-                                None => CoverSource::Original,
-                            },
-                            content_type: ContentType::from_mime(
-                                &row.get::<_, String>("content_type")?,
-                            ),
-                        })
-                    },
+                    |row| Ok(ContentType::from_mime(&row.get::<_, String>(0)?)),
                 )
                 .optional()
                 .map_err(DbError::from)
+            })
+            .await
+    }
+
+    /// What the release's cover is made from; `None` when it has no cover.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn cover_source_for_test(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<CoverSource>, DbError> {
+        let release_id = release_id.to_string();
+        self.store
+            .read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        "SELECT source_file FROM covers WHERE id = ?",
+                        params![release_id],
+                        |row| row.get::<_, Option<String>>(0),
+                    )
+                    .optional()?
+                    .map(|source_file| match source_file {
+                        Some(file_id) => CoverSource::ReleaseFile { file_id },
+                        None => CoverSource::Original,
+                    }))
             })
             .await
     }

@@ -25,6 +25,8 @@ pub mod candidate_search;
 mod catalog_sessions;
 #[cfg(desktop)]
 pub mod cover_art;
+#[cfg(desktop)]
+mod cover_copies;
 #[doc(hidden)]
 #[cfg(desktop)]
 pub mod cue_sheet;
@@ -256,6 +258,8 @@ pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError
 pub use cover_art::CoverSelection;
 #[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource, CoverRefusal, ImportPicture};
+#[cfg(desktop)]
+pub use cover_copies::{content_type_of, CoverCopies};
 pub use error::ImportError;
 #[cfg(desktop)]
 pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};

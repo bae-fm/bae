@@ -423,7 +423,10 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
         Vec::with_capacity(raw.releases.len());
     for ReleaseDetailRead { detail, download, actions, tracks_rating_system } in raw.releases {
         let ctx = crate::album_detail::ReleaseResolveCtx {
-            cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
+            cover: bae_records::cover_ref(
+                &detail.release.id,
+                detail.cover.as_ref().map(|cover| cover.version.clone()),
+            ),
             is_compilation: raw.album.is_compilation,
             album_year: raw.album.year,
         };

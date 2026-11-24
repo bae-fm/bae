@@ -217,38 +217,44 @@ impl ReleaseDetail {
 
         // The gallery shows the cover first, then each of the release's other
         // image files. A cover made from one of the release's image files is
-        // that file's slot, labelled as the cover, so the picture shows once;
-        // a cover that keeps a picture of its own is a slot of its own.
+        // that file's entry, named Cover, so the picture shows once; a cover
+        // that keeps a picture of its own is an entry of its own.
         let mut gallery = Vec::new();
-        if let Some(cover_ref) = &ctx.cover {
-            match &raw.cover_source_file {
-                None => gallery.push(GalleryItem {
+        let mut own_picture = false;
+        let cover_file = match (&ctx.cover, raw.cover.as_ref().map(|cover| &cover.source)) {
+            (Some(cover_ref), Some(bae_records::CoverSource::Original)) => {
+                own_picture = true;
+                gallery.push(GalleryItem {
                     id: "cover".to_string(),
                     label: GalleryLabel::Cover,
                     source: GallerySource::Cover(cover_ref.clone()),
-                }),
-                Some(file_id) => {
-                    let file = image_files.iter().find(|file| &file.id == file_id);
-                    gallery.extend(file.map(|file| GalleryItem {
-                        id: file.id.clone(),
-                        label: GalleryLabel::Cover,
-                        source: GallerySource::ReleaseFile { file_id: file.id.clone() },
-                    }));
-                }
+                });
+                None
             }
-        }
+            (_, Some(bae_records::CoverSource::ReleaseFile { file_id })) => {
+                gallery.push(GalleryItem {
+                    id: file_id.clone(),
+                    label: GalleryLabel::Cover,
+                    source: GallerySource::ReleaseFile { file_id: file_id.clone() },
+                });
+                Some(file_id.clone())
+            }
+            _ => None,
+        };
         // An image file has no stable bae path: the lightbox fetches its bytes
         // by file id through `read_gallery_bytes`, and coven reads them from
         // wherever they are — the user's own file on the one device holding it,
         // the cache once it is in storage.
-        for f in image_files.iter().filter(|f| raw.cover_source_file.as_ref() != Some(&f.id)) {
+        for f in image_files.iter().filter(|f| cover_file.as_ref() != Some(&f.id)) {
             gallery.push(GalleryItem {
                 id: f.id.clone(),
                 label: GalleryLabel::File { name: f.original_filename.clone() },
                 source: GallerySource::ReleaseFile { file_id: f.id.clone() },
             });
         }
-        let gallery_item_count = gallery.len() as u32;
+        // The count is the files statement's count of images, with the cover's
+        // slot when the cover keeps a picture of its own.
+        let gallery_item_count = raw.files.image_count + u32::from(own_picture);
 
         let name = ReleaseName::of(
             release.release_name.as_deref(),

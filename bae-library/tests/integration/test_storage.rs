@@ -317,13 +317,13 @@ async fn run_import_with_cover_test() {
         info!("Track '{}' has audio format with segment file link", track.title);
     }
 
-    let cover = library
+    let content_type = library
         .records()
-        .find_cover(&release_id)
+        .cover_content_type(&release_id)
         .await
         .expect("Failed to get cover")
         .expect("Cover should exist in the covers table");
-    assert_eq!(cover.content_type, ContentType::Jpeg);
+    assert_eq!(content_type, ContentType::Jpeg);
     // Only the selected image is BACK_SCAN_DIMS; every other one is 1x1.
     let stored =
         bae_library::test_libraries::read_cover_image_bytes(library.manager(), &release_id)

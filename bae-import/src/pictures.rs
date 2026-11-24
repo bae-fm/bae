@@ -58,7 +58,7 @@ struct PictureServices {
 /// The jobs making pictures now, and the reads each volume takes at once.
 #[derive(Clone)]
 pub(crate) struct ImportPictures {
-    flights: Flights<(ImportPicture, PictureSize), Vec<u8>, PictureError>,
+    flights: Flights<(ImportPicture, PictureSize), Made, PictureError>,
     volumes: Volumes,
     services: PictureServices,
 }
@@ -86,14 +86,41 @@ impl ImportPictures {
         pixels: Option<u32>,
         priority: Priority,
     ) -> Result<Vec<u8>, ImportError> {
-        let size = PictureSize::covering(pixels);
+        Ok(match self.request(source, PictureSize::covering(pixels), priority).await? {
+            Made::Copy(copy) => copy.bytes,
+            Made::Original(bytes) => bytes,
+        })
+    }
+
+    /// The copy of `source` at `step`, with its format, which the import
+    /// writes into its release.
+    pub(crate) async fn read_copy(
+        &self,
+        source: ImportPicture,
+        step: bae_pictures::PictureStep,
+        priority: Priority,
+    ) -> Result<PictureCopy, ImportError> {
+        match self.request(source, PictureSize::Copy(step), priority).await? {
+            Made::Copy(copy) => Ok(copy),
+            Made::Original(_) => Err(ImportError::Internal {
+                detail: "a request for a copy of a picture returned its original".to_string(),
+            }),
+        }
+    }
+
+    async fn request(
+        &self,
+        source: ImportPicture,
+        size: PictureSize,
+        priority: Priority,
+    ) -> Result<Made, ImportError> {
         let job = {
             let (services, volumes, source) =
                 (self.services.clone(), self.volumes.clone(), source.clone());
             move |cancelled: IsCancelled| make(services, volumes, source, size, priority, cancelled)
         };
         match self.flights.request((source, size), job).await {
-            Ok(bytes) => Ok(Arc::try_unwrap(bytes).unwrap_or_else(|shared| (*shared).clone())),
+            Ok(made) => Ok(Arc::try_unwrap(made).unwrap_or_else(|shared| (*shared).clone())),
             Err(FlightError::Failed(error)) => Err(ImportError::Picture(error)),
             Err(FlightError::Panicked) => Err(ImportError::Internal {
                 detail: "the job that makes a picture panicked".to_string(),
@@ -126,7 +153,7 @@ enum Origin {
     Art(Vec<u8>),
 }
 
-/// The bytes of `source` at `size`: the kept copy when the candidate keeps
+/// `source` at `size`: the kept copy when the candidate keeps
 /// one, else a read of the original that ends when `cancel` is set, kept for
 /// the next request when it is a copy.
 async fn make(
@@ -136,7 +163,7 @@ async fn make(
     size: PictureSize,
     priority: Priority,
     cancelled: IsCancelled,
-) -> Result<Vec<u8>, PictureError> {
+) -> Result<Made, PictureError> {
     let owner = services.tables.picture_owner(&source).await?.ok_or_else(|| match &source {
         ImportPicture::Folder { file } | ImportPicture::Embedded { source: file, .. } => {
             PictureError::NotInImport(file.path.clone())
@@ -144,7 +171,7 @@ async fn make(
     })?;
     if let PictureSize::Copy(step) = size {
         if let Some(kept) = services.tables.load_picture_copy(&owner, step).await? {
-            return Ok(kept);
+            return Ok(Made::Copy(kept));
         }
     }
     let origin = match &source {
@@ -171,10 +198,7 @@ async fn make(
     if let (PictureSize::Copy(step), Made::Copy(copy)) = (size, &bytes) {
         services.tables.store_picture_copy(&owner, step, copy).await?;
     }
-    Ok(match bytes {
-        Made::Copy(copy) => copy.bytes,
-        Made::Original(bytes) => bytes,
-    })
+    Ok(bytes)
 }
 
 /// How many pictures of one watched folder are read at once: a few from a
@@ -187,6 +211,7 @@ fn reads_at_once(volume: crate::VolumeKind) -> usize {
 }
 
 /// What reading a picture made.
+#[derive(Clone)]
 enum Made {
     Copy(PictureCopy),
     Original(Vec<u8>),

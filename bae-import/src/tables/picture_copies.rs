@@ -111,28 +111,41 @@ impl ImportTables {
         &self,
         owner: &PictureOwner,
         step: PictureStep,
-    ) -> Result<Option<Vec<u8>>, DbError> {
+    ) -> Result<Option<PictureCopy>, DbError> {
         let owner = owner.clone();
         self.store
             .read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT bytes FROM import_picture_copy \
-                         WHERE watched_folder_path = ? AND candidate_path = ? \
-                           AND source_kind = ? AND source_path = ? AND source_size = ? \
-                           AND source_modified_at_ns = ? AND step = ?",
-                        params![
-                            owner.watched_folder_path,
-                            owner.candidate_path,
-                            owner.source_kind,
-                            owner.source_path,
-                            owner.source_size,
-                            owner.source_modified_at_ns,
-                            step_column(step)
-                        ],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
+                sql.query_row(
+                    "SELECT format, bytes FROM import_picture_copy \
+                     WHERE watched_folder_path = ? AND candidate_path = ? \
+                       AND source_kind = ? AND source_path = ? AND source_size = ? \
+                       AND source_modified_at_ns = ? AND step = ?",
+                    params![
+                        owner.watched_folder_path,
+                        owner.candidate_path,
+                        owner.source_kind,
+                        owner.source_path,
+                        owner.source_size,
+                        owner.source_modified_at_ns,
+                        step_column(step)
+                    ],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?)),
+                )
+                .optional()?
+                .map(|(format, bytes)| {
+                    let format = match format.as_str() {
+                        "jpeg" => CopyFormat::Jpeg,
+                        "png" => CopyFormat::Png,
+                        other => {
+                            return Err(DbError::Unreadable {
+                                what: "a kept picture copy's format".to_string(),
+                                stored: other.to_string(),
+                            })
+                        }
+                    };
+                    Ok(PictureCopy { format, bytes })
+                })
+                .transpose()
             })
             .await
     }

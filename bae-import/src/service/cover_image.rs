@@ -4,10 +4,10 @@
 use crate::cover_art::PreparedCover;
 use crate::file_tag_snapshot::FileTagSnapshot;
 use crate::folder_scanner::CandidateFile;
+use crate::CoverCopies;
 use crate::ImportError;
 use bae_catalogs::remote_image::RemoteImage;
 use bae_records::{CoverCopy, NewCover, NewCoverPicture};
-use bae_util::content_type::ContentType;
 
 /// Where the bytes of an import's cover come from. Nothing is chosen at
 /// import: this is the candidate's stored selection, the image a person
@@ -79,7 +79,7 @@ impl ImportCover {
         release_id: &str,
         diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<NewCover, ImportError> {
-        let (picture, browse, large) = match self {
+        let (picture, copies) = match self {
             Self::Local(path) => {
                 let file = folder_cover(discovered_files, &path)?;
                 let file_id =
@@ -90,64 +90,33 @@ impl ImportCover {
                     })?;
                 let picture = crate::ImportPicture::Folder { file: file.version.clone() };
                 let browse = pictures
-                    .read(
+                    .read_copy(
                         picture.clone(),
-                        Some(CoverCopy::Browse.edge()),
+                        CoverCopy::Browse.step(),
                         bae_pictures::Priority::Visible,
                     )
                     .await?;
                 let large = pictures
-                    .read(picture, Some(CoverCopy::Large.edge()), bae_pictures::Priority::Visible)
+                    .read_copy(picture, CoverCopy::Large.step(), bae_pictures::Priority::Visible)
                     .await?;
-                (NewCoverPicture::ReleaseFile { file_id }, browse, large)
+                (NewCoverPicture::ReleaseFile { file_id }, CoverCopies::of_copies(browse, large)?)
             }
             Self::Remote(bytes) | Self::Embedded(bytes) => {
                 // Names the format it refuses before libvips fails on it.
                 bae_util::stored_image::inspect_image(&bytes)
                     .map_err(|detail| ImportError::CoverArt { detail })?;
-                let (browse, large) = copies_of(&bytes, diagnostics).await?;
-                (NewCoverPicture::Original { bytes }, browse, large)
+                let copies = CoverCopies::of_picture(bytes.clone(), diagnostics).await?;
+                (NewCoverPicture::Original { bytes }, copies)
             }
         };
-        let content_type = copy_content_type(&browse)?;
-        if copy_content_type(&large)? != content_type {
-            return Err(ImportError::Internal {
-                detail: "a cover's browse and large copies are in different formats".to_string(),
-            });
-        }
-        Ok(NewCover { release_id: release_id.to_string(), picture, browse, large, content_type })
+        Ok(NewCover {
+            release_id: release_id.to_string(),
+            picture,
+            browse: copies.browse,
+            large: copies.large,
+            content_type: copies.content_type,
+        })
     }
-}
-
-/// The browse and large copies of the picture `bytes` hold, made on a
-/// blocking thread: libvips decodes and shrinks them, CPU work.
-async fn copies_of(
-    bytes: &[u8],
-    diagnostics: &bae_diagnostics::Diagnostics,
-) -> Result<(Vec<u8>, Vec<u8>), ImportError> {
-    let bytes = bytes.to_vec();
-    diagnostics
-        .blocking("make the import's cover copies", move || {
-            Ok::<_, bae_pictures::PicturesError>((
-                bae_pictures::make_copy_of_bytes(bytes.clone(), bae_pictures::PictureStep::S768)?
-                    .bytes,
-                bae_pictures::make_copy_of_bytes(bytes, bae_pictures::PictureStep::S1536)?.bytes,
-            ))
-        })
-        .await?
-        .map_err(|error| ImportError::CoverArt { detail: error.to_string() })
-}
-
-/// The content type of a copy of a picture: PNG for a picture with
-/// transparency, else JPEG.
-pub(super) fn copy_content_type(bytes: &[u8]) -> Result<ContentType, ImportError> {
-    let header = &bytes[..bytes.len().min(ContentType::IMAGE_HEADER_LEN)];
-    [ContentType::Jpeg, ContentType::Png]
-        .into_iter()
-        .find(|content_type| content_type.opens_with(header) == Some(true))
-        .ok_or_else(|| ImportError::Internal {
-            detail: "a picture copy is neither a JPEG nor a PNG".to_string(),
-        })
 }
 
 /// One downloaded cover's bytes. Its content type is checked and dropped: the

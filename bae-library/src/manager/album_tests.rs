@@ -22,7 +22,7 @@ async fn delete_album_removes_release_covers() {
 
     manager.delete_album(&release.album_id).await.unwrap();
 
-    assert!(manager.records.find_cover(&release.id).await.unwrap().is_none());
+    assert!(manager.records.cover_source_for_test(&release.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -158,7 +158,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         assert!(find_release(manager, release_id).await.is_none());
         assert!(manager.records.get_tracks_for_release(release_id).await.unwrap().is_empty());
         assert!(release_files(manager, release_id).await.is_empty());
-        assert!(manager.records.find_cover(release_id).await.unwrap().is_none());
+        assert!(manager.records.cover_source_for_test(release_id).await.unwrap().is_none());
     }
     for file in &deleted_files {
         assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 0);
@@ -169,7 +169,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
 
     assert!(find_release(manager, &other.id).await.is_some());
     assert_eq!(manager.records.get_tracks_for_release(&other.id).await.unwrap().len(), 1);
-    assert!(manager.records.find_cover(&other.id).await.unwrap().is_some());
+    assert!(manager.records.cover_source_for_test(&other.id).await.unwrap().is_some());
     for file in &kept_files {
         assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 1);
     }

@@ -20,6 +20,8 @@ bae-desktop-cfg = { workspace = true }
 bae-catalogs = { workspace = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }
+# The sizes a picture's copies are made at.
+bae-pictures = { workspace = true }
 # Mediums, pressings, credits and track times: the values the records hold.
 bae-types = { workspace = true }
 # Content types and the text matching keys the rows are written with.

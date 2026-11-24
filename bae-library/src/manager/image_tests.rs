@@ -63,7 +63,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         .await
         .expect_err("bytes that are no image make no cover");
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ImportData, "{error}");
-    assert!(manager.records.find_cover(&release.id).await.unwrap().is_none());
+    assert!(manager.records.cover_source_for_test(&release.id).await.unwrap().is_none());
 }
 
 async fn assert_changed_cover(
@@ -111,14 +111,15 @@ async fn assert_changed_cover(
 
     // The row describes the stored thumbnail, a JPEG, and its coven file
     // holds the thumbnail's bytes.
-    let row = manager.records.find_cover(&release.id).await.unwrap().expect("cover row stored");
-    assert_eq!(row.content_type, ContentType::Jpeg);
+    let content_type = manager.records.cover_content_type(&release.id).await.unwrap();
+    assert_eq!(content_type, Some(ContentType::Jpeg));
     assert_eq!(cover_file(manager, &release.id).await.size(), stored.len() as u64);
 
     // The cover is made from the release file it was picked from, which it
     // names, and keeps no original of its own. Its large copy fits 1536 pixels
     // and is never larger than the picture.
-    assert_eq!(row.source, bae_records::CoverSource::ReleaseFile { file_id: file.id });
+    let source = manager.records.cover_source_for_test(&release.id).await.unwrap();
+    assert_eq!(source, Some(bae_records::CoverSource::ReleaseFile { file_id: file.id }));
     assert!(manager.records.cover_original_file(&release.id).await.unwrap().is_none());
     let large = manager
         .read_cover_copy(&release.id, bae_records::CoverCopy::Large)
@@ -176,8 +177,9 @@ async fn change_cover_twice_replaces_the_cover_file() {
             .change_cover(&release.id, CoverSelection::ReleaseImage { file_id: file.id.clone() })
             .await
     };
-    let cover_row =
-        async || manager.records.find_cover(&release.id).await.unwrap().expect("cover row stored");
+    let cover_row = async || {
+        manager.records.cover_source_for_test(&release.id).await.unwrap().expect("cover row stored")
+    };
 
     let cover_version =
         async || manager.cover_ref(&release.id).await.unwrap().expect("cover stored").version;

@@ -404,7 +404,7 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
 
     let content_type = match image_type {
         LibraryImageType::Cover => {
-            services.get_cover(&subject_id).await.map_err(lib_err)?.map(|cover| cover.content_type)
+            services.get_cover_content_type(&subject_id).await.map_err(lib_err)?
         }
         LibraryImageType::Artist => services
             .get_artist_image(&subject_id)

@@ -2553,9 +2553,8 @@ viewer's strip of thumbnails, the *Change cover* sheet's tiles for the
 release's files, and any other small view of a release's image. 384 pixels
 covers the largest of those, the sheet's 360-pixel tile. A request for an
 image file at a larger size is the viewer's, and reads the file. A preview is
-about 30 KB. No other write adds an image file to a release, so none has no preview;
-a library written before previews existed is reset in development and has no
-pass that makes them for older releases.
+about 30 KB. No other write adds an image file to a release, so none has no preview,
+and no later pass makes one.
 
 A cover belongs to one release, an artist image to one artist, an avatar to one
 person. A row references its image by the id of a coven file, the record coven

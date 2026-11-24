@@ -46,8 +46,8 @@ async fn a_cover_made_from_a_release_file_names_it_and_keeps_no_original() {
         .await
         .unwrap();
 
-    let row = records.find_cover(RELEASE_A).await.unwrap().expect("the cover row");
-    assert_eq!(row.source, CoverSource::ReleaseFile { file_id: IMAGE_FILE.to_string() });
+    let row = records.cover_source_for_test(RELEASE_A).await.unwrap().expect("the cover row");
+    assert_eq!(row, CoverSource::ReleaseFile { file_id: IMAGE_FILE.to_string() });
     let browse = records.cover_copy_file(RELEASE_A, CoverCopy::Browse).await.unwrap();
     let large = records.cover_copy_file(RELEASE_A, CoverCopy::Large).await.unwrap();
     assert_eq!(read(&db, browse).await.unwrap(), b"browse");
@@ -69,8 +69,8 @@ async fn a_cover_with_a_picture_of_its_own_keeps_it_as_its_original() {
         .await
         .unwrap();
 
-    let row = records.find_cover(RELEASE_A).await.unwrap().expect("the cover row");
-    assert_eq!(row.source, CoverSource::Original);
+    let row = records.cover_source_for_test(RELEASE_A).await.unwrap().expect("the cover row");
+    assert_eq!(row, CoverSource::Original);
     let original = records.cover_original_file(RELEASE_A).await.unwrap();
     assert_eq!(read(&db, original).await.unwrap(), b"original");
 }
@@ -98,8 +98,8 @@ async fn a_new_cover_replaces_the_source_and_both_copies() {
         .await
         .unwrap();
 
-    let row = records.find_cover(RELEASE_A).await.unwrap().expect("the cover row");
-    assert_eq!(row.source, CoverSource::ReleaseFile { file_id: IMAGE_FILE.to_string() });
+    let row = records.cover_source_for_test(RELEASE_A).await.unwrap().expect("the cover row");
+    assert_eq!(row, CoverSource::ReleaseFile { file_id: IMAGE_FILE.to_string() });
     assert!(records.cover_original_file(RELEASE_A).await.unwrap().is_none());
     let browse = records.cover_copy_file(RELEASE_A, CoverCopy::Browse).await.unwrap();
     assert_eq!(read(&db, browse).await.unwrap(), b"new browse");
@@ -111,7 +111,7 @@ async fn a_release_with_no_cover_has_no_row_and_no_files() {
     let (db, _folder) = library().await;
     let records = crate::test_fixtures::test_records(&db);
 
-    assert!(records.find_cover(RELEASE_A).await.unwrap().is_none());
+    assert!(records.cover_source_for_test(RELEASE_A).await.unwrap().is_none());
     assert!(records.cover_copy_file(RELEASE_A, CoverCopy::Large).await.unwrap().is_none());
     assert!(records.cover_original_file(RELEASE_A).await.unwrap().is_none());
 }

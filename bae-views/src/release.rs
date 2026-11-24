@@ -82,7 +82,10 @@ fn resolve_release_detail(release_id: &str, context: ReleaseDetailContext) -> Re
         tracks_rating_system,
     } = context;
     let ctx = ReleaseResolveCtx {
-        cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
+        cover: bae_records::cover_ref(
+            release_id,
+            detail.cover.as_ref().map(|cover| cover.version.clone()),
+        ),
         is_compilation,
         album_year,
     };
