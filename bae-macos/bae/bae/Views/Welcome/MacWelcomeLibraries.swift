@@ -181,7 +181,8 @@ private struct OpenFailureNotice: View {
 /// the library, a step the open runs shows under the name, and then a step
 /// the removal runs, as its name alone since the spinner in place of the ⋯
 /// shows that it runs; a library that can't open shows the removal's steps
-/// alone.
+/// alone. A library whose name can't be read has Remove… at the row's end in
+/// place of the ⋯.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
@@ -208,6 +209,9 @@ private struct LibraryRow: View {
                         width: ThemeSize.hitTarget,
                         height: ThemeSize.hitTarget
                     )
+            }
+            else if isNameUnreadable {
+                removeButton
             }
             else {
                 moreMenu
@@ -267,6 +271,23 @@ private struct LibraryRow: View {
     private var isUnreadable: Bool {
         if case .unreadable = library.state { return true }
         return false
+    }
+
+    private var isNameUnreadable: Bool {
+        if case .nameUnreadable = library.state { return true }
+        return false
+    }
+
+    /// Remove… at the row's end, in place of the ⋯ menu, for a library whose
+    /// name can't be read: removing is all it offers.
+    private var removeButton: some View {
+        MacButton(action: { onRemove(library) }) {
+            Text(
+                verbatim: LibraryRemovalConfirmation.Ending(of: library)
+                    .menuItem
+            )
+        }
+        .disabled(deleteDisabled)
     }
 
     private var moreMenu: some View {
