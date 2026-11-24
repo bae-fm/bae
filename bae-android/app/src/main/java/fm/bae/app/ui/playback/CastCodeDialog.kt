@@ -119,6 +119,7 @@ internal fun castCodeDialogParts(
                         modifier = focus,
                         error = fieldLine,
                         enabled = !pairing,
+                        fillWidth = true,
                     )
                 } else {
                     AndroidTextField(
