@@ -22,7 +22,7 @@ extension ShotScene {
             images: coverImages()
         ) {
             CoverPreviewStage(content: coverPreviewContent(position: position))
-                .frame(width: 360)
+                .frame(width: 300)
         }
     }
 
