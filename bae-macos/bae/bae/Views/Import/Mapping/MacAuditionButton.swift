@@ -14,8 +14,8 @@ struct MacAuditionButton: View {
         )
         Button(action: action) {
             Image(systemName: isPlaying ? "stop.fill" : "play.fill")
-                .themeIcon(.small)
-                .frame(height: height)
+                .themeIcon(.chip)
+                .frame(width: ThemeIcon.chip.size, height: height)
                 .foregroundStyle(
                     isPlaying
                         ? AnyShapeStyle(Theme.accent)
