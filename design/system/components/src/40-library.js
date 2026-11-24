@@ -369,9 +369,9 @@
       h('div', { className: 'bae-m-split-detail' }, list.slice(1)));
   }
 
-  // `unplayable`: dimmed as `MacAlbumTile` draws it.
+  // The tile is one button that opens the album, named by its title and year. `unplayable`: dimmed as `MacAlbumTile` draws it.
   function MacArtistAlbumTile(props) {
-    return h('div', { className: cx('bae-m-atile', props.unplayable && 'bae-tile-unplayable') }, h(Artwork, { title: props.title, radius: 'radius-artwork', missing: props.noCover, dimmed: props.unplayable }),
+    return h('button', { type: 'button', className: cx('bae-plainbtn bae-m-atile', props.unplayable && 'bae-tile-unplayable') }, h(Artwork, { title: props.title, radius: 'radius-artwork', missing: props.noCover, dimmed: props.unplayable }),
       h('div', { className: 'bae-m-tile-title' }, props.title), h('div', { className: 'bae-m-atile-year' }, props.year || ' '));
   }
 
