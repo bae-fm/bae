@@ -6,7 +6,6 @@ import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.data.TestImages
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.GalleryViewer
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +42,7 @@ private fun Lightbox(
     }
 }
 
-/** A store whose release image is a picture. */
+/** A store whose release image is the board's cover for Low Tide Hours, the artwork the other shots draw. */
 private fun shownImage() =
     ImageStore(
         fetchReleaseImageBytes = {
@@ -51,7 +50,8 @@ private fun shownImage() =
             _,
             _,
             ->
-            TestImages.quadrantsJpeg(400, listOf(0xFF2D4A6B.toInt(), 0xFF6B8EAD.toInt(), 0xFFC9A66B.toInt(), 0xFF8C3B4A.toInt()))
+            requireNotNull(BoardShot::class.java.getResourceAsStream("/Low Tide Hours.png")) { "No board artwork for Low Tide Hours" }
+                .use { it.readBytes() }
         },
         dispatcher = Dispatchers.Unconfined,
     )
