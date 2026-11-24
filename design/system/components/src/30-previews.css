@@ -34,16 +34,14 @@
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */
 .bae-scan { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); padding: var(--space-related) 0; text-align: center; text-wrap: pretty; }
 .bae-scan-text { margin-bottom: var(--space-related); }
-.bae-scan-qr { padding: calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); background: var(--text-primary); line-height: 0; }
-.bae-scan-qr svg { fill: var(--background); display: block; }
+/* Each app draws its QR code black on white in every theme, the standard's colours and no theme colour: Core Image's on the Mac (QRCode.swift), QRCodeImage's on Android. */
+.bae-scan-qr { padding: calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); background: #FFFFFF; line-height: 0; }
+.bae-scan-qr svg { fill: #000000; display: block; }
 .bae-scan-qr-modules { border-radius: 0; }
 .bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
 .bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
 .bae-a-scan .bae-scan-text { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-scan .bae-scan-text { color: var(--text-primary); }
-/* Android draws its QR code black on white in every theme, as QRCodeImage draws the standard's colours and no theme colour. */
-.bae-a-scan .bae-scan-qr { background: #FFFFFF; }
-.bae-a-scan .bae-scan-qr svg { fill: #000000; }
 
 /* A nested row depends on the row above (a switch it only matters under): it joins that row with no gap and no divider, on the same left edge, and dims while the switch is off. */
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
