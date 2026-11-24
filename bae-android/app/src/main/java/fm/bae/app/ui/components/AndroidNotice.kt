@@ -300,7 +300,6 @@ private fun FramedNotice(
                             text = it,
                             style = ThemeText.body.style,
                             color = secondary,
-                            modifier = Modifier.padding(top = ThemeSpace.line),
                         )
                     }
                 }
