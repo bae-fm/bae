@@ -128,11 +128,10 @@
                     )
                 }
                 if let suppression = words.suppression {
-                    // The board's checkbox is in the body size and spans the
-                    // alert's width, so a click anywhere on its row ticks it.
-                    MacCheckbox(isOn: suppression.isOn) {
+                    // The board's checkbox is in the detail size and is as
+                    // wide as its label.
+                    MacCheckbox(isOn: suppression.isOn, detail: true) {
                         suppression.label
-                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 buttonRow
