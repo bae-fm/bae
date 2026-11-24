@@ -33,7 +33,7 @@
     var ind = function (label, className, child, extra) { return h('button', Object.assign({ type: 'button', className: cx('bae-plainbtn', 'bae-m-isb-ind', className), 'aria-label': label, title: label }, extra), child); };
     return h('div', { className: 'bae-m-isb-filter' },
       h(MacSearchField, { kind: 'inline', label: 'Filter', value: props.filter }),
-      props.narrowed ? h('span', { className: 'bae-muted bae-num', style: { fontSize: 'var(--type-detail-size)' } }, props.narrowed) : null,
+      props.narrowed ? h('span', { className: 'bae-muted bae-num bae-m-detail' }, props.narrowed) : null,
       // Once text is typed, ⓧ empties the field.
       props.filter ? ind('Clear filter', 'bae-m-tertiary', h(Glyph, { set: 'mac', name: 'removefill', size: 'medium' })) : null,
       props.identifying ? ind('Identifying', null, identifyingRing(props.identifying)) : null,
@@ -394,12 +394,12 @@
     return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected'), style: props.inLibrary ? { opacity: 0.55 } : null },
       h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-line)' } },
         edition ? h('div', { className: 'bae-num', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, edition) : null,
-        h('div', { style: { display: 'flex', gap: 'var(--space-compact)', alignItems: 'center', flexWrap: 'wrap' } }, copy ? h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-detail-size)' } }, copy) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
+        h('div', { style: { display: 'flex', gap: 'var(--space-compact)', alignItems: 'center', flexWrap: 'wrap' } }, copy ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, copy) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
         // `notes`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ. The Notes badge and this line come from the same records, so they show together.
-        props.notes ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-detail-size)', fontStyle: 'italic' } }, sv(props.notes)) : null),
-      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)', fontSize: 'var(--type-detail-size)' }, className: 'bae-m-tertiary' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library') : null,
+        props.notes ? h('div', { className: 'bae-m-tertiary bae-m-detail', style: { fontStyle: 'italic' } }, sv(props.notes)) : null),
+      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library') : null,
       // `sources`: the catalogs whose records the pressing holds, only those that have answered.
-      props.sources ? h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-detail-size)' } }, props.sources) : null,
+      props.sources ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, props.sources) : null,
       h(Sym, { name: 'right', size: 11, className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
   }
   // One bulk action: its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the name in the strong type and the count in the accent, for Import and Combine. `to`: where the import goes, Import's destination pop-up, before the count; the row's button then holds only the name, so the pop-up is a control of its own.

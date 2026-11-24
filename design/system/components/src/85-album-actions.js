@@ -20,7 +20,7 @@
     return h('div', { className: 'bae-m-cpreview' },
       h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'View in lightbox', title: 'View in lightbox' }, h(Artwork, { title: props.image || props.name, size: 300, radius: 'radius-artwork' })),
       h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.name),
-      h('div', { className: 'bae-muted', style: { fontSize: 'var(--type-detail-size)' } }, props.source),
+      h('div', { className: 'bae-muted bae-m-detail' }, props.source),
       h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Previous image' }, h(Sym, { name: 'left', size: 12 })), h('span', { className: 'bae-muted bae-num' }, (props.position || 1) + ' of ' + props.count), h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Next image' }, h(Sym, { name: 'right', size: 12 }))));
   }
   // The cover gallery: Source, sections of tiles, the preview with its count, Use this cover, off while the preview shows the current cover.
@@ -61,7 +61,7 @@
       h('div', { className: 'bae-m-lb-top' }, props.browse ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-pill' }, h(Sym, { name: 'grid', size: 12 }), 'Browse all images') : h('span'), h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-close', 'aria-label': 'Close' }, h(Sym, { name: 'close', size: 15 }))),
       h('div', { className: 'bae-m-lb-stage' }, images.length > 1 ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-arrow', 'aria-label': 'Back' }, h(Sym, { name: 'left', size: 22 })) : h('span'), props.state === 'failed' ? h(MacNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load the image', action: 'Retry' }) : props.state === 'loading' ? h(MacSpinner, { label: 'Loading the image…' }) : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), images.length > 1 ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-arrow', 'aria-label': 'Forward' }, h(Sym, { name: 'right', size: 22 })) : h('span')),
       h('div', { className: 'bae-m-lb-foot' },
-        h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 'var(--type-detail-size)' } }, props.source || 'Release files')),
+        h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { className: 'bae-m-detail', style: { opacity: 0.7 } }, props.source || 'Release files')),
         images.length > 1 ? h(MacThumbnailStrip, { images: images.join(','), names: names, selected: props.selected }) : null));
   }
   // A release's storage at rest (`state`: local, pinned or cloud): Local, Pinned or In cloud.
@@ -89,7 +89,7 @@
       h('div', { className: 'bae-m-sband-line' }, restLabel, pill),
       missing,
       failed ? h(MacNotice, { tone: 'danger', title: failed, secondary: 'Details' }) : null,
-      props.why ? h('div', { className: 'bae-muted', style: { fontSize: 'var(--type-detail-size)' } }, props.why) : null,
+      props.why ? h('div', { className: 'bae-muted bae-m-detail' }, props.why) : null,
       still ? null : h('div', { style: { display: 'flex', gap: 'var(--space-related)', flexWrap: 'wrap' } }, list(props.actions || 'Pin,Move to This Mac…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
   }
 

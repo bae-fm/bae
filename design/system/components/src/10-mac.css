@@ -5,6 +5,8 @@
 .bae-m-window { position: relative; display: flex; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 1px 0 var(--hairline-strong); }
 .bae-m-window-column { flex-direction: column; }
 .bae-m-window-front { box-shadow: inset 0 1px 0 var(--hairline-strong), 0 20px 60px var(--shadow); }
+/* Text in the detail role, in the lines SwiftUI lays it out in: the app sets each detail line 15pt tall, where CSS's normal line is 13. */
+.bae-m-detail { font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); }
 /* The one face of every Mac sheet: what opens over a window for a task or a decision (MacSheet, MacModal, MacAlert, MacSidePause). The raised colour, the panel's corners and a shadow, with no edge. */
 .bae-m-face-sheet { background: var(--elevated); border-radius: var(--radius-panel); box-shadow: 0 10px 30px var(--shadow); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-alert { box-sizing: border-box; width: 260px; margin-top: 36px; padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
