@@ -94,6 +94,8 @@ extension ShotScene {
         )
     }
 
+    private static let editorWidth: CGFloat = 720
+
     private enum EditorContent { case identified, unlisted, blank, unread }
 
     private static func editorScene(
@@ -107,7 +109,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 720,
+            width: editorWidth,
             height: content == .unread ? 480 : 1100,
             images: PreviewData.artImageStore()
         ) {
@@ -131,21 +133,11 @@ extension ShotScene {
                     MacReleaseEditor(
                         actionRow: actionRow,
                         commands: inertEditorCommands,
-                        card: ReleaseEditorCard(
-                            values: { values },
-                            pressingOffers: draft.pressingOffers,
-                            albumArtists: identified ? draft.albumArtists : nil,
-                            writer: ReleaseFieldWriter { _, _ in },
-                            cover: ReleaseCover(
-                                content: art.map { .localFile($0.file) },
-                                onEdit: scanned ? {} : nil,
-                                onDropImage: nil
-                            ),
-                            sourceAudio: scanned ? draft.sourceAudio : nil,
-                            album: album,
-                            albumActions: inertAlbumActions,
-                            records: identified ? draft.records : nil,
-                            pressingUnknown: false
+                        card: editorCard(
+                            values: values,
+                            draft: draft,
+                            art: art,
+                            identified: identified
                         ),
                         tracks: editorTracks(
                             draft: draft,
@@ -164,7 +156,36 @@ extension ShotScene {
                     albumMenu(album, x: 209, y: 139)
                 }
             }
+            // The preview's row cell is wider than the editor's 720-point
+            // box, which holds the editor at its top left.
+            .frame(width: editorWidth, alignment: .topLeading)
         }
+    }
+
+    private static func editorCard(
+        values: BridgeRawReleaseEdit,
+        draft: BridgeReleaseEditDraft,
+        art: BridgeMappingImage?,
+        identified: Bool
+    ) -> ReleaseEditorCard {
+        let scanned = art != nil
+        let album = identified ? draft.album : nil
+        return ReleaseEditorCard(
+            values: { values },
+            pressingOffers: draft.pressingOffers,
+            albumArtists: identified ? draft.albumArtists : nil,
+            writer: ReleaseFieldWriter { _, _ in },
+            cover: ReleaseCover(
+                content: art.map { .localFile($0.file) },
+                onEdit: scanned ? {} : nil,
+                onDropImage: nil
+            ),
+            sourceAudio: scanned ? draft.sourceAudio : nil,
+            album: album,
+            albumActions: inertAlbumActions,
+            records: identified ? draft.records : nil,
+            pressingUnknown: false
+        )
     }
 
     private static func isImport(_ row: ReleaseEditorActionRow) -> Bool {
