@@ -321,123 +321,7 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_lookup_failure_key(f));
     }
 
-    // bridge_error_category_key — every variant carries a key.
-    for c in [
-        BridgeErrorCategory::Database,
-        BridgeErrorCategory::DatabaseBusy,
-        BridgeErrorCategory::DatabaseDamaged,
-        BridgeErrorCategory::Config,
-        BridgeErrorCategory::Internal,
-        BridgeErrorCategory::SyncUpdateRequired,
-        BridgeErrorCategory::Import,
-        BridgeErrorCategory::ImportData,
-        BridgeErrorCategory::MetadataTrackCount { folder_tracks: 12, release_tracks: 10 },
-        BridgeErrorCategory::TiedMediums { sides: vec![BridgeSideHeading::Disc { disc: 2 }] },
-        BridgeErrorCategory::ReleaseChangedSinceOpened,
-        BridgeErrorCategory::ChangedMeanwhile,
-        BridgeErrorCategory::InvalidEdit { reason: BridgeValidationReason::EmptyArtistName },
-        BridgeErrorCategory::WatchedFolderOverlap,
-        BridgeErrorCategory::FilenamePatternInvalid,
-        BridgeErrorCategory::FolderPatternInvalid,
-        BridgeErrorCategory::CandidateImportInProgress,
-        BridgeErrorCategory::CandidateBeingIdentified,
-        BridgeErrorCategory::FilesAlreadyImported,
-        BridgeErrorCategory::AlbumGone,
-        BridgeErrorCategory::Export,
-        BridgeErrorCategory::Save,
-        BridgeErrorCategory::DeviceResetRequired,
-        BridgeErrorCategory::DeviceRemoved,
-        BridgeErrorCategory::StorageCheck {
-            check: BridgeStorageCheck::Read,
-            failure: BridgeStorageFailure::Network,
-        },
-        BridgeErrorCategory::S3VersioningUnknown { failure: BridgeStorageFailure::Network },
-        BridgeErrorCategory::S3VersioningUnsupported { state: BridgeS3BucketVersioning::Enabled },
-        BridgeErrorCategory::StorageLocationChangeUnsupported,
-        BridgeErrorCategory::Credentials,
-        BridgeErrorCategory::Network,
-        BridgeErrorCategory::Keyring,
-        BridgeErrorCategory::KeyringLocked,
-        BridgeErrorCategory::KeychainEntitlementMissing,
-        BridgeErrorCategory::SavedRestoreCodesFull,
-        BridgeErrorCategory::SavedRestoreCodeTooLarge,
-        BridgeErrorCategory::Membership,
-        BridgeErrorCategory::InviteJoining,
-        BridgeErrorCategory::StoreOwnerAccount,
-        BridgeErrorCategory::Renderer,
-        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::SourceChanged },
-        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::SourceGone },
-        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::FolderFilesTaken },
-        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::FolderFilesContested },
-        BridgeErrorCategory::GroupingBlocked {
-            reason: BridgeGroupingBlock::FolderFilesDownloading,
-        },
-        BridgeErrorCategory::AirPlayUnsupported,
-        BridgeErrorCategory::AirPlayPairingFailed { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayLockedOut { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayBusy { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayBackOff { receiver: "Kitchen".into(), seconds: 30 },
-        BridgeErrorCategory::AirPlayNotPairing { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayFull { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayUnreachable { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayHomeOnly { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayAdminsOnly { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayOwnerOnly { receiver: "Kitchen".into() },
-        BridgeErrorCategory::AirPlayUnreadableSettings,
-        BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Reset },
-        BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Restore },
-        BridgeErrorCategory::RestoreRegistered,
-        BridgeErrorCategory::MemberKeysReplaced,
-        BridgeErrorCategory::StorageSetupUndone,
-        BridgeErrorCategory::StorageSetupFinishing,
-        BridgeErrorCategory::DeletionUnfinished,
-        BridgeErrorCategory::DeletionSignInRequired,
-        BridgeErrorCategory::UnfinishedInstallationUnreadable { library_id: String::new() },
-    ] {
-        keys.push(bridge_error_category_key(c));
-    }
-
-    for failure in [
-        BridgeStorageFailure::ProviderUnavailable,
-        BridgeStorageFailure::AccessNotRegistered { required: crate::BridgeOAuthAccess::OneDrive },
-        BridgeStorageFailure::AccessNotGranted { required: crate::BridgeOAuthAccess::OneDrive },
-        BridgeStorageFailure::DropboxAppFolderNotShareable,
-        BridgeStorageFailure::Network,
-        BridgeStorageFailure::Corrupted,
-        BridgeStorageFailure::Authentication,
-        BridgeStorageFailure::PermissionDenied,
-        BridgeStorageFailure::NotFound,
-        BridgeStorageFailure::AlreadyExists,
-        BridgeStorageFailure::Conflict,
-        BridgeStorageFailure::ContainerNotFound,
-        BridgeStorageFailure::RegionMismatch,
-        BridgeStorageFailure::OwnLocationRequired,
-        BridgeStorageFailure::StoreExists,
-        BridgeStorageFailure::ClockSkew,
-        BridgeStorageFailure::QuotaExceeded,
-        BridgeStorageFailure::RateLimited,
-        BridgeStorageFailure::InvalidConfiguration,
-        BridgeStorageFailure::Refused,
-        BridgeStorageFailure::Protocol,
-        BridgeStorageFailure::InvalidPath,
-        BridgeStorageFailure::InvalidRange,
-        BridgeStorageFailure::NotStoreOwner,
-        BridgeStorageFailure::InviteeIsStoreOwner,
-        BridgeStorageFailure::AccountIdUnavailable,
-        BridgeStorageFailure::InvitationMismatch,
-        BridgeStorageFailure::SessionMismatch,
-        BridgeStorageFailure::SessionExpired,
-        BridgeStorageFailure::InvalidPart,
-        BridgeStorageFailure::SingleRequestTooLarge { size: 200, limit: 100 },
-        BridgeStorageFailure::CopyTooLarge { size: 200, limit: 100 },
-        BridgeStorageFailure::Encoding,
-        BridgeStorageFailure::File,
-        BridgeStorageFailure::MemberKeysMissing,
-        BridgeStorageFailure::CatchUpRequired,
-        BridgeStorageFailure::Bug,
-    ] {
-        keys.push(bridge_error_category_key(BridgeErrorCategory::Storage { failure }));
-    }
+    keys.extend(error_categories::keys());
     keys.extend(pending_subject_messages().into_iter().map(|message| message.key));
     for reason in [
         PendingReasonKind::Missing,
@@ -997,3 +881,6 @@ fn message_arguments_follow_the_source_message() {
         assert_eq!(names, expected, "`{}` arguments", message.key);
     }
 }
+
+#[path = "loc_key_coverage_tests/error_categories.rs"]
+mod error_categories;
