@@ -53,16 +53,19 @@ abstract class BoardShot {
      * Draws a design-system component in one of its states, as [id] (`android.component.<thing>.<state>`) names
      * it, on the page colour, at the size of its board's preview cell, which builds lists in the file
      * `bae.shotsBoardSizes` names; a selected state with no entry fails its test, by its board's name.
+     * A component that enters with an animation (a snackbar's fade and scale) passes its length as
+     * [enterMillis], so the shot draws it entered.
      */
     protected fun component(
         id: String,
+        enterMillis: Long = 0L,
         content: @Composable () -> Unit,
     ) {
         assumeNotNull(System.getProperty("bae.shotsDir"))
         assumeTrue("board '$id' is not selected", isSelected(id, System.getProperty("bae.shotsSelect")))
         val size = checkNotNull(BoardSizes.of(id)) { "the board sizes list none for '$id'" }
         sizeWindowTo(size)
-        shot(id) { ComponentScene(size, content) }
+        shot(id, enterMillis = enterMillis) { ComponentScene(size, content) }
     }
 
     /**
@@ -86,6 +89,7 @@ abstract class BoardShot {
     protected fun shot(
         board: String,
         height: Dp? = null,
+        enterMillis: Long = 0L,
         content: @Composable () -> Unit,
     ) {
         val spelled = board.split('.', '-').joinToString("") { it.replaceFirstChar(Char::uppercase) }
@@ -97,6 +101,7 @@ abstract class BoardShot {
         assumeTrue("board '$board' is not selected", isSelected(board, System.getProperty("bae.shotsSelect")))
         height?.let { sizeWindowTo(DpSize(PHONE_WIDTH, it)) }
         compose.settle(content)
+        compose.mainClock.advanceTimeBy(enterMillis)
         val root = compose.onRoot()
         root.captureRoboImage(File(directory, "$board@android.png").path)
         val embedded =
