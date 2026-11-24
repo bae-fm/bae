@@ -29,16 +29,12 @@ extension ContainerValues {
     @Entry
     var rowVerticalInset: CGFloat = RowMetrics.padding
 
-    /// Whether a section's footer is its row of buttons, such as Invite…,
-    /// and not a note: set by `MacSheetFooter`.
+    /// Whether a section's footer is a block as wide as the box, with the
+    /// section's gap above it, and not a note inset to the row labels: a
+    /// row of buttons such as Invite… (set by `MacSheetFooter`) or a notice
+    /// such as the line after a key call (set by `noticeFooter`).
     @Entry
-    var isSectionButtons = false
-
-    /// Whether a section's footer is a notice, such as the line after a key
-    /// call, which the boards draw as wide as the box with the section's gap
-    /// above it: set by `noticeFooter`.
-    @Entry
-    var isNoticeFooter = false
+    var isBlockFooter = false
 
     /// Whether the view sits over its section's box, as the boards draw a
     /// notice about the section: set by `aboveBox`.
@@ -65,7 +61,7 @@ extension View {
     /// Draws this view as its section's footer notice: as wide as the box,
     /// not inset like a note.
     func noticeFooter() -> some View {
-        containerValue(\.isNoticeFooter, true)
+        containerValue(\.isBlockFooter, true)
     }
 }
 
