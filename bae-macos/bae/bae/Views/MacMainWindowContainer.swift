@@ -101,6 +101,15 @@ struct MacMainWindowContainer: View {
                         )
                     },
                 )
+                // VoiceOver reads the bar after every modal and the document,
+                // as the boards list it.
+                .accessibilityElement(children: .contain)
+                .accessibilitySortPriority(
+                    -Double(
+                        uiStore.modalStack.count
+                            + (uiStore.document == nil ? 0 : 1)
+                    )
+                )
             }
 
             // Lightbox overlay
@@ -124,13 +133,16 @@ struct MacMainWindowContainer: View {
             }
 
             // Modal overlay
+            // VoiceOver reads each modal after the modals under it, as the
+            // boards do: an earlier modal's priority is the higher.
             ForEach(Array(uiStore.modalStack.enumerated()), id: \.offset) {
-                _,
+                index,
                 builder in
                 MacModal(
                     onDismiss: { uiStore.dismissModal() },
                     sizedContent: builder
                 )
+                .accessibilitySortPriority(-Double(index))
             }
 
             // Document viewer, over the modal it may have been opened from
@@ -142,6 +154,7 @@ struct MacMainWindowContainer: View {
                         onClose: { uiStore.dismissDocument() }
                     )
                 }
+                .accessibilitySortPriority(-Double(uiStore.modalStack.count))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: uiStore.lightbox != nil)

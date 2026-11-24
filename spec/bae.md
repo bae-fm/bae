@@ -5230,8 +5230,9 @@ the reader. A track's load, or a load at a saved position, fetches first the
 window its decode reads first.
 
 The seek bar never leaves the player. On a Mac, VoiceOver reads the window's
-title bar, then its content, then the side pane when it is open, then the
-player. In the player it reads the track, the transport, the
+title bar, then its content, then the side pane when it is open, then each
+open modal in the order they opened, then the document viewer when it is
+open, then the player. In the player it reads the track, the transport, the
 seek bar, then Play on, Queue, Mute and Volume when those controls are present.
 VoiceOver reads Volume as a slider.
 In the queue's now-playing card, VoiceOver reads Now playing, the title and
