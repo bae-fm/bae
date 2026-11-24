@@ -304,7 +304,7 @@
   // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time.
   function MacFindOnline(props) {
     var open = props.open || 'Automatic';
-    var head = function (t, status) { return h('button', { type: 'button', 'aria-expanded': open === t, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status ? h('span', { className: 'bae-m-fo-status' }, status) : null); };
+    var head = function (t, status) { return h('button', { type: 'button', 'aria-label': t, 'aria-expanded': open === t, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status ? h('span', { className: 'bae-m-fo-status' }, status) : null); };
     var k = kids(props.children);
     return h('div', { className: 'bae-m-card bae-m-fo' },
       h('div', { className: 'bae-m-fo-head' }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent bae-m-fo-back' }, h(Sym, { name: 'left', size: 12 }), 'Back'), h('span', { className: 'bae-strong', style: { position: 'absolute', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' } }, 'Identify')),
