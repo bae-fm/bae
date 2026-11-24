@@ -25,10 +25,12 @@ struct MacDisclosure<Label: View, Content: View>: View {
                 } content: {
                     label
                 }
+                .placedInRow(RowMetrics.placement)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.accentPlain)
             .accessibilityAddTraits(.isHeader)
+            .containerValue(\.placesItselfInRow, true)
             if isExpanded {
                 Group { content }
                     .padding(.leading, ThemeSize.lead + ThemeSpace.related)
