@@ -116,14 +116,14 @@
     if (props.state) return h(MacStorageChip, { state: props.state, progress: props.progress });
     return h('span', { className: props.numeric ? 'bae-num bae-m-storecell-num' : null }, props.value);
   }
-  // A release's files in its Storage sheet: the Files heading over the columns Name, Audio, Size and Kind, the file name in the text colour, its audio format (empty for a file that isn't audio) and size in secondary text, its kind in tertiary. Name, Size and Kind sort the table, Audio doesn't, but every heading is a button, as each header cell of AppKit's table is; `sort` is the column it sorts by and its direction (Name:up unless given), marked in its header. `files` lists them, one "name|audio|size|kind" each, separated by semicolons.
+  // A release's files in its Storage sheet: the Files heading over the columns Name, Audio, Size and Kind, the file name in the text colour, its audio format as the app writes it, cut to the column (empty for a file that isn't audio) and size in secondary text, its kind in tertiary. Name, Size and Kind sort the table, Audio doesn't, but every heading is a button, as each header cell of AppKit's table is; `sort` is the column it sorts by and its direction (Name:up unless given), marked in its header. `files` lists them, one "name|audio|size|kind" each, separated by semicolons.
   function MacReleaseFileTable(props) {
     var sort = String(props.sort || 'Name:up').split(':');
     var cs = cols('Name:200,Audio:120,Size:80,Kind:130').map(function (c) { if (c.title === sort[0]) c.sort = sort[1] || 'up'; return c; });
     var rows = entries(props.files).map(function (f, i) {
       return h('div', { key: i, className: cx('bae-m-table-tr', i % 2 && 'bae-m-table-alt') },
         h('div', { className: 'bae-m-table-row' },
-          h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-ellipsis' }, f[0])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted' }, f[1] || '')),
+          h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-ellipsis' }, f[0])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted bae-ellipsis' }, f[1] || '')),
           h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted bae-num' }, f[2])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-m-tertiary' }, f[3]))));
     });
     return h(React.Fragment, null,
