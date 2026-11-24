@@ -82,7 +82,7 @@ private fun Sheet(
             )
         }
     AndroidActivity(
-        problems = activityProblems(app, activity, null, emptySet()),
+        problems = activityProblems(app, activity, error, emptySet()),
         app = app,
         activity = activity,
         words = words,
