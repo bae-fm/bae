@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.shots.ElementList
 import fm.bae.app.shots.ReadingOrder
+import fm.bae.app.shots.settle
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -50,7 +51,7 @@ class AndroidTrackRowTest {
 
     @Test
     fun currentTrackLeadIsReadAfterTheAlbumTitleAboveTheRow() {
-        compose.setContent {
+        compose.settle {
             TestTheme {
                 Column {
                     Text("Album title")
@@ -63,8 +64,6 @@ class AndroidTrackRowTest {
             }
         }
         val root = compose.onRoot().fetchSemanticsNode()
-        ReadingOrder.enableTalkBack(root)
-        compose.waitForIdle()
         val elements =
             ElementList
                 .of(

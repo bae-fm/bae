@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onRoot
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.shots.ElementList
 import fm.bae.app.shots.ReadingOrder
+import fm.bae.app.shots.settle
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -23,7 +24,7 @@ class AndroidRowReadingOrderTest {
 
     @Test
     fun aRowsTrailingButtonIsReadAfterItsTitleAndTheLineUnderIt() {
-        compose.setContent {
+        compose.settle {
             TestTheme {
                 AndroidRow(title = "Role", subtitle = "Member") {
                     AndroidButton(kind = ButtonKind.TEXT, onClick = {}) { Text("Make admin") }
@@ -31,8 +32,6 @@ class AndroidRowReadingOrderTest {
             }
         }
         val root = compose.onRoot().fetchSemanticsNode()
-        ReadingOrder.enableTalkBack(root)
-        compose.waitForIdle()
         val elements =
             ElementList
                 .of(
