@@ -34,6 +34,8 @@
     return h('div', { className: 'bae-m-isb-filter' },
       h(MacSearchField, { kind: 'inline', label: 'Filter', value: props.filter }),
       props.narrowed ? h('span', { className: 'bae-muted bae-num', style: { fontSize: 'var(--type-detail-size)' } }, props.narrowed) : null,
+      // Once text is typed, ⓧ empties the field. The app gives it no name of its own, so VoiceOver reads its symbol's, Close.
+      props.filter ? ind('Close', 'bae-m-tertiary', h(Glyph, { set: 'mac', name: 'removefill', size: 'medium' })) : null,
       props.identifying ? ind('Identifying', null, identifyingRing(props.identifying)) : null,
       props.importing ? ind('Importing…', 'bae-muted', h(Sym, { name: 'saveAs', size: 14 })) : null,
       props.scanning ? ind('Scanning folders', null, h(MacSpinner, { size: 12 })) : null,
