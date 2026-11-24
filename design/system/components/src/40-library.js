@@ -335,12 +335,12 @@
     return h('div', { className: 'bae-m-albumcredits' }, h(MacFormHeading, null, 'Credits'), h(MacFactsGrid, { facts: props.credits, wide: true }));
   }
 
-  // The works an album's tracks record: the Works heading over one line a work, its track's number, the work's title in the accent and its composer (`works`: "number|title|composer" entries separated by semicolons).
+  // The works an album's tracks record: the Works heading over one line a work, its track's number, the work's title in the accent, a button that opens the work's page, and its composer (`works`: "number|title|composer" entries separated by semicolons).
   function MacAlbumWorks(props) {
     var works = String(props.works || '').split(';').map(function (w) { return w.split('|').map(function (x) { return x.trim(); }); }).filter(function (w) { return w[1]; });
     return h('div', { className: 'bae-m-albumcredits' }, h(MacFormHeading, null, 'Works'),
       h('div', { className: 'bae-m-albumworks' }, works.map(function (w, i) {
-        return h('div', { key: i, className: 'bae-m-albumworks-row' }, h('span', { className: 'bae-muted bae-num bae-m-albumworks-pos' }, w[0]), h('span', { className: 'bae-accent' }, w[1]), w[2] ? h('span', { className: 'bae-muted' }, '· ' + w[2]) : null);
+        return h('div', { key: i, className: 'bae-m-albumworks-row' }, h('span', { className: 'bae-muted bae-num bae-m-albumworks-pos' }, w[0]), h('button', { type: 'button', className: 'bae-plainbtn bae-accent' }, w[1]), w[2] ? h('span', { className: 'bae-muted' }, '· ' + w[2]) : null);
       })));
   }
 
