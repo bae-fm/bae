@@ -39,6 +39,7 @@
 .bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }
 .bae-errdis-panel-hover:hover .bae-errdis-copy, .bae-errdis-panel-hover:focus-within .bae-errdis-copy { opacity: 1; }
 .bae-errdis-panel-android { min-height: var(--size-android-bar-button); box-sizing: border-box; padding-right: calc(var(--size-android-bar-button) + var(--space-inline)); }
+.bae-errdis-panel-android .bae-errdis-chain { font: var(--type-android-mono-weight) var(--type-android-mono-size)/var(--type-android-mono-line-height) var(--font-mono); }
 
 /* ImportSheep: the parts' pivots in the drawing's units, what starts hidden, and the still pose. The motion itself is in src/36-import-sheep.js. */
 .bae-isheep { display: block; }
