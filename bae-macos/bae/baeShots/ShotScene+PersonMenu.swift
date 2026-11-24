@@ -26,10 +26,12 @@ extension ShotScene {
         ) {
             let uiStore = UiStore()
             let backing = boardLibraryBacking(uiStore: uiStore)
+            let images = coverGalleryImages()
             let window = personMenuLibrary(
                 hasCloudHome: false,
                 uiStore: uiStore,
-                backing: backing
+                backing: backing,
+                images: images
             )
             return ShotStage(
                 OverWindow.sheet(
@@ -54,12 +56,14 @@ extension ShotScene {
     ) -> ShotStage {
         let uiStore = UiStore()
         let backing = boardLibraryBacking(uiStore: uiStore)
+        let images = coverGalleryImages()
         return ShotStage(
             ZStack(alignment: .topTrailing) {
                 personMenuLibrary(
                     hasCloudHome: hasCloudHome,
                     uiStore: uiStore,
-                    backing: backing
+                    backing: backing,
+                    images: images
                 )
                 MacMenuInPlace(
                     {
@@ -78,7 +82,8 @@ extension ShotScene {
                 )
                 .padding(.trailing, 16)
                 .padding(.top, 44)
-            }
+            },
+            images: images
         ) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
         }
@@ -89,12 +94,14 @@ extension ShotScene {
     private static func personMenuLibrary(
         hasCloudHome: Bool,
         uiStore: UiStore,
-        backing: (library: Library, session: LibraryBrowseSession)
+        backing: (library: Library, session: LibraryBrowseSession),
+        images: ImageStore
     ) -> some View {
         ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: backing,
             playbackStore: boardPlayback(),
+            images: images,
             configStore: PreviewData.makeConfigStore(
                 libraryFullWidth: false,
                 castEnabled: true,

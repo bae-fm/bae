@@ -20,12 +20,14 @@ extension ShotScene {
                 openAlbum: true,
                 detailAnswered: detailAnswered
             )
+            let images = coverGalleryImages()
             return ShotStage(
                 ZStack(alignment: .topLeading) {
                     ShotScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),
+                        images: images,
                         size: CGSize(width: 1_200, height: 1_020)
                     )
                     MacMenuInPlace(
@@ -53,7 +55,8 @@ extension ShotScene {
                     // content, which starts 55 pt below the window's top.
                     .padding(.leading, 640)
                     .padding(.top, 385)
-                }
+                },
+                images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
                     && detailAnswered.answered
