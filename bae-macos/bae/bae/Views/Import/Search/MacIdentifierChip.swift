@@ -4,9 +4,11 @@ import SwiftUI
 // The pieces the identifier band is built from.
 
 /// Filled for a value the run asks about, outlined for one it does not, and
-/// outlined and struck through for one the person struck out.
+/// outlined and struck through for one the person struck out. A chip that
+/// holds no value, only a dash, has no fill and no ring.
 enum MacIdentifierChipStyle {
     case filled
+    case dash
     case outlined
     case struck
 }
@@ -95,9 +97,10 @@ struct MacIdentifierChip<Trailing: View>: View {
                     .foregroundStyle(valueStyle)
                     .cutLine(.prose)
                     .frame(maxWidth: identifierValueWidth, alignment: .leading)
+                    // A short value takes its own width, as the board's does.
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            // The catalogs' capsules keep their full width: only the value
-            // above gives way when the chip is short of room.
+            // The catalogs' capsules keep their full width.
             trailing
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -105,7 +108,7 @@ struct MacIdentifierChip<Trailing: View>: View {
         .padding(.vertical, ThemeSpace.line)
         .background(fill, in: RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .overlay {
-            if style != .filled {
+            if style == .outlined || style == .struck {
                 RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .strokeBorder(border, lineWidth: 1)
             }
@@ -125,6 +128,7 @@ struct MacIdentifierChip<Trailing: View>: View {
     private var fill: Color {
         switch style {
         case .filled: isHovered ? Theme.pressed : Theme.hover
+        case .dash: Color.clear
         case .outlined, .struck: isHovered ? Theme.hover : Color.clear
         }
     }
@@ -138,7 +142,12 @@ extension MacIdentifierChip where Trailing == IdentifierDash {
     /// A chip that says nothing ran here: its label, any value it holds and
     /// a dash.
     init(label: String, value: String? = nil, values: [String] = []) {
-        self.init(label: label, value: value, values: values) {
+        self.init(
+            label: label,
+            value: value,
+            values: values,
+            style: value == nil && values.isEmpty ? .dash : .filled
+        ) {
             IdentifierDash()
         }
     }
