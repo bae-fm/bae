@@ -27,17 +27,23 @@
   function MacCoverGallery(props) {
     // `current`: the release's cover, named Cover (spec §3.4: a release's gallery names its cover Cover), drawn from the album's picture.
     var tiles = function (names, sel, current) { return h('div', { className: 'bae-m-cgrid' }, list(names).map(function (n, i) { return h(MacCoverTile, { key: i, name: n, image: current ? props.album || 'Low Tide Hours' : n, selected: n === sel }); })); };
-    var sec = function (icon, title, names, current) { var n = String(list(names).length); return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-related) + var(--space-line))' } }, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)', display: 'flex', gap: 'var(--space-compact)', alignItems: 'center' } }, h(Sym, { name: icon, size: 15 }), title, h('span', { className: 'bae-muted', style: { fontWeight: 'var(--type-body-weight)' } }, n)), tiles(names, props.selected, current)); };
+    var sec = function (icon, title, names, current) { var n = String(list(names).length); return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-related) + var(--space-line))' } }, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)', display: 'flex', gap: 'var(--space-compact)', alignItems: 'center' } }, h(Sym, { name: icon, size: 15 }), title, h('span', { className: 'bae-muted', style: { fontWeight: 'var(--type-body-weight)' } }, n)), tiles(names, sel, current)); };
     var unlinked = props.remote === 'unlinked';
+    var remotes = unlinked ? [] : list(props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back');
+    var files = list(props.files || 'cover.jpg,back.jpg,disc.jpg');
+    var all = ['Cover'].concat(remotes, files);
+    // `selected`: the image the preview shows, the release's cover unless given (spec §3.4: the picker opens on the saved cover). The preview names its source as the app does: Library for the cover, the catalog for a catalog's image, Release files for a file.
+    var sel = props.selected || 'Cover';
+    var source = sel === 'Cover' ? 'Library' : remotes.indexOf(sel) >= 0 ? sel.split(' · ')[0] : 'Release files';
     return h('div', { className: 'bae-m-cgal' },
       // With no linked release there is nothing to fetch, so no Refresh.
       h(MacModalHeader, { title: props.title || 'Change cover', large: true }, unlinked ? null : h(MacButton, null, 'Refresh'), h(MacButton, null, 'Done')),
       h('div', { className: 'bae-m-cgal-body' },
         h('div', { className: 'bae-m-cgal-left' }, h('div', { style: { display: 'flex', gap: 'var(--space-related)', alignItems: 'center' } }, 'Source', h(MacPopUpButton, { label: 'Source', value: 'All' })),
           sec('photo', 'Current cover', 'Cover', true),
-          unlinked ? h('div', null, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote sources', props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back'),
-          sec('folder', 'Release files', props.files || 'cover.jpg,back.jpg,disc.jpg')),
-        h('div', { className: 'bae-m-cgal-right' }, h(MacCoverPreview, { name: props.selected || 'Low Tide Hours', source: props.source || 'Release files', position: 1, count: 1 + (unlinked ? 0 : list(props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back').length) + list(props.files || 'cover.jpg,back.jpg,disc.jpg').length }))),
+          unlinked ? h('div', null, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote sources', remotes.join(',')),
+          sec('folder', 'Release files', files.join(','))),
+        h('div', { className: 'bae-m-cgal-right' }, h(MacCoverPreview, { name: sel, image: sel === 'Cover' ? props.album || 'Low Tide Hours' : sel, source: source, position: all.indexOf(sel) + 1, count: all.length }))),
       h('div', { className: 'bae-m-cgal-foot' }, h(MacButton, { kind: 'primary' }, 'Use this cover')));
   }
   // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed.
