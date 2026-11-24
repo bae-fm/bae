@@ -3,8 +3,15 @@ package fm.bae.app.ui.playback
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.creditLineNamed
@@ -65,5 +72,22 @@ class AndroidQueueRowTest {
         album.assertIsDisplayed()
         assertTrue(title.fetchSemanticsNode().boundsInRoot.bottom <= artist.fetchSemanticsNode().boundsInRoot.top)
         assertTrue(artist.fetchSemanticsNode().boundsInRoot.bottom <= album.fetchSemanticsNode().boundsInRoot.top)
+    }
+
+    @Test
+    fun dragHandleIsAnImageOfItsOwnNamedDragToReorder() {
+        compose.setContent {
+            TestTheme {
+                CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+                    AndroidQueueRow(title = "Track Title", artist = "Track Artist", cover = null, album = "Album")
+                }
+            }
+        }
+        val handle = compose.onAllNodesWithContentDescription("Drag to reorder")
+        // One node holds the name: the handle, as an image. The clickable row does not merge it into its own.
+        handle.assertCountEquals(1)
+        compose
+            .onNodeWithContentDescription("Drag to reorder")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Image))
     }
 }
