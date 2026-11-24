@@ -75,11 +75,6 @@ struct FieldNote: View {
         self.isError = isError
     }
 
-    init(verbatim text: String, isError: Bool) {
-        self.text = Text(verbatim: text)
-        self.isError = isError
-    }
-
     var body: some View {
         line
             .padding(.leading, ThemeSpace.fieldInset)
