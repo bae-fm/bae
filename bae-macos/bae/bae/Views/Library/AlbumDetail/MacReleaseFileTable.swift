@@ -35,7 +35,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
         let table = context.coordinator.table
         // The columns span the whole width, and the stripes span the columns,
         // as the board draws the table.
-        table.style = .fullWidth
+        table.style = .plain
         // The sheet supplies the surface behind the rows and their stripes.
         table.backgroundColor = .clear
         table.rowHeight = 28
