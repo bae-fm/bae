@@ -319,6 +319,9 @@ artist or composer is open. On macOS, VoiceOver reads the view menu by the
 view's name alone. VoiceOver reads the menu for adding a sort criterion as
 *Add sort criterion*. VoiceOver reads a criterion's direction button as
 *Ascending* or *Descending*, and pressing the button reverses the direction.
+On macOS the main window opens with no field holding the keyboard. The title
+bar's search field takes it when the person chooses *Search* in the View menu
+or clicks the field.
 
 On Android, the library offers Search, Activity (§6.4), and a menu named
 *More options* for screen readers. The menu offers *Sort by* (the fields, the
