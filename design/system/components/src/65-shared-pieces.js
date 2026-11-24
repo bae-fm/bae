@@ -17,7 +17,7 @@
         h(AndroidButton, { kind: 'outlined', large: true }, 'Enter code')));
   }
 
-  // The libraries on this device, as the welcome window lists them. `state`: '' (both open), 'removing' (bae is leaving the first), 'open-failed' (the first could not open), 'unreadable' or 'damaged-join' (a third row that bae cannot read).
+  // The libraries on this device, as the welcome window lists them, at most 420pt wide and centred, as the app caps its welcome column. `state`: '' (both open), 'removing' (bae is leaving the first), 'open-failed' (the first could not open), 'unreadable' or 'damaged-join' (a third row that bae cannot read).
   function MacWelcomeLibraries(props) {
     var s = props.state || '';
     var removing = s === 'removing';

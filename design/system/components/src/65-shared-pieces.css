@@ -6,7 +6,7 @@
 .bae-a-welcome-actions { display: flex; flex-direction: column; font-family: var(--font-android); }
 .bae-a-welcome-actions-stack { display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); padding: 0 var(--space-edge); }
 
-.bae-m-welcome-libraries { font-family: var(--font-sans); }
+.bae-m-welcome-libraries { font-family: var(--font-sans); width: 100%; max-width: 420px; margin: 0 auto; }
 .bae-m-welcome-libraries-wait { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
 .bae-a-welcome-libraries { font-family: var(--font-android); }
 .bae-a-welcome-libraries-wait { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }

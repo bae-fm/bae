@@ -1,6 +1,6 @@
 # MacWelcomeLibraries
 
-The libraries on this Mac, as the welcome window lists them: a row for each library with its ⋯ menu, then Add library… under the box.
+The libraries on this Mac, as the welcome window lists them, at most 420pt wide and centred, as the app's welcome column is: a row for each library with its ⋯ menu, then Add library… under the box.
 
 | Prop | |
 | --- | --- |
