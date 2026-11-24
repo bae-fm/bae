@@ -87,16 +87,12 @@ extension ShotScene {
             height: 900,
             .found(northbound: .importing, opening: .copperSky)
         ),
-        ShotScene(
-            id: "mac.import.identify.no-discogs-key",
-            size: CGSize(width: 1_200, height: 900)
-        ) {
-            try importPaneStage(
-                .found(northbound: .importing, opening: .winterKitchen),
-                size: CGSize(width: 1_200, height: 900),
-                discogsUsable: false
-            )
-        },
+        importPaneScene(
+            "mac.import.identify.no-discogs-key",
+            height: 900,
+            .found(northbound: .importing, opening: .winterKitchen),
+            discogsUsable: false
+        ),
     ]
 
     /// A board shot of `board` with nothing else to state.
@@ -104,12 +100,14 @@ extension ShotScene {
         _ id: String,
         width: CGFloat = 1_400,
         height: CGFloat,
-        _ board: PreviewData.ImportBoard
+        _ board: PreviewData.ImportBoard,
+        discogsUsable: Bool = true
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: width, height: height)) {
             try importPaneStage(
                 board,
-                size: CGSize(width: width, height: height)
+                size: CGSize(width: width, height: height),
+                discogsUsable: discogsUsable
             )
         }
     }
