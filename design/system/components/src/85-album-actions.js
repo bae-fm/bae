@@ -46,17 +46,17 @@
         h('div', { className: 'bae-m-cgal-right' }, h(MacCoverPreview, { name: sel, image: sel === 'Cover' ? props.album || 'Low Tide Hours' : sel, source: source, position: all.indexOf(sel) + 1, count: all.length }))),
       h('div', { className: 'bae-m-cgal-foot' }, h(MacButton, { kind: 'primary' }, 'Use this cover')));
   }
-  // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed.
+  // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed. Each thumbnail is a button that shows its image, with no name of its own, as the app's is.
   function MacThumbnailStrip(props) {
     var images = list(props.images), sel = props.selected || images[0];
-    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 'size-thumbnail', radius: 'radius-artwork' })); }));
+    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('button', { key: i, type: 'button', className: cx('bae-plainbtn bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 'size-thumbnail', radius: 'radius-artwork' })); }));
   }
-  // The lightbox: the image on the backdrop, close, arrows, then at its foot the shown image's caption (`label`, and `source` under it) over the thumbnail strip (`images`, `selected`), which a lone image goes without.
+  // The lightbox: the image on the backdrop, the Close button, the Back and Forward buttons, then at its foot the shown image's caption (`label`, and `source` under it) over the thumbnail strip (`images`, `selected`), which a lone image goes without.
   function MacLightbox(props) {
     var images = list(props.images || 'Low Tide Hours,Low Tide Hours back,Low Tide Hours disc,Low Tide Hours booklet');
     return h('div', { className: 'bae-m-lightbox' },
-      h('div', { className: 'bae-m-lb-top' }, props.browse ? h('span', { className: 'bae-m-lb-pill' }, h(Sym, { name: 'grid', size: 12 }), 'Browse all images') : h('span'), h('span', { className: 'bae-m-lb-close' }, h(Sym, { name: 'close', size: 15 }))),
-      h('div', { className: 'bae-m-lb-stage' }, images.length > 1 ? h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'left', size: 22 })) : h('span'), props.state === 'failed' ? h(MacNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load the image', action: 'Retry' }) : props.state === 'loading' ? h('div', { className: 'bae-m-lb-msg' }, h(MacSpinner, { size: 28 }), 'Loading the image…') : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), images.length > 1 ? h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'right', size: 22 })) : h('span')),
+      h('div', { className: 'bae-m-lb-top' }, props.browse ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-pill' }, h(Sym, { name: 'grid', size: 12 }), 'Browse all images') : h('span'), h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-close', 'aria-label': 'Close' }, h(Sym, { name: 'close', size: 15 }))),
+      h('div', { className: 'bae-m-lb-stage' }, images.length > 1 ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-arrow', 'aria-label': 'Back' }, h(Sym, { name: 'left', size: 22 })) : h('span'), props.state === 'failed' ? h(MacNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load the image', action: 'Retry' }) : props.state === 'loading' ? h(MacSpinner, { label: 'Loading the image…' }) : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), images.length > 1 ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-arrow', 'aria-label': 'Forward' }, h(Sym, { name: 'right', size: 22 })) : h('span')),
       h('div', { className: 'bae-m-lb-foot' },
         h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 'var(--type-detail-size)' } }, props.source || 'Release files')),
         images.length > 1 ? h(MacThumbnailStrip, { images: images.join(','), selected: props.selected }) : null));

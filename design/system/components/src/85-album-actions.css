@@ -16,7 +16,6 @@
 .bae-m-lb-close { width: 36px; height: 36px; border-radius: 999px; background: var(--scrim); display: flex; align-items: center; justify-content: center; color: var(--on-fill-secondary); }
 .bae-m-lb-stage { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-edge); }
 .bae-m-lb-arrow { width: 48px; height: 48px; border-radius: 999px; background: var(--scrim); display: flex; align-items: center; justify-content: center; }
-.bae-m-lb-msg { display: flex; flex-direction: column; align-items: center; gap: calc(var(--space-related) + var(--space-line)); color: var(--on-fill-secondary); }
 .bae-m-lb-cap { text-align: center; padding: var(--space-related) var(--space-section); }
 .bae-m-lb-strip { height: 64px; display: flex; justify-content: center; gap: var(--space-compact); padding-bottom: var(--space-group); }
 .bae-m-lb-thumb { border-radius: var(--radius-artwork); box-shadow: 0 0 0 1px var(--on-fill-secondary); }
