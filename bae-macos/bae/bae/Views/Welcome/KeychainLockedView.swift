@@ -7,21 +7,15 @@ struct KeychainLockedView: View {
     let onRetry: () -> Void
 
     var body: some View {
-        VStack(spacing: ThemeSpace.edge) {
-            Spacer()
-            Text("Library locked")
-                .themeText(.title)
-            // Core's sentence for this failure, as every surface shows it.
-            Text(BridgeErrorCategory.keyringLocked.localizedLine)
-                .themeText(.body)
-                .foregroundStyle(Theme.textSecondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: WelcomeLayout.columnWidth)
-            MacButton("Try again", kind: .primary, action: onRetry)
-                .keyboardShortcut(.defaultAction)
-            Spacer()
+        // Core's sentence for this failure, as every surface shows it.
+        MacStep(
+            String(localized: "Library locked"),
+            text: BridgeErrorCategory.keyringLocked.localizedLine
+        ) {
+            MacStepActions {
+                MacButton("Try again", kind: .primary, action: onRetry)
+                    .keyboardShortcut(.defaultAction)
+            }
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
