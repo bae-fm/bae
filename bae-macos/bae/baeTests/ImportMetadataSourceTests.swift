@@ -376,7 +376,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 String(localized: "Album year"),
             ] {
                 let field = try XCTUnwrap(
-                    fields.first { $0.placeholderString == placeholder }
+                    fields.first {
+                        $0.placeholderAttributedString?.string == placeholder
+                    }
                 )
                 XCTAssertEqual(field.accessibilityLabel(), placeholder)
                 let frame = field.convert(field.bounds, to: host)
@@ -555,8 +557,10 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         let menus = HostedMenus.controls(in: host)
             .map { $0.convert($0.bounds, to: host) }
         let controls = focusFrames(in: host)
+            // The bar's buttons are of the regular control height; the icon
+            // buttons beside the pressing rows are smaller.
             .filter { frame in
-                frame.height >= 20
+                frame.height >= 24
                     && !menus.contains {
                         $0.insetBy(dx: -2, dy: -2).contains(frame)
                     }
