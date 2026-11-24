@@ -55,6 +55,7 @@ extension ShotScene {
                                     spacing: ThemeSpace.inline
                                 ) {
                                     Text(verbatim: "•")
+                                        .accessibilityHidden(true)
                                     MacCopyText(
                                         text: address.0,
                                         after: address.1,

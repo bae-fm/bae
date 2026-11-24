@@ -204,6 +204,7 @@ struct SubsonicSettingsContent: View {
                                             - ThemeSpace.inline,
                                         alignment: .trailing
                                     )
+                                    .accessibilityHidden(true)
                                 copyText(address)
                             }
                         }

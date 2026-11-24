@@ -28,12 +28,14 @@ struct MacCopyText: View {
             Button {
                 copy(text)
             } label: {
+                // Only the glyph hides: a button at opacity 0 leaves the
+                // accessibility tree, and VoiceOver has to reach it.
                 Image(systemName: "doc.on.doc")
                     .themeIcon(.small)
+                    .opacity(hover || buttonFocused ? 1 : 0)
             }
             .buttonStyle(IconHoverButtonStyle().accentFocus())
             .focused($buttonFocused)
-            .opacity(hover || buttonFocused ? 1 : 0)
             .accessibilityLabel(Text("Copy"))
         }
         // An address is one line: it never breaks at its punctuation.
