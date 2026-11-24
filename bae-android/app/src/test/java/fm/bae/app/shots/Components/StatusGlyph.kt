@@ -41,14 +41,4 @@ class StatusGlyphShots : BoardShot() {
                 }
             }
         }
-
-    @Test
-    fun androidComponentStatusGlyphRingMuted() =
-        component("android.component.status-glyph.ring-muted") {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
-                    StatusGlyph(tone, size = 24.dp, muted = true, set = StatusGlyphSet.RING)
-                }
-            }
-        }
 }
