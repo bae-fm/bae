@@ -54,6 +54,8 @@ struct MacPressingRow: View {
             }
             .buttonStyle(.accentPlain)
             .disabled(!isPickable)
+            // The text beside it names the row, and its action picks it.
+            .accessibilityHidden(true)
 
             HStack(spacing: ThemeSpace.related) {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -64,6 +66,9 @@ struct MacPressingRow: View {
                 // The lines read in order before the row's trailing marks,
                 // which sit higher than the copy and note lines.
                 .accessibilityElement(children: .contain)
+                .accessibilityAction {
+                    if isPickable { onSelect(pressing) }
+                }
                 .allowsHitTesting(false)
                 Spacer(minLength: ThemeSpace.related)
                 libraryMarker

@@ -53,11 +53,13 @@ extension ShotScene {
             pressing(
                 releaseId: "hrlp-1042",
                 year: nil,
-                catalog: nil,
+                catalog: "HR-1042",
                 facts: PreviewData.pressingFacts(
+                    country: "US",
                     media: PreviewData.media(.cd)
                 ),
-                sources: [.discogs]
+                sources: [.musicBrainz, .discogs],
+                barcode: sampleBarcode
             ),
             height: 70
         ),
