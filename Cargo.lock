@@ -1189,6 +1189,7 @@ name = "bae-pictures"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
+ "bae-types",
  "bae-util",
  "jpeg-decoder",
  "libc",
@@ -1256,7 +1257,6 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
- "bae-pictures",
  "bae-store",
  "bae-types",
  "bae-util",

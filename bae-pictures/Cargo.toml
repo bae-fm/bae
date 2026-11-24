@@ -13,6 +13,8 @@ path = "src/lib.rs"
 [dependencies]
 # Runs a picture's job under the reporter that tells of a panic in it.
 bae-diagnostics = { workspace = true }
+# The sizes a copy is made at, which the library's rows state too.
+bae-types = { workspace = true }
 # What a job waits on while it shares its result.
 tokio = { workspace = true, features = ["rt", "sync"] }
 thiserror = { workspace = true }

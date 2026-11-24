@@ -120,10 +120,10 @@ pub enum CoverCopy {
 
 impl CoverCopy {
     /// The step the copy is made at.
-    pub fn step(self) -> bae_pictures::PictureStep {
+    pub fn step(self) -> bae_types::picture_step::PictureStep {
         match self {
-            Self::Browse => bae_pictures::PictureStep::S768,
-            Self::Large => bae_pictures::PictureStep::S1536,
+            Self::Browse => bae_types::picture_step::PictureStep::S768,
+            Self::Large => bae_types::picture_step::PictureStep::S1536,
         }
     }
 
@@ -179,5 +179,6 @@ pub struct NewReleasePreview {
 
 impl NewReleasePreview {
     /// The step a preview is made at.
-    pub const STEP: bae_pictures::PictureStep = bae_pictures::PictureStep::S384;
+    pub const STEP: bae_types::picture_step::PictureStep =
+        bae_types::picture_step::PictureStep::S384;
 }

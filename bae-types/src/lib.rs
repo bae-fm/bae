@@ -13,6 +13,7 @@ pub mod credit_role;
 pub mod credits;
 pub mod edit_validation;
 pub mod mediums;
+pub mod picture_step;
 pub mod pressing;
 pub mod progress;
 pub mod release_storage;
