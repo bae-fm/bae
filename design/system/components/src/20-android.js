@@ -95,7 +95,7 @@
     var kind = props.kind || 'filled';
     // `name`: the button's accessible name, where its words leave out what it acts on (a queue lane's Clear).
     return h('button', { type: 'button', disabled: !!props.off, onClick: props.onClick, 'aria-label': props.name,
-      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.icon && 'bae-a-btn-icon', props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.neutral && 'bae-a-btn-neutral', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
+      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.icon && 'bae-a-btn-icon', props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.neutral && 'bae-a-btn-neutral', props.inverse && 'bae-a-btn-inverse', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
       // `icon`: a glyph before the words, as the album page's Pin and Unpin.
       props.icon ? h(Glyph, { name: props.icon, size: 'medium' }) : null,
       props.children != null ? props.children : props.label);

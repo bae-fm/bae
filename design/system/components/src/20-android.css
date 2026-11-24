@@ -72,6 +72,8 @@
 .bae-a-btn-text.bae-a-btn-destructive, .bae-a-btn-outlined.bae-a-btn-destructive { color: var(--danger); }
 /* neutral: a text button in the screen's own text colour: every dialog button other than its action, so only the action carries the accent or the danger colour. */
 .bae-a-btn-text.bae-a-btn-neutral { color: var(--text-primary); }
+/* On the inverse surface, as a snackbar's action: Material's inverse primary. */
+.bae-a-btn-text.bae-a-btn-inverse { color: var(--accent-fill); }
 .bae-a-btn-align-text { align-self: flex-start; margin-left: calc(-1 * var(--space-group)); }
 .bae-a-btn-align-field { align-self: flex-start; margin-left: calc(var(--space-edge) - var(--space-group)); }
 /* Material's disabled button: the words in the screen's text at 38%, a filled or tonal button's fill and an outline in it at 12%, whatever the kind or tone. */
