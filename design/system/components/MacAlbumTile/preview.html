@@ -7,18 +7,18 @@
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  // Each grid is as wide as the preview's wide column, 842pt, as the tile's shot lays it out, so each tile takes a sixth of it and the page scrolls sideways in a narrow column instead of squeezing the tile.
+  // Each grid is as wide as the preview's wide column, 842pt, and holds three columns there, as the app's album grid does at that width, so the tile is a column of the app's grid; the page scrolls sideways in a narrow column instead of squeezing the tile.
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell bae-preview-cell-fit' }, h('div', { style: { width: 842, flex: 'none' } }, c))); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Resting', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, {})))),
-    W('Unplayable', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { unplayable: true })))),
-    W('Hover', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { hover: true })))),
-    W('Open', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { open: true })))),
-    W('Selected', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { selected: true })))),
-    W('No cover', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { noCover: true })))),
-    W('No year', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { year: null })))),
-    W('No artists', h(B.MacAlbumGrid, { columns: 6 }, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { artist: null }))))));
+    W('Resting', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, {})))),
+    W('Unplayable', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { unplayable: true })))),
+    W('Hover', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { hover: true })))),
+    W('Open', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { open: true })))),
+    W('Selected', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { selected: true })))),
+    W('No cover', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { noCover: true })))),
+    W('No year', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { year: null })))),
+    W('No artists', h(B.MacAlbumGrid, null, h(B.MacAlbumTile, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992' }, { artist: null }))))));
 </script>
 </body>
 </html>
