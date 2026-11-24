@@ -5,10 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
@@ -22,7 +20,6 @@ import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
-import fm.bae.app.ui.components.focusOnShow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -266,17 +263,13 @@ internal fun s3KeyDialogParts(
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
                     val failure = (sheet as? S3KeyReplacement.Sheet.Fields)?.failure
                     (failure as? S3KeyReplacement.Failure.Failed)?.let { S3KeyFailureNotice(it) }
-                    // The field the person types in next takes the focus as the fields show: the ID while it is
-                    // empty, else the secret. Typing doesn't move it.
-                    val focusesId = remember { accessKeyId.isEmpty() }
                     AndroidS3KeyFields(
                         accessKeyId = accessKeyId,
                         secretAccessKey = secretAccessKey,
                         onAccessKeyIdChange = onAccessKeyIdChange,
                         onSecretAccessKeyChange = onSecretAccessKeyChange,
                         refused = failure == S3KeyReplacement.Failure.Refused,
-                        accessKeyIdModifier = if (focusesId) Modifier.focusOnShow() else Modifier,
-                        secretAccessKeyModifier = if (focusesId) Modifier else Modifier.focusOnShow(),
+                        focusesNext = true,
                     )
                 }
             }

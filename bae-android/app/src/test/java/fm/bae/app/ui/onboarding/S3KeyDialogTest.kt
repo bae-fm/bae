@@ -1,6 +1,8 @@
 package fm.bae.app.ui.onboarding
 
 import android.app.Application
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -37,5 +39,24 @@ class S3KeyDialogTest {
         compose.onNodeWithText("Back").assertDoesNotExist()
         compose.onNodeWithText("Cancel").performClick()
         assertTrue(back)
+    }
+
+    /** With the key ID already typed, the secret key is the field the person types in next, so it has the focus. */
+    @Test
+    fun theSecretKeyTakesTheFocusOnceTheIdIsTyped() {
+        compose.setContent {
+            TestTheme {
+                S3KeyDialog(
+                    text = RestoreText.of(CodeEntry.NewDevice),
+                    keys = S3KeyInput(accessKeyId = "AKIA4EXAMPLE"),
+                    error = null,
+                    onRestore = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        // The dialog's fields, in order: the access key ID, then the secret key.
+        compose.onAllNodes(hasSetTextAction())[1].assertIsFocused()
     }
 }

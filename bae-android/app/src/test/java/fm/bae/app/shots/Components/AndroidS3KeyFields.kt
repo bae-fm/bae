@@ -32,7 +32,7 @@ private const val KEY_ID = "AKIA4EXAMPLENEW"
 
 private const val SECRET = "abcdefghijkl"
 
-/** The fields, with the focus on the secret key's, as the preview has it, unless [idFocused] puts it on the access key ID's. */
+/** The fields, with the focus on the one the person types in next, unless [idFocused] puts it on the access key ID's. */
 @Composable
 private fun KeyFields(
     id: String,
@@ -47,6 +47,6 @@ private fun KeyFields(
         onSecretAccessKeyChange = {},
         refused = refused,
         accessKeyIdModifier = if (idFocused) Modifier.focusOnShow() else Modifier,
-        secretAccessKeyModifier = if (idFocused) Modifier else Modifier.focusOnShow(),
+        focusesNext = !idFocused,
     )
 }

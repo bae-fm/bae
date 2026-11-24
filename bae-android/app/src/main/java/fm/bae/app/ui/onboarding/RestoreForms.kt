@@ -143,6 +143,7 @@ internal fun s3KeyDialogParts(
                     secretAccessKey = keys.secretAccessKey,
                     onAccessKeyIdChange = { keys.accessKeyId = it.trim() },
                     onSecretAccessKeyChange = { keys.secretAccessKey = it.trim() },
+                    focusesNext = true,
                 )
                 error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
