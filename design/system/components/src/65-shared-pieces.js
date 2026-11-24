@@ -298,5 +298,5 @@
   // The Save as panel's Format line: "Format:" and the format pop-up, centred under the panel's fields. `value`, `open`, `items` and `chosen` are MacPopUpButton's.
   function MacSavePanelFormat(props) {
     return h('div', { className: 'bae-m-savepanel-format' }, 'Format: ',
-      h(MacPopUpButton, { value: props.value, width: 190, open: props.open, items: props.items, chosen: props.chosen }));
+      h(MacPopUpButton, { label: 'Format', value: props.value, width: 190, open: props.open, items: props.items, chosen: props.chosen }));
   }
