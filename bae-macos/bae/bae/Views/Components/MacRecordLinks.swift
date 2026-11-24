@@ -38,6 +38,8 @@ private struct ReleaseRecordLink: View {
             Text(verbatim: bridgeCatalogName(catalog: record.catalog))
             Image(systemName: "arrow.up.right")
                 .imageScale(.small)
+                // The board draws the arrow in a 12 pt square.
+                .frame(width: 12, height: 12)
         }
         .themeText(.chip)
         .foregroundStyle(Theme.textSecondary)
