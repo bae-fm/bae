@@ -191,9 +191,10 @@
   }
   function MacHairline() { return h('div', { className: 'bae-m-hairline' }); }
   // The children are the actions, in a row under the text. No glyph sits above the title: the title says it.
+  // With no actions, SwiftUI's ContentUnavailableView sets its text above the pane's middle: 3pt for a title alone, 9pt with a line under it.
   function MacContentUnavailable(props) {
     var actions = React.Children.toArray(props.children).filter(Boolean);
-    return h('div', { className: 'bae-m-cu' },
+    return h('div', { className: cx('bae-m-cu', !actions.length && (props.description ? 'bae-m-cu-text-only' : 'bae-m-cu-title-only')) },
       h('div', { className: 'bae-m-cu-title' }, props.title),
       props.description ? h('div', { className: 'bae-m-cu-desc' }, props.description) : null,
       actions.length ? h('div', { className: 'bae-m-cu-actions' }, actions) : null);

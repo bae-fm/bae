@@ -316,6 +316,8 @@
 .bae-m-work-title { font: var(--type-title-weight) var(--type-title-size) var(--font-sans); letter-spacing: -0.3px; }
 .bae-m-hairline { height: 1px; background: var(--hairline); flex: none; }
 .bae-m-cu { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-compact); text-align: center; min-height: 240px; }
+.bae-m-cu-title-only { padding-bottom: var(--space-compact); }
+.bae-m-cu-text-only { padding-bottom: calc(var(--space-compact) + var(--space-group)); }
 .bae-a-librow-part { padding-left: var(--space-page); }
 .bae-a-librow-inset .bae-a-librow-text { padding: var(--space-related) var(--space-edge); }
 .bae-m-moremenu { position: relative; display: inline-flex; }
