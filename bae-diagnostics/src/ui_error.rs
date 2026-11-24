@@ -213,6 +213,10 @@ pub enum UiErrorCategory {
     /// Removing the library needs this device to sign in to its storage
     /// again first, so it can tell the library's other devices it left.
     DeletionSignInRequired,
+    /// The cloud provider refused the sign-in this device kept for the
+    /// library, even after refreshing it: the call that failed goes on only
+    /// once the person signs in to that provider again.
+    SignedOut(coven::CloudProvider),
     /// This device holds an unfinished join or restore of the library
     /// `library_id` that can't resume because what it saved can't be read:
     /// the listing of unfinished joins and restores fails on it until it is

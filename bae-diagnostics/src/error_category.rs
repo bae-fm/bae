@@ -356,6 +356,9 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         // code or the copy this call started from doesn't hold.
         E::Sync(coven::SyncError::MemberKeysReplaced { .. }) => C::MemberKeysReplaced,
         E::Sync(error) => sync_category(error),
+        // The provider refused the sign-in the call started from, even after
+        // its refresh: only a new sign-in to that provider gets past it.
+        E::OAuth(coven::OAuthError::Reauthorize(provider)) => C::SignedOut(*provider),
         E::OAuth(_) => C::Credentials,
         // The sign-in is not the account the invite shared the folder with:
         // the person signs in with the invited account.

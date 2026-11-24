@@ -157,6 +157,7 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::S3VersioningUnsupported(_)
             | UiErrorCategory::StorageLocationChangeUnsupported
             | UiErrorCategory::Credentials
+            | UiErrorCategory::SignedOut(_)
             | UiErrorCategory::Network
             | UiErrorCategory::Keyring
             | UiErrorCategory::KeyringLocked

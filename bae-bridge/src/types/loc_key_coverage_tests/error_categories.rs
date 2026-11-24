@@ -77,6 +77,10 @@ pub(super) fn keys() -> Vec<String> {
         BridgeErrorCategory::StorageSetupFinishing,
         BridgeErrorCategory::DeletionUnfinished,
         BridgeErrorCategory::DeletionSignInRequired,
+        BridgeErrorCategory::SignedOut { provider: BridgeCloudProvider::Dropbox },
+        BridgeErrorCategory::SignedOut { provider: BridgeCloudProvider::OneDrive },
+        BridgeErrorCategory::SignedOut { provider: BridgeCloudProvider::S3 },
+        BridgeErrorCategory::SignedOut { provider: BridgeCloudProvider::CloudKit },
         BridgeErrorCategory::UnfinishedInstallationUnreadable { library_id: String::new() },
     ] {
         keys.push(bridge_error_category_key(c));

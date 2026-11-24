@@ -490,6 +490,21 @@ fn a_join_signed_in_as_the_wrong_account_asks_for_credentials() {
     assert_eq!(bootstrap_category(&wrong), UiErrorCategory::Credentials);
 }
 
+/// A call whose kept sign-in the provider refused, even after its refresh,
+/// says the device is signed out of that provider, so the app can offer to
+/// sign in to it again; another sign-in failure stays a credentials one.
+#[test]
+fn a_refused_kept_sign_in_says_which_provider_signed_this_device_out() {
+    let refused =
+        coven::BootstrapError::OAuth(coven::OAuthError::Reauthorize(coven::CloudProvider::Dropbox));
+    assert_eq!(
+        bootstrap_category(&refused),
+        UiErrorCategory::SignedOut(coven::CloudProvider::Dropbox)
+    );
+    let cancelled = coven::BootstrapError::OAuth(coven::OAuthError::Cancelled);
+    assert_eq!(bootstrap_category(&cancelled), UiErrorCategory::Credentials);
+}
+
 /// An unfinished join or restore whose saved settings can't be read fails the
 /// listing of them naming its library, so the app can offer to discard it.
 #[test]

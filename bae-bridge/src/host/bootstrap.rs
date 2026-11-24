@@ -161,9 +161,10 @@ impl BridgeHost {
     }
     /// Finish this device's reset or restore of a library that stopped
     /// partway, from what core kept on the device: no restore code, and no
-    /// sign-in. A Dropbox or OneDrive sign-in the provider refuses fails as a
-    /// credentials error, and the call that began it, with its sign-in,
-    /// finishes it then. `by` is the call the library's listing names, which
+    /// sign-in. A Dropbox or OneDrive sign-in the provider refuses fails as
+    /// `SignedOut` with the provider: `finish_reset_signed_in` finishes a
+    /// reset then, and the restore's call, with its code and sign-in,
+    /// finishes a restore. `by` is the call the library's listing names, which
     /// says whether `cancellation` stops it: a restore's finishing stops, a
     /// reset's goes on. A restore cancelled once this device registered
     /// fails as `RestoreRegistered`, still unfinished.

@@ -202,6 +202,12 @@ pub enum BridgeErrorCategory {
     /// Removing the library needs this device to sign in to its storage
     /// again first.
     DeletionSignInRequired,
+    /// The cloud provider refused the sign-in this device kept for the
+    /// library, even after refreshing it: the call that failed goes on only
+    /// once the person signs in to `provider` again.
+    SignedOut {
+        provider: BridgeCloudProvider,
+    },
     /// This device holds an unfinished join or restore of the library
     /// `library_id` that can't resume because what it saved can't be read;
     /// listing the unfinished joins and restores fails on it until the app
@@ -307,6 +313,12 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::StorageSetupFinishing => "core.error.storage_setup_finishing",
         BridgeErrorCategory::DeletionUnfinished => "core.error.deletion_unfinished",
         BridgeErrorCategory::DeletionSignInRequired => "core.error.deletion_sign_in_required",
+        BridgeErrorCategory::SignedOut { provider } => match provider {
+            BridgeCloudProvider::Dropbox => "core.sync.status.signed_out_dropbox",
+            BridgeCloudProvider::OneDrive => "core.sync.status.signed_out_onedrive",
+            BridgeCloudProvider::S3 => "core.sync.status.signed_out_s3",
+            BridgeCloudProvider::CloudKit => "core.sync.status.signed_out_icloud",
+        },
         BridgeErrorCategory::UnfinishedInstallationUnreadable { .. } => {
             "core.error.unfinished_installation_unreadable"
         }
@@ -387,6 +399,7 @@ mirror_enum! {
         StorageSetupFinishing,
         DeletionUnfinished,
         DeletionSignInRequired,
+        SignedOut(provider: (BridgeCloudProvider)),
         UnfinishedInstallationUnreadable { library_id },
     },
 }

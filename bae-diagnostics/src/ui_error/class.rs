@@ -67,12 +67,13 @@ pub enum UiErrorClass {
     StorageSetupFinishing,
     DeletionUnfinished,
     DeletionSignInRequired,
+    SignedOut,
     UnfinishedInstallationUnreadable,
 }
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 61] = [
+    const ALL: [Self; 62] = [
         Self::Database,
         Self::DatabaseBusy,
         Self::DatabaseDamaged,
@@ -133,6 +134,7 @@ impl UiErrorClass {
         Self::StorageSetupFinishing,
         Self::DeletionUnfinished,
         Self::DeletionSignInRequired,
+        Self::SignedOut,
         Self::UnfinishedInstallationUnreadable,
     ];
 
@@ -199,6 +201,7 @@ impl UiErrorClass {
             Self::StorageSetupFinishing => "storage_setup_finishing",
             Self::DeletionUnfinished => "deletion_unfinished",
             Self::DeletionSignInRequired => "deletion_sign_in_required",
+            Self::SignedOut => "signed_out",
             Self::UnfinishedInstallationUnreadable => "unfinished_installation_unreadable",
         }
     }
@@ -236,6 +239,7 @@ impl UiErrorClass {
             | Self::StorageCheck
             | Self::S3VersioningUnknown
             | Self::Credentials
+            | Self::SignedOut
             | Self::Network
             // What the device playback was sent to said when it refused.
             | Self::Renderer
@@ -369,6 +373,7 @@ impl UiErrorCategory {
             Self::StorageSetupFinishing => K::StorageSetupFinishing,
             Self::DeletionUnfinished => K::DeletionUnfinished,
             Self::DeletionSignInRequired => K::DeletionSignInRequired,
+            Self::SignedOut(_) => K::SignedOut,
             Self::UnfinishedInstallationUnreadable { .. } => K::UnfinishedInstallationUnreadable,
         }
     }
@@ -438,6 +443,7 @@ impl UiErrorCategory {
             | K::AirPlayAdminsOnly
             | K::AirPlayOwnerOnly
             | K::ReplacementUnfinished
+            | K::SignedOut
             | K::UnfinishedInstallationUnreadable => return None,
         })
     }

@@ -98,6 +98,9 @@ fn category_column(category: UiErrorCategory) -> String {
         C::ReplacementUnfinished(by) => {
             format!("{class}.{}", serde_json::to_string(&by).expect("a replacing call serializes"))
         }
+        C::SignedOut(provider) => {
+            format!("{class}.{}", serde_json::to_string(&provider).expect("a provider serializes"))
+        }
         C::UnfinishedInstallationUnreadable { library_id } => format!("{class}.{library_id}"),
         _ => class.to_string(),
     }
@@ -214,6 +217,9 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
         K::ReplacementUnfinished => C::ReplacementUnfinished(
             serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?,
         ),
+        K::SignedOut => {
+            C::SignedOut(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
+        }
         K::UnfinishedInstallationUnreadable => {
             C::UnfinishedInstallationUnreadable { library_id: stored.to_owned() }
         }
