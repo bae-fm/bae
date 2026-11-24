@@ -1,7 +1,6 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -228,7 +227,7 @@ private fun NoticeGlyph(tone: StatusTone) {
 }
 
 /** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
-internal val NoticeTextInset = NoticeGlyphSize + ThemeSpace.related
+internal val NoticeTextInset = NoticeGlyphSize + ThemeSpace.edge
 
 /**
  * A row piece: a glyph ([lead]) level with the first line of its text, then the text ([content]), then
@@ -242,15 +241,12 @@ internal fun AndroidItem(
     trail: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        lead?.let { FirstLine(content = it) }
+    Row(modifier = modifier, verticalAlignment = Alignment.Top) {
+        // The text starts a row edge after the lead, as Material's list items start it; the trail sits closer.
+        lead?.let { FirstLine(modifier = Modifier.padding(end = ThemeSpace.edge), content = it) }
         // One traversal group: TalkBack reads the text lines together before the trailing control.
         Column(modifier = Modifier.weight(1f).semantics { isTraversalGroup = true }, content = content)
-        trail?.let { FirstLine(content = it) }
+        trail?.let { FirstLine(modifier = Modifier.padding(start = ThemeSpace.related), content = it) }
     }
 }
 
@@ -259,14 +255,17 @@ internal fun AndroidItem(
  * trail of an [AndroidItem] sit in one, on the first line of its text.
  */
 @Composable
-internal fun FirstLine(content: @Composable BoxScope.() -> Unit) {
+internal fun FirstLine(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
     val measurer = rememberTextMeasurer()
     val style = ThemeText.body.style
     val lineHeight =
         with(LocalDensity.current) {
             remember(measurer, style) { measurer.measure("A", style).size.height }.toDp()
         }
-    Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
+    Box(modifier.height(lineHeight), contentAlignment = Alignment.Center) {
         Box(Modifier.wrapContentHeight(unbounded = true), content = content)
     }
 }
