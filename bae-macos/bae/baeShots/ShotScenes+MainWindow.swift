@@ -93,7 +93,6 @@ extension ShotScenes {
             .environment(\.importPercents, importPercents)
             .albumDetailPreviewEnvironment()
             .mainWindowPreviewEnvironment()
-            .padding(.top, 1)
             .frame(width: size.width, height: size.height)
             .windowBackground()
     }
