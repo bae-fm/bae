@@ -142,10 +142,13 @@ internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
     }
 }
 
-/** 412 by 916 dp at 420 dpi (2.625 pixels to the dp), dark. */
+/**
+ * 412 by 916 dp at 320 dpi (2 pixels to the dp), dark. A density with a half pixel in a dp or an sp (2.625)
+ * rounds each box up to a whole pixel, which the board, drawn in CSS pixels, does not: rows came out 0.6 dp taller.
+ */
 private val PHONE_WIDTH = 412.dp
 
-internal const val PHONE_QUALIFIERS = "w412dp-h916dp-night-420dpi"
+internal const val PHONE_QUALIFIERS = "w412dp-h916dp-night-320dpi"
 private const val SETTLE_MILLIS = 100L
 
 /**
