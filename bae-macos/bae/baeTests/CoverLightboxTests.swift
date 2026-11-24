@@ -163,7 +163,7 @@ struct CoverLightboxTests {
     }
 
     @Test(
-        "The lightbox stage reads the original; its strip asks for its own size"
+        "The lightbox stage and its strip ask for their own sizes, never the original"
     )
     func originalImageSource() async throws {
         let item = remote("Booklet")
@@ -201,9 +201,10 @@ struct CoverLightboxTests {
             let reads = await recorder.reads
             let booklet = "https://images.example/Booklet-original.png"
             let back = "https://images.example/Back-original.png"
-            // The stage decodes the current image at its own resolution; the
-            // strip's slots name their pixel size and core picks the copy.
-            #expect(reads.contains(Read(url: booklet, pixels: nil)))
+            // The stage decodes the current image to fit the screen, through
+            // the image store; the original is read only for a zoom. Each
+            // slot names its pixel size and core picks the copy.
+            #expect(!reads.contains(Read(url: booklet, pixels: nil)))
             #expect(reads.contains { $0.url == booklet && $0.pixels != nil })
             #expect(reads.contains { $0.url == back && $0.pixels != nil })
             #expect(!reads.contains(Read(url: back, pixels: nil)))
