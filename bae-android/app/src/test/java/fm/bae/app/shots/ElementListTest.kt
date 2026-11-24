@@ -133,6 +133,28 @@ class ElementListTest : BoardShot() {
     }
 
     @Test
+    fun siblingsInARowAreListedLeftToRightAndRowsTopToBottom() {
+        compose.settle {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Tree order is Close, Retry, Title; the screen puts Title above Retry, left of Close.
+                Text("Close", modifier = Modifier.offset(200.dp, 100.dp))
+                Text("Retry", modifier = Modifier.offset(100.dp, 100.dp))
+                Text("Title", modifier = Modifier.offset(100.dp, 40.dp))
+            }
+        }
+        val elements =
+            ElementList
+                .of(
+                    "android.test.row",
+                    compose.onRoot().fetchSemanticsNode(),
+                    reading = ReadingOrder.of(compose.activity.window.decorView),
+                ).getJSONArray("elements")
+                .objects()
+
+        assertEquals(listOf("Title", "Retry", "Close"), elements.map { it.getString("label") })
+    }
+
+    @Test
     fun aMergedNodeOfTwoTextsKeepsItsReadingAndListsEachTextAsItsChild() {
         compose.settle {
             Column(modifier = Modifier.clickable {}) {

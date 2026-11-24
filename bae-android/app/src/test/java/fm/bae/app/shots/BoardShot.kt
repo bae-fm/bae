@@ -108,7 +108,17 @@ abstract class BoardShot {
             EmbeddedViews.of(compose.activity.window.decorView, compose.activity.resources.displayMetrics.density)
         val unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()
         File(directory, "$board@android.json")
-            .writeText(ElementList.of(board, root.fetchSemanticsNode(), embedded, unmerged).toString(JSON_INDENT) + "\n")
+            .writeText(
+                ElementList
+                    .of(
+                        board,
+                        root.fetchSemanticsNode(),
+                        embedded,
+                        unmerged,
+                        ReadingOrder.of(compose.activity.window.decorView),
+                    ).toString(JSON_INDENT) +
+                    "\n",
+            )
     }
 }
 
@@ -135,6 +145,7 @@ internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
             content = content,
         )
     }
+    ReadingOrder.enableTalkBack(onRoot().fetchSemanticsNode())
     mainClock.advanceTimeBy(SETTLE_MILLIS)
     // A field that took focus raises its label over 150 ms, which the first step stops partway through.
     if (onAllNodes(hasSetTextAction() and isFocused()).fetchSemanticsNodes().isNotEmpty()) {

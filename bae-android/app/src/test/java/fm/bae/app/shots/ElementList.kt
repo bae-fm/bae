@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
 
 /**
  * The element list a shot writes beside its PNG as `<board>@android.json`: what Compose's merged
- * semantics tree holds, in the tree's order, in dp from the shot's top-left. This is the only
+ * semantics tree holds, in the order TalkBack reads it (see [ReadingOrder]), in dp from the shot's top-left. This is the only
  * writer; every shot goes through [of]. A merged node of several texts (a clickable row of a title, a credit and a
  * duration) is listed as the one node TalkBack reads and taps, with no label of its own, and holds one text element
  * for each visible text the unmerged tree holds, since the merged node keeps only the first text's layout. A merged
@@ -34,7 +34,7 @@ internal object ElementList {
     private const val FIELD_LABEL_RISE_DP = 8f
 
     /**
-     * The list for the tree under [root] (the root has no semantics of its own and is not listed), with the
+     * The list for the tree under [root], with each node's children in [reading] order (the root has no semantics of its own and is not listed), with the
      * [embedded] views' elements, which the tree does not hold, each placed at the bare node the tree keeps for
      * its view, or else where the reading order reaches its box: before the first element that starts lower, or
      * in its row, further right.
@@ -44,13 +44,24 @@ internal object ElementList {
         root: SemanticsNode,
         embedded: List<JSONObject> = emptyList(),
         unmerged: SemanticsNode = root,
+        reading: ReadingOrder = ReadingOrder.None,
     ): JSONObject {
         val density = root.layoutInfo.density.density
         val listed = mutableListOf<Listed>()
         val frame = Rect(Offset.Zero, root.size.toSize())
 
-        // Compose gives a node with no traversal index the index 0.
-        fun inTraversalOrder(nodes: List<SemanticsNode>) = nodes.sortedBy { it.config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f }
+        fun inReadingOrder(
+            parent: SemanticsNode,
+            id: Int = parent.id,
+        ) = reading.childrenOf(id).let { order ->
+            if (order ==
+                null
+            ) {
+                parent.children
+            } else {
+                parent.children.sortedBy { order.indexOf(it.id).takeIf { at -> at >= 0 } ?: order.size }
+            }
+        }
 
         fun visit(
             node: SemanticsNode,
@@ -69,17 +80,17 @@ internal object ElementList {
                 listed.add(here)
                 // A child that asks to be read first (a negative traversal index, such as a track row's lead) comes
                 // before the merged node's own texts, as the board lists its image before the row's words.
-                inTraversalOrder(node.children).filter { it.readsFirst() }.forEach { visit(it, here) }
+                inReadingOrder(node).filter { it.readsFirst() }.forEach { visit(it, here) }
                 mergedTexts(
                     node,
                     unmerged,
                 ).filterNot { hidden(it, frame) }.forEach { listed.add(Listed(element(it, density, unmerged), here)) }
             }
-            // The list visits a node's children in traversal order, the order TalkBack reads them in, not the order
+            // The list visits a node's children in reading order, the order TalkBack reads them in, not the order
             // Compose draws them in.
-            inTraversalOrder(node.children).filterNot { here != null && here !== parent && it.readsFirst() }.forEach { visit(it, here) }
+            inReadingOrder(node).filterNot { here != null && here !== parent && it.readsFirst() }.forEach { visit(it, here) }
         }
-        inTraversalOrder(root.children).forEach { visit(it, null) }
+        inReadingOrder(root, ReadingOrder.HOST).forEach { visit(it, null) }
         // The tree keeps a bare, childless node where an embedded view sits. The element list puts the view's
         // elements at that node, in the view's order. When the tree has no such node, the list puts the view where
         // the reading order reaches its box.
