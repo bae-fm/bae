@@ -55,7 +55,10 @@ extension ShotScene {
                     highlighted: menu.chosen,
                     isPopUp: true
                 )
-                .padding(.leading, 40 - 31)
+                // The board moves the menu to keep it on the screen: its
+                // right edge 6 points past the button's, so its left edge
+                // is 23 points left of the button's.
+                .padding(.leading, 40 - 23)
                 .padding(.top, 40 - 6 - 24)
             }
         },
