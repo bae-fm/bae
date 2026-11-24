@@ -149,7 +149,7 @@
   // The notice's words: a title (bold only under a subtitle), the subtitle saying what to do, or the caller's own children.
   function noticeWords(props) {
     return [
-      props.title != null ? h('div', { key: 't', className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong'), role: props.opens ? 'button' : null }, props.title) : null,
+      props.title != null ? h('div', { key: 't', className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.opens ? h('span', { role: 'button' }, props.title) : props.title) : null,
       props.subtitle ? h('div', { key: 's', className: 'bae-notice-subtitle' }, props.subtitle) : null,
       props.children != null ? h(React.Fragment, { key: 'c' }, props.children) : null];
   }
