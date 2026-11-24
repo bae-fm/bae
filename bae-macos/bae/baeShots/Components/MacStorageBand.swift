@@ -6,8 +6,7 @@ import SwiftUI
 extension ShotScene {
     /// `MacStorageBand`, a release's storage in its Storage sheet, in each
     /// state the band draws. The `why` row's reason is the one core gives for
-    /// a release whose audio is on another device: core has no reason about
-    /// FLAC files over 24 bits.
+    /// a release whose audio is on another device.
     static let macStorageBandScenes: [ShotScene] = [
         storageBand("mac.component.storage-band.in-cloud", height: 120),
         storageBand(
