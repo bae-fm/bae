@@ -11,7 +11,6 @@ struct ArtistDetailPane: View {
         if detail == nil, session.selectedArtistId == nil {
             // Nothing chosen: the placeholder fills the pane, centred.
             PlaceholderTitle("Artists")
-                .background(Theme.surface)
         }
         else {
             page
@@ -32,10 +31,8 @@ struct ArtistDetailPane: View {
                 // A selected artist's read is local: nothing shows until it
                 // lands.
             }
-            .padding(ThemeSpace.section)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .reportsHeaderScroll(id: "artistDetail")
-        .background(Theme.surface)
     }
 }

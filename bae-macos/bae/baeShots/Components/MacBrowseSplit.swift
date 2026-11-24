@@ -15,7 +15,7 @@ extension ShotScene {
             images: coverStore()
         ) {
             MacBrowseSplit {
-                VStack(spacing: 0) {
+                VStack(spacing: ThemeSpace.hairline) {
                     MacLibraryRowButton(
                         title: "Mara Quill",
                         subtitle: "12 albums",
@@ -28,13 +28,10 @@ extension ShotScene {
                         action: {}
                     )
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
             } detail: {
                 MacDetailHeader(
                     summary: artistSummary("Mara Quill", albums: 12)
                 )
-                .frame(maxHeight: .infinity, alignment: .top)
-                .padding(ThemeSpace.edge)
             }
         }
     ]

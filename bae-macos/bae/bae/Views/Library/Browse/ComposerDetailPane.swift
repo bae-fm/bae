@@ -18,7 +18,6 @@ struct ComposerDetailPane: View {
         if session.detailSelection == .none {
             // Nothing chosen: the placeholder fills the pane, centred.
             PlaceholderTitle("Composers")
-                .background(Theme.surface)
         }
         else {
             page
@@ -90,14 +89,11 @@ struct ComposerDetailPane: View {
                     )
                 }
             }
-            .padding(ThemeSpace.section)
             .frame(maxWidth: 900, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .measuresScreen(into: $fit)
         .reportsHeaderScroll(id: "composerDetail")
-        // One surface step above the master list.
-        .background(Theme.surface)
     }
 
     /// The composer page's rows in core's order, in one lazy stack since

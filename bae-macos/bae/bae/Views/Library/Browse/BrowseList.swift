@@ -16,10 +16,7 @@ where Row.ID: Sendable {
         List {
             ForEach(0..<list.positionCount, id: \.self) { index in
                 row(index)
-                    .plainListRowEdge(
-                        ThemeSpace.related,
-                        bottom: ThemeSpace.hairline
-                    )
+                    .plainListRowEdge(0, bottom: ThemeSpace.hairline)
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .task(id: RowLoadID(epoch: list.loadEpoch, index: index)) {
@@ -33,11 +30,6 @@ where Row.ID: Sendable {
         .sizesWindow(of: list, from: fit)
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        // Not `contentMargins`: a plain macOS `List` ignores it. Safe-area
-        // padding insets the rows the way the canvas's list padding does.
-        .safeAreaPadding(.top, ThemeSpace.inline)
-        .safeAreaPadding(.bottom, ThemeSpace.section)
         .reportsHeaderScroll(id: "browseList")
-        .background(Theme.background)
     }
 }
