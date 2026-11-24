@@ -11,9 +11,11 @@ index_exclude:
 # Types held only for their lifetime: the property keeps the object alive and
 # nothing reads it. Periphery matches the declared type as written, less a
 # trailing `?`. Dropping a LatestFeed stops the stream it fills; dropping a
-# ScreenSubscription stops its pulls and ends the subscription.
+# ScreenSubscription stops its pulls and ends the subscription; dropping a
+# WindowNoticeWatch ends its window's notices.
 retain_assign_only_property_types:
   - SPUStandardUpdaterController
+  - WindowNoticeWatch
   - "[LatestFeed]"
   - ScreenSubscription<ImportCountsSubscription>
   - ScreenSubscription<CandidateRuntimeSubscription>

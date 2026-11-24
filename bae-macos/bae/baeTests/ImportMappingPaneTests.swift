@@ -372,7 +372,9 @@ extension ImportMappingPaneTests {
             ) == nil
         )
         #expect(candidate.detail == before)
-        #expect(candidate.metadataProvenance == MappingFixtures.provenance)
+        #expect(
+            candidate.draft?.metadataProvenance == MappingFixtures.provenance
+        )
     }
 
     // 4c. Typing in a release field writes that one field, once, as the field
@@ -413,7 +415,8 @@ extension ImportMappingPaneTests {
         // answered with.
         #expect(
             store.selectedCandidates[MappingFixtures.candidateKey]?
-                .edit?
+                .draft?
+                .metadataDraft
                 .pressing.year == MappingFixtures.albumEdit.pressing.year
         )
     }
@@ -547,8 +550,8 @@ extension ImportMappingPaneTests {
         var candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.metadataProvenance == .fileMetadata)
-        #expect(candidate.mapping?.trackRows.count == 2)
+        #expect(candidate.draft?.metadataProvenance == .fileMetadata)
+        #expect(candidate.draft?.mapping.trackRows.count == 2)
         #expect(
             candidate.releaseLink == MappingFixtures.releaseLink,
             "reading the tags leaves the link as it is"
@@ -573,8 +576,10 @@ extension ImportMappingPaneTests {
         candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.metadataProvenance == MappingFixtures.provenance)
-        #expect(candidate.mapping?.trackRows.count == 13)
+        #expect(
+            candidate.draft?.metadataProvenance == MappingFixtures.provenance
+        )
+        #expect(candidate.draft?.mapping.trackRows.count == 13)
         guard case .pressing(let link) = candidate.releaseLink else {
             Issue.record("the candidate links a pressing")
             return

@@ -471,7 +471,7 @@ extension MappingFixtures {
     /// read its draft.
     @MainActor
     static func mapping(of store: ImportStore) -> BridgeMappingTable? {
-        store.selectedCandidates[candidateKey]?.mapping
+        store.selectedCandidates[candidateKey]?.draft?.mapping
     }
 
     /// Whether bae-library can shape what the pane would commit into a savable
@@ -480,9 +480,9 @@ extension MappingFixtures {
     @MainActor
     static func isCommittable(_ store: ImportStore) -> Bool {
         guard let candidate = store.selectedCandidates[candidateKey],
-            var edit = candidate.edit
+            var edit = candidate.draft?.metadataDraft
         else { return false }
-        edit.tracks = (candidate.mapping?.trackRows ?? []).map(\.track)
+        edit.tracks = (candidate.draft?.mapping.trackRows ?? []).map(\.track)
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false
     }

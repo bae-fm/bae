@@ -407,18 +407,6 @@ struct Candidate: Equatable, Identifiable {
         return images
     }
 
-    /// The candidate's editable metadata draft.
-    var edit: BridgeRawReleaseEdit? {
-        draft?.metadataDraft
-    }
-
-    /// Every source unit the folder offers with the track committing makes of
-    /// it; `nil` until the first read answers, and once this device imported
-    /// its files.
-    var mapping: BridgeMappingTable? {
-        draft?.mapping
-    }
-
     /// The cover this candidate commits with.
     var cover: BridgeCoverChoice? {
         draft?.cover
@@ -433,12 +421,6 @@ struct Candidate: Equatable, Identifiable {
     /// Whether the applied external release is already in the library.
     var pickedLibraryStatus: BridgeLibraryStatus? {
         draft?.pickedLibraryStatus
-    }
-
-    /// Where the current draft was populated from. Directly entered and
-    /// cleared drafts have no provenance.
-    var metadataProvenance: BridgeMetadataProvenance? {
-        draft?.metadataProvenance
     }
 
     /// Every catalog that describes the release the candidate is linked

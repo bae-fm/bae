@@ -330,7 +330,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
 
         XCTAssertEqual(recorder.fileTagApplications, [key, key])
         XCTAssertEqual(
-            store.candidate(forKey: key)?.metadataProvenance,
+            store.candidate(forKey: key)?.draft?.metadataProvenance,
             .fileMetadata
         )
     }

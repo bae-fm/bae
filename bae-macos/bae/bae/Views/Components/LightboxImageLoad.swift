@@ -27,15 +27,12 @@ final class LightboxImageLoad {
 
     /// The image the last load was for, and the store it loads from; nil
     /// before the first load and once the lightbox closes.
-    private struct Shown {
+    struct Shown {
         let content: ImageContent
         let images: ImageStore
     }
 
-    private var shown: Shown?
-    /// The image the last load was for; nil before the first and once the
-    /// lightbox closes.
-    var content: ImageContent? { shown?.content }
+    private(set) var shown: Shown?
     private(set) var phase = Phase.loading
     /// The image decoded at its own resolution, once a zoom asked for it.
     private(set) var fullResolution: NSImage?

@@ -70,7 +70,7 @@ struct ImportPreviewDataTests {
     @Test("smoke mapping represents every candidate file exactly")
     func smokeMappingMatchesCandidateFiles() throws {
         let candidate = PreviewData.importTabCandidate
-        let mapping = try #require(candidate.mapping)
+        let mapping = try #require(candidate.draft?.mapping)
         let candidateFileIDs = Set(candidate.files.files.map(\.file.name))
         var representedFileIDs = Set((mapping.images ?? []).map(\.fileId))
 
@@ -103,7 +103,7 @@ struct ImportPreviewDataTests {
     @Test("ignoring the cue preview shows the whole file")
     func ignoredCuePreviewShowsWholeFile() throws {
         let candidate = PreviewData.moreTracksMappingCandidate
-        let mapping = try #require(candidate.mapping)
+        let mapping = try #require(candidate.draft?.mapping)
         let mappings = mapping.trackRows
         let fileSources = mappings.compactMap { mapping -> String? in
             guard case .file(let name) = mapping.source else { return nil }

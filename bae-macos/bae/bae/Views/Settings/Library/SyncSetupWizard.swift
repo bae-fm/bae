@@ -488,6 +488,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
             case folders(StorageFolderBrowser)
             /// S3's form, as it stands.
             case s3(MacS3Form)
+            // periphery:ignore - staged by baeShots
             /// iCloud's, which has no fields.
             case iCloud
         }

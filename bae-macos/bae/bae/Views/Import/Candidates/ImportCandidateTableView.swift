@@ -92,7 +92,7 @@ final class ImportListEntryCell: NSTableCellView {
     private var entry: ImportListEntry?
     /// The cover the cell is decoding, and the decode, which starts when the
     /// table gives the cell its row, before the table puts the row on screen.
-    private var coverDecode: CoverDecode?
+    private(set) var coverDecode: CoverDecode?
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -102,12 +102,6 @@ final class ImportListEntryCell: NSTableCellView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
-    #if DEBUG
-        /// The task decoding the shown cover, while there is one, for a test
-        /// to see whether a redraw replaced it.
-        var coverLoad: Task<Void, Never>? { coverDecode?.task }
-    #endif
 
     /// The item the cell draws now.
     var shownItem: BridgeImportListItem? { entry?.item }
@@ -125,7 +119,7 @@ final class ImportListEntryCell: NSTableCellView {
     /// One decode of a cover at a scale. The table gives a cell the same row
     /// again on each redraw; a decode that is already under way for the same
     /// cover at the same scale keeps running.
-    private struct CoverDecode {
+    struct CoverDecode {
         let cover: ImageContent
         let displayScale: CGFloat
         let task: Task<Void, Never>
