@@ -211,14 +211,12 @@ extension MacStorageWindow where Inspector == StorageInspector {
     /// The window with the storage inspector, which opens on the details of
     /// `initialSelectedFileId` for the release it first shows.
     init(
-        initialFilter: BridgeStorageFilter = .all,
         initialSearch: String = "",
         initialSelection: Set<String> = [],
         initialInspectorPresented: Bool = false,
         initialSelectedFileId: String? = nil
     ) {
         self.init(
-            initialFilter: initialFilter,
             initialSearch: initialSearch,
             initialSelection: initialSelection,
             initialInspectorPresented: initialInspectorPresented
