@@ -47,28 +47,42 @@ struct MacCoverPreview: View {
                     .themeText(.detail)
                     .foregroundStyle(Theme.textSecondary)
                 HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
-                    Button {
-                        onFocus(focus.neighbors?.previous)
-                    } label: {
-                        Image(systemName: "chevron.backward")
-                    }
-                    .accessibilityLabel(Text("Previous image"))
+                    stepButton(
+                        "chevron.backward",
+                        label: "Previous image",
+                        to: focus.neighbors?.previous
+                    )
                     Text("\(Int(focus.position) + 1) of \(content.total)")
                         .monospacedDigit()
                         .foregroundStyle(Theme.textSecondary)
-                    Button {
-                        onFocus(focus.neighbors?.next)
-                    } label: {
-                        Image(systemName: "chevron.forward")
-                    }
-                    .accessibilityLabel(Text("Next image"))
+                    stepButton(
+                        "chevron.forward",
+                        label: "Next image",
+                        to: focus.neighbors?.next
+                    )
                 }
-                .buttonStyle(.accentBorderless)
+                .buttonStyle(.accentPlain)
                 .disabled(focus.neighbors == nil || isSaving)
             }
         }
         else {
             MacContentUnavailable(title: "No cover art available")
         }
+    }
+
+    /// A step to the neighbouring cover: the board's 12 by 16 plain button.
+    private func stepButton(
+        _ symbol: String,
+        label: LocalizedStringKey,
+        to neighbor: BridgeCoverKey?
+    ) -> some View {
+        Button {
+            onFocus(neighbor)
+        } label: {
+            Image(systemName: symbol)
+                .frame(width: 12, height: 16)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(Text(label))
     }
 }
