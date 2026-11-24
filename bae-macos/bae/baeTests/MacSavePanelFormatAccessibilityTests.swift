@@ -23,7 +23,9 @@ struct MacSavePanelFormatAccessibilityTests {
         func updateNSView(_: NSView, context _: Context) {}
     }
 
-    @Test("the format pop-up is named by the Format label beside it")
+    @Test(
+        "the format pop-up is named by the Format label beside it, without its colon"
+    )
     func popUpIsNamedByItsLabel() async throws {
         try await SnapshotTestSupport.withHostedWindow(
             FormatLine().frame(width: 250, height: 34),
@@ -35,7 +37,7 @@ struct MacSavePanelFormatAccessibilityTests {
                 subject: "the Save as format line"
             )
             let popUps = tree.nodes.filter { $0.role == kAXPopUpButtonRole }
-            #expect(popUps.map(\.controlName) == ["Format:"])
+            #expect(popUps.map(\.controlName) == ["Format"])
         }
     }
 }

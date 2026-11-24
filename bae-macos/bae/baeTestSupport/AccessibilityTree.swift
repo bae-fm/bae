@@ -178,7 +178,8 @@ struct AccessibilityTree: Sendable {
         }
 
         /// The words of the element `element` names itself by, as its value,
-        /// or its title when it has no value.
+        /// or its title when it has no value, without the colon that ends a
+        /// label: VoiceOver does not read it.
         private static func titleElementWords(of element: AXUIElement)
             -> String?
         {
@@ -187,8 +188,11 @@ struct AccessibilityTree: Sendable {
                 CFGetTypeID(named) == AXUIElementGetTypeID()
             else { return nil }
             let label = unsafeDowncast(named, to: AXUIElement.self)
-            return string(label, kAXValueAttribute)
-                ?? string(label, kAXTitleAttribute)
+            guard
+                let words = string(label, kAXValueAttribute)
+                    ?? string(label, kAXTitleAttribute)
+            else { return nil }
+            return words.hasSuffix(":") ? String(words.dropLast()) : words
         }
 
         static func frame(of element: AXUIElement) -> CGRect? {
