@@ -37,7 +37,8 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
         .overlay(alignment: .top) { MacHairline() }
     }
 
-    /// The sheet's name opens it in the viewer.
+    /// The sheet's name opens it in the viewer. It has no layout priority, so
+    /// a long name and a long audio name share a narrow caption's room.
     private var nameButton: some View {
         Button(action: onOpen) {
             Text(verbatim: name)
@@ -47,7 +48,6 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
                 .cutLine(.fileName)
         }
         .buttonStyle(.accentPlain)
-        .layoutPriority(1)
         .onHover { hoveringName = $0 }
     }
 }

@@ -246,6 +246,62 @@ extension ImportMappingTracksLayoutTests {
             #expect(bindingFrame.maxX <= tableWidth)
         }
     }
+
+    /// A long sheet name gives way to the Audio file menu: the menu of an
+    /// unbound reference shows *Choose audio…* whole, and the menu of a bound
+    /// one shows enough of the file's name to read.
+    @MainActor
+    @Test(
+        "a long sheet name does not squeeze the audio menu to an ellipsis",
+        arguments: [
+            (ReleaseMetadataTrackColumns.minimumTableWidth, false),
+            (ReleaseMetadataTrackColumns.minimumTableWidth, true),
+        ] as [(CGFloat, Bool)]
+    )
+    func longSheetNameLeavesTheAudioMenuReadable(
+        tableWidth: CGFloat,
+        associated: Bool
+    ) async throws {
+        let size = NSSize(width: tableWidth, height: 90)
+        let readable: CGFloat
+        if associated {
+            readable = 150
+        }
+        else {
+            let ideal = NSHostingView(
+                rootView: ImportSheetUnboundMenu(
+                    references: [
+                        try #require(
+                            sheet(associated: false).unboundReferences?.first
+                        )
+                    ],
+                    onBind: { _, _ in }
+                )
+                .fixedSize()
+            )
+            ideal.layoutSubtreeIfNeeded()
+            readable = ideal.fittingSize.width
+        }
+        try await SnapshotTestSupport.withHostedWindow(
+            ReleaseSheetCaption(
+                sheet: sheet(associated: associated),
+                actions: actions(recording: MappingTrackActionRecorder())
+                    .sheetCaption
+            )
+            .frame(width: tableWidth, height: size.height, alignment: .leading),
+            size: size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+
+            let controls = HostedMenus.controls(in: host)
+            try #require(controls.count == 2)
+            let audio = controls[1].convert(controls[1].bounds, to: host)
+            #expect(
+                audio.width >= readable,
+                "the audio menu measures \(audio.width), under \(readable)"
+            )
+        }
+    }
 }
 
 extension ImportMappingTracksLayoutTests {
