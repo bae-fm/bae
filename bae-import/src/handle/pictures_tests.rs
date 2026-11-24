@@ -180,3 +180,19 @@ async fn a_file_touched_after_its_scan_makes_no_copy() {
         "{refused:?}"
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_rescan_that_finds_the_same_file_keeps_its_copies() {
+    let mut fixture = stored_candidate().await;
+    let (picture, path) = with_image(&mut fixture, "cover.gif").await;
+    let first = fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await;
+
+    // The folder is read and stored again, as a scan does after it changes.
+    rescan_into(&fixture.handle.services.tables, fixture.candidate.clone()).await;
+    let second = fixture.handle.read_picture(picture.clone(), Some(100), Priority::Visible).await;
+    let reads = reads::count(FileRead::PictureOriginal, &path);
+    shut_down(fixture.handle).await;
+
+    assert_eq!(first.unwrap(), second.unwrap());
+    assert_eq!(reads, 1, "the file was read once, not again after the rescan");
+}
