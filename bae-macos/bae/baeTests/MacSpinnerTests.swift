@@ -62,4 +62,72 @@ struct MacSpinnerTests {
             #expect(indicator.animating)
         }
     }
+
+    private static func panelWithSpinner() -> NSPanel {
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 160, height: 40),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isReleasedWhenClosed = false
+        panel.contentView = NSHostingView(rootView: MacSpinner())
+        return panel
+    }
+
+    /// The menus, popovers and alerts of a window are its child windows,
+    /// put under it after their content is in them.
+    @Test
+    func holdsStillInAChildWindowOfAWindowThatHoldsSpinnersStill() async throws
+    {
+        try await SnapshotTestSupport.withHostedWindow(
+            Color.clear,
+            size: NSSize(width: 220, height: 40)
+        ) { window, _ in
+            window.holdsSpinnersStill = true
+            let panel = Self.panelWithSpinner()
+            window.addChildWindow(panel, ordered: .above)
+            panel.orderFront(nil)
+            defer { panel.close() }
+            #expect(panel.holdsSpinnersStill)
+            panel.contentView?.layoutSubtreeIfNeeded()
+            panel.displayIfNeeded()
+            let indicator = try #require(
+                panel.contentView?
+                    .firstDescendant(
+                        ofType: MacSpinner.NativeIndicator.self
+                    )
+            )
+            #expect(!indicator.animating)
+        }
+    }
+
+    @Test
+    func holdsStillInASheetOfAWindowThatHoldsSpinnersStill() async throws {
+        try await SnapshotTestSupport.withHostedWindow(
+            Color.clear,
+            size: NSSize(width: 220, height: 40)
+        ) { window, _ in
+            window.holdsSpinnersStill = true
+            let sheet = Self.panelWithSpinner()
+            window.beginSheet(sheet)
+            defer { window.endSheet(sheet) }
+            #expect(sheet.holdsSpinnersStill)
+        }
+    }
+
+    @Test
+    func aWindowSetOnItsOwnIgnoresItsParent() async throws {
+        try await SnapshotTestSupport.withHostedWindow(
+            Color.clear,
+            size: NSSize(width: 220, height: 40)
+        ) { window, _ in
+            window.holdsSpinnersStill = true
+            let panel = Self.panelWithSpinner()
+            panel.holdsSpinnersStill = false
+            window.addChildWindow(panel, ordered: .above)
+            defer { panel.close() }
+            #expect(!panel.holdsSpinnersStill)
+        }
+    }
 }

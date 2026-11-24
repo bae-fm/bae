@@ -98,6 +98,14 @@ public struct MacSpinner: View {
                 syncAnimation()
             }
 
+            /// A child window is put under its parent after its content is
+            /// in it, so the window that holds the view can change what it
+            /// holds still before the view's first draw.
+            override func viewWillDraw() {
+                super.viewWillDraw()
+                syncAnimation()
+            }
+
             /// Turns while a window holds the view, unless that window holds
             /// spinners still, as the shot renderer's does, so a capture
             /// draws the same frame each time. The still spinner stays drawn.
@@ -122,12 +130,16 @@ public struct MacSpinner: View {
         /// sets it on its windows; the app never does. A view the app hosts
         /// apart from the window's SwiftUI tree, such as a table cell, is in
         /// the window all the same, which an environment value would not
-        /// reach. Setting it stops or starts the spinners already in the
-        /// window.
+        /// reach. The menus, popovers and alerts of a window are its child
+        /// windows, and a sheet's window is its parent's sheet: each holds
+        /// still as the window it belongs to does, unless it is set itself.
+        /// Setting it stops or starts the spinners already in the window and
+        /// in those windows.
         public var holdsSpinnersStill: Bool {
             get {
-                objc_getAssociatedObject(self, &holdsSpinnersStillKey)
-                    as? Bool ?? false
+                (objc_getAssociatedObject(self, &holdsSpinnersStillKey)
+                    as? Bool)
+                    ?? (sheetParent ?? parent)?.holdsSpinnersStill ?? false
             }
             set {
                 objc_setAssociatedObject(
@@ -136,8 +148,16 @@ public struct MacSpinner: View {
                     newValue,
                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC
                 )
-                (contentView?.superview ?? contentView)?.syncSpinners()
+                syncSpinners()
             }
+        }
+
+        private func syncSpinners() {
+            (contentView?.superview ?? contentView)?.syncSpinners()
+            for child in childWindows ?? [] {
+                child.syncSpinners()
+            }
+            attachedSheet?.syncSpinners()
         }
     }
 
