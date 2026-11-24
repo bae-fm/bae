@@ -298,7 +298,8 @@ private struct RestoreCodeStep: View {
                             code: code,
                             location: stored.accountLine
                         )
-                    }
+                    },
+                    header: { Text("Restore code") }
                 )
             }
             .formStyle(.settingsInSheet())

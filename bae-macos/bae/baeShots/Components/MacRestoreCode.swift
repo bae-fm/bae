@@ -40,7 +40,8 @@ extension ShotScene {
             ShotForm {
                 MacRestoreCode(
                     reveal: RestoreCodeReveal(previewState: state),
-                    onPrint: { _ in }
+                    onPrint: { _ in },
+                    header: { EmptyView() }
                 )
             }
             .environment(

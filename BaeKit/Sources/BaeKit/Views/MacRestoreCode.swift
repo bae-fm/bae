@@ -7,10 +7,13 @@ import SwiftUI
 /// The screen holding the section owns `reveal`, opens it when the screen
 /// opens and closes it when the screen goes away: the section itself can't
 /// tell the screen closing from its own view leaving and returning.
-public struct MacRestoreCode: View {
+public struct MacRestoreCode<Header: View>: View {
     let reveal: RestoreCodeReveal
     /// Prints the code, given in groups of four.
     let onPrint: (String) -> Void
+    /// The screen's heading over the section, which the box and notes under
+    /// it don't draw themselves.
+    let header: Header
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -20,10 +23,12 @@ public struct MacRestoreCode: View {
 
     public init(
         reveal: RestoreCodeReveal,
-        onPrint: @escaping (String) -> Void
+        onPrint: @escaping (String) -> Void,
+        @ViewBuilder header: () -> Header
     ) {
         self.reveal = reveal
         self.onPrint = onPrint
+        self.header = header()
     }
 
     /// An S3 library's bucket opens only with an access key, which the code
@@ -49,7 +54,7 @@ public struct MacRestoreCode: View {
                 MacNotice(error: error)
             }
         } header: {
-            Text("Restore code")
+            header
         } footer: {
             switch reveal.state {
             case .masked, .shown:

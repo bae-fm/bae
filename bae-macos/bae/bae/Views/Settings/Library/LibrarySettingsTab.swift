@@ -313,7 +313,8 @@ private struct LibraryRestoreCodeSection: View {
                     code: code,
                     location: location.accountLine
                 )
-            }
+            },
+            header: { Text("Restore code") }
         )
     }
 }
