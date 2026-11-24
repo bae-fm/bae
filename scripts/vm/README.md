@@ -30,7 +30,7 @@ scripts/vm/provision.sh <vm-ip>     # ~30-40 min, unattended
 
 Installs the toolchain (VS Build Tools + Windows SDK, .NET 8, Rust with the
 pinned toolchain + x64 target, LLVM, git, sccache, WinDbg), clones the repo to
-C:\bae, fetches the self-contained FFmpeg dist, installs uniffi-bindgen-cs,
+C:\bae, fetches the self-contained FFmpeg dist, builds the libvips dist from source, installs uniffi-bindgen-cs,
 and stages the hidden-launcher scheduled-task harness (`baeRun` to launch the
 app on the desktop session, `vmShot` to screenshot it — console apps started
 by scheduled tasks otherwise pile terminal windows onto the desktop).

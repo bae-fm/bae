@@ -9,7 +9,7 @@ setlocal
 set FFMPEG_DIR=C:\bae\bae-ffmpeg\dist
 set BINDGEN_EXTRA_CLANG_ARGS=-IC:\bae\bae-ffmpeg\dist\include
 set LIBCLANG_PATH=C:\Program Files\LLVM\bin
-set PATH=C:\bae\bae-ffmpeg\dist\bin;C:\Program Files\LLVM\bin;%USERPROFILE%\.cargo\bin;C:\Program Files\Git\bin;%USERPROFILE%\.dotnet\tools;%PATH%
+set PATH=C:\bae\bae-ffmpeg\dist\bin;C:\bae\bae-libvips\dist\bin;C:\Program Files\LLVM\bin;%USERPROFILE%\.cargo\bin;C:\Program Files\Git\bin;%USERPROFILE%\.dotnet\tools;%PATH%
 set BAE_BRIDGE_TARGET=aarch64-pc-windows-msvc
 set BAE_BRIDGE_FEATURES=oauth-providers,cast
 set BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full
@@ -36,6 +36,7 @@ mkdir %STAGE%
 xcopy /e /y /q C:\bae\bae-avalonia\publish %STAGE%\ >nul || exit /b 1
 copy /y C:\bae\target-windows\aarch64-pc-windows-msvc\release\uniffi_bae_bridge.dll %STAGE%\ >nul || exit /b 1
 copy /y C:\bae\bae-ffmpeg\dist\bin\*.dll %STAGE%\ >nul || exit /b 1
+copy /y C:\bae\bae-libvips\dist\bin\*.dll %STAGE%\ >nul || exit /b 1
 if not exist %STAGE%\bae.exe (echo FAIL: bae.exe missing from stage & exit /b 1)
 
 rem The local channel keeps no history — vpk refuses to pack over an equal or

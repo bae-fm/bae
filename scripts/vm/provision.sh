@@ -26,6 +26,10 @@ $SSH 'cd /d C:\bae && "%ProgramFiles%\Git\cmd\git.exe" submodule update --init -
 echo "== ffmpeg dist (${FFMPEG_VERSION}, self-contained) =="
 $SSH "powershell -Command \"\$dist = 'C:\\bae\\bae-ffmpeg\\dist'; New-Item -ItemType Directory -Force \$dist | Out-Null; curl.exe -fsSL --retry 5 --retry-delay 3 https://github.com/bae-fm/bae-ffmpeg/releases/download/${FFMPEG_VERSION}/ffmpeg-windows-aarch64.zip -o \$env:TEMP\\ffmpeg.zip; Expand-Archive -Path \$env:TEMP\\ffmpeg.zip -DestinationPath \$dist -Force; Remove-Item \$env:TEMP\\ffmpeg.zip; New-Item -ItemType Directory -Force \$dist\\lib | Out-Null; Copy-Item \$dist\\bin\\*.lib \$dist\\lib\\ -Force\""
 
+echo "== libvips dist (built from source, ~15 min) =="
+# .cargo/config.toml points LIBVIPS_DIR at bae-libvips/dist in the checkout.
+$SSH 'cd /d C:\bae && call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" arm64 && "%ProgramFiles%\Git\bin\bash.exe" scripts/build-libvips.sh windows-aarch64 C:/bae/bae-libvips/dist'
+
 echo "== uniffi-bindgen-cs =="
 $SSH 'cd /d C:\bae && set "PATH=%USERPROFILE%\.cargo\bin;%PATH%" && "%ProgramFiles%\Git\bin\bash.exe" scripts/csharp-bindgen.sh --install'
 

@@ -4,8 +4,8 @@
 //! LIBVIPS_DIR the way FFMPEG_DIR finds FFmpeg, and sets the `libvips` cfg
 //! that the code calling it compiles under. macOS, Linux, Windows and Android
 //! always link it, and a build without the dist fails here, naming how to
-//! install it. On iOS, which has no libvips yet, the crate builds without it
-//! and every copy fails with `PicturesError::NoLibvips`.
+//! install it. On iOS the crate builds without libvips and every copy fails with
+//! `PicturesError::NoLibvips`.
 
 use std::path::PathBuf;
 
