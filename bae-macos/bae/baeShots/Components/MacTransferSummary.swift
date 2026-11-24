@@ -76,7 +76,20 @@ extension ShotScene {
                 onCancel: {}
             )
             .frame(width: 380, alignment: .leading)
-            .environment(DownloadStore())
+            .environment(
+                DownloadStore(
+                    releaseProgress: .downloads(
+                        holding: [
+                            "rel-summary": BridgeDownloadTransferProgress(
+                                bytesDone: 96_000_000,
+                                bytesTotal: 221_200_000,
+                                fraction: 96 / 221.2,
+                                throughputBps: 6_400_000
+                            )
+                        ]
+                    )
+                )
+            )
             .environment(OutboxStore(uploadsPaused: false))
         },
     ]
