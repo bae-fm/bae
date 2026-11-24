@@ -308,6 +308,7 @@ extension ShotScene {
             )
             let problem = launchProblems.problems[0]
             let backing = boardLibraryBacking(uiStore: uiStore)
+            let images = coverGalleryImages()
             return ShotStage(
                 OverWindow.alert(
                     ErrorDetails(
@@ -321,10 +322,12 @@ extension ShotScene {
                             uiStore: uiStore,
                             backing: backing,
                             playbackStore: boardPlayback(),
+                            images: images,
                             size: CGSize(width: 1200, height: 760)
                         )
                         .environment(\.launchProblems, launchProblems)
-                )
+                ),
+                images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
             }

@@ -48,14 +48,16 @@ extension ShotScene {
             historyPeople: [(anaMemberId, "Ana"), (benMemberId, "Ben")]
         )
         let history = HistoryStore(library: backing.library, onError: { _ in })
+        let images = coverGalleryImages()
         let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: (backing.library, backing.session),
             playbackStore: boardPlayback(),
+            images: images,
             history: history,
             size: CGSize(width: 1200, height: 760)
         )
-        return ShotStage(window) { history.list != nil }
+        return ShotStage(window, images: images) { history.list != nil }
     }
 
     /// A play the boards list: its time on `day` days before today, its

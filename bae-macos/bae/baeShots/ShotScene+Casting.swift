@@ -56,14 +56,17 @@ extension ShotScene {
                     )
                 )
             )
+            let images = coverGalleryImages()
             return ShotStage(
                 ShotScenes.libraryWindow(
                     uiStore: uiStore,
                     backing: backing,
                     playbackStore: boardPlayback(),
                     castStore: castStore,
+                    images: images,
                     size: CGSize(width: 1200, height: 760)
-                )
+                ),
+                images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
             }
@@ -249,14 +252,16 @@ extension ShotScene {
     ) -> ShotStage {
         let uiStore = UiStore()
         let backing = boardLibraryBacking(uiStore: uiStore)
+        let images = coverGalleryImages()
         let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: backing,
             playbackStore: boardPlayback(),
             castStore: castStore,
+            images: images,
             size: CGSize(width: 1200, height: 760)
         )
-        return ShotStage(dressed(AnyView(window))) {
+        return ShotStage(dressed(AnyView(window)), images: images) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
         }
     }
