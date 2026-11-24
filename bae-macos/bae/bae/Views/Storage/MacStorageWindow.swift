@@ -175,7 +175,10 @@ struct MacStorageWindow: View {
                         if storageManagerStore.searching == true,
                             list.count?.rows == 0
                         {
+                            // VoiceOver reads the table's column headings
+                            // before the words over the empty list.
                             MacContentUnavailable(title: "No matches")
+                                .accessibilitySortPriority(-1)
                         }
                     }
                     Divider()
