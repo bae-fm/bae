@@ -67,7 +67,11 @@ class AndroidLibraryScreenShots : BoardShot() {
     @Test
     fun androidComponentLibraryScreenBarError() =
         component("android.component.library-screen.bar-error") {
-            LibraryScreenPreview(nowPlayingBar = { Bar(playing, failure = DisplayError("Could not read what is playing.")) })
+            LibraryScreenPreview(
+                nowPlayingBar = {
+                    Bar(notPlaying, failure = DisplayError("Could not read what is playing."), isPlaying = false)
+                },
+            )
         }
 
     @Test

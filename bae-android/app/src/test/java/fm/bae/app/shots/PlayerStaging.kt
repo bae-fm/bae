@@ -57,7 +57,7 @@ internal class PlayerStaging(
         BridgeTrackPosition(
             positionMs = elapsedSeconds * MILLIS_PER_SECOND,
             durationMs = durationMs.toULong(),
-            progress = (elapsedSeconds * MILLIS_PER_SECOND).toDouble() / durationMs,
+            progress = if (durationMs == 0L) 0.0 else (elapsedSeconds * MILLIS_PER_SECOND).toDouble() / durationMs,
             seeks = 0uL,
         )
     val positions = LatestStream.trackPositions(mapOf(track.trackId to position)).source(track.trackId)
@@ -87,6 +87,9 @@ internal class PlayerStaging(
 
     private fun clock(ms: Long): BridgeDurationClock = PreviewData.durationClock(ms.toULong())
 }
+
+/** The bar before anything plays: no position, no length, nothing buffered. */
+internal val notPlaying = PlayerStaging(elapsedSeconds = 0, held = emptyList(), durationSeconds = 0)
 
 /** A track a third of the way in, with its first 60% buffered. */
 internal val playing =

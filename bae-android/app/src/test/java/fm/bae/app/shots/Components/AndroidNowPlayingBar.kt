@@ -46,6 +46,7 @@ internal fun Bar(
     repeatMode: BridgeRepeatMode = BridgeRepeatMode.OFF,
     castButton: @Composable () -> Unit = { CastBarButton(casting = false, onClick = {}) },
     failure: DisplayError? = null,
+    isPlaying: Boolean = true,
 ) = Covers {
     AndroidNowPlayingBar(
         track = if (failure == null) staging.track else null,
@@ -53,7 +54,7 @@ internal fun Bar(
         onExpand = {},
         transport = {
             NowPlayingBarControls(
-                isPlaying = true,
+                isPlaying = isPlaying,
                 waitsOnStorage = staging.waitsOnStorage,
                 repeatMode = repeatMode,
                 onPrevious = {},
