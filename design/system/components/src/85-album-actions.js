@@ -1,8 +1,8 @@
   // ==== part: album ====
   // ---- Album actions (macOS) ----
-  // The modal host: a scrim over the window, the content clipped to the sheet's face.
+  // The modal host: a scrim over the window, the content clipped to the sheet's face, centred over the whole window as the app's MacModal centres it.
   function MacModal(props) {
-    return h('div', { className: 'bae-m-scrim', style: { alignItems: 'center' } }, h('div', { className: 'bae-m-face-sheet bae-m-modal', style: { width: Number(props.width || 760), height: props.height ? Number(props.height) : null } }, props.children));
+    return h('div', { className: 'bae-m-scrim bae-m-scrim-centred' }, h('div', { className: 'bae-m-face-sheet bae-m-modal', style: { width: Number(props.width || 760), height: props.height ? Number(props.height) : null } }, props.children));
   }
   // A modal's header: title, a second line, its buttons on the right.
   function MacModalHeader(props) {
