@@ -249,6 +249,8 @@
 .bae-m-queue-head { display: flex; align-items: flex-start; padding: var(--space-edge) var(--space-edge) var(--space-group); }
 .bae-m-queue-head h2 { flex: 1; margin: 0; font: var(--type-title-weight) var(--type-title-size) var(--font-sans); letter-spacing: -0.3px; }
 .bae-m-queue-np { position: relative; isolation: isolate; margin: 0 var(--space-group) var(--space-compact); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; column-gap: var(--space-group); row-gap: var(--space-line); padding: var(--space-group); border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
+/* The cover spans both rows, and the second row takes what the cover needs past the words, so the strip sits right under the words as in the app, whose cover sits beside them. */
+.bae-m-queue-np { grid-template-rows: auto 1fr; }
 .bae-m-queue-np > :first-child { grid-row: 1 / span 2; }
 .bae-m-queue-np > .bae-m-queue-strip { grid-column: 2; grid-row: 2; }
 .bae-m-queue-np-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-line); }
