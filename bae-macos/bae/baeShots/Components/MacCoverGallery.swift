@@ -12,7 +12,22 @@ extension ShotScene {
             images: coverGalleryImages()
         ) {
             importStores(
-                coverGallery(boardCoverGallery()) {
+                coverGallery(
+                    boardCoverGallery(),
+                    focus: .file(fileId: "cover.jpg")
+                ) {
+                    .linked($0.remote?.items ?? [])
+                }
+            )
+        },
+        component(
+            "mac.component.cover-gallery.current-cover-shown",
+            width: 842,
+            height: 520,
+            images: coverGalleryImages()
+        ) {
+            importStores(
+                coverGallery(boardCoverGallery(), focus: nil) {
                     .linked($0.remote?.items ?? [])
                 }
             )
@@ -25,7 +40,8 @@ extension ShotScene {
         ) {
             importStores(
                 coverGallery(
-                    boardCoverGallery(remotes: [], linked: false)
+                    boardCoverGallery(remotes: [], linked: false),
+                    focus: .file(fileId: "cover.jpg")
                 ) { _ in .unlinked }
             )
         },
@@ -45,17 +61,20 @@ extension ShotScene {
                 }
             },
             fetchRemoteImage: { image, _ in
-                try BoardArtwork.data(named: image.url)
+                try BoardArtwork.data(
+                    named: BoardRemoteCover.artName(forUrl: image.url)
+                )
             }
         )
     }
 
     private static func coverGallery(
         _ gallery: BridgeCoverGallery,
+        focus: BridgeCoverKey?,
         remoteItems: (CoverGalleryContent) -> RemoteCoverItems
     ) -> some View {
         let content = CoverGalleryContent(
-            gallery.focused(on: .file(fileId: "cover.jpg"))
+            gallery.focused(on: focus)
         )
         return MacCoverGallery(
             content: content,

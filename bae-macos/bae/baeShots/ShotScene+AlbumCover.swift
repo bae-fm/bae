@@ -66,12 +66,29 @@ extension ShotScene {
         }
     }
 
-    /// A cover the board's release has on Discogs: its image's name, its
-    /// place in the release's Discogs gallery and the side it shows.
+    /// A cover the board's release has on Discogs: its place in the
+    /// release's Discogs gallery and the side it shows.
     struct BoardRemoteCover {
-        let name: String
         let position: UInt32
         let type: BridgeCoverImageType
+
+        /// The name of the cover's tile on the board, which the board draws
+        /// the cover's art from: `Discogs · 1 · Front`.
+        var tileName: String {
+            "Discogs · \(position) · \(String(describing: type).capitalized)"
+        }
+
+        /// The address of the cover's image, which holds the tile's name so
+        /// the shot's image store serves the art the board draws.
+        var imageUrl: String {
+            "https://images.example/\(tileName).png"
+        }
+
+        /// The art the board draws for the Discogs image at `url`.
+        static func artName(forUrl url: String) -> String {
+            let name = (url as NSString).lastPathComponent
+            return (name as NSString).deletingPathExtension
+        }
     }
 
     /// What core reads for the board's release: its cover, two Discogs
@@ -80,8 +97,8 @@ extension ShotScene {
     /// release.
     static func boardCoverGallery(
         remotes remoteCovers: [BoardRemoteCover] = [
-            BoardRemoteCover(name: "front", position: 1, type: .front),
-            BoardRemoteCover(name: "back", position: 2, type: .back),
+            BoardRemoteCover(position: 1, type: .front),
+            BoardRemoteCover(position: 2, type: .back),
         ],
         files fileNames: [String] = ["cover.jpg", "back.jpg", "disc.jpg"],
         releaseId: String = "rel-board-0",
@@ -126,7 +143,7 @@ extension ShotScene {
         _ cover: BoardRemoteCover
     ) -> BridgeGalleryCover {
         let image = BridgeRemoteImageSet(
-            url: "https://images.example/\(cover.name).png",
+            url: cover.imageUrl,
             downscaled: []
         )
         let choice = PreviewData.catalogCoverChoice(image, source: .discogs)
