@@ -188,16 +188,11 @@ extension View {
         return clipShape(face)
             .background {
                 if elevated {
-                    let radius = ThemeSpace.group
-                    let offset = ThemeSpace.compact
-                    let shadowRoom = 2 * radius + offset
-                    // Rasterize the face and its shadow together. A macOS
-                    // window reverses the vertical offset of a layer shadow.
-                    face.fill(Theme.surfaceElevated)
-                        .shadow(color: Theme.shadow, radius: radius, y: offset)
-                        .padding(shadowRoom)
-                        .drawingGroup()
-                        .padding(-shadowRoom)
+                    ShadowedFace(
+                        cornerRadius: ThemeRadius.card,
+                        radius: ThemeSpace.group,
+                        offset: ThemeSpace.compact
+                    )
                 }
                 else {
                     face.fill(Theme.surface)

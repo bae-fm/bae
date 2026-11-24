@@ -73,7 +73,14 @@ struct MacAlbumPanel: View {
                     .clipShape(
                         RoundedRectangle(cornerRadius: ThemeRadius.cover)
                     )
-                    .shadow(color: Theme.shadow, radius: 20, y: 12)
+                    // The board's cover shadow is 0 12px 20px.
+                    .background {
+                        ShadowedFace(
+                            cornerRadius: ThemeRadius.cover,
+                            radius: 20,
+                            offset: 12
+                        )
+                    }
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onBrowseImages)
                 VStack(alignment: .leading, spacing: ThemeSpace.inline) {
@@ -129,7 +136,14 @@ struct MacAlbumPanel: View {
             RoundedRectangle(cornerRadius: ThemeRadius.panel)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         )
-        .shadow(color: Theme.shadow, radius: 28, y: 18)
+        // The board's panel shadow is 0 18px 28px.
+        .background {
+            ShadowedFace(
+                cornerRadius: ThemeRadius.panel,
+                radius: 28,
+                offset: 18
+            )
+        }
         .overlay(alignment: .topTrailing) {
             MacCloseButton(onClose: onClose)
                 .padding(ThemeSpace.edge)
