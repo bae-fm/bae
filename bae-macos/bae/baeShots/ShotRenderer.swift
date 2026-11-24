@@ -128,6 +128,7 @@ enum ShotRenderer {
             let alerts = try await alertPanels()
             let sheets = window.attachedSheet.map { [$0] } ?? []
             try await becomeKey(window, scene: scene)
+            logFocus(of: window, scene: scene)
             try await shownOnScreen(
                 [window] + sheets + AlertWindows.shared.panels,
                 scene: scene

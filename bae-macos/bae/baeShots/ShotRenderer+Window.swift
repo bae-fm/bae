@@ -65,6 +65,14 @@ extension ShotRenderer {
         }
     }
 
+    /// Which view holds the keyboard in `window` when the scene is taken, so
+    /// a field that draws focused is explained by the log.
+    static func logFocus(of window: NSWindow, scene: ShotScene) {
+        logger.info(
+            "scene \(scene.id) first responder \(String(describing: window.firstResponder)) key \(window.isKeyWindow)"
+        )
+    }
+
     /// Wait for the window or its top sheet or alert to be key, asking
     /// for that again whenever it loses it: the window server draws a title
     /// bar and toolbar as inactive otherwise, which the app never shows in
