@@ -54,7 +54,8 @@ extension ShotScene {
                     wait: .paused,
                     paused: true
                 )
-            )
+            ),
+            bars: ["0": 0.4, "1": 0.3, "2": 0.2]
         ),
         activityPanel(
             "mac.component.activity.status-unknown",
