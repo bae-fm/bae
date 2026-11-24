@@ -15,7 +15,6 @@ struct FindOnlineHeader: View {
                     MacButton(kind: .borderless, action: onBack) {
                         Label("Back", systemImage: "chevron.backward")
                     }
-                    .accent()
                     .themeText(.body)
                 }
                 Spacer(minLength: ThemeSpace.group)
