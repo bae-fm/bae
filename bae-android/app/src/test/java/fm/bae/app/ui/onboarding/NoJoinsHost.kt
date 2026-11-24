@@ -137,6 +137,12 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         cancellation: BridgeCancellation,
     ): BridgeBootstrapResult = unfaked("resumeReplacement")
 
+    override suspend fun finishResetSignedIn(
+        libraryId: String,
+        setup: BridgeLibrarySetup,
+        cancellation: BridgeCancellation,
+    ): BridgeBootstrapResult = unfaked("finishResetSignedIn")
+
     override suspend fun resumeRestore(
         restore: BridgeUnfinishedRestore,
         setup: BridgeLibrarySetup,
