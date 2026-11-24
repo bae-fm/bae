@@ -36,7 +36,7 @@ extension ShotScene {
             "mac.component.playlist-header.options-open",
             summary: playlistSummary(
                 owner: "Ana",
-                sharing: .household,
+                sharing: .private,
                 yours: true
             ),
             height: 230,
@@ -54,20 +54,25 @@ extension ShotScene {
             MacPlaylistHeader(summary: summary, onEdit: {}, onDelete: {})
                 .environment(Playback.stub())
                 .frame(width: 404, alignment: .leading)
-                .overlay(alignment: .topTrailing) {
+                .overlay(alignment: .topLeading) {
                     if optionsOpen {
-                        // Under the ⋯ at the header's right, which is centred
-                        // beside the 72pt picture.
-                        MacMenuInPlace {
-                            PlaylistOptionsMenu(
-                                onShuffle: {},
-                                owner: PlaylistOptionsMenu.OwnerActions(
-                                    edit: {},
-                                    delete: {}
+                        // Under the ⋯, which follows Play: the menu's right
+                        // edge is the button's, 204.5 points in, and its top
+                        // 4 points under the button's bottom.
+                        MacMenuInPlace(
+                            {
+                                PlaylistOptionsMenu(
+                                    onShuffle: {},
+                                    owner: PlaylistOptionsMenu.OwnerActions(
+                                        edit: {},
+                                        delete: {}
+                                    )
                                 )
-                            )
-                        }
-                        .padding(.top, 54)
+                            },
+                            highlighted: 0
+                        )
+                        .padding(.leading, 204.5 - 141)
+                        .padding(.top, 107)
                     }
                 }
         }

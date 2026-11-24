@@ -37,7 +37,7 @@ extension ShotScene {
             "mac.component.playlist-page.options-open",
             summary: playlistSummary(
                 owner: "Ana",
-                sharing: .household,
+                sharing: .private,
                 yours: true
             ),
             optionsOpen: true
@@ -61,21 +61,25 @@ extension ShotScene {
             .albumDetailPreviewEnvironment()
             .environment(backing.session)
             .frame(width: 404, alignment: .leading)
-            .overlay(alignment: .topTrailing) {
+            .overlay(alignment: .topLeading) {
                 if optionsOpen {
-                    // Under the ⋯ at the page's right: the page's margin and
-                    // the picture's height down, the button's height further.
-                    MacMenuInPlace {
-                        PlaylistOptionsMenu(
-                            onShuffle: {},
-                            owner: PlaylistOptionsMenu.OwnerActions(
-                                edit: {},
-                                delete: {}
+                    // Under the ⋯, which follows Play: the menu's right edge
+                    // is the button's, 242.5 points in, and its top 4 points
+                    // under the button's bottom.
+                    MacMenuInPlace(
+                        {
+                            PlaylistOptionsMenu(
+                                onShuffle: {},
+                                owner: PlaylistOptionsMenu.OwnerActions(
+                                    edit: {},
+                                    delete: {}
+                                )
                             )
-                        )
-                    }
-                    .padding(.top, ThemeSpace.section + 50 + 4)
-                    .padding(.trailing, ThemeSpace.section)
+                        },
+                        highlighted: 0
+                    )
+                    .padding(.leading, 242.5 - 141)
+                    .padding(.top, 119)
                 }
             }
         }
