@@ -24,7 +24,7 @@ private let logger = Logger.bae("SaveFormatPicker")
 /// per title and the id is what a save needs.
 @MainActor
 final class SaveFormatPicker: NSObject {
-    let popup: NSPopUpButton
+    let popup: MacSavePanelFormatPopUp
 
     private let openFormats: @MainActor () -> Void
     private let onChange: @MainActor (SaveFormatChoice) -> Void
@@ -56,7 +56,7 @@ final class SaveFormatPicker: NSObject {
         choices = SaveFormatChoice.choices(presets: [last])
         chosenIndex = 0
         choiceRead = Self.open { try outputs.subscribeSaveChoice(last.id) }
-        popup = NSPopUpButton(frame: frame, pullsDown: false)
+        popup = MacSavePanelFormatPopUp(frame: frame, pullsDown: false)
         super.init()
         popup.target = self
         popup.action = #selector(popupChanged(_:))

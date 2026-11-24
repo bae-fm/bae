@@ -25,7 +25,7 @@ extension ShotScene {
         let formats: [String]
 
         func makeNSView(context _: Context) -> NSView {
-            let popup = NSPopUpButton(
+            let popup = MacSavePanelFormatPopUp(
                 frame: MacSavePanelFormat.popupFrame,
                 pullsDown: false
             )
