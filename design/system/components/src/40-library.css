@@ -121,6 +121,8 @@
 .bae-a-iconbtn-muted { color: var(--text-secondary); }
 .bae-a-iconbtn-accent { color: var(--accent); }
 .bae-a-iconbtn-warning { color: var(--warning-icon); }
+.bae-a-iconbtn-inverse { color: var(--background); }
+.bae-a-iconbtn-box-32 { width: 32px; height: 32px; }
 .bae-a-iconbtn-box-40 { width: var(--size-android-bar-button); height: var(--size-android-bar-button); }
 .bae-a-iconbtn-box-56 { width: 56px; height: 56px; }
 .bae-a-searchbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); padding: var(--space-related); background: var(--surface); }
