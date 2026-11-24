@@ -36,6 +36,11 @@ struct AccessibilityTree: Sendable {
         let subrole: String?
         let title: String?
         let description: String?
+        /// The words of the element this one names itself by
+        /// (`AXTitleUIElement`), such as the label beside a pop-up.
+        /// VoiceOver reads them as the name of a control that has no title or
+        /// description of its own.
+        var titleElementWords: String?
         let placeholder: String?
         let value: Value?
         let x: Double
@@ -157,6 +162,7 @@ struct AccessibilityTree: Sendable {
                 subrole: Self.string(element, kAXSubroleAttribute),
                 title: Self.string(element, kAXTitleAttribute),
                 description: Self.string(element, kAXDescriptionAttribute),
+                titleElementWords: Self.titleElementWords(of: element),
                 placeholder: Self.string(element, kAXPlaceholderValueAttribute),
                 value: value,
                 x: frame.minX - origin.x,
@@ -169,6 +175,20 @@ struct AccessibilityTree: Sendable {
                 style: Self.style(of: element, value: value, role: role),
                 parent: parent
             )
+        }
+
+        /// The words of the element `element` names itself by, as its value,
+        /// or its title when it has no value.
+        private static func titleElementWords(of element: AXUIElement)
+            -> String?
+        {
+            guard
+                let named = attribute(element, kAXTitleUIElementAttribute),
+                CFGetTypeID(named) == AXUIElementGetTypeID()
+            else { return nil }
+            let label = unsafeDowncast(named, to: AXUIElement.self)
+            return string(label, kAXValueAttribute)
+                ?? string(label, kAXTitleAttribute)
         }
 
         static func frame(of element: AXUIElement) -> CGRect? {
@@ -482,7 +502,9 @@ extension AccessibilityTree {
 extension AccessibilityTree.Node {
     var frame: CGRect { CGRect(x: x, y: y, width: width, height: height) }
 
-    var controlName: String? { title ?? description }
+    /// The name VoiceOver reads for a control: its title, else its
+    /// description, else the words of the element it names itself by.
+    var controlName: String? { title ?? description ?? titleElementWords }
 
     var staticText: String? { Self.staticText(role: role, value: value) }
 
@@ -508,6 +530,7 @@ extension AccessibilityTree.Node {
             subrole: subrole,
             title: title,
             description: description,
+            titleElementWords: titleElementWords,
             placeholder: placeholder,
             value: value,
             x: x + dx,
