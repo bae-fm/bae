@@ -114,5 +114,7 @@ struct MacTrackColumns: View {
                 .frame(height: height)
             }
         }
+        // VoiceOver reads each column in track order before moving to the next.
+        .accessibilityElement(children: .contain)
     }
 }
