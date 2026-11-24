@@ -50,7 +50,7 @@ extension ShotScene {
                 } content: {
                     Text("01 Harbor Lights.flac")
                 } trail: {
-                    Text("34.1 MB").themeText(.fine)
+                    Text("34.1 MB")
                 }
             }
         },
@@ -62,7 +62,6 @@ extension ShotScene {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text("3 uploading")
                     Text("96 MB of 221 MB")
-                        .themeText(.detail)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
