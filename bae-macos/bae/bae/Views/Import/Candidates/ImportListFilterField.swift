@@ -37,6 +37,7 @@ struct ImportListFilterField: View {
                         .filterBarControl()
                 }
                 .buttonStyle(.accentPlain)
+                .accessibilityLabel("Clear filter")
             }
         }
     }
