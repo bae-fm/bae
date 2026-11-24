@@ -4,6 +4,6 @@ The identifier chips: `chips` as "Label|value|filled|outlined|struck|dash|Source
 
 Each chip is a `MacIdentifierChip`. Each Disc ID, Barcode and Catalog # chip that holds a value toggles: pressing it leaves that identifier out of the run, or puts it back. Pressing an outlined Catalog # chip puts its number into the run.
 
-The band folds the outlined Catalog # chips after the other chips, behind a "+N more" button with their count (decision #2237). `candidates="shown"` draws every one, then the button, which then reads Fewer and folds them again. The Title search chip's words are a button that opens its artist and title fields. The ISRC and dash chips are not buttons.
+The band folds the outlined Catalog # chips after the other chips, behind a "+N more" button with their count (decision #2237). `candidates="shown"` draws every one, then the button, which then reads Show fewer and folds them again. The Title search chip's words are a button that opens its artist and title fields. The ISRC and dash chips are not buttons.
 
 **In the code:** macOS: `MacIdentifierBand` and `MacIdentifierChip` (`Views/Import/Search/`).

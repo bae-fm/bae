@@ -350,7 +350,7 @@
       props.sources ? list(props.sources).map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
   }
   // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated. A Disc ID, Barcode or Catalog # chip that holds a value toggles, and a Title search chip's words are a button that opens its fields.
-  // An outlined Catalog # chip is a catalog number the folder offers that no release confirms; pressing it puts the number into the run. The band folds these after the other chips, behind a "+N more" button with their count. `candidates`: `folded` (the default) or `shown`, which draws every one, then the button, which reads Fewer. `open`: the label of the chip whose +N popover is drawn open, such as ISRC.
+  // An outlined Catalog # chip is a catalog number the folder offers that no release confirms; pressing it puts the number into the run. The band folds these after the other chips, behind a "+N more" button with their count. `candidates`: `folded` (the default) or `shown`, which draws every one, then the button, which reads Show fewer. `open`: the label of the chip whose +N popover is drawn open, such as ISRC.
   var TOGGLED_IDENTIFIERS = ['Disc ID', 'Barcode', 'Catalog #'];
   function MacIdentifierBand(props) {
     var parts = list(props.chips).map(function (c) { return c.split('|'); });
@@ -360,7 +360,7 @@
     return h('div', { className: 'bae-m-band' },
       parts.filter(function (p) { return !isCandidate(p); }).map(chip),
       shown ? candidates.map(function (p, i) { return chip(p, 'c' + i); }) : null,
-      candidates.length ? h('button', { type: 'button', className: 'bae-plainbtn', title: 'Catalog numbers found in the folder that no release confirms' }, h(StatusChip, null, shown ? 'Fewer' : '+' + candidates.length + ' more')) : null);
+      candidates.length ? h('button', { type: 'button', className: 'bae-plainbtn', title: 'Catalog numbers found in the folder that no release confirms' }, h(StatusChip, null, shown ? 'Show fewer' : '+' + candidates.length + ' more')) : null);
   }
   // Every catalog that describes a release, as a wrapped row of links to each catalog's page, in the order core lists them (`records`: catalog names, comma-separated).
   // `buttons`: each is a button that opens the page, as on a found album's card, rather than a link.
