@@ -114,17 +114,7 @@ struct MacCoverGallery: View {
                     MacNotice(error: failure)
                 }
                 Spacer(minLength: ThemeSpace.group)
-                // Saving can download a remote cover, or read a release's
-                // image from its storage.
-                MacSpinner(
-                    Text(
-                        "Saving the cover…",
-                        comment:
-                            "Cover picker, while bae saves the cover picked, which can mean downloading it from a catalog or reading it from the release's storage."
-                    )
-                )
-                .opacity(isSaving ? 1 : 0)
-                .accessibilityHidden(!isSaving)
+                savingSpinner
                 MacButton("Use this cover", kind: .primary) {
                     if let focus = content.focus {
                         onSelect(CoverItem(gallery: focus.cover))
@@ -139,6 +129,27 @@ struct MacCoverGallery: View {
             }
             .padding(.vertical, ThemeSpace.edge)
             .padding(.horizontal, ThemeSpace.section)
+        }
+    }
+
+    /// Saving can download a remote cover, or read a release's image from
+    /// its storage. While no save runs, the spinner stays in the layout but is
+    /// hidden, which also takes it out of the accessibility tree: SwiftUI's
+    /// `accessibilityHidden` does not reach AppKit's progress indicator.
+    @ViewBuilder
+    private var savingSpinner: some View {
+        let spinner = MacSpinner(
+            Text(
+                "Saving the cover…",
+                comment:
+                    "Cover picker, while bae saves the cover picked, which can mean downloading it from a catalog or reading it from the release's storage."
+            )
+        )
+        if isSaving {
+            spinner
+        }
+        else {
+            spinner.hidden()
         }
     }
 
