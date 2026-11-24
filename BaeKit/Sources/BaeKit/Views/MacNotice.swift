@@ -247,7 +247,10 @@ public struct MacNotice: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if (buttons == .inline && hasChoiceButtons) || onDismiss != nil {
-                HStack(spacing: ThemeSpace.related) {
+                // The dismiss box reaches `related` into this gap, so the
+                // glyph and the buttons sit a group space apart, as the
+                // board draws them.
+                HStack(spacing: ThemeSpace.group) {
                     if buttons == .inline {
                         // A 24 pt button is 8 pt taller than the title's 16 pt
                         // line and reaches 4 pt past it on each side, into
