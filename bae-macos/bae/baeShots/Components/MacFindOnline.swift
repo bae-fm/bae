@@ -8,7 +8,7 @@ extension ShotScene {
         component(
             "mac.component.find-online.default",
             page: true,
-            width: 580,
+            width: 842,
             height: 360,
             images: PreviewData.artImageStore()
         ) {
@@ -17,7 +17,7 @@ extension ShotScene {
         component(
             "mac.component.find-online.no-discogs-bar",
             page: true,
-            width: 580,
+            width: 842,
             height: 360,
             images: PreviewData.artImageStore()
         ) {
@@ -31,7 +31,7 @@ extension ShotScene {
                 state: PreviewData.searchStateNotFound,
                 showsDiscogsBar: showsDiscogsBar
             )
-            .frame(width: 580, height: 330, alignment: .top)
+            .frame(width: 842, height: 330, alignment: .top)
         )
     }
 }
