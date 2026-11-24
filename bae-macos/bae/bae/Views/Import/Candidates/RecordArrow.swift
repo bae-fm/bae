@@ -21,6 +21,7 @@ struct RecordArrow: View {
             if readFromRecord {
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: Self.width))
+                    .frame(width: Self.width, height: Self.height)
                     .foregroundStyle(Theme.textSecondary)
                     .accessibilityIdentifier("identified-glyph")
                     .accessibilityLabel(
