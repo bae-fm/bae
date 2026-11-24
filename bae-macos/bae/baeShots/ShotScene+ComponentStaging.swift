@@ -53,7 +53,14 @@ extension ShotScene {
         [copperSkyRow(1), fieldRecordingsRow(2), glassHarborRow(3)]
     }
 
-    static func fieldRecordingsRow(_ number: Int) -> BridgeStorageRow {
+    /// Field Recordings, its upload moving unless `upload` says otherwise.
+    static func fieldRecordingsRow(
+        _ number: Int,
+        upload: BridgeReleaseUpload = ShotScene.shotUpload(
+            queued: 0,
+            uploading: 1
+        )
+    ) -> BridgeStorageRow {
         storageRow(
             BoardRow(
                 title: "Field Recordings",
@@ -67,7 +74,7 @@ extension ShotScene {
             ),
             releaseId: "rel-shot-\(number)",
             albumId: "album-shot-\(number)",
-            upload: shotUpload(queued: 0, uploading: 1)
+            upload: upload
         )
     }
 

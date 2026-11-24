@@ -38,7 +38,7 @@ extension ShotScene {
             statusChip(.movingToThisDevice(step: .queued))
         },
         storageChip("mac.component.storage-chip.upload-blocked") {
-            queuedUploadChip()
+            blockedUploadChip()
         },
     ]
 
@@ -124,6 +124,21 @@ extension ShotScene {
             ),
             status: .uploading,
             long: long
+        )
+    }
+
+    /// An upload held by an original that is missing, which the chip's word
+    /// says as Waiting.
+    private static func blockedUploadChip() -> MacStorageChip {
+        MacStorageChip(
+            release: PreviewData.storageRelease(
+                upload: shotUpload(
+                    queued: 3,
+                    uploading: 0,
+                    missing: "disc 2.flac"
+                )
+            ),
+            status: .uploading
         )
     }
 

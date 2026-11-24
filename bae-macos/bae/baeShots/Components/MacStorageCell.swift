@@ -65,7 +65,7 @@ extension ShotScene {
         ),
         storageCell(
             "mac.component.storage-cell.upload-queued",
-            fieldRecordingsRow(1),
+            fieldRecordingsRow(1, upload: shotUpload(queued: 3, uploading: 0)),
             .storage
         ),
         storageCell(
@@ -75,7 +75,14 @@ extension ShotScene {
         ),
         storageCell(
             "mac.component.storage-cell.upload-blocked",
-            fieldRecordingsRow(1),
+            fieldRecordingsRow(
+                1,
+                upload: shotUpload(
+                    queued: 3,
+                    uploading: 0,
+                    missing: "disc 2.flac"
+                )
+            ),
             .storage
         ),
         storageCell(
