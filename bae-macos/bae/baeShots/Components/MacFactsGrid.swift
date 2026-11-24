@@ -5,7 +5,7 @@ import SwiftUI
 
 extension ShotScene {
     /// `MacFactsGrid`: a file's facts, fewer facts, a value that wraps, and
-    /// an album's credits in the wide look.
+    /// a file's facts in the wide look.
     static let macFactsGridScenes: [ShotScene] = [
         component(
             "mac.component.facts-grid.file-facts",
@@ -46,13 +46,14 @@ extension ShotScene {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         },
-        component("mac.component.facts-grid.wide", width: 580, height: 90) {
+        component("mac.component.facts-grid.wide", width: 580, height: 110) {
             MacFactsGrid(wide: true) {
-                MacFact("Producer") { Text(verbatim: "Ines Varga") }
-                MacFact("Engineer") { Text(verbatim: "Tomas Brell") }
-                MacFact("Arranger") {
-                    Text(verbatim: "Odile Fen (tracks 2, 5)")
+                MacFact("Folder") {
+                    Text(verbatim: "Mara Quill/Low Tide Hours")
                 }
+                MacFact("Kind") { Text(verbatim: "Audio") }
+                MacFact("Format") { Text(verbatim: "FLAC 16/44.1") }
+                MacFact("Size") { Text(verbatim: "34.1 MB").monospacedDigit() }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         },
