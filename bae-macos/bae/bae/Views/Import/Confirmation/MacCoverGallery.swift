@@ -281,6 +281,9 @@ extension MacCoverGallery {
                 // the heading's text, which a label would draw it at.
                 Image(systemName: icon)
                     .themeIcon(.medium)
+                    // The board's glyph box, 15 pt square whatever the
+                    // glyph's own width.
+                    .frame(width: 15, height: 15)
                     .accessibilityHidden(true)
                 Text(title)
                     .themeText(.heading)
