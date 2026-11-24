@@ -46,20 +46,22 @@
         h('div', { className: 'bae-m-cgal-right' }, h(MacCoverPreview, { name: sel, image: sel === 'Cover' ? props.album || 'Low Tide Hours' : sel, source: source, position: all.indexOf(sel) + 1, count: all.length }))),
       h('div', { className: 'bae-m-cgal-foot' }, h(MacButton, { kind: 'primary' }, 'Use this cover')));
   }
-  // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed. Each thumbnail is a button that shows its image, with no name of its own, as the app's is.
+  // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed. Each thumbnail is a button that shows its image, named by the caption the lightbox shows for it (`names`, in the images' order; the image's seed where none is given).
   function MacThumbnailStrip(props) {
-    var images = list(props.images), sel = props.selected || images[0];
-    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('button', { key: i, type: 'button', className: cx('bae-plainbtn bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 'size-thumbnail', radius: 'radius-artwork' })); }));
+    var images = list(props.images), names = list(props.names), sel = props.selected || images[0];
+    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('button', { key: i, type: 'button', 'aria-label': names[i] || t, className: cx('bae-plainbtn bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 'size-thumbnail', radius: 'radius-artwork' })); }));
   }
-  // The lightbox: the image on the backdrop, the Close button, the Back and Forward buttons, then at its foot the shown image's caption (`label`, and `source` under it) over the thumbnail strip (`images`, `selected`), which a lone image goes without.
+  // The lightbox: the image on the backdrop, the Close button, the Back and Forward buttons, then at its foot the shown image's caption (`label`, and `source` under it) over the thumbnail strip (`images`, `names`, `selected`), which a lone image goes without.
   function MacLightbox(props) {
     var images = list(props.images || 'Low Tide Hours,Low Tide Hours back,Low Tide Hours disc,Low Tide Hours booklet');
+    // The default images' captions, which name their thumbnails.
+    var names = props.names || (props.images ? null : 'cover.jpg,back.jpg,disc.jpg,booklet.jpg');
     return h('div', { className: 'bae-m-lightbox' },
       h('div', { className: 'bae-m-lb-top' }, props.browse ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-pill' }, h(Sym, { name: 'grid', size: 12 }), 'Browse all images') : h('span'), h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-close', 'aria-label': 'Close' }, h(Sym, { name: 'close', size: 15 }))),
       h('div', { className: 'bae-m-lb-stage' }, images.length > 1 ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-arrow', 'aria-label': 'Back' }, h(Sym, { name: 'left', size: 22 })) : h('span'), props.state === 'failed' ? h(MacNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load the image', action: 'Retry' }) : props.state === 'loading' ? h(MacSpinner, { label: 'Loading the image…' }) : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), images.length > 1 ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-lb-arrow', 'aria-label': 'Forward' }, h(Sym, { name: 'right', size: 22 })) : h('span')),
       h('div', { className: 'bae-m-lb-foot' },
         h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 'var(--type-detail-size)' } }, props.source || 'Release files')),
-        images.length > 1 ? h(MacThumbnailStrip, { images: images.join(','), selected: props.selected }) : null));
+        images.length > 1 ? h(MacThumbnailStrip, { images: images.join(','), names: names, selected: props.selected }) : null));
   }
   // A release's storage at rest (`state`: local, pinned or cloud): Local, Pinned or In cloud.
   function MacStorageState(props) {
