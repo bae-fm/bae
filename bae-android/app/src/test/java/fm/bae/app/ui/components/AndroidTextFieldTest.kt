@@ -3,14 +3,17 @@ package fm.bae.app.ui.components
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.text.TextStyle
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.ui.TestTheme
+import fm.bae.app.ui.appearance.ThemeText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -108,6 +111,16 @@ class AndroidTextFieldTest {
                 .fetchSemanticsNode()
                 .size.height
         assertEquals(bare, helped)
+    }
+
+    /** A field's raised label and its helper line are Material's small body text, which the design sets as its detail text. */
+    @Test
+    fun aFieldsSmallTextIsTheDesignsDetailText() {
+        var small: TextStyle? = null
+        compose.setContent { TestTheme { small = MaterialTheme.typography.bodySmall } }
+        compose.waitForIdle()
+
+        assertEquals(ThemeText.detail.style, small)
     }
 }
 

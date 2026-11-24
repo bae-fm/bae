@@ -42,12 +42,13 @@ private val LocalIsDark = staticCompositionLocalOf<Boolean> { error("BaeTheme pr
 
 /**
  * The text styles Material's own components draw with, set to the design's: a button's or chip's label, a snackbar's
- * message and a field's text. Material's other styles stay as they are.
+ * message, a field's text, its raised label and its helper line. Material's other styles stay as they are.
  */
 private val baeTypography =
     Typography(
         labelLarge = ThemeText.androidLabel.style,
         bodyMedium = ThemeText.body.style,
+        bodySmall = ThemeText.detail.style,
         bodyLarge = ThemeText.androidBodyLarge.style,
     )
 
