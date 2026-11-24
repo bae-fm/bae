@@ -201,6 +201,10 @@ the catalog number, then the country) and a copy line (the media and details).
 The person picks which of an album's releases its page shows. The page shows
 the picked release while the album holds it, and the primary release otherwise.
 
+On macOS, VoiceOver reads each row of the album page's track list as one
+group, in the order its number, title, artists and length, before moving to the
+next row.
+
 On macOS the person picks several tracks of the album page's track list:
 cmd-click picks or unpicks a row, shift-click picks the rows from the last pick
 to the one clicked, and a plain click clears the picks. A shift-click picks the

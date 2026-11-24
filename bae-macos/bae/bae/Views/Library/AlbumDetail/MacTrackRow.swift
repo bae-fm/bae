@@ -36,6 +36,16 @@ struct MacTrackRow: View {
     static let leadingSlotMinWidth: CGFloat = 22
 
     var body: some View {
+        // VoiceOver reads a row's pieces in the board's order: number, title,
+        // artists, length. Read loose, they sort by position, and the title,
+        // which sits higher than the centred number, comes before it. A sort priority orders only the elements of its
+        // container, so priorities on the pieces inside one container per row
+        // order the pieces and leave the order of rows alone.
+        ratedRow.accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var ratedRow: some View {
         switch rating {
         case .hidden:
             row
@@ -67,6 +77,7 @@ struct MacTrackRow: View {
                 onPlay: onPlay,
                 onTogglePlayPause: onTogglePlayPause
             )
+            .accessibilitySortPriority(4)
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.title)
                     .themeText(.rowTitle)
@@ -74,11 +85,13 @@ struct MacTrackRow: View {
                         isCurrent ? Theme.accent : Theme.textPrimary
                     )
                     .lineLimit(1)
+                    .accessibilitySortPriority(3)
                 if let artist {
                     Text(artist)
                         .themeText(.detail)
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
+                        .accessibilitySortPriority(2)
                 }
             }
             Spacer(minLength: 0)
@@ -86,6 +99,7 @@ struct MacTrackRow: View {
                 .themeText(.detail)
                 .monospacedDigit()
                 .foregroundStyle(Theme.textSecondary)
+                .accessibilitySortPriority(1)
         }
         .padding(.horizontal, ThemeSpace.related)
         .frame(maxHeight: .infinity)
