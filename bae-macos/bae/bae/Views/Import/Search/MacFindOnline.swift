@@ -200,7 +200,7 @@ struct MacFindOnline: View {
 
     /// The form, with what it turned up beneath it.
     private var searchContent: some View {
-        VStack(spacing: ThemeSpace.group) {
+        VStack(spacing: 0) {
             ImportSearchFormView(
                 form: form,
                 onCommit: onCommitForm,
@@ -219,6 +219,8 @@ struct MacFindOnline: View {
                 )
             }
         }
-        .padding(.bottom, ThemeSpace.group)
+        // The results end the section on their own space; a form alone
+        // ends it on a group space, as the board's section body does.
+        .padding(.bottom, state.search == nil ? ThemeSpace.group : 0)
     }
 }
