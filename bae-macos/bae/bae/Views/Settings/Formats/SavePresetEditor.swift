@@ -95,22 +95,23 @@ struct SavePresetEditor: View {
     }
 
     private var nameRow: some View {
-        FieldColumn {
-            MacTextField(
-                "Name",
-                error: nameTaken ? "Another format has this name." : nil
-            ) {
+        MacFieldRow("Name", labelWidth: 90) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 BoxedField(
                     text: $nameDraft,
                     focus: $nameFocused,
                     equals: true,
                     invalid: nameTaken
                 )
+                .accessibilityLabel(Text("Name"))
                 .onSubmit(commitName)
                 .onChange(of: nameFocused) { _, focused in
                     if !focused {
                         commitName()
                     }
+                }
+                if nameTaken {
+                    FieldNote("Another format has this name.", isError: true)
                 }
             }
         }
