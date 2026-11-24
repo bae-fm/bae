@@ -81,6 +81,11 @@ public struct MacAccentPicker: View {
     let selected: AccentChoice
     let onSelect: (AccentChoice) -> Void
 
+    /// Where each disc is, in the picker's own space, for the radio buttons
+    /// that assistive technology reads.
+    @State
+    private var frames: [AccentChoice: CGRect] = [:]
+
     public init(
         selected: AccentChoice,
         onSelect: @escaping (AccentChoice) -> Void
@@ -95,6 +100,28 @@ public struct MacAccentPicker: View {
                 swatch(accent)
             }
         }
+        .coordinateSpace(.named(Self.space))
+        #if os(macOS)
+            // Assistive technology reads the swatches as the radio group
+            // they are, one radio button for each accent, each where its
+            // disc is.
+            .accessibilityHidden(true)
+            .overlay {
+                MacRadioGroupAccessibility(
+                    groupLabel: String(
+                        localized: "Accent",
+                        table: "Appearance",
+                        bundle: .module
+                    ),
+                    labels: AccentChoice.allCases.map(\.title),
+                    frames: AccentChoice.allCases.map { frames[$0] },
+                    selectedIndex: AccentChoice.allCases.firstIndex(
+                        of: selected
+                    ) ?? 0,
+                    select: { onSelect(AccentChoice.allCases[$0]) }
+                )
+            }
+        #endif
     }
 
     /// One accent's disc, ringed while it is the chosen one.
@@ -106,6 +133,11 @@ public struct MacAccentPicker: View {
             Circle()
                 .fill(accent.colors.fill)
                 .frame(width: Self.swatchSize, height: Self.swatchSize)
+                .onGeometryChange(for: CGRect.self) {
+                    $0.frame(in: .named(Self.space))
+                } action: {
+                    frames[accent] = $0
+                }
                 .overlay {
                     if chosen {
                         // A gap of the surface, then the ring.
@@ -128,6 +160,8 @@ public struct MacAccentPicker: View {
         .accessibilityAddTraits(chosen ? .isSelected : [])
         .help(accent.title)
     }
+
+    private static let space = "accent-picker"
 
     private static let swatchSize: CGFloat = 18
     private static let ringWidth: CGFloat = 1.5
