@@ -71,16 +71,20 @@ enum ErrorAlertWindow: String {
     @MainActor
     static func frontmost() -> Self? {
         guard let app = NSApp else { return nil }
-        // A sheet or alert can be key. Its window owns the shared error;
-        // MacAlert places the panel over whichever sheet or alert is open.
-        var key = app.keyWindow
-        while let window = key {
-            if let host = host(of: window) { return host }
-            key = window.sheetParent ?? window.parent
+        // The window getters hand back autoreleased windows, and a caller
+        // with no pool of its own would keep them alive for its whole run.
+        return autoreleasepool {
+            // A sheet or alert can be key. Its window owns the shared error;
+            // MacAlert places the panel over whichever sheet or alert is open.
+            var key = app.keyWindow
+            while let window = key {
+                if let host = host(of: window) { return host }
+                key = window.sheetParent ?? window.parent
+            }
+            return app.orderedWindows.lazy
+                .filter { $0.isVisible && !$0.isMiniaturized }
+                .compactMap { host(of: $0) }.first
         }
-        return app.orderedWindows.lazy
-            .filter { $0.isVisible && !$0.isMiniaturized }
-            .compactMap { host(of: $0) }.first
     }
 
     @MainActor
