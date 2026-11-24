@@ -73,7 +73,7 @@ fn removal_text(removal: coven::Removal) -> &'static str {
 }
 
 /// Why this installation can't send, as the failure's detail says it.
-fn reset_text(reason: coven::ResetReason) -> &'static str {
+fn reset_text(reason: &coven::ResetReason) -> &'static str {
     match reason {
         coven::ResetReason::Replaced => {
             "a reset or restore registered another installation in this one's place"
@@ -282,7 +282,7 @@ impl SyncStatusSnapshot {
                 return Some(UiError::diagnostic(C::DeviceRemoved, removal_text(*removal)))
             }
             coven::SyncState::NeedsReset { reason, .. } => {
-                return Some(UiError::diagnostic(C::DeviceResetRequired, reset_text(*reason)))
+                return Some(UiError::diagnostic(C::DeviceResetRequired, reset_text(reason)))
             }
             _ => {}
         }

@@ -94,6 +94,7 @@ fn a_record_of_replaced_member_keys_reads_as_the_reset_the_state_needs() {
         coven::PendingSubject::Slot(coven::Slot::new(3).unwrap()),
         coven::PendingReason::MemberKeysReplaced {
             member: coven::MemberId(uuid::Uuid::from_bytes([5; 16])),
+            by: None,
         },
     );
     coven::record_pending(&connection, &record).unwrap();

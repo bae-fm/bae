@@ -156,6 +156,7 @@ fn every_state_shows_its_words_color_cause_and_fix() {
     let keys_replaced = coven::SyncState::NeedsReset {
         reason: coven::ResetReason::MemberKeysReplaced {
             member: coven::MemberId(uuid::Uuid::from_u128(7)),
+            by: None,
         },
         unsent: coven::UnsentWork { writes: 1, files: 0 },
     };

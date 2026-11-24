@@ -229,6 +229,7 @@ fn only_a_copy_behind_another_installation_resets_at_once() {
     let keys_replaced = coven::SyncState::NeedsReset {
         reason: coven::ResetReason::MemberKeysReplaced {
             member: coven::MemberId(uuid::Uuid::from_u128(7)),
+            by: None,
         },
         unsent,
     };
