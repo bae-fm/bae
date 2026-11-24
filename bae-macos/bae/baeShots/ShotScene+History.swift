@@ -155,7 +155,11 @@ extension ShotScene {
                     id: "play-\(index)",
                     title: play.title,
                     artistLine: .named(play.artists),
-                    cover: nil,
+                    cover: BridgeImageRef(
+                        id: play.album,
+                        version: "1",
+                        imageType: .cover
+                    ),
                     startedAt: Int64(started.timeIntervalSince1970 * 1000),
                     playedOn: BridgeDay(
                         year: Int32(date.year ?? 0),
