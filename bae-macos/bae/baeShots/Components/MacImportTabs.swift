@@ -44,13 +44,14 @@ extension ShotScene {
         component(
             id,
             width: 420,
-            height: 60
+            height: 44
         ) {
             importStores(
                 MacImportTabs(
                     activeTab: .constant(tab),
                     listSlot: listSlot(ImportStore(), UiStore(), counts: counts)
                 )
+                .padding(ThemeSpace.related)
                 .frame(width: 420, alignment: .leading)
             )
         }
