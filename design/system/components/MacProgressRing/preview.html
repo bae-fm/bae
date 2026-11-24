@@ -8,7 +8,6 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     N('Progress', h(B.MacProgressRing, { value: 0.4 }))));
