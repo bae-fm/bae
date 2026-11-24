@@ -202,7 +202,7 @@
       h('span', { 'aria-hidden': true, className: 'bae-m-filerow-start' }, letters.slice(0, middle).join('')),
       h('span', { 'aria-hidden': true, className: 'bae-m-filerow-end' }, letters.slice(middle).join('')));
   }
-  // One file in the inspector: a mark for queued to upload (`queued`), to pin (`pin-queued`) or to move to This Mac (`move-queued`), all dashed, sending, pinning or moving to This Mac (`moving`, a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size. The mark is the only thing on the row that says where the file stands, so it is an image named by those words. The inspector's list makes each row one button, named by its mark, the file's name and its size; `selected` is the chosen row, in the accent's tint.
+  // One file in the inspector: a mark for queued to upload (`queued`), to pin (`pin-queued`) or to move to This Mac (`move-queued`), all dashed, sending, pinning or moving to This Mac (`moving`, a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size. The mark is the only thing on the row that says where the file stands, so its words lead the row's name. The inspector's list makes each row one button, named by the mark's words, the file's name and its size; `selected` is the chosen row, in the accent's tint.
   function MacFileRow(props) {
     var s = props.state || 'rest';
     var label = { queued: 'Queued to upload', 'pin-queued': 'Queued to pin', 'move-queued': 'Queued to move to This Mac', sending: 'Uploading', pinning: 'Pinning', moving: 'Moving to This Mac…', error: 'Could not move to the cloud', waiting: 'Waiting for a file' }[s];
@@ -212,8 +212,9 @@
     var mark = s === 'rest' ? null : s === 'error' ? bang('danger') : s === 'waiting' ? bang('warning') :
       queued ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', role: 'img', 'aria-label': label, className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
       h(MacProgressRing, { value: props.progress ?? 0.4, label: label });
-    return h('div', { role: 'button', 'aria-selected': props.selected ? 'true' : null, className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },
-      h(MacItem, { lead: mark, trail: h('span', { className: 'bae-muted bae-num' }, props.size) },
+    // The button takes its name from the mark's words, the file's name and its size, so the mark is no element of its own.
+    return h('div', { role: 'button', 'aria-label': [label, props.name, props.size].filter(Boolean).join(', '), 'aria-selected': props.selected ? 'true' : null, className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },
+      h(MacItem, { lead: mark ? h('span', { 'aria-hidden': true, style: { display: 'contents' } }, mark) : null, trail: h('span', { className: 'bae-muted bae-num' }, props.size) },
         fileRowName(props.name, cx(queued && 'bae-muted', (s === 'sending' || download) && 'bae-accent'))));
   }
   // Label and value pairs in two columns, the labels in secondary text: a file's facts, a release's fields, an album's credits. `facts` is a list of [label, value] pairs, or text with one "Label: value" a pair, separated by semicolons; a pair with no value is left out. `numeric` names the labels whose values are numbers, drawn in tabular figures (Size).
