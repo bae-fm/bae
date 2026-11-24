@@ -60,6 +60,10 @@ struct QueueRow<Content: View, Below: View>: View {
                 if let cancel {
                     Button(action: cancel.action) {
                         Image(systemName: "xmark.circle")
+                            // The board's box for the glyph: 15 wide and a
+                            // line of text tall.
+                            .frame(width: 15, height: 18)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.accentPlain)
                     .help(cancel.help)
