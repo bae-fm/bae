@@ -24,7 +24,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             previewValues(durationMs: 120_000, isPlaying: true),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         #expect(
             infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
@@ -33,7 +33,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
 
         #expect(
@@ -91,7 +91,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             previewValues(durationMs: 90_000, isPlaying: true),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         #expect(scrubberEnabled)
     }
@@ -108,7 +108,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         service.applyTimeline(
             libraryTimeline(trackId: "track-2", positionMs: 30_000)
@@ -117,7 +117,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             libraryValues(playingState(trackId: "track-2")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         #expect(elapsedSeconds == 30.0)
     }
@@ -132,7 +132,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             previewValues(durationMs: 120_000, isPlaying: true),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         service.applyTimeline(
             previewTimeline(target: previewTarget, positionMs: 45_000)
@@ -141,7 +141,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             previewValues(durationMs: 120_000, isPlaying: false),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         #expect(elapsedSeconds == 45.0)
         #expect(
@@ -160,7 +160,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             previewValues(durationMs: 120_000, isPlaying: true),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         service.applyTimeline(
             previewTimeline(
@@ -186,7 +186,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         service.applyTimeline(
             libraryTimeline(trackId: "track-1", positionMs: 10_000)
@@ -198,7 +198,7 @@ struct MediaControlServiceTests {
         clock.advance(ms: 200)
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         #expect(elapsedSeconds == 10.0)
 
@@ -222,7 +222,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         service.applyTimeline(
             libraryTimeline(trackId: "track-1", positionMs: 0, moving: false)
@@ -234,7 +234,7 @@ struct MediaControlServiceTests {
         clock.advance(ms: 1_500)
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         #expect(elapsedSeconds == 0.0)
 
@@ -256,7 +256,7 @@ struct MediaControlServiceTests {
 
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         service.applyTimeline(
             libraryTimeline(trackId: "track-1", positionMs: 10_000)
@@ -265,7 +265,7 @@ struct MediaControlServiceTests {
         clock.advance(ms: 2_000)
         service.applyValues(
             libraryValues(pausedState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         #expect(elapsedSeconds == 12.0)
         #expect(
@@ -304,7 +304,7 @@ extension MediaControlServiceTests {
 
         service.applyValues(
             previewValues(durationMs: 120_000, isPlaying: false),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         _ = service.perform(.pause)
         _ = service.perform(.pause)
@@ -318,11 +318,66 @@ extension MediaControlServiceTests {
 
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
-            appHandle: fakeAppHandle
+            images: noArt
         )
         _ = service.perform(.pause)
         _ = service.perform(.play)
         #expect(calls.all.suffix(2) == ["pause", "resume"])
+    }
+
+    @Test("Now Playing's artwork is the image store's picture of the cover")
+    func artworkComesFromTheImageStore() async throws {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let fetches = Counter()
+        let images = ImageStore(fetchLibraryImageBytes: { _ in
+            fetches.increment()
+            return bytes
+        })
+        let cover = BridgeImageRef(
+            id: "release-1",
+            version: "1",
+            imageType: .cover
+        )
+        let wrote = Wait.Notice(MediaControlService.didWriteNowPlaying, of: nil)
+        var artwork: Any? {
+            infoCenter.nowPlayingInfo?[MPMediaItemPropertyArtwork]
+        }
+
+        let first = MediaControlService(now: TestClock().now)
+        first.applyValues(
+            libraryValues(
+                .playing(
+                    track: nowPlayingTrack(
+                        trackId: "track-1",
+                        coverImage: cover
+                    )
+                )
+            ),
+            images: images
+        )
+        try await Wait.until(notices: [wrote]) { artwork != nil }
+        #expect(fetches.count == 1)
+
+        // Another Now Playing writer for the same cover draws it from the
+        // store's cache.
+        infoCenter.nowPlayingInfo = nil
+        let second = MediaControlService(now: TestClock().now)
+        second.applyValues(
+            libraryValues(
+                .playing(
+                    track: nowPlayingTrack(
+                        trackId: "track-1",
+                        coverImage: cover
+                    )
+                )
+            ),
+            images: images
+        )
+        try await Wait.until(notices: [wrote]) { artwork != nil }
+        #expect(fetches.count == 1)
     }
 }
 
@@ -344,7 +399,8 @@ private func pausedState(trackId: String) -> BridgePlaybackValueState {
     .paused(track: nowPlayingTrack(trackId: trackId), reason: .manual)
 }
 
-private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())
+/// An image store that has no picture for any cover.
+private let noArt = ImageStore()
 
 private let previewTarget = BridgePreviewTarget(
     path: Data("/tmp/Preview Track.flac".utf8),
@@ -357,7 +413,10 @@ private func playingState(trackId: String) -> BridgePlaybackValueState {
     .playing(track: nowPlayingTrack(trackId: trackId))
 }
 
-private func nowPlayingTrack(trackId: String) -> BridgeNowPlayingTrack {
+private func nowPlayingTrack(
+    trackId: String,
+    coverImage: BridgeImageRef? = nil
+) -> BridgeNowPlayingTrack {
     BridgeNowPlayingTrack(
         track: BridgePlayingTrack(
             trackId: trackId,
@@ -370,7 +429,7 @@ private func nowPlayingTrack(trackId: String) -> BridgeNowPlayingTrack {
                 albumId: "album-1",
                 releaseId: "release-1",
                 albumTitle: "Album Title",
-                coverImage: nil
+                coverImage: coverImage
             )
         )
     )

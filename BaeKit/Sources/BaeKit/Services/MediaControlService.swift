@@ -15,7 +15,7 @@ private let logger = Logger.bae("MediaControlService")
 /// (`nil` while the length is unknown or core has not prepared the track),
 /// and `playbackRate`, 1.0 while playing and 0.0 otherwise. The type is
 /// internal: only `libraryMetadata(for:)`, which
-/// `updateNowPlaying(state:appHandle:)` calls, creates one.
+/// `updateNowPlaying(state:images:)` calls, creates one.
 struct NowPlayingMetadata: Equatable {
     let track: BridgeNowPlayingTrack
     let playbackRate: Double
@@ -56,8 +56,9 @@ public final class MediaControlService: @unchecked Sendable {
     /// toggled (and its disable logged) only on a real change — the duration
     /// path runs on every Now Playing write, so writing each time would spam.
     private var scrubbingEnabled = false
-    private var cachedArtworkImage: BridgeImageRef?
-    private var cachedArtwork: MPMediaItemArtwork?
+    /// The cover whose artwork Now Playing's info holds, or `nil` while it
+    /// holds none. The pictures themselves are the image store's.
+    private var shownArtwork: BridgeImageRef?
     private var artworkTask: Task<Void, Never>?
     /// What Now Playing shows.
     var shown: NowPlayingSubject = .nothing
@@ -114,7 +115,7 @@ public final class MediaControlService: @unchecked Sendable {
     /// rebased at a new rate, until core's timeline tells the next.
     public func applyValues(
         _ values: BridgePlaybackValues,
-        appHandle: AppHandle
+        images: ImageStore
     ) {
         switch values.mediaControl {
         case .preview(let target, let durationMs, let isPlaying):
@@ -126,7 +127,7 @@ public final class MediaControlService: @unchecked Sendable {
                 )
             #endif
         case .library:
-            updateNowPlaying(state: values.state, appHandle: appHandle)
+            updateNowPlaying(state: values.state, images: images)
         }
         if anchor == nil {
             showLatestTimeline()
@@ -186,7 +187,7 @@ public final class MediaControlService: @unchecked Sendable {
     /// every other state.
     public func updateNowPlaying(
         state: BridgePlaybackValueState,
-        appHandle: AppHandle
+        images: ImageStore
     ) {
         guard let metadata = Self.libraryMetadata(for: state) else {
             clearNowPlaying()
@@ -194,7 +195,7 @@ public final class MediaControlService: @unchecked Sendable {
         }
         setNowPlaying(
             metadata,
-            appHandle: appHandle,
+            images: images,
             on: MPNowPlayingInfoCenter.default()
         )
     }
@@ -227,7 +228,7 @@ public final class MediaControlService: @unchecked Sendable {
     /// track waits for its first position.
     func setNowPlaying(
         _ metadata: NowPlayingMetadata,
-        appHandle: AppHandle,
+        images: ImageStore,
         on infoCenter: MPNowPlayingInfoCenter
     ) {
         guard metadata != writtenLibrary else {
@@ -259,7 +260,7 @@ public final class MediaControlService: @unchecked Sendable {
         info[MPNowPlayingInfoPropertyPlaybackRate] = metadata.playbackRate
         applyArtwork(
             image: library?.coverImage,
-            appHandle: appHandle,
+            images: images,
             into: &info
         )
         publish(info, on: infoCenter)
@@ -438,13 +439,14 @@ extension MediaControlService {
 
     // MARK: - Artwork
 
-    /// Apply cached artwork synchronously if the image reference is unchanged,
-    /// else clear the slot and load the cover in the background, writing it into
-    /// the Now Playing info when ready. The reference pins the content version,
-    /// so replacing a release's cover reloads the artwork.
+    /// Keep the artwork Now Playing holds when it is already the cover's,
+    /// else clear the slot and ask the image store for the cover in the
+    /// background, writing it into the Now Playing info when ready. The
+    /// reference pins the content version, so replacing a release's cover
+    /// reloads the artwork.
     private func applyArtwork(
         image: BridgeImageRef?,
-        appHandle: AppHandle,
+        images: ImageStore,
         into info: inout [String: Any]
     ) {
         guard let image else {
@@ -452,26 +454,19 @@ extension MediaControlService {
             info.removeValue(forKey: MPMediaItemPropertyArtwork)
             return
         }
-        if image == cachedArtworkImage, let artwork = cachedArtwork {
-            info[MPMediaItemPropertyArtwork] = artwork
+        if image == shownArtwork, info[MPMediaItemPropertyArtwork] != nil {
             return
         }
         info.removeValue(forKey: MPMediaItemPropertyArtwork)
+        shownArtwork = nil
         artworkTask?.cancel()
         artworkTask = Task { [weak self] in
-            await self?.loadArtwork(image: image, appHandle: appHandle)
+            await self?.loadArtwork(image: image, images: images)
         }
     }
 
-    private func loadArtwork(image: BridgeImageRef, appHandle: AppHandle) async
-    {
-        guard
-            let bytes = await fetchArtworkBytes(
-                image: image,
-                appHandle: appHandle
-            ),
-            let decoded = await decodeArtwork(bytes: bytes, imageId: image.id)
-        else {
+    private func loadArtwork(image: BridgeImageRef, images: ImageStore) async {
+        guard let decoded = await artwork(of: image, from: images) else {
             return
         }
         guard !Task.isCancelled else {
@@ -492,61 +487,45 @@ extension MediaControlService {
             guard var info = infoCenter.nowPlayingInfo else {
                 return
             }
-            cachedArtworkImage = image
-            cachedArtwork = artwork
+            shownArtwork = image
             info[MPMediaItemPropertyArtwork] = artwork
             publish(info, on: infoCenter)
         }
     }
 
-    private func fetchArtworkBytes(
-        image: BridgeImageRef,
-        appHandle: AppHandle
-    ) async -> Data? {
+    /// The cover decoded by the image store at Now Playing's size, or `nil`
+    /// when the library has none or the load failed (logged).
+    private func artwork(
+        of image: BridgeImageRef,
+        from images: ImageStore
+    ) async -> PlatformImage? {
+        let scale = await artworkDisplayScale()
         do {
             guard
-                let data = try await appHandle.fetchLibraryImageBytes(
-                    image: image
+                let decoded = try await images.image(
+                    .libraryImage(image),
+                    pointSize: Self.artworkPointSize,
+                    displayScale: scale
                 )
             else {
                 logger.debug("No Now Playing artwork for \(image.id)")
                 return nil
             }
-            return data
+            return decoded
         }
         catch is CancellationError {
             return nil
         }
         catch {
             logger.warning(
-                "Failed to fetch Now Playing artwork \(image.id): \(error)"
+                "Failed to load Now Playing artwork \(image.id): \(error)"
             )
             return nil
         }
     }
 
-    private func decodeArtwork(
-        bytes: Data,
-        imageId: String
-    ) async -> PlatformImage? {
-        let scale = await artworkDisplayScale()
-        do {
-            return try await ImageLoader.load(
-                source: .data(bytes),
-                size: .fitTo(points: 600),
-                displayScale: scale
-            )
-        }
-        catch is CancellationError {
-            return nil
-        }
-        catch {
-            logger.warning(
-                "Failed to decode Now Playing artwork \(imageId): \(error)"
-            )
-            return nil
-        }
-    }
+    /// The width, in points, of the cover Now Playing is given.
+    private static let artworkPointSize: CGFloat = 600
 
     private func artworkDisplayScale() async -> CGFloat {
         await MainActor.run {
@@ -561,8 +540,7 @@ extension MediaControlService {
     private func clearArtworkLoad() {
         artworkTask?.cancel()
         artworkTask = nil
-        cachedArtworkImage = nil
-        cachedArtwork = nil
+        shownArtwork = nil
     }
 }
 

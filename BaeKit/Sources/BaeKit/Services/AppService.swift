@@ -278,7 +278,7 @@ open class AppService: @unchecked Sendable, Observable {
                 playbackValues.apply(values)
                 mediaControlService.applyValues(
                     values,
-                    appHandle: appHandle
+                    images: imageStore
                 )
                 applyPlatformPlaybackValues(values)
             },
