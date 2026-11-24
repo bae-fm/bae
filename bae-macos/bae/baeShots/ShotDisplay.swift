@@ -1,6 +1,10 @@
 import AppKit
 import ObjectiveC
 
+#if canImport(bae)
+    @testable import bae
+#endif
+
 /// A virtual display beside the Mac's own displays. A capture draws its
 /// windows in a 1600 by 1200 point area at two pixels per point. The capture
 /// borrows one area from the keeper. Renderer tests own a display. A shot taken from a real display
