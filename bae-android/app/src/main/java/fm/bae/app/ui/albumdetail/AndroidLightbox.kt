@@ -157,7 +157,15 @@ internal fun GalleryViewer(
                     )
                 },
         ) {
-            Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
+            // The viewer is named for the slot shown, and the picture in it for the release whose art it shows.
+            val shownLabel = LocalContext.current.galleryLabelText(items[pagerState.currentPage].label)
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { translationY = offsetY }
+                        .semantics { contentDescription = shownLabel },
+            ) {
                 HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                     GalleryPage(releaseId = releaseId, title = title, item = items[page])
                 }
@@ -207,11 +215,7 @@ private fun GalleryPage(
 ) {
     val content =
         remember(releaseId, item.id) { ImageContent.ReleaseImage(releaseId, item.source) }
-    val label = LocalContext.current.galleryLabelText(item.label)
-    // The page is named for its slot, and the picture in it for the release whose art it shows.
-    Box(modifier = Modifier.fillMaxSize().semantics { contentDescription = label }) {
-        GalleryImage(content = content, label = label, title = title)
-    }
+    GalleryImage(content = content, label = LocalContext.current.galleryLabelText(item.label), title = title)
 }
 
 /** A gallery slot's name: the cover in the app's language, a file by its filename. */
