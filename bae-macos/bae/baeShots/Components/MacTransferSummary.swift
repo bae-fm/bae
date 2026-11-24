@@ -7,7 +7,11 @@ extension ShotScene {
     /// `MacTransferSummary`, an upload and a pin, each with one file moving,
     /// two waiting and four done, in core's words for each.
     static let macTransferSummaryScenes: [ShotScene] = [
-        component("mac.component.transfer-summary.default", height: 110) {
+        component(
+            "mac.component.transfer-summary.default",
+            width: wideColumn,
+            height: 110
+        ) {
             MacTransferSummary(
                 kind: .upload,
                 counts: [
@@ -31,7 +35,7 @@ extension ShotScene {
                 moving: true,
                 onCancel: {}
             )
-            .frame(width: 380, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .environment(
                 OutboxStore(
                     uploadsPaused: false,
@@ -51,7 +55,11 @@ extension ShotScene {
             )
             .environment(DownloadStore())
         },
-        component("mac.component.transfer-summary.pin", height: 110) {
+        component(
+            "mac.component.transfer-summary.pin",
+            width: wideColumn,
+            height: 110
+        ) {
             MacTransferSummary(
                 kind: .pin,
                 counts: [
@@ -75,7 +83,7 @@ extension ShotScene {
                 moving: true,
                 onCancel: {}
             )
-            .frame(width: 380, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .environment(
                 DownloadStore(
                     releaseProgress: .downloads(

@@ -7,7 +7,11 @@ extension ShotScene {
     /// `MacTransferReadout`, its bytes and rate and its bar read from the
     /// transfer's stream by native views, as the app draws them.
     static let macTransferReadoutScenes: [ShotScene] = [
-        component("mac.component.transfer-readout.upload", height: 60) {
+        component(
+            "mac.component.transfer-readout.upload",
+            width: wideColumn,
+            height: 60
+        ) {
             let outbox = OutboxStore(
                 uploadsPaused: false,
                 releaseProgress: .releaseUploads(
@@ -29,10 +33,14 @@ extension ShotScene {
                 ),
                 kind: .upload
             )
-            .frame(width: 380)
+            .frame(maxWidth: .infinity)
             .environment(outbox)
         },
-        component("mac.component.transfer-readout.pin", height: 60) {
+        component(
+            "mac.component.transfer-readout.pin",
+            width: wideColumn,
+            height: 60
+        ) {
             let downloads = DownloadStore(
                 releaseProgress: .downloads(
                     holding: [
@@ -51,7 +59,7 @@ extension ShotScene {
                 ),
                 kind: .pin
             )
-            .frame(width: 380)
+            .frame(maxWidth: .infinity)
             .environment(downloads)
         },
     ]
