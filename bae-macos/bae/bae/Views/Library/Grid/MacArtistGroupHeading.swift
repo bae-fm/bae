@@ -23,10 +23,15 @@ struct MacArtistGroupHeading: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(verbatim: name)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                    .accessibilityAddTraits(.isHeader)
+                // The heading holds the name as its text, as the board
+                // draws it, and not as the heading's own label.
+                VStack {
+                    Text(verbatim: name)
+                        .themeText(.rowTitle)
+                        .lineLimit(1)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isHeader)
                 Text(verbatim: countLabel.localizedLine)
                     .themeText(.detail)
                     .foregroundStyle(Theme.textSecondary)
