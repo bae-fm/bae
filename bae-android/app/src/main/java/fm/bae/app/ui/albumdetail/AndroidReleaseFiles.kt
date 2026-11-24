@@ -39,7 +39,8 @@ internal fun AndroidReleaseFiles(files: List<BridgeFile>) {
                 modifier = Modifier.fillMaxWidth().padding(vertical = ThemeSpace.related),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(text = file.name, style = ThemeText.body.style)
+                // A name too long for its line wraps: the kind keeps its own room at the end.
+                Text(text = file.name, style = ThemeText.body.style, modifier = Modifier.weight(1f, fill = false))
                 Text(
                     text = context.fileKindText(file.kind),
                     style = ThemeText.body.style,
