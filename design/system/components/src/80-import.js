@@ -171,33 +171,34 @@
   // The folder's audio as the scan read it (spec §3.6: codec, sample rate, bit depth or bitrate, channels), the identity's line under the year.
   function audioLine(audio) { return audio ? h('div', { key: 'audio', className: 'bae-m-tertiary bae-m-idraft-audio' }, audio) : null; }
   // What Discogs says about the pressing that no other field holds: each detail with its remove button, then the menu that adds one more: named Details and showing — while there are none, named Add detail and showing + Add after.
-  // ⊗, which removes one entry of a list, named for the entry (`what`), as xmark.circle.fill in the editor.
-  function removeEntry(what) { return h(MacIconButton, { icon: 'removefill', size: 'medium', small: true, faint: true, label: 'Remove ' + what }); }
-  // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added, and says Add.
-  function addEntry(label, menu) {
-    return h('button', { type: 'button', 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: 'bae-plainbtn bae-accent bae-m-idraft-add' }, h(Glyph, { set: 'mac', name: 'add', size: 'small' }), menu ? 'Add' : label);
+  // ⊗, which removes one entry of a list, named for the entry (`what`), as xmark.circle.fill in the editor. `off`: dimmed and disabled.
+  function removeEntry(what, off) { return h(MacIconButton, { icon: 'removefill', size: 'medium', small: true, faint: true, label: 'Remove ' + what, off: off }); }
+  // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added, and says Add. `off`: dimmed and disabled.
+  function addEntry(label, menu, off) {
+    return h('button', { type: 'button', disabled: off || null, 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: cx('bae-plainbtn bae-accent bae-m-idraft-add', off && 'bae-off') }, h(Glyph, { set: 'mac', name: 'add', size: 'small' }), menu ? 'Add' : label);
   }
-  function discogsDetails(details) {
+  function discogsDetails(details, off) {
     return h('span', { className: 'bae-m-idraft-details' },
-      details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d)); }),
-      h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-m-idraft-detail', !details.length && 'bae-m-tertiary'), 'aria-haspopup': 'menu', 'aria-label': details.length ? 'Add detail' : 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 'small' }), 'Add'] : '—'));
+      details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d, off)); }),
+      h('button', { type: 'button', disabled: off || null, className: cx('bae-plainbtn', 'bae-m-idraft-detail', !details.length && 'bae-m-tertiary', off && 'bae-off'), 'aria-haspopup': 'menu', 'aria-label': details.length ? 'Add detail' : 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 'small' }), 'Add'] : '—'));
   }
   // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty. `off`: every field, stepper and button is disabled, as while a save reads a file.
   function MacReleaseFields(props) {
     // A fact chosen from a menu shows its value as plain text, or the form's dash.
-    var face = function (label, value) { return h('button', { type: 'button', role: 'combobox', 'aria-expanded': false, 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary') }, value || '—'); };
+    var off = !!props.off;
+    var face = function (label, value) { return h('button', { type: 'button', disabled: off || null, role: 'combobox', 'aria-expanded': false, 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary', off && 'bae-off') }, value || '—'); };
     var field = function (label, value) { return h(MacInlineField, { label: label, value: value, placeholder: '—', fit: true }); };
     // A list kept one row per entry (labels, barcodes): its name on the first row only, each entry with ⊗, then Add on its own line under the last row; with none, Add alone beside the name.
     var rows = function (name, entries, draw, noun) {
-      var addLine = addEntry('Add ' + name.toLowerCase(), false);
+      var addLine = addEntry('Add ' + name.toLowerCase(), false, off);
       if (!entries.length) return [[name, addLine]];
-      return entries.map(function (e, i) { return [i === 0 ? name : '', h('span', { className: 'bae-m-idraft-entry' }, draw(e), removeEntry(noun(e)))]; }).concat([['', addLine]]);
+      return entries.map(function (e, i) { return [i === 0 ? name : '', h('span', { className: 'bae-m-idraft-entry' }, draw(e), removeEntry(noun(e), off))]; }).concat([['', addLine]]);
     };
     // `media`: each carrier with how many of it there are, as "2×CD", comma-separated; a carrier alone is one. Each is its name, ×count, a MacStepper and ⊗, on one line, then Add, a menu of the carriers not yet listed.
     var media = list(props.media).map(function (m) { var p = m.split('×'); return p.length > 1 ? { count: p[0], carrier: p[1] } : { count: '1', carrier: p[0] }; });
     var mediaLine = h('span', { className: 'bae-m-idraft-entry bae-m-idraft-media' },
-      media.map(function (m) { return h('span', { key: m.carrier, className: 'bae-m-idraft-entry' }, h('span', null, m.carrier), h('span', { className: 'bae-muted bae-num' }, '×' + m.count), h(MacStepper, { label: 'Number of ' + m.carrier, off: props.off }), removeEntry(m.carrier)); }),
-      addEntry('Add medium', true));
+      media.map(function (m) { return h('span', { key: m.carrier, className: 'bae-m-idraft-entry' }, h('span', null, m.carrier), h('span', { className: 'bae-muted bae-num' }, '×' + m.count), h(MacStepper, { label: 'Number of ' + m.carrier, off: off }), removeEntry(m.carrier, off)); }),
+      addEntry('Add medium', true, off));
     // `countryOpen`: the countries the Country menu lists, drawn open under its face, with the dash for none first and NSMenu's scroll arrow at its foot.
     var country = props.countryOpen
       ? h('span', { className: 'bae-m-idraft-pop' }, face('Country', props.country), h('div', { className: 'bae-m-idraft-popmenu' }, h(MacMenu, { more: true }, h(MacMenuItem, null, '—'), list(props.countryOpen).map(function (c) { return h(MacMenuItem, { key: c, checked: c === props.country, highlighted: c === props.country }, c); }))))
@@ -208,12 +209,12 @@
       .concat([['Country', country]])
       // `barcodes`: comma-separated, each a row.
       .concat(rows('Barcode', list(props.barcodes), function (b) { return field('Barcode', b); }, function (b) { return b; }))
-      .concat([['Status', face('Status', props.status)], ['Packaging', face('Packaging', props.packaging)], ['Details', discogsDetails(list(props.details))]]);
+      .concat([['Status', face('Status', props.status)], ['Packaging', face('Packaging', props.packaging)], ['Details', discogsDetails(list(props.details), off)]]);
     var cells = h('div', { className: 'bae-m-idraft-grid' }, grid.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: 'bae-m-idraft-cell' }, r[1])]; }));
     return h('div', { className: 'bae-m-relfields' },
       h(MacFormHeading, null, 'Release'),
-      // A disabled fieldset disables every field and button in the grid; the steppers, which are no form controls, take `off` themselves.
-      props.off ? h('fieldset', { disabled: true, 'aria-disabled': true, style: { display: 'contents' } }, cells) : cells);
+      // A disabled fieldset disables every field in the grid; each button, pop-up and stepper also takes `off`, which dims it as AppKit dims a disabled control.
+      off ? h('fieldset', { disabled: true, 'aria-disabled': true, style: { display: 'contents' } }, cells) : cells);
   }
   // The release's identity and its fields, as both cards draw them under their lead: the cover and identity with the audio line and the album picker, then the Release grid.
   function releaseHeader(props) {
