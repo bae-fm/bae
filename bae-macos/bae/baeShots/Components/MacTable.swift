@@ -6,8 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// `MacTable`: three releases, the second uploading; the same with the
     /// second selected; the same in the room the inspector leaves the table,
-    /// which keeps every column at its width and scrolls; and three rows
-    /// whose releases have not loaded yet.
+    /// which keeps every column at its width and scrolls; and the three rows
+    /// with two more whose releases have not loaded yet.
     static let macTableScenes: [ShotScene] = [
         storageTable(
             "mac.component.table.rows",
@@ -30,9 +30,9 @@ extension ShotScene {
         ),
         storageTable(
             "mac.component.table.loading",
-            size: CGSize(width: fullTableWidth, height: 150),
+            size: CGSize(width: fullTableWidth, height: 180),
             rows: threeReleases(),
-            unloaded: true
+            loading: 2
         ),
     ]
 
@@ -59,14 +59,14 @@ extension ShotScene {
     )
 
     /// The real table with `rows` loaded, drawn at `size` over its columns.
-    /// With `unloaded` the rows are counted and no page of them has landed,
-    /// so each draws its placeholder.
+    /// With `loading` that many more rows are counted and no page of them
+    /// has landed, so each draws its placeholder.
     private static func storageTable(
         _ id: String,
         size: CGSize,
         rows: [BridgeStorageRow],
         selected: Set<String> = [],
-        unloaded: Bool = false,
+        loading: Int = 0,
         uploading: String? = nil
     ) -> ShotScene {
         ShotScene(id: id, size: size) {
@@ -75,7 +75,7 @@ extension ShotScene {
                 downloads: [],
                 outputs: [],
                 uploads: [],
-                unloaded: unloaded
+                loading: loading
             )
             let runner = StorageActionRunner(
                 releaseEditor: .stub(),

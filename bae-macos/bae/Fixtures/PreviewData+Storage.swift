@@ -451,9 +451,9 @@ extension PreviewData {
     /// with its entry in `downloads`, `outputs` and `uploads`.
     /// The fixture's library, its reads answered off the main thread and
     /// counted in `answers`. The selection read answers a set of several
-    /// releases with its entry in `selections`. With `unloaded`, the list
-    /// counts `rows` but no page of them lands, so every row draws its
-    /// placeholder. `queues` replaces the transfer queues derived from
+    /// releases with its entry in `selections`. With `loading`, the list
+    /// counts that many more rows than `rows` holds and no page of them
+    /// lands, so each draws its placeholder. `queues` replaces the transfer queues derived from
     /// `downloads`, `outputs` and `uploads`.
     static func storageLibrary(
         answers: UnansweredCount,
@@ -462,7 +462,7 @@ extension PreviewData {
         outputs: [BridgeOutputOp] = outputOps,
         uploads: [PreviewReleaseUpload] = defaultUploads,
         selections: [Set<String>: BridgeStorageSelection] = [:],
-        unloaded: Bool = false,
+        loading: Int = 0,
         queues: BridgeStorageQueues? = nil
     ) -> Library {
         let rows = storageRows(rows, uploading: uploads)
@@ -492,8 +492,12 @@ extension PreviewData {
                     totalSize: totalSize,
                     searching: !search.isEmpty
                 )
-                return unloaded
-                    ? unloadedStorageList(count: rows.count, extra: extra)
+                return loading > 0
+                    ? loadingStorageList(
+                        rows: rows,
+                        loading: loading,
+                        extra: extra
+                    )
                     : .fixed(rows, answers: answers, extra: extra)
             },
             storageSelection: { _, _ in
@@ -515,10 +519,12 @@ extension PreviewData {
         )
     }
 
-    /// A list that has counted `count` rows but whose rows no page delivers,
-    /// as a list is while its first page is on the way.
-    nonisolated private static func unloadedStorageList(
-        count: Int,
+    /// A list that has counted `loading` more rows than `rows`, whose first
+    /// page holds `rows` and whose other rows no page delivers, as a list is
+    /// while its next pages are on the way.
+    nonisolated private static func loadingStorageList(
+        rows: [BridgeStorageRow],
+        loading: Int,
         extra: BridgeListCountExtra
     ) -> BridgeListQueries<BridgeStorageRow> {
         BridgeListQueries(
@@ -526,15 +532,15 @@ extension PreviewData {
                 ListViewQuery(
                     setVisible: { _, _ in },
                     values: PulledValues<ListViewDelivery<BridgeStorageRow>>
-                        .fixed(ListViewDelivery(start: 0, rows: []))
+                        .fixed(ListViewDelivery(start: 0, rows: rows))
                 )
             },
             count: {
                 PulledValues<BridgeListCount>
                     .fixed(
                         BridgeListCount(
-                            rows: UInt64(count),
-                            items: UInt64(count),
+                            rows: UInt64(rows.count + loading),
+                            items: UInt64(rows.count + loading),
                             extra: extra
                         )
                     )
