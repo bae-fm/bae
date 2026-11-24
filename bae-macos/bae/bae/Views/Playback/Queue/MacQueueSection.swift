@@ -32,6 +32,10 @@ struct MacQueueSection: View {
     let title: String?
     let kind: Kind
 
+    /// The space under a heading: its padding and the hairline the board's
+    /// list leaves between the heading and the first row.
+    private static let headingGap = ThemeSpace.inline + ThemeSpace.hairline
+
     /// The inset of the lane's rows.
     private static let rowInset = ThemeSpace.related
 
@@ -57,7 +61,7 @@ struct MacQueueSection: View {
                     Self.rowInset + MacQueueRow.horizontalInset
                 )
                 .padding(.top, ThemeSpace.group)
-                .padding(.bottom, ThemeSpace.inline)
+                .padding(.bottom, Self.headingGap)
             }
         case .day(let menu):
             HStack(spacing: ThemeSpace.compact) {
@@ -71,7 +75,7 @@ struct MacQueueSection: View {
             // margin, with room at the end over the rows' people.
             .padding(.trailing, ThemeSpace.edge)
             .padding(.top, ThemeSpace.group)
-            .padding(.bottom, ThemeSpace.inline)
+            .padding(.bottom, Self.headingGap)
         }
     }
 
