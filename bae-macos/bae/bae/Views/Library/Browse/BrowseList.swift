@@ -16,7 +16,17 @@ where Row.ID: Sendable {
         List {
             ForEach(0..<list.positionCount, id: \.self) { index in
                 row(index)
-                    .plainListRowEdge(0, bottom: ThemeSpace.hairline)
+                    // A plain macOS `List` insets its rows by about 8 points
+                    // at each side (measured from shots, with no API to read
+                    // or remove it); the split pane insets the list instead.
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: 0,
+                            leading: -8,
+                            bottom: ThemeSpace.hairline,
+                            trailing: -8
+                        )
+                    )
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .task(id: RowLoadID(epoch: list.loadEpoch, index: index)) {
