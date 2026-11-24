@@ -2,9 +2,7 @@ package fm.bae.app.ui.components
 
 import android.app.Activity
 import android.app.Application
-import android.content.Intent
 import android.os.Looper
-import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.View
@@ -13,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.view.drawToBitmap
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.setTestAnimatorScale
+import fm.bae.app.setTestBatterySaver
 import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -128,31 +127,22 @@ class AndroidProgressBarViewTest {
             attach(bar, main)
             Settings.Global.putFloat(activity.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
 
-            setBatterySaver(activity, true)
+            setTestBatterySaver(activity, true)
             bar.showMoving()
             val rest = bar.drawToBitmap()
             drawNextFrame(main)
             drawNextFrame(main)
             assertTrue(rest.sameAs(bar.drawToBitmap()))
 
-            setBatterySaver(activity, false)
+            setTestBatterySaver(activity, false)
             drawNextFrame(main)
             drawNextFrame(main)
             assertFalse(rest.sameAs(bar.drawToBitmap()))
 
-            setBatterySaver(activity, true)
+            setTestBatterySaver(activity, true)
             main.idle()
             assertTrue(rest.sameAs(bar.drawToBitmap()))
         }
-    }
-
-    private fun setBatterySaver(
-        activity: Activity,
-        enabled: Boolean,
-    ) {
-        val power = checkNotNull(activity.getSystemService(PowerManager::class.java))
-        shadowOf(power).setIsPowerSaveMode(enabled)
-        activity.sendBroadcast(Intent(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
     }
 
     private fun attach(
