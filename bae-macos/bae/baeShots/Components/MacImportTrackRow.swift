@@ -41,6 +41,10 @@ extension ShotScene {
             )
         ),
         trackRowScene(
+            "mac.component.import-track-row.added-by-the-save",
+            unsaved(saltRoad)
+        ),
+        trackRowScene(
             "mac.component.import-track-row.length-differs",
             mappingTrack(
                 file: "03 Salt Road.flac",
@@ -103,6 +107,21 @@ extension ShotScene {
             length: BridgeDurationClock.length(ms: seconds * 1_000),
             listedLength: nil,
             artist: .albumArtist
+        )
+    }
+
+    /// The track a save adds: nothing plays it yet.
+    private static func unsaved(_ row: BridgeTrackTableRow)
+        -> BridgeTrackTableRow
+    {
+        BridgeTrackTableRow(
+            track: row.track,
+            source: row.source,
+            audition: .unsaved,
+            position: row.position,
+            length: row.length,
+            listedLength: row.listedLength,
+            artist: row.artist
         )
     }
 
