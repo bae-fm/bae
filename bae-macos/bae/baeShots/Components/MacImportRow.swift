@@ -146,7 +146,6 @@ extension ShotScene {
             .northbound,
             title: "Northbound",
             artist: "Mara Quill",
-            record: "component-northbound",
             live: standing.live
         )
     }
