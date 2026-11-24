@@ -94,7 +94,7 @@
   }
   // A group of folders, a button that folds the group: chevron and the folder's name.
   function MacImportGroupHeader(props) {
-    return h('button', { type: 'button', className: 'bae-plainbtn bae-m-igh', 'aria-expanded': !props.closed }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: props.closed ? 'forward' : null }), h('span', { className: 'bae-ellipsis' }, props.name));
+    return h('button', { type: 'button', className: 'bae-plainbtn bae-m-igh', 'aria-expanded': !props.closed }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', square: true, className: 'bae-m-tertiary', point: props.closed ? 'forward' : null }), h('span', { className: 'bae-ellipsis' }, props.name));
   }
   // A line of progress in the surrounding font: the phase, a bar filling the rest of the line, and an optional count. No `value` is a wait of no known length.
   function MacProgressLine(props) {
@@ -307,7 +307,7 @@
   // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time; the open section's heading is the current one, as the Mac marks it selected. `automatic`: the Automatic run's state, `not-started`, `working`, `failed`, `nothing-found` or `found` (the default); `chips`: its identifier band. `sentence`: why the folder waits on the person, heading Automatic over a rule. The children fill Search when it is open, and follow the band in Automatic, or follow Search manually when nothing was found.
   function MacFindOnline(props) {
     var open = props.open || 'Automatic';
-    var head = function (t, status) { return h('button', { type: 'button', 'aria-label': t, 'aria-expanded': open === t, 'aria-current': open === t ? 'true' : null, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status ? h('span', { className: 'bae-m-fo-status' }, status) : null); };
+    var head = function (t, status) { return h('button', { type: 'button', 'aria-label': t, 'aria-expanded': open === t, 'aria-current': open === t ? 'true' : null, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', square: true, className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status ? h('span', { className: 'bae-m-fo-status' }, status) : null); };
     var k = kids(props.children);
     var auto = props.automatic || 'found';
     return h('div', { className: 'bae-m-card bae-m-fo' },
