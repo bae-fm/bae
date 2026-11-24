@@ -411,10 +411,14 @@ struct SetupStep<Fields: View, Leading: View>: View {
     #endif
 
     var body: some View {
-        VStack(spacing: 0) {
+        let cancel = cancel
+        return VStack(spacing: 0) {
             if run.isRunning {
                 StorageSetupRunLine(run: run, checkedFolder: checkedFolder)
-                    .padding(.bottom, ThemeSpace.related + ThemeSpace.line)
+                    .padding(
+                        .bottom,
+                        cancel == nil ? 0 : ThemeSpace.related + ThemeSpace.line
+                    )
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             else {
@@ -426,22 +430,24 @@ struct SetupStep<Fields: View, Leading: View>: View {
                 }
                 fields
             }
-            MacSheetFooter(
-                lead: { if !run.isRunning { leading } },
-                trailing: {
-                    if let cancel {
-                        MacButton("Cancel") { cancel() }
-                            .disabled(run.isCancelling)
-                    }
-                    if !run.isRunning {
-                        MacButton("Set up", kind: .primary) {
-                            connect()
+            if cancel != nil || !run.isRunning {
+                MacSheetFooter(
+                    lead: { if !run.isRunning { leading } },
+                    trailing: {
+                        if let cancel {
+                            MacButton("Cancel") { cancel() }
+                                .disabled(run.isCancelling)
                         }
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(!ready)
+                        if !run.isRunning {
+                            MacButton("Set up", kind: .primary) {
+                                connect()
+                            }
+                            .keyboardShortcut(.defaultAction)
+                            .disabled(!ready)
+                        }
                     }
-                }
-            )
+                )
+            }
         }
         .onDisappear { run.leave() }
     }
