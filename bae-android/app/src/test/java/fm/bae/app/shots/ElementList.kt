@@ -67,6 +67,9 @@ internal object ElementList {
                     ?.takeUnless { hidden(it, frame) }
                     ?.let { listed.add(Listed(element(it, density, unmerged), parent)) }
                 listed.add(here)
+                // A child that asks to be read first (a negative traversal index, such as a track row's lead) comes
+                // before the merged node's own texts, as the board lists its image before the row's words.
+                inTraversalOrder(node.children).filter { it.readsFirst() }.forEach { visit(it, here) }
                 mergedTexts(
                     node,
                     unmerged,
@@ -74,7 +77,7 @@ internal object ElementList {
             }
             // The list visits a node's children in traversal order, the order TalkBack reads them in, not the order
             // Compose draws them in.
-            inTraversalOrder(node.children).forEach { visit(it, here) }
+            inTraversalOrder(node.children).filterNot { here != null && here !== parent && it.readsFirst() }.forEach { visit(it, here) }
         }
         inTraversalOrder(root.children).forEach { visit(it, null) }
         // The tree keeps a bare, childless node where an embedded view sits. The element list puts the view's
@@ -126,6 +129,9 @@ internal object ElementList {
         val box = node.wholeBox()
         return !box.isEmpty && (node.boundsInRoot.isEmpty || !box.overlaps(frame))
     }
+
+    /** Whether the node asks to be read before the texts of the merged node that holds it. */
+    private fun SemanticsNode.readsFirst(): Boolean = (config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f) < 0f
 
     /** An element of the tree and the one that holds it. */
     private class Listed(

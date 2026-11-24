@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -150,6 +152,10 @@ internal fun AndroidTrackLead(
                 contentDescription =
                     if (isPlaying) stringResource(R.string.now_playing) else stringResource(R.string.paused),
                 tint = MaterialTheme.colorScheme.primary,
+                // The lead is a node of its own: the clickable row would merge its name into the row's. It is read
+                // first, ahead of the row's merged words, which the shots' element list needs to list the image
+                // before the title, as the board does.
+                modifier = Modifier.semantics(mergeDescendants = true) { traversalIndex = -1f },
             )
         }
     } else {
