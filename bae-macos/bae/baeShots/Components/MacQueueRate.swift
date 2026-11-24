@@ -5,8 +5,7 @@ import SwiftUI
 
 extension ShotScene {
     /// `MacQueueRate`, a queue's rate and a queue held back. An export has
-    /// no rate in the app: its queue counts the percent written, where the
-    /// component says "18 MB/s".
+    /// no rate: its queue counts the percent written.
     static let macQueueRateScenes: [ShotScene] = [
         queueRate("mac.component.queue-rate.uploads", .uploads),
         queueRate("mac.component.queue-rate.pins", .downloads),
@@ -30,7 +29,7 @@ extension ShotScene {
     ]
 
     /// One transfer queue's rate or hold, over the streams the app's footer
-    /// reads: uploads 6.4 MB/s, pins 3.1 MB/s, exports 18 percent.
+    /// reads: uploads 6.4 MB/s, pins 3.1 MB/s, exports 42 percent.
     private static func queueRate(
         _ id: String,
         _ queue: StorageQueueKind,
@@ -64,7 +63,7 @@ extension ShotScene {
                 )
             )
             let outputs = OutputStore(
-                percents: .exportPercents(holding: ["rel-rate": 18])
+                percents: .exportPercents(holding: ["rel-rate": 42])
             )
             MacQueueRate(queue: queue, paused: paused, hold: hold) {
                 switch queue {
