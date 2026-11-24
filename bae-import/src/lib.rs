@@ -87,6 +87,8 @@ pub mod pane;
 #[cfg(desktop)]
 mod pictures;
 #[cfg(desktop)]
+pub use bae_pictures::{PictureSource, Priority as PicturePriority, SourceFile as PictureFile};
+#[cfg(desktop)]
 pub use pictures::PictureError;
 #[cfg(desktop)]
 pub mod preparations;

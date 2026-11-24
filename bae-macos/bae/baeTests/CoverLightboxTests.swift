@@ -24,10 +24,7 @@ struct CoverLightboxTests {
         )
         let bytes = try Data(contentsOf: URL(fileURLWithPath: path))
         let recorder = Reads()
-        let images = ImageStore(fetchRemoteImage: { image, pixels in
-            await recorder.read(Read(url: image.url, pixels: pixels))
-            return bytes
-        })
+        let images = imageStore(serving: bytes, recording: recorder)
         var selected: CoverItem?
         var dismissed = false
         let lightbox = LightboxImageLoad()
@@ -226,6 +223,20 @@ struct CoverLightboxTests {
 }
 
 extension CoverLightboxTests {
+    /// An image store that serves `bytes` for every picture, and records each
+    /// provider image it is asked for.
+    private func imageStore(serving bytes: Data, recording recorder: Reads)
+        -> ImageStore
+    {
+        ImageStore(
+            fetchRemoteImage: { image, pixels in
+                await recorder.read(Read(url: image.url, pixels: pixels))
+                return bytes
+            },
+            fetchPicture: { _, _, _ in bytes }
+        )
+    }
+
     /// Build the cover gallery that core returns, with a remote section
     /// holding `remote` and a release files section holding `files`.
     private func gallery(

@@ -413,14 +413,23 @@ forward! {
                 .await?)
         }
 
-        /// The bytes of the artwork embedded in one of a candidate's audio
-        /// files, as its tag snapshot stored them: what an embedded cover
-        /// source names, fetched when a slot draws it.
-        fn read_embedded_cover(candidate_key: Vec<u8>, source_file_id: String) -> Vec<u8> {
-            Ok(this
-                .services
-                .import_read_embedded_cover(&candidate_key.into(), &source_file_id)
-                .await?)
+        /// The bytes of one of an import candidate's pictures: a copy at the
+        /// smallest step (192, 384, 768 or 1536 px on the longer side) that
+        /// holds `pixels`, or the original's own bytes when `pixels` is
+        /// absent, for a viewer that decodes at full size. Core reads the
+        /// file once, in chunks, off the app's threads, keeps the copy with
+        /// its candidate, and stops reading when every call for the picture
+        /// is dropped. `turn` says whether a screen shows the picture now or
+        /// may show it soon.
+        fn picture(
+            source: crate::types::BridgePictureSource,
+            pixels: Option<u32>,
+            turn: crate::types::BridgePictureTurn,
+        ) -> Vec<u8> {
+            this.services
+                .import_read_picture(source.into_core()?, pixels, turn.into_core())
+                .await
+                .map_err(BridgeError::from)
         }
 
         /// The text of a candidate's document (a log, a text file, a track

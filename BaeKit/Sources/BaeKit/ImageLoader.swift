@@ -16,27 +16,6 @@ import ImageIO
 #endif
 
 public enum ImageLoader {
-    /// What a decode reads from. Fetching is `ImageStore`'s job — by the time
-    /// bytes reach here they are either on disk or in memory.
-    public enum Source: Equatable, Sendable {
-        /// A file already on disk. Streamed rather than read whole, so a huge
-        /// image never sits in memory twice.
-        case local(URL)
-        /// Image bytes already in memory — fetched through the bridge, or held
-        /// by the caller. Decoded at the requested size without any fetch.
-        case data(Data)
-
-        /// Human-readable description for failure logs.
-        public var description: String {
-            switch self {
-            case .local(let url):
-                return "image at path: \(url.path)"
-            case .data(let bytes):
-                return "in-memory image: \(bytes.count) bytes"
-            }
-        }
-    }
-
     /// Decode strategy for `load`. `.fitTo` takes the IDCT thumbnail
     /// path, decoding at most `points × displayScale` pixels. `.native`
     /// decodes the source at its full pixel resolution, eagerly, so
@@ -51,23 +30,23 @@ public enum ImageLoader {
 
     public struct DecodeError: Error {}
 
-    /// Loads an image for `source` at the given `size`. Local sources read
-    /// directly from disk; `.data` sources decode bytes already in memory. The
-    /// decode runs on `queue`, never on Swift's cooperative pool, and produces
-    /// an image backed by an already-decoded CGImage. Throws
-    /// `CancellationError` if the surrounding task is cancelled, or
-    /// `shouldStart` answers false, before the decode starts, or `DecodeError`
-    /// if the source can't be opened or decoded. A decode that has started is
-    /// not interrupted: its image is returned even to a cancelled caller.
+    /// Decodes the image in `data`, bytes already in memory (core reads files
+    /// and hands over what the slot needs), at the given `size`. The decode
+    /// runs on `queue`, never on Swift's cooperative pool, and produces an
+    /// image backed by an already-decoded CGImage. Throws `CancellationError`
+    /// if the surrounding task is cancelled, or `shouldStart` answers false,
+    /// before the decode starts, or `DecodeError` if the bytes can't be
+    /// decoded. A decode that has started is not interrupted: its image is
+    /// returned even to a cancelled caller.
     public static func load(
-        source: Source,
+        data: Data,
         size: Size,
         displayScale: CGFloat,
         queue: ImageDecodeQueue,
         shouldStart: @escaping @Sendable () -> Bool = { true }
     ) async throws -> PlatformImage {
         let decoded = try await queue.run(shouldStart: shouldStart) {
-            decode(source: source, size: size, displayScale: displayScale)
+            decode(data: data, size: size, displayScale: displayScale)
         }
         guard let decoded else {
             throw DecodeError()
@@ -76,20 +55,14 @@ public enum ImageLoader {
     }
 }
 
-/// Decodes `source` to a platform image at the requested size, on the calling
-/// thread; nil when the source can't be opened or decoded.
+/// Decodes `data` to a platform image at the requested size, on the calling
+/// thread; nil when the bytes can't be decoded.
 private func decode(
-    source: ImageLoader.Source,
+    data: Data,
     size: ImageLoader.Size,
     displayScale: CGFloat
 ) -> PlatformImage? {
-    let cgSource: CGImageSource?
-    switch source {
-    case .local(let url):
-        cgSource = CGImageSourceCreateWithURL(url as CFURL, nil)
-    case .data(let bytes):
-        cgSource = CGImageSourceCreateWithData(bytes as CFData, nil)
-    }
+    let cgSource = CGImageSourceCreateWithData(data as CFData, nil)
     guard let cgSource,
         let cg = decodeCGImage(
             from: cgSource,

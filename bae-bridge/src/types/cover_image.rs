@@ -24,7 +24,7 @@ pub enum BridgeCoverImageSource {
     Local {
         file: BridgeFileVersion,
     },
-    /// Tag artwork at its source file's version; `read_embedded_cover` has its bytes.
+    /// Tag artwork at its source file's version; `picture` has its bytes.
     Embedded {
         source: BridgeFileVersion,
         candidate_key: Vec<u8>,

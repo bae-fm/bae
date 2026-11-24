@@ -133,7 +133,7 @@ enum ScrollCostFixture {
     static func warmedImages(
         for items: [BridgeImportListItem]
     ) async throws -> ImageStore {
-        let images = ImageStore()
+        let images = PreviewData.artImageStore()
         let covers = Array(
             Set(
                 items.compactMap { item -> ImageContent? in

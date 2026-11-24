@@ -106,6 +106,20 @@ private final class SerialTaskExecutor: TaskExecutor {
     }
 }
 
+private actor PictureAsks {
+    private(set) var asks: [String] = []
+
+    func record(_ pixels: UInt32?, _ turn: BridgePictureTurn) {
+        let size = pixels.map { "\($0) px" } ?? "original"
+        let turnName =
+            switch turn {
+            case .visible: "visible"
+            case .prefetch: "prefetch"
+            }
+        asks.append("\(size) \(turnName)")
+    }
+}
+
 private actor PixelReads {
     private(set) var pixels: [UInt32?] = []
 
@@ -178,6 +192,35 @@ struct ImageStoreCacheTests {
         _ = try await store.decodeSource(for: content, at: .nativeResolution)
 
         #expect(await asked.pixels == [80, 520, nil])
+    }
+
+    @Test(
+        "a picture of the import list is asked of core at the slot's pixels, a viewer's decode for the original, and a warm as a prefetch"
+    )
+    func importPicturesAskCoreForTheSlotsPixels() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let asked = PictureAsks()
+        let store = ImageStore(fetchPicture: { _, pixels, turn in
+            await asked.record(pixels, turn)
+            return bytes
+        })
+        let content = ImageContent.localFile(
+            BridgeFileVersion(
+                path: Data("/folder/front.png".utf8),
+                size: 1_000,
+                modifiedAtNs: 1_000
+            )
+        )
+
+        _ = try await store.image(content, pointSize: 40, displayScale: 2)
+        _ = try await store.fullResolutionImage(content, displayScale: 2)
+        await store.warm([content], pointSize: 90, displayScale: 2)
+
+        #expect(
+            await asked.asks == [
+                "80 px visible", "original visible", "180 px prefetch",
+            ]
+        )
     }
 
     @Test("a library image with no bytes resolves to nothing")
@@ -394,7 +437,9 @@ struct ImageStoreDecodingTests {
         #expect(queue.runs.allSatisfy { $0.onQueue && !$0.onMainThread })
     }
 
-    @Test("a decode of a file on disk runs on the decode queue too")
+    @Test(
+        "a decode of a picture of the import list runs on the decode queue too"
+    )
     func localFileDecodesRunOnTheDecodeQueue() async throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -402,7 +447,10 @@ struct ImageStoreDecodingTests {
         let bytes = try makePngBytes(width: 8, height: 8)
         try bytes.write(to: file)
         let queue = ImageDecodeQueue(width: 2)
-        let store = ImageStore(decodeQueue: queue)
+        let store = ImageStore(
+            fetchPicture: { _, _, _ in bytes },
+            decodeQueue: queue
+        )
 
         _ = try await store.image(
             .localFile(
@@ -579,7 +627,7 @@ struct ImageStoreContentIdentityTests {
     }
 
     @Test(
-        "an unchanged file version is served from the cache without reading the file"
+        "an unchanged file version is served from the cache without asking core again"
     )
     func unchangedLocalFileHitsTheCache() async throws {
         let directory = try temporaryDirectory()
@@ -593,7 +641,11 @@ struct ImageStoreContentIdentityTests {
             modifiedAtNs: 1_000
         )
 
-        let store = ImageStore()
+        let asked = Counter()
+        let store = ImageStore(fetchPicture: { _, _, _ in
+            asked.increment()
+            return bytes
+        })
         let content = ImageContent.localFile(version)
         #expect(
             store.cachedImage(content, pointSize: 56, displayScale: 2) == nil
@@ -601,8 +653,7 @@ struct ImageStoreContentIdentityTests {
         let loaded = try #require(
             try await store.image(content, pointSize: 56, displayScale: 2)
         )
-        // Anything that read the file again would find nothing there now.
-        try FileManager.default.removeItem(at: file)
+        #expect(asked.count == 1)
 
         #expect(
             store.cachedImage(content, pointSize: 56, displayScale: 2)
@@ -612,6 +663,7 @@ struct ImageStoreContentIdentityTests {
             try await store.image(content, pointSize: 56, displayScale: 2)
                 === loaded
         )
+        #expect(asked.count == 1, "the second draw is the cached decode")
     }
 
     @Test("a new modification time at the same path is a new decode")
@@ -632,7 +684,7 @@ struct ImageStoreContentIdentityTests {
             modifiedAtNs: 2_000
         )
 
-        let store = ImageStore()
+        let store = ImageStore(fetchPicture: { _, _, _ in bytes })
         let original = try #require(
             try await store.image(
                 .localFile(scanned),
@@ -676,7 +728,16 @@ struct ImageStoreContentIdentityTests {
             modifiedAtNs: 1_000
         )
         let fetches = Counter()
-        let store = ImageStore(fetchEmbeddedCover: { _, _ in
+        let store = ImageStore(fetchPicture: { source, _, _ in
+            guard
+                case .embeddedArt(_, let candidateKey, let sourceFileId) =
+                    source
+            else {
+                Issue.record("embedded artwork asked for as \(source)")
+                throw ImageStoreUnavailable()
+            }
+            #expect(candidateKey == Data("/candidate".utf8))
+            #expect(sourceFileId == "01.flac")
             fetches.increment()
             return bytes
         })

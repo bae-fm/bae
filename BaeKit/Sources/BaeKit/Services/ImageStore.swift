@@ -32,7 +32,8 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     /// A file on disk the user is previewing before it enters the library — an
     /// import candidate's cover or folder image — at the version core's scan
     /// read. A file replaced at the same path is a new version, so it is new
-    /// content; nothing here reads the file to find that out.
+    /// content; nothing here reads the file to find that out, and core reads
+    /// it for every decode.
     case localFile(BridgeFileVersion)
     /// Artwork embedded in an audio file's tags, as core stored it in the
     /// candidate's tag snapshot, with the version of that file core read it
@@ -117,11 +118,16 @@ public final class ImageStore: Sendable, Observable {
     private let fetchRemoteImage:
         @Sendable (_ image: BridgeRemoteImageSet, _ pixels: UInt32?)
             async throws -> Data?
-    /// Bytes of the artwork embedded in one audio file of an import
-    /// candidate, as the candidate's tag snapshot stored them.
-    private let fetchEmbeddedCover:
-        @Sendable (_ candidateKey: Data, _ sourceFileId: String)
-            async throws -> Data
+    /// Bytes of one of an import candidate's pictures: a copy core made at
+    /// the step covering `pixels`, or the original's own bytes when `pixels`
+    /// is nil. Core reads the file, once and off the app's threads, and
+    /// stops when the call is cancelled and no other call wants the picture.
+    private let fetchPicture:
+        @Sendable (
+            _ source: BridgePictureSource,
+            _ pixels: UInt32?,
+            _ turn: BridgePictureTurn
+        ) async throws -> Data
     /// Bytes of a person's avatar, or nil when they have none.
     private let fetchAvatarBytes:
         @Sendable (_ person: String) async throws -> Data?
@@ -159,8 +165,12 @@ public final class ImageStore: Sendable, Observable {
         fetchRemoteImage:
             @escaping @Sendable (BridgeRemoteImageSet, UInt32?) async throws ->
             Data? = { _, _ in throw ImageStoreUnavailable() },
-        fetchEmbeddedCover:
-            @escaping @Sendable (Data, String) async throws -> Data = { _, _ in
+        fetchPicture:
+            @escaping @Sendable (
+                BridgePictureSource,
+                UInt32?,
+                BridgePictureTurn
+            ) async throws -> Data = { _, _, _ in
                 throw ImageStoreUnavailable()
             },
         fetchAvatarBytes:
@@ -170,7 +180,7 @@ public final class ImageStore: Sendable, Observable {
         self.fetchLibraryImageBytes = fetchLibraryImageBytes
         self.fetchReleaseImageBytes = fetchReleaseImageBytes
         self.fetchRemoteImage = fetchRemoteImage
-        self.fetchEmbeddedCover = fetchEmbeddedCover
+        self.fetchPicture = fetchPicture
         self.fetchAvatarBytes = fetchAvatarBytes
         cache = DecodedImageCache(totalCostLimit: Self.decodedByteBudget)
         self.decodeQueue = decodeQueue
@@ -200,11 +210,12 @@ public final class ImageStore: Sendable, Observable {
                     }
                     return Data(bytes)
                 },
-                fetchEmbeddedCover: {
+                fetchPicture: {
                     Data(
-                        try await handle.readEmbeddedCover(
-                            candidateKey: $0,
-                            sourceFileId: $1
+                        try await handle.picture(
+                            source: $0,
+                            pixels: $1,
+                            turn: $2
                         )
                     )
                 },
@@ -252,7 +263,8 @@ public final class ImageStore: Sendable, Observable {
     public func image(
         _ content: ImageContent,
         pointSize: CGFloat,
-        displayScale: CGFloat
+        displayScale: CGFloat,
+        turn: BridgePictureTurn = .visible
     ) async throws -> PlatformImage? {
         #if DEBUG
             asked.change(by: 1)
@@ -273,9 +285,9 @@ public final class ImageStore: Sendable, Observable {
             }
             return try await loadImage(
                 content,
-                cacheKey: key,
                 pointSize: pointSize,
                 displayScale: displayScale,
+                turn: turn,
                 control: control
             )
         }
@@ -296,28 +308,36 @@ public final class ImageStore: Sendable, Observable {
 
     private func loadImage(
         _ content: ImageContent,
-        cacheKey: String,
         pointSize: CGFloat,
         displayScale: CGFloat,
+        turn: BridgePictureTurn,
         control: LoadControl
     ) async throws -> PlatformImage? {
         let pixels = Int((pointSize * displayScale).rounded())
         guard
-            let source = try await decodeSource(
+            let data = try await decodeSource(
                 for: content,
-                at: .slot(pixels: pixels)
+                at: .slot(pixels: pixels),
+                turn: turn
             )
         else {
             return nil
         }
         let image = try await ImageLoader.load(
-            source: source,
+            data: data,
             size: .fitTo(points: pointSize),
             displayScale: displayScale,
             queue: decodeQueue,
             shouldStart: { control.beginDecoding() }
         )
-        cache.store(image, for: cacheKey)
+        cache.store(
+            image,
+            for: cacheKey(
+                content,
+                pointSize: pointSize,
+                displayScale: displayScale
+            )
+        )
         return image
     }
 
@@ -332,7 +352,7 @@ extension ImageStore {
         displayScale: CGFloat
     ) async throws -> PlatformImage? {
         guard
-            let source = try await decodeSource(
+            let data = try await decodeSource(
                 for: content,
                 at: .nativeResolution
             )
@@ -340,7 +360,7 @@ extension ImageStore {
             return nil
         }
         return try await ImageLoader.load(
-            source: source,
+            data: data,
             size: .native,
             displayScale: displayScale,
             queue: decodeQueue
@@ -372,7 +392,8 @@ extension ImageStore {
                 _ = try await image(
                     content,
                     pointSize: pointSize,
-                    displayScale: displayScale
+                    displayScale: displayScale,
+                    turn: .prefetch
                 )
             }
             catch is CancellationError {
@@ -390,13 +411,14 @@ extension ImageStore {
         }
     }
 
-    /// Where `content`'s bytes come from, resolved for a decode: a path for a
-    /// local file (which streams rather than loading whole), the fetched bytes
-    /// otherwise. Nil when no such image exists.
+    /// `content`'s bytes, fetched for a decode: a copy at the slot's size for
+    /// a picture of the import list, the original's own bytes for a viewer.
+    /// Nil when no such image exists.
     func decodeSource(
         for content: ImageContent,
-        at target: DecodeTarget
-    ) async throws -> ImageLoader.Source? {
+        at target: DecodeTarget,
+        turn: BridgePictureTurn = .visible
+    ) async throws -> Data? {
         switch content {
         case .libraryImage(let image):
             guard let bytes = try await fetchLibraryImageBytes(image) else {
@@ -405,9 +427,9 @@ extension ImageStore {
                 )
                 return nil
             }
-            return .data(bytes)
+            return bytes
         case .releaseImage(let releaseId, let source):
-            return .data(try await fetchReleaseImageBytes(releaseId, source))
+            return try await fetchReleaseImageBytes(releaseId, source)
         case .remote(let image):
             let pixels: UInt32? =
                 switch target {
@@ -418,18 +440,25 @@ extension ImageStore {
                 logger.debug("No provider art is served at \(image.url)")
                 return nil
             }
-            return .data(bytes)
+            return bytes
         case .localFile(let file):
-            return .local(file.url)
-        case .embeddedCover(_, let candidateKey, let sourceFileId):
-            return .data(
-                try await fetchEmbeddedCover(candidateKey, sourceFileId)
+            return try await fetchPicture(
+                .folderFile(file: file),
+                target.pictureEdge,
+                turn
+            )
+        case .embeddedCover(let source, let candidateKey, let sourceFileId):
+            return try await fetchPicture(
+                .embeddedArt(
+                    source: source,
+                    candidateKey: candidateKey,
+                    sourceFileId: sourceFileId
+                ),
+                target.pictureEdge,
+                turn
             )
         case .avatar(let person, _):
-            guard let bytes = try await fetchAvatarBytes(person) else {
-                return nil
-            }
-            return .data(bytes)
+            return try await fetchAvatarBytes(person)
         }
     }
 }
@@ -495,6 +524,15 @@ extension ImageStore {
         case slot(pixels: Int)
         /// The image's own resolution, for a viewer that zooms in.
         case nativeResolution
+
+        /// The pixels a request for a picture of the import list names:
+        /// the slot's, or none for the original's own bytes.
+        var pictureEdge: UInt32? {
+            switch self {
+            case .slot(let pixels): UInt32(clamping: pixels)
+            case .nativeResolution: nil
+            }
+        }
     }
 }
 

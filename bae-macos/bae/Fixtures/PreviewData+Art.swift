@@ -64,12 +64,21 @@ extension PreviewData {
         )
     }
 
-    /// An image store that loads library covers and the images the scan read.
+    /// An image store that loads library covers and the images the scan read,
+    /// reading each scanned file where core would make a copy of it.
     static func artImageStore() -> ImageStore {
         ImageStore(
             fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) },
             fetchRemoteImage: { image, _ in
                 try Data(contentsOf: URL(fileURLWithPath: image.url))
+            },
+            fetchPicture: { source, _, _ in
+                switch source {
+                case .folderFile(let file):
+                    try Data(contentsOf: file.url)
+                case .embeddedArt:
+                    throw ImageStoreUnavailable()
+                }
             }
         )
     }
