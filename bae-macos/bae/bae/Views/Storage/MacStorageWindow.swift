@@ -14,7 +14,6 @@ struct MacStorageWindow: View {
     private var outputs
     @Environment(ConfigStore.self)
     private var configStore
-    // This window is its own scene, so it shows its own errors.
     @Environment(UiStore.self)
     private var uiStore
 
@@ -129,7 +128,6 @@ struct MacStorageWindow: View {
         ) { pending, answer in
             runner?.answerUnpin(pending, answer)
         }
-        .errorAlert(uiStore)
         .task {
             storageManagerStore.select(selection)
             updateQuery()

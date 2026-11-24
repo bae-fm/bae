@@ -39,7 +39,7 @@ struct SettingsWindowRoot: View {
                 )
             }
         }
-        .errorAlert(appDelegate.uiStore)
+        .errorAlert(appDelegate.uiStore, in: .settings)
     }
 }
 

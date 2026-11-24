@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import Combine
 import SwiftUI
@@ -54,6 +55,44 @@ struct AlbumReveal: Equatable, Sendable {
     /// The track whose row the grid scrolls into view and then flashes, or
     /// `nil` for the album alone.
     let trackId: String?
+}
+
+/// The windows that can host the app's shared error alert. The app opens one
+/// window of each kind.
+enum ErrorAlertWindow: String {
+    case main = "bae.main-window"
+    case settings = "bae.settings-window"
+    case storageManager = "bae.storage-manager-window"
+
+    var identifier: NSUserInterfaceItemIdentifier {
+        NSUserInterfaceItemIdentifier(rawValue)
+    }
+
+    @MainActor
+    static func frontmost() -> Self? {
+        guard let app = NSApp else { return nil }
+        // A sheet or alert can be key. Its window owns the shared error;
+        // MacAlert places the panel over whichever sheet or alert is open.
+        var key = app.keyWindow
+        while let window = key {
+            if let host = host(of: window) { return host }
+            key = window.sheetParent ?? window.parent
+        }
+        return app.orderedWindows.lazy
+            .filter { $0.isVisible && !$0.isMiniaturized }
+            .compactMap { host(of: $0) }.first
+    }
+
+    @MainActor
+    private static func host(of window: NSWindow) -> Self? {
+        window.identifier.flatMap { Self(rawValue: $0.rawValue) }
+    }
+}
+
+struct WindowError: Identifiable {
+    let id = UUID()
+    let error: DisplayError
+    var window: ErrorAlertWindow?
 }
 
 // MARK: - UiStore
@@ -146,7 +185,14 @@ class UiStore: @unchecked Sendable {
 
     // ── Errors ──────────────────────────────────────────────────────────
 
-    var lastError: DisplayError?
+    let errorAlertGroup = UUID()
+    @MainActor
+    private var windowError: WindowError?
+    #if DEBUG
+        @MainActor
+        // periphery:ignore - read by baeTests
+        var lastError: DisplayError? { windowError?.error }
+    #endif
 
     // ── Search ─────────────────────────────────────────────────────────
 
@@ -157,6 +203,8 @@ class UiStore: @unchecked Sendable {
     /// search is a UI-session concern: the user types into a transient
     /// popover and the result lives only as long as that popover does.
     var searchResults: SearchResults?
+
+    nonisolated init() {}
 
     // MARK: - Navigation methods
 
@@ -312,23 +360,57 @@ class UiStore: @unchecked Sendable {
     /// Surface a UI-originated error — prose the UI already localized (a failed
     /// drop, a caught Swift error). Core errors crossing the bridge use the
     /// typed overload.
+    @MainActor
     func showError(_ message: String) {
-        lastError = DisplayError(line: message)
+        showError(DisplayError(line: message))
     }
 
-    func showError(_ error: DisplayError) {
-        lastError = error
+    @MainActor
+    func showError(_ error: DisplayError, in window: ErrorAlertWindow? = nil) {
+        windowError = WindowError(
+            error: error,
+            window: window ?? ErrorAlertWindow.frontmost()
+        )
     }
 
     /// Surface a caught error. An error core says has no line — a cancellation —
     /// is dropped rather than raised as an alert with nothing in it.
+    @MainActor
     func showError(_ error: any Error) {
-        guard let displayed = DisplayError(error) else { return }
-        lastError = displayed
+        showError(error, in: nil)
     }
 
+    @MainActor
+    func showError(_ error: any Error, in window: ErrorAlertWindow?) {
+        guard let displayed = DisplayError(error) else { return }
+        showError(displayed, in: window)
+    }
+
+    @MainActor
+    func error(in window: ErrorAlertWindow) -> WindowError? {
+        guard let windowError, windowError.window == window else { return nil }
+        return windowError
+    }
+
+    /// An error that arrived with every window closed waits for a window.
+    @MainActor
+    func placePendingError() {
+        guard var error = windowError, error.window == nil,
+            let window = ErrorAlertWindow.frontmost()
+        else { return }
+        error.window = window
+        windowError = error
+    }
+
+    @MainActor
+    func dismissError(_ id: UUID) {
+        guard windowError?.id == id else { return }
+        clearError()
+    }
+
+    @MainActor
     func clearError() {
-        lastError = nil
+        windowError = nil
     }
 
     // MARK: - Overlay methods

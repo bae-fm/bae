@@ -7,19 +7,21 @@ struct StorageManagerWindowRoot: View {
     let appDelegate: AppDelegate
 
     var body: some View {
-        if let appService = appDelegate.appService {
-            appService.installEnvironment(MacStorageWindow())
-                .environment(
-                    \.openSettingsWindow,
-                    OpenSettingsWindowAction {
-                        appDelegate.showSettingsWindow(nil)
-                    }
-                )
+        Group {
+            if let appService = appDelegate.appService {
+                appService.installEnvironment(MacStorageWindow())
+                    .environment(
+                        \.openSettingsWindow,
+                        OpenSettingsWindowAction {
+                            appDelegate.showSettingsWindow(nil)
+                        }
+                    )
+            }
+            else {
+                StorageManagerNoLibrary()
+            }
         }
-        else {
-            StorageManagerNoLibrary()
-                .errorAlert(appDelegate.uiStore)
-        }
+        .errorAlert(appDelegate.uiStore, in: .storageManager)
     }
 }
 

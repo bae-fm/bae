@@ -346,6 +346,7 @@
 
         private struct Shown {
             let id: UUID
+            let replacementGroup: UUID?
             let panel: NSPanel
             let shield: ScrimWindow
             let parent: NSWindow
@@ -429,21 +430,21 @@
         fileprivate func present(
             id: UUID,
             over window: NSWindow?,
-            build: @escaping () -> (MacAlertWords, [MacAlertButton])?,
-            look: PanelLook,
-            finish: @escaping @MainActor () -> Void
+            replacementGroup: UUID?,
+            content: AlertPanelContent
         ) {
             withdraw(id: id)
+            if let replacementGroup,
+                let previous = shown.first(where: {
+                    $0.replacementGroup == replacementGroup
+                })
+            {
+                withdraw(id: previous.id)
+            }
             guard let parent = target(over: window) else {
                 preconditionFailure("There is no window to show an alert over")
             }
-            let host = NSHostingView(
-                rootView: AlertPanelContent(
-                    build: build,
-                    finish: finish,
-                    look: look
-                )
-            )
+            let host = NSHostingView(rootView: content)
             let panel = AlertPanel(
                 contentRect: NSRect(origin: .zero, size: host.fittingSize),
                 styleMask: [.borderless, .nonactivatingPanel],
@@ -469,6 +470,7 @@
             shown.append(
                 Shown(
                     id: id,
+                    replacementGroup: replacementGroup,
                     panel: panel,
                     shield: shield,
                     parent: parent,
@@ -606,7 +608,21 @@
 
     /// What presents an alert in its window while something is set.
     private struct Presenting: ViewModifier {
-        let isPresented: Bool
+        enum Presentation: Equatable {
+            case hidden, shown
+            case replacing(item: UUID, group: UUID)
+
+            init(_ isPresented: Bool) {
+                self = isPresented ? .shown : .hidden
+            }
+
+            var replacementGroup: UUID? {
+                guard case .replacing(_, let group) = self else { return nil }
+                return group
+            }
+        }
+
+        let presentation: Presentation
         let build: () -> (MacAlertWords, [MacAlertButton])?
         let finish: @MainActor () -> Void
 
@@ -630,8 +646,8 @@
                 .background(
                     WindowAnchorView(anchor: anchor).frame(width: 0, height: 0)
                 )
-                .onChange(of: isPresented, initial: true) { _, presented in
-                    if presented {
+                .onChange(of: presentation, initial: true) { _, presentation in
+                    if presentation != .hidden {
                         raise()
                     }
                     else {
@@ -663,20 +679,30 @@
         private func raise() {
             let anchor = anchor
             let id = id
-            let build = build
-            let finish = finish
+            let replacementGroup = presentation.replacementGroup
             let look = PanelLook(appearance: hostedAppearance, scheme: scheme)
             self.look = look
+            let content = AlertPanelContent(
+                build: build,
+                finish: finish,
+                look: look
+            )
             let show: @MainActor () -> Void = {
                 AlertWindows.shared.present(
                     id: id,
                     over: anchor.view?.window,
-                    build: build,
-                    look: look,
-                    finish: finish
+                    replacementGroup: replacementGroup,
+                    content: content
                 )
             }
-            if AlertWindows.shared.canPresent(over: anchor.view?.window) {
+            let canPresent =
+                if replacementGroup != nil {
+                    anchor.view?.window != nil
+                }
+                else {
+                    AlertWindows.shared.canPresent(over: anchor.view?.window)
+                }
+            if canPresent {
                 show()
             }
             else {
@@ -690,7 +716,7 @@
         public func presentsAlerts(of asker: AlertAsker) -> some View {
             modifier(
                 Presenting(
-                    isPresented: asker.asked != nil,
+                    presentation: .init(asker.asked != nil),
                     build: { asker.asked.map { ($0.words, $0.buttons) } },
                     finish: { asker.close() }
                 )
@@ -704,7 +730,7 @@
         ) -> some View {
             modifier(
                 Presenting(
-                    isPresented: isPresented.wrappedValue,
+                    presentation: .init(isPresented.wrappedValue),
                     build: { alert() },
                     finish: { isPresented.wrappedValue = false }
                 )
@@ -719,9 +745,28 @@
         ) -> some View {
             modifier(
                 Presenting(
-                    isPresented: item.wrappedValue != nil,
+                    presentation: .init(item.wrappedValue != nil),
                     build: { item.wrappedValue.map(alert) },
                     finish: { item.wrappedValue = nil }
+                )
+            )
+        }
+
+        /// Shows an item in this view's window, replacing the previous alert
+        /// in the same group even if it was shown over another window.
+        public func macAlert<Item: Identifiable>(
+            item: Item?,
+            replacingIn group: UUID,
+            dismiss: @escaping @MainActor (UUID) -> Void,
+            _ alert: @escaping (Item) -> (MacAlertWords, [MacAlertButton])
+        ) -> some View where Item.ID == UUID {
+            modifier(
+                Presenting(
+                    presentation: item.map {
+                        .replacing(item: $0.id, group: group)
+                    } ?? .hidden,
+                    build: { item.map(alert) },
+                    finish: { if let item { dismiss(item.id) } }
                 )
             )
         }

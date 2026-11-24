@@ -37,12 +37,16 @@ extension AppDelegate {
                 // The window has no toolbar: its panes sit in the content's
                 // own sidebar.
                 bridging: [],
-                framePlacement: framePlacement(named: "Settings"),
+                framePlacement: framePlacement(
+                    named: "Settings",
+                    in: .settings
+                ),
                 configureWindow: { window in
                     // The title bar shows only the window buttons, over the
                     // sidebar. The title is for the Window menu and VoiceOver.
                     window.showOnlyWindowButtons()
                     window.title = String(localized: "Settings")
+                    window.identifier = ErrorAlertWindow.settings.identifier
                 },
                 onClose: { [weak self] in self?.settingsWindow = nil }
             )
@@ -61,9 +65,13 @@ extension AppDelegate {
                 contentSize: CGSize(width: 1100, height: 660),
                 sizing: .minSize,
                 bridging: .toolbars,
-                framePlacement: framePlacement(named: "Storage Manager"),
+                framePlacement: framePlacement(
+                    named: "Storage Manager",
+                    in: .storageManager
+                ),
                 configureWindow: {
                     $0.title = String(localized: "Storage manager")
+                    $0.identifier = ErrorAlertWindow.storageManager.identifier
                 },
                 onClose: { [weak self] in self?.storageManagerWindow = nil }
             )
@@ -71,7 +79,10 @@ extension AppDelegate {
         controller.showWindow(nil)
     }
 
-    private func framePlacement(named name: String)
+    private func framePlacement(
+        named name: String,
+        in window: ErrorAlertWindow
+    )
         -> WindowFrameAutosave.Opening
     {
         WindowFrameAutosave.Opening(
@@ -81,7 +92,9 @@ extension AppDelegate {
                 bugReporter: CoreBugReporter(),
                 showError: { [weak self] error in
                     // Placement happens before AppKit shows the new window.
-                    Task { @MainActor in self?.uiStore.showError(error) }
+                    Task { @MainActor in
+                        self?.uiStore.showError(error, in: window)
+                    }
                 }
             ),
             preferredScreen: mainWindow?.window?.screen,

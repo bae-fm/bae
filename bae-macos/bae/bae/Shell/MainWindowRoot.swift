@@ -41,6 +41,7 @@ struct MainWindowRoot: View {
                 }
             }
         }
+        .errorAlert(appDelegate.uiStore, in: .main)
         .appAppearance()
         .mainWindowEnvironment(
             openSettingsWindow: OpenSettingsWindowAction {

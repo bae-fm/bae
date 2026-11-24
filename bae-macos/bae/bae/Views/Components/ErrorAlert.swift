@@ -1,25 +1,37 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
+private struct ErrorAlert: View {
+    let uiStore: UiStore
+    let window: ErrorAlertWindow
+
+    var body: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .macAlert(
+                item: uiStore.error(in: window),
+                replacingIn: uiStore.errorAlertGroup,
+                dismiss: uiStore.dismissError
+            ) { ErrorAlertContent.alert(title: Text("Error"), error: $0.error) }
+            .onAppear { uiStore.placePendingError() }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: NSWindow.didBecomeKeyNotification
+                )
+            ) { _ in uiStore.placePendingError() }
+    }
+}
+
 extension View {
-    /// The shared "Error" alert driven by `uiStore.lastError`. Presents while an
-    /// error is set, names the concrete fault under core's category line when
-    /// core says the fault adds to it, offers a "Copy details" button for the
-    /// whole chain, and clears the error on dismiss. Used by every scene that surfaces `UiStore` errors (the main
-    /// window and the Storage Manager window own separate alerts on the same
-    /// store).
-    ///
-    /// The fault is in the message, not only behind "Copy details": the category
-    /// line alone ("Something went wrong.") names nothing, and an error a reader
-    /// has to paste somewhere to identify has not been reported to them.
-    func errorAlert(_ uiStore: UiStore) -> some View {
-        errorAlert(
-            "Error",
-            error: Binding(
-                get: { uiStore.lastError },
-                set: { if $0 == nil { uiStore.clearError() } }
-            )
-        )
+    /// Hosts the shared alert when the error belongs to this window.
+    func errorAlert(_ uiStore: UiStore, in window: ErrorAlertWindow)
+        -> some View
+    {
+        background {
+            ErrorAlert(uiStore: uiStore, window: window)
+                .id(uiStore.errorAlertGroup)
+        }
     }
 
     /// Shows an alert for why playback last failed while

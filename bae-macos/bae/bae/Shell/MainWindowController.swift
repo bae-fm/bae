@@ -52,6 +52,7 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
         window.showOnlyWindowButtons()
         // The window has no title; AppKit's default is "Untitled".
         window.title = ""
+        window.identifier = ErrorAlertWindow.main.identifier
     }
 
     private var target: MainAppMenuTarget? {

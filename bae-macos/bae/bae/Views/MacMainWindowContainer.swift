@@ -193,7 +193,6 @@ struct MacMainWindowContainer: View {
         // Clicking anywhere that is not a text field ends the active field
         // edit, in this window and in popovers alike.
         .background(FieldClickAwayMonitor())
-        .errorAlert(uiStore)
         .playbackFailureAlert(
             playbackStore,
             pairAgain: { castStart.cast(to: $0) }
