@@ -119,7 +119,7 @@ struct MacImportRow: View {
         case .queuedToUpload:
             ImportRowStateText(text: BridgeUploadActivity.queued.phaseText)
         case .error(let failure):
-            ImportRowStateText(text: failure.detail)
+            ImportRowStateText(text: failure.rowLine)
         case nil:
             EmptyView()
         }

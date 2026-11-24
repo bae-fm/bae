@@ -62,4 +62,14 @@ struct DoneRowTests {
             ImportCandidateTableLayout.height(for: row) > heightWithoutStatus
         )
     }
+
+    /// The chain is for the folder's pane, which shows it with Retry; the row
+    /// says only that bae broke.
+    @Test("a row whose lookup broke on bae's side says so in plain words")
+    func internalFailureLineIsNotTheErrorChain() {
+        let failure = BridgeInternalFailure(
+            detail: "Failed to store a lookup result: disk I/O error"
+        )
+        #expect(failure.rowLine == "Something went wrong.")
+    }
 }

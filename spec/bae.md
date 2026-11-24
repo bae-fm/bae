@@ -1183,7 +1183,9 @@ A Found row's title line reads from its draft. A row with no draft, from the
 tags or anywhere else, names its folder. A row with a draft shows the
 draft's album title and credits. While the draft links to a catalog's
 pressing or album, the row also indicates that its facts come from a
-catalog record.
+catalog record. A row in an Error state because bae broke on its own side
+reads *Something went wrong.* under its title; the folder's pane shows the
+cause, with *Retry*.
 
 A filter narrows Found to one group of these states: needs you, in progress,
 identified, unmatched, or not looked up. Each entry counts the Found rows it
