@@ -70,7 +70,7 @@ impl<'a> LayoutParams<'a> {
 }
 
 /// Whether the form's edits delete or add a track, as an SQL condition over
-/// the `dropped_tracks` of [`sheet_changes_ctes`]: every track a save adds
+/// the `dropped_tracks` of [`sheet_changes_ctes`](super::sheet_files::sheet_changes_ctes): every track a save adds
 /// replaces deleted ones.
 const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
 
@@ -99,7 +99,7 @@ const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
 /// that holds it, and every side numbers its tracks from one in playing
 /// order. The media no track sits on are then dropped, as for a move. An
 /// added track is named by its file's id. The tracks the edits delete and
-/// add are those of [`sheet_changes_ctes`], which come first.
+/// add are those of [`sheet_changes_ctes`](super::sheet_files::sheet_changes_ctes), which come first.
 pub fn layout_ctes() -> String {
     let changes = super::sheet_files::sheet_changes_ctes(":release", ":edits");
     format!("{changes}, {BASE_MEDIUMS}, {LAYOUT}").replace("{changing}", CHANGING)
