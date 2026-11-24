@@ -19,11 +19,7 @@ struct MacSearchSourceLine: View {
             switch status {
             case .searching:
                 HStack(spacing: ThemeSpace.compact) {
-                    MacSpinner()
-                        .frame(
-                            width: ThemeIcon.small.size,
-                            height: ThemeIcon.small.size
-                        )
+                    MacSpinner.sized(ThemeIcon.small.size)
                     Text(
                         "Searching \(catalog)…",
                         comment:
