@@ -236,6 +236,7 @@
     return h('div', { className: 'bae-errdis-panel bae-errdis-panel-hover' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 })));
   }
   // macOS's notice: a glyph (`icon: false` drops it), a title and a subtitle saying what to do, then up to two buttons: `action`, the primary one (Retry), and `secondary` (Dismiss, or Details, which opens MacAlert with the error's causes in `details`: a notice never shows the error itself). The buttons sit on the title's line at the right, secondary first; `buttons: 'below'` puts them on a line under the text. `dismiss` adds an × at the end of that line. `layout: 'centered'` is a failed view.
+  // `opens`: a click on the row opens the error's details, so the title is the button that opens them and the notice has no Details button.
   function MacNotice(props) {
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
@@ -277,7 +278,7 @@
         props.pausable ? h(MacIconButton, { icon: props.paused ? 'play' : 'pause', size: 'medium', small: true, boxed: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
       h(MacProgress, { name: props.label, value: props.progress }));
   }
-  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem itself stays on the screen where the person fixes it): the caller's own (children), Could not read sync status (`error`, its title), and sync's own failure (`attention`, the error's title: signed out, a record it can't send) with Open sync settings. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Moving to This Mac (`movingToThisDevice`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network; for uploads also Waiting for Wi-Fi, Retrying at a time) stands in place of the count. When nothing needs attention and nothing transfers, the panel says Everything is up to date.
+  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem itself stays on the screen where the person fixes it): the caller's own (children), Could not read sync status (`error`, its title), and sync's own failure (`attention`, the error's title: signed out, a record it can't send) with Open sync settings. A click on a problem's row opens its details. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Moving to This Mac (`movingToThisDevice`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network; for uploads also Waiting for Wi-Fi, Retrying at a time) stands in place of the count. When nothing needs attention and nothing transfers, the panel says Everything is up to date.
   function MacActivity(props) {
     var sec = function (title, body) { return h(MacSection, { title: title }, h(MacBox, null, body)); };
     // Every row of the panel's boxes has the same inset; a row in the problems' box without a glyph starts on the problems' text edge (MacItem's empty leading column). Transfers is its own box, so its lines start at the box's inset.
@@ -290,8 +291,8 @@
     };
     var out = [];
     var problems = kids(props.children).map(function (p, i) { return row('c' + i, p); }).concat([
-      props.error ? row('e', h(MacNotice, { quiet: true, dismiss: true, tone: 'danger', title: props.error })) : null,
-      props.attention ? row('f', h(MacNotice, { quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open sync settings', buttons: 'below' })) : null,
+      props.error ? row('e', h(MacNotice, { quiet: true, dismiss: true, opens: true, tone: 'danger', title: props.error })) : null,
+      props.attention ? row('f', h(MacNotice, { quiet: true, dismiss: true, opens: true, tone: 'warning', title: props.attention, action: 'Open sync settings', buttons: 'below' })) : null,
       ].filter(Boolean));
     if (problems.length) out.push(h(React.Fragment, { key: 'a' }, sec('Needs attention', problems)));
     if (props.syncing || props.uploads || props.pins || props.movingToThisDevice) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
