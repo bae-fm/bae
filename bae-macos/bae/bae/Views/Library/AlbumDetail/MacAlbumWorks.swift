@@ -19,7 +19,6 @@ struct MacAlbumWorks: View {
                     ForEach(track.works, id: \.workId) { work in
                         HStack(spacing: ThemeSpace.related) {
                             Text(verbatim: track.positionText)
-                                .themeText(.detail)
                                 .monospacedDigit()
                                 .foregroundStyle(Theme.textSecondary)
                                 .frame(
