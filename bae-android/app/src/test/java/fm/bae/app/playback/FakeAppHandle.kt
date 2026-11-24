@@ -214,7 +214,10 @@ internal open class FakeAppHandle(
 
     override fun triggerSync() {}
 
-    override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
+    override suspend fun fetchLibraryImageBytes(
+        image: BridgeImageRef,
+        pixels: UInt?,
+    ): ByteArray? = null
 
     override fun subscribeAlbumSections(sortCriteria: List<BridgeSortCriterion>): AlbumSectionsSubscription =
         unfaked("subscribeAlbumSections")
@@ -635,6 +638,7 @@ internal open class FakeAppHandle(
     override suspend fun fetchReleaseImageBytes(
         releaseId: String,
         source: BridgeGallerySource,
+        pixels: UInt?,
     ): ByteArray = unfaked("fetchReleaseImageBytes")
 
     override suspend fun renameLibrary(name: String) {

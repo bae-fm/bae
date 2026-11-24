@@ -30,7 +30,10 @@ struct CoverPickerTests {
         let release = persistedRelease()
         let recorder = CoverRecorder()
         let png = try imageBytes()
-        let images = ImageStore(fetchReleaseImageBytes: { releaseId, source in
+        let images = ImageStore(fetchReleaseImageBytes: {
+            releaseId,
+            source,
+            _ in
             await recorder.read(releaseId, source)
             return png
         })

@@ -1,17 +1,24 @@
 use super::*;
 
 forward! { async this => {
-    /// A library image's bytes, or `None` when no image is stored.
-    fn fetch_library_image_bytes(image: crate::types::BridgeImageRef) -> Option<Vec<u8>> {
+    /// A library image's bytes, or `None` when no image is stored. A cover
+    /// has a browse copy and a large copy: `pixels`, the longer edge of the
+    /// slot that draws it, picks one, and with none the call returns the
+    /// large copy. An artist's image has one copy.
+    fn fetch_library_image_bytes(image: crate::types::BridgeImageRef, pixels: Option<u32>) -> Option<Vec<u8>> {
         this.services
-            .read_image_bytes(&image.into_core(), None)
+            .read_image_bytes(&image.into_core(), pixels)
             .await
             .map_err(BridgeError::from)
     }
 
-    fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource) -> Vec<u8> {
+    /// One slot of a release's pictures. `pixels` is the longer edge of the
+    /// slot that draws it: a cover slot returns the copy that covers it and
+    /// an image file's slot its preview. A size above the largest copy, or
+    /// none, is the viewer's, and returns the picture itself.
+    fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource, pixels: Option<u32>) -> Vec<u8> {
         this.services
-            .read_gallery_bytes(&release_id, &source.into_core(), None)
+            .read_gallery_bytes(&release_id, &source.into_core(), pixels)
             .await
             .map_err(BridgeError::from)
     }

@@ -71,7 +71,7 @@ class ArtworkTest {
         compose.onNodeWithContentDescription(FAILED).assertDoesNotExist()
     }
 
-    private fun store(read: () -> ByteArray?) = ImageStore(fetchLibraryImageBytes = { read() }, dispatcher = Dispatchers.Unconfined)
+    private fun store(read: () -> ByteArray?) = ImageStore(fetchLibraryImageBytes = { _, _ -> read() }, dispatcher = Dispatchers.Unconfined)
 
     private fun show(
         store: ImageStore,

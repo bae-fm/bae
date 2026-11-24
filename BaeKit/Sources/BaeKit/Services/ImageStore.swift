@@ -103,14 +103,22 @@ public enum ImageContent: Equatable, Hashable, Sendable {
 /// arrives as a new reference once core rescans it, and the store never reads
 /// a file to decide what it holds.
 public final class ImageStore: Sendable, Observable {
-    /// Bytes of a curated library image, or nil when no such image exists.
+    /// Bytes of a curated library image for a slot `pixels` wide on its longer
+    /// side (nil: the largest copy), or nil when no such image exists. Core
+    /// picks the cover's browse or large copy.
     private let fetchLibraryImageBytes:
-        @Sendable (_ image: BridgeImageRef) async throws -> Data?
-    /// Bytes of one of a release's image-strip slots, downloaded from the
-    /// release's storage (and decrypted) when it isn't on disk here.
+        @Sendable (_ image: BridgeImageRef, _ pixels: UInt32?)
+            async throws -> Data?
+    /// Bytes of one of a release's image-strip slots for a slot `pixels` wide
+    /// on its longer side: a cover's copy, or a release image's preview. With
+    /// nil, the picture itself, which core downloads from the release's
+    /// storage (and decrypts) when it isn't on disk here.
     private let fetchReleaseImageBytes:
-        @Sendable (_ releaseId: String, _ source: BridgeGallerySource)
-            async throws -> Data
+        @Sendable (
+            _ releaseId: String,
+            _ source: BridgeGallerySource,
+            _ pixels: UInt32?
+        ) async throws -> Data
     /// Bytes of provider art for a slot `pixels` wide on its longer side (nil:
     /// the original), or nil when the source serves no image there — cover
     /// addresses are derived from a release's ids, so an offered one can hold
@@ -156,12 +164,13 @@ public final class ImageStore: Sendable, Observable {
 
     public init(
         fetchLibraryImageBytes:
-            @escaping @Sendable (BridgeImageRef) async throws -> Data? = {
-                _ in nil
-            },
+            @escaping @Sendable (BridgeImageRef, UInt32?) async throws -> Data? =
+            { _, _ in nil },
         fetchReleaseImageBytes:
-            @escaping @Sendable (String, BridgeGallerySource) async throws ->
-            Data = { _, _ in throw ImageStoreUnavailable() },
+            @escaping @Sendable (String, BridgeGallerySource, UInt32?)
+            async throws -> Data = { _, _, _ in
+                throw ImageStoreUnavailable()
+            },
         fetchRemoteImage:
             @escaping @Sendable (BridgeRemoteImageSet, UInt32?) async throws ->
             Data? = { _, _ in throw ImageStoreUnavailable() },
@@ -191,12 +200,16 @@ public final class ImageStore: Sendable, Observable {
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 fetchLibraryImageBytes: {
-                    try await handle.fetchLibraryImageBytes(image: $0)
+                    try await handle.fetchLibraryImageBytes(
+                        image: $0,
+                        pixels: $1
+                    )
                 },
                 fetchReleaseImageBytes: {
                     try await handle.fetchReleaseImageBytes(
                         releaseId: $0,
-                        source: $1
+                        source: $1,
+                        pixels: $2
                     )
                 },
                 fetchRemoteImage: {
@@ -421,7 +434,12 @@ extension ImageStore {
     ) async throws -> Data? {
         switch content {
         case .libraryImage(let image):
-            guard let bytes = try await fetchLibraryImageBytes(image) else {
+            guard
+                let bytes = try await fetchLibraryImageBytes(
+                    image,
+                    target.pictureEdge
+                )
+            else {
                 logger.warning(
                     "Missing library image bytes for \(image.imageType) \(image.id)"
                 )
@@ -429,7 +447,11 @@ extension ImageStore {
             }
             return bytes
         case .releaseImage(let releaseId, let source):
-            return try await fetchReleaseImageBytes(releaseId, source)
+            return try await fetchReleaseImageBytes(
+                releaseId,
+                source,
+                target.pictureEdge
+            )
         case .remote(let image):
             let pixels: UInt32? =
                 switch target {

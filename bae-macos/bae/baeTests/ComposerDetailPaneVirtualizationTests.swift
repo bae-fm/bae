@@ -17,7 +17,7 @@ struct ComposerDetailPaneVirtualizationTests {
     func loadsOnlyNearTheViewport() async throws {
         let recorder = CoverRequestRecorder()
         let imageStore = ImageStore(
-            fetchLibraryImageBytes: { ref in
+            fetchLibraryImageBytes: { ref, _ in
                 await recorder.record(ref.id)
                 return nil
             }

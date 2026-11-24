@@ -27,7 +27,7 @@ extension ShotScene {
     {
         let first = lightboxImages[0]
         return ImageStore(
-            fetchLibraryImageBytes: { ref in
+            fetchLibraryImageBytes: { ref, _ in
                 if ref.id == first {
                     switch state {
                     case .shown:

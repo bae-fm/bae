@@ -21,7 +21,7 @@ use crate::save::SaveService;
 use crate::sync::S3ConfigData;
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_records::GallerySource;
-use bae_records::{CoverCopy, DbFile, DbRelease, ImageRef, LibraryImageType};
+use bae_records::{CoverCopy, DbFile, DbRelease, ImageRef, LibraryImageType, NewReleasePreview};
 #[cfg(desktop)]
 use bae_records::{DbAlbum, DbArtist, DbTrack};
 #[cfg(desktop)]

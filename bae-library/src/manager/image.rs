@@ -4,11 +4,12 @@ use super::*;
 
 impl LibraryManager {
     /// Bytes of one gallery slot, dispatching the read on its [`GallerySource`]
-    /// so no caller picks the byte source itself. With a size, a cover slot
-    /// reads the copy that covers it and an image file's slot reads its
-    /// preview; with none, a slot reads the picture itself, which only the
-    /// viewer asks for: a cover's kept original, or the image file as the
-    /// release holds it.
+    /// so no caller picks the byte source itself. `pixels` is the longer edge
+    /// of the slot that draws it, or `None` for the viewer at full quality. A
+    /// cover slot reads the copy that covers the size, and an image file's slot
+    /// its preview; a size above the largest copy (the cover's 1536 pixels, the
+    /// preview's 384) is a viewer's, and reads the picture itself: the cover's
+    /// kept original, or the image file as the release holds it.
     /// The gallery carries a cover slot only when a cover exists, so a `Cover`
     /// with no bytes here is exceptional and surfaces rather than being masked.
     pub async fn read_gallery_bytes(
@@ -18,20 +19,22 @@ impl LibraryManager {
         pixels: Option<u32>,
     ) -> Result<Vec<u8>, LibraryError> {
         match (source, pixels) {
-            (GallerySource::Cover(image), Some(_)) => {
-                self.read_image_bytes(image, pixels).await?.ok_or_else(|| {
+            (GallerySource::Cover(image), Some(pixels)) if pixels <= CoverCopy::Large.edge() => {
+                self.read_image_bytes(image, Some(pixels)).await?.ok_or_else(|| {
                     LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
                 })
             }
-            (GallerySource::Cover(image), None) => {
+            (GallerySource::Cover(image), _) => {
                 self.read_cover_original(&image.id).await?.ok_or_else(|| {
                     LibraryError::Storage(format!("gallery cover {} has no original", image.id))
                 })
             }
-            (GallerySource::ReleaseFile { file_id }, Some(_)) => {
+            (GallerySource::ReleaseFile { file_id }, Some(pixels))
+                if pixels <= NewReleasePreview::EDGE =>
+            {
                 self.read_release_preview(file_id).await
             }
-            (GallerySource::ReleaseFile { file_id }, None) => {
+            (GallerySource::ReleaseFile { file_id }, _) => {
                 self.load_gallery_image(release_id, file_id).await
             }
         }

@@ -68,7 +68,7 @@ struct LibraryArtworkBrowserTests {
             )
         )
         let reads = CoverReads()
-        let images = ImageStore(fetchReleaseImageBytes: { _, source in
+        let images = ImageStore(fetchReleaseImageBytes: { _, source, _ in
             if case .cover(let image) = source {
                 await reads.record(image.version)
             }
@@ -118,7 +118,7 @@ extension LibraryArtworkBrowserTests {
             )
         )
         let images = ImageStore(
-            fetchReleaseImageBytes: { _, _ in bytes },
+            fetchReleaseImageBytes: { _, _, _ in bytes },
             fetchRemoteImage: { _, _ in bytes }
         )
         let lightbox = LightboxImageLoad()

@@ -68,7 +68,9 @@ extension PreviewData {
     /// reading each scanned file where core would make a copy of it.
     static func artImageStore() -> ImageStore {
         ImageStore(
-            fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) },
+            fetchLibraryImageBytes: { image, _ in
+                try BoardArtwork.data(named: image.id)
+            },
             fetchRemoteImage: { image, _ in
                 try Data(contentsOf: URL(fileURLWithPath: image.url))
             },

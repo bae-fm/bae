@@ -11,7 +11,7 @@ struct ImportListEntryCellTests {
     @Test("a redraw of the same cover keeps its load running")
     func redrawKeepsTheCoverLoad() async throws {
         let fetches = Counter()
-        let images = ImageStore(fetchLibraryImageBytes: { _ in
+        let images = ImageStore(fetchLibraryImageBytes: { _, _ in
             fetches.increment()
             Wait.happened()
             try await Task.sleep(for: .seconds(600))

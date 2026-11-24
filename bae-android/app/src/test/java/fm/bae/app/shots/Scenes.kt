@@ -390,7 +390,7 @@ internal fun Covers(content: @Composable () -> Unit) =
     CompositionLocalProvider(
         LocalImageStore provides
             ImageStore(
-                fetchLibraryImageBytes = { ref ->
+                fetchLibraryImageBytes = { ref, _ ->
                     if (ref.id == "Northbound") {
                         northboundCover
                     } else {

@@ -116,13 +116,17 @@ private fun boundedDecodeDispatcher(): CoroutineDispatcher = Dispatchers.Default
  * re-import mints new ones rather than repointing an existing row).
  */
 class ImageStore(
-    /** Bytes of a curated library image, or null when no such image exists. */
-    private val fetchLibraryImageBytes: suspend (image: BridgeImageRef) -> ByteArray? = { null },
-    /** Bytes of one of a release's image-strip slots, downloaded from the
-     *  release's storage (and decrypted) when it isn't on disk here. */
+    /** Bytes of a curated library image for a slot [pixels] wide on its longer
+     *  side (null: the largest copy), or null when no such image exists. Core picks
+     *  the cover's browse or large copy. */
+    private val fetchLibraryImageBytes: suspend (image: BridgeImageRef, pixels: UInt?) -> ByteArray? = { _, _ -> null },
+    /** Bytes of one of a release's image-strip slots for a slot [pixels] wide on
+     *  its longer side: a cover's copy, or a release image's preview. With null,
+     *  the picture itself, which core downloads from the release's storage (and
+     *  decrypts) when it isn't on disk here. */
     private val fetchReleaseImageBytes:
-        suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray =
-        { _, _ -> throw ImageStoreUnavailable() },
+        suspend (releaseId: String, source: BridgeGallerySource, pixels: UInt?) -> ByteArray =
+        { _, _, _ -> throw ImageStoreUnavailable() },
     /** Bytes of a person's avatar, or null when they have none. */
     private val fetchAvatarBytes: suspend (person: String) -> ByteArray? = { null },
     /** What the decoded cache holds at most, in bitmap bytes. */
@@ -135,8 +139,10 @@ class ImageStore(
     private val decode: (ByteArray, DecodeSize) -> Bitmap? = ::decodeBytes,
 ) {
     constructor(handle: AppHandleInterface) : this(
-        fetchLibraryImageBytes = { handle.fetchLibraryImageBytes(it) },
-        fetchReleaseImageBytes = { releaseId, source -> handle.fetchReleaseImageBytes(releaseId, source) },
+        fetchLibraryImageBytes = { image, pixels -> handle.fetchLibraryImageBytes(image, pixels) },
+        fetchReleaseImageBytes = { releaseId, source, pixels ->
+            handle.fetchReleaseImageBytes(releaseId, source, pixels)
+        },
         fetchAvatarBytes = { handle.avatar(it) },
     )
 
@@ -186,7 +192,7 @@ class ImageStore(
         key: String,
         control: LoadControl,
     ): Bitmap? {
-        val bytes = imageBytes(content) ?: return null
+        val bytes = imageBytes(content, size) ?: return null
         control.beginDecoding()
         val bitmap =
             withContext(dispatcher) {
@@ -202,15 +208,28 @@ class ImageStore(
      *
      * Consumers that hand encoded bytes to something else — the artwork
      * `ContentProvider` streaming to a media-browse client — read them here rather
-     * than opening a second path to core.
+     * than opening a second path to core. With a [size] to fit, core returns the
+     * copy that covers it; the native size is the largest copy of a cover, or the
+     * picture itself for a viewer.
      */
-    suspend fun imageBytes(content: ImageContent): ByteArray? = withContext(dispatcher) { fetchBytes(content) }
+    suspend fun imageBytes(
+        content: ImageContent,
+        size: DecodeSize = DecodeSize.Native,
+    ): ByteArray? = withContext(dispatcher) { fetchBytes(content, size) }
 
     /** Read [content]'s bytes from core. Null when core reports no such image. */
-    private suspend fun fetchBytes(content: ImageContent): ByteArray? =
-        when (content) {
+    private suspend fun fetchBytes(
+        content: ImageContent,
+        size: DecodeSize,
+    ): ByteArray? {
+        val pixels: UInt? =
+            when (size) {
+                is DecodeSize.FitTo -> size.pixels.toUInt()
+                DecodeSize.Native -> null
+            }
+        return when (content) {
             is ImageContent.LibraryImage -> {
-                fetchLibraryImageBytes(content.image).also {
+                fetchLibraryImageBytes(content.image, pixels).also {
                     if (it == null) {
                         // Core handed us an image reference but its file read
                         // returned nothing — note it rather than blanking silently.
@@ -220,13 +239,14 @@ class ImageStore(
             }
 
             is ImageContent.ReleaseImage -> {
-                fetchReleaseImageBytes(content.releaseId, content.source)
+                fetchReleaseImageBytes(content.releaseId, content.source, pixels)
             }
 
             is ImageContent.Avatar -> {
                 fetchAvatarBytes(content.person)
             }
         }
+    }
 
     /**
      * Cache key for a decoded bitmap: its content identity plus the decode

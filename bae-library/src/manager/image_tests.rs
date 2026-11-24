@@ -251,7 +251,7 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
 /// Every image file is written with its preview, so one with none is a defect
 /// that a slot's read reports rather than draws from the original.
 #[tokio::test]
-async fn an_image_file_with_no_preview_fails_a_sized_read_and_still_opens_whole() {
+async fn an_image_file_with_no_preview_fails_a_small_read_and_still_opens_whole() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let album = create_test_album();
@@ -274,10 +274,12 @@ async fn an_image_file_with_no_preview_fails_a_sized_read_and_still_opens_whole(
 
     let sized = manager.read_gallery_bytes(&release.id, &slot, Some(360)).await;
     let whole = manager.read_gallery_bytes(&release.id, &slot, None).await.unwrap();
+    let viewer = manager.read_gallery_bytes(&release.id, &slot, Some(1800)).await.unwrap();
 
     assert!(
         matches!(&sized, Err(LibraryError::Storage(detail)) if detail.contains("has no preview")),
         "{sized:?}"
     );
     assert_eq!(whole, b"scan bytes");
+    assert_eq!(viewer, whole, "a size above the preview's is a viewer's, and reads the file");
 }

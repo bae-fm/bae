@@ -49,6 +49,7 @@ private fun shownImage() =
         fetchReleaseImageBytes = {
             _,
             _,
+            _,
             ->
             TestImages.quadrantsJpeg(400, listOf(0xFF2D4A6B.toInt(), 0xFF6B8EAD.toInt(), 0xFFC9A66B.toInt(), 0xFF8C3B4A.toInt()))
         },
@@ -56,4 +57,4 @@ private fun shownImage() =
     )
 
 /** A store whose bytes never arrive, so the lightbox stays on its load. */
-private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _ -> awaitCancellation() }, dispatcher = Dispatchers.Unconfined)
+private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _, _ -> awaitCancellation() }, dispatcher = Dispatchers.Unconfined)

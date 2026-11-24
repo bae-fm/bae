@@ -135,7 +135,7 @@ struct ImageStoreCacheTests {
     )
     func cachedImageRoundTrip() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
-        let store = ImageStore(fetchLibraryImageBytes: { _ in bytes })
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in bytes })
         let content = ImageContent.libraryImage(coverRef(version: "1"))
 
         #expect(
@@ -155,7 +155,7 @@ struct ImageStoreCacheTests {
     @Test("cachedImage misses on a different pixel size")
     func cachedImageKeysOnPixelSize() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
-        let store = ImageStore(fetchLibraryImageBytes: { _ in bytes })
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in bytes })
         let content = ImageContent.libraryImage(coverRef(version: "1"))
 
         _ = try await store.image(content, pointSize: 56, displayScale: 2)
@@ -225,7 +225,7 @@ struct ImageStoreCacheTests {
 
     @Test("a library image with no bytes resolves to nothing")
     func absentLibraryImageResolvesToNil() async throws {
-        let store = ImageStore(fetchLibraryImageBytes: { _ in nil })
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in nil })
         let content = ImageContent.libraryImage(coverRef(version: "1"))
 
         #expect(
@@ -239,7 +239,7 @@ struct ImageStoreCacheTests {
         let bytes = try makePngBytes(width: 8, height: 8)
         let fetchCount = FetchCount()
         let gate = FetchGate()
-        let store = ImageStore(fetchLibraryImageBytes: { _ in
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in
             await fetchCount.increment()
             await gate.pass()
             return bytes
@@ -276,7 +276,7 @@ struct ImageStoreCacheTests {
     @Test("cancelling the last request for a load cancels its fetch")
     func lastCancelledRequestCancelsTheFetch() async throws {
         let fetch = CancellableFetch()
-        let store = ImageStore(fetchLibraryImageBytes: { _ in
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in
             try await fetch.wait()
             return nil
         })
@@ -310,7 +310,7 @@ struct ImageStoreCacheTests {
     func cancelledRequestLeavesTheSharedFetchRunning() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
         let gate = FetchGate()
-        let store = ImageStore(fetchLibraryImageBytes: { _ in
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in
             await gate.pass()
             try Task.checkCancellation()
             return bytes
@@ -373,7 +373,7 @@ struct ImageStoreCacheTests {
     func unansweredImagesCountsLoadsUnderWay() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
         let gate = FetchGate()
-        let store = ImageStore(fetchLibraryImageBytes: { _ in
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in
             await gate.pass()
             return bytes
         })
@@ -427,7 +427,7 @@ struct ImageStoreDecodingTests {
         let bytes = try makePngBytes(width: 8, height: 8)
         let queue = ImageDecodeQueue(width: 2)
         let store = ImageStore(
-            fetchLibraryImageBytes: { _ in bytes },
+            fetchLibraryImageBytes: { _, _ in bytes },
             decodeQueue: queue
         )
 
@@ -475,7 +475,7 @@ struct ImageStoreDecodingTests {
         let hold = DecodeHold()
         hold.install(on: queue)
         let store = ImageStore(
-            fetchLibraryImageBytes: { _ in bytes },
+            fetchLibraryImageBytes: { _, _ in bytes },
             decodeQueue: queue
         )
         let loads = (0..<8)
@@ -509,7 +509,7 @@ struct ImageStoreDecodingTests {
         hold.install(on: queue)
         let fetches = Counter()
         let store = ImageStore(
-            fetchLibraryImageBytes: { _ in
+            fetchLibraryImageBytes: { _, _ in
                 fetches.increment()
                 return bytes
             },
@@ -545,7 +545,7 @@ struct ImageStoreDecodingTests {
         let hold = DecodeHold()
         hold.install(on: queue)
         let store = ImageStore(
-            fetchLibraryImageBytes: { _ in bytes },
+            fetchLibraryImageBytes: { _, _ in bytes },
             decodeQueue: queue
         )
         let blocker = Task {
@@ -584,7 +584,7 @@ struct ImageStoreContentIdentityTests {
     @Test("a new content version misses the previous version's decode")
     func versionBumpMisses() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
-        let store = ImageStore(fetchLibraryImageBytes: { _ in bytes })
+        let store = ImageStore(fetchLibraryImageBytes: { _, _ in bytes })
 
         _ = try await store.image(
             .libraryImage(coverRef(version: "1")),
@@ -604,7 +604,7 @@ struct ImageStoreContentIdentityTests {
     @Test("a cover slot and the same cover read directly share a version key")
     func coverSlotKeysOnItsVersion() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
-        let store = ImageStore(fetchReleaseImageBytes: { _, _ in bytes })
+        let store = ImageStore(fetchReleaseImageBytes: { _, _, _ in bytes })
         let slot = ImageContent.releaseImage(
             releaseId: "rel-1",
             source: .cover(image: coverRef(version: "1"))

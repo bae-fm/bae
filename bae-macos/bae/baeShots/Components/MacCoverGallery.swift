@@ -53,8 +53,10 @@ extension ShotScene {
         -> ImageStore
     {
         ImageStore(
-            fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) },
-            fetchReleaseImageBytes: { _, source in
+            fetchLibraryImageBytes: { image, _ in
+                try BoardArtwork.data(named: image.id)
+            },
+            fetchReleaseImageBytes: { _, source, _ in
                 switch source {
                 case .cover: try BoardArtwork.data(named: cover)
                 case .releaseFile(let id): try BoardArtwork.data(named: id)

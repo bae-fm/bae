@@ -159,7 +159,7 @@ class ImageStoreTest {
             val cancelled = CompletableDeferred<Unit>()
             val store =
                 ImageStore(
-                    fetchLibraryImageBytes = {
+                    fetchLibraryImageBytes = { _, _ ->
                         fetching.complete(Unit)
                         try {
                             awaitCancellation()
@@ -307,8 +307,8 @@ class ImageStoreTest {
         dispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
         decode: (ByteArray, DecodeSize) -> Bitmap? = ::decodeBytes,
     ) = ImageStore(
-        fetchLibraryImageBytes = { checkNotNull(library) { "no library-image fetch in this store" }() },
-        fetchReleaseImageBytes = { _, _ -> checkNotNull(release) { "no release-image fetch in this store" }() },
+        fetchLibraryImageBytes = { _, _ -> checkNotNull(library) { "no library-image fetch in this store" }() },
+        fetchReleaseImageBytes = { _, _, _ -> checkNotNull(release) { "no release-image fetch in this store" }() },
         decodedBudget = decodedBudget,
         dispatcher = dispatcher,
         decode = decode,

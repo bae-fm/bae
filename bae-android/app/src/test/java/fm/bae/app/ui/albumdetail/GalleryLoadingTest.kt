@@ -28,7 +28,13 @@ class GalleryLoadingTest {
     @Test
     fun anImageStillLoadingIsNamed() {
         // Bytes that never arrive keep the gallery on its load.
-        val store = ImageStore(fetchLibraryImageBytes = { awaitCancellation() }, fetchReleaseImageBytes = { _, _ -> awaitCancellation() })
+        val store =
+            ImageStore(fetchLibraryImageBytes = {
+                _,
+                _,
+                ->
+                awaitCancellation()
+            }, fetchReleaseImageBytes = { _, _, _ -> awaitCancellation() })
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalImageStore provides store, LocalBugReports provides BugReports()) {

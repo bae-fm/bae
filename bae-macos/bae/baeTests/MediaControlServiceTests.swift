@@ -332,7 +332,7 @@ extension MediaControlServiceTests {
         defer { infoCenter.nowPlayingInfo = nil }
         let bytes = try makePngBytes(width: 8, height: 8)
         let fetches = Counter()
-        let images = ImageStore(fetchLibraryImageBytes: { _ in
+        let images = ImageStore(fetchLibraryImageBytes: { _, _ in
             fetches.increment()
             return bytes
         })
