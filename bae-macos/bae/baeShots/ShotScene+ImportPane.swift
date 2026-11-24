@@ -89,11 +89,11 @@ extension ShotScene {
         ),
         ShotScene(
             id: "mac.import.identify.no-discogs-key",
-            size: CGSize(width: 1_400, height: 900)
+            size: CGSize(width: 1_200, height: 900)
         ) {
             try importPaneStage(
                 .found(northbound: .importing, opening: .winterKitchen),
-                size: CGSize(width: 1_400, height: 900),
+                size: CGSize(width: 1_200, height: 900),
                 discogsUsable: false
             )
         },
