@@ -1,7 +1,16 @@
 import BaeKit
 import SwiftUI
 
-struct MacStorageWindow: View {
+/// The Storage Manager window's least size, which its list and inspector
+/// fit, and which the window keeps while no library is open.
+enum StorageManagerWindowSize {
+    static let minimumWidth: CGFloat = 700
+    static let minimumHeight: CGFloat = 400
+}
+
+/// The Storage Manager window: the release list, and beside it, while the
+/// inspector is shown, the `Inspector` it hosts.
+struct MacStorageWindow<Inspector: View>: View {
     @Environment(StorageManagerStore.self)
     private var storageManagerStore
     @Environment(ReleaseEditor.self)
@@ -43,20 +52,15 @@ struct MacStorageWindow: View {
     @State
     private var runner: StorageActionRunner?
 
-    /// The smallest window the list and its inspector fit.
-    static let minimumWidth: CGFloat = 700
-    static let minimumHeight: CGFloat = 400
-
-    /// The file whose details the inspector opens on, for the release it
-    /// first shows.
-    private let initialSelectedFileId: String?
+    /// What the window shows beside the list while the inspector is shown.
+    private let inspector: () -> Inspector
 
     init(
         initialFilter: BridgeStorageFilter = .all,
         initialSearch: String = "",
         initialSelection: Set<String> = [],
         initialInspectorPresented: Bool = false,
-        initialSelectedFileId: String? = nil
+        @ViewBuilder inspector: @escaping () -> Inspector
     ) {
         _filter = State(initialValue: initialFilter)
         _search = State(initialValue: initialSearch)
@@ -64,7 +68,7 @@ struct MacStorageWindow: View {
         _inspectorPresented = State(
             initialValue: initialInspectorPresented
         )
-        self.initialSelectedFileId = initialSelectedFileId
+        self.inspector = inspector
     }
 
     var body: some View {
@@ -73,12 +77,12 @@ struct MacStorageWindow: View {
                 .frame(minWidth: 440, maxHeight: .infinity)
 
             if inspectorPresented {
-                StorageInspector(initialSelectedFileId: initialSelectedFileId)
+                inspector()
             }
         }
         .frame(
-            minWidth: Self.minimumWidth,
-            minHeight: Self.minimumHeight
+            minWidth: StorageManagerWindowSize.minimumWidth,
+            minHeight: StorageManagerWindowSize.minimumHeight
         )
         .windowBackground()
         .modifier(
@@ -200,5 +204,26 @@ struct MacStorageWindow: View {
 
     private func updateQuery() {
         storageManagerStore.update(filter: filter, sort: sort, search: search)
+    }
+}
+
+extension MacStorageWindow where Inspector == StorageInspector {
+    /// The window with the storage inspector, which opens on the details of
+    /// `initialSelectedFileId` for the release it first shows.
+    init(
+        initialFilter: BridgeStorageFilter = .all,
+        initialSearch: String = "",
+        initialSelection: Set<String> = [],
+        initialInspectorPresented: Bool = false,
+        initialSelectedFileId: String? = nil
+    ) {
+        self.init(
+            initialFilter: initialFilter,
+            initialSearch: initialSearch,
+            initialSelection: initialSelection,
+            initialInspectorPresented: initialInspectorPresented
+        ) {
+            StorageInspector(initialSelectedFileId: initialSelectedFileId)
+        }
     }
 }

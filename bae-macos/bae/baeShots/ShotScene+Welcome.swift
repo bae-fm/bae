@@ -536,7 +536,12 @@ extension ShotScene {
         return ShotStage(
             ShotScenes.welcomeHome(
                 setup: reads.setup,
-                restoreCodes: { _, _ in AnyView(PreviewSlot("Content")) }
+                restoreCodes: { _, _ in
+                    AnyView(
+                        PreviewSlot("Content")
+                            .frame(maxWidth: WelcomeLayout.columnWidth)
+                    )
+                }
             )
         ) { reads.answered == reads.reads }
     }

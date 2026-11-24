@@ -34,9 +34,9 @@ struct StorageManagerNoLibrary: View {
             description: "Open a library first"
         )
         .frame(
-            minWidth: MacStorageWindow.minimumWidth,
+            minWidth: StorageManagerWindowSize.minimumWidth,
             maxWidth: .infinity,
-            minHeight: MacStorageWindow.minimumHeight,
+            minHeight: StorageManagerWindowSize.minimumHeight,
             maxHeight: .infinity
         )
         .windowBackground()

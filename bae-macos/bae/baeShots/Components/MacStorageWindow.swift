@@ -4,8 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacStorageWindow`: the release list; the inspector open on a
-    /// selected release; the Cloud filter and a search; a search that
+    /// `MacStorageWindow`: the release list; the inspector, the preview's
+    /// stand-in, open on a selected release; the Cloud filter and a search; a search that
     /// matches nothing; and, with no library open, the window the app shows
     /// in its place.
     static let macStorageWindowScenes: [ShotScene] = [
@@ -53,7 +53,8 @@ extension ShotScene {
     private static let storageWindowSize = CGSize(width: 1100, height: 400)
 
     /// The Storage Manager window over the preview's three releases, with
-    /// no transfer running, or over `rows` for a search.
+    /// no transfer running, or over `rows` for a search. Its inspector is the
+    /// preview's stand-in, since the window only hosts it.
     @MainActor
     private static func storageWindow(
         rows: [BridgeStorageRow] = threeReleases(),
@@ -80,7 +81,13 @@ extension ShotScene {
             initialSearch: search,
             initialSelection: fixture.initialSelection,
             initialInspectorPresented: inspector
-        )
+        ) {
+            // The preview's stand-in for the inspector the window hosts, at
+            // the top of the inspector's 440 pt column.
+            PreviewSlot("Inspector")
+                .frame(width: 440)
+                .frame(maxHeight: .infinity, alignment: .top)
+        }
         .frame(
             width: storageWindowSize.width,
             height: storageWindowSize.height
