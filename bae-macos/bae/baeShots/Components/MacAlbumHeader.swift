@@ -75,9 +75,11 @@ extension ShotScene {
                 MacMenuItem("Delete album…") {}
             }
             .frame(width: 540, alignment: .leading)
-            .overlay(alignment: .bottomLeading) {
+            .overlay(alignment: .topLeading) {
                 if optionsOpen {
-                    // Under the ⋯, which follows Play.
+                    // Under the ⋯, which follows Play: the menu's right edge
+                    // is the ⋯'s (85.5 pt in) and its top is 4 pt below it
+                    // (141 pt down), so it reaches left of the header.
                     MacMenuInPlace(
                         {
                             MacMenuItem("Edit…") {}
@@ -88,8 +90,8 @@ extension ShotScene {
                         },
                         highlighted: 0
                     )
-                    .alignmentGuide(.bottom) { $0[.top] + 22 }
-                    .padding(.leading, 64)
+                    .frame(width: 85.5, alignment: .trailing)
+                    .offset(y: 141)
                 }
             }
         }
