@@ -145,9 +145,6 @@
             accent: .standard
         )
 
-        @Environment(\.isEnabled)
-        private var isEnabled
-
         public init(
             _ title: LocalizedStringKey,
             selection: Binding<Value>,
@@ -194,7 +191,6 @@
                         .background(Theme.tile, in: Circle())
                 }
                 .frame(height: 24)
-                .opacity(isEnabled ? 1 : 0.4)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.accentPlain)

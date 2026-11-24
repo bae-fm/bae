@@ -148,8 +148,19 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         }
     }
 
+    /// The opacity of the value and the chevron: a row that opens or removes
+    /// is one button, whose style dims the whole row while it is off.
     private var textOpacity: Double {
-        isEnabled || options.isNested ? 1 : ThemeOpacity.off
+        switch options.press {
+        case .opens?, .removes?: 1
+        case .label?, nil: isEnabled || options.isNested ? 1 : ThemeOpacity.off
+        }
+    }
+
+    /// The opacity of the name and its note: any pressed row has them in a
+    /// button, whose style dims them while it is off.
+    private var wordsOpacity: Double {
+        options.press == nil ? textOpacity : 1
     }
 
     @ViewBuilder
@@ -290,7 +301,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                         label
                     }
                 }
-                .opacity(textOpacity)
+                .opacity(wordsOpacity)
                 if let chip = options.chip {
                     StatusChip(verbatim: chip)
                 }
@@ -303,7 +314,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                         note.tone.map { AnyShapeStyle($0.color) }
                             ?? AnyShapeStyle(secondaryColor)
                     )
-                    .opacity(textOpacity)
+                    .opacity(wordsOpacity)
             }
         }
     }
