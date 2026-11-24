@@ -37,6 +37,11 @@ struct MacModalHeader<Buttons: View>: View {
             Spacer()
             buttons()
         }
+        // The sort priorities above order the header's own elements. Without
+        // this group they order the title and line against every element in
+        // the window, and VoiceOver reads them before the page under the
+        // modal.
+        .accessibilityElement(children: .contain)
         .padding(.vertical, ThemeSpace.group + ThemeSpace.line)
         .padding(.horizontal, ThemeSpace.edge)
     }
