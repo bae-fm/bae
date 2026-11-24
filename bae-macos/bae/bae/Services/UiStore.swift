@@ -70,18 +70,17 @@ enum ErrorAlertWindow: String {
 
     @MainActor
     static func frontmost() -> Self? {
-        guard let app = NSApp else { return nil }
         // The window getters hand back autoreleased windows, and a caller
         // with no pool of its own would keep them alive for its whole run.
         return autoreleasepool {
             // A sheet or alert can be key. Its window owns the shared error;
             // MacAlert places the panel over whichever sheet or alert is open.
-            var key = app.keyWindow
+            var key = NSApp.keyWindow
             while let window = key {
                 if let host = host(of: window) { return host }
                 key = window.sheetParent ?? window.parent
             }
-            return app.orderedWindows.lazy
+            return NSApp.orderedWindows.lazy
                 .filter { $0.isVisible && !$0.isMiniaturized }
                 .compactMap { host(of: $0) }.first
         }
@@ -369,23 +368,31 @@ class UiStore: @unchecked Sendable {
         showError(DisplayError(line: message))
     }
 
+    /// Shows the error in the frontmost window, or in the first window that
+    /// opens when none is open.
     @MainActor
-    func showError(_ error: DisplayError, in window: ErrorAlertWindow? = nil) {
+    func showError(_ error: DisplayError) {
         windowError = WindowError(
             error: error,
-            window: window ?? ErrorAlertWindow.frontmost()
+            window: ErrorAlertWindow.frontmost()
         )
+    }
+
+    @MainActor
+    func showError(_ error: DisplayError, in window: ErrorAlertWindow) {
+        windowError = WindowError(error: error, window: window)
     }
 
     /// Surface a caught error. An error core says has no line — a cancellation —
     /// is dropped rather than raised as an alert with nothing in it.
     @MainActor
     func showError(_ error: any Error) {
-        showError(error, in: nil)
+        guard let displayed = DisplayError(error) else { return }
+        showError(displayed)
     }
 
     @MainActor
-    func showError(_ error: any Error, in window: ErrorAlertWindow?) {
+    func showError(_ error: any Error, in window: ErrorAlertWindow) {
         guard let displayed = DisplayError(error) else { return }
         showError(displayed, in: window)
     }

@@ -28,10 +28,7 @@ extension View {
     func errorAlert(_ uiStore: UiStore, in window: ErrorAlertWindow)
         -> some View
     {
-        background {
-            ErrorAlert(uiStore: uiStore, window: window)
-                .id(uiStore.errorAlertGroup)
-        }
+        background { ErrorAlert(uiStore: uiStore, window: window) }
     }
 
     /// Shows an alert for why playback last failed while
