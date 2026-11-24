@@ -55,7 +55,9 @@ struct MacAlbumArtistFieldTests {
     @MainActor
     @Test("a compilation's artists stay inside the header")
     func manyArtistsStayInsideTheHeader() async throws {
-        let size = NSSize(width: 900, height: 400)
+        // Tall enough for the whole header, whose width is what the artists
+        // must not run past.
+        let size = NSSize(width: 900, height: 600)
         let draft = PreviewData.manyAlbumArtistsDraft()
         try await withHostedHeader(
             values: draft,
