@@ -3611,7 +3611,7 @@ right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first. A
 store whose name bae cannot read appears in the same list as *Library
-that cannot be read*. The entry shows its store id and offers only **Remove…**, as a button on its row. A join or restore that stopped before it finished and whose saved
+that cannot be read*. The entry shows its store id and offers only **Remove…** (on Android, a button on its row). A join or restore that stopped before it finished and whose saved
 settings can't be read can't resume, and coven fails listing the joins and
 restores under way, naming its library, instead of listing none. The first
 screen shows that failure as a row after the libraries, in the same list, even
