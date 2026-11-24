@@ -66,7 +66,7 @@
     return { width: size, height: size };
   }
 
-  // Glyphs: the few the components draw. Stroke icons for macOS, Material paths for Android. `size` is an icon role.
+  // Glyphs: the few the components draw. Stroke icons for macOS. `size` is an icon role.
   function CopyGlyph(props) {
     return h('svg', { style: iconBox(props.size), viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
       h('rect', { x: 9, y: 9, width: 11, height: 11, rx: 2 }),
@@ -76,17 +76,6 @@
     return h('svg', { style: iconBox(props.size), viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
       h('path', { d: 'M5 12l5 5L20 7' }));
   }
-  var MATERIAL = {
-    back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
-    edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
-    chevron: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
-    expand: 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z',
-    more: 'M12 8a2 2 0 100-4 2 2 0 000 4zm0 2a2 2 0 100 4 2 2 0 000-4zm0 6a2 2 0 100 4 2 2 0 000-4z',
-    search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
-    add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
-    refresh: 'M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 108 8h-2a6 6 0 11-1.76-4.24L13 11h7V4l-2.35 2.35z',
-    copy: 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'
-  };
   // Android's icons are Material Symbols (Rounded, weight 400), drawn from Google's font as SVG text so a parent's `fill` colours them.
   var SYMBOL = { back: 'arrow_back', edit: 'edit', chevron: 'chevron_right', expand: 'expand_more', more: 'more_vert', search: 'search', add: 'add', refresh: 'refresh', copy: 'content_copy',
     play: 'play_arrow', pause: 'pause', previous: 'skip_previous', next: 'skip_next', cast: 'cast', queue: 'list', repeat: 'repeat', nowplaying: 'volume_up', down: 'keyboard_arrow_down',

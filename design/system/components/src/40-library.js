@@ -467,7 +467,6 @@
       h('span', null, props.children),
       props.check != null ? h('span', { className: 'bae-a-menu-check', style: { opacity: props.check ? 1 : 0 } }, h(Material, { name: 'check', size: 'large' })) : null);
   }
-  MATERIAL.check = 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z';
 
   // ---- Android library ----
 
