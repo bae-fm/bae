@@ -9,14 +9,16 @@ import Testing
 @MainActor
 struct AccentPlainButtonStyleTests {
     /// A disabled plain button dims to bae's off opacity, as every other
-    /// button of bae does, not to SwiftUI's own 0.5. The label is white on
-    /// black, so the pixel's red component is the opacity.
+    /// button of bae does, not to SwiftUI's own 0.5. The wanted pixel is the
+    /// same label drawn at the off opacity by the same renderer.
     @Test("a disabled plain button dims to the off opacity")
     func disabledDimsToOff() throws {
-        let dimmed = try pixel(enabled: false)
-        let whole = try pixel(enabled: true)
-        #expect(abs(whole - 1) < 0.02)
-        #expect(abs(dimmed - ThemeOpacity.off) < 0.02)
+        let dimmed = try pixel(of: plainButton().disabled(true))
+        let wanted = try pixel(of: label().opacity(ThemeOpacity.off))
+        #expect(
+            abs(dimmed - wanted) < 0.01,
+            "dimmed \(dimmed) wanted \(wanted)"
+        )
     }
 
     /// A disabled pop-up button and a disabled row that opens something draw
@@ -36,13 +38,22 @@ struct AccentPlainButtonStyleTests {
                 .disabled(!enabled)
                 .frame(width: 300)
         }
-        let popUpRatio =
-            try brightest(popUp(enabled: false))
-            / brightest(popUp(enabled: true))
-        let rowRatio =
-            try brightest(row(enabled: false)) / brightest(row(enabled: true))
-        #expect(abs(popUpRatio - ThemeOpacity.off) < 0.03)
-        #expect(abs(rowRatio - ThemeOpacity.off) < 0.03)
+        let popUpShown = try brightest(popUp(enabled: false))
+        let popUpWanted = try brightest(
+            popUp(enabled: true).opacity(ThemeOpacity.off)
+        )
+        let rowShown = try brightest(row(enabled: false))
+        let rowWanted = try brightest(
+            row(enabled: true).opacity(ThemeOpacity.off)
+        )
+        #expect(
+            abs(popUpShown - popUpWanted) < 0.02,
+            "pop-up \(popUpShown) wanted \(popUpWanted)"
+        )
+        #expect(
+            abs(rowShown - rowWanted) < 0.02,
+            "row \(rowShown) wanted \(rowWanted)"
+        )
     }
 
     /// The brightest colour component of `content` drawn on black.
@@ -78,16 +89,22 @@ struct AccentPlainButtonStyleTests {
         return brightest
     }
 
-    private func pixel(enabled: Bool) throws -> Double {
+    private func label() -> some View {
+        Rectangle().fill(Color.white).frame(width: 20, height: 20)
+    }
+
+    private func plainButton() -> some View {
+        Button {
+        } label: {
+            label()
+        }
+        .buttonStyle(.accentPlain)
+    }
+
+    /// The red component at the middle of `content` on black, padded.
+    private func pixel<Content: View>(of content: Content) throws -> Double {
         let renderer = ImageRenderer(
-            content: Button {
-            } label: {
-                Rectangle().fill(Color.white).frame(width: 20, height: 20)
-            }
-            .buttonStyle(.accentPlain)
-            .disabled(!enabled)
-            .padding(4)
-            .background(Color.black)
+            content: content.padding(4).background(Color.black)
         )
         renderer.scale = 2
         let image = try #require(renderer.cgImage)
