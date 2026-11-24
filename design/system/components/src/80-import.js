@@ -302,7 +302,7 @@
       h('span', { className: 'bae-m-tertiary', 'aria-hidden': true }, '→'),
       h('button', { type: 'button', role: 'combobox', 'aria-label': 'Audio file', 'aria-expanded': false, className: cx('bae-plainbtn', 'bae-mono', props.unbound ? 'bae-warning' : 'bae-muted') }, props.bound || 'Choose audio…'));
   }
-  // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time. `automatic`: the Automatic run's state, `not-started`, `working`, `failed`, `nothing-found` or `found` (the default); `chips`: its identifier band. The children fill Search when it is open, and follow the band in Automatic.
+  // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time. `automatic`: the Automatic run's state, `not-started`, `working`, `failed`, `nothing-found` or `found` (the default); `chips`: its identifier band. `sentence`: why the folder waits on the person, heading Automatic over a rule. The children fill Search when it is open, and follow the band in Automatic, or follow Search manually when nothing was found.
   function MacFindOnline(props) {
     var open = props.open || 'Automatic';
     var head = function (t, status) { return h('button', { type: 'button', 'aria-label': t, 'aria-expanded': open === t, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status ? h('span', { className: 'bae-m-fo-status' }, status) : null); };
@@ -315,19 +315,21 @@
       props.discogsBar ? h('div', { style: { padding: 'var(--space-group)' } }, h(MacNotice, { tone: 'info', title: 'Add Discogs to find more pressings', subtitle: 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.', action: 'Open settings', dismiss: true })) : null,
       // Automatic's header ends in what its run has to say: the spinner while it works, the warning glyph when it failed, 0 when nothing matched.
       head('Automatic', auto === 'working' ? h(MacSpinner, { size: 11 }) : auto === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'chip' }) : auto === 'nothing-found' ? h(StatusChip, null, '0') : null),
-      open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, automaticContent(auto, props.chips, k)) : null,
+      open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, automaticContent(auto, props.sentence, props.chips, k)) : null,
       h('div', { className: 'bae-divider' }),
       head('Search', null),
       open === 'Search' ? h('div', { className: 'bae-m-fo-body' }, k) : null);
   }
-  // Automatic's section from its run's state: before any run, Search manually alone; otherwise the run's identifier band (`chips`) over a rule, then No results and Search manually when nothing matched, or else the children (what the run found).
-  function automaticContent(auto, chips, found) {
+  // Automatic's section from its run's state: before any run, Search manually alone; otherwise the sentence over a rule, the run's identifier band (`chips`) over a rule, then No results, Search manually and the children (the way to answer) when nothing matched, or else the children (what the run found).
+  function automaticContent(auto, sentence, chips, found) {
     var searchManually = function (key) { return h(MacButton, { key: key }, 'Search manually'); };
     if (auto === 'not-started') return h('div', { className: 'bae-m-fo-empty' }, searchManually('s'));
     return [
+      sentence ? h('div', { key: 's' }, sentence) : null,
+      sentence ? h('div', { key: 'r', className: 'bae-divider' }) : null,
       chips ? h(MacIdentifierBand, { key: 'b', chips: chips }) : null,
       chips ? h('div', { key: 'd', className: 'bae-divider' }) : null,
-      auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s')) : null,
+      auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s'), found) : null,
       auto === 'nothing-found' ? null : h(React.Fragment, { key: 'f' }, found)];
   }
   // A chip's value in mono: one value cut at the chip's value width; several (" · "-separated) every one, wrapping inside the chip; with `pick`, each of several a button.

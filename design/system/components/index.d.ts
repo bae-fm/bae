@@ -381,7 +381,7 @@ export declare function MacInvalidCandidateCard(props: { reason: string; cover?:
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportTrackRow(props: { file?: string; start?: string; position?: string; title?: string; artist?: string; artistChip?: 'Library' | 'New'; inherited?: boolean; length?: string; listed?: string; playing?: boolean }): React.ReactElement;
 export declare function MacImportSheetCaption(props: { disc?: string; sheet?: string; bound?: string; unbound?: boolean }): React.ReactElement;
-export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; autoStatus?: 'working' | 'failed'; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; automatic?: 'not-started' | 'working' | 'failed' | 'nothing-found' | 'found'; sentence?: string; chips?: string; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
 export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string }): React.ReactElement;
 /** A found album with its pressings on a rule under it. */
