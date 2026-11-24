@@ -134,7 +134,7 @@
 .bae-a-cu-actions { display: flex; gap: var(--space-related); margin-top: var(--space-group); }
 
 .bae-msym { font-family: 'Material Symbols Rounded'; font-weight: normal; font-feature-settings: 'liga'; }
-.bae-a-screen, .bae-preview-android { --bae-gap-bg: var(--background); }
+.bae-a-screen, .bae-preview-android { --bae-gap-bg: var(--background); --bae-initials-rise: 0px; }
 .bae-a-dialog { --bae-gap-bg: var(--elevated); }
 .bae-a-sheet { --bae-gap-bg: var(--surface); }
 .bae-progress-android { height: 4px; border-radius: 999px; background: var(--accent-tint-strong); overflow: visible; }
