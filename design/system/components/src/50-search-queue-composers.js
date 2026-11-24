@@ -128,7 +128,7 @@
 
   // ---- Queue and playback (Android) ----
   function AndroidSheet(props) {
-    return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle', role: 'button', 'aria-label': 'Drag handle' }), props.title ? h('h2', { className: 'bae-a-sheet-title' }, props.title) : null, props.note ? h('p', { className: 'bae-a-sheet-note' }, props.note) : null, props.children ? h('div', { className: 'bae-a-sheet-body' }, props.children) : null));
+    return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', role: 'dialog', 'aria-label': props.title || null, style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle', role: 'button', 'aria-label': 'Drag handle' }), props.title ? h('h2', { className: 'bae-a-sheet-title' }, props.title) : null, props.note ? h('p', { className: 'bae-a-sheet-note' }, props.note) : null, props.children ? h('div', { className: 'bae-a-sheet-body' }, props.children) : null));
   }
   // A queue lane's heading; `clear` names its Clear button for the lane it clears (Clear up next, Clear playing from), as MacQueueSection's.
   function AndroidQueueSection(props) {
