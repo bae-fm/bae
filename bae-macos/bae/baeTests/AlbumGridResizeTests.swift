@@ -72,6 +72,29 @@ struct AlbumGridResizeTests {
             try await hosted.settle { self.detailTop }
         }
 
+        /// Scroll the open detail's top `past` points above the top of the
+        /// visible area, by where the detail reports itself, and return once
+        /// the grid has come to rest. Does nothing for 0.
+        func scrollDetailPast(
+            _ past: CGFloat,
+            in hosted: HostedAlbumGrid,
+            list: AlbumList
+        ) async throws {
+            guard past > 0 else { return }
+            let clip = try #require(hosted.scrollView).contentView
+            let detailTop = try #require(detailTop)
+            clip.scroll(
+                to: NSPoint(x: 0, y: clip.bounds.origin.y + detailTop + past)
+            )
+            hosted.scrollView?.reflectScrolledClipView(clip)
+            try await comeToRest(
+                columns: Self.wideColumns,
+                in: hosted,
+                list: list,
+                detailOpen: true
+            )
+        }
+
         /// The position of the album the scenes center on: the one opened,
         /// and the first card of the row at the top of the scenes that scroll
         /// to 6000.
@@ -148,14 +171,19 @@ struct AlbumGridResizeTests {
         let preloaded: Bool
         let openAlbumId: String?
         let scrolledTo: CGFloat
+        /// With a detail open, how far the grid then scrolls the detail's top
+        /// above the top of the visible area. The grid places the rows it has
+        /// not drawn by estimate, so no offset puts the detail there; where
+        /// the detail reports itself does.
+        var detailScrolledPast: CGFloat = 0
 
         var testDescription: String {
-            "preloaded \(preloaded), open \(openAlbumId ?? "none"), at \(scrolledTo)"
+            "preloaded \(preloaded), open \(openAlbumId ?? "none"), at \(scrolledTo), detail \(detailScrolledPast) past the top"
         }
     }
 
     @Test(
-        "a column change keeps the slot on top on top",
+        "a column change keeps the slot on top",
         arguments: [
             Scene(preloaded: false, openAlbumId: nil, scrolledTo: 6000),
             Scene(preloaded: true, openAlbumId: nil, scrolledTo: 6000),
@@ -163,7 +191,12 @@ struct AlbumGridResizeTests {
             // the top.
             Scene(preloaded: false, openAlbumId: "grid-100", scrolledTo: 6000),
             // The same detail partly scrolled past, so it is the slot on top.
-            Scene(preloaded: true, openAlbumId: "grid-100", scrolledTo: 6450),
+            Scene(
+                preloaded: true,
+                openAlbumId: "grid-100",
+                scrolledTo: 6000,
+                detailScrolledPast: 60
+            ),
         ]
     )
     func columnChangeKeepsTopSlot(scene: Scene) async throws {
@@ -203,6 +236,11 @@ struct AlbumGridResizeTests {
             list: list,
             detailOpen: detailOpen
         )
+        try await stage.scrollDetailPast(
+            scene.detailScrolledPast,
+            in: hosted,
+            list: list
+        )
         let before = place()
         let content = try #require(scrollView.documentView).frame.height
         let rowPitch =
@@ -229,7 +267,7 @@ struct AlbumGridResizeTests {
         try await move(false)
         #expect(abs(place() - back) < 1)
 
-        if scene.scrolledTo == 6450 {
+        if scene.detailScrolledPast > 0 {
             // The detail was the slot on top, and stays there.
             #expect(abs(narrowed) < 1)
             #expect(abs(back) < 1)
