@@ -14,14 +14,12 @@ extension ShotScene {
         ratingSystemScene(
             "mac.album.rating.heart",
             system: .heart,
-            menu: .album(highlighted: 5),
-            height: 1_000
+            menu: .album(highlighted: 5)
         ),
         ratingSystemScene(
             "mac.album.rating.none",
             system: .hidden,
-            menu: .album(highlighted: nil),
-            height: 1_000
+            menu: .album(highlighted: nil)
         ),
         ratingSystemScene(
             "mac.album.track-menu-heart",
