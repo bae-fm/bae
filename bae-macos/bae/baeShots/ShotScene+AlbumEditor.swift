@@ -79,7 +79,7 @@ extension ShotScene {
     /// log its folder carried.
     private static var editedRelease: PreviewReleaseEdit {
         var release = PreviewData.northboundRelease(
-            cover: cover(editedReleaseId)
+            cover: cover("Northbound")
         )
         release.draft.files = PreviewData.carriedBoardFiles.map {
             .file(file: $0)
