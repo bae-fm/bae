@@ -277,7 +277,12 @@ extension MacCoverGallery {
             spacing: ThemeSpace.related + ThemeSpace.line
         ) {
             HStack(spacing: ThemeSpace.compact) {
-                Label(title, systemImage: icon)
+                // The glyph is an icon beside the heading, not as large as
+                // the heading's text, which a label would draw it at.
+                Image(systemName: icon)
+                    .themeIcon(.medium)
+                    .accessibilityHidden(true)
+                Text(title)
                     .themeText(.heading)
                 Text(count, format: .number)
                     .themeText(.heading)
