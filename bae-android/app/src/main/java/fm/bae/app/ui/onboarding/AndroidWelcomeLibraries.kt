@@ -163,8 +163,10 @@ internal fun WelcomeLibrariesContent(
 
 /**
  * One library: its name alone, or under it, in red, why it doesn't open, with a
- * ⋮ menu of Details, for a library that opens, and Remove. A tap opens it, unless its settings can't be
- * read. While it is counted or removed the row shows the step.
+ * ⋮ menu of Details, for a library that opens, and Remove, or for a library
+ * whose name can't be read a Remove… button alone. A tap opens it, unless its
+ * settings can't be read. While it is counted or removed the row shows the
+ * step.
  */
 @Composable
 private fun WelcomeLibraryRow(
@@ -192,7 +194,13 @@ private fun WelcomeLibraryRow(
                 null
             },
     ) {
-        LibraryMenu(library, busy, callbacks)
+        if (library.state is BridgeLibraryState.NameUnreadable) {
+            AndroidButton(kind = ButtonKind.TEXT, enabled = !busy, onClick = { callbacks.onRemove(library) }) {
+                Text(stringResource(R.string.library_remove_menu))
+            }
+        } else {
+            LibraryMenu(library, busy, callbacks)
+        }
     }
 }
 

@@ -208,6 +208,31 @@ class WelcomeLibrariesTest {
         assertEquals(emptyList<String>(), fake.calls.filter { it.startsWith("open") })
     }
 
+    /** A store whose name can't be read offers Remove… as a button on its row, never a ⋮ menu. */
+    @Test
+    fun aLibraryWhoseNameCantBeReadOffersRemoveAsAButton() {
+        val removed = mutableListOf<String>()
+        compose.setContent {
+            TestTheme {
+                WelcomeLibrariesContent(
+                    list = WelcomeLibrariesList.Loaded(listOf(nameUnreadable)),
+                    running = null,
+                    callbacks =
+                        WelcomeLibrariesCallbacks(
+                            onOpen = {},
+                            onDetails = {},
+                            onRemove = { removed += it.id },
+                            onAdd = {},
+                        ),
+                )
+            }
+        }
+
+        compose.onAllNodesWithContentDescription("More").assertCountEquals(0)
+        compose.onNodeWithText("Remove…").performClick()
+        assertEquals(listOf(nameUnreadable.id), removed)
+    }
+
     /** The row being counted shows what it waits on as words under its name, a spinner where the ⋮ was, and nothing else taps. */
     @Test
     fun aLibraryBeingCountedShowsWhatItWaitsOnInsteadOfItsMenu() {

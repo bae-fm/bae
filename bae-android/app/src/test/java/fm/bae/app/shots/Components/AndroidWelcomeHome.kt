@@ -6,7 +6,6 @@ import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeLibrariesSceneContent
 import fm.bae.app.ui.onboarding.WelcomeLibrariesView
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
-import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
 import org.junit.Test
 
 /** The component shots of `AndroidWelcomeHome`, one for each row of its preview. */
@@ -19,7 +18,15 @@ class AndroidWelcomeHomeShots : BoardShot() {
     fun androidComponentWelcomeHomeEmpty() = shot("android.component.welcome-home.empty") { ScreenScene { AndroidWelcomeHome() } }
 
     @Test
-    fun androidComponentWelcomeHomeChildren() = shot("android.component.welcome-home.children") { ScreenScene { WelcomeSavedCodesScene() } }
+    fun androidComponentWelcomeHomeChildren() =
+        shot("android.component.welcome-home.children") {
+            ScreenScene {
+                AndroidWelcomeHome(
+                    libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) },
+                    savedCodes = { PreviewSlot("Content") },
+                )
+            }
+        }
 
     @Test
     fun androidComponentWelcomeHomeRemoving() = shot("android.component.welcome-home.removing") { ScreenScene { WelcomeRemovingScene() } }
