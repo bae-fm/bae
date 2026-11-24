@@ -38,6 +38,7 @@ enum ShotRenderer {
         on display: ShotDisplay?
     ) async throws -> Capture {
         let windowScene = try WindowScene(scene: scene, display: display)
+        closeStrayWindows(before: scene)
         // One suite for each render in each process, so a capture that runs
         // at the same time as this one never shares or removes it.
         let suite =

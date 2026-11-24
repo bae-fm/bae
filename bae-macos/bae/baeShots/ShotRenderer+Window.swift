@@ -48,6 +48,23 @@ extension ShotRenderer {
         )
     }
 
+    /// Closes each window a scene before this one left up. An alert raised
+    /// before its view is in its window hangs from the key window, which a
+    /// sheet left up would be, and every capture after it draws the alert
+    /// over that sheet.
+    static func closeStrayWindows(before scene: ShotScene) {
+        for stray in NSApp.windows where stray.isVisible {
+            logger.error(
+                "A window is still up before scene \(scene.id): \(stray.className) \"\(stray.title)\" with frame \(stray.frame), sheet of \(stray.sheetParent?.title ?? "none")."
+            )
+            if let parent = stray.sheetParent {
+                parent.endSheet(stray)
+            }
+            stray.orderOut(nil)
+            stray.close()
+        }
+    }
+
     /// Wait for the window or its top sheet or alert to be key, asking
     /// for that again whenever it loses it: the window server draws a title
     /// bar and toolbar as inactive otherwise, which the app never shows in
