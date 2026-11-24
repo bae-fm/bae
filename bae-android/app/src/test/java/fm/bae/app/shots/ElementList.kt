@@ -54,12 +54,17 @@ internal object ElementList {
             parent: SemanticsNode,
             id: Int = parent.id,
         ) = reading.childrenOf(id).let { order ->
-            if (order ==
-                null
-            ) {
+            if (order == null) {
                 parent.children
             } else {
-                parent.children.sortedBy { order.indexOf(it.id).takeIf { at -> at >= 0 } ?: order.size }
+                val (held, others) = parent.children.partition { child -> child.id !in order && embedded.any { it.sitsIn(child, density) } }
+                // The bare node of an embedded view is no stop of Compose's chain and has no descendant in it, so
+                // TalkBack reads the view by its box among the siblings the chain ranks, not after all of them.
+                held.fold(others.sortedBy { order.indexOf(it.id).takeIf { at -> at >= 0 } ?: order.size }) { read, view ->
+                    val box = view.wholeBox()
+                    val at = read.indexOfFirst { it.id in order && startsAfter(it.wholeBox(), box) }
+                    read.toMutableList().apply { add(if (at < 0) size else at, view) }
+                }
             }
         }
 
@@ -149,6 +154,30 @@ internal object ElementList {
         val json: JSONObject,
         val parent: Listed?,
     )
+
+    /** Whether this embedded view's box lies inside the bare node [node], which has no words, no role and no child. */
+    private fun JSONObject.sitsIn(
+        node: SemanticsNode,
+        density: Float,
+    ): Boolean {
+        if (node.children.isNotEmpty() || node.config.getOrNull(SemanticsProperties.Text) != null) return false
+        val box = node.wholeBox()
+        val mine = getJSONObject("bounds")
+        val slack = SLACK * density
+        return box.left - mine.getDouble("x") * density <= slack &&
+            box.top - mine.getDouble("y") * density <= slack &&
+            (mine.getDouble("x") + mine.getDouble("width")) * density - box.right <= slack &&
+            (mine.getDouble("y") + mine.getDouble("height")) * density - box.bottom <= slack
+    }
+
+    /** Whether the box [other] starts lower than [view], or in its row and further right. */
+    private fun startsAfter(
+        other: Rect,
+        view: Rect,
+    ): Boolean {
+        val lower = other.top - view.top
+        return lower > view.height / 2 || (Math.abs(lower) <= view.height / 2 && other.left > view.left)
+    }
 
     /** Whether [element] is a bare node (no words, no role) whose box holds [view]'s. */
     private fun holds(

@@ -180,6 +180,43 @@ class ElementListTest : BoardShot() {
     }
 
     @Test
+    fun anEmbeddedViewWithNoPlaceInTheChainIsListedByItsBoxAmongTheRankedSiblings() {
+        compose.settle {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Tree order is Below, Above, then the view; the screen puts the view between the two texts.
+                Text("Below", modifier = Modifier.offset(0.dp, 300.dp))
+                Text("Above", modifier = Modifier.offset(0.dp, 40.dp))
+                AndroidView(
+                    modifier = Modifier.offset(0.dp, 150.dp),
+                    factory = { context ->
+                        SeekBar(context).apply {
+                            contentDescription = "Position"
+                            max = 100
+                            progress = 35
+                        }
+                    },
+                )
+            }
+        }
+        val embedded =
+            EmbeddedViews.of(compose.activity.window.decorView, compose.activity.resources.displayMetrics.density)
+        val elements =
+            ElementList
+                .of(
+                    "android.test.embedded-between",
+                    compose.onRoot().fetchSemanticsNode(),
+                    embedded,
+                    reading = ReadingOrder.of(compose.activity.window.decorView),
+                ).getJSONArray("elements")
+                .objects()
+
+        assertEquals(
+            listOf("Above", "Position", "Below"),
+            elements.filterNot { it.isNull("label") }.map { it.getString("label") },
+        )
+    }
+
+    @Test
     fun aMergedNodeOfTwoTextsKeepsItsReadingAndListsEachTextAsItsChild() {
         compose.settle {
             Column(modifier = Modifier.clickable {}) {
