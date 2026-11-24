@@ -89,7 +89,9 @@ struct AddToPlaylistMenuTests {
         if case .item(let item) = items[3] { item.action() }
         #expect(added == ["id-Running"])
         #expect(started == 1)
-        #expect(titles([menu.entries[1]]) == ["-"])
+        // The menus the boards draw end the track's menu on Save as… and the
+        // picked tracks' menu on this submenu, with no rule after it.
+        #expect(menu.entries.count == 1)
     }
 
     @Test("with no playlist of the person's, it offers New playlist… alone")

@@ -20,10 +20,7 @@ struct AddToPlaylistMenu: MacMenuPart {
             items.append(.divider)
         }
         items.append(.item(MacMenuItem("New playlist…") { onNewPlaylist() }))
-        return [
-            .submenu(String(localized: "Add to playlist"), items, nil),
-            .divider,
-        ]
+        return [.submenu(String(localized: "Add to playlist"), items, nil)]
     }
 }
 
