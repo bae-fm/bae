@@ -38,6 +38,9 @@ internal fun AndroidSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        // The sheet, its drag handle included, is named by its title, as a dialog is, so TalkBack says it when the
+        // sheet opens.
+        modifier = Modifier.dialogPane(heading.title),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         scrimColor = BaeTheme.colors.scrim,
     ) {

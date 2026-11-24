@@ -102,7 +102,11 @@ internal fun SheetOverScrim(
         contentAlignment = Alignment.BottomCenter,
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth().then(if (top == null) Modifier else Modifier.fillMaxHeight().padding(top = top)),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .dialogPane(heading.title)
+                    .then(if (top == null) Modifier else Modifier.fillMaxHeight().padding(top = top)),
             shape = BottomSheetDefaults.ExpandedShape,
             color = BottomSheetDefaults.ContainerColor,
         ) {
