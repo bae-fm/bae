@@ -1,4 +1,4 @@
-<!-- @dsCard group="Album page" height=1120 -->
+<!-- @dsCard group="Album page" height=1680 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacCoverGallery</title></head>
@@ -11,6 +11,7 @@
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Resting', h('div', { style: { height: 520 } }, h(B.MacCoverGallery, { selected: 'cover.jpg' }))),
+    W('Current cover shown', h('div', { style: { height: 520 } }, h(B.MacCoverGallery, {}))),
     W('No linked release', h('div', { style: { height: 520 } }, h(B.MacCoverGallery, { selected: 'cover.jpg', remote: 'unlinked' })))));
 </script>
 </body>

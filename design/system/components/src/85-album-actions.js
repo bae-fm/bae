@@ -23,7 +23,7 @@
       h('div', { className: 'bae-muted', style: { fontSize: 'var(--type-detail-size)' } }, props.source),
       h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Previous image' }, h(Sym, { name: 'left', size: 12 })), (props.position || 1) + ' of ' + props.count, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Next image' }, h(Sym, { name: 'right', size: 12 }))));
   }
-  // The cover gallery: Source, sections of tiles, the preview with its count, Use this cover.
+  // The cover gallery: Source, sections of tiles, the preview with its count, Use this cover, off while the preview shows the current cover.
   function MacCoverGallery(props) {
     // `current`: the release's cover, named Cover (spec §3.4: a release's gallery names its cover Cover), drawn from the album's picture.
     var tiles = function (names, sel, current) { return h('div', { className: 'bae-m-cgrid' }, list(names).map(function (n, i) { return h(MacCoverTile, { key: i, name: n, image: current ? props.album || 'Low Tide Hours' : n, selected: n === sel }); })); };
@@ -44,7 +44,8 @@
           unlinked ? h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--space-related)' } }, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote sources', remotes.join(',')),
           sec('folder', 'Release files', files.join(','))),
         h('div', { className: 'bae-m-cgal-right' }, h(MacCoverPreview, { name: sel, image: sel === 'Cover' ? props.album || 'Low Tide Hours' : sel, source: source, position: all.indexOf(sel) + 1, count: all.length }))),
-      h('div', { className: 'bae-m-cgal-foot' }, h(MacButton, { kind: 'primary' }, 'Use this cover')));
+      // Use this cover is off while the preview shows the release's cover, which is the cover already.
+      h('div', { className: 'bae-m-cgal-foot' }, h(MacButton, { kind: 'primary', off: sel === 'Cover' }, 'Use this cover')));
   }
   // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed. Each thumbnail is a button that shows its image, named by the caption the lightbox shows for it (`names`, in the images' order; the image's seed where none is given).
   function MacThumbnailStrip(props) {
