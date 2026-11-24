@@ -12,7 +12,7 @@ struct MacModalHeader<Buttons: View>: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(title)
                     .themeText(large ? .title : .heading)
                 if let subtitle {
