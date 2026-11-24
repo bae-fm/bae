@@ -4,7 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacSyncStatus` for storage that refuses this Mac's S3 key. The
+    /// `MacSyncStatus` for storage that refuses this Mac's S3 key, and for
+    /// Dropbox asking bae to wait. The
     /// preview's remedy line, what bae does next, has no line in the view:
     /// the cause is the one line core gives.
     static let macSyncStatusScenes: [ShotScene] = [
@@ -22,6 +23,7 @@ extension ShotScene {
         syncStatus(
             "mac.component.sync-status.countdown",
             height: 170,
+            waiting: true,
             cause: .message(
                 message: BridgeMessage(
                     key: "core.sync.cause.provider_wait",
@@ -53,6 +55,7 @@ extension ShotScene {
     private static func syncStatus(
         _ id: String,
         height: CGFloat,
+        waiting: Bool = false,
         tone: BridgeSyncTone = .warning,
         cause: BridgeSyncCause? = nil,
         fix: BridgeSyncFix? = nil,
@@ -75,9 +78,13 @@ extension ShotScene {
                 SyncStatusStore(
                     snapshot: BridgeSyncStatusSnapshot(
                         shown: BridgeSyncShown(
-                            status: .signedOutOfS3,
-                            statusKey: "core.sync.status.signed_out_s3",
-                            shortStatusKey: "core.sync.status.signed_out",
+                            status: waiting ? .waitingToSync : .signedOutOfS3,
+                            statusKey: waiting
+                                ? "core.sync.status.waiting_to_sync"
+                                : "core.sync.status.signed_out_s3",
+                            shortStatusKey: waiting
+                                ? "core.sync.status.waiting_to_sync"
+                                : "core.sync.status.signed_out",
                             tone: tone,
                             cause: cause,
                             fix: fix,
