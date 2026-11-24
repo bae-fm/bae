@@ -51,7 +51,8 @@ struct MacCoverGallery: View {
             HStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: ThemeSpace.section) {
-                        MacRow("Source") {
+                        HStack(spacing: ThemeSpace.related) {
+                            Text("Source")
                             MacPopUpButton(
                                 "Source",
                                 selection: $filter
