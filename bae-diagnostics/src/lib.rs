@@ -413,45 +413,46 @@ impl DiagnosticsWorker {
     async fn run(mut self) {
         // The first periodic flush is one interval after the worker starts,
         // and each next one an interval after the last, on the injected
-        // clock. Queued messages are taken first: an event or an explicit
-        // flush already queued when a periodic flush comes due is handled
-        // before it, so the flush sends that event and never takes the
+        // clock. Messages queued when a periodic flush comes due are taken
+        // before it, so the flush sends a queued event and never takes the
         // transport answer an explicit flush() was owed.
         let mut next_flush = self.clock.deadline(FLUSH_INTERVAL);
         loop {
             tokio::select! {
-                biased;
-                Some(message) = self.rx.recv() => {
-                    match message {
-                        WorkerMessage::Event(mut event) => {
-                            event.device_id = self.device_id.clone();
-                            self.push(event);
-                            if self.buffered.len() >= BATCH_SIZE {
-                                self.record_flush_result().await;
-                            }
-                        }
-                        WorkerMessage::SetDeviceId(device_id) => {
-                            if self.device_id.is_some() {
-                                tracing::debug!(
-                                    "diagnostics device id already set; ignoring repeat"
-                                );
-                            } else {
-                                self.device_id = Some(device_id);
-                            }
-                        }
-                        WorkerMessage::Flush(reply) => {
-                            let result = self.flush_buffer().await;
-                            if reply.send(result).is_err() {
-                                tracing::debug!("diagnostics flush receiver dropped");
-                            }
-                        }
-                    }
-                }
+                Some(message) = self.rx.recv() => self.take(message).await,
                 () = &mut next_flush => {
+                    while let Ok(message) = self.rx.try_recv() {
+                        self.take(message).await;
+                    }
                     self.record_flush_result().await;
                     next_flush = self.clock.deadline(FLUSH_INTERVAL);
                 }
                 else => break,
+            }
+        }
+    }
+
+    async fn take(&mut self, message: WorkerMessage) {
+        match message {
+            WorkerMessage::Event(mut event) => {
+                event.device_id = self.device_id.clone();
+                self.push(event);
+                if self.buffered.len() >= BATCH_SIZE {
+                    self.record_flush_result().await;
+                }
+            }
+            WorkerMessage::SetDeviceId(device_id) => {
+                if self.device_id.is_some() {
+                    tracing::debug!("diagnostics device id already set; ignoring repeat");
+                } else {
+                    self.device_id = Some(device_id);
+                }
+            }
+            WorkerMessage::Flush(reply) => {
+                let result = self.flush_buffer().await;
+                if reply.send(result).is_err() {
+                    tracing::debug!("diagnostics flush receiver dropped");
+                }
             }
         }
     }

@@ -295,6 +295,64 @@ async fn a_buffered_event_is_sent_once_the_flush_interval_passes() {
     assert_eq!(transport.event_names(), ["app_started"]);
 }
 
+/// A clock whose first deadline comes due as it queues an event, after the
+/// worker found its queue empty. No later deadline comes due.
+struct DueAsAnEventIsQueued {
+    first: std::sync::Mutex<Option<oneshot::Receiver<Diagnostics>>>,
+}
+
+impl coven::Clock for DueAsAnEventIsQueued {
+    fn now(&self) -> std::time::SystemTime {
+        start()
+    }
+
+    fn elapsed(&self) -> Duration {
+        Duration::ZERO
+    }
+
+    fn deadline(
+        &self,
+        _duration: Duration,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+        let first = self.first.lock().expect("the lock is not poisoned").take();
+        Box::pin(async move {
+            let Some(diagnostics) = first else { return std::future::pending().await };
+            diagnostics
+                .await
+                .expect("the test hands over its diagnostics")
+                .event(TelemetryEvent::AppStarted {});
+        })
+    }
+
+    fn sleep_until(
+        &self,
+        _at: std::time::SystemTime,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<(), coven::WallTimerError>> + Send>,
+    > {
+        Box::pin(std::future::pending())
+    }
+}
+
+/// An event queued before a periodic flush comes due goes out with it, even
+/// when the worker looked at its queue just before the event came.
+#[tokio::test]
+async fn an_event_queued_as_the_flush_comes_due_goes_out_with_it() {
+    use bae_util::test_channels::HANG_GUARD;
+    let (hand_over, first) = oneshot::channel();
+    let clock = Arc::new(DueAsAnEventIsQueued { first: std::sync::Mutex::new(Some(first)) });
+    let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
+    let diagnostics = Diagnostics::with_transport(config(), clock, ids(), transport.clone(), None)
+        .expect("diagnostics starts");
+
+    assert!(hand_over.send(diagnostics.clone()).is_ok(), "the worker waits on its first deadline");
+    tokio::time::timeout(HANG_GUARD, transport.sent_at_least(1))
+        .await
+        .expect("the periodic flush sends the event");
+
+    assert_eq!(transport.event_names(), ["app_started"]);
+}
+
 /// A send the intake failed for the moment is repeated once the worker's
 /// injected clock reaches the retry's wait, and not before.
 #[tokio::test]
