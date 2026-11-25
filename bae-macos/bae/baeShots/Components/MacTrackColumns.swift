@@ -10,7 +10,6 @@ extension ShotScene {
     static let macTrackColumnsScenes: [ShotScene] = [
         component(
             "mac.component.track-columns.default",
-            page: true,
             width: 580,
             height: 100
         ) {
@@ -18,7 +17,6 @@ extension ShotScene {
         },
         component(
             "mac.component.track-columns.side-heading",
-            page: true,
             width: 580,
             height: 100
         ) {
