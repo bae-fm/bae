@@ -474,10 +474,7 @@ extension MacNotice {
             MacButton("Details", kind: .borderless) {
                 showErrorDetails(details)
             }
-            .muted(
-                isMuted(borderless: true),
-                onStage: look == .centeredOnStage
-            )
+            .muted(isMuted(borderless: true))
             .stage(look == .centeredOnStage)
         #endif
     }
@@ -490,10 +487,7 @@ extension MacNotice {
                 actionLabel(action)
             }
             .tinted(look == .filled)
-            .muted(
-                isMuted(borderless: false),
-                onStage: look == .centeredOnStage
-            )
+            .muted(isMuted(borderless: false))
             .stage(look == .centeredOnStage)
             .disabled(action.isDisabled)
             .keyboardShortcut(action.shortcut)
@@ -513,10 +507,7 @@ extension MacNotice {
                     action.title
                 }
                 .tinted(look == .filled)
-                .muted(
-                    isMuted(borderless: false),
-                    onStage: look == .centeredOnStage
-                )
+                .muted(isMuted(borderless: false))
                 .stage(look == .centeredOnStage)
                 .fixedSize()
                 .disabled(action.isDisabled)

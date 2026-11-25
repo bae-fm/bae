@@ -80,12 +80,11 @@ public struct MacButton<Label: View>: View {
     }
 
     /// Words in secondary text, for a button under quiet words: a failed
-    /// view's centred notice. `onStage` takes the image viewer's stage text.
-    public func muted(_ isMuted: Bool = true, onStage: Bool = false)
-        -> MacButton
-    {
+    /// view's centred notice. On the stage they take the stage's secondary
+    /// text.
+    public func muted(_ isMuted: Bool = true) -> MacButton {
         var copy = self
-        copy.tone = isMuted ? .muted(onStage: onStage) : .inherited
+        copy.tone = isMuted ? .muted : .inherited
         return copy
     }
 
@@ -139,7 +138,7 @@ public struct MacButton<Label: View>: View {
     /// The label in the colour the tone sets. The colour goes on the label,
     /// because the kind's style sets its own colour around it.
     private var words: some View {
-        iconOrLabel.modifier(MacButtonLook(tone: tone))
+        iconOrLabel.modifier(MacButtonLook(tone: tone, onStage: isOnStage))
     }
 
     @ViewBuilder
@@ -186,12 +185,13 @@ private enum Tone {
     case accent
     /// The danger colour.
     case destructive
-    /// Secondary text, or a stage's secondary text `onStage`.
-    case muted(onStage: Bool)
+    /// Secondary text, or a stage's secondary text on the stage.
+    case muted
 }
 
 private struct MacButtonLook: ViewModifier {
     let tone: Tone
+    let onStage: Bool
 
     func body(content: Content) -> some View {
         switch tone {
@@ -203,7 +203,7 @@ private struct MacButtonLook: ViewModifier {
             content.foregroundStyle(Theme.accent)
         case .destructive:
             content.foregroundStyle(Theme.danger)
-        case .muted(let onStage):
+        case .muted:
             let color = onStage ? Theme.onFillSecondary : Theme.textSecondary
             content.foregroundStyle(color)
         }
