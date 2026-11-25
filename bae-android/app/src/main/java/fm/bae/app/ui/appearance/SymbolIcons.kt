@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 /**
  * The icons the app draws, in the shapes of Google's Material Symbols Rounded at weight 400 and optical
  * size 24, which the design system's boards draw them in. Play, pause, previous and next are the filled
- * symbols; Favorite has filled and outline forms. Other icons use the outline. Icons that point in a
+ * symbols. Other icons use the outline. Icons that point in a
  * reading direction mirror in a right-to-left layout.
  */
 internal object SymbolIcons {
@@ -50,35 +50,6 @@ internal object SymbolIcons {
             56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0
             33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5
             23.5T560-720q0 33-23.5 56.5T480-640Z
-                """,
-        )
-    }
-
-    /** The heart a rating shows, filled: the rating systems' Heart. */
-    val Favorite: ImageVector by lazy {
-        symbol(
-            "Favorite",
-            mirrored = false,
-            pathData =
-                """
-            M480-147q-14 0-28.5-5T426-168l-69-63q-106-97-191.5-192.5T80-634q0-94 63-157t157-63q53 0 100 22.5t80 61.5
-            q33-39 80-61.5T660-854q94 0 157 63t63 157q0 115-85 211T602-230l-68 62q-11 11-25.5 16t-28.5 5Z
-                """,
-        )
-    }
-
-    /** The heart's outline, for a rating that is not a heart. */
-    val FavoriteBorder: ImageVector by lazy {
-        symbol(
-            "FavoriteBorder",
-            mirrored = false,
-            pathData =
-                """
-            M480-147q-14 0-28.5-5T426-168l-69-63q-106-97-191.5-192.5T80-634q0-94 63-157t157-63q53 0 100 22.5t80 61.5
-            q33-39 80-61.5T660-854q94 0 157 63t63 157q0 115-85 211T602-230l-68 62q-11 11-25.5 16t-28.5 5Zm-38-543
-            q-29-41-62-62.5T300-774q-60 0-100 40t-40 100q0 52 37 110.5T285.5-410q51.5 55 106 103t88.5 79q34-31 88.5-79
-            t106-103Q726-465 763-523.5T800-634q0-60-40-100t-100-40q-47 0-80 21.5T518-690q-7 10-17 15t-21 5q-11 0-21-5
-            t-17-15Zm38 189Z
                 """,
         )
     }
