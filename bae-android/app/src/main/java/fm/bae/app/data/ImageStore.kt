@@ -264,7 +264,7 @@ class ImageStore(
      */
     private fun cacheKey(
         content: ImageContent,
-        size: DecodeSize,
+        size: DecodeSize.FitTo,
     ): String = "${token(content)}#${size.keySuffix}"
 
     /** What pins a cached entry to the exact bytes it came from. */
