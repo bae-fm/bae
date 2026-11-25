@@ -8,10 +8,30 @@ extension ShotScene {
     /// over the window `mac.import.folder.identified` draws, opened on
     /// Northbound's cover.jpg.
     static let importLightboxScenes: [ShotScene] = [
-        importLightboxScene("mac.import.lightbox", picture: .shown),
-        importLightboxScene("mac.import.lightbox.loading", picture: .loading),
-        importLightboxScene("mac.import.lightbox.failed", picture: .unreadable),
+        ShotScene(
+            id: "mac.import.lightbox",
+            size: importLightboxSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importLightboxStage(picture: .shown)
+        },
+        ShotScene(
+            id: "mac.import.lightbox.loading",
+            size: importLightboxSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importLightboxStage(picture: .loading)
+        },
+        ShotScene(
+            id: "mac.import.lightbox.failed",
+            size: importLightboxSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importLightboxStage(picture: .unreadable)
+        },
     ]
+
+    private static let importLightboxSize = CGSize(width: 1_400, height: 1_100)
 
     /// How core's read of the picture at the lightbox's size stands.
     private enum FolderPicture {
@@ -28,42 +48,40 @@ extension ShotScene {
     /// asks for more.
     nonisolated private static let panePixels: UInt32 = 1_600
 
-    private static func importLightboxScene(
-        _ id: String,
+    @MainActor
+    private static func importLightboxStage(
         picture: FolderPicture
-    ) -> ShotScene {
-        let size = CGSize(width: 1_400, height: 1_260)
-        return ShotScene(id: id, size: size) {
-            let uiStore = UiStore()
-            let images = folderImages(picture)
-            let load = LightboxImageLoad()
-            uiStore.presentLightbox(try northboundLightbox(uiStore: uiStore))
-            return ShotStage(
-                try importWindow(
-                    .found(northbound: .identified, opening: .northbound),
-                    uiStore: uiStore,
-                    images: images,
-                    size: size,
-                    window: AnyView(MacMainWindowContainer(lightboxLoad: load))
-                ),
-                isReady: {
-                    switch picture {
-                    case .shown:
-                        load.phase.image != nil && images.unansweredImages == 0
-                    case .loading:
-                        // Every image but the one that never answers.
-                        load.content != nil && images.unansweredImages == 1
-                    case .unreadable:
-                        if case .failed = load.phase {
-                            images.unansweredImages == 0
-                        }
-                        else {
-                            false
-                        }
+    ) throws -> ShotStage {
+        let size = importLightboxSize
+        let uiStore = UiStore()
+        let images = folderImages(picture)
+        let load = LightboxImageLoad()
+        uiStore.presentLightbox(try northboundLightbox(uiStore: uiStore))
+        return ShotStage(
+            try importWindow(
+                .found(northbound: .identified, opening: .northbound),
+                uiStore: uiStore,
+                images: images,
+                size: size,
+                window: AnyView(MacMainWindowContainer(lightboxLoad: load))
+            ),
+            isReady: {
+                switch picture {
+                case .shown:
+                    load.phase.image != nil && images.unansweredImages == 0
+                case .loading:
+                    // Every image but the one that never answers.
+                    load.content != nil && images.unansweredImages == 1
+                case .unreadable:
+                    if case .failed = load.phase {
+                        images.unansweredImages == 0
+                    }
+                    else {
+                        false
                     }
                 }
-            )
-        }
+            }
+        )
     }
 
     /// The lightbox on the first of Northbound's two images.

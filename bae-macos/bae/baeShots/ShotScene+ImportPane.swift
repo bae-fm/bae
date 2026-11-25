@@ -25,11 +25,16 @@ extension ShotScene {
                 size: CGSize(width: 1_400, height: 900)
             )
         },
-        importPaneScene(
-            "mac.import.folder.identified",
-            height: 1_260,
-            .found(northbound: .identified, opening: .northbound)
-        ),
+        ShotScene(
+            id: "mac.import.folder.identified",
+            size: CGSize(width: 1_400, height: 1_100),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .identified, opening: .northbound),
+                size: CGSize(width: 1_400, height: 1_100)
+            )
+        },
         ShotScene(
             id: "mac.import.folder.importing",
             size: CGSize(width: 1_400, height: 900),
@@ -40,11 +45,16 @@ extension ShotScene {
                 size: CGSize(width: 1_400, height: 900)
             )
         },
-        importPaneScene(
-            "mac.import.folder.already-in-library",
-            height: 1_260,
-            .found(northbound: .importing, opening: .lowTideHours)
-        ),
+        ShotScene(
+            id: "mac.import.folder.already-in-library",
+            size: CGSize(width: 1_400, height: 1_100),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: .lowTideHours),
+                size: CGSize(width: 1_400, height: 1_100)
+            )
+        },
         ShotScene(
             id: "mac.import.folder.nothing-read",
             size: CGSize(width: 1_400, height: 900),
@@ -67,11 +77,12 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.import.folder.imported",
-            size: CGSize(width: 1_400, height: 1_300)
+            size: CGSize(width: 1_400, height: 1_100),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             try importPaneStage(
                 .imported,
-                size: CGSize(width: 1_400, height: 1_300),
+                size: CGSize(width: 1_400, height: 1_100),
                 releaseEditor: PreviewData.releaseEditor(
                     holding: PreviewData.northboundRelease(
                         cover: cover(PreviewData.northboundTitle)
@@ -89,12 +100,16 @@ extension ShotScene {
                 }
             )
         },
-        importPaneScene(
-            "mac.import.narrow.folder",
-            width: 900,
-            height: 1_260,
-            .found(northbound: .identified, opening: .northbound)
-        ),
+        ShotScene(
+            id: "mac.import.narrow.folder",
+            size: CGSize(width: 900, height: 1_100),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .identified, opening: .northbound),
+                size: CGSize(width: 900, height: 1_100)
+            )
+        },
         ShotScene(
             id: "mac.import.narrow.several",
             size: CGSize(width: 900, height: 900),
@@ -137,23 +152,6 @@ extension ShotScene {
             )
         },
     ]
-
-    /// A board shot of `board` with nothing else to state.
-    private static func importPaneScene(
-        _ id: String,
-        width: CGFloat = 1_400,
-        height: CGFloat,
-        _ board: PreviewData.ImportBoard,
-        discogsUsable: Bool = true
-    ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: width, height: height)) {
-            try importPaneStage(
-                board,
-                size: CGSize(width: width, height: height),
-                discogsUsable: discogsUsable
-            )
-        }
-    }
 
     /// The main window on Import as `board` draws it, in a library that
     /// can ask Discogs when `discogsUsable`.

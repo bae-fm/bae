@@ -10,28 +10,42 @@ extension ShotScene {
     /// saving that release after its sheet's Audio file pop-up picked the
     /// rip, while the save reads the rip.
     static let albumEditorScenes: [ShotScene] = [
-        albumEditorScene(
+        ShotScene(
             id: "mac.album.edit",
-            stage: .editor,
-            release: filledRelease
-        ),
-        albumEditorScene(id: "mac.album.edit.cover", stage: .coverSheet),
-        albumEditorScene(
+            size: albumEditorSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumEditorStage(stage: .editor, release: filledRelease)
+        },
+        ShotScene(
+            id: "mac.album.edit.cover",
+            size: albumEditorSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumEditorStage(stage: .coverSheet)
+        },
+        ShotScene(
             id: "mac.album.edit.album-picker",
-            stage: .albumMenu
-        ),
-        albumEditorScene(
+            size: albumEditorSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumEditorStage(stage: .albumMenu)
+        },
+        ShotScene(
             id: "mac.album.edit.cue-image",
-            stage: .editor,
-            release: cueRelease(.original)
-        ),
-        albumEditorScene(
+            size: albumEditorSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumEditorStage(stage: .editor, release: cueRelease(.original))
+        },
+        ShotScene(
             id: "mac.album.edit.reading-file",
-            stage: .saving,
-            release: cueRelease(.rebound)
-        ),
-        // The alert panel is part of a window, which a content capture leaves
-        // out, so this scene is shot in the library's window.
+            size: albumEditorSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumEditorStage(stage: .saving, release: cueRelease(.rebound))
+        },
+        // Its board draws the window at the album page boards' height.
         ShotScene(
             id: "mac.album.edit.drop-tracks",
             size: CGSize(width: 1_200, height: 1_020),
@@ -44,6 +58,10 @@ extension ShotScene {
             )
         },
     ]
+
+    /// The window the editor's other boards draw, which fits in the shot
+    /// display's free area.
+    private static let albumEditorSize = CGSize(width: 1_200, height: 1_100)
 
     private enum AlbumEditorStage {
         case editor
@@ -264,22 +282,11 @@ extension ShotScene {
         )
     }
 
-    private static func albumEditorScene(
-        id: String,
-        stage: AlbumEditorStage,
-        release: PreviewReleaseEdit = editedRelease
-    ) -> ShotScene {
-        let size = CGSize(width: 1_200, height: 1_320)
-        return ShotScene(id: id, size: size) {
-            albumEditorStage(stage: stage, release: release, size: size)
-        }
-    }
-
     @MainActor
     private static func albumEditorStage(
         stage: AlbumEditorStage,
-        release: PreviewReleaseEdit,
-        size: CGSize
+        release: PreviewReleaseEdit = editedRelease,
+        size: CGSize = albumEditorSize
     ) -> ShotStage {
         let uiStore = UiStore()
         let detailAnswered = AlbumDetailAnswered()
@@ -419,6 +426,6 @@ extension ShotScene {
             isPopUp: true
         )
         .padding(.leading, 258)
-        .padding(.top, 390)
+        .padding(.top, 280)
     }
 }
