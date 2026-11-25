@@ -56,5 +56,13 @@ private struct TokenShot: NSViewRepresentable {
         override func accessibilityRole() -> NSAccessibility.Role? {
             .staticText
         }
+
+        /// The cell is the element's box; the name's own box is the text in
+        /// it, which is what a reader gives the name's range.
+        override func accessibilityFrame(for _: NSRange) -> NSRect {
+            guard let token, let window else { return accessibilityFrame() }
+            let text = token.textRect(in: bounds)
+            return window.convertToScreen(convert(text, to: nil))
+        }
     }
 }

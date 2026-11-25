@@ -66,13 +66,18 @@ final class MacToken: NSTextAttachmentCell {
             yRadius: ThemeRadius.chip
         )
         .fill()
-        let text = attributedLabel
-        let size = text.size()
-        text.draw(
-            at: NSPoint(
-                x: chip.midX - size.width / 2,
-                y: chip.midY - size.height / 2
-            )
+        attributedLabel.draw(at: textRect(in: cellFrame).origin)
+    }
+
+    /// Where the name sits in a cell of `cellFrame`: centred in the chip.
+    func textRect(in cellFrame: NSRect) -> NSRect {
+        let chip = cellFrame.insetBy(dx: Self.margin, dy: 0)
+        let size = attributedLabel.size()
+        return NSRect(
+            x: chip.midX - size.width / 2,
+            y: chip.midY - size.height / 2,
+            width: size.width,
+            height: size.height
         )
     }
 
