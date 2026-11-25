@@ -194,6 +194,44 @@ struct ShotElementListTests {
         #expect(radio(0).value == nil)
     }
 
+    /// A text that is the only child of a padded container reports the
+    /// container's box through the tree; the list boxes it by its words, as
+    /// the board's text is. A text that starts at its box's edge keeps the
+    /// box, which is what the board's text fills.
+    @Test
+    func boxesATextByItsWordsWhenTheyAreCentredInTheElement() {
+        func text(words: CGRect) -> ShotElementList.Element {
+            var node = AccessibilityTree.Node(
+                role: NSAccessibility.Role.staticText.rawValue,
+                subrole: nil,
+                title: nil,
+                description: nil,
+                placeholder: nil,
+                value: .text("Barcode"),
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 17,
+                enabled: true,
+                selected: nil,
+                focused: nil,
+                style: nil,
+                parent: nil
+            )
+            node.wordsBox = words
+            return ShotElementList.Element(node: node)
+        }
+        let centred = text(words: CGRect(x: 6, y: 2, width: 44, height: 12))
+        #expect(centred.bounds.x == 6)
+        #expect(centred.bounds.y == 2)
+        #expect(centred.bounds.width == 44)
+        #expect(centred.bounds.height == 12)
+        let flush = text(words: CGRect(x: 0, y: 2, width: 44, height: 12))
+        #expect(flush.bounds.x == 0)
+        #expect(flush.bounds.width == 70)
+        #expect(flush.bounds.height == 17)
+    }
+
     @Test
     func everyBoxLiesInTheShotAndEveryParentComesFirst() async throws {
         for id in [
