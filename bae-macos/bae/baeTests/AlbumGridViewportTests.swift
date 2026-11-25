@@ -360,6 +360,33 @@ struct AlbumGridViewportRevealTests {
         #expect(viewport.revealScrolls(to: .album("a9")))
     }
 
+    @Test(
+        "an album arrives once the scroll stands at its top, before its card reports its new place"
+    )
+    func revealArrivesWhenTheScrollDoes() {
+        let viewport = scrolled()
+        place(.album("a9"), at: 148, in: viewport)
+        #expect(!viewport.revealScrolls(to: .album("a9")))
+
+        viewport.setScroll(
+            AlbumGridScroll(
+                offset: 1148,
+                visibleHeight: 700,
+                offsets: 0...4300
+            )
+        )
+
+        #expect(viewport.revealArrivedInPlace())
+    }
+
+    @Test("an album scrolled past the top since the last scroll report scrolls")
+    func revealScrollsAnAlbumLeftBehind() {
+        let viewport = scrolled()
+        place(.album("a9"), at: -300, scrolledTo: 1300, in: viewport)
+
+        #expect(!viewport.revealScrolls(to: .album("a9")))
+    }
+
     @Test("a reveal scrolling to its row measures it wherever it is laid out")
     func rowMeasuredThroughItsScroll() {
         let viewport = scrolled()

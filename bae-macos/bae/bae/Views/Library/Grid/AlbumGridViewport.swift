@@ -110,6 +110,10 @@ final class AlbumGridViewport {
     /// at a new count never reads as the one before it.
     private var frames: [Placement: Shown] = [:]
     private var scroll = AlbumGridScroll()
+    /// The offset the scroll stands at, by the last report of it: the scroll
+    /// view's own, or a cell's layout. When several layouts run in one frame,
+    /// SwiftUI can leave the last change of either unreported.
+    private var standingOffset: CGFloat = 0
     /// The slot the last change of column count, or the last reveal, put on
     /// top, held there until the grid scrolls another way, so changes back
     /// and forth return to the same place.
@@ -174,6 +178,7 @@ final class AlbumGridViewport {
         columnCount: Int,
         placed: AlbumGridPlacedCell
     ) {
+        standingOffset = placed.contentTop - placed.frame.minY
         frames[Placement(cell: cell, columnCount: columnCount)] = Shown(
             slot: slot,
             placed: placed
@@ -188,6 +193,7 @@ final class AlbumGridViewport {
 
     func setScroll(_ scroll: AlbumGridScroll) {
         self.scroll = scroll
+        standingOffset = scroll.offset
     }
 
     func placeRevealedRow(_ row: PlacedTrackRow?) {
@@ -335,11 +341,11 @@ final class AlbumGridViewport {
     /// as near the top as the content scrolls.
     private func sitsOnTop(_ cell: AlbumGridCell.Identity) -> Bool {
         guard
-            let frame = frames.first(where: { $0.key.cell == cell })?.value
-                .placed.frame
+            let contentTop = frames.first(where: { $0.key.cell == cell })?
+                .value.placed.contentTop
         else { return false }
-        let target = (scroll.offset + frame.minY).clamped(to: scroll.offsets)
-        return abs(target - scroll.offset) < 0.5
+        let target = contentTop.clamped(to: scroll.offsets)
+        return abs(target - standingOffset) < 0.5
     }
 
     private func topSlot(columnCount: Int) -> AlbumGridSlot? {
