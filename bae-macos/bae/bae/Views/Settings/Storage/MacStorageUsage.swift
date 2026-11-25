@@ -90,14 +90,41 @@ private struct ShareStack: Layout {
             bounds.width - spacing * CGFloat(max(subviews.count - 1, 0)),
             0
         )
+        let sized = widths(
+            shares: subviews.map { $0[ShareKey.self] },
+            room: room
+        )
         var x = bounds.minX
-        for subview in subviews {
-            let width = max(thinnest, room * subview[ShareKey.self])
+        for (subview, width) in zip(subviews, sized) {
             subview.place(
                 at: CGPoint(x: x, y: bounds.minY),
                 proposal: ProposedViewSize(width: width, height: bounds.height)
             )
             x += width + spacing
+        }
+    }
+
+    /// Each share's width in `room`: its share of it, except a segment that
+    /// share would leave thinner than `thinnest`, which keeps `thinnest`
+    /// and leaves the others the room that is left, so the segments fill
+    /// the bar and no more.
+    private func widths(shares: [Double], room: CGFloat) -> [CGFloat] {
+        var pinned = Set<Int>()
+        while true {
+            let free = max(room - thinnest * CGFloat(pinned.count), 0)
+            let total = shares.indices.filter { !pinned.contains($0) }
+                .reduce(0) { $0 + shares[$1] }
+            let thin = shares.indices.filter {
+                !pinned.contains($0) && total > 0
+                    && free * shares[$0] / total < thinnest
+            }
+            if thin.isEmpty {
+                return shares.indices.map {
+                    pinned.contains($0)
+                        ? thinnest : (total > 0 ? free * shares[$0] / total : 0)
+                }
+            }
+            pinned.formUnion(thin)
         }
     }
 }
