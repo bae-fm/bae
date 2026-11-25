@@ -82,6 +82,11 @@ extension ShotScene {
                 case .releaseFile(let id):
                     return try BoardArtwork.data(named: id)
                 }
+            },
+            fetchRemoteImage: { image, _ in
+                try BoardArtwork.data(
+                    named: BoardRemoteCover.artName(forUrl: image.url)
+                )
             }
         )
     }
