@@ -19,12 +19,13 @@ private struct ThemeTextLine: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
             if let line = text.macOSLine {
-                // SwiftUI puts the spacing between lines only, so the last
-                // line gets it below, and n lines are n times the line high.
+                // SwiftUI puts the spacing between lines only, so the first
+                // line gets it above, and n lines are n times the line high.
+                // The board's line holds its spare height above the words.
                 let spacing = max(0, line - text.swiftUILineHeight)
                 content
                     .lineSpacing(spacing)
-                    .padding(.bottom, spacing)
+                    .padding(.top, spacing)
                     .frame(minHeight: line)
             }
             else {
