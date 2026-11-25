@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.AndroidDivider
@@ -48,15 +49,17 @@ private fun previewDownload(
 /** The row with the divider the Pinning screen draws after each row, which the board's row carries as its bottom border. */
 @Composable
 private fun PinningRow(op: BridgeDownloadOp) {
-    AndroidPinningRow(
-        op,
-        PreviewData
-            .downloadStore(
-                downloadingReleaseId = op.releaseId,
-                transfer = PreviewData.downloadTransferProgress(bytesDone = 120_000_000UL, bytesTotal = 344_000_000UL, fraction = 0.35),
-            ).latestProgress(op.releaseId),
-        onCancel = {},
-        onRetry = {},
-    )
-    AndroidDivider()
+    Column {
+        AndroidPinningRow(
+            op,
+            PreviewData
+                .downloadStore(
+                    downloadingReleaseId = op.releaseId,
+                    transfer = PreviewData.downloadTransferProgress(bytesDone = 120_000_000UL, bytesTotal = 344_000_000UL, fraction = 0.35),
+                ).latestProgress(op.releaseId),
+            onCancel = {},
+            onRetry = {},
+        )
+        AndroidDivider()
+    }
 }
