@@ -132,7 +132,7 @@
 .bae-m-idraft-id > .bae-m-icell-fit { align-self: flex-start; max-width: calc(100% + var(--space-compact)); }
 .bae-m-icell.bae-m-icell-mono { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-m-idraft-entry { display: flex; align-items: center; gap: var(--space-compact); min-width: 0; }
-.bae-m-idraft-media { gap: calc(var(--space-group) + var(--space-line)); }
+.bae-m-idraft-media { gap: var(--space-group); }
 .bae-m-idraft-add { flex: none; display: inline-flex; align-items: center; gap: var(--space-line); }
 /* The Country menu drawn open (`countryOpen`), under its face as a pull-down menu. */
 .bae-m-idraft-pop { position: relative; display: inline-flex; }
