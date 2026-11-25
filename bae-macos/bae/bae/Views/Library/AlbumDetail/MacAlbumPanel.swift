@@ -227,15 +227,10 @@ struct ReleaseFactsLine: View {
                             localizedCoreString("core.identity.identified")
                         )
                 }
-                .background {
-                    // A plate says nothing to VoiceOver, so the button's frame
-                    // there is its words' and not the plate's.
-                    HoverPlate(
-                        hovering: isHovering || showsHover,
-                        cornerRadius: ThemeRadius.chip
-                    )
-                    .accessibilityHidden(true)
-                }
+                .hoverPlate(
+                    isHovering || showsHover,
+                    cornerRadius: ThemeRadius.chip
+                )
             }
             .buttonStyle(.accentPlain)
             .onHover { isHovering = $0 }
