@@ -935,7 +935,15 @@ fn a_reset_reports_loading_the_library_in_order_to_its_end() {
     bae_store::test_devices::on_device_runtime(async || {
         let app_dir = AppDir::temporary().unwrap();
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-        let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+        // On the store's own clock: memory storage dates its objects 1970
+        // unless told otherwise, and a sync pass before the close below would
+        // find the history past its grace and take a snapshot of it.
+        let storage = std::sync::Arc::new(
+            coven::MemoryStorage::builder()
+                .clock(std::sync::Arc::new(coven::SystemClock))
+                .build()
+                .unwrap(),
+        );
         let (store, device, _) = connected_library(&installation, &storage, "Household").await;
         let statuses = std::sync::Mutex::new(Vec::new());
 
