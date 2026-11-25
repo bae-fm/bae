@@ -4,4 +4,4 @@ A tone's glyph in the tone's colour, a ring with its mark inside, the one form e
 
 **In the code:** macOS: BaeKit's `StatusGlyph` (`StatusTone.swift`). Android: `StatusGlyph` (`ui/components/Status.kt`).
 
-On macOS, `size` (an icon role or points), `weight` and `frame` are the font and frame the app's caller sets, as SwiftUI sizes the symbol by its caller's font. A notice sets it semibold at 1.19 times the words beside it. `label` is the name VoiceOver reads where the app gives the glyph one. On Android, `size` is the Material icon's box, whose circle fills 20 of its 24, and `inline` sizes the ring at 1.19 times the text beside it.
+On macOS, `size` (an icon role or points), `weight` and `frame` are the font and frame the app's caller sets, as SwiftUI sizes the symbol by its caller's font. A notice sets it semibold at 1.19 times the words beside it. `label` is the name VoiceOver reads where the app gives the glyph one. On Android, `size` is the Material icon's box, whose circle fills 20 of its 24, and `inline` sizes the ring at 1.19 times the text beside it, rounded to the half point, the device pixel Compose rounds it to at the boards' density.
