@@ -13,6 +13,7 @@ Android's notice: a tinted box in its tone, the tone's glyph at the top left. It
 | `layout` | `paragraph` (the default) or `centered`: in the middle of the space it's given, the glyph (an outline, in grey) in front of the title, the title in secondary text when it stands alone and in primary over a subtitle, the buttons centred under it. For a view that failed whole (the album grid, the import list, a composer's page, the lightbox's image), or a part of one (the rest of the queue). |
 | `buttons` | Where the buttons go in the paragraph layout: `inline` (the default), on the text's line at the right, centred on it, the text wrapping beside them; or `below`, on a line of their own under the text, in line with it, for a long button in a narrow place (the Activity panel's Open Sync Settings). The centred layout always puts them in one row under the title. |
 | `dismiss` | An × at the right, level with the title: takes the notice away without fixing what it reports. For the Activity panel's problems, each of which still shows where it's fixed (such as Settings → Sync). |
+| `stage` | On the gallery's dark backdrop, which is dark in both modes: in dark mode's colours, so Retry's fill reads on the backdrop, with the backdrop's text colours. |
 | `icon` | On unless `false`. |
 | children | Other content, in place of or after the title. |
 

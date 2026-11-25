@@ -238,7 +238,7 @@
       : h(MSymbol, { name: STATUS_MATERIAL[tone], size: props.size, className: cls, fill: 'currentColor' });
   }
   // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. A Mac notice draws the SF Symbol's stand-in, an Android notice its ring.
-  // `look.quiet` draws it with no fill, the screen's text; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box). `look.android` leads with Android's ring (`set: 'ring'`) in place of the macOS glyph.
+  // `look.quiet` draws it with no fill, the screen's text; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage, which is dark in both modes, so the notice takes dark mode's colours there (its buttons' fills too) and the stage's text colours; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box). `look.android` leads with Android's ring (`set: 'ring'`) in place of the macOS glyph.
   // The notice's glyph; centred, grey, in front of the title (it says something went wrong and nothing more).
   function noticeGlyph(tone, icon, look) {
     return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: look.android ? 'ring' : 'mac', inline: true, muted: !!look.centered, framed: look.centered && !look.android })) : null;
@@ -246,7 +246,7 @@
   function NoticeBox(tone, icon, body, look) {
     var quiet = look.quiet;
     var glyph = look.centered ? null : noticeGlyph(tone, icon, look);
-    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, look.platform, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', look.centered && 'bae-notice-centered', look.stage && 'bae-notice-stage') }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
+    return h('div', { className: cx('bae-notice', 'bae-tone-' + tone, look.platform, glyph && 'bae-notice-with-icon', quiet && 'bae-notice-quiet', look.centered && 'bae-notice-centered', look.stage && 'bae-notice-stage'), 'data-theme': look.stage ? 'dark' : null }, glyph, glyph ? h('div', { className: 'bae-notice-body' }, body) : body);
   }
   // The notice's words: a title (bold only under a subtitle), the subtitle saying what to do, or the caller's own children.
   function noticeWords(props) {
