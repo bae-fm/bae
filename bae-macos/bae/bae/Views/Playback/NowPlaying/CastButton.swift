@@ -117,7 +117,7 @@ struct MacCastPopover: View {
         .padding(.top, ThemeSpace.compact)
         .padding(.horizontal, ThemeSpace.inline)
         .padding(.bottom, ThemeSpace.group)
-        .frame(width: 260)
+        .frame(width: 260, alignment: .leading)
         .onChange(of: start.started) {
             if start.didStart(asked) {
                 dismiss()
