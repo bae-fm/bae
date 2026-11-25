@@ -45,6 +45,6 @@ extension QRCode {
     /// How wide `text` is drawn, in points, or nil when no code can be made
     /// for it.
     static func side(for text: String) -> CGFloat? {
-        image(for: text).map { $0.size.width * minimumModuleSide }
+        modules(for: text).map { CGFloat($0.side) * minimumModuleSide }
     }
 }
