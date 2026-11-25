@@ -26,6 +26,7 @@ public struct MacButton<Label: View>: View {
     private let label: Label
     private var tone = Tone.inherited
     private var isTinted = false
+    private var isOnStage = false
     private var controlSize: ControlSize?
     private var isFilling = false
 
@@ -88,6 +89,15 @@ public struct MacButton<Label: View>: View {
         return copy
     }
 
+    /// A button on the image viewer's stage, which is dark in both modes: it
+    /// draws in dark mode's colours, so a secondary button's fill is the dark
+    /// control.
+    public func stage(_ isOnStage: Bool = true) -> MacButton {
+        var copy = self
+        copy.isOnStage = isOnStage
+        return copy
+    }
+
     /// A button as wide as the space it is given, its words centred, instead
     /// of as wide as its words: the welcome window's three choices share one
     /// column.
@@ -107,6 +117,9 @@ public struct MacButton<Label: View>: View {
     public var body: some View {
         sized
             .modifier(MacButtonSize(size: controlSize))
+            .transformEnvironment(\.colorScheme) { scheme in
+                if isOnStage { scheme = .dark }
+            }
     }
 
     /// A button with words keeps them whole on one line at their own width,

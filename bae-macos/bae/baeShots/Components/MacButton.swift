@@ -57,6 +57,12 @@ extension ShotScene {
             MacButton("Set up") {}
                 .muted()
         },
+        component("mac.component.button.stage", height: 50) {
+            MacButton("Set up") {}
+                .stage()
+                .padding(8)
+                .background(Theme.backdrop)
+        },
         component("mac.component.button.size-alert", width: 842, height: 50) {
             MacButton(kind: .secondary, action: {}) {
                 Text("Set up").frame(maxWidth: .infinity)

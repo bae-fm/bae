@@ -478,6 +478,7 @@ extension MacNotice {
                 isMuted(borderless: true),
                 onStage: look == .centeredOnStage
             )
+            .stage(look == .centeredOnStage)
         #endif
     }
 
@@ -493,6 +494,7 @@ extension MacNotice {
                 isMuted(borderless: false),
                 onStage: look == .centeredOnStage
             )
+            .stage(look == .centeredOnStage)
             .disabled(action.isDisabled)
             .keyboardShortcut(action.shortcut)
         case .menu(let choices):
@@ -515,6 +517,7 @@ extension MacNotice {
                     isMuted(borderless: false),
                     onStage: look == .centeredOnStage
                 )
+                .stage(look == .centeredOnStage)
                 .fixedSize()
                 .disabled(action.isDisabled)
             #else

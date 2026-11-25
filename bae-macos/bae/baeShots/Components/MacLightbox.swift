@@ -12,6 +12,10 @@ extension ShotScene {
         lightbox("mac.component.lightbox.browse", browse: true),
         lightbox("mac.component.lightbox.loading", state: .loading),
         lightbox("mac.component.lightbox.failed", state: .failed),
+        lightbox(
+            "mac.component.lightbox.failed-details",
+            state: .failedWithCauses
+        ),
         lightbox("mac.component.lightbox.one-image", single: true),
     ]
 
@@ -21,7 +25,7 @@ extension ShotScene {
 
     /// What a lightbox shows of its image.
     private enum LightboxImageState {
-        case shown, loading, failed
+        case shown, loading, failed, failedWithCauses
     }
 
     /// A store that gives the first image's large copy no bytes when it
@@ -43,6 +47,11 @@ extension ShotScene {
                         return nil
                     case .failed:
                         return nil
+                    case .failedWithCauses:
+                        throw BridgeError.Diagnostic(
+                            category: .network,
+                            detail: "dns error"
+                        )
                     }
                 }
                 return try BoardArtwork.data(named: ref.id)
@@ -96,7 +105,7 @@ extension ShotScene {
                         return images.unansweredImages <= 1
                     }
                 )
-            case .failed:
+            case .failed, .failedWithCauses:
                 return ShotStage(view, images: images) {
                     if case .failed = load.phase { return true }
                     return false
