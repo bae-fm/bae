@@ -18,12 +18,9 @@ struct HoverPlate: View {
 extension View {
     /// A button that is only its words, with its `HoverPlate`: the button lays
     /// out as its words.
-    func hoverPlate(
-        _ hovering: Bool,
-        cornerRadius: CGFloat = ThemeRadius.control
-    ) -> some View {
+    func hoverPlate(_ hovering: Bool) -> some View {
         background {
-            HoverPlate(hovering: hovering, cornerRadius: cornerRadius)
+            HoverPlate(hovering: hovering)
         }
     }
 }
