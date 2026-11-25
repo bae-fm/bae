@@ -122,6 +122,9 @@
                     .focused($copyFocused)
                     .padding(ThemeSpace.related)
                 }
+                // The board's panel has 2 points of margin above it, on top of
+                // the alert's spacing.
+                .padding(.top, ThemeSpace.line)
         }
     }
 
