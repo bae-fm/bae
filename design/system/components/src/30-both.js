@@ -226,14 +226,14 @@
     return m.stroke ? h('path', { d: m.stroke, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }) : h('path', { d: m.fill });
   }
   var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
-  // A tone's glyph in the tone's colour; set="mac" for macOS, set="ring" for the ring an Android notice leads with, none for Android's Material symbol. `size` is an icon role; `inline` (macOS) sizes it at 1.19 times the text beside it instead; `muted` draws it in secondary text. Neutral, accent and activity have none.
+  // A tone's glyph in the tone's colour; set="mac" for macOS, set="ring" for the ring an Android notice leads with, none for Android's Material symbol. `size` is an icon role; `inline` (macOS) sizes it at 1.19 times the text beside it instead; `framed` (macOS, inline) gives it the room of the SF Symbol's frame on each side (exclamationmark.circle's, as wide as the other circles'), as SwiftUI lays the image out in a line of text; `muted` draws it in secondary text. Neutral, accent and activity have none.
   function StatusGlyph(props) {
     var tone = props.tone;
     if (!STATUS_MATERIAL[tone]) return null;
     var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.muted && 'bae-status-glyph-muted', props.inline && 'bae-status-glyph-inline', props.className);
     var drawing = STATUS_DRAWING[props.set];
     return drawing
-      ? h('svg', { className: cls, style: props.inline ? null : iconBox(props.size), viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
+      ? h('svg', { className: cls, style: props.inline ? (props.framed ? { marginInline: 'calc(' + thousandths((SF.warning.frame[0] / 24 - 1) / 2) + ' * 1.19em)' } : null) : iconBox(props.size), viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
           h('path', { d: drawing.ring, fillRule: 'evenodd' }), statusMark(drawing[tone]))
       : h(MSymbol, { name: STATUS_MATERIAL[tone], size: props.size, className: cls, fill: 'currentColor' });
   }
@@ -241,7 +241,7 @@
   // `look.quiet` draws it with no fill, the screen's text; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box). `look.android` leads with Android's ring (`set: 'ring'`) in place of the macOS glyph.
   // The notice's glyph; centred, grey, in front of the title (it says something went wrong and nothing more).
   function noticeGlyph(tone, icon, look) {
-    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: look.android ? 'ring' : 'mac', inline: true, muted: !!look.centered })) : null;
+    return icon !== false && STATUS_MATERIAL[tone] ? h('span', { className: 'bae-notice-icon' }, h(StatusGlyph, { tone: tone, set: look.android ? 'ring' : 'mac', inline: true, muted: !!look.centered, framed: look.centered && !look.android })) : null;
   }
   function NoticeBox(tone, icon, body, look) {
     var quiet = look.quiet;
