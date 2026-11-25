@@ -256,6 +256,9 @@ extension ShotScene {
                 onEditTitleSearch: { _, _ in },
                 listsCatalogCandidates: .constant(listsCatalogCandidates)
             )
+            // The band wraps its chips at the scene's width, as the board's
+            // box does.
+            .frame(maxWidth: width, alignment: .leading)
         }
     }
 }
