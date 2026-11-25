@@ -16,13 +16,6 @@ extension ShotScene {
         ) {
             attachedCloudHomeSheet()
         },
-        ShotScene(
-            id: "mac.component.sheet.centred",
-            size: sheetRowSize,
-            frame: .window(title: "bae", titleBar: .hidden)
-        ) {
-            attachedCloudHomeSheet()
-        },
         component("mac.component.sheet.without-scrim", width: 600, height: 240)
         {
             MacSheet("Set up a cloud home", width: 460) {
@@ -47,7 +40,7 @@ extension ShotScene {
     private static let sheetRowSize = CGSize(width: 874, height: 240)
 
     /// The cloud home sheet attached to a window drawn in the background
-    /// colour, as the default and centred rows show it.
+    /// colour, as the default row shows it.
     @MainActor
     private static func attachedCloudHomeSheet() -> ShotStage {
         ShotStage(
@@ -59,7 +52,7 @@ extension ShotScene {
         .awaitingSheet()
     }
 
-    /// The sheet the default and centred rows show.
+    /// The sheet the default row shows.
     private static func cloudHomeSheet() -> some View {
         MacSheet("Set up a cloud home", width: 460) {
             Text(verbatim: "Content")

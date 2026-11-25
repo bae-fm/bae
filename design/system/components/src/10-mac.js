@@ -312,14 +312,14 @@
     return h(MacBox, { className: 'bae-m-disclosure' }, toggle, open ? props.children : null);
   }
 
-  // `centred`: macOS centres the sheet over the window instead of hanging it under the title bar, as it does over the welcome window. `overlay` draws the window behind it as macOS dims it, with no scrim of the app's.
+  // `overlay` draws the sheet as macOS presents it over its window: centred in the window, the window behind it dimmed as macOS dims it, with no scrim of the app's. Without it, the sheet's face alone, hung under a title bar's height.
   function MacSheet(props) {
-    var panel = h('div', { role: 'dialog', 'aria-label': props.title, className: cx('bae-m-face-sheet bae-m-sheet', props.centred && 'bae-m-sheet-centred'), style: { width: Number(props.width || 460) } },
+    var panel = h('div', { role: 'dialog', 'aria-label': props.title, className: 'bae-m-face-sheet bae-m-sheet', style: { width: Number(props.width || 460) } },
       props.title ? h('div', { className: 'bae-m-sheet-title' }, props.title) : null,
       // `message`: the sheet's line under its title, in secondary text, as an alert's message sits under its title.
       h('div', { className: 'bae-m-sheet-body' }, props.message ? h('div', { className: 'bae-m-sheet-message' }, props.message) : null, props.children));
     if (!props.overlay) return panel;
-    return h('div', { className: cx('bae-m-scrim', 'bae-m-scrim-sheet', props.centred && 'bae-m-scrim-centred') }, panel);
+    return h('div', { className: 'bae-m-scrim bae-m-scrim-centred bae-m-scrim-sheet' }, panel);
   }
 
   // `split` sets the first child apart on the left, or the first `split` children when it is a number, in their own box so a wrapper around them can't swallow the spacing.
