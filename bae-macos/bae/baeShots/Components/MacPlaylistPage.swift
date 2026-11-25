@@ -44,6 +44,9 @@ extension ShotScene {
         ),
     ]
 
+    /// The header's bottom, 115 points down, and the section gap.
+    private static let tracksSlotTop: CGFloat = 115 + ThemeSpace.section
+
     private static func playlistPage(
         _ id: String,
         summary: BridgePlaylistSummary,
@@ -51,7 +54,7 @@ extension ShotScene {
     ) -> ShotScene {
         // The store the capture waits on is the one the page draws from.
         let images = coverStore()
-        return component(id, width: 404, height: 240, images: images) {
+        return component(id, width: 842, height: 240, images: images) {
             let backing = boardLibraryBacking(uiStore: UiStore())
             MacPlaylistPage(
                 detail: BridgePlaylistDetail(
@@ -65,7 +68,17 @@ extension ShotScene {
             .environment(images)
             .albumDetailPreviewEnvironment()
             .environment(backing.session)
-            .frame(width: 404, alignment: .leading)
+            .frame(width: 842, alignment: .leading)
+            .overlay(alignment: .topLeading) {
+                // Where the preview draws its slot for the tracks, under the
+                // header and its section gap, in the page's side margins.
+                PreviewSlot("Tracks")
+                    .padding(.top, tracksSlotTop)
+                    .padding(
+                        .horizontal,
+                        MacListRow.hang(leadWidth: MacPlaylistPage.numberWidth)
+                    )
+            }
             .overlay(alignment: .topLeading) {
                 if optionsOpen {
                     // Under the ⋯, which follows Play: the menu's right edge
