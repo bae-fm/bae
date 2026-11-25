@@ -63,7 +63,7 @@
    "page": "home",
    "title": "Unpin, asking first",
    "w": 412,
-   "x": 2952,
+   "x": 3492,
    "y": 14416
   },
   "android.album.delete.failed.dc.html": {
@@ -111,7 +111,7 @@
    "page": "home",
    "title": "Album: Rate",
    "w": 412,
-   "x": 3444,
+   "x": 3984,
    "y": 14416
   },
   "mac.album.change-cover.dc.html": {
@@ -183,7 +183,7 @@
    "page": "home",
    "title": "macOS: Save as… on a track",
    "w": 1200,
-   "x": 14080,
+   "x": 14620,
    "y": 15812
   },
   "mac.album.storage.dc.html": {
@@ -2975,7 +2975,7 @@
    "page": "home",
    "title": "macOS: Storage…: every state",
    "w": 1452,
-   "x": 15360,
+   "x": 15900,
    "y": 15812
   },
   "mac.album.storage.unpin.dc.html": {
@@ -2983,7 +2983,7 @@
    "page": "home",
    "title": "macOS: Unpin, asking first",
    "w": 1200,
-   "x": 16892,
+   "x": 17432,
    "y": 15812
   },
   "android.album.page.every-storage-state.dc.html": {
@@ -4719,7 +4719,9 @@
   "row-play-pin-mac",
   "code-casting-pin",
   "code-unplayable-tiles",
-  "code-long-catalog"
+  "code-long-catalog",
+  "code-gallery-zoom-failed",
+  "code-lightbox-zoom-failed"
  ],
  "notes": {
   "canvas-key-library": {
@@ -6048,6 +6050,22 @@
    "w": 460,
    "x": 7480,
    "y": 1636
+  },
+  "code-gallery-zoom-failed": {
+   "page": "home",
+   "size": 24,
+   "text": "What the code needs for this board:\n- When core cannot give a picture's tiles, the gallery shows the failure in the picture's place, as for a picture that did not load: the centred notice Could not load image, with Details when the error has causes and Retry when trying again can help.\n- The notice takes a stage look in dark mode's colours, so its words and Retry read on the backdrop in Light too.\n- Today a failed full-resolution decode leaves the downsampled picture on screen (AndroidLightbox.kt, lines 294–299), and a failed load is plain text with no Retry or Details (AndroidLightbox.kt, lines 312–317).",
+   "w": 460,
+   "x": 2952,
+   "y": 14416
+  },
+  "code-lightbox-zoom-failed": {
+   "page": "home",
+   "size": 24,
+   "text": "What the code needs for this board:\n- When core cannot give a picture's tiles, the lightbox shows the failure in the picture's place, as for a picture that did not load, with core's error behind it: Details, then Retry when trying again can help.\n- Today a failed zoom leaves the copy on screen (MacLightbox.swift, line 170), and the failed view passes only a line, so its notice has no Details (MacLightbox.swift, lines 325–334).\n- On the stage, the notice's buttons draw in dark mode's colours, so Retry's fill reads in Light. Today Retry fills with Theme.control, white in Light (SecondaryButtonStyle.swift, line 96).",
+   "w": 460,
+   "x": 14080,
+   "y": 15812
   }
  },
  "order": [
