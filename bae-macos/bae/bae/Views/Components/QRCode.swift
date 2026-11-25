@@ -23,18 +23,98 @@ struct QRCode: View {
     /// camera to resolve it from 25 to 30 cm.
     static let minimumModuleSide: CGFloat = 360 / 105
 
+    @Environment(\.displayScale)
+    private var displayScale
+
     var body: some View {
-        if let image = Self.image(for: text) {
-            // One pixel per module, scaled up without smoothing so module
-            // edges stay sharp.
-            Image(nsImage: image)
-                .interpolation(.none)
-                .resizable()
-                .frame(
-                    width: image.size.width * Self.minimumModuleSide,
-                    height: image.size.height * Self.minimumModuleSide
+        if let image = Self.image(for: text),
+            let modules = Self.modules(of: image)
+        {
+            // Each module is a rectangle on the device's pixel grid, so its
+            // edges stay sharp however a screenshot or the display resamples
+            // an image.
+            let side = CGFloat(modules.side)
+            Canvas { context, _ in
+                context.fill(
+                    Path(
+                        CGRect(
+                            x: 0,
+                            y: 0,
+                            width: side * Self.minimumModuleSide,
+                            height: side * Self.minimumModuleSide
+                        )
+                    ),
+                    with: .color(.white)
                 )
+                let scale = displayScale
+                func edge(_ index: Int) -> CGFloat {
+                    (CGFloat(index) * Self.minimumModuleSide * scale).rounded()
+                        / scale
+                }
+                var path = Path()
+                for row in 0..<modules.side {
+                    for column in 0..<modules.side
+                    where modules.isDark[row * modules.side + column] {
+                        path.addRect(
+                            CGRect(
+                                x: edge(column),
+                                y: edge(row),
+                                width: edge(column + 1) - edge(column),
+                                height: edge(row + 1) - edge(row)
+                            )
+                        )
+                    }
+                }
+                context.fill(path, with: .color(.black))
+            }
+            .frame(
+                width: side * Self.minimumModuleSide,
+                height: side * Self.minimumModuleSide
+            )
         }
+    }
+
+    /// The code's modules, one flag for each, quiet zone included.
+    private static func modules(of image: NSImage) -> (
+        side: Int, isDark: [Bool]
+    )? {
+        guard
+            let cgImage = image.cgImage(
+                forProposedRect: nil,
+                context: nil,
+                hints: nil
+            ),
+            cgImage.width == cgImage.height
+        else {
+            return nil
+        }
+        let side = cgImage.width
+        var gray = [UInt8](repeating: 0, count: side * side)
+        let drawn = gray.withUnsafeMutableBytes { buffer -> Bool in
+            guard
+                let context = CGContext(
+                    data: buffer.baseAddress,
+                    width: side,
+                    height: side,
+                    bitsPerComponent: 8,
+                    bytesPerRow: side,
+                    space: CGColorSpaceCreateDeviceGray(),
+                    bitmapInfo: CGImageAlphaInfo.none.rawValue
+                )
+            else {
+                return false
+            }
+            context.interpolationQuality = .none
+            context.draw(
+                cgImage,
+                in: CGRect(x: 0, y: 0, width: side, height: side)
+            )
+            return true
+        }
+        guard drawn else {
+            return nil
+        }
+        return (side, gray.map { $0 < 128 })
     }
 
     private static let context = CIContext()
