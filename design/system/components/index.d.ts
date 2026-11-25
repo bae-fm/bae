@@ -211,10 +211,10 @@ export declare function AndroidScanCode(props: AndroidScanCodeProps): React.Reac
 /** A message on its tone's tint. */
 /** A tinted box in a tone, led by the tone's glyph unless `icon` is false; `set: 'mac'` draws macOS's glyph, top-aligned. */
 export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: string; action?: string; secondary?: string; layout?: 'paragraph' | 'centered'; buttons?: 'inline' | 'below'; dismiss?: boolean; opens?: boolean; quiet?: boolean; stage?: boolean; icon?: boolean; children?: React.ReactNode }
-/** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral and accent draw nothing. */
+/** A tone's glyph in the tone's colour, a ring with its mark; `set: 'mac'` draws the tone's SF Symbol at the app caller's size, weight and frame. Neutral and accent draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
 export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
-export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac' | 'ring'; muted?: boolean; inline?: boolean; framed?: boolean; size?: number; className?: string }): React.ReactElement | null;
+export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac' | 'ring'; muted?: boolean; /** The ring at 1.19 times the text beside it. */ inline?: boolean; /** An icon role, or points on macOS. */ size?: string | number; /** macOS: the weight of the app's font, one the SF table traces. */ weight?: 'regular' | 'medium' | 'semibold'; /** macOS: the frame the app sets, [width, height] in points. */ frame?: [number, number]; /** macOS: the name VoiceOver reads. */ label?: string; className?: string }): React.ReactElement | null;
 
 /** A cover or picture. Boards give each title its own stand-in colors; `missing` is a plain tile. */
 export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; ring?: boolean; /** The picture's name, for one that is itself what a screen shows (a gallery's image). Without it the picture is decorative, as beside its title. */ label?: string; children?: React.ReactNode }

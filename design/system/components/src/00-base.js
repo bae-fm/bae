@@ -61,6 +61,12 @@
     var token = iconSize(size).slice(4, -1);
     return parseFloat(iconTokens[token]);
   }
+  // A length token's value in points (`type-body-size`, `size-lead`). A token the tokens lack throws.
+  function tokenPoints(name) {
+    var points = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--' + name));
+    if (isNaN(points)) throw new Error('tokens.json has no length `' + name + '`');
+    return points;
+  }
   function iconBox(role, android) {
     var size = iconSize(role, android);
     return { width: size, height: size };

@@ -152,7 +152,6 @@
 .bae-m-answer { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-line); }
 .bae-m-answer-sub { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-srcline { display: flex; align-items: center; gap: var(--space-compact); padding-left: var(--space-group); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
-.bae-m-srcline-failed { flex: none; color: var(--warning); }
 .bae-m-iempty { height: 100%; box-sizing: border-box; padding: var(--space-page); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-group); }
 .bae-m-iempty-art { margin-bottom: calc(var(--space-section) - var(--space-group)); }
 .bae-m-iempty-line { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }

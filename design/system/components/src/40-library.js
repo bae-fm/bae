@@ -182,7 +182,7 @@
   function MacActivityButton(props) {
     // Every state is one button named Activity, as VoiceOver reads it in the app; what it shows inside is drawing only.
     if (props.state === 'moving') return h('button', { type: 'button', className: 'bae-m-iconbtn', title: 'Activity', 'aria-label': 'Activity' }, h('span', { 'aria-hidden': true, style: { display: 'flex' } }, h(MacSpinner, { size: 14 })));
-    if (props.state === 'attention') return h('button', { type: 'button', className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity', 'aria-label': 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 'large' }));
+    if (props.state === 'attention') return h('button', { type: 'button', className: 'bae-m-iconbtn', title: 'Activity', 'aria-label': 'Activity' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'large', weight: 'medium' }));
     if (props.state === 'paused') return h(MacIconButton, { icon: 'pause', label: 'Activity' });
     return null;
   }

@@ -108,7 +108,8 @@
 
   // An ⓘ after a row's name, for what the name can't say in a word: what Discogs is, say. Clicking it opens a popover with `text` (a board draws the open popover with MacPopover, since a box crops what spills out of it).
   function MacInfoTip(props) {
-    return h('button', { type: 'button', className: 'bae-m-infotip', 'aria-label': props.label || 'More info' }, h(StatusGlyph, { tone: 'info', set: 'mac', muted: true, size: 'medium' }));
+    // The app draws info.circle in the row's body text, regular, as a plain button around the symbol.
+    return h(Glyph, { set: 'mac', name: 'info', weight: 'regular', size: tokenPoints('type-body-size'), button: props.label || 'More info', className: 'bae-muted' });
   }
 
   // A port number: a field five digits wide that takes digits only, its label hidden (the row says Port). `state`: normal, focused, error, off. What's wrong with it goes on the row's second line, not under the field.
@@ -424,7 +425,7 @@
     if (props.heading) return h('div', { className: 'bae-m-menu-heading', role: 'presentation' }, props.children);
     var on = props.highlighted && !props.off;
     var accessory = props.submenu && props.accessory ? h('span', { className: cx('bae-m-menu-accessory', !on && props.accessory === 'problem' && 'bae-m-menu-accessory-problem') },
-      props.accessory === 'problem' ? h(Glyph, { set: 'mac', name: 'warning', size: 'small' })
+      props.accessory === 'problem' ? h(Glyph, { set: 'mac', name: 'warning', weight: 'medium', size: 'small' })
         : props.accessory === 'scanning' ? h(MacSpinner, { size: 11 })
         : h(Glyph, { set: 'mac', name: 'network', size: 'small' })) : null;
     return h('div', { className: cx('bae-m-menu-item', on && 'bae-m-menu-item-on', props.off && 'bae-m-menu-item-off'), role: props.submenu ? 'menuitem' : 'menuitemradio', 'aria-checked': props.submenu ? null : !!props.checked, 'aria-haspopup': props.submenu ? 'menu' : null, 'aria-disabled': props.off ? true : null, title: props.help || null },

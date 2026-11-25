@@ -65,12 +65,12 @@
     return h('div', { className: 'bae-m-answer' }, h(MacButton, { size: 'small', off: props.off }, props.title), h('span', { className: 'bae-m-answer-sub' }, props.subtitle));
   }
 
-  // One catalog a typed search still waits on, under the results: a spinner and "Searching {catalog}…", or, once it failed, a warning mark, the catalog's name (`reason` on hover) and Retry.
+  // One catalog a typed search still waits on, under the results: a spinner and "Searching {catalog}…", or, once it failed, the warning status glyph, the catalog's name (`reason` on hover) and Retry. The glyph takes the line's detail text, regular, as the app draws StatusGlyph with no font of its own.
   function MacSearchSourceLine(props) {
     var name = props.catalog || 'Discogs';
     return h('div', { className: 'bae-m-srcline' },
       props.failed
-        ? [h('svg', { key: 'g', width: 11, height: 11, viewBox: '0 0 24 24', role: 'img', 'aria-label': 'Failed', className: 'bae-m-srcline-failed', fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round' }, h('circle', { cx: 12, cy: 12, r: 9.5 }), h('path', { d: 'M12 7v6M12 16.6v.4' })),
+        ? [h(StatusGlyph, { key: 'g', tone: 'warning', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular', label: 'Failed' }),
            h('span', { key: 'n', className: 'bae-m-tertiary', title: props.reason || null }, name),
            h('button', { key: 'r', type: 'button', className: 'bae-plainbtn bae-accent' }, 'Retry')]
         : [h(MacSpinner, { key: 's', size: 11 }), h('span', { key: 'n', className: 'bae-m-tertiary' }, 'Searching ' + name + '…')]);
@@ -260,7 +260,7 @@
     var kind = props.kind || 'opens', opens = kind === 'opens' && !props.damaged;
     return h(opens ? 'button' : 'div', { type: opens ? 'button' : null, className: cx(opens && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': opens ? props.name : null },
       h('span', { className: 'bae-mono bae-ellipsis' }, props.name),
-      props.damaged ? h('span', { className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small' }), props.damaged) : null,
+      props.damaged ? h('span', { className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small', weight: 'semibold' }), props.damaged) : null,
       kind === 'audio' ? h(Glyph, { set: 'mac', name: 'play', size: 'chip', frame: [10, null], contentShape: true, className: 'bae-muted bae-m-ifile-play', button: 'Play' }) : null,
       h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, props.size || ''));
   }
@@ -315,7 +315,7 @@
       // The Discogs bar is the shared notice: its title, what to do, Open settings and the × that dismisses it.
       props.discogsBar ? h('div', { style: { padding: 'var(--space-group)' } }, h(MacNotice, { tone: 'info', title: 'Add Discogs to find more pressings', subtitle: 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.', action: 'Open settings', dismiss: true })) : null,
       // Automatic's header ends in what its run has to say: the spinner while it works, the warning glyph when it failed, 0 when nothing matched.
-      head('Automatic', auto === 'working' ? h(MacSpinner, { size: 11 }) : auto === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'chip' }) : auto === 'nothing-found' ? h(StatusChip, null, '0') : null),
+      head('Automatic', auto === 'working' ? h(MacSpinner, { size: 11 }) : auto === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small', weight: 'semibold', label: 'Failed' }) : auto === 'nothing-found' ? h(StatusChip, null, '0') : null),
       open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, automaticContent(auto, props.sentence, props.chips, k)) : null,
       h('div', { className: 'bae-divider' }),
       head('Search', null),
@@ -401,7 +401,7 @@
         h('div', { style: { display: 'flex', gap: 'var(--space-compact)', alignItems: 'center', flexWrap: 'wrap' } }, copy ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, copy) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
         // `notes`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ. The Notes badge and this line come from the same records, so they show together.
         props.notes ? h('div', { className: 'bae-m-tertiary bae-m-detail', style: { fontStyle: 'italic' } }, sv(props.notes)) : null),
-      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(Glyph, { set: 'mac', name: 'checkcircle', size: 11.5, className: 'bae-success' }), 'In library') : null,
+      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(Glyph, { set: 'mac', name: 'checkcircle', weight: 'regular', size: 11.5, className: 'bae-success' }), 'In library') : null,
       // `sources`: the catalogs whose records the pressing holds, only those that have answered.
       props.sources ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, props.sources) : null,
       h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', frame: [11, null], className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));

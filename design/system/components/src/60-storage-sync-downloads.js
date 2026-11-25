@@ -171,8 +171,8 @@
   function MacFileRow(props) {
     var s = props.state || 'rest';
     var label = { queued: 'Queued to upload', 'pin-queued': 'Queued to pin', 'move-queued': 'Queued to move to This Mac', sending: 'Uploading', pinning: 'Pinning', moving: 'Moving to This Mac…', error: 'Could not move to the cloud', waiting: 'Waiting for a file' }[s];
-    // A stopped file's mark is the tone's status glyph at the 13 pt the row's text sets, as the app draws StatusGlyph with no font of its own.
-    var bang = function (tone) { return h(StatusGlyph, { tone: tone, set: 'mac', size: 'medium' }); };
+    // A stopped file's mark is the tone's status glyph in the row's body text, regular, as the app draws StatusGlyph with no font of its own, framed in the lead column's square.
+    var bang = function (tone) { return h(StatusGlyph, { tone: tone, set: 'mac', size: tokenPoints('type-body-size'), weight: 'regular', frame: [tokenPoints('size-lead'), tokenPoints('size-lead')] }); };
     var queued = s === 'queued' || s === 'pin-queued' || s === 'move-queued';
     var download = s === 'pinning' || s === 'moving';
     var mark = s === 'rest' ? null : s === 'error' ? bang('danger') : s === 'waiting' ? bang('warning') :
