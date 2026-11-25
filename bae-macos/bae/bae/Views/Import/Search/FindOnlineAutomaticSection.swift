@@ -16,7 +16,7 @@ struct FindOnlineAutomaticSection: View {
     /// Turn one identifier in the band over — the Disc ID, a barcode, a
     /// catalog number. Core re-derives the state the import projection
     /// delivers from what the candidate's choices then say.
-    let onToggleLookup: (LookupToggle) -> Void
+    let onToggleLookup: (BridgeLookupChoiceEdit) -> Void
     /// Strike a catalog number in the Catalog # row out of the run, or put it
     /// back: a struck number is neither searched nor agreed with, so either
     /// starts another run.

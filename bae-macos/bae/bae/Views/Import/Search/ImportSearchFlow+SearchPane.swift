@@ -124,8 +124,8 @@ extension ImportSearchFlow {
             onOpenSettings: openSettings,
             // The chip acts on one identifier; that change goes to core, and
             // the run that reads the changed choices starts from there.
-            onToggleLookup: { toggle in
-                toggleLookup(toggle, services: services, input: input)
+            onToggleLookup: { edit in
+                editLookupChoices(edit, services: services, input: input)
             },
             onToggleCatalogAgreement: { value in
                 toggleCatalogAgreement(
@@ -159,21 +159,6 @@ extension ImportSearchFlow {
             onOpenSection: input.onOpenSection,
             showsDiscogsBar: showsDiscogsBar,
             onDismissDiscogsBar: onDismissDiscogsBar
-        )
-    }
-
-    /// Take one identifier in or out of the run: the Disc ID, one of the
-    /// candidate's barcodes, or one of its catalog numbers.
-    @MainActor
-    private static func toggleLookup(
-        _ toggle: LookupToggle,
-        services: ImportServices,
-        input: SearchPaneInput
-    ) {
-        editLookupChoices(
-            toggle.edit,
-            services: services,
-            input: input
         )
     }
 

@@ -23,7 +23,7 @@ struct MacFindOnline: View {
     let onOpenSettings: () -> Void
     /// Leave an identifier (Disc ID, barcode, catalog number) out of the run,
     /// or ask about it again.
-    let onToggleLookup: (LookupToggle) -> Void
+    let onToggleLookup: (BridgeLookupChoiceEdit) -> Void
     /// Count a catalog number the folder states, or stop counting it.
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
@@ -58,7 +58,7 @@ struct MacFindOnline: View {
         onSearch: @escaping (CandidateSearchState) -> Void,
         onRetrySearch: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
-        onToggleLookup: @escaping (LookupToggle) -> Void,
+        onToggleLookup: @escaping (BridgeLookupChoiceEdit) -> Void,
         onToggleCatalogAgreement: @escaping (String) -> Void,
         onRetryFailed: @escaping () -> Void,
         onEditTitleSearch:

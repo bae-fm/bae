@@ -246,27 +246,6 @@ extension BridgePaneFailure {
     }
 }
 
-// MARK: - Lookup toggles
-
-/// Which identifier a chip in the band stands for. Every chip turns its own
-/// identifier over — the Disc ID, one of the candidate's barcodes, or one of
-/// its catalog numbers — and that change is what goes to core.
-enum LookupToggle: Equatable {
-    case discId
-    case barcode(String)
-    case catalog(String)
-
-    /// The change turning this identifier over makes to the choices core
-    /// holds.
-    var edit: BridgeLookupChoiceEdit {
-        switch self {
-        case .discId: .toggleDiscId
-        case .barcode(let code): .toggleBarcode(code: code)
-        case .catalog(let number): .toggleCatalog(number: number)
-        }
-    }
-}
-
 // MARK: - Candidate
 
 /// A scanned import candidate, including all dynamic state the UI needs while

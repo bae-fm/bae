@@ -7,7 +7,7 @@ import SwiftUI
 struct MacIdentifierBand: View {
     let run: BridgeIdentifyRun
     /// Leave an identifier out of the run, or ask about it again.
-    let onToggleLookup: (LookupToggle) -> Void
+    let onToggleLookup: (BridgeLookupChoiceEdit) -> Void
     /// Strike a catalog number in effect out of the run, or put a struck one
     /// back.
     let onToggleCatalogAgreement: (String) -> Void
@@ -92,7 +92,7 @@ struct MacIdentifierBand: View {
             label: label,
             value: discId,
             style: lookup == nil ? .outlined : .filled,
-            onPress: { onToggleLookup(.discId) }
+            onPress: { onToggleLookup(.toggleDiscId) }
         ) {
             if let lookup {
                 ProviderCapsule(
@@ -128,7 +128,7 @@ struct MacIdentifierBand: View {
                     label: label,
                     value: row.value,
                     style: row.excluded ? .outlined : .filled,
-                    onPress: { onToggleLookup(.barcode(row.value)) }
+                    onPress: { onToggleLookup(.toggleBarcode(code: row.value)) }
                 ) {
                     // A left-out code has no answers to show.
                     if !row.excluded {
@@ -243,7 +243,7 @@ struct MacIdentifierBand: View {
             value in
             CatalogCandidateChip(
                 value: value,
-                onActivate: { onToggleLookup(.catalog(value)) }
+                onActivate: { onToggleLookup(.chooseCatalog(number: value)) }
             )
         }
         if let title = fold.buttonTitle(expanded: listsCatalogCandidates) {
@@ -273,7 +273,7 @@ struct CatalogCandidateFold {
         guard count != 0 else { return nil }
         return expanded
             ? String(localized: "Show fewer")
-            : String(localized: "+\(count) more")
+            : String(localized: "+\(Int(count)) more")
     }
 }
 
