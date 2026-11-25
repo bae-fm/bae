@@ -275,7 +275,7 @@
     var named = props.label != null ? { role: 'combobox', 'aria-label': props.label, 'aria-expanded': !!props.open } : { 'aria-haspopup': 'menu' };
     return h('button', Object.assign({ type: 'button', className: 'bae-m-popupbutton', disabled: !!props.off, style: props.width ? { width: Number(props.width), justifyContent: 'space-between' } : null }, named),
       h('span', { className: 'bae-m-popupbutton-value' }, props.children),
-      h('span', { className: 'bae-m-popupbutton-mark', 'aria-hidden': true }, h('svg', { width: 8, height: 12, viewBox: '0 0 8 12', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M1.5 4.5 4 2l2.5 2.5M1.5 7.5 4 10l2.5-2.5' }))));
+      h('span', { className: 'bae-m-popupbutton-mark', 'aria-hidden': true }, h(Glyph, { set: 'mac', name: 'updown', size: 'badge' })));
   }
 
 
