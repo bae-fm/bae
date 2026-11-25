@@ -55,6 +55,9 @@ extension ShotScene {
                                     spacing: ThemeSpace.inline
                                 ) {
                                     Text(verbatim: "•")
+                                        // The board indents each address
+                                        // 16 pt from the note.
+                                        .frame(width: 12, alignment: .leading)
                                         .accessibilityHidden(true)
                                     MacCopyText(
                                         text: address.0,
