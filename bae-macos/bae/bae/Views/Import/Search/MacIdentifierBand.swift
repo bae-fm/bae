@@ -17,28 +17,10 @@ struct MacIdentifierBand: View {
     /// the draft's.
     let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
 
-    /// Whether the catalog numbers nothing confirmed are listed.
-    @State
-    private var showsCatalogCandidates: Bool
-
-    /// `listsCatalogCandidates` opens the band with the catalog numbers
-    /// nothing confirmed already listed.
-    init(
-        run: BridgeIdentifyRun,
-        onToggleLookup: @escaping (LookupToggle) -> Void,
-        onToggleCatalogAgreement: @escaping (String) -> Void,
-        onRetryFailed: @escaping () -> Void,
-        onEditTitleSearch:
-            @escaping (_ album: String, _ artist: String) -> Void,
-        listsCatalogCandidates: Bool = false
-    ) {
-        self.run = run
-        self.onToggleLookup = onToggleLookup
-        self.onToggleCatalogAgreement = onToggleCatalogAgreement
-        self.onRetryFailed = onRetryFailed
-        self.onEditTitleSearch = onEditTitleSearch
-        _showsCatalogCandidates = State(initialValue: listsCatalogCandidates)
-    }
+    /// Whether the catalog numbers nothing confirmed are listed; the pane
+    /// owns it, so it stays when the band draws again.
+    @Binding
+    var listsCatalogCandidates: Bool
 
     var body: some View {
         FlowLayout(spacing: ThemeSpace.compact) {
@@ -175,7 +157,7 @@ struct MacIdentifierBand: View {
         case .noneFound:
             MacIdentifierChip(label: label)
                 .help("None found")
-        case .numbers(let rows, _):
+        case .numbers(let rows, _, _):
             ForEach(rows, id: \.value) { row in
                 MacIdentifierChip(
                     label: label,
@@ -212,10 +194,24 @@ struct MacIdentifierBand: View {
             MacIdentifierChip(label: label)
                 .help("No ISRC in the files’ tags")
         // Only Settings can switch on the catalog that answers ISRCs.
-        case .read(let isrcs, .notAsked(reason: _)):
-            MacIdentifierChip(label: label, values: isrcs)
-        case .read(let isrcs, let lookup):
-            MacIdentifierChip(label: label, values: isrcs) {
+        case .read(let shown, let moreCount, let isrcs, .notAsked(reason: _)):
+            MacIdentifierChip(
+                label: label,
+                values: MacIdentifierChipValues(
+                    shown: shown,
+                    moreCount: moreCount,
+                    all: isrcs
+                )
+            )
+        case .read(let shown, let moreCount, let isrcs, let lookup):
+            MacIdentifierChip(
+                label: label,
+                values: MacIdentifierChipValues(
+                    shown: shown,
+                    moreCount: moreCount,
+                    all: isrcs
+                )
+            ) {
                 ProviderCapsule(
                     source: .musicBrainz,
                     lookup: lookup,
@@ -242,26 +238,29 @@ struct MacIdentifierBand: View {
     /// its own chip that puts the number into the run, then "Show fewer".
     @ViewBuilder
     private var catalogCandidates: some View {
-        let fold = CatalogCandidateFold(values: run.catalogCandidateValues)
-        ForEach(fold.shown(expanded: showsCatalogCandidates), id: \.self) {
+        let fold = run.catalogCandidateFold
+        ForEach(fold.shown(expanded: listsCatalogCandidates), id: \.self) {
             value in
             CatalogCandidateChip(
                 value: value,
                 onActivate: { onToggleLookup(.catalog(value)) }
             )
         }
-        if let title = fold.buttonTitle(expanded: showsCatalogCandidates) {
+        if let title = fold.buttonTitle(expanded: listsCatalogCandidates) {
             CatalogCandidatesDisclosure(
                 title: title,
-                isExpanded: $showsCatalogCandidates
+                isExpanded: $listsCatalogCandidates
             )
         }
     }
 }
 
-/// The catalog numbers nothing confirmed, and what the band draws of them.
+/// The catalog numbers nothing confirmed, as core hands them over, and what
+/// the band draws of them.
 struct CatalogCandidateFold {
     let values: [String]
+    /// How many numbers core counts, which the button shows.
+    let count: UInt32
 
     /// The numbers drawn as chips: none while folded.
     func shown(expanded: Bool) -> [String] {
@@ -271,21 +270,24 @@ struct CatalogCandidateFold {
     /// The button's words, with the count while folded; `nil` with no number
     /// to fold.
     func buttonTitle(expanded: Bool) -> String? {
-        guard !values.isEmpty else { return nil }
+        guard count != 0 else { return nil }
         return expanded
             ? String(localized: "Show fewer")
-            : String(localized: "+\(values.count) more")
+            : String(localized: "+\(count) more")
     }
 }
 
 extension BridgeIdentifyRun {
-    /// The catalog numbers the folder offers that are not in effect, in the
-    /// order core lists them.
-    var catalogCandidateValues: [String] {
-        guard case .numbers(_, let candidates) = catalog else {
-            return []
+    /// The catalog numbers the folder offers that are not in effect, as core
+    /// lists them, with their count.
+    var catalogCandidateFold: CatalogCandidateFold {
+        guard case .numbers(_, let candidates, let count) = catalog else {
+            return CatalogCandidateFold(values: [], count: 0)
         }
-        return candidates.map(\.value)
+        return CatalogCandidateFold(
+            values: candidates.map(\.value),
+            count: count
+        )
     }
 }
 

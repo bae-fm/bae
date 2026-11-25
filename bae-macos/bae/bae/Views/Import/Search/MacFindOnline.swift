@@ -98,6 +98,10 @@ struct MacFindOnline: View {
     /// Whether the releases agreement narrowed out are shown; closed at first.
     @State
     private var narrowedOutExpanded = false
+    /// Whether the catalog numbers nothing confirmed are listed; folded at
+    /// first.
+    @State
+    private var catalogCandidatesListed = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -127,6 +131,7 @@ struct MacFindOnline: View {
                     onKeepOwnDraft: onKeepOwnDraft,
                     onLinkSharedAlbum: onLinkSharedAlbum,
                     narrowedOutExpanded: $narrowedOutExpanded,
+                    catalogCandidatesListed: $catalogCandidatesListed,
                 )
                 .frame(
                     maxWidth: .infinity,

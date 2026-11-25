@@ -3,40 +3,35 @@ import Testing
 
 @testable import bae
 
-/// A chip that holds several values shows the first and counts the rest.
+/// A chip that holds several values shows the one core names and counts the
+/// rest behind +N.
 @Suite("Identifier chip values")
 struct MacIdentifierChipValuesTests {
     private let codes = (1...11).map { String(format: "XX00000000%02d", $0) }
 
-    @Test("the chip shows the first value and the count of the rest")
-    func firstValueThenTheCountOfTheRest() throws {
-        let list = try #require(MacIdentifierChipValues(codes))
+    private var list: MacIdentifierChipValues {
+        MacIdentifierChipValues(shown: codes[0], moreCount: 10, all: codes)
+    }
 
-        #expect(list.first == "XX0000000001")
+    @Test("the button reads the count core hands over")
+    func buttonReadsTheCount() {
         #expect(list.moreTitle == "+10")
     }
 
-    @Test("a chip with no value has no list")
-    func noValuesNoList() {
-        #expect(MacIdentifierChipValues([]) == nil)
-    }
+    @Test("a chip that shows every value has no button")
+    func noCountNoButton() {
+        let one = MacIdentifierChipValues(
+            shown: codes[0],
+            moreCount: 0,
+            all: [codes[0]]
+        )
 
-    @Test("one value has nothing behind a count")
-    func oneValueHasNoCount() throws {
-        let list = try #require(MacIdentifierChipValues(["XX0000000001"]))
-
-        #expect(list.first == "XX0000000001")
-        #expect(list.moreTitle == nil)
-    }
-
-    @Test("the popover lists every value, one a line, none the first alone")
-    func popoverListsEveryValue() {
-        #expect(MacIdentifierChipValues(codes)?.lines == codes)
+        #expect(one.moreTitle == nil)
     }
 
     @Test("accessibility reads every value")
-    func spokenListsEveryValue() throws {
-        let spoken = try #require(MacIdentifierChipValues(codes)).spoken
+    func spokenListsEveryValue() {
+        let spoken = list.spoken
         for code in codes {
             #expect(spoken.contains(code))
         }
@@ -45,7 +40,7 @@ struct MacIdentifierChipValuesTests {
     @Test("catalog numbers nothing confirms are folded behind their count")
     func catalogCandidatesFoldBehindTheirCount() {
         let numbers = (1...8).map { "HR-100\($0)" }
-        let fold = CatalogCandidateFold(values: numbers)
+        let fold = CatalogCandidateFold(values: numbers, count: 8)
 
         #expect(fold.shown(expanded: false).isEmpty)
         #expect(fold.buttonTitle(expanded: false) == "+8 more")
@@ -55,14 +50,14 @@ struct MacIdentifierChipValuesTests {
 
     @Test("with no catalog number to fold, the band draws no button")
     func noCandidatesNoButton() {
-        let fold = CatalogCandidateFold(values: [])
+        let fold = CatalogCandidateFold(values: [], count: 0)
 
         #expect(fold.buttonTitle(expanded: false) == nil)
         #expect(fold.buttonTitle(expanded: true) == nil)
     }
 
-    @Test("the run's candidates are the numbers core lists, in its order")
-    func runCandidatesKeepCoreOrder() {
+    @Test("the run's fold is what core lists, in its order, with its count")
+    func runFoldKeepsCoreOrderAndCount() {
         var run = PreviewData.identifyRunFound
         let numbers = (1...3).map { "HR-100\($0)" }
         run.catalog = .numbers(
@@ -70,6 +65,7 @@ struct MacIdentifierChipValuesTests {
             candidates: numbers.map { BridgeCatalogCandidate(value: $0) }
         )
 
-        #expect(run.catalogCandidateValues == numbers)
+        #expect(run.catalogCandidateFold.values == numbers)
+        #expect(run.catalogCandidateFold.count == 3)
     }
 }

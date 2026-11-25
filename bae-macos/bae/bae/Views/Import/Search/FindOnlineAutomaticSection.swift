@@ -43,6 +43,10 @@ struct FindOnlineAutomaticSection: View {
     /// again leaves the disclosure as the person left it.
     @Binding
     var narrowedOutExpanded: Bool
+    /// Whether the catalog numbers nothing confirmed are listed in the band,
+    /// held by the pane for the same reason.
+    @Binding
+    var catalogCandidatesListed: Bool
 
     /// Whether any source is asked is core's answer, carried on the config the
     /// app observes: adding a token in Settings takes the notice away while
@@ -126,7 +130,8 @@ struct FindOnlineAutomaticSection: View {
                             onToggleCatalogAgreement:
                                 onToggleCatalogAgreement,
                             onRetryFailed: onRetryFailed,
-                            onEditTitleSearch: onEditTitleSearch
+                            onEditTitleSearch: onEditTitleSearch,
+                            listsCatalogCandidates: $catalogCandidatesListed
                         )
                         // The section's own space round the band, as the
                         // board's section body sets it: the first child of

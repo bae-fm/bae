@@ -76,7 +76,8 @@ struct IdentifierBandWaitTests {
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
-                onEditTitleSearch: { _, _ in }
+                onEditTitleSearch: { _, _ in },
+                listsCatalogCandidates: .constant(false)
             )
             .frame(width: size.width, height: size.height, alignment: .top)
             .importPreviewEnvironment(),

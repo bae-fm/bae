@@ -197,3 +197,37 @@ extension PreviewData {
     /// A cell nobody was asked because the person left its value out.
     static let leftOut = BridgeLookupState.notAsked(reason: .leftOut)
 }
+
+extension BridgeCatalogStep {
+    /// The numbers step as core hands it over: the candidates with their
+    /// count.
+    static func numbers(
+        rows: [BridgeSignalValueRow],
+        candidates: [BridgeCatalogCandidate]
+    ) -> BridgeCatalogStep {
+        .numbers(
+            rows: rows,
+            candidates: candidates,
+            candidateCount: UInt32(candidates.count)
+        )
+    }
+}
+
+extension BridgeIsrcStep {
+    /// The codes as core hands them over: the first shown, the count of the
+    /// rest. A fixture holds at least one code.
+    static func read(
+        isrcs: [String],
+        lookup: BridgeLookupState
+    ) -> BridgeIsrcStep {
+        guard let shown = isrcs.first else {
+            preconditionFailure("an ISRC step that is read holds a code")
+        }
+        return .read(
+            shown: shown,
+            moreCount: UInt32(isrcs.count - 1),
+            isrcs: isrcs,
+            lookup: lookup
+        )
+    }
+}

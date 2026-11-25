@@ -20,10 +20,9 @@ private let identifierValueWidth: CGFloat = 92
 struct MacIdentifierChip<Trailing: View>: View {
     let label: String
     var value: String?
-    /// Every value the chip holds, where it holds several: all of them,
-    /// separated by " · " and wrapping inside the chip, never the first alone.
+    /// What the chip draws where it holds several values: the first, then +N.
     /// Takes the place of `value`.
-    var values: [String] = []
+    var values: MacIdentifierChipValues?
     var style: MacIdentifierChipStyle = .filled
     /// Where pressing the chip does something, what it does. The chip's label,
     /// value and answers stay separate elements for accessibility, as the
@@ -48,7 +47,7 @@ struct MacIdentifierChip<Trailing: View>: View {
     private var content: some View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
-            if let list = MacIdentifierChipValues(values) {
+            if let list = values {
                 MacIdentifierMoreValues(list: list)
             }
             else if let value {
@@ -88,44 +87,40 @@ struct MacIdentifierChip<Trailing: View>: View {
 extension MacIdentifierChip where Trailing == IdentifierDash {
     /// A chip that says nothing ran here: its label, any value it holds and
     /// a dash.
-    init(label: String, value: String? = nil, values: [String] = []) {
+    init(
+        label: String,
+        value: String? = nil,
+        values: MacIdentifierChipValues? = nil
+    ) {
         self.init(
             label: label,
             value: value,
             values: values,
-            style: value == nil && values.isEmpty ? .dash : .filled
+            style: value == nil && values == nil ? .dash : .filled
         ) {
             IdentifierDash()
         }
     }
 }
 
-/// How a chip that holds several values writes them: the first, then a +N
-/// button with the count of the rest, which opens every one, a line each.
-struct MacIdentifierChipValues {
-    let first: String
-    let rest: [String]
+/// What a chip that holds several values draws, as core hands it over: the
+/// shown value, the count of the values behind the +N button, and every
+/// value for the button's popover.
+struct MacIdentifierChipValues: Equatable {
+    let shown: String
+    let moreCount: UInt32
+    let all: [String]
 
-    /// `nil` for a chip that holds no value.
-    init?(_ values: [String]) {
-        guard let first = values.first else { return nil }
-        self.first = first
-        rest = Array(values.dropFirst())
-    }
-
-    /// The button's words, the count of the values the chip does not show;
-    /// `nil` when it shows them all.
+    /// The button's words, with the count in the viewer's digits; `nil` when
+    /// the chip shows every value.
     var moreTitle: String? {
-        rest.isEmpty ? nil : "+" + rest.count.formatted()
+        moreCount == 0 ? nil : "+" + moreCount.formatted()
     }
-
-    /// What the popover lists: every value, one a line.
-    var lines: [String] { [first] + rest }
 
     /// Every value as accessibility reads them: a list in the viewer's
     /// language.
     var spoken: String {
-        lines.formatted(.list(type: .and, width: .standard))
+        all.formatted(.list(type: .and, width: .standard))
     }
 }
 
@@ -159,7 +154,7 @@ private struct MacIdentifierMoreValues: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
-            IdentifierValueText(value: list.first, style: .filled)
+            IdentifierValueText(value: list.shown, style: .filled)
             if let more = list.moreTitle {
                 MacButton(kind: .plain) {
                     showsAll = true
@@ -172,7 +167,7 @@ private struct MacIdentifierMoreValues: View {
                 // leave the rest unheard.
                 .accessibilityHint(list.spoken)
                 .macPopover(isPresented: $showsAll, arrowEdge: .bottom) {
-                    MacIdentifierValuesPopover(lines: list.lines)
+                    MacIdentifierValuesPopover(lines: list.all)
                 }
             }
         }

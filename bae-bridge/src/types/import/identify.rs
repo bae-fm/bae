@@ -191,6 +191,9 @@ pub enum BridgeCatalogStep {
         rows: Vec<BridgeSignalValueRow>,
         /// The numbers the text offers that are none of those.
         candidates: Vec<BridgeCatalogCandidate>,
+        /// How many `candidates` there are, which the "+N more" button
+        /// that folds them shows.
+        candidate_count: u32,
     },
 }
 
@@ -201,8 +204,15 @@ pub enum BridgeIsrcStep {
     Reading,
     /// No audio file's tags carry one.
     Absent,
-    /// Every code, each once, in the files' order.
+    /// At least one code is carried.
     Read {
+        /// The code the chip shows: the first, in the files' order.
+        shown: String,
+        /// How many codes the chip hides behind its +N button: every code
+        /// but `shown`.
+        more_count: u32,
+        /// Every code, each once, in the files' order, which the +N
+        /// button's popover lists.
         isrcs: Vec<String>,
         lookup: BridgeLookupState,
     },

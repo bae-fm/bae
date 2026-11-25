@@ -120,7 +120,8 @@ extension ShotScene {
                     onToggleLookup: { _ in },
                     onToggleCatalogAgreement: { _ in },
                     onRetryFailed: {},
-                    onEditTitleSearch: { _, _ in }
+                    onEditTitleSearch: { _, _ in },
+                    listsCatalogCandidates: .constant(false)
                 )
                 moreValuesPopover(
                     boardIsrcs,
@@ -253,7 +254,7 @@ extension ShotScene {
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
                 onEditTitleSearch: { _, _ in },
-                listsCatalogCandidates: listsCatalogCandidates
+                listsCatalogCandidates: .constant(listsCatalogCandidates)
             )
         }
     }

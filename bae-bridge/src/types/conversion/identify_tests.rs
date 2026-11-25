@@ -240,3 +240,45 @@ fn a_pressing_row_crosses_with_every_record_s_values() {
         ]
     );
 }
+
+/// The ISRC chip's shown code and the count behind its +N cross as the
+/// bridge's values: the apps count and pick nothing out of the rows.
+#[test]
+fn isrcs_cross_with_the_shown_code_and_the_count_of_the_rest() {
+    let step = |codes: &[&str]| {
+        let mut state = in_flight(BarcodeProgress::Skipped);
+        let IdentifyState::Triangulating { isrc, context, .. } = &mut state else {
+            panic!("a run in flight");
+        };
+        *isrc = bae_identify::IsrcProgress::LookingUp;
+        context.isrc.tagged = codes.iter().map(|code| code.to_string()).collect();
+        run_of(state).isrc
+    };
+    let BridgeIsrcStep::Read { shown, more_count, isrcs, .. } = step(&["A1", "A2", "A3"]) else {
+        panic!("codes cross as read");
+    };
+    assert_eq!((shown.as_str(), more_count), ("A1", 2));
+    assert_eq!(isrcs, ["A1", "A2", "A3"]);
+    let BridgeIsrcStep::Read { shown, more_count, .. } = step(&["A1"]) else {
+        panic!("one code crosses as read");
+    };
+    assert_eq!((shown.as_str(), more_count), ("A1", 0));
+    assert!(matches!(step(&[]), BridgeIsrcStep::Absent));
+}
+
+/// The catalog numbers nothing confirms cross with their count, which the
+/// band's +N more button shows.
+#[test]
+fn catalog_candidates_cross_with_their_count() {
+    let mut state = in_flight(BarcodeProgress::Skipped);
+    let IdentifyState::Triangulating { context, .. } = &mut state else {
+        panic!("a run in flight");
+    };
+    context.catalog.numbers = vec!["HR-1".to_string(), "HR-2".to_string(), "HR-3".to_string()];
+    let BridgeCatalogStep::Numbers { candidates, candidate_count, .. } = run_of(state).catalog
+    else {
+        panic!("offered numbers cross as numbers");
+    };
+    assert_eq!(candidate_count, 3);
+    assert_eq!(candidates.len(), 3);
+}

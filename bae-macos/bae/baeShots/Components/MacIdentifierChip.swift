@@ -79,7 +79,7 @@ extension ShotScene {
                     EmptyView()
                 }
                 moreValuesPopover(
-                    severalValues,
+                    severalCodes,
                     buttonCenter: severalValuesMoreButtonCenter,
                     buttonBottom: 16
                 )
@@ -88,9 +88,17 @@ extension ShotScene {
         },
     ]
 
-    private static let severalValues = [
+    private static let severalCodes = [
         "0 41234 56789 2", "0 41234 56789 3", "0 41234 56789 4",
     ]
+
+    /// The codes as core hands them over: the first, and the count of two
+    /// behind +N.
+    private static let severalValues = MacIdentifierChipValues(
+        shown: severalCodes[0],
+        moreCount: 2,
+        all: severalCodes
+    )
 
     /// Where the +N button's centre is from the chip's left.
     private static let severalValuesMoreButtonCenter: CGFloat = 160.3
