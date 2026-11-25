@@ -416,9 +416,8 @@
   var MacAccentPicker = accentPicker('bae-m-accents', true);
   var AndroidAccentPicker = accentPicker('bae-a-accents', false);
 
-  // `more`: the menu runs past the screen's bottom edge, and NSMenu's scroll arrow ends it.
   function MacMenu(props) {
-    return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children, props.more ? h('div', { className: 'bae-m-menu-more', 'aria-hidden': true }, '▾') : null);
+    return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children);
   }
 
   // `divider`: a line between groups of items, as NSMenu's separator item. `off`: an item that can't be chosen now, greyed, as NSMenu disables one.

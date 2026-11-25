@@ -5,7 +5,7 @@ The release's fields under a Release heading, in a grid of labels and values, as
 - **Year** (`year`): a `MacInlineField`.
 - **Media** (`media`, "2×CD,1×DVD"; a carrier alone is one of it): on one line, each carrier's name, ×count, a `MacStepper` and ⊗, then Add, a menu of the carriers not listed yet.
 - **Label** (`labels`, "Name|Catalog", comma-separated): one row per label, its name and its catalog number each a `MacInlineField` as wide as its value, then ⊗; where they don't all fit the column, the wider field is cut, so ⊗ ends at the column's edge; Add label on its own line under the last row, or beside the name while there is none.
-- **Country** (`country`): the country's name as plain text, which opens the menu of countries. `countryOpen` (the countries it lists) draws that menu open under it, the dash for none first and the scroll arrow at its foot.
+- **Country** (`country`): the country's name as plain text, which opens the menu of countries. `countryOpen` (the countries it lists) draws that menu open under it, the dash for none first.
 - **Barcode** (`barcodes`, comma-separated): one row per barcode, a `MacInlineField`, then ⊗; Add barcode under the last row.
 - **Status** (`status`) and **Packaging** (`packaging`): each its value as plain text, which opens its menu.
 - **Details** (`details`, comma-separated, such as Remastered, Limited Edition): what Discogs says about the pressing that no other field holds, each with ⊗, then a menu that adds another: named Details and showing a dash while there are none, named Add detail and showing + Add after.

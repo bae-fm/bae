@@ -81,7 +81,7 @@ export interface MacAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 
 export declare function MacAccentPicker(props: MacAccentPickerProps): React.ReactElement;
 
 /** A menu as it shows when open: MacMenuItems in a panel. */
-export interface MacMenuProps { /** The menu runs past the screen's bottom edge and ends in the scroll arrow. */ more?: boolean; children?: React.ReactNode }
+export interface MacMenuProps { children?: React.ReactNode }
 export declare function MacMenu(props: MacMenuProps): React.ReactElement;
 /** The system stepper: an up and a down arrow in a small rounded box, named by what it counts (label). */
 export declare function MacStepper(props: { label: string }): React.ReactElement;

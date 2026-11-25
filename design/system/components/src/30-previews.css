@@ -31,7 +31,6 @@
 .bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: calc(var(--space-line) + var(--space-hairline)) var(--space-related); border-radius: var(--radius-artwork); }
 .bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-menu-item-off { color: var(--text-tertiary); }
-.bae-m-menu-more { text-align: center; font-size: var(--type-fine-size); font-weight: var(--type-fine-weight); line-height: normal; color: var(--text-secondary); }
 .bae-m-menu-check { width: 11px; display: flex; justify-content: center; }
 
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */

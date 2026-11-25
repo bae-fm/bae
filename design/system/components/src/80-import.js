@@ -199,9 +199,9 @@
     var mediaLine = h('span', { className: 'bae-m-idraft-entry bae-m-idraft-media' },
       media.map(function (m) { return h('span', { key: m.carrier, className: 'bae-m-idraft-entry' }, h('span', null, m.carrier), h('span', { className: 'bae-muted bae-num' }, '×' + m.count), h(MacStepper, { label: 'Number of ' + m.carrier, off: off }), removeEntry(m.carrier, off)); }),
       addEntry('Add medium', true, off));
-    // `countryOpen`: the countries the Country menu lists, drawn open under its face, with the dash for none first and NSMenu's scroll arrow at its foot.
+    // `countryOpen`: the countries the Country menu lists, drawn open under its face, with the dash for none first.
     var country = props.countryOpen
-      ? h('span', { className: 'bae-m-idraft-pop' }, face('Country', props.country), h('div', { className: 'bae-m-idraft-popmenu' }, h(MacMenu, { more: true }, h(MacMenuItem, null, '—'), list(props.countryOpen).map(function (c) { return h(MacMenuItem, { key: c, checked: c === props.country, highlighted: c === props.country }, c); }))))
+      ? h('span', { className: 'bae-m-idraft-pop' }, face('Country', props.country), h('div', { className: 'bae-m-idraft-popmenu' }, h(MacMenu, null, h(MacMenuItem, null, '—'), list(props.countryOpen).map(function (c) { return h(MacMenuItem, { key: c, checked: c === props.country, highlighted: c === props.country }, c); }))))
       : face('Country', props.country);
     var grid = [['Year', field('Year', props.year)], ['Media', mediaLine]]
       // `labels`: each label with the catalog number it gives the pressing, as "Name|Catalog", comma-separated.
