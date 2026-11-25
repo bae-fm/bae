@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.util.LayoutDirection
 import kotlin.math.ceil
+import kotlin.math.floor
 
 /** The two ways a line with a position is drawn. */
 enum class SeekLineLook {
@@ -43,6 +44,16 @@ enum class SeekLineLook {
                 LARGE -> LARGE_LINE_DP
             }
 
+    /**
+     * How far below the middle of its row the line sits: the board's browser puts it on a whole dp, so a half dp of
+     * spare room goes above it.
+     */
+    val lineDropDp: Float
+        get() {
+            val spare = (rowHeightDp - lineHeightDp) * HALF
+            return floor(spare + HALF) - spare
+        }
+
     /** How tall the line's view is: Android's 48 dp touch target, or the thumb when that is taller. */
     val touchHeightDp: Float
         get() = maxOf(MIN_TOUCH_DP, thumbHeightDp)
@@ -71,6 +82,8 @@ enum class SeekLineLook {
 }
 
 private const val BAR_LINE_DP = 4f
+
+private const val HALF = 0.5f
 
 /** The least the played part of a bar's line shows, so a start still shows where it is. */
 private const val BAR_PLAYED_MIN_DP = 5f
@@ -159,7 +172,7 @@ internal class SeekLineDrawable(
         val area = bounds
         val half = dp(look.lineHeightDp) / 2f
         val width = area.width().toFloat()
-        val centreY = area.exactCenterY()
+        val centreY = area.exactCenterY() + dp(look.lineDropDp)
         shape.set(area.left.toFloat(), centreY - half, area.right.toFloat(), centreY + half)
         paint.color = track
         canvas.drawRoundRect(shape, half, half, paint)
@@ -181,7 +194,7 @@ internal class SeekLineDrawable(
         val area = bounds
         val left = area.left.toFloat()
         val right = area.right.toFloat()
-        val centreY = area.exactCenterY()
+        val centreY = area.exactCenterY() + dp(look.lineDropDp)
         val lineHalf = dp(look.lineHeightDp) / 2f
         val thumbHalf = dp(SeekLineLook.LARGE_THUMB_WIDTH_DP) / 2f
         val thumbX = left + fraction * area.width()
