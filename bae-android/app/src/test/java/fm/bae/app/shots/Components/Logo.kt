@@ -16,6 +16,10 @@ class LogoShots : BoardShot() {
     fun androidComponentLogoPairBobAndGlow() =
         component("android.component.logo.pair-bob-and-glow") { Logo(size = 120.dp, bob = true, glow = true) }
 
+    /** The pair with its sheep's slot in whole pixels, as Compose sets it. */
+    @Test
+    fun androidComponentLogoAndroid() = component("android.component.logo.android") { Logo(size = 120.dp, bob = false, glow = false) }
+
     @Test
     fun androidComponentLogoNoKind() = component("android.component.logo.no-kind") { Logo(size = 120.dp, bob = false, glow = false) }
 }
