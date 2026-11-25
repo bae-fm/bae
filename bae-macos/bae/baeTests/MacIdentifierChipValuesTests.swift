@@ -9,16 +9,21 @@ struct MacIdentifierChipValuesTests {
     private let codes = (1...11).map { String(format: "XX00000000%02d", $0) }
 
     @Test("the chip shows the first value and the count of the rest")
-    func firstValueThenTheCountOfTheRest() {
-        let list = MacIdentifierChipValues(codes)
+    func firstValueThenTheCountOfTheRest() throws {
+        let list = try #require(MacIdentifierChipValues(codes))
 
         #expect(list.first == "XX0000000001")
         #expect(list.moreTitle == "+10")
     }
 
+    @Test("a chip with no value has no list")
+    func noValuesNoList() {
+        #expect(MacIdentifierChipValues([]) == nil)
+    }
+
     @Test("one value has nothing behind a count")
-    func oneValueHasNoCount() {
-        let list = MacIdentifierChipValues(["XX0000000001"])
+    func oneValueHasNoCount() throws {
+        let list = try #require(MacIdentifierChipValues(["XX0000000001"]))
 
         #expect(list.first == "XX0000000001")
         #expect(list.moreTitle == nil)
@@ -26,12 +31,12 @@ struct MacIdentifierChipValuesTests {
 
     @Test("the popover lists every value, one a line, none the first alone")
     func popoverListsEveryValue() {
-        #expect(MacIdentifierChipValues(codes).lines == codes)
+        #expect(MacIdentifierChipValues(codes)?.lines == codes)
     }
 
     @Test("accessibility reads every value")
     func spokenListsEveryValue() {
-        let spoken = MacIdentifierChipValues(codes).spoken
+        let spoken = MacIdentifierChipValues(codes)?.spoken ?? ""
         for code in codes {
             #expect(spoken.contains(code))
         }
