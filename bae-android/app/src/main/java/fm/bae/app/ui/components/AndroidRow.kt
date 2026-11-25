@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.invisibleToUser
@@ -346,11 +347,15 @@ private fun Subtitle(
         verticalAlignment = Alignment.Top,
     ) {
         val color = tone?.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-        if (tone != null) FirstLine { Box(modifier = Modifier.size(DOT).background(color, CircleShape)) }
+        // The dot's foot rests on the first line's baseline, as the board's baseline-aligned row sets it.
+        if (tone != null) {
+            Box(modifier = Modifier.alignBy { it.measuredHeight }.size(DOT).background(color, CircleShape))
+        }
         Text(
             text = text,
             style = ThemeText.body.style,
             color = color,
+            modifier = Modifier.alignBy(FirstBaseline),
         )
     }
 }
