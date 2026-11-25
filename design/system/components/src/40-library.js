@@ -48,8 +48,8 @@
   }
 
   // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon. It takes the room of the symbol's frame, as SwiftUI lays the image out, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
-  // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the box the app sets around the symbol, which is then the glyph's box and room, the symbol centred in it. `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward).
-  // `button`: the glyph is a plain button by that name, with the glyph's box and room, as a SwiftUI button around one symbol is; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. Any other set draws the Material symbol (MSymbol).
+  // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the frame the app sets around the symbol, which is then its room, the symbol centred in it. `contentShape`: the app gives the symbol a content shape, which makes the room its own box too. `text`: the symbol sits in a run of text, as Text(Image) sets it, and takes its ink's room alone.
+  // `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward). `button`: the glyph is a plain button by that name, with the glyph's box and room, as a SwiftUI button around one symbol is; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. Any other set draws the Material symbol (MSymbol).
   function Glyph(props) {
     var turned = props.point === 'forward' || props.point === 'backward';
     if (props.point != null && !(turned && props.name === 'down' && props.set === 'mac')) throw new Error('Glyph turns only the Mac `down` chevron, to point `forward` or `backward`');
@@ -57,17 +57,20 @@
     var key = (turned ? props.point : props.name) + (props.weight ? ':' + props.weight : '');
     var sf = SF[key];
     if (!sf) throw new Error('SF has no symbol `' + key + '`');
-    var k = iconPoints(props.size) / 24, ink = sf.ink, fx = 12 - sf.frame[0] / 2, fy = 12 - sf.frame[1] / 2;
-    var set = props.square ? [24 * k, 24 * k] : props.frame && [props.frame[0] != null ? props.frame[0] : sf.frame[0] * k, props.frame[1] != null ? props.frame[1] : sf.frame[1] * k];
-    var box = set
-      ? { view: [12 - set[0] / k / 2, 12 - set[1] / k / 2, set[0] / k, set[1] / k], width: set[0], height: set[1], margin: null }
-      : { view: [ink[0], ink[1], ink[2] - ink[0], ink[3] - ink[1]], width: (ink[2] - ink[0]) * k, height: (ink[3] - ink[1]) * k, margin: [ink[1] - fy, fx + sf.frame[0] - ink[2], fy + sf.frame[1] - ink[3], ink[0] - fx].map(function (m) { return thousandths(m * k) + 'px'; }).join(' ') };
-    var size = { width: thousandths(box.width), height: thousandths(box.height), overflow: 'visible' };
+    // Boxes as left, top, right, bottom, in points at 24 around the frame's centre (12, 12); k turns them into points at the glyph's size.
+    var k = iconPoints(props.size) / 24, ink = sf.ink;
+    var set = props.square ? [24, 24] : props.frame && [props.frame[0] != null ? props.frame[0] / k : sf.frame[0], props.frame[1] != null ? props.frame[1] / k : sf.frame[1]];
+    var frame = set || sf.frame;
+    var room = props.text ? ink : [12 - frame[0] / 2, 12 - frame[1] / 2, 12 + frame[0] / 2, 12 + frame[1] / 2];
+    var own = props.contentShape ? room : ink;
+    var margin = props.contentShape ? null : [own[1] - room[1], room[2] - own[2], room[3] - own[3], own[0] - room[0]].map(function (m) { return thousandths(m * k) + 'px'; }).join(' ');
+    var size = { width: thousandths((own[2] - own[0]) * k), height: thousandths((own[3] - own[1]) * k), overflow: 'visible' };
+    var view = [own[0], own[1], own[2] - own[0], own[3] - own[1]].map(thousandths).join(' ');
     var path = h('path', { d: sf.d });
-    if (props.button) return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-glyph-button', props.className), 'aria-label': props.button, title: props.button, style: Object.assign({ margin: box.margin }, size) },
-      h('svg', { viewBox: box.view.map(thousandths).join(' '), className: 'bae-glyph', fill: 'currentColor', style: size, 'aria-hidden': true }, path));
+    if (props.button) return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-glyph-button', props.className), 'aria-label': props.button, title: props.button, style: Object.assign({ margin: margin }, size) },
+      h('svg', { viewBox: view, className: 'bae-glyph', fill: 'currentColor', style: size, 'aria-hidden': true }, path));
     var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
-    return h('svg', Object.assign({ viewBox: box.view.map(thousandths).join(' '), className: cx('bae-glyph', props.className), fill: 'currentColor', style: Object.assign({ margin: box.margin }, size) }, named), path);
+    return h('svg', Object.assign({ viewBox: view, className: cx('bae-glyph', props.className), fill: 'currentColor', style: Object.assign({ margin: margin }, size) }, named), path);
   }
   function thousandths(v) { return Math.round(v * 1000) / 1000; }
 
@@ -406,7 +409,7 @@
     var arrow = h('svg', { width: 8.5, height: 11, viewBox: '2.75 0 18.5 24', style: { overflow: 'visible' }, 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: down ? 'M12 4v16M5 13l7 7 7-7' : 'M12 20V4M5 11l7-7 7 7' }));
     return h('span', { className: 'bae-m-sortpill' },
       // The field is a menu of the fields; the arrow, named for the direction, flips it.
-      h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' })),
+      h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 'badge', text: true, className: 'bae-muted' })),
       h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': down ? 'Descending' : 'Ascending' }, arrow),
       props.removable ? h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 'badge' })) : null);
   }

@@ -1,10 +1,10 @@
   // ==== part: import ====
   // ---- Import (macOS) ----
-  // A search or filter field: the magnifier, then the text. `kind`: `search` (the default), the title bar's rounded field, 300pt wide; `filter`, a toolbar's 160pt field; `inline`, a field with no box that fills the rest of its row. `label` names it and shows while it is empty (Search unless given); `value` is the text typed. `focused` rings the search field in the accent; `off` dims a field that has nothing to filter and takes no typing.
+  // A search or filter field: the magnifier, in a square its icon size wide as the app frames it, then the text. `kind`: `search` (the default), the title bar's rounded field, 300pt wide; `filter`, a toolbar's 160pt field; `inline`, a field with no box that fills the rest of its row. `label` names it and shows while it is empty (Search unless given); `value` is the text typed. `focused` rings the search field in the accent; `off` dims a field that has nothing to filter and takes no typing.
   function MacSearchField(props) {
     var kind = props.kind || 'search', label = props.label || 'Search';
     return h('span', { className: cx('bae-m-sfield', 'bae-m-sfield-' + kind, props.focused && 'bae-m-sfield-focused', props.off && 'bae-off') },
-      h(Glyph, { set: 'mac', name: 'search', size: kind === 'search' ? 'medium' : 'small', className: kind === 'filter' ? null : 'bae-m-tertiary' }),
+      h(Glyph, { set: 'mac', name: 'search', size: kind === 'search' ? 'medium' : 'small', square: true, className: kind === 'filter' ? null : 'bae-m-tertiary' }),
       h('input', { type: 'text', className: 'bae-m-bareinput', defaultValue: props.value || '', placeholder: label, 'aria-label': label, spellCheck: false, disabled: props.off ? true : null }));
   }
   // A file's transfer ring in the Storage Manager's inspector, filling clockwise from the top in the accent over a hairline: `value` from 0 to 1, for a file moving to or from storage or one bae is pinning. `label` names the ring for VoiceOver; without one, the row around it names it.
@@ -261,7 +261,7 @@
     return h(opens ? 'button' : 'div', { type: opens ? 'button' : null, className: cx(opens && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': opens ? props.name : null },
       h('span', { className: 'bae-mono bae-ellipsis' }, props.name),
       props.damaged ? h('span', { className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small' }), props.damaged) : null,
-      kind === 'audio' ? h(Glyph, { set: 'mac', name: 'play', size: 'chip', frame: [10, null], className: 'bae-muted bae-m-ifile-play', button: 'Play' }) : null,
+      kind === 'audio' ? h(Glyph, { set: 'mac', name: 'play', size: 'chip', frame: [10, null], contentShape: true, className: 'bae-muted bae-m-ifile-play', button: 'Play' }) : null,
       h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, props.size || ''));
   }
   // The release's files that are no track (a rip log, a track sheet that carves no tracks; never an image bae can show), or on a skipped folder's pane every file but its images: a ruled Files heading, then a row per file (`files`: "name|size[|kind]", comma-separated, where kind is `other`, `audio` or `damaged:why`, and a file with none opens).
@@ -288,7 +288,7 @@
   // `added`: a track a save adds and has not made yet, which plays nothing, so it has no Play button. Its column stays, empty, so the source keeps the other rows' edge.
   function MacImportTrackRow(props) {
     return h('div', { className: cx('bae-m-itable-row', 'bae-m-itable-track', props.playing && 'bae-m-itable-playing') },
-      h('span', { className: 'bae-m-isrc' }, props.added ? h('span', { className: 'bae-m-isrc-noplay', 'aria-hidden': true }) : h(Glyph, { set: 'mac', name: props.playing ? 'stop' : 'play', size: 'chip', frame: [10, 16], className: props.playing ? 'bae-accent' : 'bae-muted', button: props.playing ? 'Stop' : 'Play' }), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
+      h('span', { className: 'bae-m-isrc' }, props.added ? h('span', { className: 'bae-m-isrc-noplay', 'aria-hidden': true }) : h(Glyph, { set: 'mac', name: props.playing ? 'stop' : 'play', size: 'chip', frame: [10, 16], contentShape: true, className: props.playing ? 'bae-accent' : 'bae-muted', button: props.playing ? 'Stop' : 'Play' }), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
       h('span', { className: 'bae-num' }, props.position),
       h('span', { className: 'bae-m-itable-cell' }, h(MacInlineField, { label: 'Title', value: props.title, placeholder: 'Untitled' })),
       h('span', { className: 'bae-m-itable-cell' }, h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, inherited: props.inherited, placeholder: 'Artist', column: true })),
