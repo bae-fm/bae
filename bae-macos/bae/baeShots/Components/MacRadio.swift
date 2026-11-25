@@ -23,7 +23,8 @@ extension ShotScene {
         component(id, width: 580, height: 100) {
             ShotBox {
                 // The choice as a settings sheet draws it: a button round
-                // the radio, and one radio button for VoiceOver over it.
+                // the radio in its row, and one radio button for VoiceOver
+                // over it.
                 Button {
                 } label: {
                     MacRadio(
@@ -31,6 +32,7 @@ extension ShotScene {
                         note: note.map { Text($0) },
                         checked: checked
                     )
+                    .placedInRow(RowMetrics.placement)
                 }
                 .buttonStyle(.accentPlain)
                 .accessibilityHidden(true)
