@@ -71,6 +71,9 @@ struct QRCode: View {
                 width: side * Self.minimumModuleSide,
                 height: side * Self.minimumModuleSide
             )
+            // The code is a picture, as an image of it was.
+            .accessibilityElement()
+            .accessibilityAddTraits(.isImage)
         }
     }
 
