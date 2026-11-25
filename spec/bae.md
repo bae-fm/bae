@@ -2107,6 +2107,10 @@ release's, can download it from its catalog or read it from the release's
 storage, so the picker says it is saving the cover while it does. On the Mac,
 an album's cover and the release editor's cover open the *Change cover*
 sheet. Each entry shows its image and name, and its section names its source.
+The preview and the lightbox show the focused cover's name and source: *Library*
+for a library release's saved cover, the catalog's name for a catalog's image,
+*Release files* for an image file, and *File metadata* for the artwork in a
+file's tags.
 Clicking an entry shows it in the preview; double-clicking opens the lightbox. Until the
 picker fetches the catalogs' covers (below), a draft read from the tags, typed
 in or cleared, or a candidate linked to an album or to nothing, has no
