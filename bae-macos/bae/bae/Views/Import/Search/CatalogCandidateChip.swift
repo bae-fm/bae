@@ -29,8 +29,11 @@ struct CatalogCandidatesDisclosure: View {
     var isExpanded: Bool
 
     var body: some View {
+        // The button sets what it will do when pressed: list the numbers
+        // while they are folded, fold them while they are listed.
+        let expandsOnPress = !isExpanded
         Button {
-            isExpanded.toggle()
+            isExpanded = expandsOnPress
         } label: {
             StatusChip(verbatim: title, tone: .neutral)
         }
