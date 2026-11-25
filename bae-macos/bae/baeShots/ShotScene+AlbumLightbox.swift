@@ -9,8 +9,7 @@ extension ShotScene {
     /// album open, after the release's cover failed with core's error behind
     /// Details. The sheet is the one the album page presents: `CoverSheetView`
     /// in its `CoverGalleryFrame`, raised over the window as a modal, with
-    /// four images: the release's cover, one Discogs cover and two image
-    /// files.
+    /// the covers `mac.album.change-cover` shows.
     static let albumLightboxScenes: [ShotScene] = [
         ShotScene(
             id: "mac.album.lightbox.zoom-failed",
@@ -23,10 +22,7 @@ extension ShotScene {
                 albumCount: 4,
                 openAlbum: true
             )
-            let gallery = boardCoverGallery(
-                remotes: [BoardRemoteCover(position: 1, type: .front)],
-                files: ["back.jpg", "disc.jpg"]
-            )
+            let gallery = boardCoverGallery()
             let images = failedCoverImages()
             let lightboxLoad = LightboxImageLoad()
             uiStore.presentSizedModal { host in
