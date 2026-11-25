@@ -14,25 +14,28 @@ struct MacStorageFooter: View {
     /// answers.
     let queues: BridgeStorageQueues?
 
+    /// The count and total as one text, as the board draws the count with the
+    /// dot and the total. No releases, no total: the preview's empty footer
+    /// counts only.
+    private var summary: Text? {
+        // An Int, so the text reads the catalog's "%lld releases".
+        let releases = list.count.map { Text("\(Int($0.rows)) releases") }
+        let total = totalSize.flatMap {
+            $0 > 0 ? Text("Total: \($0.fileSizeText)") : nil
+        }
+        return switch (releases, total) {
+        case (let releases?, let total?):
+            releases + Text(verbatim: " " + FactList.glyph + " ") + total
+        case (let releases?, nil): releases
+        case (nil, let total?): Text(verbatim: FactList.glyph + " ") + total
+        case (nil, nil): nil
+        }
+    }
+
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            // One text, as the board draws the count with the dot and the
-            // total; no releases, no total: the preview's empty footer counts
-            // only.
-            if let count = list.count {
-                // An Int, so the text reads the catalog's "%lld releases".
-                if let totalSize, totalSize > 0 {
-                    Text("\(Int(count.rows)) releases")
-                        + Text(verbatim: " " + FactList.glyph + " ")
-                        + Text("Total: \(totalSize.fileSizeText)")
-                }
-                else {
-                    Text("\(Int(count.rows)) releases")
-                }
-            }
-            else if let totalSize, totalSize > 0 {
-                Text(verbatim: FactList.glyph + " ")
-                    + Text("Total: \(totalSize.fileSizeText)")
+            if let summary {
+                summary
             }
             Spacer()
             if let uploads = queues?.uploads {
