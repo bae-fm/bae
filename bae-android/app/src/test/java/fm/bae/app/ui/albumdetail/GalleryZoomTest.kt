@@ -24,6 +24,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import uniffi.bae_bridge.BridgeCoverImageSource
 import uniffi.bae_bridge.BridgeGallerySource
+import uniffi.bae_bridge.BridgePictureTiles
 import uniffi.bae_bridge.BridgeTileLevel
 import java.util.Collections
 

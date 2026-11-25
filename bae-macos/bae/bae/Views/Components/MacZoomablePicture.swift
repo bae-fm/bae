@@ -63,6 +63,7 @@ struct MacZoomablePicture: NSViewRepresentable {
         private let textReader: LiveTextReader
         private weak var view: ZoomScrollView?
         private var source: PictureTileSource?
+        private var onFailure: (_ failure: LightboxFailure) -> Void = { _ in }
         private var observers: [NSObjectProtocol] = []
         /// The wait for a pan or zoom to stop, and the read of the screen.
         private var settling: Task<Void, Never>?
@@ -82,6 +83,7 @@ struct MacZoomablePicture: NSViewRepresentable {
             onFailure: @escaping (_ failure: LightboxFailure) -> Void
         ) {
             self.view = view
+            self.onFailure = onFailure
             guard let picture else {
                 view.allowsMagnification = false
                 return
@@ -97,7 +99,9 @@ struct MacZoomablePicture: NSViewRepresentable {
                     self?.view?.tileArrived(key)
                     self?.readScreenWhenComplete()
                 },
-                failed: onFailure
+                failed: { [weak self] failure in
+                    self?.onFailure(failure)
+                }
             )
             self.source = source
             view.picture.tiles.source = source
