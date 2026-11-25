@@ -71,6 +71,9 @@
     private struct OpenLevel {
         let model: MacMenuLevel
         let panel: MacMenuPanel
+        let host: MenuHostingView
+        /// The tallest the face can be on the screen `position` chose.
+        let tallest: CGFloat
         /// The face, in screen coordinates.
         let face: NSRect
     }
@@ -192,8 +195,15 @@
                 width: fitting.width - 2 * room,
                 height: MacMenuMetrics.faceHeight(of: entries)
             )
-            let face = position(size, placement: placement, entries: entries)
-            if face.height < size.height { model.scrollingHeight = face.height }
+            let (face, tallest) = position(
+                size,
+                placement: placement,
+                entries: entries
+            )
+            model.scrollingHeight = MacMenuMetrics.scrollingHeight(
+                of: entries,
+                tallest: tallest
+            )
             let panel = MacMenuPanel(
                 contentRect: face.insetBy(dx: -room, dy: -room),
                 styleMask: [.borderless, .nonactivatingPanel],
@@ -215,17 +225,23 @@
                 host: host,
                 model: model
             )
-            return OpenLevel(model: model, panel: panel, face: face)
+            return OpenLevel(
+                model: model,
+                panel: panel,
+                host: host,
+                tallest: tallest,
+                face: face
+            )
         }
 
-        /// The face's frame in screen coordinates, kept on the screen. A
-        /// face taller than the screen's visible frame is cut to fit it, and
-        /// scrolls its lines.
+        /// The face's frame in screen coordinates, kept on the screen, with
+        /// the tallest face the screen allows. A face taller than the
+        /// screen's visible frame is cut to fit it, and scrolls its lines.
         private func position(
             _ fullSize: NSSize,
             placement: MacMenuPlacement,
             entries: [MacMenuEntry]
-        ) -> NSRect {
+        ) -> (face: NSRect, tallest: CGFloat) {
             func originFor(height: CGFloat) -> NSPoint {
                 switch placement {
                 case .below(let rect):
@@ -251,31 +267,30 @@
                     $0.frame.contains(NSPoint(x: origin.x, y: origin.y))
                         || $0.frame.contains(NSEvent.mouseLocation)
                 } ?? parent.screen ?? NSScreen.main
-            if let visible = screen?.visibleFrame {
-                size.height = MacMenuMetrics.faceHeight(
-                    of: entries,
-                    tallest: MacMenuMetrics.tallestFace(
-                        onScreenOf: visible.height
-                    )
-                )
-                origin = originFor(height: size.height)
-                // Flip above the anchor, or up from the point, when there is
-                // no room below.
-                if origin.y < visible.minY, case .below(let rect) = placement {
-                    let above = rect.maxY + 2
-                    if above + size.height <= visible.maxY { origin.y = above }
-                }
-                else if origin.y < visible.minY, case .at(let point) = placement
-                {
-                    origin.y = point.y
-                }
-                let margin = MacMenuMetrics.screenMargin
-                origin.x = min(origin.x, visible.maxX - size.width - margin)
-                origin.x = max(origin.x, visible.minX + margin)
-                origin.y = min(origin.y, visible.maxY - size.height - margin)
-                origin.y = max(origin.y, visible.minY + margin)
+            guard let visible = screen?.visibleFrame else {
+                preconditionFailure("a menu opens on a screen")
             }
-            return NSRect(origin: origin, size: size)
+            let tallest = MacMenuMetrics.tallestFace(onScreenOf: visible.height)
+            size.height = MacMenuMetrics.faceHeight(
+                of: entries,
+                tallest: tallest
+            )
+            origin = originFor(height: size.height)
+            // Flip above the anchor, or up from the point, when there is no
+            // room below.
+            if origin.y < visible.minY, case .below(let rect) = placement {
+                let above = rect.maxY + 2
+                if above + size.height <= visible.maxY { origin.y = above }
+            }
+            else if origin.y < visible.minY, case .at(let point) = placement {
+                origin.y = point.y
+            }
+            let margin = MacMenuMetrics.screenMargin
+            origin.x = min(origin.x, visible.maxX - size.width - margin)
+            origin.x = max(origin.x, visible.minX + margin)
+            origin.y = min(origin.y, visible.maxY - size.height - margin)
+            origin.y = max(origin.y, visible.minY + margin)
+            return (NSRect(origin: origin, size: size), tallest)
         }
 
         private func accessibilityItems(
@@ -338,18 +353,14 @@
             if level.model.highlighted.map({ $0 >= entries.count }) ?? false {
                 level.model.highlighted = nil
             }
-            let tallest = (level.panel.screen ?? parent.screen ?? NSScreen.main)
-                .map {
-                    MacMenuMetrics.tallestFace(
-                        onScreenOf: $0.visibleFrame.height
-                    )
-                }
             let height = MacMenuMetrics.faceHeight(
                 of: entries,
-                tallest: tallest
+                tallest: level.tallest
             )
-            level.model.scrollingHeight =
-                height < MacMenuMetrics.faceHeight(of: entries) ? height : nil
+            level.model.scrollingHeight = MacMenuMetrics.scrollingHeight(
+                of: entries,
+                tallest: level.tallest
+            )
             level.model.scrollOffset = MacMenuMetrics.clampedScroll(
                 level.model.scrollOffset,
                 of: entries,
@@ -363,21 +374,19 @@
                 face.insetBy(dx: -room, dy: -room),
                 display: true
             )
-            if let host = level.panel.contentView as? MenuHostingView {
-                host.frame = NSRect(origin: .zero, size: level.panel.frame.size)
-                host.items = accessibilityItems(
-                    entries,
-                    size: face.size,
-                    level: 0,
-                    host: host,
-                    model: level.model
-                )
-            }
-            levels[0] = OpenLevel(
+            level.host.frame = NSRect(
+                origin: .zero,
+                size: level.panel.frame.size
+            )
+            let resized = OpenLevel(
                 model: level.model,
                 panel: level.panel,
+                host: level.host,
+                tallest: level.tallest,
                 face: face
             )
+            levels[0] = resized
+            refreshAccessibilityItems(resized, level: 0)
         }
 
         // MARK: Listening
@@ -498,9 +507,7 @@
             guard levels.indices.contains(index) else { return }
             let level = levels[index]
             let model = level.model
-            if let row = model.highlighted, model.scrollingHeight != nil,
-                row < model.entries.count
-            {
+            if let row = model.highlighted, model.scrollingHeight != nil {
                 model.scrollOffset = MacMenuMetrics.scroll(
                     toShow: row,
                     of: model.entries,
@@ -508,20 +515,20 @@
                     from: model.scrollOffset
                 )
             }
-            refreshAccessibilityItems(level)
+            refreshAccessibilityItems(level, level: index)
         }
 
-        private func refreshAccessibilityItems(_ level: OpenLevel) {
-            guard let host = level.panel.contentView as? MenuHostingView,
-                let index = levels.firstIndex(where: {
-                    $0.panel === level.panel
-                })
-            else { return }
-            host.items = accessibilityItems(
+        /// Gives VoiceOver the lines of `level`, the one at `index` in
+        /// `levels`, where the face draws them.
+        private func refreshAccessibilityItems(
+            _ level: OpenLevel,
+            level index: Int
+        ) {
+            level.host.items = accessibilityItems(
                 level.model.entries,
                 size: level.face.size,
                 level: index,
-                host: host,
+                host: level.host,
                 model: level.model
             )
         }
@@ -531,9 +538,11 @@
         private func scroll(_ event: NSEvent) -> Bool {
             let point = NSEvent.mouseLocation
             guard
-                let level = levels.last(where: { $0.face.contains(point) }),
-                level.model.scrollingHeight != nil
+                let index = levels.lastIndex(where: { $0.face.contains(point) }
+                ),
+                levels[index].model.scrollingHeight != nil
             else { return false }
+            let level = levels[index]
             // Scrolling content down is a positive delta; a wheel's notches
             // count lines.
             let delta =
@@ -545,7 +554,7 @@
                 of: level.model.entries,
                 faceHeight: level.face.height
             )
-            refreshAccessibilityItems(level)
+            refreshAccessibilityItems(level, level: index)
             return true
         }
 
@@ -696,7 +705,13 @@
                 face.insetBy(dx: -room, dy: -room),
                 display: true
             )
-            return OpenLevel(model: level.model, panel: level.panel, face: face)
+            return OpenLevel(
+                model: level.model,
+                panel: level.panel,
+                host: level.host,
+                tallest: level.tallest,
+                face: face
+            )
         }
 
         private func closeLevels(after index: Int) {

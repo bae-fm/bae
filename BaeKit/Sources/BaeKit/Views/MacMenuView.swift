@@ -70,12 +70,20 @@
 
         /// The face's height: all its lines, or `tallest` when they don't
         /// fit, and the face then scrolls.
-        static func faceHeight(of entries: [MacMenuEntry], tallest: CGFloat?)
+        static func faceHeight(of entries: [MacMenuEntry], tallest: CGFloat)
             -> CGFloat
         {
-            let all = faceHeight(of: entries)
-            guard let tallest else { return all }
-            return min(all, tallest)
+            scrollingHeight(of: entries, tallest: tallest)
+                ?? faceHeight(of: entries)
+        }
+
+        /// The height of a face that scrolls its lines because they pass
+        /// `tallest`; nil when they all fit.
+        static func scrollingHeight(
+            of entries: [MacMenuEntry],
+            tallest: CGFloat
+        ) -> CGFloat? {
+            faceHeight(of: entries) > tallest ? tallest : nil
         }
 
         /// How far the lines can scroll in a face `faceHeight` tall: the

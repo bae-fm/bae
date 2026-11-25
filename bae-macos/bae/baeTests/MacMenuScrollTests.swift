@@ -21,7 +21,12 @@ struct MacMenuScrollTests {
             MacMenuMetrics.faceHeight(of: entries, tallest: all + 50) == all
         )
         #expect(MacMenuMetrics.faceHeight(of: entries, tallest: 500) == 500)
-        #expect(MacMenuMetrics.faceHeight(of: entries, tallest: nil) == all)
+        #expect(
+            MacMenuMetrics.scrollingHeight(of: entries, tallest: 500) == 500
+        )
+        #expect(
+            MacMenuMetrics.scrollingHeight(of: entries, tallest: all) == nil
+        )
         #expect(MacMenuMetrics.tallestFace(onScreenOf: 800) == 792)
     }
 
