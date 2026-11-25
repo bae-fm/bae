@@ -5,9 +5,11 @@ import SwiftUI
 enum MacThumbnailStripLayout {
     /// Each thumbnail's side, which callers also decode their images at.
     static let thumbnailSize: CGFloat = 56
-    /// The strip's height: the room above and below each thumbnail is for
-    /// its ring.
+    /// The strip's height, which the thumbnails sit at the top of.
     static let height: CGFloat = 64
+    /// The room above and below the strip that the scroll view holds, so it
+    /// does not clip the outer half of a ring.
+    static let ringRoom: CGFloat = 4
 }
 
 /// A horizontal strip of thumbnails that keeps the current item centered; the
@@ -38,7 +40,13 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                 strip(minWidth: nil)
             }
         }
-        .frame(height: MacThumbnailStripLayout.height)
+        // The scroll view reaches past the strip by the ring's room, which
+        // the negative padding takes back out of the layout.
+        .frame(
+            height: MacThumbnailStripLayout.height
+                + 2 * MacThumbnailStripLayout.ringRoom
+        )
+        .padding(.vertical, -MacThumbnailStripLayout.ringRoom)
     }
 
     private func strip(minWidth: CGFloat?) -> some View {
@@ -51,11 +59,7 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                     }
                 }
                 .padding(.horizontal, ThemeSpace.related)
-                .padding(
-                    .vertical,
-                    (MacThumbnailStripLayout.height
-                        - MacThumbnailStripLayout.thumbnailSize) / 2
-                )
+                .padding(.vertical, MacThumbnailStripLayout.ringRoom)
                 .frame(minWidth: minWidth)
             }
             .onAppear {
@@ -83,7 +87,7 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 // The whole ring lies outside the thumbnail, as the board's
-                // ring does, so the strip holds room for it above and below.
+                // ring does.
                 .overlay {
                     RoundedRectangle(
                         cornerRadius: ThemeRadius.artwork + lineWidth
