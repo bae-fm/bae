@@ -81,17 +81,19 @@ struct Logo: View {
                                 )
                             )
                     }
-                Image("LogoWord")
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundStyle(glow ? Theme.logoWord : Theme.textPrimary)
-                    .shadow(
-                        color: glow ? Theme.logoWordEdge : .clear,
-                        radius: 0,
-                        x: 1,
-                        y: 1
-                    )
+                wordImage(glow ? Theme.logoWord : Theme.textPrimary)
                     .frame(width: wordWidth, height: wordHeight)
+                    .background {
+                        // The word's edge, a copy 1 point right and below
+                        // it. A layer shadow of no blur is drawn above the
+                        // word in a macOS window (`ShadowedFace`).
+                        if glow {
+                            wordImage(Theme.logoWordEdge)
+                                .frame(width: wordWidth, height: wordHeight)
+                                .offset(x: 1, y: 1)
+                                .accessibilityHidden(true)
+                        }
+                    }
                     .modifier(
                         Bob(
                             reduced: still,
@@ -103,6 +105,13 @@ struct Logo: View {
                     .accessibilityAddTraits(.isImage)
             }
         }
+    }
+
+    private func wordImage(_ color: some ShapeStyle) -> some View {
+        Image("LogoWord")
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(color)
     }
 
     /// The disc of light centred 65% down the sheep and the pool under it,
