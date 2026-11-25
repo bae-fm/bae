@@ -13,7 +13,7 @@ struct MacFileDetails: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
+            HStack(alignment: .top, spacing: ThemeSpace.related) {
                 Text(file.name)
                     .themeText(.heading)
                     .cutLine(.fileName)
@@ -22,10 +22,6 @@ struct MacFileDetails: View {
                     Image(systemName: "xmark.circle")
                         .themeIcon(.medium)
                         .foregroundStyle(Theme.textSecondary)
-                        // The board's box for the glyph: 15 wide and a line
-                        // of the file's name tall.
-                        .frame(width: 15, height: 19)
-                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.accentPlain)
                 .accessibilityLabel(Text("Close file details"))
