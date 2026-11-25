@@ -32,7 +32,7 @@ final class ShotDisplay {
 
     private enum Backing {
         case owned(NSObject)
-        case borrowed(slot: Int)
+        case borrowed(slot: Int, leaseProcess: pid_t)
     }
 
     private let backing: Backing
@@ -42,20 +42,12 @@ final class ShotDisplay {
         self.backing = backing
     }
 
-    /// The leased slot of a display held by the capture process's keeper.
-    static func borrow(id: CGDirectDisplayID, slot: Int) async throws
-        -> ShotDisplay
-    {
-        try await listed(id, at: sharedSize)
-        return ShotDisplay(id: id, backing: .borrowed(slot: slot))
-    }
-
     func visibleFrame() throws -> CGRect {
         let screen = try screen()
         switch backing {
         case .owned:
             return screen.visibleFrame
-        case .borrowed(let slot):
+        case .borrowed(let slot, _):
             let frame = screen.frame
             let slotFrame = CGRect(
                 x: frame.minX + CGFloat(slot) * Self.size.width,
@@ -320,6 +312,32 @@ final class ShotDisplay {
 }
 
 extension ShotDisplay {
+    /// The leased slot of a display held by the capture process's keeper.
+    /// `leaseProcess` is the process that holds the lease for the capture.
+    static func borrow(
+        id: CGDirectDisplayID,
+        slot: Int,
+        leaseProcess: pid_t
+    ) async throws -> ShotDisplay {
+        try await listed(id, at: sharedSize)
+        return ShotDisplay(
+            id: id,
+            backing: .borrowed(slot: slot, leaseProcess: leaseProcess)
+        )
+    }
+
+    /// Who holds the display, for a failure that names it: the slot and the
+    /// process that holds its lease, or that this process owns the display.
+    var holder: String {
+        switch backing {
+        case .owned:
+            "owned by this process (pid \(getpid()))"
+        case .borrowed(let slot, let leaseProcess):
+            "slot \(slot) of the shared display, leased by pid \(leaseProcess) "
+                + "for the capture in pid \(getpid())"
+        }
+    }
+
     static func waitUntilRemoved(_ id: CGDirectDisplayID) async throws {
         try await Wait.until(notices: [screenChanges]) {
             screen(for: id) == nil

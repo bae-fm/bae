@@ -47,7 +47,11 @@ struct ShotDisplayLease {
                     "The display lease did not supply a display ID and slot."
                 )
             }
-            let display = try await ShotDisplay.borrow(id: id, slot: slot)
+            let display = try await ShotDisplay.borrow(
+                id: id,
+                slot: slot,
+                leaseProcess: process.processIdentifier
+            )
             logger.info("The capture leased display \(id), slot \(slot).")
             return ShotDisplayLease(
                 display: display,

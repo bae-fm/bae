@@ -5,6 +5,14 @@ import ScreenCaptureKit
 
 private let logger = Logger.bae("ShotRenderer")
 
+/// A scene's window the window server does not show. `capture` turns it into
+/// `ShotError.windowNotDrawn` with the state the window server and the
+/// displays hold, which only the main actor reads.
+struct WindowNotDrawn: Error {
+    let sceneId: String
+    let frame: CGRect
+}
+
 extension ShotRenderer {
     /// Put `window` wholly on `display`, at the top left of its free area:
     /// the screen capture takes only what is on a display, and would cut off
@@ -150,7 +158,42 @@ extension ShotRenderer {
             let hidden = windows.first {
                 !$0.occlusionState.contains(.visible)
             }
-            throw ShotError.windowNotDrawn(scene.id, hidden?.frame ?? .zero)
+            throw WindowNotDrawn(
+                sceneId: scene.id,
+                frame: hidden?.frame ?? .zero
+            )
+        }
+    }
+
+    /// The pixels of `window` and its overlays once the window server shows
+    /// them. A window it does not show fails with what the window server and
+    /// the displays hold then.
+    static func windowPNG(
+        of window: NSWindow,
+        sheets: [NSWindow],
+        alerts: [CGWindowID],
+        on display: ShotDisplay,
+        scene: ShotScene
+    ) async throws -> Data {
+        let shown = [window] + sheets + AlertWindows.shared.panels
+        do {
+            try await shownOnScreen(shown, scene: scene)
+            return try await windowPNG(
+                CGWindowID(window.windowNumber),
+                overlays: sheets.map { CGWindowID($0.windowNumber) } + alerts,
+                on: display.id,
+                sceneId: scene.id
+            )
+        }
+        catch let missing as WindowNotDrawn {
+            throw ShotError.windowNotDrawn(
+                missing.sceneId,
+                missing.frame,
+                .read(
+                    windowIDs: shown.map { CGWindowID($0.windowNumber) },
+                    on: display
+                )
+            )
         }
     }
 
@@ -182,7 +225,7 @@ extension ShotRenderer {
             throw ShotError.windowNotShared(sceneId)
         }
         guard held.allSatisfy({ !$0.frame.isEmpty && $0.isOnScreen }) else {
-            throw ShotError.windowNotDrawn(sceneId, parent.frame)
+            throw WindowNotDrawn(sceneId: sceneId, frame: parent.frame)
         }
         guard
             let display = content.displays.first(where: {

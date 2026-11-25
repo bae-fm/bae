@@ -129,15 +129,12 @@ enum ShotRenderer {
             let sheets = window.attachedSheet.map { [$0] } ?? []
             try await becomeKey(window, scene: scene)
             logFocus(of: window, scene: scene)
-            try await shownOnScreen(
-                [window] + sheets + AlertWindows.shared.panels,
-                scene: scene
-            )
             pixels = try await windowPNG(
-                CGWindowID(window.windowNumber),
-                overlays: sheets.map { CGWindowID($0.windowNumber) } + alerts,
-                on: windowScene.display.id,
-                sceneId: scene.id
+                of: window,
+                sheets: sheets,
+                alerts: alerts,
+                on: windowScene.display,
+                scene: scene
             )
         }
         else {
@@ -367,7 +364,9 @@ enum ShotError: Error, CustomStringConvertible {
     case bitmapAllocationFailed(String)
     case pngEncodingFailed(String)
     case windowNotShared(String)
-    case windowNotDrawn(String, CGRect)
+    /// The window server shows no window for the scene: its frame there, and
+    /// what the window server and the displays held then.
+    case windowNotDrawn(String, CGRect, ShotWindowState)
     /// The scene's window never became key; `focus` is the app macOS named
     /// as the front app when the wait ended.
     case windowNotKey(String, focus: FocusHolder)
@@ -395,9 +394,9 @@ enum ShotError: Error, CustomStringConvertible {
             "failed to PNG-encode scene \(id)"
         case .windowNotShared(let id):
             "the window server shares no window for scene \(id)"
-        case .windowNotDrawn(let id, let frame):
+        case .windowNotDrawn(let id, let frame, let state):
             "the window server shows scene \(id)'s window with frame "
-                + "\(frame), off the screen or empty"
+                + "\(frame), off the screen or empty. \(state.description)"
         case .windowNotKey(let id, .other(.some(let name), let pid)):
             "\(name) (pid \(pid)) kept the focus, so scene \(id) would draw "
                 + "inactive"
