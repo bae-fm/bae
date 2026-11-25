@@ -7,6 +7,31 @@ import SwiftUI
 /// they draw over it: the albums the boards list, and "Low Tide Hours"
 /// playing 1:42 into 5:03.
 extension ShotScene {
+    /// The library window on its albums as a window behind another app's
+    /// window draws: neither key nor main, so its window buttons are grey.
+    static let inactiveLibraryScene = ShotScene(
+        id: "mac.library.albums.inactive",
+        size: CGSize(width: 1200, height: 760),
+        frame: .window(title: "bae", titleBar: .hidden),
+        inactive: true
+    ) {
+        let uiStore = UiStore()
+        let backing = boardLibraryBacking(uiStore: uiStore)
+        let images = coverGalleryImages()
+        return ShotStage(
+            ShotScenes.libraryWindow(
+                uiStore: uiStore,
+                backing: backing,
+                playbackStore: boardPlayback(),
+                images: images,
+                size: CGSize(width: 1200, height: 760)
+            ),
+            images: images
+        ) {
+            (backing.session.albums.list?.positionCount ?? 0) > 0
+        }
+    }
+
     static let groupedAlbumsScene = ShotScene(
         id: "mac.library.albums.grouped",
         size: CGSize(width: 1200, height: 760),

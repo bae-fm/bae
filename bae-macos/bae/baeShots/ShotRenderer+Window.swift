@@ -56,6 +56,19 @@ extension ShotRenderer {
         )
     }
 
+    /// Orders `window` in. The window is a non-activating panel, key and
+    /// main without the app taking the focus from the app that holds it,
+    /// unless the scene is drawn inactive, which leaves it neither.
+    static func show(_ window: NSWindow, for scene: ShotScene) {
+        if scene.inactive {
+            window.orderFront(nil)
+        }
+        else {
+            window.makeKeyAndOrderFront(nil)
+            window.makeMain()
+        }
+    }
+
     /// Closes each window a scene before this one left up. An alert raised
     /// before its view is in its window hangs from the key window, which a
     /// sheet left up would be, and every capture after it draws the alert
@@ -91,6 +104,8 @@ extension ShotRenderer {
         _ window: NSWindow,
         scene: ShotScene
     ) async throws {
+        // A scene drawn inactive leaves its window without the key.
+        guard !scene.inactive else { return }
         let changes = [
             NSWindow.didBecomeKeyNotification,
             NSWindow.didResignKeyNotification,

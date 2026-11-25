@@ -20,6 +20,10 @@ struct ShotScene {
     /// of an app that is not active, which is never key; this one is in a
     /// panel that does not activate the app.
     var keyWindow = false
+    /// Whether a scene shown in its window is drawn inactive, as macOS draws
+    /// a window behind another app's window: the window is neither key nor
+    /// main.
+    var inactive = false
     let stage: () throws -> ShotStage
 
     /// Every macOS scene, one for each board it is shot for. A scene is
@@ -39,7 +43,7 @@ struct ShotScene {
         + albumEditorScenes + pickedTracksScenes
         + albumRatingScenes + albumCreditsScenes + albumStorageScenes
         + searchScenes
-        + [groupedAlbumsScene, albumCatalogLinksScene]
+        + [groupedAlbumsScene, inactiveLibraryScene, albumCatalogLinksScene]
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows

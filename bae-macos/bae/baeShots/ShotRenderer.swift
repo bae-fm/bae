@@ -86,10 +86,7 @@ enum ShotRenderer {
         }
         if let windowScene {
             try place(window, on: windowScene.display, scene: scene)
-            // The window is a non-activating panel, key without the app
-            // taking the focus from the app that holds it.
-            window.makeKeyAndOrderFront(nil)
-            window.makeMain()
+            show(window, for: scene)
         }
         else {
             // The renderer makes the window key without activating the app.
