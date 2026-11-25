@@ -203,7 +203,7 @@
 .bae-m-albumfacts-hover::before { content: ''; position: absolute; z-index: -1; inset: calc(-1 * var(--space-line)) calc(-1 * var(--space-compact)); border-radius: var(--radius-chip); background: var(--hover); }
 .bae-m-albumfacts-arrow { flex: none; color: var(--text-secondary); }
 /* The catalogs' popover, centred under the button, its arrow's tip 2pt under it. */
-.bae-m-albumfacts-pop { position: absolute; top: calc(100% + 9px); left: 50%; width: 320px; transform: translateX(-50%); }
+.bae-m-albumfacts-pop { position: absolute; top: calc(100% + 9px); left: calc(50% - 160px); width: 320px; }
 .bae-m-albumfacts-card { padding: var(--space-group); }
 .bae-m-albumpanel-unplayable { display: inline-flex; align-items: center; min-height: 28px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
 .bae-m-helptag-anchor { position: relative; display: inline-flex; }
