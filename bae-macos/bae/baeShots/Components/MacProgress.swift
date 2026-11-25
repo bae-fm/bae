@@ -6,13 +6,18 @@ import SwiftUI
 extension ShotScene {
     /// `MacProgress`, a step's name over its bar. Its Named only row, a bar with no words, is the design's only.
     static let macProgressScenes: [ShotScene] = [
-        component("mac.component.progress.length-unknown", height: 60) {
+        component(
+            "mac.component.progress.length-unknown",
+            width: 842,
+            height: 28
+        ) {
             MacProgress(title: "Uploading…", fraction: nil)
-                .frame(width: 380, alignment: .leading)
+                .frame(width: 842, alignment: .leading)
         },
-        component("mac.component.progress.length-known", height: 60) {
+        component("mac.component.progress.length-known", width: 842, height: 28)
+        {
             MacProgress(title: "Uploading…", fraction: 0.3)
-                .frame(width: 380, alignment: .leading)
+                .frame(width: 842, alignment: .leading)
         },
     ]
 }

@@ -8,7 +8,8 @@ extension ShotScene {
     static let macImportGroupHeaderScenes: [ShotScene] = [
         component(
             "mac.component.import-group-header.default",
-            height: 60
+            width: 842,
+            height: 28
         ) {
             MacImportGroupHeader(
                 group: BridgeTriageGroup(
@@ -20,11 +21,12 @@ extension ShotScene {
                 onSetExpanded: { _ in },
                 onCombine: {}
             )
-            .frame(width: 380, height: 40)
+            .frame(width: 842, height: 28)
         },
         component(
             "mac.component.import-group-header.folded",
-            height: 60
+            width: 842,
+            height: 28
         ) {
             MacImportGroupHeader(
                 group: BridgeTriageGroup(
@@ -36,7 +38,7 @@ extension ShotScene {
                 onSetExpanded: { _ in },
                 onCombine: {}
             )
-            .frame(width: 380, height: 40)
+            .frame(width: 842, height: 28)
         },
     ]
 }

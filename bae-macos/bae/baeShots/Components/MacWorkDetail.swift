@@ -10,6 +10,7 @@ extension ShotScene {
         component(
             "mac.component.work-detail.default",
             page: true,
+            width: 968,
             height: 260,
             images: coverStore()
         ) {
@@ -50,7 +51,7 @@ extension ShotScene {
                 openWork: { _ in },
                 openAlbum: { _, _ in }
             )
-            .frame(width: 380, alignment: .leading)
+            .frame(width: 968, alignment: .leading)
         }
     ]
 }

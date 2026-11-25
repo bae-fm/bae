@@ -31,11 +31,10 @@ extension ShotScene {
                 }
             }
         },
-        component("mac.component.field-row.no-label", height: 90) {
+        component("mac.component.field-row.no-label", width: 842, height: 44) {
             ShotBox {
                 MacFieldRow("") {
                     BoxedField(placeholder: "Name", text: .constant(""))
-                        .frame(width: 160)
                 }
             }
         },
