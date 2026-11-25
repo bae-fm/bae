@@ -23,14 +23,14 @@ extension CoverLightboxTests {
             subject: "the cover gallery"
         )
         return Set(
-            tree.nodes.filter(kept).compactMap { $0.title ?? $0.description }
+            tree.nodes.filter(kept).compactMap(\.controlName)
         )
     }
 
     /// The names of the elements in `window` that `galleryOnly` lists.
     func galleryControls(in window: NSWindow) throws -> Set<String> {
         try names(in: window) {
-            ($0.title ?? $0.description).map(Self.galleryOnly.contains) ?? false
+            $0.controlName.map(Self.galleryOnly.contains) ?? false
         }
     }
 
