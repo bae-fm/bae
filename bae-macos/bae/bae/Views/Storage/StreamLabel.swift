@@ -143,6 +143,9 @@ struct StreamLabel: NSViewRepresentable {
             }
         let font = view.font ?? .systemFont(ofSize: NSFont.systemFontSize)
         let size = (widest as NSString).size(withAttributes: [.font: font])
-        return CGSize(width: ceil(size.width) + 4, height: ceil(size.height))
+        // The cell insets its text by 2 points each side. The width is the
+        // text's own, as the board's is: rounding it up put each queue 0.8
+        // points wider than the board's.
+        return CGSize(width: size.width + 4, height: ceil(size.height))
     }
 }
