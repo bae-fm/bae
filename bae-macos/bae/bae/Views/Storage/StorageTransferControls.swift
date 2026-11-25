@@ -26,26 +26,7 @@ struct StorageTransferControls: View {
         VStack(spacing: 0) {
             ForEach(items, id: \.queueId) { item in
                 transfer(item, now: now)
-                if !drawsItsOwnLine(item) {
-                    MacHairline()
-                }
             }
-        }
-    }
-
-    /// A failed or waiting row draws the line under itself.
-    private func drawsItsOwnLine(
-        _ item: BridgeStorageInspectorTransfer
-    ) -> Bool {
-        switch item {
-        case .download(_, let summary):
-            summary == nil
-        case .upload(_, _, _, _, let upload):
-            upload.missing != nil
-        case .moveFailed:
-            true
-        case .output:
-            false
         }
     }
 
@@ -56,14 +37,16 @@ struct StorageTransferControls: View {
     ) -> some View {
         switch item {
         case .download(let operation, let summary?):
-            MacTransferSummary(
-                kind: .pin,
-                counts: summary,
-                releaseId: operation.releaseId,
-                moving: operation.isRunning
-            ) {
-                run {
-                    try await downloads.cancelDownload(operation.releaseId)
+            underlined {
+                MacTransferSummary(
+                    kind: .pin,
+                    counts: summary,
+                    releaseId: operation.releaseId,
+                    moving: operation.isRunning
+                ) {
+                    run {
+                        try await downloads.cancelDownload(operation.releaseId)
+                    }
                 }
             }
         case .download(let operation, nil):
@@ -71,14 +54,16 @@ struct StorageTransferControls: View {
         case .output(let operation):
             // The row's native label alone follows the percent the export
             // reaches.
-            OutputRow(
-                op: operation,
-                now: now,
-                percent: outputStore.exportProgress(
-                    forRelease: operation.releaseId
-                )
-            ) {
-                run { try await outputs.cancelOutput(operation.releaseId) }
+            underlined {
+                OutputRow(
+                    op: operation,
+                    now: now,
+                    percent: outputStore.exportProgress(
+                        forRelease: operation.releaseId
+                    )
+                ) {
+                    run { try await outputs.cancelOutput(operation.releaseId) }
+                }
             }
         case .upload(
             let releaseId,
@@ -165,14 +150,26 @@ struct StorageTransferControls: View {
             }
         }
         else {
-            MacTransferSummary(
-                kind: .upload,
-                counts: upload.summary,
-                releaseId: releaseId,
-                moving: upload.progress.uploading > 0
-            ) {
-                run { try await sync.cancelReleaseTransition(releaseId) }
+            underlined {
+                MacTransferSummary(
+                    kind: .upload,
+                    counts: upload.summary,
+                    releaseId: releaseId,
+                    moving: upload.progress.uploading > 0
+                ) {
+                    run { try await sync.cancelReleaseTransition(releaseId) }
+                }
             }
+        }
+    }
+
+    /// A row with the line under it, which a failed row draws itself.
+    private func underlined<Row: View>(
+        @ViewBuilder _ row: () -> Row
+    ) -> some View {
+        VStack(spacing: 0) {
+            row()
+            MacHairline()
         }
     }
 
