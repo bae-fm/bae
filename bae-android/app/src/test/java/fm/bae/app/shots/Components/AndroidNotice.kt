@@ -1,7 +1,11 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import fm.bae.app.DisplayError
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeButtons
@@ -113,6 +117,20 @@ class AndroidNoticeShots : BoardShot() {
                 look = NoticeLook.CENTERED,
                 action = ErrorAction("Retry") {},
             )
+        }
+
+    @Test
+    fun androidComponentNoticeDangerCentredOnTheStage() =
+        component("android.component.notice.danger-centred-on-the-stage") {
+            Box(Modifier.background(BaeTheme.colors.backdrop)) {
+                AndroidNotice(
+                    title = "Could not read your library",
+                    advice = null,
+                    error = DisplayError("Could not read your library", "disk I/O error"),
+                    look = NoticeLook.STAGE,
+                    action = ErrorAction("Retry") {},
+                )
+            }
         }
 }
 

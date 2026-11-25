@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.OnStage
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -160,8 +161,16 @@ private fun ErrorNoticeContent(
 ) {
     var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
     val opensDetails = details != null && onOpenDetails != null
-    if (look == NoticeLook.CENTERED) {
-        CenteredNotice(title, advice, tone, modifier, details != null, { detailsShown = true }, action)
+    if (look == NoticeLook.CENTERED || look == NoticeLook.STAGE) {
+        val stage = look == NoticeLook.STAGE
+        val centered = @Composable {
+            CenteredNotice(title, advice, tone, modifier, details != null, { detailsShown = true }, action, stage)
+        }
+        if (stage) {
+            OnStage(centered)
+        } else {
+            centered()
+        }
     } else {
         FramedNotice(
             title = title,
@@ -200,6 +209,7 @@ private fun CenteredNotice(
     hasDetails: Boolean,
     onDetails: () -> Unit,
     action: ErrorAction?,
+    stage: Boolean,
 ) {
     Column(
         modifier = modifier.fillMaxSize().heightIn(min = CENTERED_MIN_HEIGHT).padding(ThemeSpace.section),
@@ -236,13 +246,16 @@ private fun CenteredNotice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (hasDetails) {
-                AndroidButton(kind = ButtonKind.TEXT, onClick = onDetails) { Text(stringResource(R.string.details)) }
+                AndroidButton(kind = ButtonKind.TEXT, onClick = onDetails, stage = stage) {
+                    Text(stringResource(R.string.details))
+                }
             }
             action?.let {
                 AndroidButton(
                     kind = ButtonKind.TONAL,
                     onClick = it.onClick,
                     enabled = it.enabled,
+                    stage = stage,
                 ) { Text(it.label) }
             }
         }

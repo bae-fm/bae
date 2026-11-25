@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.LocalPrimaryFill
+import fm.bae.app.ui.OnStage
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 
@@ -47,7 +48,8 @@ enum class ButtonAlign { TEXT, FIELD }
  * beside it (Cancel, Keep) the screen's text colour, so the accent and the danger colour never sit side
  * by side. [icon] leads the words, as the album page's pin control draws it. [large] is the welcome
  * screen's size. [alignTo] moves a text button's words over the text or field above it, cancelling the
- * button's own 12dp side padding.
+ * button's own 12dp side padding. A [stage] button sits on the gallery's backdrop, which is dark in both modes, and
+ * draws in dark mode's colours.
  */
 @Composable
 fun AndroidButton(
@@ -59,8 +61,13 @@ fun AndroidButton(
     alignTo: ButtonAlign? = null,
     enabled: Boolean = true,
     icon: ImageVector? = null,
+    stage: Boolean = false,
     content: @Composable RowScope.() -> Unit,
 ) {
+    if (stage) {
+        OnStage { AndroidButton(onClick, modifier, kind, tone, large, alignTo, enabled, icon, stage = false, content) }
+        return
+    }
     val aligned =
         when (alignTo) {
             null -> modifier

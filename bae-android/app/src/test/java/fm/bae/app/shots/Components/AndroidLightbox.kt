@@ -14,6 +14,8 @@ import fm.bae.app.ui.albumdetail.GalleryViewer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Test
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGalleryLabel
 
 /** The component shots of `AndroidLightbox`, one for each row of its preview. */
@@ -23,6 +25,13 @@ class AndroidLightboxShots : BoardShot() {
 
     @Test
     fun androidComponentLightboxLoading() = shot("android.component.lightbox.loading") { Lightbox(neverLoaded(), count = 4u) }
+
+    @Test
+    fun androidComponentLightboxFailed() = shot("android.component.lightbox.failed") { Lightbox(noBytes(), count = 4u) }
+
+    @Test
+    fun androidComponentLightboxFailedDetails() =
+        shot("android.component.lightbox.failed-details") { Lightbox(failingWithCauses(), count = 4u) }
 
     @Test
     fun androidComponentLightboxOneImage() = shot("android.component.lightbox.one-image") { Lightbox(shownImage(), count = 1u) }
@@ -65,3 +74,13 @@ private fun shownImage() =
 
 /** A store whose bytes never arrive, so the lightbox stays on its load. */
 private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _, _ -> awaitCancellation() }, dispatcher = Dispatchers.Unconfined)
+
+/** A store with no bytes for the image, so the lightbox shows the failure with Retry and no Details. */
+private fun noBytes() = ImageStore(dispatcher = Dispatchers.Unconfined)
+
+/** A store whose read of the image fails with core's causes behind it, so the failure has Details. */
+private fun failingWithCauses() =
+    ImageStore(
+        fetchReleaseImageBytes = { _, _, _ -> throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "dns error") },
+        dispatcher = Dispatchers.Unconfined,
+    )

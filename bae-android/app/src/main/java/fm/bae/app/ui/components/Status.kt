@@ -168,8 +168,10 @@ fun StatusChip(
 /**
  * How a notice sits on its screen: on its tone's fill; with no fill; or, for a
  * view that failed whole, centred in the space it's given (drawn by [AndroidNotice], not by [NoticeFrame]).
+ * [STAGE] is the centred notice on the gallery's backdrop, which is dark in both modes: it draws in dark mode's
+ * colours.
  */
-enum class NoticeLook { FILLED, QUIET, CENTERED }
+enum class NoticeLook { FILLED, QUIET, CENTERED, STAGE }
 
 /**
  * A notice in its tone: the tone's glyph at the top left, centred on the first

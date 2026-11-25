@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
@@ -74,6 +75,12 @@ class AndroidButtonShots : BoardShot() {
     fun androidComponentButtonTonal() = component("android.component.button.tonal") { JoinButton(ButtonKind.TONAL) }
 
     @Test
+    fun androidComponentButtonTonalOnTheStage() =
+        component("android.component.button.tonal-on-the-stage") {
+            Box(Modifier.background(BaeTheme.colors.backdrop).padding(8.dp)) { JoinButton(ButtonKind.TONAL, stage = true) }
+        }
+
+    @Test
     fun androidComponentButtonInverse() =
         component("android.component.button.inverse") {
             Box(
@@ -98,6 +105,7 @@ private fun JoinButton(
     tone: ButtonTone = ButtonTone.DEFAULT,
     large: Boolean = false,
     enabled: Boolean = true,
+    stage: Boolean = false,
 ) = AndroidButton(
     onClick = {},
     modifier = if (large) Modifier.fillMaxWidth() else Modifier,
@@ -105,4 +113,5 @@ private fun JoinButton(
     tone = tone,
     large = large,
     enabled = enabled,
+    stage = stage,
 ) { Text("Join library") }

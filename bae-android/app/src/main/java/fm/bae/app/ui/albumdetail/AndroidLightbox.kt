@@ -303,7 +303,7 @@ private fun GalleryImage(
                     title = unloaded,
                     advice = null,
                     error = failed.error,
-                    look = NoticeLook.CENTERED,
+                    look = NoticeLook.STAGE,
                     action =
                         if (failed.offersRetry) {
                             ErrorAction(stringResource(R.string.retry)) { attempt++ }
