@@ -89,14 +89,17 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
         }
         .buttonStyle(.accentPlain)
         // The whole ring lies outside the thumbnail, as the board's ring
-        // does, and outside the button, so VoiceOver gives the button the
-        // thumbnail's box.
+        // does. The stroke is drawn past the thumbnail's box and takes none
+        // of the layout or of VoiceOver's box for the button.
         .overlay {
-            RoundedRectangle(cornerRadius: ThemeRadius.artwork + lineWidth)
-                .strokeBorder(color, lineWidth: lineWidth)
-                .padding(-lineWidth)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            RoundedRectangle(
+                cornerRadius: ThemeRadius.artwork + lineWidth / 2,
+                style: .circular
+            )
+            .inset(by: -lineWidth / 2)
+            .stroke(color, lineWidth: lineWidth)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
         .accessibilityLabel(Text(verbatim: name(item)))
     }
