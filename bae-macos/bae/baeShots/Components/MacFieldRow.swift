@@ -33,9 +33,9 @@ extension ShotScene {
         },
         component("mac.component.field-row.no-label", width: 842, height: 44) {
             ShotBox {
-                MacFieldRow("") {
+                MacFieldRow(withoutLabel: {
                     BoxedField(placeholder: "Name", text: .constant(""))
-                }
+                })
             }
         },
         component("mac.component.field-row.text-aligned", height: 130) {

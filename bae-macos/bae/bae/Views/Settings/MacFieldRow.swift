@@ -8,6 +8,7 @@ struct MacFieldRow<Content: View>: View {
     private enum LabelPlacement {
         case visible(LocalizedStringKey, width: CGFloat?)
         case alignedField
+        case none
     }
 
     private let label: LabelPlacement
@@ -28,6 +29,12 @@ struct MacFieldRow<Content: View>: View {
         self.content = content()
     }
 
+    /// A row of only the field and its buttons, with no label before them.
+    init(@ViewBuilder withoutLabel content: () -> Content) {
+        self.label = .none
+        self.content = content()
+    }
+
     @ViewBuilder
     var body: some View {
         switch label {
@@ -35,6 +42,8 @@ struct MacFieldRow<Content: View>: View {
             HStack(spacing: ThemeSpace.related) { content }
                 .padding(.leading, -ThemeSpace.fieldInset)
                 .settingsRowInset(ThemeSpace.compact)
+        case .none:
+            HStack(alignment: .center, spacing: ThemeSpace.related) { content }
         case .visible(let title, let width):
             HStack(
                 alignment: width == nil ? .center : .top,
