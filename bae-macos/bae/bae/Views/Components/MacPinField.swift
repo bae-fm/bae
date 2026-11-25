@@ -39,9 +39,6 @@ struct MacPinField: View {
                 }
             }
             .accessibilityHidden(true)
-            // The field is as wide as the line it sits on, so a click beside
-            // the boxes gives it the keyboard too.
-            .frame(maxWidth: .infinity, alignment: .leading)
             .overlay {
                 PinEditor(
                     text: $value,
