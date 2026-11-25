@@ -68,12 +68,7 @@ extension ShotScene {
             width: 440,
             height: height
         ) {
-            // The inspector's list draws the line under each row, as the
-            // preview's row does itself.
-            VStack(spacing: 0) {
-                MacFailedTransferRow(entry: entry, onCancel: {})
-                MacHairline()
-            }
+            MacFailedTransferRow(entry: entry, onCancel: {})
         }
     }
 }

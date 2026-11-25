@@ -46,6 +46,14 @@ struct MacFailedTransferRow: View {
     private var restoring = false
 
     var body: some View {
+        VStack(spacing: 0) {
+            row
+            // The line the preview's row draws under itself.
+            MacHairline()
+        }
+    }
+
+    private var row: some View {
         QueueRow(
             icon: icon,
             cancel: .init(help: "Cancel", action: onCancel)

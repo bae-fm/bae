@@ -26,8 +26,26 @@ struct StorageTransferControls: View {
         VStack(spacing: 0) {
             ForEach(items, id: \.queueId) { item in
                 transfer(item, now: now)
-                MacHairline()
+                if !drawsItsOwnLine(item) {
+                    MacHairline()
+                }
             }
+        }
+    }
+
+    /// A failed or waiting row draws the line under itself.
+    private func drawsItsOwnLine(
+        _ item: BridgeStorageInspectorTransfer
+    ) -> Bool {
+        switch item {
+        case .download(_, let summary):
+            summary == nil
+        case .upload(_, _, _, _, let upload):
+            upload.missing != nil
+        case .moveFailed:
+            true
+        case .output:
+            false
         }
     }
 
