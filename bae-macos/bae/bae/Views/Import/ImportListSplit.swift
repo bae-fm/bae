@@ -41,13 +41,13 @@ struct ImportListSplit<List: View, Pane: View>: View {
     private func clamped(_ width: CGFloat, in total: CGFloat) -> CGFloat {
         let ceiling = max(
             Self.floorWidth,
-            min(Self.ceilingWidth, total - paneFloor)
+            min(Self.ceilingWidth, total - ThemeSpace.hairline - paneFloor)
         )
         return min(max(width, Self.floorWidth), ceiling)
     }
 
-    /// A hairline after the list, outside its width as the board's border is, with a wider strip that takes
-    /// the drag and shows the resize cursor.
+    /// A hairline after the list, outside its width as the board's border is,
+    /// with a wider strip that takes the drag and shows the resize cursor.
     private func divider(width: CGFloat, in total: CGFloat) -> some View {
         MacHairline(axis: .vertical)
             .overlay {
