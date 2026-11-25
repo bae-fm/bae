@@ -69,7 +69,6 @@ struct MacCoverGallery: View {
                         if let cover = content.current {
                             section(
                                 "Current cover",
-                                icon: "photo",
                                 items: [cover],
                                 count: 1
                             )
@@ -80,7 +79,6 @@ struct MacCoverGallery: View {
                             if remoteItems != .unlinked {
                                 section(
                                     "Remote sources",
-                                    icon: "globe",
                                     items: remote.items,
                                     count: remote.count
                                 )
@@ -90,7 +88,6 @@ struct MacCoverGallery: View {
                         if let files = content.files {
                             section(
                                 "Release files",
-                                icon: "folder",
                                 items: files.items,
                                 count: files.count
                             )
@@ -268,7 +265,6 @@ struct MacCoverGallery: View {
 extension MacCoverGallery {
     private func section(
         _ title: LocalizedStringKey,
-        icon: String,
         items: [CoverItem],
         count: Int
     ) -> some View {
@@ -277,14 +273,6 @@ extension MacCoverGallery {
             spacing: ThemeSpace.related + ThemeSpace.line
         ) {
             HStack(spacing: ThemeSpace.compact) {
-                // The glyph is an icon beside the heading, not as large as
-                // the heading's text, which a label would draw it at.
-                Image(systemName: icon)
-                    .themeIcon(.medium)
-                    // The board's glyph box, 15 pt square whatever the
-                    // glyph's own width.
-                    .frame(width: 15, height: 15)
-                    .accessibilityHidden(true)
                 Text(title)
                     .themeText(.heading)
                 Text(count, format: .number)

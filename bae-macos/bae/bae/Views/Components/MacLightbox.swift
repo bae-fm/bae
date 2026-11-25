@@ -267,15 +267,11 @@ extension MacLightbox {
             HStack {
                 if let onBrowseAll {
                     Button(action: onBrowseAll) {
-                        HStack(spacing: ThemeSpace.compact) {
-                            Image(systemName: "square.grid.2x2")
-                                .themeIcon(.stageBrowse)
-                            Text("Browse all images")
-                        }
-                        .padding(.horizontal, ThemeSpace.group)
-                        // As tall as the close button beside it.
-                        .frame(height: lightboxCloseButtonDiameter)
-                        .background(Theme.scrim, in: Capsule())
+                        Text("Browse all images")
+                            .padding(.horizontal, ThemeSpace.group)
+                            // As tall as the close button beside it.
+                            .frame(height: lightboxCloseButtonDiameter)
+                            .background(Theme.scrim, in: Capsule())
                     }
                     .buttonStyle(.accentPlain)
                     .foregroundStyle(Theme.onFill)
