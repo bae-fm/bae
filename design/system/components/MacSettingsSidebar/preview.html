@@ -9,11 +9,13 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  // The sidebar on the Settings window's background, which shows around its inset panel; flex keeps the panel's margins inside the fill.
+  function onWindow(c) { return h('div', { style: { display: 'flex', background: 'var(--background)' } }, c); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    N('Open pane', h(B.MacSettingsSidebar, { pane: 'Library' })),
-    N('With a status', h(B.MacSettingsSidebar, { pane: 'Library', status: 'Offline', statusPane: 'Library' })),
-    N('Status on another pane', h(B.MacSettingsSidebar, { pane: 'Appearance', status: 'Offline', statusPane: 'Library', statusTone: 'warning' })),
-    N('Status tone danger', h(B.MacSettingsSidebar, { pane: 'Library', status: 'Offline', statusPane: 'Library', statusTone: 'danger' }))));
+    N('Open pane', onWindow(h(B.MacSettingsSidebar, { pane: 'Library' }))),
+    N('With a status', onWindow(h(B.MacSettingsSidebar, { pane: 'Library', status: 'Offline', statusPane: 'Library' }))),
+    N('Status on another pane', onWindow(h(B.MacSettingsSidebar, { pane: 'Appearance', status: 'Offline', statusPane: 'Library', statusTone: 'warning' }))),
+    N('Status tone danger', onWindow(h(B.MacSettingsSidebar, { pane: 'Library', status: 'Offline', statusPane: 'Library', statusTone: 'danger' })))));
 </script>
 </body>
 </html>
