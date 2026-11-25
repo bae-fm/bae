@@ -67,12 +67,12 @@
     if (props.empty) {
       return h('div', { className: 'bae-a-welcome-home bae-a-welcome-home-empty' },
         h('div', { className: 'bae-a-welcome-home-brand' },
-          h(Logo, { size: 150, bob: true, glow: true }),
+          h(Logo, { size: 150, bob: true, glow: true, android: true }),
           h('div', { className: 'bae-a-welcome-tagline' }, 'Your music, everywhere')),
         h(AndroidWelcomeActions));
     }
     return h('div', { className: 'bae-a-welcome-home' },
-      h('div', { className: 'bae-a-welcome-home-logo' }, h(Logo, { size: 96, bob: true, glow: true })),
+      h('div', { className: 'bae-a-welcome-home-logo' }, h(Logo, { size: 96, bob: true, glow: true, android: true })),
       h('div', { className: 'bae-a-welcome-tagline bae-a-welcome-tagline-centred' }, 'Your music, everywhere'),
       h(AndroidWelcomeLibraries, { state: props.state }),
       props.children);
