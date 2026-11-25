@@ -1051,7 +1051,7 @@
    "y": 1636
   },
   "mac.library.composers.composer-open.dc.html": {
-   "h": 1360,
+   "h": 1100,
    "page": "home",
    "title": "macOS: Composers, a composer open, its first work under the page",
    "w": 1200,
@@ -3643,7 +3643,7 @@
    "y": 15556
   },
   "mac.album.record-sides.dc.html": {
-   "h": 1180,
+   "h": 1100,
    "page": "home",
    "title": "macOS: Album: a record’s sides",
    "w": 1200,
@@ -3859,7 +3859,7 @@
    "y": 4700
   },
   "mac.import.list.folder-not-watched.dc.html": {
-   "h": 1260,
+   "h": 1100,
    "page": "import",
    "title": "macOS: Import: a folder the system will not watch",
    "w": 1400,
@@ -4403,7 +4403,7 @@
    "y": 21244
   },
   "mac.album.edit.country.dc.html": {
-   "h": 1320,
+   "h": 1100,
    "page": "home",
    "title": "macOS: Edit…: the Country menu",
    "w": 1200,
@@ -4547,7 +4547,7 @@
    "y": 240
   },
   "mac.import.folder.audio-left-out.dc.html": {
-   "h": 1260,
+   "h": 1100,
    "page": "import",
    "title": "macOS: a picked release leaves audio out",
    "w": 1400,
