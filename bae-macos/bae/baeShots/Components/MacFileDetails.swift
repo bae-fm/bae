@@ -8,7 +8,11 @@ extension ShotScene {
     /// log's with neither. The audio file's kind reads "FLAC audio": the
     /// component says "Audio".
     static let macFileDetailsScenes: [ShotScene] = [
-        component("mac.component.file-details.audio-file", height: 200) {
+        component(
+            "mac.component.file-details.audio-file",
+            width: 842,
+            height: 200
+        ) {
             MacFileDetails(
                 file: BridgeFile(
                     id: "file-flac",
@@ -29,9 +33,13 @@ extension ShotScene {
                 ),
                 onClose: {}
             )
-            .frame(width: 440, alignment: .leading)
+            .frame(width: 842, alignment: .leading)
         },
-        component("mac.component.file-details.other-file", height: 160) {
+        component(
+            "mac.component.file-details.other-file",
+            width: 842,
+            height: 160
+        ) {
             MacFileDetails(
                 file: BridgeFile(
                     id: "file-log",
@@ -46,7 +54,7 @@ extension ShotScene {
                 ),
                 onClose: {}
             )
-            .frame(width: 440, alignment: .leading)
+            .frame(width: 842, alignment: .leading)
         },
     ]
 }
