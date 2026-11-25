@@ -12,28 +12,31 @@ extension CoverLightboxTests {
         "Previous image", "Next image",
     ]
 
-    /// The names of the elements in `window` that `galleryOnly` lists.
-    func galleryControls(in window: NSWindow) throws -> Set<String> {
+    /// The names of the elements in `window` that `kept` accepts, as the
+    /// accessibility tree names them.
+    func names(
+        in window: NSWindow,
+        where kept: (AccessibilityTree.Node) -> Bool
+    ) throws -> Set<String> {
         let tree = try AccessibilityTree.read(
             of: window,
             subject: "the cover gallery"
         )
         return Set(
-            tree.nodes.compactMap { $0.title ?? $0.description }
-                .filter(Self.galleryOnly.contains)
+            tree.nodes.filter(kept).compactMap { $0.title ?? $0.description }
         )
+    }
+
+    /// The names of the elements in `window` that `galleryOnly` lists.
+    func galleryControls(in window: NSWindow) throws -> Set<String> {
+        try names(in: window) {
+            ($0.title ?? $0.description).map(Self.galleryOnly.contains) ?? false
+        }
     }
 
     /// The names of the elements in `window` that have the keyboard focus.
     func focusedNames(in window: NSWindow) throws -> Set<String> {
-        let tree = try AccessibilityTree.read(
-            of: window,
-            subject: "the cover gallery"
-        )
-        return Set(
-            tree.nodes.filter { $0.focused == true }
-                .compactMap { $0.title ?? $0.description }
-        )
+        try names(in: window) { $0.focused == true }
     }
 
     @Test(
