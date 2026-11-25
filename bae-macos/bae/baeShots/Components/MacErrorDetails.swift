@@ -16,6 +16,9 @@ extension ShotScene {
                 excerpt:
                     "The sign-in settings file is missing.\nOAuthConfig: missing client id"
             )
+            // The board's panel has 2 points of margin above it, which the
+            // alert's spacing gives it in the app.
+            .padding(.top, ThemeSpace.line)
             .frame(width: 320, alignment: .leading)
         }
     ]
