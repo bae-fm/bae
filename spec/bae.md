@@ -1726,8 +1726,10 @@ asked about a clue, the title search waiting on the clues, and the artwork
 still being read, which can add barcodes and catalog numbers. The search
 form reports that bae is still reading the artwork.
 
-The pane lists every ISRC from the files' tags, separated by " · ", and
-screen readers read them all. The pane folds the catalog numbers the
+The ISRC chip shows the first ISRC from the files' tags and, when the tags
+carry more, a "+N" button with the count of the rest. Pressing it opens a
+popover that lists every ISRC, one a line, and no code in it is a button.
+Screen readers read every ISRC. The pane folds the catalog numbers the
 folder's text offers that no release confirms behind one "+N more" button,
 where N is how many there are. Pressing it lists each number as its own
 outlined Catalog # chip, a button that puts the number into the run, and the

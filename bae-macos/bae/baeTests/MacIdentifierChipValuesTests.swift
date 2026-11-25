@@ -3,27 +3,36 @@ import Testing
 
 @testable import bae
 
-/// A chip that holds several values writes every one of them.
+/// A chip that holds several values shows the first and counts the rest.
 @Suite("Identifier chip values")
 struct MacIdentifierChipValuesTests {
-    @Test("every value is written, separated by a dot")
-    func textListsEveryValue() {
-        #expect(
-            MacIdentifierChipValues.text([
-                "XX0000000001", "XX0000000002", "XX0000000003",
-            ]) == "XX0000000001 · XX0000000002 · XX0000000003"
-        )
-        #expect(
-            MacIdentifierChipValues.text(["XX0000000001"]) == "XX0000000001"
-        )
+    private let codes = (1...11).map { String(format: "XX00000000%02d", $0) }
+
+    @Test("the chip shows the first value and the count of the rest")
+    func firstValueThenTheCountOfTheRest() {
+        let list = MacIdentifierChipValues(codes)
+
+        #expect(list.first == "XX0000000001")
+        #expect(list.moreTitle == "+10")
+    }
+
+    @Test("one value has nothing behind a count")
+    func oneValueHasNoCount() {
+        let list = MacIdentifierChipValues(["XX0000000001"])
+
+        #expect(list.first == "XX0000000001")
+        #expect(list.moreTitle == nil)
+    }
+
+    @Test("the popover lists every value, one a line, none the first alone")
+    func popoverListsEveryValue() {
+        #expect(MacIdentifierChipValues(codes).lines == codes)
     }
 
     @Test("accessibility reads every value")
     func spokenListsEveryValue() {
-        let spoken = MacIdentifierChipValues.spoken([
-            "XX0000000001", "XX0000000002", "XX0000000003",
-        ])
-        for code in ["XX0000000001", "XX0000000002", "XX0000000003"] {
+        let spoken = MacIdentifierChipValues(codes).spoken
+        for code in codes {
             #expect(spoken.contains(code))
         }
     }

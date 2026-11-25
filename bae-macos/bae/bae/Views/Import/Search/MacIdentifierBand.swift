@@ -200,8 +200,8 @@ struct MacIdentifierBand: View {
     // MARK: - ISRC
 
     /// One chip with MusicBrainz's capsule, the only catalog asked about
-    /// ISRCs: every code the files' tags carry, asked in one search. It lists
-    /// every code, wrapping inside the chip.
+    /// ISRCs: every code the files' tags carry, asked in one search. It shows
+    /// the first code and, behind +N, every code.
     @ViewBuilder
     private var isrcChip: some View {
         let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.isrc)

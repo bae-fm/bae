@@ -64,7 +64,36 @@ extension ShotScene {
                 .buttonStyle(.accentPlain)
             }
         },
+        identifierChipScene("mac.component.identifier-chip.several-values") {
+            MacIdentifierChip(label: "Barcode", values: severalValues) {
+                EmptyView()
+            }
+        },
+        component(
+            "mac.component.identifier-chip.several-values-shown",
+            width: 842,
+            height: 119
+        ) {
+            ZStack(alignment: .topLeading) {
+                MacIdentifierChip(label: "Barcode", values: severalValues) {
+                    EmptyView()
+                }
+                moreValuesPopover(
+                    severalValues,
+                    buttonCenter: severalValuesMoreButtonCenter,
+                    buttonBottom: 16
+                )
+            }
+            .frame(width: 842, height: 119, alignment: .topLeading)
+        },
     ]
+
+    private static let severalValues = [
+        "0 41234 56789 2", "0 41234 56789 3", "0 41234 56789 4",
+    ]
+
+    /// Where the +N button's centre is from the chip's left.
+    private static let severalValuesMoreButtonCenter: CGFloat = 160.3
 
     private static func capsule(
         _ source: BridgeLookupCatalog,

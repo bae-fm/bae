@@ -16,10 +16,6 @@ enum MacIdentifierChipStyle {
 /// The widest a chip's value is drawn before it truncates in the middle.
 private let identifierValueWidth: CGFloat = 92
 
-/// The widest a chip holding several values grows before its values wrap onto
-/// another line.
-private let identifierListWidth: CGFloat = 280
-
 /// One identifier in the band: its kind, its value, and the providers' answers.
 struct MacIdentifierChip<Trailing: View>: View {
     let label: String
@@ -53,13 +49,10 @@ struct MacIdentifierChip<Trailing: View>: View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
             if !values.isEmpty {
-                Text(MacIdentifierChipValues.text(values))
-                    .themeText(.mono)
-                    .foregroundStyle(valueStyle)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: identifierListWidth, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityLabel(MacIdentifierChipValues.spoken(values))
+                MacIdentifierMoreValues(
+                    list: MacIdentifierChipValues(values),
+                    valueStyle: valueStyle
+                )
             }
             else if let value {
                 Text(value)
@@ -124,17 +117,91 @@ extension MacIdentifierChip where Trailing == IdentifierDash {
     }
 }
 
-/// How a chip that holds several values writes them.
-enum MacIdentifierChipValues {
-    /// Every value, separated by " · ".
-    static func text(_ values: [String]) -> String {
-        values.joined(separator: " · ")
+/// How a chip that holds several values writes them: the first, then a +N
+/// button with the count of the rest, which opens every one, a line each.
+struct MacIdentifierChipValues {
+    let values: [String]
+
+    init(_ values: [String]) {
+        self.values = values
     }
+
+    /// The value the chip shows.
+    var first: String? { values.first }
+
+    /// The button's words, the count of the values the chip does not show;
+    /// `nil` when it shows them all.
+    var moreTitle: String? {
+        values.count > 1 ? "+\(values.count - 1)" : nil
+    }
+
+    /// What the popover lists: every value, one a line.
+    var lines: [String] { values }
 
     /// Every value as accessibility reads them: a list in the viewer's
     /// language.
-    static func spoken(_ values: [String]) -> String {
+    var spoken: String {
         values.formatted(.list(type: .and, width: .standard))
+    }
+}
+
+/// The first value of a chip and, behind +N, a popover with them all. No
+/// value in it is a button.
+private struct MacIdentifierMoreValues: View {
+    let list: MacIdentifierChipValues
+    let valueStyle: AnyShapeStyle
+
+    @State
+    private var showsAll = false
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.compact) {
+            if let first = list.first {
+                Text(first)
+                    .themeText(.mono)
+                    .foregroundStyle(valueStyle)
+                    .cutLine(.prose)
+                    .frame(maxWidth: identifierValueWidth, alignment: .leading)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            if let more = list.moreTitle {
+                MacButton(kind: .plain) {
+                    showsAll.toggle()
+                } label: {
+                    Text(verbatim: more)
+                        .themeText(.chip)
+                }
+                .accent()
+                // The button reads every value, as the first alone would
+                // leave the rest unheard.
+                .accessibilityHint(list.spoken)
+                .help("Show every code")
+                .macPopover(isPresented: $showsAll, arrowEdge: .bottom) {
+                    MacIdentifierValuesPopover(lines: list.lines)
+                }
+            }
+        }
+    }
+}
+
+/// Every value of a chip, one a line, in the mono face: a 150 point column
+/// with a group space round it, set in the popover's 14 points at the sides
+/// and 4 above and below, as the board draws it.
+struct MacIdentifierValuesPopover: View {
+    let lines: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                Text(verbatim: line)
+                    .themeText(.mono)
+                    .foregroundStyle(Theme.textPrimary)
+            }
+        }
+        .padding(ThemeSpace.group)
+        .frame(width: 150, alignment: .leading)
+        .padding(.horizontal, ThemeSpace.group + ThemeSpace.line)
+        .padding(.vertical, ThemeSpace.inline)
     }
 }
 

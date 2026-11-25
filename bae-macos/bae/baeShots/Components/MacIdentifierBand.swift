@@ -37,6 +37,13 @@ extension ShotScene {
             listsCatalogCandidates: true
         ),
         identifierBandScene(
+            "mac.component.identifier-band.isrcs",
+            isrcsRun
+        ),
+        isrcsShownScene(
+            "mac.component.identifier-band.isrcs-shown"
+        ),
+        identifierBandScene(
             "mac.component.identifier-band.struck",
             struckRun
         ),
@@ -85,6 +92,68 @@ extension ShotScene {
         search: .notNeeded,
         readingArtwork: false
     )
+
+    /// The eleven ISRCs the files' tags carry, as MusicBrainz answered them.
+    static let boardIsrcs = (1...11)
+        .map {
+            String(format: "USHR192001%02d", $0)
+        }
+
+    /// The board's found run with the files' ISRCs, which MusicBrainz found
+    /// two releases for.
+    private static var isrcsRun: BridgeIdentifyRun {
+        var run = PreviewData.identifyRunBandBoard
+        run.isrc = .read(
+            isrcs: boardIsrcs,
+            lookup: .found(count: 2, groups: [])
+        )
+        return run
+    }
+
+    /// The ISRC chip's +N pressed: the popover under the button lists every
+    /// code, drawn in place as the app draws it, 10 points under the chip.
+    private static func isrcsShownScene(_ id: String) -> ShotScene {
+        component(id, width: 842, height: 263) {
+            ZStack(alignment: .topLeading) {
+                MacIdentifierBand(
+                    run: isrcsRun,
+                    onToggleLookup: { _ in },
+                    onToggleCatalogAgreement: { _ in },
+                    onRetryFailed: {},
+                    onEditTitleSearch: { _, _ in }
+                )
+                moreValuesPopover(
+                    boardIsrcs,
+                    buttonCenter: isrcsMoreButtonCenter,
+                    buttonBottom: 18
+                )
+            }
+            .frame(width: 842, height: 263, alignment: .topLeading)
+        }
+    }
+
+    /// Where the +N button's centre is from the left of the band, in the
+    /// board's found run with ISRCs.
+    private static let isrcsMoreButtonCenter: CGFloat = 611.5
+
+    /// A chip's popover of every value, drawn in place as the board draws
+    /// it: its right edge 75 points right of the +N button's centre, which is
+    /// `buttonCenter` points from the left, its body 10 points under the
+    /// button's bottom edge `buttonBottom`, its arrow on the button.
+    static func moreValuesPopover(
+        _ lines: [String],
+        buttonCenter: CGFloat,
+        buttonBottom: CGFloat
+    ) -> some View {
+        // BaeKit's `MacPopoverFace` draws a 7 point arrow and a room of 40
+        // points for the shadow around the body.
+        let width: CGFloat = 150 + 2 * 14
+        return MacPopoverInPlace(arrowSide: .top, arrowOffset: width - 75) {
+            MacIdentifierValuesPopover(lines: lines)
+        }
+        .padding(.leading, buttonCenter + 75 - width - 40)
+        .padding(.top, buttonBottom + 10 - 7 - 40)
+    }
 
     /// A Disc ID that two MusicBrainz releases carry, and a catalog number
     /// the person struck out of the run.
