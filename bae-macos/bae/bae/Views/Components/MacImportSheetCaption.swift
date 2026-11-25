@@ -39,6 +39,9 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, ThemeSpace.related)
+        // The board's rule is a border, so it takes its own height above the
+        // caption's padding.
+        .padding(.top, ThemeSpace.hairline)
         .overlay(alignment: .top) { MacHairline() }
     }
 
