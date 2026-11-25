@@ -114,9 +114,7 @@ public struct MacSidePause: View {
             }
 
             MacCheckbox(isOn: $keepPausing) {
-                // The board stretches the box's row across the card.
                 Text(verbatim: prompt.keepPausingLabel())
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             // Unchecking turns the setting off, which also ends these
             // prompts, so the card says where to turn it back on.
