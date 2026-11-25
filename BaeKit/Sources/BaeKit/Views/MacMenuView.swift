@@ -57,6 +57,67 @@
         static func faceHeight(of entries: [MacMenuEntry]) -> CGFloat {
             2 * padding + entries.reduce(0) { $0 + height(of: $1) }
         }
+
+        /// The room a face keeps from the edges of the screen's visible
+        /// frame.
+        static let screenMargin: CGFloat = 4
+
+        /// The tallest a face is on a screen whose visible frame is
+        /// `visibleHeight` tall.
+        static func tallestFace(onScreenOf visibleHeight: CGFloat) -> CGFloat {
+            visibleHeight - 2 * screenMargin
+        }
+
+        /// The face's height: all its lines, or `tallest` when they don't
+        /// fit, and the face then scrolls.
+        static func faceHeight(of entries: [MacMenuEntry], tallest: CGFloat?)
+            -> CGFloat
+        {
+            let all = faceHeight(of: entries)
+            guard let tallest else { return all }
+            return min(all, tallest)
+        }
+
+        /// How far the lines can scroll in a face `faceHeight` tall: the
+        /// lines' height beyond what the face shows between its padding.
+        static func scrollRange(of entries: [MacMenuEntry], faceHeight: CGFloat)
+            -> CGFloat
+        {
+            max(0, self.faceHeight(of: entries) - faceHeight)
+        }
+
+        /// `offset` kept inside the face's scroll range.
+        static func clampedScroll(
+            _ offset: CGFloat,
+            of entries: [MacMenuEntry],
+            faceHeight: CGFloat
+        ) -> CGFloat {
+            min(
+                max(0, offset),
+                scrollRange(of: entries, faceHeight: faceHeight)
+            )
+        }
+
+        /// The scroll offset that shows line `row` whole, moving from
+        /// `offset` no further than it must.
+        static func scroll(
+            toShow row: Int,
+            of entries: [MacMenuEntry],
+            faceHeight: CGFloat,
+            from offset: CGFloat
+        ) -> CGFloat {
+            let line = frames(of: entries, width: 0)[row]
+            // The lines show between the face's top and bottom padding.
+            let shown = faceHeight - 2 * padding
+            var target = offset
+            if line.minY - padding < target {
+                target = line.minY - padding
+            }
+            else if line.maxY - padding > target + shown {
+                target = line.maxY - padding - shown
+            }
+            return clampedScroll(target, of: entries, faceHeight: faceHeight)
+        }
     }
 
     /// What one open menu shows and which line the highlight is on.
@@ -65,6 +126,11 @@
     final class MacMenuLevel {
         var entries: [MacMenuEntry]
         var highlighted: Int?
+        /// The face's height when the lines don't fit the screen and the
+        /// face scrolls them; nil when it shows them all.
+        var scrollingHeight: CGFloat?
+        /// How far the lines have scrolled up, in points.
+        var scrollOffset: CGFloat = 0
 
         init(entries: [MacMenuEntry], highlighted: Int? = nil) {
             self.entries = entries
@@ -97,28 +163,48 @@
             }
         }
 
-        private var face: some View {
+        private var lines: some View {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(level.entries.indices, id: \.self) { index in
                     line(index)
                 }
             }
-            .padding(MacMenuMetrics.padding)
-            .fixedSize()
-            // The shadow belongs to the face's shape alone: on the whole
-            // face it would blur the highlighted line's shadow into the
-            // lines around it.
-            .background(
-                ShadowedFace(
-                    cornerRadius: MacMenuMetrics.cornerRadius,
-                    blur: MacMenuMetrics.shadowBlur,
-                    offset: MacMenuMetrics.shadowOffset
+        }
+
+        @ViewBuilder
+        private var scrolledLines: some View {
+            if let height = level.scrollingHeight {
+                lines
+                    .offset(y: -level.scrollOffset)
+                    .frame(
+                        height: height - 2 * MacMenuMetrics.padding,
+                        alignment: .top
+                    )
+                    .clipped()
+            }
+            else {
+                lines
+            }
+        }
+
+        private var face: some View {
+            scrolledLines
+                .padding(MacMenuMetrics.padding)
+                .fixedSize()
+                // The shadow belongs to the face's shape alone: on the whole
+                // face it would blur the highlighted line's shadow into the
+                // lines around it.
+                .background(
+                    ShadowedFace(
+                        cornerRadius: MacMenuMetrics.cornerRadius,
+                        blur: MacMenuMetrics.shadowBlur,
+                        offset: MacMenuMetrics.shadowOffset
+                    )
                 )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: MacMenuMetrics.cornerRadius)
-                    .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
-            )
+                .overlay(
+                    RoundedRectangle(cornerRadius: MacMenuMetrics.cornerRadius)
+                        .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
+                )
         }
 
         private func accessoryColor(

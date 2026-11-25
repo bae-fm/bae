@@ -6738,6 +6738,8 @@ On the Mac, the app indicates which item a pop-up currently selects.
 The app highlights an enabled menu item when you point anywhere on its row,
 including its words, and chooses it when you click there.
 People can use arrow keys, Return, Escape and typed letters in menus.
+A Mac menu taller than the screen fits the screen and scrolls, and moving the
+highlight scrolls the highlighted item into view.
 Clicking outside a menu closes it. A context click opens the menu for
 the item clicked. VoiceOver identifies menus and reads a control that
 opens one as a pop-up that opens a menu. Pressing the pop-up opens the menu. When a placeholder names a

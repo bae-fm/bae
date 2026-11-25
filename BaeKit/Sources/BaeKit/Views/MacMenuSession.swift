@@ -16,6 +16,16 @@
     /// A borderless panel that can take the keyboard.
     private final class MacMenuPanel: NSPanel {
         override var canBecomeKey: Bool { true }
+
+        /// The panel keeps the frame the menu gave it. Its clear room for
+        /// the shadow makes a tall menu's panel taller than the screen's
+        /// visible frame, and AppKit would move the face with it.
+        override func constrainFrameRect(
+            _ frameRect: NSRect,
+            to screen: NSScreen?
+        ) -> NSRect {
+            frameRect
+        }
     }
 
     /// A menu line as VoiceOver reads it.
@@ -141,6 +151,7 @@
             levels = [level]
             if case .over(_, let chosen) = placement {
                 level.model.highlighted = chosen
+                reveal(level: 0)
             }
             parent.addChildWindow(level.panel, ordered: .above)
             level.panel.makeKeyAndOrderFront(nil)
@@ -182,6 +193,7 @@
                 height: MacMenuMetrics.faceHeight(of: entries)
             )
             let face = position(size, placement: placement, entries: entries)
+            if face.height < size.height { model.scrollingHeight = face.height }
             let panel = MacMenuPanel(
                 contentRect: face.insetBy(dx: -room, dy: -room),
                 styleMask: [.borderless, .nonactivatingPanel],
@@ -198,7 +210,7 @@
             host.frame = NSRect(origin: .zero, size: panel.frame.size)
             host.items = accessibilityItems(
                 entries,
-                size: size,
+                size: face.size,
                 level: index,
                 host: host,
                 model: model
@@ -206,35 +218,47 @@
             return OpenLevel(model: model, panel: panel, face: face)
         }
 
-        /// The face's frame in screen coordinates, kept on the screen.
+        /// The face's frame in screen coordinates, kept on the screen. A
+        /// face taller than the screen's visible frame is cut to fit it, and
+        /// scrolls its lines.
         private func position(
-            _ size: NSSize,
+            _ fullSize: NSSize,
             placement: MacMenuPlacement,
             entries: [MacMenuEntry]
         ) -> NSRect {
-            var origin: NSPoint
-            switch placement {
-            case .below(let rect):
-                origin = NSPoint(x: rect.minX, y: rect.minY - 2 - size.height)
-            case .over(let rect, let chosen):
-                let frames = MacMenuMetrics.frames(
-                    of: entries,
-                    width: size.width
-                )
-                let down = chosen.map { frames[$0].midY } ?? 0
-                origin = NSPoint(
-                    x: rect.minX - MacMenuMetrics.wordsInset,
-                    y: rect.midY + down - size.height
-                )
-            case .at(let point):
-                origin = NSPoint(x: point.x, y: point.y - size.height)
+            func originFor(height: CGFloat) -> NSPoint {
+                switch placement {
+                case .below(let rect):
+                    return NSPoint(x: rect.minX, y: rect.minY - 2 - height)
+                case .over(let rect, let chosen):
+                    let frames = MacMenuMetrics.frames(
+                        of: entries,
+                        width: fullSize.width
+                    )
+                    let down = chosen.map { frames[$0].midY } ?? 0
+                    return NSPoint(
+                        x: rect.minX - MacMenuMetrics.wordsInset,
+                        y: rect.midY + down - height
+                    )
+                case .at(let point):
+                    return NSPoint(x: point.x, y: point.y - height)
+                }
             }
+            var size = fullSize
+            var origin = originFor(height: size.height)
             let screen =
                 NSScreen.screens.first {
                     $0.frame.contains(NSPoint(x: origin.x, y: origin.y))
                         || $0.frame.contains(NSEvent.mouseLocation)
                 } ?? parent.screen ?? NSScreen.main
             if let visible = screen?.visibleFrame {
+                size.height = MacMenuMetrics.faceHeight(
+                    of: entries,
+                    tallest: MacMenuMetrics.tallestFace(
+                        onScreenOf: visible.height
+                    )
+                )
+                origin = originFor(height: size.height)
                 // Flip above the anchor, or up from the point, when there is
                 // no room below.
                 if origin.y < visible.minY, case .below(let rect) = placement {
@@ -245,10 +269,11 @@
                 {
                     origin.y = point.y
                 }
-                origin.x = min(origin.x, visible.maxX - size.width - 4)
-                origin.x = max(origin.x, visible.minX + 4)
-                origin.y = min(origin.y, visible.maxY - size.height - 4)
-                origin.y = max(origin.y, visible.minY + 4)
+                let margin = MacMenuMetrics.screenMargin
+                origin.x = min(origin.x, visible.maxX - size.width - margin)
+                origin.x = max(origin.x, visible.minX + margin)
+                origin.y = min(origin.y, visible.maxY - size.height - margin)
+                origin.y = max(origin.y, visible.minY + margin)
             }
             return NSRect(origin: origin, size: size)
         }
@@ -281,7 +306,8 @@
                 element.setAccessibilityFrameInParentSpace(
                     NSRect(
                         x: room + frame.minX,
-                        y: room + size.height - frame.maxY,
+                        y: room + size.height
+                            - (frame.maxY - model.scrollOffset),
                         width: frame.width,
                         height: frame.height
                     )
@@ -312,7 +338,23 @@
             if level.model.highlighted.map({ $0 >= entries.count }) ?? false {
                 level.model.highlighted = nil
             }
-            let height = MacMenuMetrics.faceHeight(of: entries)
+            let tallest = (level.panel.screen ?? parent.screen ?? NSScreen.main)
+                .map {
+                    MacMenuMetrics.tallestFace(
+                        onScreenOf: $0.visibleFrame.height
+                    )
+                }
+            let height = MacMenuMetrics.faceHeight(
+                of: entries,
+                tallest: tallest
+            )
+            level.model.scrollingHeight =
+                height < MacMenuMetrics.faceHeight(of: entries) ? height : nil
+            level.model.scrollOffset = MacMenuMetrics.clampedScroll(
+                level.model.scrollOffset,
+                of: entries,
+                faceHeight: height
+            )
             var face = level.face
             face.origin.y += face.height - height
             face.size.height = height
@@ -344,6 +386,7 @@
             eventMonitor = NSEvent.addLocalMonitorForEvents(
                 matching: [
                     .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown,
+                    .scrollWheel,
                 ]
             ) { [weak self] event in
                 guard let self else { return event }
@@ -402,6 +445,9 @@
                 key(event)
                 return nil
             }
+            if event.type == .scrollWheel {
+                return scroll(event) ? nil : event
+            }
             // A click anywhere outside the menus' faces closes it, and goes
             // no further.
             let screenPoint =
@@ -419,6 +465,7 @@
         private func key(_ event: NSEvent) {
             guard let level = levels.last else { return }
             let model = level.model
+            defer { reveal(level: levels.count - 1) }
             switch event.keyCode {
             case 126: move(model, by: -1)
             case 125: move(model, by: 1)
@@ -443,6 +490,63 @@
                     typeToSelect(characters, in: model)
                 }
             }
+        }
+
+        /// Scrolls level `index` so its highlighted line shows, and moves the
+        /// lines' accessibility frames with it.
+        private func reveal(level index: Int) {
+            guard levels.indices.contains(index) else { return }
+            let level = levels[index]
+            let model = level.model
+            if let row = model.highlighted, model.scrollingHeight != nil,
+                row < model.entries.count
+            {
+                model.scrollOffset = MacMenuMetrics.scroll(
+                    toShow: row,
+                    of: model.entries,
+                    faceHeight: level.face.height,
+                    from: model.scrollOffset
+                )
+            }
+            refreshAccessibilityItems(level)
+        }
+
+        private func refreshAccessibilityItems(_ level: OpenLevel) {
+            guard let host = level.panel.contentView as? MenuHostingView,
+                let index = levels.firstIndex(where: {
+                    $0.panel === level.panel
+                })
+            else { return }
+            host.items = accessibilityItems(
+                level.model.entries,
+                size: level.face.size,
+                level: index,
+                host: host,
+                model: level.model
+            )
+        }
+
+        /// Scrolls the face under the pointer by a wheel or trackpad event;
+        /// false when the pointer is on no scrolling face.
+        private func scroll(_ event: NSEvent) -> Bool {
+            let point = NSEvent.mouseLocation
+            guard
+                let level = levels.last(where: { $0.face.contains(point) }),
+                level.model.scrollingHeight != nil
+            else { return false }
+            // Scrolling content down is a positive delta; a wheel's notches
+            // count lines.
+            let delta =
+                event.hasPreciseScrollingDeltas
+                ? event.scrollingDeltaY
+                : event.scrollingDeltaY * MacMenuMetrics.itemHeight
+            level.model.scrollOffset = MacMenuMetrics.clampedScroll(
+                level.model.scrollOffset - delta,
+                of: level.model.entries,
+                faceHeight: level.face.height
+            )
+            refreshAccessibilityItems(level)
+            return true
         }
 
         private func move(_ model: MacMenuLevel, by step: Int) {
@@ -543,7 +647,9 @@
             // The submenu's first line sits level with the row, its face
             // overlapping the parent's edge by a few points.
             let top =
-                parentLevel.face.maxY - rowFrame.minY + MacMenuMetrics.padding
+                parentLevel.face.maxY
+                - (rowFrame.minY - parentLevel.model.scrollOffset)
+                + MacMenuMetrics.padding
             let anchor = NSRect(
                 x: parentLevel.face.maxX - 4,
                 y: top - MacMenuMetrics.itemHeight,
@@ -566,6 +672,7 @@
             placed.model.highlighted = placed.model.entries.firstIndex {
                 $0.isChoosable
             }
+            reveal(level: levels.count - 1)
             parent.addChildWindow(placed.panel, ordered: .above)
             placed.panel.orderFront(nil)
         }
