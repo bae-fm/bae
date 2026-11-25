@@ -46,8 +46,13 @@ struct Logo: View {
     }
 
     private var sheepHeight: CGFloat { size * Proportion.sheepHeight }
-    private var wordWidth: CGFloat { size * Proportion.wordWidth }
-    private var wordHeight: CGFloat { wordWidth / Proportion.wordAspect }
+    // The word's box and the gap are whole points, as the board and the
+    // Android app draw them.
+    private var wordWidth: CGFloat { (size * Proportion.wordWidth).rounded() }
+    private var wordHeight: CGFloat {
+        (wordWidth / Proportion.wordAspect).rounded()
+    }
+    private var gap: CGFloat { (size * Proportion.gap).rounded() }
 
     var body: some View {
         mark
@@ -57,7 +62,7 @@ struct Logo: View {
         let still = reduceMotion || !bob || fixedNow != nil
         return TimelineView(.animation(paused: still)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
-            VStack(spacing: size * Proportion.gap) {
+            VStack(spacing: gap) {
                 // The sheep's slot is the glow's anchor, so the glow stays
                 // still while the sheep floats over it.
                 Color.clear

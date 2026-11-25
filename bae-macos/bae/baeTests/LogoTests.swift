@@ -14,6 +14,14 @@ struct LogoTests {
         #expect(bobbing == still)
     }
 
+    /// The word's box is whole points, as the board and the Android app
+    /// draw it: 0.52 of the sheep's 120 is 62.4, drawn 62 by 29.
+    @Test
+    func theWordsBoxIsWholePoints() async throws {
+        let word = try await wordBounds(bob: false)
+        #expect(word.size == CGSize(width: 62, height: 29))
+    }
+
     private func wordBounds(bob: Bool) async throws -> CGRect {
         let size = CGSize(width: 280, height: 180)
         let view = Logo(size: 120, bob: bob, glow: true)
