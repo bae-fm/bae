@@ -63,7 +63,7 @@ extension ShotScene {
         buttonX: CGFloat,
         buttonTop: CGFloat
     ) -> some View {
-        let buttonWidth: CGFloat = 185.25
+        let buttonWidth: CGFloat = 185.484375
         let width = ReleaseRecordsCard.width
         return MacPopoverInPlace(arrowSide: .top, arrowOffset: width / 2) {
             ReleaseRecordsCard(records: records)
