@@ -99,7 +99,6 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
         field.delegate = context.coordinator
         field.target = context.coordinator
         field.action = #selector(Coordinator.submit(_:))
-        field.cell?.usesSingleLineMode = true
         return field
     }
 
