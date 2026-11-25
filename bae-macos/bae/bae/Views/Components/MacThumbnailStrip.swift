@@ -104,5 +104,9 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
+        .frame(
+            width: MacThumbnailStripLayout.thumbnailSize,
+            height: MacThumbnailStripLayout.thumbnailSize
+        )
     }
 }
