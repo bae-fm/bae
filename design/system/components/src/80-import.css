@@ -129,13 +129,15 @@
 .bae-m-icell:hover:not(:disabled), .bae-m-icell:focus { background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); }
 .bae-m-icell.bae-m-icell-large { height: 30px; font: var(--type-title-weight) var(--type-title-size) var(--font-sans); }
 .bae-m-icell.bae-m-icell-quiet { color: var(--text-tertiary); }
-/* A fitted field is as wide as its value, and 96pt while empty, so there is somewhere to click. */
-.bae-m-icell.bae-m-icell-fit { flex: none; width: auto; field-sizing: content; min-width: 2ch; }
+/* A fitted field is as wide as its value, up to its column's edge, and 96pt while empty, so there is somewhere to click. */
+.bae-m-icell.bae-m-icell-fit { width: auto; max-width: calc(100% + var(--space-compact)); field-sizing: content; min-width: 2ch; }
 .bae-m-icell.bae-m-icell-fit:placeholder-shown { min-width: 96px; }
-/* In the identity's column a fitted field keeps its own width, up to the column's. */
-.bae-m-idraft-id > .bae-m-icell-fit { align-self: flex-start; max-width: calc(100% + var(--space-compact)); }
+/* In the identity's column a fitted field keeps its own width. */
+.bae-m-idraft-id > .bae-m-icell-fit { align-self: flex-start; }
 .bae-m-icell.bae-m-icell-mono { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-m-idraft-entry { display: flex; align-items: center; gap: var(--space-compact); min-width: 0; }
+/* One row of a list of fields: each field and ⊗ as wide as its content. Where they don't all fit, the widest field is cut first, so ⊗ ends at the column's edge, as an HStack divides its width. */
+.bae-m-idraft-fields { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, max-content); align-items: center; gap: var(--space-compact); min-width: 0; }
 .bae-m-idraft-media { gap: var(--space-group); }
 .bae-m-idraft-add { flex: none; display: inline-flex; align-items: center; gap: var(--space-line); }
 /* The Country menu drawn open (`countryOpen`), under its face as a pull-down menu. */

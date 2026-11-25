@@ -127,7 +127,7 @@
   // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
   function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to, off: props.off }); }
   // A field drawn as the value it holds until the pointer is over it or it has focus, for the draft's values and a track's cells: `label` names it, `placeholder` shows while it is empty. `large` sets it in the album title's size; `quiet` draws its value in the tertiary colour, as the album year.
-  // `fit`: as wide as its value, and 96pt while empty, for a field in a list row and the album title and year; `mono`: its value in the mono face, as a catalog number or a barcode. `off`: dimmed and disabled, as a field in a disabled fieldset is.
+  // `fit`: as wide as its value, up to its column's edge, and 96pt while empty, for a field in a list row and the album title and year; `mono`: its value in the mono face, as a catalog number or a barcode. `off`: dimmed and disabled, as a field in a disabled fieldset is.
   function MacInlineField(props) {
     return h('input', { type: 'text', disabled: props.off ? true : null, className: cx('bae-m-icell', props.large && 'bae-m-icell-large', props.quiet && 'bae-m-icell-quiet', props.fit && 'bae-m-icell-fit', props.mono && 'bae-m-icell-mono'), defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false });
   }
@@ -192,7 +192,7 @@
     var rows = function (name, entries, draw, noun) {
       var addLine = addEntry('Add ' + name.toLowerCase(), false, off);
       if (!entries.length) return [[name, addLine]];
-      return entries.map(function (e, i) { return [i === 0 ? name : '', h('span', { className: 'bae-m-idraft-entry' }, draw(e), removeEntry(noun(e), off))]; }).concat([['', addLine]]);
+      return entries.map(function (e, i) { return [i === 0 ? name : '', h('span', { className: 'bae-m-idraft-fields' }, draw(e), removeEntry(noun(e), off))]; }).concat([['', addLine]]);
     };
     // `media`: each carrier with how many of it there are, as "2×CD", comma-separated; a carrier alone is one. Each is its name, ×count, a MacStepper and ⊗, on one line, then Add, a menu of the carriers not yet listed.
     var media = list(props.media).map(function (m) { var p = m.split('×'); return p.length > 1 ? { count: p[0], carrier: p[1] } : { count: '1', carrier: p[0] }; });

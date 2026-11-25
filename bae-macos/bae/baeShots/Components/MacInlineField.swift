@@ -51,6 +51,12 @@ extension ShotScene {
             fits: true
         ),
         inlineFieldScene(
+            "mac.component.inline-field.fits-long-value",
+            placeholder: "—",
+            value: "Harbor Records and the Northern Sound Company",
+            fits: true
+        ),
+        inlineFieldScene(
             "mac.component.inline-field.fits-empty",
             placeholder: "—",
             value: "",

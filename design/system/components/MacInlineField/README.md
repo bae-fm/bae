@@ -5,7 +5,7 @@ A field drawn as the value it holds until the pointer is over it or it has focus
 - `label` names the field; `value` is the text it holds; `placeholder` shows while it is empty.
 - `large` sets the field in the album title's size.
 - `quiet` draws its value in the tertiary colour, as the album year.
-- `fit` makes the field as wide as its value, and 96pt while it is empty, for a field in a list row, as a label's name and catalog number, and for the album title and year.
+- `fit` makes the field as wide as its value, up to its column's edge, and 96pt while it is empty, for a field in a list row, as a label's name and catalog number, and for the album title and year.
 - `mono` sets its value in the mono face, as a catalog number or a barcode.
 - `off` dims and disables the field, as a disabled fieldset around it does.
 
