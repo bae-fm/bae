@@ -27,7 +27,11 @@ extension ShotScene {
             height: 280,
             images: PreviewData.artImageStore()
         ) {
-            findOnline(height: 280, state: PreviewData.searchStateIdle)
+            findOnline(
+                height: 280,
+                state: PreviewData.searchStateIdle,
+                atContentHeight: true
+            )
         },
         component(
             "mac.component.find-online.sentence",
@@ -59,7 +63,8 @@ extension ShotScene {
         height: CGFloat,
         state: ImportSearchState = PreviewData.searchStateNotFound,
         showsDiscogsBar: Bool = true,
-        keepsOwnDraft: Bool = true
+        keepsOwnDraft: Bool = true,
+        atContentHeight: Bool = false
     ) -> some View {
         importStores(
             MacFindOnline.preview(
@@ -68,9 +73,9 @@ extension ShotScene {
                 keepsOwnDraft: keepsOwnDraft
             )
             .frame(width: 842)
-            // The pane is never as short as its content in the app's window,
-            // so it keeps the height its content needs.
-            .fixedSize(horizontal: false, vertical: true)
+            // The app's window never makes the pane as short as its content,
+            // and a pane that short cuts the Discogs bar's words.
+            .fixedSize(horizontal: false, vertical: atContentHeight)
             .frame(height: height, alignment: .top)
         )
     }
