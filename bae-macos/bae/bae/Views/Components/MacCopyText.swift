@@ -33,6 +33,9 @@ struct MacCopyText: View {
                 Image(systemName: "doc.on.doc")
                     .themeIcon(.small)
                     .opacity(hover || buttonFocused ? 1 : 0)
+                    // The board's 16 pt square for the glyph.
+                    .frame(width: 16, height: 16)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(IconHoverButtonStyle().accentFocus())
             .focused($buttonFocused)
