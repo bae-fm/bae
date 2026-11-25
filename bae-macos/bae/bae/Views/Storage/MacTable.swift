@@ -682,7 +682,7 @@ final class StorageTableHeader: NSTableHeaderView {
         NSColor(Theme.hairline).setFill()
         NSRect(
             x: bounds.minX,
-            y: bounds.minY,
+            y: bounds.maxY - ThemeSpace.hairline,
             width: bounds.width,
             height: ThemeSpace.hairline
         )
