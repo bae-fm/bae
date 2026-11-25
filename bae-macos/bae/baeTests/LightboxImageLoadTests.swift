@@ -48,4 +48,13 @@ struct LightboxImageLoadTests {
 
         #expect(await failure(of: images) == .undecodable)
     }
+
+    @Test("An error that is not core's is a bug and offers no Retry")
+    func otherErrorsAreBugs() async throws {
+        let images = ImageStore(fetchRemoteImage: { _, _ in
+            throw ImageStoreUnavailable()
+        })
+
+        #expect(await failure(of: images) == .bug)
+    }
 }

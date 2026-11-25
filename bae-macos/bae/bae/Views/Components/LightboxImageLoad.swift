@@ -102,7 +102,10 @@ final class LightboxImageLoad {
             logger.warning(
                 "Failed to load lightbox image \(image.description): \(error)"
             )
-            fail(current, LightboxFailure(core: error))
+            fail(
+                current,
+                LightboxFailure(of: error, operation: "load a lightbox image")
+            )
             return nil
         }
     }
@@ -143,9 +146,19 @@ struct LightboxFailure: Equatable {
     let error: DisplayError?
     let offersRetry: Bool
 
-    /// A failure core reported, whose error says whether trying again can
-    /// help. Without an error there is nothing that says it can.
-    init(core error: any Error) {
+    /// Why `operation` failed with `error`: a failure core reported, whose
+    /// error says whether trying again can help, or else a bug in the app,
+    /// which goes to the bug report and offers no Retry.
+    init(of error: any Error, operation: String) {
+        guard error is BridgeError else {
+            logger.reportBug(
+                operation: operation,
+                detail: String(reflecting: error),
+                to: CoreBugReporter()
+            )
+            self = .bug
+            return
+        }
         let shown = DisplayError(error)
         self.error = shown
         offersRetry = shown?.offersRetry ?? false

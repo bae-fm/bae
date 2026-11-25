@@ -61,9 +61,9 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -304,7 +304,12 @@ private fun GalleryImage(
                     advice = null,
                     error = failed.error,
                     look = NoticeLook.CENTERED,
-                    action = if (failed.offersRetry) failed.error.retryAction { attempt++ } else null,
+                    action =
+                        if (failed.offersRetry) {
+                            ErrorAction(stringResource(R.string.retry)) { attempt++ }
+                        } else {
+                            null
+                        },
                 )
             }
 

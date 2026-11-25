@@ -2948,8 +2948,8 @@ tile, because the picture's file cannot be read or the network is down, the
 viewer asks for no more
 tiles of that picture and shows the failure as it shows a picture that did
 not load, with Retry when core says trying again can help, which loads the
-picture and its tiles again; a picture file the device cannot decode shows
-the same failure with no Retry; a bug in the viewer shows it with no Retry too,
+picture and its tiles again; a picture with no bytes shows the same failure
+with Retry, and a picture file the device cannot decode shows it with no Retry; a bug in the viewer shows it with no Retry too,
 and goes to the bug report.
 Pinching zooms in and out, and the picture stays zoomed until the person
 zooms out or moves to another picture; while it is zoomed, the person drags

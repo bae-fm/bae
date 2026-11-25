@@ -273,16 +273,8 @@ final class PictureTileSource: @unchecked Sendable {
             logger.warning(
                 "No tiles of \(String(describing: self.picture)): \(String(reflecting: error))"
             )
-            await failed(LightboxFailure(core: error))
         }
-        else {
-            logger.reportBug(
-                operation: "zoom a picture",
-                detail: String(reflecting: error),
-                to: CoreBugReporter()
-            )
-            await failed(.bug)
-        }
+        await failed(LightboxFailure(of: error, operation: "zoom a picture"))
     }
 
     private static func name(_ key: PictureTileKey) -> NSString {
