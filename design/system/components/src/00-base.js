@@ -76,7 +76,7 @@
   var SYMBOL = { back: 'arrow_back', edit: 'edit', chevron: 'chevron_right', expand: 'expand_more', more: 'more_vert', search: 'search', add: 'add', refresh: 'refresh', copy: 'content_copy',
     play: 'play_arrow', pause: 'pause', previous: 'skip_previous', next: 'skip_next', cast: 'cast', queue: 'list', repeat: 'repeat', nowplaying: 'volume_up', down: 'keyboard_arrow_down',
     warning: 'error', download: 'download', downloaded: 'download_done', pin: 'keep', unpin: 'keep_off', close: 'close', retry: 'refresh', remove: 'delete', drag: 'drag_handle', shuffle: 'shuffle', check: 'check', speakerbox: 'speaker', tv: 'tv' };
-  // Android's icons are Material Symbols Rounded at weight 400 and optical size 24: each is Google's path in its box of 960 units, which runs from -960 to 0 vertically, as the app's SymbolIcons draws it. Play, pause, previous and next are the filled forms; every other symbol, the status ones among them, is the outline.
+  // Android's icons are Material Symbols Rounded at weight 400 and optical size 24: each is Google's path in its box of 960 units, which runs from -960 to 0 vertically, as the app's SymbolIcons draws it. Play, pause, previous, next and favorite are the filled forms; every other symbol, the status ones among them, is the outline.
   var SYMBOL_PATH = {
     arrow_back: 'm313-440 196 196q12 12 11.5 28T508-188q-12 11-28 11.5T452-188L188-452q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l264-264q11-11 27.5-11t28.5 11q12 12 12 28.5T508-715L313-520h447q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H313Z',
     edit: 'M200-200h57l391-391-57-57-391 391v57Zm-40 80q-17 0-28.5-11.5T120-160v-97q0-16 6-30.5t17-25.5l505-504q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L313-143q-11 11-25.5 17t-30.5 6h-97Zm600-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z',
@@ -110,13 +110,15 @@
     play_arrow: 'M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Z',
     pause: 'M640-200q-33 0-56.5-23.5T560-280v-400q0-33 23.5-56.5T640-760q33 0 56.5 23.5T720-680v400q0 33-23.5 56.5T640-200Zm-320 0q-33 0-56.5-23.5T240-280v-400q0-33 23.5-56.5T320-760q33 0 56.5 23.5T400-680v400q0 33-23.5 56.5T320-200Z',
     skip_previous: 'M220-280v-400q0-17 11.5-28.5T260-720q17 0 28.5 11.5T300-680v400q0 17-11.5 28.5T260-240q-17 0-28.5-11.5T220-280Zm458-1L430-447q-9-6-13.5-14.5T412-480q0-10 4.5-18.5T430-513l248-166q5-4 11-5t11-1q16 0 28 11t12 29v330q0 18-12 29t-28 11q-5 0-11-1t-11-5Z',
-    skip_next: 'M660-280v-400q0-17 11.5-28.5T700-720q17 0 28.5 11.5T740-680v400q0 17-11.5 28.5T700-240q-17 0-28.5-11.5T660-280Zm-440-35v-330q0-18 12-29t28-11q5 0 11 1t11 5l248 166q9 6 13.5 14.5T548-480q0 10-4.5 18.5T530-447L282-281q-5 4-11 5t-11 1q-16 0-28-11t-12-29Z'
+    skip_next: 'M660-280v-400q0-17 11.5-28.5T700-720q17 0 28.5 11.5T740-680v400q0 17-11.5 28.5T700-240q-17 0-28.5-11.5T660-280Zm-440-35v-330q0-18 12-29t28-11q5 0 11 1t11 5l248 166q9 6 13.5 14.5T548-480q0 10-4.5 18.5T530-447L282-281q-5 4-11 5t-11 1q-16 0-28-11t-12-29Z',
+    favorite: 'M480-147q-14 0-28.5-5T426-168l-69-63q-106-97-191.5-192.5T80-634q0-94 63-157t157-63q53 0 100 22.5t80 61.5 q33-39 80-61.5T660-854q94 0 157 63t63 157q0 115-85 211T602-230l-68 62q-11 11-25.5 16t-28.5 5Z',
+    favorite_border: 'M480-147q-14 0-28.5-5T426-168l-69-63q-106-97-191.5-192.5T80-634q0-94 63-157t157-63q53 0 100 22.5t80 61.5 q33-39 80-61.5T660-854q94 0 157 63t63 157q0 115-85 211T602-230l-68 62q-11 11-25.5 16t-28.5 5Zm-38-543 q-29-41-62-62.5T300-774q-60 0-100 40t-40 100q0 52 37 110.5T285.5-410q51.5 55 106 103t88.5 79q34-31 88.5-79 t106-103Q726-465 763-523.5T800-634q0-60-40-100t-100-40q-47 0-80 21.5T518-690q-7 10-17 15t-21 5q-11 0-21-5 t-17-15Zm38 189Z'
   };
-  // `size` is an icon role: the svg is its Android size, and the symbol's box fills the svg, as the app sizes its icon. `fill` colours it.
+  // `size` is an icon role: the svg is its Android size, and the symbol's box fills the svg, as the app sizes its icon; or a number of points, where the app's component takes its size from its caller. `fill` colours it.
   function MSymbol(props) {
     var name = SYMBOL[props.name] || props.name;
     if (!SYMBOL_PATH[name]) throw new Error('the design system has no path for the Material Symbol `' + name + '`');
-    var s = iconSize(props.size, true);
+    var s = typeof props.size === 'number' ? props.size : iconSize(props.size, true);
     // `label`: the symbol's name for a screen reader, as an image; without one, a screen reader skips it.
     var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
     return h('svg', Object.assign({ viewBox: '0 -960 960 960', style: { width: s, height: s }, className: props.className, fill: props.fill }, named),

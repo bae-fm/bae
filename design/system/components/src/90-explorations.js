@@ -13,13 +13,12 @@
       stars);
   }
   // A heart, the rating of a library whose system is Heart, read-only: filled when `on` (the person's stars are three or more), an outline otherwise. A screen reader reads the filled heart as a picture named Hearted and skips the outline.
-  // set="mac" for macOS: the SF Symbol heart.fill or heart at `size` points, in a square frame of that size, which is its box.
+  // set="mac" for macOS: the SF Symbol heart.fill or heart at `size` points, in a square frame of that size, which is its box. Without it, Android's Material favorite symbol, filled or its outline, `size` points square.
   function Heart(props) {
     var s = Number(props.size || 14), on = !!props.on;
-    if (props.set === 'mac') return h(Glyph, { set: 'mac', name: on ? 'heartfill' : 'heart', weight: 'regular', size: s, square: true, contentShape: true, label: on ? 'Hearted' : null, className: cx('bae-heart', on && 'bae-heart-on') });
-    var path = 'M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.3 4.3 6.8 4.3c2 0 3.6 1 5.2 2.9 1.6-1.9 3.2-2.9 5.2-2.9 3.5 0 5.7 3.5 4.3 6.9-1.9 4.7-9.5 9.3-9.5 9.3z';
-    return h('span', on ? { className: 'bae-stars', role: 'img', 'aria-label': 'Hearted' } : { className: 'bae-stars', 'aria-hidden': true },
-      h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: path, fill: on ? 'var(--accent)' : 'none', stroke: on ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })));
+    var label = on ? 'Hearted' : null, className = cx('bae-heart', on && 'bae-heart-on');
+    if (props.set === 'mac') return h(Glyph, { set: 'mac', name: on ? 'heartfill' : 'heart', weight: 'regular', size: s, square: true, contentShape: true, label: label, className: className });
+    return h(MSymbol, { name: on ? 'favorite' : 'favorite_border', size: s, fill: 'currentColor', label: label, className: className });
   }
   // A person's small picture, or initials, beside their name (`name`), as a history row ends in whose play it was. `strong` is a playlist header's owner line: the name in the header's semibold, at the size of the text around it.
   function MacPersonTag(props) {
