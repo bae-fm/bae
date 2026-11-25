@@ -110,6 +110,7 @@ extension ShotScene {
     ) -> ShotStage {
         let uiStore = storeShowing(section)
         let backing = boardLibraryBacking(uiStore: uiStore)
+        let images = coverGalleryImages()
         return ShotStage(
             ShotScenes.libraryWindow(
                 uiStore: uiStore,
@@ -117,6 +118,7 @@ extension ShotScene {
                 playbackStore: playing
                     ? boardPlayback(waitsOnStorage: waitsOnStorage)
                     : nothingPlayed(),
+                images: images,
                 size: CGSize(width: 1100, height: 520),
                 window: AnyView(
                     MacMainWindow(showSidePane: false) {
@@ -133,7 +135,8 @@ extension ShotScene {
                     }
                     .environment(activityStore(activity))
                 )
-            )
+            ),
+            images: images
         ) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
         } isDrawn: { host in
