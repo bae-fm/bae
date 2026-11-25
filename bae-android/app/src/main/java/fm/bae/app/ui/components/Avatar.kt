@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import fm.bae.app.data.ImageContent
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -55,6 +57,8 @@ internal fun Avatar(
             color = accent,
             fontSize = (size.value * INITIALS_SHARE).sp,
             fontWeight = FontWeight.SemiBold,
+            // The initials' line is the font's own height, as the board's line is, so they centre on it.
+            style = LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified, lineHeightStyle = null),
         )
         face.picture?.let {
             ImageSlot(content = it, cornerRadius = size / 2, iconPadding = size / 2, modifier = Modifier.fillMaxSize())
