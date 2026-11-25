@@ -325,7 +325,7 @@
   // Automatic's section from its run's state: before any run, Search manually alone; otherwise the sentence over a rule, the run's identifier band (`chips`) over a rule, then No results, Search manually and the children (the way to answer) when nothing matched, or else the children (what the run found).
   function automaticContent(auto, sentence, chips, found) {
     var searchManually = function (key) { return h(MacButton, { key: key }, 'Search manually'); };
-    if (auto === 'not-started') return h('div', { className: 'bae-m-fo-empty' }, searchManually('s'));
+    if (auto === 'not-started') return h('div', { className: 'bae-m-fo-empty bae-m-fo-empty-alone' }, searchManually('s'));
     return [
       sentence ? h('div', { key: 's' }, sentence) : null,
       sentence ? h('div', { key: 'r', className: 'bae-divider' }) : null,

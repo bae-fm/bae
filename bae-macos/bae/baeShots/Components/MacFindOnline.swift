@@ -24,10 +24,10 @@ extension ShotScene {
         component(
             "mac.component.find-online.not-started",
             width: 842,
-            height: 296,
+            height: 280,
             images: PreviewData.artImageStore()
         ) {
-            findOnline(height: 296, state: PreviewData.searchStateIdle)
+            findOnline(height: 280, state: PreviewData.searchStateIdle)
         },
         component(
             "mac.component.find-online.sentence",
