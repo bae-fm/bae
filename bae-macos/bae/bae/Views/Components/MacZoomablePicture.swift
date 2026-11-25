@@ -206,7 +206,7 @@ final class ZoomScrollView: NSScrollView {
 
     init(fit: DecodedImage) {
         picture = ZoomedPictureView(fit: fit)
-        aspect = fit.size
+        aspect = fit.image.size
         super.init(frame: .zero)
         contentView = CenteringClipView()
         drawsBackground = false
@@ -357,7 +357,7 @@ final class ZoomedPictureView: NSView {
     init(fit: DecodedImage) {
         fitBitmap = fit.bitmap
         super.init(frame: .zero)
-        copy.image = fit
+        copy.image = fit.image
         copy.imageScaling = .scaleAxesIndependently
         copy.autoresizingMask = [.width, .height]
         tiles.autoresizingMask = [.width, .height]

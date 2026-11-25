@@ -145,7 +145,8 @@ struct Artwork: View {
                 content,
                 pointSize: pointSize,
                 displayScale: displayScale
-            )
+            )?
+            .image
         }
     }
 
@@ -192,7 +193,10 @@ struct Artwork: View {
                 pointSize: pointSize,
                 displayScale: displayScale
             ) {
-                lastLoad = SlotLoad(content: requested, state: .loaded(image))
+                lastLoad = SlotLoad(
+                    content: requested,
+                    state: .loaded(image.image)
+                )
             }
             else {
                 lastLoad = SlotLoad(content: requested, state: .pending(.empty))

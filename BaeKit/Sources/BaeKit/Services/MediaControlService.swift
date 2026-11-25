@@ -511,7 +511,7 @@ extension MediaControlService {
                 logger.debug("No Now Playing artwork for \(image.id)")
                 return nil
             }
-            return decoded
+            return decoded.image
         }
         catch is CancellationError {
             return nil

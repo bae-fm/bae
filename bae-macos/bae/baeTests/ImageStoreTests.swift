@@ -22,8 +22,11 @@ private func makeDecodedImage(width: Int, height: Int) throws -> DecodedImage {
     context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     let cgImage = try #require(context.makeImage())
     return DecodedImage(
-        bitmap: cgImage,
-        size: NSSize(width: width, height: height)
+        image: NSImage(
+            cgImage: cgImage,
+            size: NSSize(width: width, height: height)
+        ),
+        bitmap: cgImage
     )
 }
 

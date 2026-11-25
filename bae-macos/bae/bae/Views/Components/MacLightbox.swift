@@ -204,7 +204,7 @@ struct MacLightbox<Item: LightboxImage>: View {
         )
         .background {
             // The picture's shadow, which the picture over it hides.
-            Image(nsImage: nsImage)
+            Image(nsImage: nsImage.image)
                 .resizable()
                 .scaledToFit()
                 .shadow(color: Theme.shadow, radius: 20)

@@ -15,27 +15,18 @@ import ImageIO
     public typealias PlatformImage = UIImage
 #endif
 
-/// An image a decode made, which carries the bitmap it was made from, so no
-/// reader meets a decoded image that draws none. Its own initializer is the
-/// only one that makes one here: it sets the bitmap, and the initializers the
-/// class inherits make no instance.
-public final class DecodedImage: PlatformImage, @unchecked Sendable {
-    /// The bitmap the image draws.
-    public private(set) var bitmap: CGImage!
+/// An image a decode made, beside the bitmap it was made from, so no reader
+/// meets a decoded image that draws no bitmap.
+public final class DecodedImage: @unchecked Sendable {
+    /// The platform image to draw.
+    public let image: PlatformImage
+    /// The bitmap `image` was made from.
+    public let bitmap: CGImage
 
-    #if canImport(AppKit)
-        /// `bitmap`, at `size` points.
-        convenience init(bitmap: CGImage, size: CGSize) {
-            self.init(cgImage: bitmap, size: size)
-            self.bitmap = bitmap
-        }
-    #elseif canImport(UIKit)
-        /// `bitmap`, at `scale` pixels to a point.
-        convenience init(bitmap: CGImage, scale: CGFloat) {
-            self.init(cgImage: bitmap, scale: scale, orientation: .up)
-            self.bitmap = bitmap
-        }
-    #endif
+    public init(image: PlatformImage, bitmap: CGImage) {
+        self.image = image
+        self.bitmap = bitmap
+    }
 }
 
 public enum ImageLoader {
@@ -122,15 +113,21 @@ private func thumbnail(
     // `displayScale`.
     #if canImport(AppKit)
         return DecodedImage(
-            bitmap: cg,
-            size: NSSize(
-                width: CGFloat(cg.width) / displayScale,
-                height: CGFloat(cg.height) / displayScale
-            )
+            image: NSImage(
+                cgImage: cg,
+                size: NSSize(
+                    width: CGFloat(cg.width) / displayScale,
+                    height: CGFloat(cg.height) / displayScale
+                )
+            ),
+            bitmap: cg
         )
     #elseif canImport(UIKit)
         // Orientation is `.up`: the thumbnail decode already applied any EXIF
         // transform.
-        return DecodedImage(bitmap: cg, scale: displayScale)
+        return DecodedImage(
+            image: UIImage(cgImage: cg, scale: displayScale, orientation: .up),
+            bitmap: cg
+        )
     #endif
 }
