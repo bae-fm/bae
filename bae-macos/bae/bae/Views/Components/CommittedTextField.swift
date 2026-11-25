@@ -266,15 +266,15 @@ private struct CommittedTextEditor: NSViewRepresentable {
         cell.insets = insets
         field.font = font
         field.textColor = textColor
-        // A disabled field refuses editing and focus but is not AppKit-
-        // disabled, because AppKit would dim its text to 50 percent; the view
-        // that disables the field dims it to `ThemeOpacity.off`, as the boards
-        // draw every disabled control. SwiftUI sets `isEnabled` from the
-        // environment before this runs, so it is set back on here.
+        // A disabled field refuses focus but is not AppKit-disabled, because
+        // AppKit would dim its text to 50 percent; the view that disables the
+        // field dims it to `ThemeOpacity.off`, as the boards draw every
+        // disabled control. SwiftUI sets `isEnabled` from the environment
+        // before this runs, so it is set back on here. The field stays
+        // editable so it is still a text field to assistive technology.
         let enabled = context.environment.isEnabled
         field.isEnabled = true
-        field.isEditable = enabled
-        field.isSelectable = enabled
+        field.refusesFirstResponder = !enabled
         field.setAccessibilityEnabled(enabled)
         field.setAccessibilityLabel(name)
         // The placeholder is the tertiary label colour in both roles; an
