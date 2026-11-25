@@ -154,7 +154,8 @@ struct MacBoxRows: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                let joins = row.containerValues.joinsRowAbove
+                let join = row.containerValues.rowJoin
+                let joins = join != .none
                 if index > 0, !joins {
                     MacHairline()
                         .padding(.horizontal, RowMetrics.inset)
@@ -167,13 +168,14 @@ struct MacBoxRows: View {
                 }
                 else {
                     let inset = row.containerValues.rowVerticalInset
-                    // The rows that belong to the one above, as the boards'
-                    // nested rows do, are 8 apart and the last has 12 below.
+                    // A nested row keeps its own space below it, as the
+                    // boards' do. The blocks that belong to the one above
+                    // are 8 apart and the last has 12 below.
                     let nextJoins =
                         index + 1 < rows.count
-                        && rows[index + 1].containerValues.joinsRowAbove
+                        && rows[index + 1].containerValues.rowJoin != .none
                     let bottom =
-                        joins
+                        join == .block
                         ? (nextJoins ? ThemeSpace.related : ThemeSpace.group)
                         : inset
                     let placement = MacRowPlacement(

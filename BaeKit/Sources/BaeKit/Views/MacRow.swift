@@ -141,7 +141,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         if options.isNested {
             rowControl
                 .opacity(isEnabled ? 1 : 0.45)
-                .joiningRowAbove()
+                .joiningRowAboveAsRow()
         }
         else {
             rowControl

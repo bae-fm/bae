@@ -1,5 +1,16 @@
 import SwiftUI
 
+/// How a row in a settings box belongs to the row above it.
+public enum MacRowJoin: Sendable {
+    /// A row of its own.
+    case none
+    /// A block, such as `MacNested`, that the row above holds: the blocks are
+    /// 8 apart and the last has 12 below.
+    case block
+    /// A `MacRow` that is nested: it keeps a row's own space below it.
+    case row
+}
+
 /// Where a box of rows puts one of its rows: the space between the row's
 /// edges and its content, and the row's least height.
 public struct MacRowPlacement: Equatable, Sendable {
@@ -32,9 +43,9 @@ extension EnvironmentValues {
 // also builds for iOS 17, which has no box of rows to read them.
 @available(macOS 15, iOS 18, *)
 extension ContainerValues {
-    /// Whether the row belongs to the one above it.
+    /// How the row belongs to the one above it, if it does.
     @Entry
-    public var joinsRowAbove = false
+    public var rowJoin = MacRowJoin.none
 
     /// Whether the row applies its box's placement itself, inside its own
     /// frame, rather than the box putting the space around it: a row that is
@@ -53,7 +64,19 @@ extension View {
     @ViewBuilder
     public func joiningRowAbove() -> some View {
         if #available(macOS 15, iOS 18, *) {
-            containerValue(\.joinsRowAbove, true)
+            containerValue(\.rowJoin, .block)
+        }
+        else {
+            self
+        }
+    }
+
+    /// Joins this row to the one above it as a `MacRow` does: the row's own
+    /// space stays below it.
+    @ViewBuilder
+    func joiningRowAboveAsRow() -> some View {
+        if #available(macOS 15, iOS 18, *) {
+            containerValue(\.rowJoin, .row)
         }
         else {
             self
