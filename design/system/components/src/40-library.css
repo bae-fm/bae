@@ -373,6 +373,7 @@
 .bae-m-albumworks-pos { width: 20px; flex: none; }
 
 .bae-m-albumpanel-actions { align-items: center; }
-.bae-m-albumpanel-rating { margin-left: var(--space-inline); }
+/* The rating is centred in the actions row, as the app's is, not set on a text baseline. */
+.bae-m-albumpanel-rating { display: flex; margin-left: var(--space-inline); }
 .bae-a-albumhead-actions { margin-top: auto; padding-top: var(--space-compact); display: flex; align-items: center; gap: var(--space-related); }
 .bae-a-albumhead-unplayable { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
