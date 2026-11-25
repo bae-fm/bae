@@ -255,10 +255,8 @@ struct MacPressingRow: View {
             // The check only marks the words, so VoiceOver reads the words
             // alone. It takes the detail text's font and not its line, so the
             // line's spare height moves the words and leaves the check.
-            Image(systemName: "checkmark.circle")
+            StatusGlyph(.success)
                 .font(ThemeText.detail.font)
-                .foregroundStyle(Theme.success)
-                .accessibilityHidden(true)
             Text("In library")
                 .themeText(.detail)
                 .foregroundStyle(Theme.textTertiary)
