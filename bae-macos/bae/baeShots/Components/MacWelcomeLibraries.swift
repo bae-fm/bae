@@ -72,6 +72,10 @@ extension ShotScene {
             // The board draws the section with the gap a form puts above
             // each section after the first.
             .padding(.top, RowMetrics.sectionGap)
+            // The welcome window gives the list its 420 pt, centred in the
+            // column.
+            .frame(width: 420)
+            .frame(width: wideColumn)
         }
     }
 }
