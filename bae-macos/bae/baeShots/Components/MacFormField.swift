@@ -17,8 +17,9 @@ extension ShotScene {
     private static func formField(_ id: String, note: Text?) -> ShotScene {
         component(id, height: 110) {
             MacFormField("Who sees it", note: note) {
-                // Stands for the preview's slot, which is 39 pt tall.
-                MacPlaceholderLine(width: 388, height: 39)
+                // The preview's slot, which is as wide as its word.
+                PreviewSlot("Control")
+                    .fixedSize()
                     .accessibilityHidden(true)
             }
             .frame(width: 388, alignment: .leading)
