@@ -235,12 +235,15 @@
   }
 
   // A track row's lead: the track's number; under the pointer (`hover`) a Play button, or Pause on the current track while it plays; on the current track otherwise the speaker, which a screen reader names Now playing.
+  // The three stay in the lead's layout, one cell over the other, and only the shown one draws, so the lead, and the row, keep one size in every state, as the app's lead does.
   function MacTrackLead(props) {
     var pause = props.current && props.playing;
+    var shown = props.hover ? 'button' : props.current ? 'speaker' : 'number';
+    var off = function (state) { return shown !== state && 'bae-m-track-lead-off'; };
     return h('span', { className: 'bae-m-track-lead' },
-      props.hover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': pause ? 'Pause' : 'Play' }, h(Glyph, { set: 'mac', name: pause ? 'pause' : 'play', size: 'medium' }))
-        : props.current ? h(Glyph, { set: 'mac', name: 'speaker', size: 'small', className: 'bae-accent', label: 'Now playing' })
-        : h('span', { className: 'bae-m-track-pos' }, props.position));
+      h('span', { className: cx('bae-m-track-pos', off('number')) }, props.position),
+      h('button', { type: 'button', className: cx('bae-plainbtn', off('button')), 'aria-label': pause ? 'Pause' : 'Play' }, h(Glyph, { set: 'mac', name: pause ? 'pause' : 'play', size: 'medium' })),
+      h(Glyph, { set: 'mac', name: 'speaker', size: 'small', className: cx('bae-accent', off('speaker')), label: 'Now playing' }));
   }
 
   // One track of an album's list. `picked`: among the tracks picked together, on the soft accent, and marked selected, as the app marks the row's texts. `rating`: the row of an album's list, which keeps a slot for the track's stars after the row (0 leaves the slot empty, as the app does for a track nobody rated). `ratingSystem`: the library's system for tracks; `heart` fills the slot with a heart when the stars are three or more, `none` draws no slot.
