@@ -25,7 +25,7 @@ struct MacStorageFooter: View {
         }
         return switch (releases, total) {
         case (let releases?, let total?):
-            releases + Text(verbatim: " " + FactList.glyph + " ") + total
+            releases + Text(verbatim: FactList.separator) + total
         case (let releases?, nil): releases
         case (nil, let total?): Text(verbatim: FactList.glyph + " ") + total
         case (nil, nil): nil
