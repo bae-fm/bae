@@ -49,7 +49,7 @@
 
   // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon. It takes the room of the symbol's frame, as SwiftUI lays the image out, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
   // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the frame the app sets around the symbol, which is then its room, the symbol centred in it. `contentShape`: the app gives the symbol a content shape, which makes the room its own box too. `text`: the symbol sits in a run of text, as Text(Image) sets it, and takes its ink's room alone.
-  // `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward). `button`: the glyph is a plain button by that name, with the glyph's box and room, as a SwiftUI button around one symbol is; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. Any other set draws the Material symbol (MSymbol).
+  // `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward). `button`: the glyph is a plain button by that name, with the glyph's box and room, as a SwiftUI button around one symbol is; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. `turn`: the degrees the glyph turns about its frame's centre, as SwiftUI's rotationEffect turns an image, with its room and box left as they are. Any other set draws the Material symbol (MSymbol).
   function Glyph(props) {
     var turned = props.point === 'forward' || props.point === 'backward';
     if (props.point != null && !(turned && props.name === 'down' && props.set === 'mac')) throw new Error('Glyph turns only the Mac `down` chevron, to point `forward` or `backward`');
@@ -67,10 +67,12 @@
     var size = { width: thousandths((own[2] - own[0]) * k), height: thousandths((own[3] - own[1]) * k), overflow: 'visible' };
     var view = [own[0], own[1], own[2] - own[0], own[3] - own[1]].map(thousandths).join(' ');
     var path = h('path', { d: sf.d });
+    // The frame's centre is (12, 12), which sits (12 - own left, 12 - own top) into the glyph's box.
+    var turn = props.turn == null ? null : { transform: 'rotate(' + props.turn + 'deg)', transformOrigin: thousandths((12 - own[0]) * k) + 'px ' + thousandths((12 - own[1]) * k) + 'px' };
     if (props.button) return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-glyph-button', props.className), 'aria-label': props.button, title: props.button, style: Object.assign({ margin: margin }, size) },
-      h('svg', { viewBox: view, className: 'bae-glyph', fill: 'currentColor', style: size, 'aria-hidden': true }, path));
+      h('svg', { viewBox: view, className: 'bae-glyph', fill: 'currentColor', style: Object.assign({}, size, turn), 'aria-hidden': true }, path));
     var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
-    return h('svg', Object.assign({ viewBox: view, className: cx('bae-glyph', props.className), fill: 'currentColor', style: Object.assign({ margin: margin }, size) }, named), path);
+    return h('svg', Object.assign({ viewBox: view, className: cx('bae-glyph', props.className), fill: 'currentColor', style: Object.assign({ margin: margin }, size, turn) }, named), path);
   }
   function thousandths(v) { return Math.round(v * 1000) / 1000; }
 

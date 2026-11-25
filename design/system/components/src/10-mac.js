@@ -303,7 +303,7 @@
     var s = React.useState(!!props.open);
     var open = s[0];
     var toggle = h('button', { type: 'button', className: 'bae-m-row bae-m-disclosure-toggle', 'aria-expanded': open, onClick: function () { s[1](!open); } },
-      h('span', { className: 'bae-m-disclosure-lead' }, h(Chevron, { className: cx('bae-m-disclosure-mark', open && 'bae-m-disclosure-mark-open') })),
+      h('span', { className: 'bae-m-disclosure-lead' }, h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', turn: open ? 90 : 0, className: 'bae-m-disclosure-mark' })),
       props.label || 'Advanced');
     return h(MacBox, { className: 'bae-m-disclosure' }, toggle, open ? props.children : null);
   }

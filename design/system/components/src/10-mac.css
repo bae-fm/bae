@@ -146,8 +146,7 @@
 .bae-m-disclosure-toggle { width: 100%; border: 0; background: none; text-align: left; gap: var(--space-related); cursor: pointer; }
 /* The chevron sits centred in the leading column (size-lead), so it has room to turn and the label starts on the same edge as MacItem's text and a nested row's. */
 .bae-m-disclosure-lead { width: var(--size-lead); flex: none; display: flex; align-items: center; justify-content: center; }
-.bae-m-disclosure-mark { width: 6px; height: 10px; flex: none; color: var(--text-secondary); transition: transform 0.15s; }
-.bae-m-disclosure-mark-open { transform: rotate(90deg); }
+.bae-m-disclosure-mark { flex: none; color: var(--text-secondary); transition: transform 0.15s; }
 .bae-m-disclosure > .bae-m-row:not(.bae-m-disclosure-toggle) { padding-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
 .bae-m-disclosure > .bae-divider:not(:nth-child(2)) { margin-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
 
