@@ -56,6 +56,7 @@ private struct CoverPreviewStage: View {
         MacCoverPreview(
             content: content,
             isSaving: false,
+            isCovered: false,
             previewFocused: $focused,
             onOpenLightbox: {},
             onFocus: { _ in }

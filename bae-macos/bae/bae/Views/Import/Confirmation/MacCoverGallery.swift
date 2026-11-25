@@ -100,6 +100,7 @@ struct MacCoverGallery: View {
                 MacCoverPreview(
                     content: content,
                     isSaving: isSaving,
+                    isCovered: browser.layout == .lightbox,
                     previewFocused: $previewFocused,
                     onOpenLightbox: { browser.layout = .lightbox },
                     onFocus: { self.focus($0) }
@@ -156,10 +157,7 @@ struct MacCoverGallery: View {
 
     var body: some View {
         gallery
-            // The lightbox takes the pointer and the keys while it is open;
-            // the gallery under its backdrop stays as drawn, not dimmed as a
-            // disabled one is.
-            .allowsHitTesting(browser.layout != .lightbox)
+            .disabled(browser.layout == .lightbox)
             .accessibilityHidden(browser.layout == .lightbox)
             .overlay { lightboxOverlay }
             .onAppear {
@@ -305,7 +303,8 @@ extension MacCoverGallery {
             item: item,
             selected: content.focus?.cover.key == item.id,
             onFocus: { focusedCover = item.id },
-            onOpenLightbox: { browser.layout = .lightbox }
+            onOpenLightbox: { browser.layout = .lightbox },
+            isCovered: browser.layout == .lightbox
         )
         .disabled(isSaving)
     }

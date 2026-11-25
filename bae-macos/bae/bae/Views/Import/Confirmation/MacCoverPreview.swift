@@ -7,6 +7,9 @@ import SwiftUI
 struct MacCoverPreview: View {
     let content: CoverGalleryContent
     let isSaving: Bool
+    /// Whether the lightbox is drawn over the gallery: the cover, disabled
+    /// then, draws as it is under the lightbox's backdrop.
+    let isCovered: Bool
     /// The keyboard focus of the cover button, which the gallery sets.
     var previewFocused: FocusState<Bool>.Binding
     let onOpenLightbox: () -> Void
@@ -30,7 +33,7 @@ struct MacCoverPreview: View {
                     )
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.accentPlain)
+                .buttonStyle(.accentPlain(dimsWhenDisabled: !isCovered))
                 .accessibilityLabel(Text("View in lightbox"))
                 .help("View in lightbox")
                 .keyboardShortcut(.space, modifiers: [])
