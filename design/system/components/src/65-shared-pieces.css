@@ -54,10 +54,11 @@
 .bae-a-invitefields-switch { margin-top: calc(-1 * var(--space-related)); display: flex; flex-direction: column; }
 
 /* The status line, when its explanation follows it: the label and the status on one text baseline, close above the explanation. */
-.bae-m-syncstatus-line { display: flex; align-items: baseline; gap: var(--space-group); padding: calc(var(--space-related) + var(--space-line)) var(--space-group) var(--space-related); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+/* The Status line centres its label and value on one line, as the app's MacRow does: a baseline would set the value by its dot's bottom, 1.5 points low. */
+.bae-m-syncstatus-line { display: flex; align-items: center; gap: var(--space-group); padding: calc(var(--space-related) + var(--space-line)) var(--space-group) var(--space-related); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-syncstatus-label { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: baseline; gap: var(--space-inline); }
 .bae-m-syncstatus-title { display: flex; align-items: center; gap: var(--space-compact); }
-.bae-m-syncstatus-value { align-self: baseline; color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: var(--space-compact); }
+.bae-m-syncstatus-value { color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: var(--space-compact); }
 .bae-m-syncstatus-value[class*="bae-tone-"] { color: var(--bae-tone); }
 .bae-m-syncstatus-value .bae-dot { width: 7px; height: 7px; }
 .bae-m-syncstatus-cause { padding: 0 var(--space-group) calc(var(--space-related) + var(--space-line)); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
