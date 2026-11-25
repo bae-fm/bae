@@ -1,7 +1,7 @@
 /* ==== part: import ==== */.bae-m-tertiary { color: var(--text-tertiary); }
 .bae-warning { color: var(--warning); }
 .bae-success { color: var(--success); }
-.bae-m-card { background: var(--surface); border-radius: var(--radius-card); box-shadow: 0 0 0 1px var(--hairline); }
+.bae-m-card { background: var(--surface); border-radius: var(--radius-card); }
 .bae-m-eyebrowtxt { font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-ifiles { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-m-iimages { display: flex; gap: var(--space-related); }
