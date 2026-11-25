@@ -46,11 +46,15 @@ private struct MacSwitchStyle: ToggleStyle {
             .overlay(
                 alignment: configuration.isOn ? .trailing : .leading
             ) {
-                Circle()
-                    .fill(Theme.onFill)
-                    .frame(width: knob, height: knob)
-                    .shadow(color: Theme.shadow, radius: 1, y: 1)
-                    .padding(Self.inset)
+                // The board's knob shadow is 0 1px 2px.
+                ShadowedFace(
+                    cornerRadius: knob / 2,
+                    blur: 2,
+                    offset: 1,
+                    fill: AnyShapeStyle(Theme.onFill)
+                )
+                .frame(width: knob, height: knob)
+                .padding(Self.inset)
             }
             .frame(width: Self.width, height: Self.height)
             .compositingGroup()

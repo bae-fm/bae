@@ -55,15 +55,18 @@ struct MacHelpTag<Content: View>: View {
             .fixedSize()
             .padding(.vertical, ThemeSpace.line)
             .padding(.horizontal, ThemeSpace.compact)
-            .background(
-                Theme.surfaceElevated,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-            )
+            .background {
+                // The board's shadow is 0 4px 12px.
+                ShadowedFace(
+                    cornerRadius: ThemeRadius.chip,
+                    blur: 12,
+                    offset: 4
+                )
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
             }
-            .shadow(color: Theme.shadow, radius: 6, y: 4)
             .allowsHitTesting(false)
     }
 }

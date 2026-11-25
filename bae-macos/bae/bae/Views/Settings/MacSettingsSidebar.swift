@@ -79,10 +79,14 @@ struct MacSettingsSidebar: View {
         // the window's buttons.
         .accessibilityPanel(Text("Settings panes"))
         .background(
-            Theme.surface,
-            in: RoundedRectangle(cornerRadius: MacSettingsSidebar.cornerRadius)
+            // The board's shadow is 0 1px 4px.
+            ShadowedFace(
+                cornerRadius: MacSettingsSidebar.cornerRadius,
+                blur: 4,
+                offset: 1,
+                fill: AnyShapeStyle(Theme.surface)
+            )
         )
-        .shadow(color: Theme.shadow, radius: 2, y: 1)
         .padding(.leading, ThemeSpace.related)
         .padding(.vertical, ThemeSpace.related)
     }

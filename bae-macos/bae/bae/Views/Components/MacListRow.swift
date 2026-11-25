@@ -139,18 +139,23 @@ struct MacListRow: View {
         )
         .padding(.vertical, Self.verticalInset)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                .fill(fill)
-        )
+        .background {
+            ZStack {
+                // The raised row's shadow, 0 8px 24px on the board, under its
+                // face while the owner drags it.
+                ShadowedFace(
+                    cornerRadius: ThemeRadius.artwork,
+                    blur: 24,
+                    offset: 8
+                )
+                .opacity(lift == .dragging ? 1 : 0)
+                RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    .fill(fill)
+            }
+        }
         .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         .accessibilityElement(children: .contain)
         .opacity(lift == .lifted ? 0.45 : lift == .dragging ? 0.75 : 1)
-        .shadow(
-            color: lift == .dragging ? Theme.shadow : .clear,
-            radius: ThemeSpace.group,
-            y: ThemeSpace.related
-        )
         .padding(
             .leading,
             leading.map { $0.hangs ? -Self.hang(leadWidth: $0.width) : 0 } ?? 0

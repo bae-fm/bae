@@ -53,17 +53,15 @@ private struct SectionPills: View {
                 .padding(.horizontal, ThemeSpace.edge)
                 .padding(.vertical, ThemeSpace.compact)
                 .background(
-                    // Concentric with the well around it.
-                    RoundedRectangle(
-                        cornerRadius: ThemeRadius.control - ThemeSpace.inline
+                    // Concentric with the well around it; the board's shadow
+                    // is 0 1px 1.5px.
+                    ShadowedFace(
+                        cornerRadius: ThemeRadius.control - ThemeSpace.inline,
+                        blur: 1.5,
+                        offset: 1,
+                        fill: AnyShapeStyle(Theme.tile)
                     )
-                    .fill(Theme.tile)
                     .opacity(active ? 1 : 0)
-                    .shadow(
-                        color: active ? Theme.shadow : Color.clear,
-                        radius: 1.5,
-                        y: 1
-                    )
                 )
                 .contentShape(Rectangle())
         }
