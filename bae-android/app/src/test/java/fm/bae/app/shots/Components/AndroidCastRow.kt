@@ -83,7 +83,7 @@ class AndroidCastRowShots : BoardShot() {
     fun androidComponentCastRowLongName() =
         component("android.component.cast-row.long-name") {
             AndroidCastRow(
-                receiver("Denon AVR-X3800H Home Theater Receiver (Basement)", BridgeRendererKind.DLNA),
+                receiver("Denon AVR-X3800H Home Theater Receiver (Basement)", BridgeRendererKind.CAST),
                 CastReceiverRole.Casting {},
                 CastReceiverPlace.PICKER,
                 null,
