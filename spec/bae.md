@@ -6196,6 +6196,7 @@ the desktop's secret service.
 | bae-mirror | the macros that write field-for-field conversions |
 | bae-loc | the string catalog: checks it and writes each platform's resources |
 | bae-theme | the shared theme, written as Swift and Kotlin |
+| bae-schema-manifest | the build step that writes each crate's schema parts from its `schema.toml` |
 | bae-uniffi-bindgen | the bindings generator |
 
 bae-cast stands between bae-playback, which holds the renderer session, and

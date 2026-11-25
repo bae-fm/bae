@@ -1,15 +1,13 @@
-# The library's schema: the crates whose parts make each migration, in
-# order. A library holds one migration, run in order inside coven's
-# migration transaction, so a trigger's part runs after the part creating the
-# table it fires on.
+# The library's schema: the crates whose parts make the one migration, in
+# order, run inside coven's migration transaction, so a trigger's part runs
+# after the part creating the table it fires on.
 #
-# The migration lists the catalog image cache's part, records' and release
+# The list is the catalog image cache's part, records' and release
 # storage's parts, people's and membership's, the sync status's, then
 # preferences', playback's, import's, the transfers' and the library views'.
 # A phone's library holds no import tables, since they never sync and nothing
 # on a phone reads them. It keeps the image cache's table, which stays empty on
 # a phone, because the Storage page's query sums it.
-[[migration]]
 crates = [
     "bae-catalogs",
     "bae-records",

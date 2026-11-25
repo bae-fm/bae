@@ -2,13 +2,10 @@ use super::*;
 
 #[test]
 fn an_unknown_key_is_refused_by_name() {
-    let error = crate_schema(
-        "bae-records/schema.toml",
-        "bae-records",
-        "[[part]]\nsql = [\"a.sql\"]\nfunctons = [\"crate::A\"]\n",
-    )
-    .unwrap_err()
-    .to_string();
+    let error =
+        crate_schema("bae-records", "[[part]]\nsql = [\"a.sql\"]\nfunctons = [\"crate::A\"]\n")
+            .unwrap_err()
+            .to_string();
     assert!(error.contains("bae-records/schema.toml"), "{error}");
     assert!(error.contains("functons"), "{error}");
 }
@@ -16,20 +13,18 @@ fn an_unknown_key_is_refused_by_name() {
 #[test]
 fn synced_without_namespaces_is_refused_by_name() {
     let error = crate_schema(
-        "bae-people/schema.toml",
         "bae-people",
-        "[[part]]\nsql = [\"a.sql\"]\nsynced = \"crate::synced::synced_tables\"\n",
+        "[[part]]\nsql = [\"a.sql\"]\nsynced = { tables = \"crate::synced::synced_tables\" }\n",
     )
     .unwrap_err()
     .to_string();
     assert!(error.contains("bae-people/schema.toml"), "{error}");
-    assert!(error.contains("`synced` needs `namespaces`"), "{error}");
+    assert!(error.contains("namespaces"), "{error}");
 }
 
 #[test]
 fn a_desktop_function_is_gated_where_a_part_lists_it() {
     let rust = crate_schema(
-        "schema.toml",
         "bae-records",
         r#"
 [[function]]
@@ -56,20 +51,8 @@ functions = ["crate::LENGTHS_DISAGREE", "bae_store::NAME_KEY"]
 #[test]
 fn the_library_gates_its_desktop_only_crates() {
     let rust = library_schema(
-        "schema.toml",
-        "[[migration]]\ncrates = [\"bae-records\", \"bae-import\"]\ndesktop_only = [\"bae-import\"]\n",
+        "crates = [\"bae-records\", \"bae-import\"]\ndesktop_only = [\"bae-import\"]\n",
     )
     .unwrap();
     assert!(rust.contains("bae_records::SCHEMA_PARTS,\n#[cfg(desktop)]\nbae_import::SCHEMA_PARTS,"));
-}
-
-#[test]
-fn a_second_migration_is_refused() {
-    let error = library_schema(
-        "schema.toml",
-        "[[migration]]\ncrates = [\"bae-records\"]\n[[migration]]\ncrates = [\"bae-records\"]\n",
-    )
-    .unwrap_err()
-    .to_string();
-    assert!(error.contains("one migration"), "{error}");
 }

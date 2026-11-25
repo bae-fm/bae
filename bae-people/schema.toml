@@ -3,8 +3,7 @@
 [[part]]
 sql = ["src/people.sql"]
 functions = ["bae_store::NAME_KEY"]
-synced = "crate::synced::synced_tables"
-namespaces = "crate::synced::namespaces"
+synced = { tables = "crate::synced::synced_tables", namespaces = "crate::synced::namespaces" }
 first_write = "crate::people::rating_systems::write_first_rating_systems"
 joining_write = "crate::people::joining::write_profile"
 

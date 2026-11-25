@@ -11,7 +11,6 @@
 //! checkout it was cloned from (see `bae-desktop-cfg`).
 
 use serde::Deserialize;
-use std::path::Path;
 
 /// Why a `schema.toml` produced no Rust.
 #[derive(Debug, PartialEq, Eq)]
@@ -68,8 +67,15 @@ struct Collation {
     version: u32,
     /// The Rust path, from the crate root, of the comparison.
     compare: String,
-    #[serde(default)]
-    public: bool,
+}
+
+/// The Rust paths of the functions listing a part's synced tables and its
+/// namespaces.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Synced {
+    tables: String,
+    namespaces: String,
 }
 
 /// One domain's share of the schema.
@@ -84,27 +90,17 @@ struct Part {
     /// The Rust paths of the statics of the collations the SQL names.
     #[serde(default)]
     collations: Vec<String>,
-    /// The Rust paths of the functions listing the synced tables and the
-    /// namespaces; each needs the other.
-    synced: Option<String>,
-    namespaces: Option<String>,
+    synced: Option<Synced>,
     first_write: Option<String>,
     joining_write: Option<String>,
     before_commit: Option<String>,
 }
 
-/// bae-library's `schema.toml`.
+/// bae-library's `schema.toml`: the crates whose parts make the migration, in
+/// order.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct LibraryFile {
-    #[serde(rename = "migration")]
-    migrations: Vec<Migration>,
-}
-
-/// One migration: the crates whose parts it runs, in order.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Migration {
     crates: Vec<String>,
     /// The crates of `crates` a phone's library leaves out.
     #[serde(default)]
@@ -115,10 +111,10 @@ fn parse<T: for<'de> Deserialize<'de>>(file: &str, text: &str) -> Result<T, Mani
     toml::from_str(text).map_err(|error| ManifestError(format!("{file}: {error}")))
 }
 
-/// The Rust a domain crate includes for `schema.toml`'s `text`: `crate_name`
-/// is the crate the file is in, `file` how errors name it.
-pub fn crate_schema(file: &str, crate_name: &str, text: &str) -> Result<String, ManifestError> {
-    let manifest: CrateFile = parse(file, text)?;
+/// The Rust the crate `crate_name` includes for its `schema.toml`'s `text`.
+pub fn crate_schema(crate_name: &str, text: &str) -> Result<String, ManifestError> {
+    let file = format!("{crate_name}/schema.toml");
+    let manifest: CrateFile = parse(&file, text)?;
     let store = if crate_name == "bae-store" { "crate" } else { "bae_store" };
     let mut out = String::new();
     for function in &manifest.functions {
@@ -128,7 +124,7 @@ pub fn crate_schema(file: &str, crate_name: &str, text: &str) -> Result<String, 
         write_collation(&mut out, store, collation);
     }
     if !manifest.parts.is_empty() {
-        write_parts(&mut out, file, &manifest)?;
+        write_parts(&mut out, &file, &manifest)?;
     }
     Ok(out)
 }
@@ -158,10 +154,14 @@ fn write_function(out: &mut String, store: &str, function: &Function) {
 }
 
 fn write_collation(out: &mut String, store: &str, collation: &Collation) {
-    let Collation { static_name, name, version, compare, .. } = collation;
-    let visibility = visibility(collation.public);
-    push_line(out, format!("{visibility} static {static_name}: {store}::SchemaCollation = {store}::SchemaCollation {{ \
-         name: {name:?}, version: {version}, compare: {compare} }};"));
+    let Collation { static_name, name, version, compare } = collation;
+    push_line(
+        out,
+        format!(
+            "pub static {static_name}: {store}::SchemaCollation = {store}::SchemaCollation {{ \
+         name: {name:?}, version: {version}, compare: {compare} }};"
+        ),
+    );
 }
 
 /// The statics of `manifest` that exist only on desktop, by name.
@@ -207,7 +207,7 @@ fn write_parts(out: &mut String, file: &str, manifest: &CrateFile) -> Result<(),
                 format!("const PART_{number}_{kind}: &[&bae_store::{item}] = &["),
             );
             for reference in references {
-                let last = reference.rsplit("::").next().unwrap_or(reference);
+                let last = reference.rsplit_once("::").map_or(reference.as_str(), |(_, last)| last);
                 if desktop.contains(&last) && reference.starts_with("crate::") {
                     lists.push_str("#[cfg(desktop)]\n");
                 }
@@ -216,21 +216,8 @@ fn write_parts(out: &mut String, file: &str, manifest: &CrateFile) -> Result<(),
             lists.push_str("];\n");
             push_line(&mut parts, format!(".{method}(PART_{number}_{kind})"));
         }
-        match (&part.synced, &part.namespaces) {
-            (Some(synced), Some(namespaces)) => {
-                push_line(&mut parts, format!(".synced({synced}, {namespaces})"));
-            }
-            (Some(_), None) => {
-                return Err(ManifestError(format!(
-                    "{part_name}: `synced` needs `namespaces` beside it"
-                )))
-            }
-            (None, Some(_)) => {
-                return Err(ManifestError(format!(
-                    "{part_name}: `namespaces` needs `synced` beside it"
-                )))
-            }
-            (None, None) => {}
+        if let Some(Synced { tables, namespaces }) = &part.synced {
+            push_line(&mut parts, format!(".synced({tables}, {namespaces})"));
         }
         for (method, path) in [
             ("first_write", &part.first_write),
@@ -251,25 +238,20 @@ fn write_parts(out: &mut String, file: &str, manifest: &CrateFile) -> Result<(),
 }
 
 /// The Rust bae-library includes for its `schema.toml`'s `text`: `SCHEMA`,
-/// the one migration's parts in crate order.
-pub fn library_schema(file: &str, text: &str) -> Result<String, ManifestError> {
+/// the migration's parts in crate order.
+pub fn library_schema(text: &str) -> Result<String, ManifestError> {
+    let file = "bae-library/schema.toml";
     let manifest: LibraryFile = parse(file, text)?;
-    let [migration] = &manifest.migrations[..] else {
-        return Err(ManifestError(format!(
-            "{file}: the schema is one migration today, and `Schema` runs one; found {}",
-            manifest.migrations.len()
-        )));
-    };
     if let Some(unlisted) =
-        migration.desktop_only.iter().find(|name| !migration.crates.contains(name))
+        manifest.desktop_only.iter().find(|name| !manifest.crates.contains(name))
     {
         return Err(ManifestError(format!(
             "{file}: `desktop_only` names {unlisted}, which `crates` does not list"
         )));
     }
     let mut out = String::from("pub const SCHEMA: bae_store::Schema = bae_store::Schema::new(&[\n");
-    for name in &migration.crates {
-        if migration.desktop_only.contains(name) {
+    for name in &manifest.crates {
+        if manifest.desktop_only.contains(name) {
             out.push_str("#[cfg(desktop)]\n");
         }
         push_line(&mut out, format!("{}::SCHEMA_PARTS,", name.replace('-', "_")));
@@ -278,23 +260,20 @@ pub fn library_schema(file: &str, text: &str) -> Result<String, ManifestError> {
     Ok(out)
 }
 
-fn build_script_input(directory_variable: &str) -> (std::path::PathBuf, std::path::PathBuf) {
-    let manifest_dir = std::env::var_os(directory_variable)
-        .unwrap_or_else(|| panic!("cargo sets {directory_variable} for a build script"));
-    let out_dir = std::env::var_os("OUT_DIR").expect("cargo sets OUT_DIR for a build script");
-    (manifest_dir.into(), out_dir.into())
-}
-
 #[expect(
     clippy::disallowed_methods,
     reason = "file system: a build script reads the crate's schema.toml and writes its generated Rust, which no library's file reaches"
 )]
-fn emit(generate: impl FnOnce(&str, &str) -> Result<String, ManifestError>) {
-    let (crate_dir, out_dir) = build_script_input("CARGO_MANIFEST_DIR");
-    let file = Path::new("schema.toml");
-    let text = std::fs::read_to_string(crate_dir.join(file))
-        .unwrap_or_else(|error| panic!("read {}: {error}", crate_dir.join(file).display()));
-    let rust = generate("schema.toml", &text).unwrap_or_else(|error| panic!("{error}"));
+fn emit(generate: impl FnOnce(&str) -> Result<String, ManifestError>) {
+    let crate_dir = std::path::PathBuf::from(
+        std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR"),
+    );
+    let out_dir =
+        std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo sets OUT_DIR"));
+    let file = crate_dir.join("schema.toml");
+    let text = std::fs::read_to_string(&file)
+        .unwrap_or_else(|error| panic!("read {}: {error}", file.display()));
+    let rust = generate(&text).unwrap_or_else(|error| panic!("{error}"));
     std::fs::write(out_dir.join("schema.rs"), rust)
         .unwrap_or_else(|error| panic!("write schema.rs: {error}"));
     println!("cargo::rerun-if-changed=schema.toml");
@@ -304,7 +283,7 @@ fn emit(generate: impl FnOnce(&str, &str) -> Result<String, ManifestError>) {
 /// crate's `schema.toml`.
 pub fn emit_crate() {
     let crate_name = std::env::var("CARGO_PKG_NAME").expect("cargo sets CARGO_PKG_NAME");
-    emit(|file, text| crate_schema(file, &crate_name, text));
+    emit(|text| crate_schema(&crate_name, text));
 }
 
 /// The build script of bae-library: write `OUT_DIR/schema.rs` from the

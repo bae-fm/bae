@@ -67,8 +67,7 @@ functions = [
     "crate::LENGTHS_DISAGREE",
 ]
 collations = ["bae_store::NATURAL_ORDER"]
-synced = "crate::synced::synced_tables"
-namespaces = "crate::synced::namespaces"
+synced = { tables = "crate::synced::synced_tables", namespaces = "crate::synced::namespaces" }
 
 # Release storage's part.
 [[part]]

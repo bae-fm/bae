@@ -60,8 +60,7 @@ sql = [
 sql = [
     "src/tables/release_sheet_decisions.sql",
 ]
-synced = "crate::tables::release_sheet_decisions::synced_tables"
-namespaces = "crate::tables::release_sheet_decisions::no_namespaces"
+synced = { tables = "crate::tables::release_sheet_decisions::synced_tables", namespaces = "crate::tables::release_sheet_decisions::no_namespaces" }
 
 # Each file of candidate state runs after the ones creating the tables its
 # triggers fire on: the standings before the runs a standing moving off deletes.
