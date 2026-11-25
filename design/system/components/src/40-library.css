@@ -365,7 +365,8 @@
 .bae-m-queue-section-day { padding-left: 0; padding-right: var(--space-edge); }
 .bae-m-othernames { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-m-othernames-label { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
-.bae-m-othernames-add { display: flex; gap: var(--space-related); max-width: 320px; }
+.bae-m-othernames-add { display: flex; align-items: center; gap: var(--space-related); max-width: 320px; }
+.bae-m-othernames-add > .bae-m-field { flex: 1; }
 .bae-m-albumcredits { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-m-albumworks { display: flex; flex-direction: column; gap: var(--space-line); }
 .bae-m-albumworks-row { display: flex; gap: var(--space-related); }
