@@ -12,7 +12,8 @@ struct MacInlineField: View {
     var name: String?
     var monospaced = false
     /// The field is as wide as its value, and `emptyWidth` while it is empty,
-    /// so there is something to click into: for a field in a list row. Any
+    /// so there is something to click into, and never wider than its column
+    /// gives it: for a field in a list row or a heading. Any
     /// other field fills the width its column gives it, as the board's does.
     var fitsValue = false
     var font: NSFont = ThemeText.body.nsFont
@@ -28,16 +29,8 @@ struct MacInlineField: View {
         // The field pulls out by its leading padding so its words keep the
         // column's edge, which leaves one that fills its column ending at the
         // column's trailing edge, as the board's does.
-        Group {
-            if fitsValue {
-                field
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-            else {
-                field
-            }
-        }
-        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
+        field
+            .padding(.leading, -FieldChrome.inlineHorizontalPadding)
     }
 
     private var field: some View {
