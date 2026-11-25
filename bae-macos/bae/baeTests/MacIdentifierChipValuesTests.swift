@@ -35,8 +35,8 @@ struct MacIdentifierChipValuesTests {
     }
 
     @Test("accessibility reads every value")
-    func spokenListsEveryValue() {
-        let spoken = MacIdentifierChipValues(codes)?.spoken ?? ""
+    func spokenListsEveryValue() throws {
+        let spoken = try #require(MacIdentifierChipValues(codes)).spoken
         for code in codes {
             #expect(spoken.contains(code))
         }

@@ -49,18 +49,10 @@ struct MacIdentifierChip<Trailing: View>: View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
             if let list = MacIdentifierChipValues(values) {
-                MacIdentifierMoreValues(
-                    list: list,
-                    style: style,
-                    valueStyle: valueStyle
-                )
+                MacIdentifierMoreValues(list: list)
             }
             else if let value {
-                IdentifierValueText(
-                    value: value,
-                    style: style,
-                    valueStyle: valueStyle
-                )
+                IdentifierValueText(value: value, style: style)
             }
             // The catalogs' capsules keep their full width.
             trailing
@@ -78,13 +70,6 @@ struct MacIdentifierChip<Trailing: View>: View {
         .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .onHover { isHovered = $0 }
         .accessibilityElement(children: .contain)
-    }
-
-    /// A value is in the primary text colour whatever the chip's style, as
-    /// its board draws it: the style shows in the fill, the outline and the
-    /// strike, not in the value's colour.
-    private var valueStyle: AnyShapeStyle {
-        AnyShapeStyle(Theme.textPrimary)
     }
 
     private var fill: Color {
@@ -148,13 +133,15 @@ struct MacIdentifierChipValues {
 private struct IdentifierValueText: View {
     let value: String
     let style: MacIdentifierChipStyle
-    let valueStyle: AnyShapeStyle
 
     var body: some View {
         Text(value)
             .themeText(.mono)
             .strikethrough(style == .struck)
-            .foregroundStyle(valueStyle)
+            // A value is in the primary text colour whatever the chip's
+            // style, as its board draws it: the style shows in the fill, the
+            // outline and the strike.
+            .foregroundStyle(Theme.textPrimary)
             .cutLine(.prose)
             .frame(maxWidth: identifierValueWidth, alignment: .leading)
             // A short value takes its own width, as the board's does.
@@ -166,19 +153,13 @@ private struct IdentifierValueText: View {
 /// value in it is a button.
 private struct MacIdentifierMoreValues: View {
     let list: MacIdentifierChipValues
-    let style: MacIdentifierChipStyle
-    let valueStyle: AnyShapeStyle
 
     @State
     private var showsAll = false
 
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
-            IdentifierValueText(
-                value: list.first,
-                style: style,
-                valueStyle: valueStyle
-            )
+            IdentifierValueText(value: list.first, style: .filled)
             if let more = list.moreTitle {
                 MacButton(kind: .plain) {
                     showsAll = true
