@@ -80,14 +80,20 @@
     var own = props.contentShape ? room : ink;
     var margin = props.contentShape ? null : [own[1] - room[1], room[2] - own[2], room[3] - own[3], own[0] - room[0]].map(function (m) { return thousandths(m * k) + 'px'; }).join(' ');
     var size = { width: thousandths((own[2] - own[0]) * k), height: thousandths((own[3] - own[1]) * k), overflow: 'visible' };
-    var view = [own[0], own[1], own[2] - own[0], own[3] - own[1]].map(thousandths).join(' ');
+    // What the symbol paints in: in a run of text its ink, elsewhere the symbol's own frame, which SwiftUI sets on a device pixel. Chrome sets each box it paints on a device pixel too, so a box at the ink's fractional corner would move the ink up to a quarter point; inside the frame's box, the ink keeps its fractional place, as SwiftUI draws it.
+    var drawn = props.text ? own : [12 - symbolFrame(0) / k / 2 + shift(0), 12 - symbolFrame(1) / k / 2 + shift(1), 12 + symbolFrame(0) / k / 2 + shift(0), 12 + symbolFrame(1) / k / 2 + shift(1)];
+    var view = [drawn[0], drawn[1], drawn[2] - drawn[0], drawn[3] - drawn[1]].map(thousandths).join(' ');
     var path = h('path', { d: sf.d });
-    // The frame's centre is (12, 12), which sits (12 - own left, 12 - own top) into the glyph's box.
-    var turn = props.turn == null ? null : { transform: 'rotate(' + props.turn + 'deg)', transformOrigin: thousandths((12 - own[0]) * k) + 'px ' + thousandths((12 - own[1]) * k) + 'px' };
-    if (props.button) return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-glyph-button', props.className), 'aria-label': props.button, title: props.button, style: Object.assign({ margin: margin }, size) },
-      h('svg', { viewBox: view, className: 'bae-glyph', fill: 'currentColor', style: Object.assign({}, size, turn), 'aria-hidden': true }, path));
+    // The frame's centre is (12, 12), which sits (12 - drawn left, 12 - drawn top) into the painted box.
+    var turn = props.turn == null ? null : { transform: 'rotate(' + props.turn + 'deg)', transformOrigin: thousandths((12 - drawn[0]) * k) + 'px ' + thousandths((12 - drawn[1]) * k) + 'px' };
+    // The painted box, placed from the glyph's own box: none apart in a run of text.
+    var paint = props.text ? null : { position: 'absolute', left: thousandths((drawn[0] - own[0]) * k), top: thousandths((drawn[1] - own[1]) * k), width: thousandths((drawn[2] - drawn[0]) * k), height: thousandths((drawn[3] - drawn[1]) * k), overflow: 'visible' };
+    var svg = function (attrs) { return h('svg', Object.assign({ viewBox: view, fill: 'currentColor', 'aria-hidden': true }, attrs), path); };
     var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
-    return h('svg', Object.assign({ viewBox: view, className: cx('bae-glyph', props.className), fill: 'currentColor', style: Object.assign({ margin: margin }, size, turn) }, named), path);
+    if (props.button) return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-glyph-button', props.className), 'aria-label': props.button, title: props.button, style: Object.assign({ margin: margin }, size) },
+      svg({ style: Object.assign({}, paint || size, turn) }));
+    if (props.text) return h('svg', Object.assign({ viewBox: view, className: cx('bae-glyph', props.className), fill: 'currentColor', style: Object.assign({ margin: margin }, size, turn) }, named), path);
+    return h('span', Object.assign({ className: cx('bae-glyph', props.className), style: Object.assign({ margin: margin }, size) }, named), svg({ style: Object.assign({}, paint, turn) }));
   }
   function thousandths(v) { return Math.round(v * 1000) / 1000; }
 

@@ -11,8 +11,9 @@
 .bae-art.bae-art-ring { overflow: visible; box-shadow: 0 0 0 4.5px var(--background), 0 0 0 7.5px var(--accent); }
 .bae-accent { color: var(--accent); fill: var(--accent); }
 .bae-muted { color: var(--text-secondary); }
-.bae-glyph { flex: none; display: block; }
-.bae-glyph-button { flex: none; display: block; }
+/* A Mac glyph's box holds the box it paints in, placed from it (Glyph). */
+.bae-glyph { flex: none; display: block; position: relative; }
+.bae-glyph-button { flex: none; display: block; position: relative; }
 .bae-ph { background: var(--missing-art); border-radius: var(--radius-bar); }
 .bae-waitarc { position: absolute; inset: 0; color: var(--accent); animation: bae-spin 1s linear infinite reverse; }
 .bae-seek { display: flex; align-items: center; gap: calc(var(--space-group) - var(--space-hairline)); width: 100%; }
