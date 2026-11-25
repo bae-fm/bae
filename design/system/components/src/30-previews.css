@@ -11,8 +11,8 @@
 .bae-preview-row-wide > .bae-preview-cell > * { flex: none; }
 /* A row of a component drawn at a fixed width, such as a window, takes the component's width, past the page's edge, so the row's picture holds the whole component. */
 .bae-preview-row-wide > .bae-preview-cell-fit { flex: none; }
-/* An Android wide row draws at the phone's width, 411dp, as the app's component shot takes it. */
-.bae-preview-android .bae-preview-row-wide > .bae-preview-cell { flex: none; width: 411px; }
+/* An Android wide row draws at the phone's width, 412dp, as the app's screen shots take it. */
+.bae-preview-android .bae-preview-row-wide > .bae-preview-cell { flex: none; width: 412px; }
 .bae-preview-name { width: 110px; flex: none; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-preview-cell { flex: 1; min-width: 0; display: flex; align-items: center; }
 .bae-preview-slot { padding: var(--space-group); border: 1px dashed var(--hairline-strong); border-radius: var(--radius-card); color: var(--text-secondary); }
