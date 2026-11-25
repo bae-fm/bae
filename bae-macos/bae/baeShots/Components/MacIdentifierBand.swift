@@ -10,10 +10,6 @@ extension ShotScene {
             PreviewData.identifyRunBandBoard
         ),
         identifierBandScene(
-            "mac.component.identifier-band.searching",
-            bandRun(.lookingUp)
-        ),
-        identifierBandScene(
             "mac.component.identifier-band.nothing-found",
             bandRun(.noMatch)
         ),
@@ -43,10 +39,6 @@ extension ShotScene {
         ),
         isrcsShownScene(
             "mac.component.identifier-band.isrcs-shown"
-        ),
-        identifierBandScene(
-            "mac.component.identifier-band.struck",
-            struckRun
         ),
     ]
 
@@ -157,32 +149,6 @@ extension ShotScene {
             buttonBottom + 10 - popoverArrowLength - popoverShadowRoom
         )
     }
-
-    /// A Disc ID that two MusicBrainz releases carry, and a catalog number
-    /// the person struck out of the run.
-    private static let struckRun = BridgeIdentifyRun(
-        providers: [.musicBrainz, .discogs],
-        discId: .read(discs: [
-            BridgeDiscIdRow(
-                discId: "v8n2Kq1Z…",
-                lookup: .found(count: 2, groups: [])
-            )
-        ]),
-        barcode: .rows(rows: []),
-        catalog: .numbers(
-            rows: [
-                BridgeSignalValueRow(
-                    value: "HR-1042",
-                    excluded: true,
-                    cells: []
-                )
-            ],
-            candidates: []
-        ),
-        isrc: .absent,
-        search: .notNeeded,
-        readingArtwork: false
-    )
 
     /// No Disc ID, barcode or ISRC, and two catalog numbers that no
     /// release confirms, behind their count.

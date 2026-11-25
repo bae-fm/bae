@@ -10,13 +10,11 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    N('Filled', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true })),
-    N('Outlined', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'outlined' })),
-    N('Struck', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'struck' })),
+    N('Off', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'off' })),
+    N('On', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true })),
+    N('Found', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'found' })),
     N('Dash', h(B.MacIdentifierChip, { label: 'Barcode', state: 'dash' })),
-    N('Found', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, sources: 'MusicBrainz=2,Discogs=0' })),
-    N('Searching', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, sources: 'MusicBrainz=2,Discogs=…' })),
-    N('Editable', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', editable: true })),
+    N('Title search', h(B.MacIdentifierChip, { fields: 'Artist=Mara Quill,Title=Low Tide Hours', state: 'found' })),
     N('Several values', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2 · 0 41234 56789 3 · 0 41234 56789 4' })),
     N('Several values shown', h('div', { style: { paddingBottom: 100 } }, h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2 · 0 41234 56789 3 · 0 41234 56789 4', moreShown: true })))));
 </script>

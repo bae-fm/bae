@@ -1,9 +1,11 @@
 # MacIdentifierBand
 
-The identifier chips: `chips` as "Label|value|filled|outlined|struck|dash|Source=count+Source=count", comma-separated. The ISRC chip holds the folder's ISRCs, one per track, separated by " · ": it shows the first, then a +N button that opens a popover listing every one, a line each (decision #2264). `open` names the chip whose popover is drawn open, ISRC. The popover is a window of its own, so it comes after the whole band in the reading order. A chip is filled for a value the run asks about, outlined for a Disc ID or barcode the run leaves out, and struck through for a catalog number the person struck out. An outlined Catalog # chip is a catalog number the folder offers that no release confirms.
+The identifier chips: `chips` as "Label|value|state", comma-separated, each state `off`, `on`, `found` or `dash` (`MacIdentifierChip`). The ISRC chip holds the folder's ISRCs, one per track, separated by " · ": it shows the first, then a +N button that opens a popover listing every one, a line each (decision #2264). `open` names the chip whose popover is drawn open, ISRC. The popover is a window of its own, so it comes after the whole band in the reading order.
 
-Each chip is a `MacIdentifierChip`. Each Disc ID, Barcode and Catalog # chip that holds a value toggles: pressing it leaves that identifier out of the run, or puts it back. Pressing an outlined Catalog # chip puts its number into the run.
+Each Disc ID, Barcode and Catalog # chip that holds a value toggles: pressing it leaves that identifier out of the run, or puts it back. The ISRC and dash chips are not buttons.
 
-The band folds the outlined Catalog # chips after the other chips, behind a "+N more" button with their count (decision #2237). `candidates="shown"` draws every one, then the button, which then reads Show fewer and folds them again. The Title search chip's words are a button that opens its artist and title fields. The ISRC and dash chips are not buttons.
+`titleSearch` is the words the run searches by, "artist|title|state": one chip after the others that reads Artist, the artist's field, Title, the title's field, `found` unless given (decision #2561).
+
+`offered` is the catalog numbers the folder offers that no release confirms, comma-separated. Each is an off Catalog # chip, and pressing it puts its number into the run. The band folds them after the other chips, behind a "+N more" button with their count (decision #2237). `candidates="shown"` draws every one, then the button, which then reads Show fewer and folds them again.
 
 **In the code:** macOS: `MacIdentifierBand` and `MacIdentifierChip` (`Views/Import/Search/`).

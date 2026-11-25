@@ -12,6 +12,6 @@ Automatic draws itself from its run's state (`automatic`), as the app's MacFindO
 | `nothing-found` | 0 | the band, then No results and Search manually |
 | `found` (the default) | nothing | the band, then the children: what the run found |
 
-`chips` is the run's identifier band, a `MacIdentifierBand`, with a rule under it.
+`chips`, `titleSearch` and `offered` are the run's identifier band, a `MacIdentifierBand`, with a rule under it.
 
 **In the code:** macOS: `MacFindOnline` (`Views/Import/Search/MacFindOnline.swift`), drawn from values, with `MacFindOnlineContainer` reading the Discogs bar's state for it, and `FindOnlineHeader`, `FindOnlineDiscogsBar`, `FindOnlineSectionHeader`, `FindOnlineAutomaticSection` and `FindOnlineSearchResults` beside it.

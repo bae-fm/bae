@@ -304,7 +304,7 @@
       h('span', { className: 'bae-m-tertiary', 'aria-hidden': true }, '→'),
       h('button', { type: 'button', role: 'combobox', 'aria-label': 'Audio file', 'aria-expanded': false, className: cx('bae-plainbtn', 'bae-mono', props.unbound ? 'bae-warning' : 'bae-muted') }, props.bound || 'Choose audio…'));
   }
-  // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time; the open section's heading is the current one, as the Mac marks it selected. `automatic`: the Automatic run's state, `not-started`, `working`, `failed`, `nothing-found` or `found` (the default); `chips`: its identifier band. `sentence`: why the folder waits on the person, heading Automatic over a rule. The children fill Search when it is open, and follow the band in Automatic, or follow Search manually when nothing was found.
+  // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time; the open section's heading is the current one, as the Mac marks it selected. `automatic`: the Automatic run's state, `not-started`, `working`, `failed`, `nothing-found` or `found` (the default); `chips`, `titleSearch` and `offered`: its identifier band (MacIdentifierBand). `sentence`: why the folder waits on the person, heading Automatic over a rule. The children fill Search when it is open, and follow the band in Automatic, or follow Search manually when nothing was found.
   function MacFindOnline(props) {
     var open = props.open || 'Automatic';
     var head = function (t, status) { return h('button', { type: 'button', 'aria-label': t, 'aria-expanded': open === t, 'aria-current': open === t ? 'true' : null, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', square: true, className: 'bae-m-tertiary', point: open === t ? null : 'forward' }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status ? h('span', { className: 'bae-m-fo-status' }, status) : null); };
@@ -317,56 +317,58 @@
       props.discogsBar ? h('div', { style: { padding: 'var(--space-group)' } }, h(MacNotice, { tone: 'info', title: 'Add Discogs to find more pressings', subtitle: 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.', action: 'Open settings', dismiss: true })) : null,
       // Automatic's header ends in what its run has to say: the spinner while it works, the warning glyph when it failed, 0 when nothing matched.
       head('Automatic', auto === 'working' ? h(MacSpinner, { size: 11 }) : auto === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small', weight: 'semibold', label: 'Failed' }) : auto === 'nothing-found' ? h(StatusChip, null, '0') : null),
-      open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, automaticContent(auto, props.sentence, props.chips, k)) : null,
+      open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, automaticContent(auto, props.sentence, props.chips ? { chips: props.chips, titleSearch: props.titleSearch, offered: props.offered } : null, k)) : null,
       h('div', { className: 'bae-divider' }),
       head('Search', null),
       open === 'Search' ? h('div', { className: 'bae-m-fo-body' }, k) : null);
   }
-  // Automatic's section from its run's state: before any run, Search manually alone; otherwise the sentence over a rule, the run's identifier band (`chips`) over a rule, then No results, Search manually and the children (the way to answer) when nothing matched, or else the children (what the run found).
-  function automaticContent(auto, sentence, chips, found) {
+  // Automatic's section from its run's state: before any run, Search manually alone; otherwise the sentence over a rule, the run's identifier band (`band`, the band's props) over a rule, then No results, Search manually and the children (the way to answer) when nothing matched, or else the children (what the run found).
+  function automaticContent(auto, sentence, band, found) {
     var searchManually = function (key) { return h(MacButton, { key: key }, 'Search manually'); };
     if (auto === 'not-started') return h('div', { className: 'bae-m-fo-empty bae-m-fo-empty-alone' }, searchManually('s'));
     return [
       sentence ? h('div', { key: 's' }, sentence) : null,
       sentence ? h('div', { key: 'r', className: 'bae-divider' }) : null,
-      chips ? h(MacIdentifierBand, { key: 'b', chips: chips }) : null,
-      chips ? h('div', { key: 'd', className: 'bae-divider' }) : null,
+      band ? h(MacIdentifierBand, Object.assign({ key: 'b' }, band)) : null,
+      band ? h('div', { key: 'd', className: 'bae-divider' }) : null,
       auto === 'nothing-found' ? h('div', { key: 'n', className: 'bae-m-fo-empty bae-m-fo-empty-below' }, h('span', { className: 'bae-muted' }, 'No results'), searchManually('s'), found) : null,
       auto === 'nothing-found' ? null : h(React.Fragment, { key: 'f' }, found)];
   }
-  // A chip's value in mono, cut at the chip's value width: the first of several (" · "-separated), as the ISRC chip shows the files' first code.
-  function chipValues(value) {
-    return h('span', { className: 'bae-mono bae-m-idchip-value' }, String(value || '').split(' · ')[0]);
-  }
-  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `editable`: the value is a button that opens fields to change it, as the title search's words are. A chip of several values (" · "-separated, the files' ISRCs) shows the first, then a +N button that opens a popover listing every one, a line each; `moreShown` draws that popover open, after the chip. The band sets `moreOpen` instead, which shows the button open and leaves the popover to the band.
+  // One identifier the folder's files state, in one of three looks (`state`): `off`, an outline, for an identifier the run leaves out, struck out or not yet put in, such as a catalog number the folder offers that no release confirms; `on` (the default), the hover fill, for one the run asks about; `found`, the accent's tint, for one that found releases. `dash`: a dash after the label for an identifier the files leave out, with no fill and no ring.
+  // The label is in the chip type, the value on a dark inset of the chip's fill in the detail type. A chip of several values (" · "-separated, the files' ISRCs) shows the first, then a +N button that opens a popover listing every one, a line each; `moreShown` draws that popover open, after the chip. The band sets `moreOpen` instead, which shows the button open and leaves the popover to the band.
+  // `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `fields`: the title search's words, "Artist=…,Title=…", each name followed by its field in place of the label and value.
   function MacIdentifierChip(props) {
-    var st = props.state || 'filled';
-    var values = String(props.value || '').split(' · '), several = !props.editable && values.length > 1;
-    // A chip that toggles is one button, which VoiceOver reads as its parts with a comma between: "Barcode, 0 41234 56789 2, Discogs, 1".
-    var name = props.toggles ? [props.label, props.value].concat(props.sources ? list(props.sources).map(function (cc) { var q = cc.split('='); return q[0] + ', ' + (q[1] === '…' ? 'Searching…' : q[1]); }) : []).filter(Boolean).join(', ') : null;
+    var st = props.state || 'on';
+    var values = String(props.value || '').split(' · '), several = values.length > 1;
+    // A chip that toggles is one button, which VoiceOver reads as its parts with a comma between: "Barcode, 0 41234 56789 2".
+    var name = props.toggles ? [props.label, props.value].filter(Boolean).join(', ') : null;
     var moreOpen = !!(props.moreShown || props.moreOpen);
-    var chip = h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, 'aria-label': name, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)', lineHeight: 'var(--type-chip-line-height)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : props.editable ? h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.value || '') : chipValues(props.value),
-      several ? h('span', { className: cx('bae-m-idchip-more', moreOpen && 'bae-m-idchip-more-open') }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent', 'aria-expanded': moreOpen }, '+' + (values.length - 1))) : null,
-      props.sources ? list(props.sources).map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
+    var label = function (key, text) { return h('span', { key: key, className: 'bae-m-idchip-name' }, text); };
+    var fields = props.fields ? list(props.fields).map(function (f) { var q = f.split('='); return [label('n' + q[0], q[0]), h('input', { key: 'f' + q[0], type: 'text', className: 'bae-m-idchip-value bae-m-idchip-field', defaultValue: q[1] || '', 'aria-label': q[0], spellCheck: false })]; }) : null;
+    var content = fields || [label('l', props.label),
+      st === 'dash' ? h('span', { key: 'd', className: 'bae-m-idchip-dashmark' }) : h('span', { key: 'v', className: 'bae-m-idchip-value' }, values[0]),
+      several ? h('span', { key: 'm', className: cx('bae-m-idchip-more', moreOpen && 'bae-m-idchip-more-open') }, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-expanded': moreOpen }, '+' + (values.length - 1))) : null];
+    var chip = h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, 'aria-label': name, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, content);
     return props.moreShown && several ? h('span', { className: 'bae-m-idchip-shown' }, chip, valuesPopover(values)) : chip;
   }
-  // The popover of every value of a chip, a line each, hanging from the chip's open +N button. It is a window of its own, so it comes after everything in the window the button is in.
+  // The popover of every value of a chip, a line each in the value's type, hanging from the chip's open +N button. It is a window of its own, so it comes after everything in the window the button is in.
   function valuesPopover(values) {
-    return h('span', { className: 'bae-m-idchip-pop' }, h(MacPopover, { width: 150, top: 10, right: -75, arrow: 75 }, h('div', { className: 'bae-m-idchip-codes' }, values.map(function (v, i) { return h('div', { key: i, className: 'bae-mono' }, v); }))));
+    return h('span', { className: 'bae-m-idchip-pop' }, h(MacPopover, { width: 150, top: 10, right: -75, arrow: 75 }, h('div', { className: 'bae-m-idchip-codes' }, values.map(function (v, i) { return h('div', { key: i }, v); }))));
   }
-  // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated. A Disc ID, Barcode or Catalog # chip that holds a value toggles, and a Title search chip's words are a button that opens its fields.
-  // An outlined Catalog # chip is a catalog number the folder offers that no release confirms; pressing it puts the number into the run. The band folds these after the other chips, behind a "+N more" button with their count. `candidates`: `folded` (the default) or `shown`, which draws every one, then the button, which reads Show fewer. `open`: the label of the chip whose +N popover is drawn open, such as ISRC, after the band.
+  // The identifier chips: "Label|value|state", comma-separated, each state `off`, `on`, `found` or `dash` (MacIdentifierChip). A Disc ID, Barcode or Catalog # chip that holds a value toggles. `titleSearch`: the words the run searches by, "artist|title|state", one chip after the others that reads Artist and Title, each followed by its field, `found` unless given.
+  // `offered`: the catalog numbers the folder offers that no release confirms, comma-separated, each an off Catalog # chip that puts its number into the run. The band folds them after the other chips, behind a "+N more" button with their count. `candidates`: `folded` (the default) or `shown`, which draws every one, then the button, which reads Show fewer. `open`: the label of the chip whose +N popover is drawn open, such as ISRC, after the band.
   var TOGGLED_IDENTIFIERS = ['Disc ID', 'Barcode', 'Catalog #'];
   function MacIdentifierBand(props) {
     var parts = list(props.chips).map(function (c) { return c.split('|'); });
-    var isCandidate = function (p) { return p[0] === 'Catalog #' && p[2] === 'outlined'; };
-    var chip = function (p, i) { return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], sources: p[3] ? p[3].split('+').join(',') : null, toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash', editable: p[0] === 'Title search' && !!p[1], moreOpen: p[0] === props.open }); };
+    var chip = function (p, i) { return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash', moreOpen: p[0] === props.open }); };
     var opened = parts.filter(function (p) { return p[0] === props.open; })[0];
-    var candidates = parts.filter(isCandidate), shown = props.candidates === 'shown';
+    var title = props.titleSearch ? String(props.titleSearch).split('|') : null;
+    var offered = list(props.offered), shown = props.candidates === 'shown';
     return h('div', { className: 'bae-m-band' },
-      parts.filter(function (p) { return !isCandidate(p); }).map(chip),
-      shown ? candidates.map(function (p, i) { return chip(p, 'c' + i); }) : null,
-      candidates.length ? h('button', { type: 'button', className: 'bae-plainbtn', title: 'Catalog numbers found in the folder that no release confirms' }, h(StatusChip, null, shown ? 'Show fewer' : '+' + candidates.length + ' more')) : null,
+      parts.map(chip),
+      title ? h(MacIdentifierChip, { key: 't', fields: 'Artist=' + title[0] + ',Title=' + (title[1] || ''), state: title[2] || 'found' }) : null,
+      shown ? offered.map(function (n, i) { return chip(['Catalog #', n, 'off'], 'c' + i); }) : null,
+      offered.length ? h('button', { type: 'button', className: 'bae-plainbtn', title: 'Catalog numbers found in the folder that no release confirms' }, h(StatusChip, null, shown ? 'Show fewer' : '+' + offered.length + ' more')) : null,
       opened ? valuesPopover(opened[1].split(' · ')) : null);
   }
   // Every catalog that describes a release, as a wrapped row of links to each catalog's page, in the order core lists them (`records`: catalog names, comma-separated).

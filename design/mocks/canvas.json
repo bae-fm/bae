@@ -6071,7 +6071,7 @@
    "w": 420,
    "x": 5936,
    "y": 4700,
-   "text": "What the code needs for this board:\n- Each catalog number the folder offers that no release confirms is its own outlined Catalog # chip, which puts the number into the run (decision #2237).\n- The band folds these chips after its other chips, behind a +N more button with their count; opened, the button reads Show fewer.\n- Today MacIdentifierBand's catalogCandidatesChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierBand.swift:222) draws one chip that lists every number, with no fold."
+   "text": "What the code needs for this board:\n- Each catalog number the folder offers that no release confirms is an off Catalog # chip: an outline, with its name and value in tertiary text (decision #2561).\n- Today CatalogCandidateChip (bae-macos/bae/bae/Views/Import/Search/CatalogCandidateChip.swift:7) draws it with MacIdentifierChip's outlined style, its value in mono and in primary text."
   },
   "code-album-catalog-popover": {
    "page": "home",

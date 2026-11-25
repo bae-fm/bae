@@ -5,7 +5,7 @@ import SwiftUI
 
 extension ShotScene {
     static let macIdentifierChipScenes: [ShotScene] = [
-        identifierChipScene("mac.component.identifier-chip.filled") {
+        identifierChipScene("mac.component.identifier-chip.on") {
             MacIdentifierChip(
                 label: "Barcode",
                 value: sampleBarcode,
@@ -14,19 +14,11 @@ extension ShotScene {
                 EmptyView()
             }
         },
-        identifierChipScene("mac.component.identifier-chip.outlined") {
+        identifierChipScene("mac.component.identifier-chip.off") {
             MacIdentifierChip(
                 label: "Barcode",
                 value: sampleBarcode,
                 style: .outlined,
-                onPress: {}
-            ) { EmptyView() }
-        },
-        identifierChipScene("mac.component.identifier-chip.struck") {
-            MacIdentifierChip(
-                label: "Barcode",
-                value: sampleBarcode,
-                style: .struck,
                 onPress: {}
             ) { EmptyView() }
         },
@@ -41,27 +33,6 @@ extension ShotScene {
             ) {
                 capsule(.musicBrainz, .found(count: 2, groups: []))
                 capsule(.discogs, .noMatch)
-            }
-        },
-        identifierChipScene("mac.component.identifier-chip.searching") {
-            MacIdentifierChip(
-                label: "Barcode",
-                value: sampleBarcode,
-                onPress: {}
-            ) {
-                capsule(.musicBrainz, .found(count: 2, groups: []))
-                capsule(.discogs, .lookingUp)
-            }
-        },
-        identifierChipScene("mac.component.identifier-chip.editable") {
-            MacIdentifierChip(label: "Barcode") {
-                Button {
-                } label: {
-                    Text(sampleBarcode)
-                        .themeText(.mono)
-                        .foregroundStyle(Theme.textPrimary)
-                }
-                .buttonStyle(.accentPlain)
             }
         },
         identifierChipScene("mac.component.identifier-chip.several-values") {

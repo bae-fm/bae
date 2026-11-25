@@ -380,8 +380,8 @@ export declare function MacInvalidCandidateCard(props: { reason: string; cover?:
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportTrackRow(props: { file?: string; start?: string; position?: string; title?: string; artist?: string; artistChip?: 'Library' | 'New'; inherited?: boolean; length?: string; listed?: string; playing?: boolean }): React.ReactElement;
 export declare function MacImportSheetCaption(props: { disc?: string; sheet?: string; bound?: string; unbound?: boolean }): React.ReactElement;
-export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; automatic?: 'not-started' | 'working' | 'failed' | 'nothing-found' | 'found'; sentence?: string; chips?: string; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
-export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
+export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; automatic?: 'not-started' | 'working' | 'failed' | 'nothing-found' | 'found'; sentence?: string; chips?: string; titleSearch?: string; offered?: string; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacIdentifierBand(props: { chips: string; titleSearch?: string; offered?: string; candidates?: 'folded' | 'shown'; open?: string }): React.ReactElement;
 export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string }): React.ReactElement;
 /** A found album with its pressings on a rule under it. */
 export declare function MacReleaseGroup(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;
@@ -502,8 +502,8 @@ export declare function MacReleaseIdentity(props: { cover?: string; title?: stri
 export declare function MacReleaseFields(props: { year?: string; media?: string; labels?: string; country?: string; countryOpen?: string; barcodes?: string; status?: string; packaging?: string; details?: string }): React.ReactElement;
 /** One file of a release: name and size; kind opens (a button that opens it), audio (with Play) or other; damaged says why the file is damaged. */
 export declare function MacReleaseFileRow(props: { name: string; size?: string; kind?: 'opens' | 'audio' | 'other'; damaged?: string }): React.ReactElement;
-/** One identifier the files state: label and value, or a dash, with the catalogs searched for it ("MusicBrainz=2,Discogs=0"). */
-export declare function MacIdentifierChip(props: { label: string; value?: string; state?: 'filled' | 'outlined' | 'struck' | 'dash'; sources?: string }): React.ReactElement;
+/** One identifier the files state: label and value, or a dash, in the look off, on or found; or the title search's fields ("Artist=…,Title=…"). */
+export declare function MacIdentifierChip(props: { label?: string; value?: string; state?: 'off' | 'on' | 'found' | 'dash'; toggles?: boolean; fields?: string; moreShown?: boolean; moreOpen?: boolean }): React.ReactElement;
 /** A pressing fact, each record's value followed by its catalog when the records differ ("1992:MusicBrainz|1993:Discogs"). */
 export declare function MacSourcedValue(props: { value: string }): React.ReactElement;
 /** One bulk action with how many selected folders it applies to; a child sits before the count. */

@@ -1726,13 +1726,19 @@ asked about a clue, the title search waiting on the clues, and the artwork
 still being read, which can add barcodes and catalog numbers. The search
 form reports that bae is still reading the artwork.
 
+The pane shows each identifier the folder states as a chip: its name and its
+value, with no catalog and no count. A chip has one of three looks. An off
+chip, an outline, is an identifier the run leaves out. An on chip, a fill, is
+one the run asks about. A found chip, in the accent's tint, is one that found
+releases.
+
 The ISRC chip shows the first ISRC from the files' tags and, when the tags
 carry more, a "+N" button with the count of the rest. Pressing it opens a
 popover that lists every ISRC, one a line, and no code in it is a button.
 Screen readers read every ISRC. The pane folds the catalog numbers the
 folder's text offers that no release confirms behind one "+N more" button,
 where N is how many there are. Pressing it lists each number as its own
-outlined Catalog # chip, a button that puts the number into the run, and the
+off Catalog # chip, a button that puts the number into the run, and the
 button then reads "Show fewer". The pane lists each number once. These are no catalog number: a copyright
 line such as `P 2007`; an ISRC; a checksum from a rip report (8, 32, 40 or 64
 hex digits holding a letter and a digit); a number followed by `%`
@@ -1742,15 +1748,16 @@ between underscores (`_SS500_`). A number made with a year, such as
 `MR 2002`, is a catalog number.
 Each Disc ID a catalog can answer and each barcode is a button that leaves
 it out of the run, or asks about it again once left out. Each catalog number
-in the run is a button that strikes it out, or puts a struck one back.
+in the run is a button that leaves it out of the run, which turns it into an
+off chip, or puts it back.
 On the Mac, VoiceOver reads each of these buttons by its parts: the identifier's
 name, its value and each catalog's name and answer.
 The pane shows the title search only for a run that searches by title, or that
 waits on its identifiers to decide; it shows none for a run whose identifiers
 answered or whose draft has no title.
-The title search shows the artist and title it searches by as a button.
-Pressing it opens a field for each, and leaving a changed field searches
-again by the new words.
+The title search is one chip that reads Artist, the artist's field, Title
+and the title's field, each field holding the words the run searches by.
+Leaving a changed field searches again by the new words.
 
 A pressing's row lists every record's value where its records state a fact
 differently: the year, a catalog number, a barcode, the country, the format.

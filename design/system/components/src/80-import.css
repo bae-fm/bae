@@ -78,21 +78,27 @@
 .bae-m-fo-status { margin-left: auto; display: inline-flex; align-items: center; }
 .bae-m-fo-body { display: flex; flex-direction: column; gap: var(--space-group); padding: var(--space-inline) var(--space-group) var(--space-group); }
 .bae-m-band { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-compact); }
-.bae-m-idchip { display: inline-flex; align-items: center; flex-wrap: wrap; max-width: 100%; gap: var(--space-compact); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); }
-.bae-m-idchip-filled { background: var(--hover); }
-.bae-m-idchip-outlined, .bae-m-idchip-struck { box-shadow: inset 0 0 0 1px var(--hairline); }
-.bae-m-idchip-struck .bae-mono { text-decoration: line-through; }
-.bae-m-idchip-value { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A chip: its label in the chip type, then its value on a dark inset of the chip's fill, in the detail type. Off is an outline, on the hover fill, found the accent's tint. */
+.bae-m-idchip { display: inline-flex; align-items: center; flex-wrap: wrap; max-width: 100%; box-sizing: border-box; gap: var(--space-compact); padding: calc(var(--space-line) + var(--space-hairline)) calc(var(--space-compact) + var(--space-hairline)); border-radius: var(--radius-chip); text-align: start; }
+.bae-m-idchip-name, .bae-m-idchip-more { font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); color: var(--bae-idchip-name); }
+.bae-m-idchip-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--bae-idchip-value); background: color-mix(in srgb, var(--background) 70%, transparent); border-radius: calc(var(--radius-chip) - var(--space-hairline)); padding: var(--space-hairline) calc(var(--space-compact) - var(--space-hairline)); margin: calc(-1 * var(--space-line)) calc(var(--space-line) - var(--space-compact)) calc(-1 * var(--space-line)) 0; }
+.bae-m-idchip-off, .bae-m-idchip-dash { --bae-idchip-name: var(--text-tertiary); --bae-idchip-value: var(--text-tertiary); }
+.bae-m-idchip-off { box-shadow: inset 0 0 0 1px var(--hairline); }
+.bae-m-idchip-on { --bae-idchip-name: var(--text-tertiary); --bae-idchip-value: color-mix(in srgb, var(--text-primary) 50%, var(--text-secondary)); background: var(--hover); }
+.bae-m-idchip-found { --bae-idchip-name: color-mix(in srgb, var(--text-primary) 75%, transparent); --bae-idchip-value: var(--text-primary); background: color-mix(in srgb, var(--accent) 26%, transparent); }
+/* The title search's fields: each is a value's inset, as wide as its words. Only the last pulls into the chip's end padding, as a value does. */
+.bae-m-idchip-field { border: 0; outline: none; field-sizing: content; min-width: 2ch; margin: calc(-1 * var(--space-line)) 0; }
+.bae-m-idchip-field:last-child { margin-right: calc(var(--space-line) - var(--space-compact)); }
 .bae-m-idchip-dashmark { width: 8px; height: 1.5px; background: var(--hairline-strong); }
-/* The ISRC chip's +N: a button after the first code, whose popover lists every code, a line each, under it. */
-.bae-m-idchip-more { display: inline-flex; font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); }
+/* The ISRC chip's +N: a button after the first code, in the label's colour, whose popover lists every code, a line each, under it. */
+.bae-m-idchip-more { display: inline-flex; }
+.bae-m-idchip-more > button { font: inherit; color: inherit; }
 /* The popover is drawn after the band, or after a chip on its own, and hangs from the middle of the open +N button's foot. The scope keeps each band's popover on its own button. */
 .bae-m-band, .bae-m-idchip-shown { position: relative; anchor-scope: --bae-idchip-more; }
 .bae-m-idchip-shown { display: inline-flex; max-width: 100%; }
 .bae-m-idchip-more-open { anchor-name: --bae-idchip-more; }
 .bae-m-idchip-pop { position: absolute; position-anchor: --bae-idchip-more; left: anchor(center); top: anchor(bottom); }
-.bae-m-idchip-codes { padding: var(--space-group); display: flex; flex-direction: column; gap: var(--space-line); }
-.bae-m-capsule { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-hairline) var(--space-inline) var(--space-hairline) var(--space-compact); border-radius: 999px; background: var(--neutral-tint); font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); color: var(--text-secondary); }
+.bae-m-idchip-codes { padding: var(--space-group); display: flex; flex-direction: column; gap: var(--space-line); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-m-rcard { display: flex; flex-direction: column; gap: var(--space-compact); }
 .bae-m-rcard-head { display: flex; align-items: center; gap: var(--space-group); }
 .bae-m-rcard-rows { margin-left: var(--space-edge); padding-left: var(--space-related); border-left: 1px solid var(--hairline); display: flex; flex-direction: column; gap: var(--space-compact); }

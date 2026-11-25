@@ -11,16 +11,15 @@
   function box(w, c) { return h('div', { style: { width: w } }, c); }
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Found', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Barcode|0 41234 56789 2|filled|Discogs=1,ISRC||dash' })),
-    W('Searching', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=…,Barcode|0 41234 56789 2|filled|Discogs=…,ISRC||dash' })),
-    W('Nothing found', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=0,Barcode|0 41234 56789 2|filled|MusicBrainz=0+Discogs=0,ISRC||dash' })),
-    W('Left out', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|outlined,Barcode|0 41234 56789 2|outlined,Catalog #|HR-1042|filled|MusicBrainz=1+Discogs=1,ISRC||dash' })),
-    W('Catalog numbers', h(B.MacIdentifierBand, { chips: 'Disc ID||dash,Barcode||dash,ISRC||dash,Catalog #|HR-1042|outlined,Catalog #|HR-1042-2|outlined' })),
-    W('Catalog numbers shown', h(B.MacIdentifierBand, { chips: 'Disc ID||dash,Barcode||dash,ISRC||dash,Catalog #|HR-1042|outlined,Catalog #|HR-1042-2|outlined', candidates: 'shown' })),
-    W('ISRCs', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Barcode|0 41234 56789 2|filled|Discogs=1,ISRC|USHR19200101 · USHR19200102 · USHR19200103 · USHR19200104 · USHR19200105 · USHR19200106 · USHR19200107 · USHR19200108 · USHR19200109 · USHR19200110 · USHR19200111|filled|MusicBrainz=2' })),
-    W('Struck', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Catalog #|HR-1042|struck,ISRC||dash' })),
-    W('Wrapped', box(300, h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Barcode|0 41234 56789 2|filled|Discogs=1,ISRC||dash' }))),
-    W('ISRCs shown', h('div', { style: { paddingBottom: 240 } }, h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Barcode|0 41234 56789 2|filled|Discogs=1,ISRC|USHR19200101 · USHR19200102 · USHR19200103 · USHR19200104 · USHR19200105 · USHR19200106 · USHR19200107 · USHR19200108 · USHR19200109 · USHR19200110 · USHR19200111|filled|MusicBrainz=2', open: 'ISRC' })))));
+    W('Found', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|found,Barcode|0 41234 56789 2|found,ISRC||dash' })),
+    W('Nothing found', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|on,Barcode|0 41234 56789 2|on,ISRC||dash' })),
+    W('Left out', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|off,Barcode|0 41234 56789 2|off,Catalog #|HR-1042|found,ISRC||dash' })),
+    W('Title search', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|on,Barcode|0 41234 56789 2|on,ISRC||dash', titleSearch: 'Mara Quill|Low Tide Hours' })),
+    W('Catalog numbers', h(B.MacIdentifierBand, { chips: 'Disc ID||dash,Barcode||dash,ISRC||dash', offered: 'HR-1042,HR-1042-2' })),
+    W('Catalog numbers shown', h(B.MacIdentifierBand, { chips: 'Disc ID||dash,Barcode||dash,ISRC||dash', offered: 'HR-1042,HR-1042-2', candidates: 'shown' })),
+    W('ISRCs', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|found,Barcode|0 41234 56789 2|found,ISRC|USHR19200101 · USHR19200102 · USHR19200103 · USHR19200104 · USHR19200105 · USHR19200106 · USHR19200107 · USHR19200108 · USHR19200109 · USHR19200110 · USHR19200111|found' })),
+    W('Wrapped', box(300, h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|found,Barcode|0 41234 56789 2|found,ISRC||dash' }))),
+    W('ISRCs shown', h('div', { style: { paddingBottom: 240 } }, h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|found,Barcode|0 41234 56789 2|found,ISRC|USHR19200101 · USHR19200102 · USHR19200103 · USHR19200104 · USHR19200105 · USHR19200106 · USHR19200107 · USHR19200108 · USHR19200109 · USHR19200110 · USHR19200111|found', open: 'ISRC' })))));
 </script>
 </body>
 </html>
