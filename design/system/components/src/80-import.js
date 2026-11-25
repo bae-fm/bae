@@ -390,7 +390,7 @@
     return String(text).split('|').map(function (v) { var at = v.lastIndexOf(':'); return { value: v.slice(0, at), catalog: v.slice(at + 1) }; });
   }
   // A found pressing: its edition line (`edition`: " · "-separated facts, the year, country, each label and its catalog number), then its copy line (`copy`: " · "-separated facts, the media and details) with the barcode and badges after it, then `notes` (the records' notes, a release's disambiguation, with the Notes badge), each fact a MacSourcedValue; In library, dimmed whole, for one the library has; `sources`, the catalogs whose records it holds, only those that have answered; the chevron.
-  // In library's check is checkmark.circle in the detail text's font (11.5 points, regular).
+  // In library's check is the success status glyph in the detail text's font, regular.
   function MacPressingRow(props) {
     var sv = function (v) { return h(MacSourcedValue, { value: v }); };
     var line = function (text) { return text ? String(text).split(' · ').map(function (part, i) { return h(React.Fragment, { key: i }, i ? ' · ' : null, sv(part)); }) : null; };
@@ -401,9 +401,9 @@
         h('div', { style: { display: 'flex', gap: 'var(--space-compact)', alignItems: 'center', flexWrap: 'wrap' } }, copy ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, copy) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
         // `notes`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ. The Notes badge and this line come from the same records, so they show together.
         props.notes ? h('div', { className: 'bae-m-tertiary bae-m-detail', style: { fontStyle: 'italic' } }, sv(props.notes)) : null),
-      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(Glyph, { set: 'mac', name: 'checkcircle', weight: 'regular', size: 11.5, className: 'bae-success' }), 'In library') : null,
+      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(StatusGlyph, { tone: 'success', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular' }), h('span', { className: 'bae-m-prow-trail' }, 'In library')) : null,
       // `sources`: the catalogs whose records the pressing holds, only those that have answered.
-      props.sources ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, props.sources) : null,
+      props.sources ? h('span', { className: 'bae-m-tertiary bae-m-detail bae-m-prow-trail' }, props.sources) : null,
       h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', frame: [11, null], className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
   }
   // One bulk action: its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the name in the strong type and the count in the accent, for Import and Combine. `to`: where the import goes, Import's destination pop-up, before the count; the row's button then holds only the name, so the pop-up is a control of its own.
