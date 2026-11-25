@@ -4,7 +4,8 @@
 
   // The traffic lights at a window's top left: close, minimize, zoom.
   // `inset`: over an inset sidebar, which sits 8pt in from the window's edge, so the lights keep their place on the sidebar's corner.
-  function macLights(inset) { return h('div', { className: cx('bae-m-lights', inset && 'bae-m-lights-inset'), 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)); }
+  // `inactive`: the window is not the key window, so macOS draws all three lights grey.
+  function macLights(inset, inactive) { return h('div', { className: cx('bae-m-lights', inset && 'bae-m-lights-inset', inactive && 'bae-m-lights-inactive'), 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)); }
 
   // The welcome window: the rounded window, 690 by 600 unless given, its traffic lights at the top left, its screens stacked inside.
   function MacWelcomeWindow(props) {

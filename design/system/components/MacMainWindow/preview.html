@@ -1,4 +1,4 @@
-<!-- @dsCard group="Windows and screens" height=5430 -->
+<!-- @dsCard group="Windows and screens" height=5973 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacMainWindow</title></head>
@@ -11,6 +11,7 @@
   function slot(t) { return h('div', { className: 'bae-preview-slot', style: { margin: 'var(--space-group)' } }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Library', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, slot('The section’s content'))),
+    W('Inactive', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03', inactive: true }, slot('The section’s content'))),
     W('Import', h(B.MacMainWindow, Object.assign({ width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, { section: 'Import' }), slot('The section’s content'))),
     W('Nothing played', h(B.MacMainWindow, { width: 1100, height: 520 }, slot('The section’s content'))),
     W('Queue open', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03', queueOpen: true }, slot('The section’s content'))),

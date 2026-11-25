@@ -4585,6 +4585,14 @@
    "w": 1400,
    "x": 4960,
    "y": 6240
+  },
+  "mac.library.albums.inactive.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Albums, the window inactive",
+   "w": 1200,
+   "x": 7480,
+   "y": 1636
   }
  },
  "createdOnFiles": {
