@@ -1,4 +1,4 @@
-<!-- @dsCard group="Album page" height=2860 -->
+<!-- @dsCard group="Album page" height=4767 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidLightbox</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Image', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', page: 1, count: 4 })), W('Loading', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', page: 1, count: 4, loading: true })), W('One image', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', count: 1 }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Image', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', page: 1, count: 4 })), W('Loading', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', page: 1, count: 4, state: 'loading' })), W('Failed', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', page: 1, count: 4, state: 'failed' })), W('Failed, Details', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', page: 1, count: 4, state: 'failed', details: true })), W('One image', h(B.AndroidLightbox, { title: 'Low Tide Hours', label: 'cover.jpg', count: 1 }))));
 </script>
 </body>
 </html>

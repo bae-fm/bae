@@ -63,7 +63,7 @@
    "page": "home",
    "title": "Unpin, asking first",
    "w": 412,
-   "x": 2460,
+   "x": 2952,
    "y": 14416
   },
   "android.album.delete.failed.dc.html": {
@@ -90,6 +90,14 @@
    "x": 1968,
    "y": 14416
   },
+  "android.album.gallery.zoom-failed.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "The gallery, zoom failed",
+   "w": 412,
+   "x": 2460,
+   "y": 14416
+  },
   "android.album.menu.dc.html": {
    "h": 916,
    "page": "home",
@@ -103,7 +111,7 @@
    "page": "home",
    "title": "Album: Rate",
    "w": 412,
-   "x": 2952,
+   "x": 3444,
    "y": 14416
   },
   "mac.album.change-cover.dc.html": {
@@ -6365,6 +6373,7 @@
   "android.album.delete.failed.dc.html",
   "android.album.gallery.dc.html",
   "android.album.gallery.loading.dc.html",
+  "android.album.gallery.zoom-failed.dc.html",
   "mac.album.edit.dc.html",
   "mac.album.storage.dc.html",
   "mac.album.storage.uploading.dc.html",
