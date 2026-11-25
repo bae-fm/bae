@@ -2,6 +2,7 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.downloads.AndroidPinningRow
 import org.junit.Test
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -44,8 +45,9 @@ private fun previewDownload(
     state: BridgeDownloadState,
 ) = PreviewData.downloadOp(releaseId = releaseId, state = state, title = title, fileCount = files, totalSize = bytes)
 
+/** The row with the divider the Pinning screen draws after each row, which the board's row carries as its bottom border. */
 @Composable
-private fun PinningRow(op: BridgeDownloadOp) =
+private fun PinningRow(op: BridgeDownloadOp) {
     AndroidPinningRow(
         op,
         PreviewData
@@ -56,3 +58,5 @@ private fun PinningRow(op: BridgeDownloadOp) =
         onCancel = {},
         onRetry = {},
     )
+    AndroidDivider()
+}
