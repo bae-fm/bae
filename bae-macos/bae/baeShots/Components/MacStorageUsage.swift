@@ -30,10 +30,12 @@ extension ShotScene {
         height: CGFloat
     ) -> ShotScene {
         component(id, width: 580, height: height) {
-            // The board's usage holds the 12 pt a settings section's box
-            // puts round it in the app.
+            // The board's usage holds 12 points at its sides and 10 above
+            // and below, as a settings section's box puts round it in the
+            // app.
             MacStorageUsage(usage: StorageUsage(storage))
-                .padding(ThemeSpace.group)
+                .padding(.horizontal, ThemeSpace.group)
+                .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
         }
     }
 }
