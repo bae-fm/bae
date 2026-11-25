@@ -86,17 +86,18 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                     height: MacThumbnailStripLayout.thumbnailSize
                 )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                // The whole ring lies outside the thumbnail, as the board's
-                // ring does.
-                .overlay {
-                    RoundedRectangle(
-                        cornerRadius: ThemeRadius.artwork + lineWidth
-                    )
-                    .strokeBorder(color, lineWidth: lineWidth)
-                    .padding(-lineWidth)
-                }
         }
         .buttonStyle(.accentPlain)
+        // The whole ring lies outside the thumbnail, as the board's ring
+        // does, and outside the button, so VoiceOver gives the button the
+        // thumbnail's box.
+        .overlay {
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork + lineWidth)
+                .strokeBorder(color, lineWidth: lineWidth)
+                .padding(-lineWidth)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
         .accessibilityLabel(Text(verbatim: name(item)))
     }
 }
