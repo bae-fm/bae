@@ -21,7 +21,8 @@ extension ShotScene {
             "mac.component.identifier-band.wrapped",
             PreviewData.identifyRunBandBoard,
             width: 300,
-            height: 130
+            height: 130,
+            wrapsAtWidth: true
         ),
         identifierBandScene(
             "mac.component.identifier-band.left-out",
@@ -241,6 +242,7 @@ extension ShotScene {
         _ run: BridgeIdentifyRun,
         width: CGFloat = 580,
         height: CGFloat = 70,
+        wrapsAtWidth: Bool = false,
         listsCatalogCandidates: Bool = false
     ) -> ShotScene {
         component(
@@ -256,9 +258,9 @@ extension ShotScene {
                 onEditTitleSearch: { _, _ in },
                 listsCatalogCandidates: .constant(listsCatalogCandidates)
             )
-            // The band wraps its chips at the scene's width, as the board's
-            // box does.
-            .frame(maxWidth: width, alignment: .leading)
+            // The wrapped state's board holds the band in a narrow box, and
+            // every other board lets the band take the width it needs.
+            .frame(maxWidth: wrapsAtWidth ? width : nil, alignment: .leading)
         }
     }
 }
