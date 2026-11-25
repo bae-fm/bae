@@ -28,6 +28,10 @@ import kotlin.math.roundToInt
  */
 internal object ElementList {
     private const val PLATFORM = "android"
+
+    /** A line-break mark that a screen puts in its words, which the board has no word for. */
+    private const val ZERO_WIDTH_SPACE = "\u200B"
+
     private const val TENTH = 10.0
     private const val SLACK = 0.6
     private const val HEX_RADIX = 16
@@ -270,7 +274,10 @@ internal object ElementList {
                 // element around them.
                 .put(
                     "label",
-                    orNull(description?.joinToString(" ") ?: pane ?: texts?.takeIf { named }?.joinToString(" ") { it.text }),
+                    orNull(
+                        description?.joinToString(" ") ?: pane
+                            ?: texts?.takeIf { named }?.joinToString(" ") { it.text.replace(ZERO_WIDTH_SPACE, "") },
+                    ),
                 ).put("value", orNull(value(config, editable?.text)))
                 .put(
                     "bounds",

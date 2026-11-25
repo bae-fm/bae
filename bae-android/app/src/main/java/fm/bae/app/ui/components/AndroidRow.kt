@@ -352,13 +352,19 @@ private fun Subtitle(
             Box(modifier = Modifier.alignBy { it.measuredHeight }.size(DOT).background(color, CircleShape))
         }
         Text(
-            text = text,
+            text = text.breakableAfterHyphens(),
             style = ThemeText.body.style,
             color = color,
             modifier = Modifier.alignBy(FirstBaseline),
         )
     }
 }
+
+/**
+ * [this] with a zero-width space after each hyphen: Android does not end a line between a hyphen and a digit, which
+ * the board's browser does, so a long id would otherwise break in the middle of a group.
+ */
+internal fun String.breakableAfterHyphens(): String = replace("-", "-\u200B")
 
 private val ONE_LINE_HEIGHT = 56.dp
 private val TWO_LINE_HEIGHT = 72.dp
