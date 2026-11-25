@@ -127,9 +127,9 @@
   // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
   function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to, off: props.off }); }
   // A field drawn as the value it holds until the pointer is over it or it has focus, for the draft's values and a track's cells: `label` names it, `placeholder` shows while it is empty. `large` sets it in the album title's size; `quiet` draws its value in the tertiary colour, as the album year.
-  // `fit`: as wide as its value, and 96pt while empty, for a field in a list row and the album title and year; `mono`: its value in the mono face, as a catalog number or a barcode.
+  // `fit`: as wide as its value, and 96pt while empty, for a field in a list row and the album title and year; `mono`: its value in the mono face, as a catalog number or a barcode. `off`: dimmed and disabled, as a field in a disabled fieldset is.
   function MacInlineField(props) {
-    return h('input', { type: 'text', className: cx('bae-m-icell', props.large && 'bae-m-icell-large', props.quiet && 'bae-m-icell-quiet', props.fit && 'bae-m-icell-fit', props.mono && 'bae-m-icell-mono'), defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false });
+    return h('input', { type: 'text', disabled: props.off ? true : null, className: cx('bae-m-icell', props.large && 'bae-m-icell-large', props.quiet && 'bae-m-icell-quiet', props.fit && 'bae-m-icell-fit', props.mono && 'bae-m-icell-mono'), defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false });
   }
   // A ruled heading over a part of a form: Release, Images, Files, Credits.
   function MacFormHeading(props) { return h('div', { className: 'bae-m-formhead' }, props.children); }
@@ -160,7 +160,7 @@
   // The release's cover (a plain tile when it has none) beside its identity: the album title and year as fields and the album artist; then what the card it sits in puts under them, its children: the folder's audio line and the album picker.
   function MacReleaseIdentity(props) {
     return h('div', { className: 'bae-m-idraft-head' },
-      props.cover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Change cover', disabled: !!props.coverOff }, h(Artwork, { title: props.cover, size: 132, radius: 'radius-artwork' })) : h(Artwork, { size: 132, radius: 'radius-artwork', missing: true }),
+      props.cover ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-idraft-cover', 'aria-label': 'Change cover', disabled: !!props.coverOff }, h(Artwork, { title: props.cover, size: 132, radius: 'radius-artwork' })) : h(Artwork, { size: 132, radius: 'radius-artwork', missing: true }),
       h('div', { className: 'bae-m-idraft-id' },
         h(MacInlineField, { label: 'Album title', value: props.title, placeholder: 'Album title', large: true, fit: true }),
         h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, secondary: true }),
@@ -174,19 +174,19 @@
   function removeEntry(what, off) { return h(MacIconButton, { icon: 'removefill', size: 'medium', small: true, faint: true, label: 'Remove ' + what, off: off }); }
   // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added, and says Add. `off`: dimmed and disabled.
   function addEntry(label, menu, off) {
-    return h('button', { type: 'button', disabled: off || null, 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: cx('bae-plainbtn bae-accent bae-m-idraft-add', off && 'bae-off') }, h(Glyph, { set: 'mac', name: 'add', size: 'small' }), menu ? 'Add' : label);
+    return h('button', { type: 'button', disabled: off || null, 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: 'bae-plainbtn bae-accent bae-m-idraft-add' }, h(Glyph, { set: 'mac', name: 'add', size: 'small' }), menu ? 'Add' : label);
   }
   function discogsDetails(details, off) {
     return h('span', { className: 'bae-m-idraft-details' },
       details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d, off)); }),
       details.length ? addEntry('Add detail', true, off)
-        : h('button', { type: 'button', disabled: off || null, className: cx('bae-plainbtn', 'bae-m-tertiary', off && 'bae-off'), 'aria-haspopup': 'menu', 'aria-label': 'Details' }, '—'));
+        : h('button', { type: 'button', disabled: off || null, className: 'bae-plainbtn bae-m-tertiary', 'aria-haspopup': 'menu', 'aria-label': 'Details' }, '—'));
   }
   // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty. `off`: every field, stepper and button is disabled, as while a save reads a file.
   function MacReleaseFields(props) {
     // A fact chosen from a menu shows its value as plain text, or the form's dash.
     var off = !!props.off;
-    var face = function (label, value) { return h('button', { type: 'button', disabled: off || null, role: 'combobox', 'aria-expanded': false, 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary', off && 'bae-off') }, value || '—'); };
+    var face = function (label, value) { return h('button', { type: 'button', disabled: off || null, role: 'combobox', 'aria-expanded': false, 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary') }, value || '—'); };
     var field = function (label, value) { return h(MacInlineField, { label: label, value: value, placeholder: '—', fit: true }); };
     // A list kept one row per entry (labels, barcodes): its name on the first row only, each entry with ⊗, then Add on its own line under the last row; with none, Add alone beside the name.
     var rows = function (name, entries, draw, noun) {
@@ -213,7 +213,7 @@
     var cells = h('div', { className: 'bae-m-idraft-grid' }, grid.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: 'bae-m-idraft-cell' }, r[1])]; }));
     return h('div', { className: 'bae-m-relfields' },
       h(MacFormHeading, null, 'Release'),
-      // A disabled fieldset disables every field in the grid; each button, pop-up and stepper also takes `off`, which dims it as AppKit dims a disabled control.
+      // A disabled fieldset disables every field and button in the grid, which dims the fields and the plain buttons; each ⊗ and stepper takes `off`, which dims it.
       off ? h('fieldset', { disabled: true, 'aria-disabled': true, style: { display: 'contents' } }, cells) : cells);
   }
   // The release's identity and its fields, as both cards draw them under their lead: the cover and identity with the audio line and the album picker, then the Release grid.
@@ -224,7 +224,7 @@
         props.album ? h(MacAlbumPicker, { key: 'album', album: props.album, inLibrary: props.albumInLibrary, picked: props.albumPicked, open: props.albumOpen, off: !!props.reading }) : null),
       h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labels: props.labels, country: props.country, countryOpen: props.countryOpen, barcodes: props.barcodes, status: props.status, packaging: props.packaging, details: props.details, off: !!props.reading })];
   }
-  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` and the audio a picked release leaves out (`leftOut`) in warning notices under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save, and the identity, the fields, the track table and the Files list are off too. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`). `searching`: the first child, identification's results (MacFindOnline), stands in place of the card until a pick or Back, and the images, the track table and the Files list stay under it.
+  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` and the audio a picked release leaves out (`leftOut`) in warning notices under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save, and the identity, the fields, the track table and the Files list are off too. Everything off is dimmed but the cover. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`). `searching`: the first child, identification's results (MacFindOnline), stands in place of the card until a pick or Back, and the images, the track table and the Files list stay under it.
   function MacReleaseEditor(props) {
     var k = kids(props.children), leftOut = list(props.leftOut);
     var tracks = props.searching ? k.slice(1) : k;

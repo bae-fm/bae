@@ -41,6 +41,8 @@
 .bae-m-idraft-trail { display: flex; align-items: center; gap: var(--space-related); margin-left: auto; }
 .bae-m-idraft-reading { display: flex; align-items: center; gap: var(--space-related); margin-right: var(--space-inline); }
 .bae-m-idraft-head { display: flex; gap: var(--space-group); }
+/* The cover is a picture: off, it takes no click and keeps its look. */
+.bae-m-idraft-cover:disabled { opacity: 1; }
 .bae-m-idraft-id { display: flex; flex-direction: column; gap: 0; min-width: 0; }
 .bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; align-items: baseline; gap: var(--space-compact) var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 /* A label sits on its value's first text baseline, so a list fact's name heads its first row. */
@@ -123,7 +125,8 @@
 /* A field drawn as the value it holds: the field's fill shows under the pointer and while it has focus. It pulls out by its padding so its words keep the column's edge. */
 .bae-m-icell { box-sizing: border-box; min-width: 0; width: calc(100% + 6px); height: 22px; margin: 0 0 0 calc(-1 * var(--space-compact)); padding: 0 var(--space-compact); border: 0; border-radius: var(--radius-chip); background: none; outline: none; color: var(--text-primary); font: inherit; text-overflow: ellipsis; }
 .bae-m-icell::placeholder { color: var(--text-tertiary); }
-.bae-m-icell:hover, .bae-m-icell:focus { background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); }
+.bae-m-icell:disabled { opacity: var(--opacity-off); }
+.bae-m-icell:hover:not(:disabled), .bae-m-icell:focus { background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); }
 .bae-m-icell.bae-m-icell-large { height: 30px; font: var(--type-title-weight) var(--type-title-size) var(--font-sans); }
 .bae-m-icell.bae-m-icell-quiet { color: var(--text-tertiary); }
 /* A fitted field is as wide as its value, and 96pt while empty, so there is somewhere to click. */

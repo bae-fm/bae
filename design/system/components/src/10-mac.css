@@ -180,6 +180,9 @@
 .bae-m-popupbutton-menu .bae-m-menu-item { padding-right: var(--space-edge); }
 /* A button that draws nothing of its own: its component's classes give it its look. */
 .bae-plainbtn { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
+/* A disabled plain button dims to the off opacity, as PlainButtonLook dims it, and once: not again inside a control or row that is dimmed already. */
+.bae-plainbtn:disabled { opacity: var(--opacity-off); cursor: default; }
+:is(.bae-off, .bae-m-bulkrow-off) .bae-plainbtn:disabled { opacity: 1; }
 .bae-m-bareinput { flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; background: none; outline: none; color: inherit; font: inherit; }
 .bae-m-bareinput::placeholder { color: var(--text-tertiary); }
 .bae-m-formfield { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-inline); }

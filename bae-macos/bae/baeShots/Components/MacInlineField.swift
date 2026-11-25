@@ -62,6 +62,12 @@ extension ShotScene {
             value: "Harbor Records",
             mono: true
         ),
+        inlineFieldScene(
+            "mac.component.inline-field.off",
+            placeholder: "—",
+            value: "Harbor Records",
+            off: true
+        ),
     ]
 
     /// One `MacInlineField` in the preview's 260pt column; `large` is the
@@ -75,7 +81,8 @@ extension ShotScene {
         large: Bool = false,
         quiet: Bool = false,
         mono: Bool = false,
-        fits: Bool = false
+        fits: Bool = false,
+        off: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -96,6 +103,7 @@ extension ShotScene {
                 onCommit: { _ in }
             )
             .frame(width: 260, alignment: .leading)
+            .disabled(off)
         }
     }
 }
