@@ -466,6 +466,17 @@ pub(crate) async fn disown_the_draft(db: &Store, content_hash: &str) {
     .await;
 }
 
+/// Damage the candidate `content_hash`'s ledger as no write leaves it: its
+/// ISRC rows are gone while its ISRC step says it read some.
+pub(crate) async fn lose_the_isrc_rows(db: &Store, content_hash: &str) {
+    bae_store::test_fixtures::exec(
+        db,
+        "DELETE FROM import_candidate_lookup_isrc WHERE content_hash = ?1",
+        &[content_hash],
+    )
+    .await;
+}
+
 /// The import pane's controls over one candidate: its writers as the handle
 /// calls them, for the candidate the scan lists at `key` under `root`, each
 /// composed against the candidate as it stands when the control is used.

@@ -120,9 +120,9 @@ impl LookupChoices {
                 }
             }
             LookupChoiceEdit::ChooseCatalog { number } => {
-                if !self.chosen_catalogs.contains(&number) {
-                    self.chosen_catalogs.push(number);
-                }
+                // A number already chosen is dropped again when the choices are
+                // normalized.
+                self.chosen_catalogs.push(number);
             }
             LookupChoiceEdit::SearchBy { album, artist } => {
                 self.search_words = Some(SearchWords { album, artist });

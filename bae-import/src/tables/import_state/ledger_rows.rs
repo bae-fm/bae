@@ -408,12 +408,17 @@ fn ledger_rows_sql() -> String {
 /// with none. The read also returns the position of an unlisted match that no
 /// lookup found, in a column of its own.
 pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
-    let list = |value: &str, table: &str, order: &str| {
+    // One select over a ledger table's rows for the verdict: the lists, the
+    // shown ISRC and the counts all read the same rows.
+    let select = |expr: &str, table: &str, tail: &str| {
         format!(
-            "(SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
+            "(SELECT {expr} FROM {table} AS entry \
               WHERE entry.content_hash IS verdict.content_hash \
-                AND entry.identify_run IS verdict.identify_run)"
+                AND entry.identify_run IS verdict.identify_run{tail})"
         )
+    };
+    let list = |value: &str, table: &str, order: &str| {
+        select(&format!("json_group_array({value} ORDER BY {order})"), table, "")
     };
     vec![
         ("ledger_disc_id_step", "verdict.disc_id_step".to_string()),
@@ -444,18 +449,15 @@ pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
         // +N button, from the same rows.
         (
             "ledger_isrc_shown",
-            "(SELECT entry.isrc FROM import_candidate_lookup_isrc AS entry \
-              WHERE entry.content_hash IS verdict.content_hash \
-                AND entry.identify_run IS verdict.identify_run \
-              ORDER BY entry.position LIMIT 1)"
-                .to_string(),
+            select(
+                "entry.isrc",
+                "import_candidate_lookup_isrc",
+                " ORDER BY entry.position LIMIT 1",
+            ),
         ),
         (
             "ledger_isrc_more_count",
-            "(SELECT MAX(COUNT(*) - 1, 0) FROM import_candidate_lookup_isrc AS entry \
-              WHERE entry.content_hash IS verdict.content_hash \
-                AND entry.identify_run IS verdict.identify_run)"
-                .to_string(),
+            select("MAX(COUNT(*) - 1, 0)", "import_candidate_lookup_isrc", ""),
         ),
         (
             "ledger_offered_catalogs",
@@ -463,10 +465,7 @@ pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
         ),
         (
             "ledger_offered_catalog_count",
-            "(SELECT COUNT(*) FROM import_candidate_lookup_offered_catalog AS entry \
-              WHERE entry.content_hash IS verdict.content_hash \
-                AND entry.identify_run IS verdict.identify_run)"
-                .to_string(),
+            select("COUNT(*)", "import_candidate_lookup_offered_catalog", ""),
         ),
         ("ledger_rows", ledger_rows_sql()),
     ]

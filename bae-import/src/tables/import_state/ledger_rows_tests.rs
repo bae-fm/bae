@@ -384,3 +384,30 @@ async fn ledger_cell_cards_read_back_as_the_rules_made_them() {
     assert_eq!(*count, 2, "the paired releases are one row and the other release is one");
     assert_eq!(groups.len(), 2);
 }
+
+/// A stored ledger whose ISRC step says it read codes but holds none is
+/// damaged data: the read fails and says so, and never hands a surface a
+/// step with no code to show.
+#[tokio::test]
+async fn a_read_isrc_step_with_no_isrc_rows_is_damaged() {
+    use bae_identify::{IsrcStepView, NotAskedReason};
+    let mut verdict = paired_cell_verdict();
+    let TerminalVerdict::Found { ledger: Some(ledger), .. } = &mut verdict else {
+        panic!("the paired-cell verdict is found, with its ledger");
+    };
+    ledger.isrc = IsrcStepView::Read {
+        shown: "USAAA0000001".to_string(),
+        more_count: 0,
+        isrcs: vec!["USAAA0000001".to_string()],
+        lookup: LookupView::NotAsked { reason: NotAskedReason::NoCatalog },
+    };
+    let (db, hash, _tmp) = stored_verdict(&verdict).await;
+    lose_the_isrc_rows(&db, &hash).await;
+
+    let failed = crate::tables::ImportTables::new(db)
+        .load_import_candidate_states()
+        .await
+        .expect_err("a read ISRC step with no ISRC row is damaged");
+
+    assert!(failed.to_string().contains("which read ISRCs"), "{failed}");
+}
