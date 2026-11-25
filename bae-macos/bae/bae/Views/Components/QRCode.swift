@@ -110,42 +110,18 @@ struct QRCode: View {
         let framed = symbol.composited(
             over: CIImage(color: .white).cropped(to: bounds)
         )
-        guard let cgImage = context.createCGImage(framed, from: bounds) else {
-            logger.error(
-                "Core Image could not render the QR code for a \(text.utf8.count)-byte payload"
-            )
-            return nil
-        }
-        // The extent is square, so the image is too.
-        let side = cgImage.width
+        // One gray byte for each module: the bounds are square, and the
+        // generator's symbol is one pixel for each module.
+        let side = Int(bounds.width)
         var gray = [UInt8](repeating: 0, count: side * side)
-        let drawn = gray.withUnsafeMutableBytes { buffer -> Bool in
-            guard
-                let bitmap = CGContext(
-                    data: buffer.baseAddress,
-                    width: side,
-                    height: side,
-                    bitsPerComponent: 8,
-                    bytesPerRow: side,
-                    space: CGColorSpaceCreateDeviceGray(),
-                    bitmapInfo: CGImageAlphaInfo.none.rawValue
-                )
-            else {
-                return false
-            }
-            bitmap.interpolationQuality = .none
-            bitmap.draw(
-                cgImage,
-                in: CGRect(x: 0, y: 0, width: side, height: side)
-            )
-            return true
-        }
-        guard drawn else {
-            logger.error(
-                "Could not make a \(side) by \(side) gray bitmap to read the QR code's modules"
-            )
-            return nil
-        }
+        context.render(
+            framed,
+            toBitmap: &gray,
+            rowBytes: side,
+            bounds: bounds,
+            format: .L8,
+            colorSpace: CGColorSpaceCreateDeviceGray()
+        )
         return Modules(side: side, isDark: gray.map { $0 < 128 })
     }
 }
