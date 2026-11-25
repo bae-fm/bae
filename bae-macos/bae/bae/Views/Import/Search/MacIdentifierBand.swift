@@ -392,7 +392,7 @@ private struct TitleSearchChip<Trailing: View>: View {
                             verbatim: FactList.joined([artistText, albumText])
                         )
                         .themeText(.mono)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(Theme.textPrimary)
                         .cutLine(.prose)
                     }
                     .buttonStyle(.accentPlain)
