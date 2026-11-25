@@ -10,14 +10,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeErrorCategory
-import uniffi.bae_bridge.BridgeException
 
 /** What a gallery picture's failure to load or zoom shows, and whether it is a bug. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -52,15 +49,5 @@ class GalleryFailureTest {
         assertNull(failure.error)
         assertEquals(false, failure.offersRetry)
         assertEquals(true, reported())
-    }
-
-    @Test
-    fun aFailureCoreReportsKeepsCoresErrorAndItsSayOnARetry() {
-        val failure =
-            galleryFailure(context, bugs, "zoom a picture", BridgeException.Diagnostic(BridgeErrorCategory.Internal, "no tile"))
-
-        assertNotNull(failure.error)
-        assertEquals(false, failure.offersRetry)
-        assertEquals(false, reported())
     }
 }

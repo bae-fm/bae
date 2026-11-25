@@ -124,7 +124,7 @@ struct PictureTilesTests {
             images: images,
             levelsArrived: { _ in },
             tileArrived: { _ in },
-            failed: { _, _ in }
+            failed: { _ in }
         )
         let kept = PictureTileKey(level: 0, x: 0, y: 0)
         let left = PictureTileKey(level: 0, x: 1, y: 0)
@@ -161,7 +161,7 @@ struct PictureTilesTests {
             images: images,
             levelsArrived: { _ in },
             tileArrived: { arrived.keys.append($0) },
-            failed: { _, _ in }
+            failed: { _ in }
         )
         let key = PictureTileKey(level: 2, x: 1, y: 1)
         source.request(key)
