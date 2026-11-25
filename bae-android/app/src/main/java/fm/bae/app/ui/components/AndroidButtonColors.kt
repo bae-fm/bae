@@ -4,7 +4,13 @@ import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.LocalAppearanceStore
+import fm.bae.app.ui.appearance.appearanceColorScheme
 
 @Composable
 internal fun tonalColors(): ButtonColors =
@@ -12,6 +18,27 @@ internal fun tonalColors(): ButtonColors =
         disabledContainerColor = disabledContainer(),
         disabledContentColor = disabledContent(),
     )
+
+/** A tonal button on the gallery's backdrop, which is dark in both modes: dark mode's tile under white words. */
+@Composable
+internal fun stageTonalColors(): ButtonColors {
+    val preferences by LocalAppearanceStore.current.preferences.collectAsState()
+    val dark = remember(preferences) { appearanceColorScheme(preferences, dark = true) }
+    return ButtonDefaults.filledTonalButtonColors(
+        containerColor = dark.secondaryContainer,
+        contentColor = BaeTheme.colors.onFill,
+        disabledContainerColor = disabledContainer(),
+        disabledContentColor = disabledContent(),
+    )
+}
+
+/** A text button on the gallery's backdrop, which is dark in both modes: dark mode's accent. */
+@Composable
+internal fun stageTextColors(): ButtonColors {
+    val preferences by LocalAppearanceStore.current.preferences.collectAsState()
+    val dark = remember(preferences) { appearanceColorScheme(preferences, dark = true) }
+    return ButtonDefaults.textButtonColors(contentColor = dark.primary, disabledContentColor = disabledContent())
+}
 
 @Composable
 internal fun outlinedColors(tone: Color): ButtonColors =

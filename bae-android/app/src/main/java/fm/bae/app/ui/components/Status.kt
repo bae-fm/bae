@@ -115,8 +115,8 @@ internal val StatusTone.iconColor: Color
         }
 
 /**
- * The tone's glyph, drawn in [set], in the tone's glyph colour, or the secondary text colour when [muted];
- * nothing for a tone without one.
+ * The tone's glyph, drawn in [set], in the tone's glyph colour, or the secondary text colour when [muted], or the
+ * stage's when [stage], on the gallery's dark backdrop; nothing for a tone without one.
  */
 @Composable
 fun StatusGlyph(
@@ -125,12 +125,13 @@ fun StatusGlyph(
     size: Dp = ThemeIcon.medium,
     muted: Boolean = false,
     set: StatusGlyphSet = StatusGlyphSet.MATERIAL,
+    stage: Boolean = false,
 ) {
     tone.glyph(set)?.let { icon ->
         Icon(
             icon,
             contentDescription = null,
-            tint = glyphTint(tone, muted),
+            tint = if (stage) BaeTheme.colors.onFillSecondary else glyphTint(tone, muted),
             modifier = modifier.size(size),
         )
     }

@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.OnStage
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -162,15 +159,16 @@ private fun ErrorNoticeContent(
     var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
     val opensDetails = details != null && onOpenDetails != null
     if (look == NoticeLook.CENTERED || look == NoticeLook.STAGE) {
-        val stage = look == NoticeLook.STAGE
-        val centered = @Composable {
-            CenteredNotice(title, advice, tone, modifier, details != null, { detailsShown = true }, action, stage)
-        }
-        if (stage) {
-            OnStage(centered)
-        } else {
-            centered()
-        }
+        CenteredNotice(
+            title = title,
+            advice = advice,
+            tone = tone,
+            modifier = modifier,
+            hasDetails = details != null,
+            onDetails = { detailsShown = true },
+            action = action,
+            stage = look == NoticeLook.STAGE,
+        )
     } else {
         FramedNotice(
             title = title,
@@ -212,7 +210,7 @@ private fun CenteredNotice(
     stage: Boolean,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().heightIn(min = CENTERED_MIN_HEIGHT).padding(ThemeSpace.section),
+        modifier = if (stage) modifier else modifier.centeredFill(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
     ) {
@@ -220,7 +218,7 @@ private fun CenteredNotice(
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.compact),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            StatusGlyph(tone, size = ThemeIcon.medium, muted = true, set = StatusGlyphSet.RING)
+            StatusGlyph(tone, size = ThemeIcon.medium, muted = true, set = StatusGlyphSet.RING, stage = stage)
             Text(
                 text = title,
                 style =
@@ -229,7 +227,7 @@ private fun CenteredNotice(
                     } else {
                         ThemeText.androidBodyLarge.style.copy(fontWeight = ThemeText.strong.style.fontWeight)
                     },
-                color = with(MaterialTheme.colorScheme) { if (advice != null) onSurface else onSurfaceVariant },
+                color = centeredTitleColor(stage, hasAdvice = advice != null),
                 textAlign = TextAlign.Center,
             )
         }
@@ -237,7 +235,7 @@ private fun CenteredNotice(
             Text(
                 text = it,
                 style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (stage) BaeTheme.colors.onFillSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
         }
@@ -261,9 +259,6 @@ private fun CenteredNotice(
         }
     }
 }
-
-/** What a centred notice stands at least this tall, where its space is unbounded. */
-private val CENTERED_MIN_HEIGHT = 300.dp
 
 @Composable
 private fun FramedNotice(

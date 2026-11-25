@@ -101,23 +101,6 @@ fun BaeTheme(
 }
 
 /**
- * [content] in dark mode's colours, whichever appearance is chosen: for what sits on a surface that is dark in both
- * modes, such as the gallery's backdrop, so its words and buttons read there in Light too.
- */
-@Composable
-fun OnStage(content: @Composable () -> Unit) {
-    val preferences by LocalAppearanceStore.current.preferences.collectAsState()
-    val colorScheme = remember(preferences) { appearanceColorScheme(preferences, dark = true) }
-    CompositionLocalProvider(
-        LocalSemanticColors provides semanticColors(true),
-        LocalIsDark provides true,
-        LocalToneSurfaces provides preferences.tone.surfaces(true),
-    ) {
-        MaterialTheme(colorScheme = colorScheme, typography = baeTypography, content = content)
-    }
-}
-
-/**
  * What the activity does for the chosen appearance, placed once under the root [BaeTheme]: the window draws the
  * theme's background and the bars' icons follow its mode, and the home-screen widget redraws with the same look.
  */
