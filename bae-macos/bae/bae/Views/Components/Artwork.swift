@@ -7,13 +7,11 @@ private let logger = Logger.bae("Artwork")
 
 struct Artwork: View {
     enum Shadow {
-        case none
         case tile
         case bar
 
-        var metrics: (radius: CGFloat, y: CGFloat) {
+        var metrics: (blur: CGFloat, y: CGFloat) {
             switch self {
-            case .none: (0, 0)
             case .tile: (14, 9)
             case .bar: (8, 4)
             }
@@ -26,7 +24,7 @@ struct Artwork: View {
     /// An enclosing view draws the crop when it passes nil.
     let cornerRadius: CGFloat?
     let ring: Bool
-    let shadow: Shadow
+    let shadow: Shadow?
     let dimmed: Bool
 
     @Environment(ImageStore.self)
@@ -48,7 +46,7 @@ struct Artwork: View {
         pointSize: CGFloat,
         cornerRadius: CGFloat? = ThemeRadius.cover,
         ring: Bool = false,
-        shadow: Shadow = .none,
+        shadow: Shadow? = nil,
         dimmed: Bool = false
     ) {
         self.content = content
@@ -105,11 +103,20 @@ struct Artwork: View {
         let outset = ringGap + ringWidth / 2
         return
             shapedContent
-            .shadow(
-                color: ring || shadow == .none ? .clear : Theme.shadow,
-                radius: shadow.metrics.radius,
-                y: shadow.metrics.y
-            )
+            .background {
+                // The cover's shadow below it, rasterized with a face the
+                // cover hides (`ShadowedFace`), as a macOS window reverses a
+                // layer shadow's vertical offset.
+                if let shadow {
+                    ShadowedFace(
+                        cornerRadius: radius,
+                        blur: shadow.metrics.blur,
+                        offset: shadow.metrics.y,
+                        fill: AnyShapeStyle(Theme.background)
+                    )
+                    .opacity(ring ? 0 : 1)
+                }
+            }
             .background {
                 RoundedRectangle(cornerRadius: radius, style: .circular)
                     .inset(by: -ringGap)
@@ -285,7 +292,7 @@ extension Artwork {
         pointSize: CGFloat,
         cornerRadius: CGFloat? = ThemeRadius.cover,
         ring: Bool = false,
-        shadow: Shadow = .none,
+        shadow: Shadow? = nil,
         dimmed: Bool = false
     ) {
         self.init(
