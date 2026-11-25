@@ -423,9 +423,9 @@
       list(props.fields || 'Title, Artist, Year, Date added').every(function (f) { return items.some(function (it) { return it.field === f; }); }) ? null : h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-sortadd', 'aria-label': 'Add sort criterion' }, h(Glyph, { set: 'mac', name: 'add', size: 'medium' })));
   }
 
-  // A checkbox and its label, as wide as its content, as AppKit sizes a checkbox. `detail`: the label in the detail type, as under an alert's message.
+  // A checkbox and its label, as wide as its content, as AppKit sizes a checkbox. `detail`: the label in the detail type, as under an alert's message. The check lies over the box, as the app overlays it, so a checked box lines up with the row as an empty one does.
   function MacCheckbox(props) {
-    return h('label', { className: cx('bae-m-checkbox', props.detail && 'bae-m-checkbox-detail'), role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(Glyph, { set: 'mac', name: 'checkmark', size: 'chip' }) : null), props.label);
+    return h('label', { className: cx('bae-m-checkbox', props.detail && 'bae-m-checkbox-detail'), role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h('span', { className: 'bae-m-checkbox-mark' }, h(Glyph, { set: 'mac', name: 'checkmark', size: 'chip' })) : null), props.label);
   }
 
   // Heads an artist's albums when the grid is grouped by artist: the artist's picture, as the artist list draws it, beside the name over the album count. `noImage`: the artist has no picture.
