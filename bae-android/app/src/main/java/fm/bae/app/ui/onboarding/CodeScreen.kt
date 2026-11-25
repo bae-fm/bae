@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import fm.bae.app.BaeLogger
@@ -258,7 +259,7 @@ private fun ListedWelcome(
                     .heightIn(min = maxHeight)
                     .padding(top = ThemeSpace.section, bottom = LIST_BOTTOM_PADDING),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = CentreRoundingDown,
         ) {
             Logo(size = LIST_LOGO_SIZE, bob = true, glow = true)
             Tagline(modifier = Modifier.padding(LIST_TAGLINE_PADDING))
@@ -308,7 +309,7 @@ private fun EmptyWelcome(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = ThemeSpace.page),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = CentreRoundingDown,
         ) {
             Logo(size = EMPTY_LOGO_SIZE, bob = true, glow = true)
             Tagline(modifier = Modifier.padding(top = TAGLINE_TOP))
@@ -321,6 +322,25 @@ private fun EmptyWelcome(
         }
         AndroidWelcomeActions(onScan = callbacks.onScan, onEnter = callbacks.onShowCodeDialog)
         Spacer(modifier = Modifier.height(ThemeSpace.section))
+    }
+}
+
+/**
+ * Centres its children top to bottom with the odd pixel left over below them. The board's browser keeps the
+ * half pixel as a fraction and rounds each child's top down to the pixel, where Compose's centre rounds the
+ * half pixel up and puts the logo a pixel lower.
+ */
+private object CentreRoundingDown : Arrangement.Vertical {
+    override fun Density.arrange(
+        totalSize: Int,
+        sizes: IntArray,
+        outPositions: IntArray,
+    ) {
+        var top = (totalSize - sizes.sum()) / 2
+        sizes.forEachIndexed { index, size ->
+            outPositions[index] = top
+            top += size
+        }
     }
 }
 
