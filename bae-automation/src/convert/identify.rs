@@ -101,7 +101,7 @@ mirror_enum! {
     variants: {
         Reading,
         Absent,
-        Read { isrcs, lookup: (AutomationLookupState) },
+        Read { shown, more_count, isrcs, lookup: (AutomationLookupState) },
     },
 }
 
@@ -122,6 +122,7 @@ mirror_enum! {
             scanning,
             rows: (each AutomationSignalValueRow),
             candidates: (each AutomationCatalogCandidate),
+            candidate_count,
         },
     },
 }

@@ -99,10 +99,20 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
                     ],
                 },
             ],
-            candidates: vec![CatalogCandidateView { value: "CAT-9".to_string() }],
+            candidates: vec![
+                CatalogCandidateView { value: "CAT-9".to_string() },
+                CatalogCandidateView { value: "CAT-10".to_string() },
+            ],
+            candidate_count: 2,
         },
         isrc: IsrcStepView::Read {
-            isrcs: vec!["USAAA0000001".to_string(), "USAAA0000002".to_string()],
+            shown: "USAAA0000001".to_string(),
+            more_count: 2,
+            isrcs: vec![
+                "USAAA0000001".to_string(),
+                "USAAA0000002".to_string(),
+                "USAAA0000003".to_string(),
+            ],
             lookup: LookupView::NotAsked { reason: NotAskedReason::NoCatalog },
         },
         search: SearchStepView::NotNeeded,

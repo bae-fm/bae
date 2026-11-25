@@ -358,6 +358,7 @@ fn failing_ledger() -> bae_identify::IdentifyRunView {
                 ],
             }],
             candidates: Vec::new(),
+            candidate_count: 0,
         },
         isrc: bae_identify::IsrcStepView::Absent,
         search: bae_identify::SearchStepView::NotNeeded,

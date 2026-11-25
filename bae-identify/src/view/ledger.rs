@@ -98,7 +98,14 @@ pub(super) fn isrc_step(progress: &IsrcProgress, context: &SignalsContext) -> Is
         IsrcProgress::NotAsked { reason } => LookupView::NotAsked { reason: *reason },
         IsrcProgress::Failed { failure } => LookupView::Failed { failure: failure.clone() },
     };
-    IsrcStepView::Read { isrcs: context.isrc.codes(), lookup }
+    let isrcs = context.isrc.codes();
+    let (shown, rest) = isrcs.split_first().expect("a step that read ISRCs carries a code");
+    IsrcStepView::Read {
+        shown: shown.clone(),
+        more_count: u32::try_from(rest.len()).expect("an ISRC count fits u32"),
+        isrcs,
+        lookup,
+    }
 }
 
 pub(super) fn barcode_step(
@@ -210,7 +217,8 @@ pub(super) fn catalog_step(
     if rows.is_empty() && candidates.is_empty() && !scanning {
         return CatalogStepView::NoneFound;
     }
-    CatalogStepView::Numbers { scanning, rows, candidates }
+    let candidate_count = u32::try_from(candidates.len()).expect("a candidate count fits u32");
+    CatalogStepView::Numbers { scanning, rows, candidates, candidate_count }
 }
 
 /// One cell per provider asked about a value.

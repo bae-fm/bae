@@ -205,11 +205,16 @@ impl BridgeCatalogStep {
         use bae_identify::CatalogStepView;
         match step {
             CatalogStepView::NoneFound => Self::NoneFound,
-            CatalogStepView::Numbers { scanning: _, rows, candidates } => Self::Numbers {
-                rows: rows.into_iter().map(BridgeSignalValueRow::from_core).collect(),
-                candidate_count: u32::try_from(candidates.len()).unwrap_or(u32::MAX),
-                candidates: candidates.into_iter().map(BridgeCatalogCandidate::from_core).collect(),
-            },
+            CatalogStepView::Numbers { scanning: _, rows, candidates, candidate_count } => {
+                Self::Numbers {
+                    rows: rows.into_iter().map(BridgeSignalValueRow::from_core).collect(),
+                    candidates: candidates
+                        .into_iter()
+                        .map(BridgeCatalogCandidate::from_core)
+                        .collect(),
+                    candidate_count,
+                }
+            }
         }
     }
 }
@@ -224,25 +229,14 @@ mirror_enum! {
     },
 }
 
-impl BridgeIsrcStep {
-    /// Not a copy: the chip shows the first code and counts the rest, which
-    /// cross as values. A step with no code is the files carrying none.
-    fn from_core(step: bae_identify::IsrcStepView) -> Self {
-        use bae_identify::IsrcStepView;
-        match step {
-            IsrcStepView::Reading => Self::Reading,
-            IsrcStepView::Absent => Self::Absent,
-            IsrcStepView::Read { isrcs, lookup } => match isrcs.split_first() {
-                None => Self::Absent,
-                Some((first, rest)) => Self::Read {
-                    shown: first.clone(),
-                    more_count: u32::try_from(rest.len()).unwrap_or(u32::MAX),
-                    isrcs,
-                    lookup: BridgeLookupState::from_core(lookup),
-                },
-            },
-        }
-    }
+mirror_enum! {
+    BridgeIsrcStep = bae_identify::IsrcStepView,
+    from_core: fn,
+    variants: {
+        Reading,
+        Absent,
+        Read { shown, more_count, isrcs, lookup: (BridgeLookupState) },
+    },
 }
 
 impl BridgeIdentifyRun {

@@ -73,6 +73,8 @@ pub enum LookupChoiceEdit {
     ToggleBarcode { code: String },
     /// Look one catalog number up, or stop looking it up.
     ToggleCatalog { number: String },
+    /// Look one catalog number up; a number already looked up stays so.
+    ChooseCatalog { number: String },
     /// Search by these words, or by the draft's own title when both are blank.
     SearchBy { album: String, artist: String },
     /// Strike one catalog number out of what the folder is taken to state, or
@@ -115,6 +117,11 @@ impl LookupChoices {
                         self.chosen_catalogs.remove(index);
                     }
                     None => self.chosen_catalogs.push(number),
+                }
+            }
+            LookupChoiceEdit::ChooseCatalog { number } => {
+                if !self.chosen_catalogs.contains(&number) {
+                    self.chosen_catalogs.push(number);
                 }
             }
             LookupChoiceEdit::SearchBy { album, artist } => {

@@ -39,6 +39,17 @@ fn a_catalog_number_joins_and_leaves_in_order() {
     assert_eq!(added.edited(catalog("LBL 001")).chosen_catalogs, strings(&["LBL 002"]));
 }
 
+/// A number chosen twice is looked up once and stays chosen: the command
+/// states the number wanted, so a second press changes nothing.
+#[test]
+fn choosing_a_catalog_number_again_changes_nothing() {
+    let choose = |number: &str| LookupChoiceEdit::ChooseCatalog { number: number.to_string() };
+    let added = held().edited(choose("LBL 002"));
+    assert_eq!(added.chosen_catalogs, strings(&["LBL 001", "LBL 002"]));
+    assert_eq!(added.clone().edited(choose("LBL 002")), added);
+    assert_eq!(held().edited(choose("LBL 001")), held());
+}
+
 /// Striking a number out chooses nothing and unchooses nothing: a chosen
 /// number stays chosen, and counting a number again chooses nothing
 /// either.

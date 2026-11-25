@@ -118,6 +118,8 @@ pub enum CatalogStepView {
         rows: Vec<SignalValueRow>,
         /// The numbers the text offers that are none of those.
         candidates: Vec<CatalogCandidateView>,
+        /// How many `candidates` there are.
+        candidate_count: u32,
     },
 }
 
@@ -129,8 +131,16 @@ pub enum IsrcStepView {
     Reading,
     /// No audio file's tags carry one.
     Absent,
-    /// Every code, each once, in the files' order.
-    Read { isrcs: Vec<String>, lookup: LookupView },
+    /// At least one code is carried.
+    Read {
+        /// The code a surface shows: the first, in the files' order.
+        shown: String,
+        /// How many codes there are besides `shown`.
+        more_count: u32,
+        /// Every code, each once, in the files' order.
+        isrcs: Vec<String>,
+        lookup: LookupView,
+    },
 }
 
 /// The title search, asked of every provider when the identifiers name

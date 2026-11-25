@@ -357,7 +357,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         context,
     };
     let run = run_of(state);
-    let CatalogStepView::Numbers { scanning, rows, candidates } = &run.catalog else {
+    let CatalogStepView::Numbers { scanning, rows, candidates, .. } = &run.catalog else {
         panic!("numbers, got {:?}", run.catalog);
     };
     assert!(!scanning);

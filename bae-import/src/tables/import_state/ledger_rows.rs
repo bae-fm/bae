@@ -214,7 +214,7 @@ pub(super) fn store_ledger(
             )?;
         }
     }
-    if let IsrcStepView::Read { isrcs, lookup } = &ledger.isrc {
+    if let IsrcStepView::Read { isrcs, lookup, .. } = &ledger.isrc {
         for (position, isrc) in isrcs.iter().enumerate() {
             sql.execute(
                 "INSERT INTO import_candidate_lookup_isrc \
@@ -440,9 +440,33 @@ pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
             list("entry.catalog", "import_candidate_lookup_provider", "entry.position"),
         ),
         ("ledger_isrcs", list("entry.isrc", "import_candidate_lookup_isrc", "entry.position")),
+        // The code a surface shows, and how many codes it leaves behind its
+        // +N button, from the same rows.
+        (
+            "ledger_isrc_shown",
+            "(SELECT entry.isrc FROM import_candidate_lookup_isrc AS entry \
+              WHERE entry.content_hash IS verdict.content_hash \
+                AND entry.identify_run IS verdict.identify_run \
+              ORDER BY entry.position LIMIT 1)"
+                .to_string(),
+        ),
+        (
+            "ledger_isrc_more_count",
+            "(SELECT MAX(COUNT(*) - 1, 0) FROM import_candidate_lookup_isrc AS entry \
+              WHERE entry.content_hash IS verdict.content_hash \
+                AND entry.identify_run IS verdict.identify_run)"
+                .to_string(),
+        ),
         (
             "ledger_offered_catalogs",
             list("entry.value", "import_candidate_lookup_offered_catalog", "entry.position"),
+        ),
+        (
+            "ledger_offered_catalog_count",
+            "(SELECT COUNT(*) FROM import_candidate_lookup_offered_catalog AS entry \
+              WHERE entry.content_hash IS verdict.content_hash \
+                AND entry.identify_run IS verdict.identify_run)"
+                .to_string(),
         ),
         ("ledger_rows", ledger_rows_sql()),
     ]
@@ -462,7 +486,10 @@ pub(super) struct StoredLedger {
     pub(super) stray_unlisted: Option<i64>,
     providers: String,
     isrcs: String,
+    isrc_shown: Option<String>,
+    isrc_more_count: u32,
     offered_catalogs: String,
+    offered_catalog_count: u32,
     rows: String,
 }
 
@@ -478,7 +505,10 @@ pub(super) fn read_ledger(row: &impl Columns) -> rusqlite::Result<StoredLedger> 
         stray_unlisted: row.get("ledger_stray_unlisted")?,
         providers: row.get("ledger_providers")?,
         isrcs: row.get("ledger_isrcs")?,
+        isrc_shown: row.get("ledger_isrc_shown")?,
+        isrc_more_count: row.get("ledger_isrc_more_count")?,
         offered_catalogs: row.get("ledger_offered_catalogs")?,
+        offered_catalog_count: row.get("ledger_offered_catalog_count")?,
         rows: row.get("ledger_rows")?,
     })
 }
@@ -536,7 +566,10 @@ impl StoredLedger {
             stray_unlisted: _,
             providers,
             isrcs,
+            isrc_shown,
+            isrc_more_count,
             offered_catalogs,
+            offered_catalog_count,
             rows,
         } = self;
         let list = |json: &str, what: &str| {
@@ -695,6 +728,7 @@ impl StoredLedger {
                     .into_iter()
                     .map(|value| CatalogCandidateView { value })
                     .collect(),
+                candidate_count: offered_catalog_count,
             },
             "none_found" => {
                 stray(&catalog_rows, STEP_CATALOG, "none_found")?;
@@ -720,7 +754,18 @@ impl StoredLedger {
                         count,
                     ));
                 };
-                IsrcStepView::Read { isrcs, lookup: one_lookup(row, "ISRC")? }
+                let Some(shown) = isrc_shown else {
+                    return Err(DbError::unreadable(
+                        format!("the ISRCs of {content_hash}, which read ISRCs and hold none"),
+                        &isrcs,
+                    ));
+                };
+                IsrcStepView::Read {
+                    shown,
+                    more_count: isrc_more_count,
+                    isrcs,
+                    lookup: one_lookup(row, "ISRC")?,
+                }
             }
             stood @ ("reading" | "absent") => {
                 stray(&isrc_rows, STEP_ISRC, stood)?;

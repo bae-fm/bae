@@ -48,6 +48,8 @@ fn a_run_without_musicbrainz_asks_nobody_about_the_isrcs() {
     assert_eq!(
         run.isrc,
         IsrcStepView::Read {
+            shown: "XX0000000001".to_string(),
+            more_count: 0,
             isrcs: vec!["XX0000000001".to_string()],
             lookup: LookupView::NotAsked { reason: NotAskedReason::NoCatalog },
         }

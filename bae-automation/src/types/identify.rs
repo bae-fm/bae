@@ -101,7 +101,7 @@ pub enum AutomationBarcodeStep {
 pub enum AutomationIsrcStep {
     Reading,
     Absent,
-    Read { isrcs: Vec<String>, lookup: AutomationLookupState },
+    Read { shown: String, more_count: u32, isrcs: Vec<String>, lookup: AutomationLookupState },
 }
 
 /// Mirrors bae-library's `identify::CatalogCandidateView`.
@@ -119,6 +119,7 @@ pub enum AutomationCatalogStep {
         scanning: bool,
         rows: Vec<AutomationSignalValueRow>,
         candidates: Vec<AutomationCatalogCandidate>,
+        candidate_count: u32,
     },
 }
 

@@ -263,7 +263,6 @@ fn isrcs_cross_with_the_shown_code_and_the_count_of_the_rest() {
         panic!("one code crosses as read");
     };
     assert_eq!((shown.as_str(), more_count), ("A1", 0));
-    assert!(matches!(step(&[]), BridgeIsrcStep::Absent));
 }
 
 /// The catalog numbers nothing confirms cross with their count, which the
