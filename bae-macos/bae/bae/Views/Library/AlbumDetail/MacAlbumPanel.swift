@@ -250,11 +250,12 @@ struct ReleaseFactsLine: View {
     private var factsText: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             ForEach(Array(shownLines.enumerated()), id: \.offset) { _, line in
+                // Each line is a detail line of its own, as the board's are.
                 Text(line)
+                    .themeText(.detail)
                     .cutLine(.prose)
             }
         }
-        .themeText(.detail)
         .foregroundStyle(Theme.textTertiary)
     }
 }
