@@ -160,20 +160,23 @@ struct CommittedTextField: View {
 
     /// The frame of a hidden Text of the same font and content, which the
     /// chrome pads and the editor fills, since a `TextField` can take a
-    /// neighbour's height and clip.
+    /// neighbour's height and clip. Its width is the Text's full width, up to
+    /// the width proposed.
     private var field: some View {
-        Text(verbatim: draft.isEmpty ? placeholder : draft)
-            .font(Font(font))
-            .lineLimit(1)
-            .hidden()
-            .frame(
-                minWidth: draft.isEmpty
-                    ? emptyMinWidth.map {
-                        $0 - 2 * FieldChrome.padding(of: chrome).width
-                    } : nil,
-                maxWidth: fillsWidth ? .infinity : nil,
-                alignment: .leading
-            )
+        WidthUpToProposal {
+            Text(verbatim: draft.isEmpty ? placeholder : draft)
+                .font(Font(font))
+                .lineLimit(1)
+                .hidden()
+        }
+        .frame(
+            minWidth: draft.isEmpty
+                ? emptyMinWidth.map {
+                    $0 - 2 * FieldChrome.padding(of: chrome).width
+                } : nil,
+            maxWidth: fillsWidth ? .infinity : nil,
+            alignment: .leading
+        )
     }
 
     /// Send `text` unless it is already what is stored — a focus change over
@@ -186,6 +189,37 @@ struct CommittedTextField: View {
     func commit(_ text: String) async {
         guard text != value else { return }
         await onCommit(text)
+    }
+}
+
+/// Sizes its one child to the child's full width, up to the width proposed.
+/// A `Text` too wide for its proposal answers with the width of its
+/// truncated words, which is less than the proposal, so a field laid out from
+/// it would end short of its column's edge.
+private struct WidthUpToProposal: Layout {
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let ideal = child.sizeThatFits(.unspecified)
+        guard let offered = proposal.width else { return ideal }
+        return CGSize(width: min(ideal.width, offered), height: ideal.height)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        subviews.first?
+            .place(
+                at: bounds.origin,
+                anchor: .topLeading,
+                proposal: ProposedViewSize(bounds.size)
+            )
     }
 }
 
