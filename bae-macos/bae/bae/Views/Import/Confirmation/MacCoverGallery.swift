@@ -96,7 +96,7 @@ struct MacCoverGallery: View {
                     .padding(ThemeSpace.section)
                 }
                 .frame(maxWidth: .infinity)
-                Divider()
+                MacHairline(axis: .vertical)
                 MacCoverPreview(
                     content: content,
                     isSaving: isSaving,
@@ -109,7 +109,7 @@ struct MacCoverGallery: View {
                 .padding(ThemeSpace.section)
                 .background(Theme.well)
             }
-            Divider()
+            MacHairline()
             HStack(spacing: ThemeSpace.edge) {
                 if let failure = error ?? remoteItems.failure {
                     MacNotice(error: failure)

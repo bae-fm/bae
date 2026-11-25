@@ -186,7 +186,7 @@ struct MacStorageWindow<Inspector: View>: View {
                                 .accessibilitySortPriority(-1)
                         }
                     }
-                    Divider()
+                    MacHairline()
                     MacStorageFooter(
                         list: list,
                         totalSize: storageManagerStore.totalSize,
