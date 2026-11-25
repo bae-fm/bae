@@ -4561,6 +4561,30 @@
    "w": 1400,
    "x": 4456,
    "y": 4700
+  },
+  "mac.import.lightbox.dc.html": {
+   "h": 1260,
+   "page": "import",
+   "title": "macOS: a folder's image in the lightbox",
+   "w": 1400,
+   "x": 2000,
+   "y": 6240
+  },
+  "mac.import.lightbox.loading.dc.html": {
+   "h": 1260,
+   "page": "import",
+   "title": "macOS: a folder's image, loading in the lightbox",
+   "w": 1400,
+   "x": 3480,
+   "y": 6240
+  },
+  "mac.import.lightbox.failed.dc.html": {
+   "h": 1260,
+   "page": "import",
+   "title": "macOS: a folder's image, failed in the lightbox",
+   "w": 1400,
+   "x": 4960,
+   "y": 6240
   }
  },
  "createdOnFiles": {
@@ -6424,6 +6448,9 @@
   "mac.import.folder.importing.dc.html",
   "mac.import.folder.imported.dc.html",
   "mac.import.folder.skipped.dc.html",
+  "mac.import.lightbox.dc.html",
+  "mac.import.lightbox.loading.dc.html",
+  "mac.import.lightbox.failed.dc.html",
   "mac.album.rating.dc.html",
   "mac.album.track-menu-rate.dc.html",
   "android.album.rating.dc.html",
