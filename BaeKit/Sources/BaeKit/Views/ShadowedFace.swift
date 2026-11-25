@@ -16,8 +16,15 @@ public struct ShadowedFace: View {
         self.offset = offset
     }
 
+    /// How far the shadow reaches beyond the face on its widest side.
+    public nonisolated static func shadowRoom(radius: CGFloat, offset: CGFloat)
+        -> CGFloat
+    {
+        2 * radius + offset
+    }
+
     public var body: some View {
-        let shadowRoom = 2 * radius + offset
+        let shadowRoom = Self.shadowRoom(radius: radius, offset: offset)
         RoundedRectangle(cornerRadius: cornerRadius)
             .fill(Theme.surfaceElevated)
             .shadow(color: Theme.shadow, radius: radius, y: offset)

@@ -316,7 +316,7 @@
     /// room around it for its shadow, drawn in the parent's look.
     private struct AlertPanelContent: View {
         static let hangs: CGFloat = 36
-        static let shadowRoom: CGFloat = 24
+        static let shadowRoom = SheetFaceMetrics.shadowRoom
 
         let build: () -> (MacAlertWords, [MacAlertButton])?
         let finish: @MainActor () -> Void
