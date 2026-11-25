@@ -262,7 +262,7 @@
     return h(opens ? 'button' : 'div', { type: opens ? 'button' : null, className: cx(opens && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': opens ? props.name : null },
       h('span', { className: 'bae-mono bae-ellipsis' }, props.name),
       props.damaged ? h('span', { className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small', weight: 'semibold' }), props.damaged) : null,
-      kind === 'audio' ? h(Glyph, { set: 'mac', name: 'play', size: 'chip', frame: [10, null], contentShape: true, className: 'bae-muted bae-m-ifile-play', button: 'Play' }) : null,
+      kind === 'audio' ? h(Glyph, { set: 'mac', name: 'play', size: 'chip', weight: 'bold', frame: [10, null], contentShape: true, className: 'bae-muted bae-m-ifile-play', button: 'Play' }) : null,
       h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, props.size || ''));
   }
   // The release's files that are no track (a rip log, a track sheet that carves no tracks; never an image bae can show), or on a skipped folder's pane every file but its images: a ruled Files heading, then a row per file (`files`: "name|size[|kind]", comma-separated, where kind is `other`, `audio` or `damaged:why`, and a file with none opens).
@@ -289,7 +289,7 @@
   // `added`: a track a save adds and has not made yet, which plays nothing, so it has no Play button. Its column stays, empty, so the source keeps the other rows' edge.
   function MacImportTrackRow(props) {
     return h('div', { className: cx('bae-m-itable-row', 'bae-m-itable-track', props.playing && 'bae-m-itable-playing') },
-      h('span', { className: 'bae-m-isrc' }, props.added ? h('span', { className: 'bae-m-isrc-noplay', 'aria-hidden': true }) : h(Glyph, { set: 'mac', name: props.playing ? 'stop' : 'play', size: 'chip', frame: [10, 16], contentShape: true, className: props.playing ? 'bae-accent' : 'bae-muted', button: props.playing ? 'Stop' : 'Play' }), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
+      h('span', { className: 'bae-m-isrc' }, props.added ? h('span', { className: 'bae-m-isrc-noplay', 'aria-hidden': true }) : h(Glyph, { set: 'mac', name: props.playing ? 'stop' : 'play', size: 'chip', weight: 'bold', frame: [10, 16], contentShape: true, className: props.playing ? 'bae-accent' : 'bae-muted', button: props.playing ? 'Stop' : 'Play' }), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
       h('span', { className: 'bae-num' }, props.position),
       h('span', { className: 'bae-m-itable-cell' }, h(MacInlineField, { label: 'Title', value: props.title, placeholder: 'Untitled' })),
       h('span', { className: 'bae-m-itable-cell' }, h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, inherited: props.inherited, placeholder: 'Artist', column: true })),

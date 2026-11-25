@@ -47,15 +47,15 @@
       covers.slice(0, 4).map(function (t, i) { return h(Artwork, { key: i, title: t, radius: 0 }); }));
   }
 
-  // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon. It takes the room of the frame SwiftUI lays the image out in at that size (SF's `frames`), the symbol centred in it, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
+  // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon, or the weight its own entry is traced in. It takes the room of the frame SwiftUI lays the image out in at that size (SF's `frames`), the symbol centred in it, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
   // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the frame the app sets around the symbol, which is then its room, the symbol's own frame centred in it with its corner on a device pixel, as SwiftUI places it. `contentShape`: the app gives the symbol a content shape, which makes the room its own box too. `text`: the symbol sits in a run of text, as Text(Image) sets it, and takes its ink's room alone.
   // `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward). `button`: the glyph is a plain button by that name, with the glyph's box and room, as a SwiftUI button around one symbol is; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. `turn`: the degrees the glyph turns about its frame's centre, as SwiftUI's rotationEffect turns an image, with its room and box left as they are. Any other set draws the Material symbol (MSymbol).
   function Glyph(props) {
     var turned = props.point === 'forward' || props.point === 'backward';
     if (props.point != null && !(turned && props.name === 'down' && props.set === 'mac')) throw new Error('Glyph turns only the Mac `down` chevron, to point `forward` or `backward`');
     if (props.set !== 'mac') return h(MSymbol, { name: props.name, size: props.size, className: cx('bae-glyph', props.className), fill: 'currentColor', label: props.label });
-    var key = (turned ? props.point : props.name) + (props.weight ? ':' + props.weight : '');
-    var sf = SF[key];
+    var base = turned ? props.point : props.name, key = base + (props.weight ? ':' + props.weight : '');
+    var sf = SF[key] || (props.weight && SF[base] && SF[base].weight === props.weight ? SF[base] : null);
     if (!sf) throw new Error('SF has no symbol `' + key + '`');
     // Boxes as left, top, right, bottom, in points at 24 around the frame's centre (12, 12); k turns them into points at the glyph's size.
     var points = iconPoints(props.size), k = points / 24;

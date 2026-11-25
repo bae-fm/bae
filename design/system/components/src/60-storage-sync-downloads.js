@@ -128,7 +128,7 @@
     return h('span', { className: 'bae-m-storefoot-q' },
       h(Glyph, { set: 'mac', name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'arrowUp' : 'arrowDown', size: 'small', frame: [11, 11], className: kind === 'exports' ? null : 'bae-accent', label: QUEUE_NAME[kind] }),
       wait ? h('span', null, wait) : props.rate ? h('span', { className: 'bae-num bae-m-storefoot-rate' }, h('span', { 'aria-hidden': true }, QUEUE_WIDEST[kind]), h('span', null, props.rate)) : null,
-      h(Glyph, { set: 'mac', name: paused ? 'play' : 'pause', size: 'chip', contentShape: true, button: paused ? label.replace('Pause', 'Resume') : label }));
+      h(Glyph, { set: 'mac', name: paused ? 'play' : 'pause', size: 'chip', weight: 'bold', contentShape: true, button: paused ? label.replace('Pause', 'Resume') : label }));
   }
   // Under the list: how many releases, the total, then each queue with work (`uploads`, `pins`, `exports`: its rate) as MacQueueRate, with what holds it back (`uploadsWait`, `pinsWait`, `exportsWait`).
   function MacStorageFooter(props) {
