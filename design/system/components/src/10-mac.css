@@ -22,9 +22,10 @@
 .bae-m-lights-inset { top: 20px; left: 20px; }
 /* The main window moves its lights 6 pt right and 7 pt down from AppKit's place, to sit in its taller title bar (TrafficLightOffset). */
 .bae-m-mainwin > .bae-m-lights { top: 16px; left: 15px; }
-.bae-m-lights span { width: 14px; height: 14px; border-radius: 7px; background: #FF5F57; }
-.bae-m-lights span + span { background: #FEBC2E; }
-.bae-m-lights span + span + span { background: #28C840; }
+/* Each light in AppKit's gloss, as the shots read it: a pale rim at its top and bottom edges over a fill that darkens under the top and lightens toward the foot. */
+.bae-m-lights span { width: 14px; height: 14px; border-radius: 7px; background: linear-gradient(#F5C3B9 0, #FF9A91 0.5px, #F9675D 1px, #F55145 4.5px, #F35C51 7px, #F1665F 9px, #EF6861 11px, #EF655F 12.5px, #FF9891 13px, #F5C0B7 13.5px); }
+.bae-m-lights span + span { background: linear-gradient(#F5F46B 0, #FFDB43 0.5px, #FAB500 1px, #FCB200 4px, #FDBD01 7px, #FDC919 9px, #FECD30 10.5px, #FECE32 12px, #FECD28 12.5px, #FFF157 13px, #F5F47B 13.5px); }
+.bae-m-lights span + span + span { background: linear-gradient(#AEF48E 0, #7EEF64 0.5px, #49C525 1px, #3AC100 2px, #00BE00 3.5px, #00BC00 5.5px, #26BF00 7px, #43C11F 8.5px, #4FC439 9.5px, #52C33C 11px, #4DC335 12.5px, #7AEC66 13px, #A5F48B 13.5px); }
 .bae-m-pane { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); padding: calc(var(--space-inline) + var(--space-hairline)) calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); cursor: pointer; }
 .bae-m-pane-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
