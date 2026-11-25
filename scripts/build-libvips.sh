@@ -359,6 +359,15 @@ cp "$work"/deps/subprojects/libarchive-*/libarchive/archive.h \
 # libvips.
 mkdir -p "$work/src"
 unpack "$tarball" "$work/src"
+# libvips builds a fuzzing program for each of its loaders, which nothing here
+# runs, and the stand-in for the fuzzing engine does not compile with MSVC.
+"$py" -I -c '
+import pathlib, sys
+meson = pathlib.Path(sys.argv[1], "meson.build")
+text = meson.read_text()
+assert "subdir(\x27fuzz\x27)\n" in text
+meson.write_text(text.replace("subdir(\x27fuzz\x27)\n", ""))
+' "$(native_path "$work/src/vips-$libvips_version")"
 meson setup "$(native_path "$work/vips-build")" "$(native_path "$work/src/vips-$libvips_version")" ${cross[@]+"${cross[@]}"} \
     --prefix="$(native_path "$stage")" --libdir=lib ${native_vips[@]+"${native_vips[@]}"} \
     --buildtype=release --default-library=shared --wrap-mode=nofallback \
