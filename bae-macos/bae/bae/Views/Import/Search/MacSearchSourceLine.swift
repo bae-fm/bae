@@ -33,7 +33,8 @@ struct MacSearchSourceLine: View {
                     Text(catalog)
                         .foregroundStyle(Theme.textTertiary)
                         .help(reason)
-                    MacButton("Retry", kind: .borderless, action: onRetry)
+                    MacButton("Retry", kind: .plain, action: onRetry)
+                        .accent()
                 }
             }
         }
