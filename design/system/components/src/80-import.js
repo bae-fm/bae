@@ -179,7 +179,8 @@
   function discogsDetails(details, off) {
     return h('span', { className: 'bae-m-idraft-details' },
       details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d, off)); }),
-      h('button', { type: 'button', disabled: off || null, className: cx('bae-plainbtn', 'bae-m-idraft-detail', details.length ? 'bae-accent' : 'bae-m-tertiary', off && 'bae-off'), 'aria-haspopup': 'menu', 'aria-label': details.length ? 'Add detail' : 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 'small' }), 'Add'] : '—'));
+      details.length ? addEntry('Add detail', true, off)
+        : h('button', { type: 'button', disabled: off || null, className: cx('bae-plainbtn', 'bae-m-tertiary', off && 'bae-off'), 'aria-haspopup': 'menu', 'aria-label': 'Details' }, '—'));
   }
   // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty. `off`: every field, stepper and button is disabled, as while a save reads a file.
   function MacReleaseFields(props) {
