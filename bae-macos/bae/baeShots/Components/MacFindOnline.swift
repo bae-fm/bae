@@ -67,7 +67,11 @@ extension ShotScene {
                 showsDiscogsBar: showsDiscogsBar,
                 keepsOwnDraft: keepsOwnDraft
             )
-            .frame(width: 842, height: height, alignment: .top)
+            .frame(width: 842)
+            // The pane is never as short as its content in the app's window,
+            // so it keeps the height its content needs.
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(height: height, alignment: .top)
         )
     }
 }
