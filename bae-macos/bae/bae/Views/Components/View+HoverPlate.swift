@@ -5,7 +5,7 @@ import SwiftUI
 /// words without moving them.
 struct HoverPlate: View {
     let hovering: Bool
-    var cornerRadius = ThemeRadius.control
+    let cornerRadius: CGFloat
 
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
