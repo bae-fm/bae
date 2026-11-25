@@ -17,7 +17,7 @@ public struct MacErrorLine: View {
 
     public var body: some View {
         text
-            .themeText(.body)
+            .themeText(.detail)
             .foregroundStyle(Theme.danger)
     }
 }
