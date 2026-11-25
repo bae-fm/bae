@@ -111,23 +111,17 @@ struct Artwork: View {
                 y: shadow.metrics.y
             )
             .background {
-                RoundedRectangle(
-                    cornerRadius: radius + ringGap,
-                    style: .circular
-                )
-                .inset(by: -ringGap)
-                .fill(Theme.background)
-                .opacity(ring ? 1 : 0)
+                RoundedRectangle(cornerRadius: radius, style: .circular)
+                    .inset(by: -ringGap)
+                    .fill(Theme.background)
+                    .opacity(ring ? 1 : 0)
             }
             .overlay {
-                RoundedRectangle(
-                    cornerRadius: radius + outset,
-                    style: .circular
-                )
-                .inset(by: -outset)
-                .stroke(Theme.accent, lineWidth: ringWidth)
-                .opacity(ring ? 1 : 0)
-                .allowsHitTesting(false)
+                RoundedRectangle(cornerRadius: radius, style: .circular)
+                    .inset(by: -outset)
+                    .stroke(Theme.accent, lineWidth: ringWidth)
+                    .opacity(ring ? 1 : 0)
+                    .allowsHitTesting(false)
             }
     }
 
