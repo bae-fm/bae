@@ -92,12 +92,15 @@ extension ShotScene {
             width: storageWindowSize.width,
             height: storageWindowSize.height
         )
+        let images = coverStore()
         return ShotStage(
             fixture.environment(
                 of: window,
                 outputs: OutputStore(),
-                outbox: uploadingOutbox("rel-shot-2")
-            )
+                outbox: uploadingOutbox("rel-shot-2"),
+                images: images
+            ),
+            images: images
         ) {
             fixture.storageManagerStore.list?.count != nil
         }

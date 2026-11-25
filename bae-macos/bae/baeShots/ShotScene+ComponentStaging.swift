@@ -11,7 +11,8 @@ extension ShotScene {
     static func glassHarborRow(
         _ number: Int,
         state: BridgeReleaseStorageState = .inStorage(pinned: false),
-        status: BridgeStorageRowStatus = .inStorage
+        status: BridgeStorageRowStatus = .inStorage,
+        picture: BridgeImageRef? = nil
     ) -> BridgeStorageRow {
         storageRow(
             BoardRow(
@@ -25,11 +26,15 @@ extension ShotScene {
                 added: "2026-08-30"
             ),
             releaseId: "rel-shot-\(number)",
-            albumId: "album-shot-\(number)"
+            albumId: "album-shot-\(number)",
+            picture: picture
         )
     }
 
-    static func copperSkyRow(_ number: Int) -> BridgeStorageRow {
+    static func copperSkyRow(
+        _ number: Int,
+        picture: BridgeImageRef? = nil
+    ) -> BridgeStorageRow {
         storageRow(
             BoardRow(
                 title: "Copper Sky",
@@ -42,15 +47,20 @@ extension ShotScene {
                 added: "2026-10-04"
             ),
             releaseId: "rel-shot-\(number)",
-            albumId: "album-shot-\(number)"
+            albumId: "album-shot-\(number)",
+            picture: picture
         )
     }
 
     /// The three releases the design system's previews list: Copper Sky on
     /// one device, Field Recordings uploading, Glass Harbor in the cloud,
-    /// as releases 1 to 3.
+    /// as releases 1 to 3, each with its cover, which `coverStore()` serves.
     static func threeReleases() -> [BridgeStorageRow] {
-        [copperSkyRow(1), fieldRecordingsRow(2), glassHarborRow(3)]
+        [
+            copperSkyRow(1, picture: cover("Copper Sky")),
+            fieldRecordingsRow(2, picture: cover("Field Recordings")),
+            glassHarborRow(3, picture: cover("Glass Harbor")),
+        ]
     }
 
     /// Field Recordings, its upload moving unless `upload` says otherwise.
@@ -59,7 +69,8 @@ extension ShotScene {
         upload: BridgeReleaseUpload = ShotScene.shotUpload(
             queued: 0,
             uploading: 1
-        )
+        ),
+        picture: BridgeImageRef? = nil
     ) -> BridgeStorageRow {
         storageRow(
             BoardRow(
@@ -74,7 +85,8 @@ extension ShotScene {
             ),
             releaseId: "rel-shot-\(number)",
             albumId: "album-shot-\(number)",
-            upload: upload
+            upload: upload,
+            picture: picture
         )
     }
 

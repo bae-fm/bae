@@ -100,11 +100,14 @@ extension ShotScene {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.surfaceElevated)
+            let images = coverStore()
             return ShotStage(
                 fixture.environment(
                     of: table,
-                    outbox: uploading.map(uploadingOutbox)
-                )
+                    outbox: uploading.map(uploadingOutbox),
+                    images: images
+                ),
+                images: images
             ) {
                 fixture.storageManagerStore.list != nil
             }
