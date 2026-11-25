@@ -161,6 +161,11 @@ struct MacCoverGallery: View {
             // disabled one is, so its shortcuts are the lightbox's to take.
             .allowsHitTesting(browser.layout != .lightbox)
             .accessibilityHidden(browser.layout == .lightbox)
+            // While the lightbox is open, Tab and VoiceOver reach only the
+            // lightbox. A view that is focusable only when the lightbox is
+            // closed passes that on to the buttons inside it.
+            .focusable(browser.layout != .lightbox)
+            .focusEffectDisabled()
             .overlay { lightboxOverlay }
             .onAppear {
                 if opensOnLightbox { browser.layout = .lightbox }

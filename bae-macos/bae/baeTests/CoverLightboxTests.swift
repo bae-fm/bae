@@ -131,7 +131,7 @@ struct CoverLightboxTests {
 
     /// Open the lightbox the way `opening` names.
     @MainActor
-    private func open(
+    func open(
         _ opening: Opening,
         window: NSWindow,
         host: NSView
@@ -213,11 +213,11 @@ struct CoverLightboxTests {
         }
     }
 
-    private struct Read: Equatable {
+    struct Read: Equatable {
         let url: String
     }
 
-    private actor Reads {
+    actor Reads {
         var reads: [Read] = []
         var cuts: [BridgeCoverImageSource] = []
         func read(_ read: Read) {
@@ -233,7 +233,7 @@ struct CoverLightboxTests {
 extension CoverLightboxTests {
     /// An image store that serves `bytes` for every picture, and records each
     /// provider image it is asked for.
-    private func imageStore(serving bytes: Data, recording recorder: Reads)
+    func imageStore(serving bytes: Data, recording recorder: Reads)
         -> ImageStore
     {
         ImageStore(
@@ -247,7 +247,7 @@ extension CoverLightboxTests {
 
     /// Build the cover gallery that core returns, with a remote section
     /// holding `remote` and a release files section holding `files`.
-    private func gallery(
+    func gallery(
         remote: [CoverItem],
         files: [CoverItem]
     ) -> BridgeCoverGallery {
@@ -267,7 +267,7 @@ extension CoverLightboxTests {
         )
     }
 
-    private func releaseFile(_ file: BridgeFileVersion) -> CoverItem {
+    func releaseFile(_ file: BridgeFileVersion) -> CoverItem {
         CoverItem(
             gallery: BridgeGalleryCover(
                 key: .file(fileId: "scan-file"),
@@ -280,7 +280,7 @@ extension CoverLightboxTests {
         )
     }
 
-    private func remote(_ name: String) -> CoverItem {
+    func remote(_ name: String) -> CoverItem {
         let image = BridgeRemoteImageSet(
             url: "https://images.example/\(name)-original.png",
             downscaled: [

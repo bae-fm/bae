@@ -94,13 +94,14 @@ enum HostedInput {
 
     /// The keys the tests press: what each types and which key it is.
     enum Key {
-        case `return`, escape, space, rightArrow, downArrow
+        case `return`, escape, space, tab, rightArrow, downArrow
 
         var characters: String {
             switch self {
             case .return: "\r"
             case .escape: "\u{1b}"
             case .space: " "
+            case .tab: "\t"
             case .rightArrow:
                 String(
                     utf16CodeUnits: [UInt16(NSRightArrowFunctionKey)],
@@ -119,10 +120,17 @@ enum HostedInput {
             case .return: 36
             case .escape: 53
             case .space: 49
+            case .tab: 48
             case .rightArrow: 124
             case .downArrow: 125
             }
         }
+    }
+
+    /// The keyboard focus moved to the next control, as Tab moves it: the
+    /// key view loop of `window` stepped once.
+    static func selectNextKey(in window: NSWindow) {
+        autoreleasepool { window.selectNextKeyView(nil) }
     }
 
     /// A press of `key` delivered to `window`.

@@ -2111,7 +2111,7 @@ The preview and the lightbox show the focused cover's name and source: *Library*
 for a library release's saved cover, the catalog's name for a catalog's image,
 and *Release files* for an image file.
 Clicking an entry shows it in the preview; double-clicking opens the lightbox,
-whose *Browse all images* button closes the lightbox and shows the picker's entries. Until the
+whose *Browse all images* button closes the lightbox and shows the picker's entries. While the lightbox is open, the keyboard and VoiceOver reach only the lightbox, not the sheet under it. Until the
 picker fetches the catalogs' covers (below), a draft read from the tags, typed
 in or cleared, or a candidate linked to an album or to nothing, has no
 catalog's covers to offer. The fetch finds the covers of the candidate's link:
