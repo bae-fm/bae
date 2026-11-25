@@ -98,7 +98,7 @@ internal fun AndroidMenuEntry(
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
             ProvideTextStyle(ThemeText.androidLabel.style) {
-                Box(modifier = Modifier.weight(1f, fill = false)) { text() }
+                Box(modifier = Modifier.weight(1f)) { text() }
             }
         }
         trailingIcon?.let { icon ->
