@@ -253,21 +253,23 @@ struct MacPressingRow: View {
     private var libraryMarker: some View {
         HStack(spacing: ThemeSpace.inline) {
             // The check only marks the words, so VoiceOver reads the words
-            // alone; a hidden parent would override this.
+            // alone. It takes the detail text's font and not its line, so the
+            // line's spare height moves the words and leaves the check.
             Image(systemName: "checkmark.circle")
+                .font(ThemeText.detail.font)
                 .foregroundStyle(Theme.success)
                 .accessibilityHidden(true)
             Text("In library")
+                .themeText(.detail)
+                .foregroundStyle(Theme.textTertiary)
         }
-        .themeText(.detail)
-        .foregroundStyle(Theme.textTertiary)
     }
 
     private var chevron: some View {
         Image(systemName: "chevron.forward")
             .themeIcon(.small)
             .foregroundStyle(
-                isSelected ? Theme.accent : Theme.hairlineStrong
+                isSelected ? Theme.accent : Theme.textTertiary
             )
             .frame(width: ThemeIcon.small.size)
             .accessibilityHidden(true)
