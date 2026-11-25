@@ -308,7 +308,7 @@
     return h(MacSegmentedControl, { options: releases.join(','), selected: props.selected || releases[0] });
   }
 
-  // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), with the catalogs' popover when catalogs describe the release (`records`, `recordsHover`, `recordsOpen`, as `releaseFactsLine` draws them), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
+  // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), with the catalogs' popover when catalogs describe the release (`records`, `recordsHover` as `releaseFactsLine` draws them, and `recordsOpen`, which draws the popover open after the header; the panel sets `recordsAnchor` instead, so the header marks its button open and the panel draws the popover), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
   // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it).
   function albumMark(rating, system, size, className) {
     var n = Number(rating || 0);
@@ -317,28 +317,33 @@
     return className ? h('span', { className: className }, mark) : mark;
   }
 
-  // The release's edition line and copy line. When catalogs describe the release (`records`, their names, comma-separated), the lines and an ↗ form one button: `recordsHover` draws its hover plate, and `recordsOpen` draws the popover of the catalogs' links it opens, 320pt wide, centred under the button with its arrow pointing at it.
+  // The release's edition line and copy line. When catalogs describe the release (`records`, their names, comma-separated), the lines and an ↗ form one button: `recordsHover` draws its hover plate, and `recordsOpen` or `recordsAnchor` makes it the button the popover hangs from.
   function releaseFactsLine(props) {
     var lines = props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null;
     if (!list(props.records).length) return lines;
-    return h('div', { className: 'bae-m-albumfacts-anchor' },
+    return h('div', { className: cx('bae-m-albumfacts-anchor', (props.recordsOpen || props.recordsAnchor) && 'bae-m-albumfacts-anchor-open') },
       // VoiceOver reads the button as its parts with a comma between, the arrow's the word Identified.
       h('button', { type: 'button', 'aria-label': [props.edition, props.copy, 'Identified'].filter(Boolean).join(', '), className: cx('bae-m-albumfacts', props.recordsHover && 'bae-m-albumfacts-hover') }, lines,
         // The arrow is arrow.up.right in the detail text's font (11.5 points, regular).
-        h(Glyph, { set: 'mac', name: 'external', size: 11.5, weight: 'regular', className: 'bae-m-albumfacts-arrow' })),
-      props.recordsOpen ? h('div', { className: 'bae-m-albumfacts-pop' }, h(MacPopover, { flush: true, width: 320, top: 0, right: 0, arrow: 160 }, h('div', { className: 'bae-m-albumfacts-card' }, h(MacRecordLinks, { records: props.records })))) : null);
+        h(Glyph, { set: 'mac', name: 'external', size: 11.5, weight: 'regular', className: 'bae-m-albumfacts-arrow' })));
+  }
+  // The popover of the catalogs' links, 320pt wide, centred under the facts button with its arrow pointing at it. It is a window of its own, so it comes after everything the header or the panel draws.
+  function releaseRecordsPopover(records) {
+    return h('div', { className: 'bae-m-albumfacts-pop' }, h(MacPopover, { flush: true, width: 320, top: 0, right: 0, arrow: 160 }, h('div', { className: 'bae-m-albumfacts-card' }, h(MacRecordLinks, { records: records }))));
   }
 
   function MacAlbumHeader(props) {
     var picker = h(MacReleasePicker, { releases: props.releases, selected: props.release });
-    return h('div', { className: 'bae-m-albumhead' },
+    var popover = props.recordsOpen && list(props.records).length > 0;
+    return h('div', { className: cx('bae-m-albumhead', popover && 'bae-m-albumhead-open') },
       h('h2', { className: 'bae-m-albumpanel-title' }, props.title),
       h('div', { className: 'bae-m-albumpanel-sub' }, h('span', { className: 'bae-muted' }, props.artist), props.year ? [h('span', { key: 'd', className: 'bae-m-tertiary' }, '·'), h('span', { key: 'y', className: 'bae-m-tertiary' }, props.year)] : null),
       list(props.releases).length > 1 ? h('div', { className: 'bae-m-albumpanel-releases' }, picker) : null,
       releaseFactsLine(props),
       // `unplayable`: where the files are, when only another device holds them; Play gives way to the words Not on this device, whose help tag names the device (`unplayableHover` draws it showing).
       h('div', { className: 'bae-m-albumpanel-actions' }, props.unplayable ? h(MacHelpTag, { text: props.unplayableHover ? props.unplayable : null }, h('span', { className: 'bae-m-albumpanel-unplayable' }, 'Not on this device')) : h(MacButton, { kind: 'primary' }, 'Play'), h(MacMoreMenu, { boxed: true, label: 'Album options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }),
-        albumMark(props.rating, props.ratingSystem, 13, 'bae-m-albumpanel-rating')));
+        albumMark(props.rating, props.ratingSystem, 13, 'bae-m-albumpanel-rating')),
+      popover ? releaseRecordsPopover(props.records) : null);
   }
 
   // A help tag: the short words macOS shows under the pointer after it rests on a control (SwiftUI's `.help`), drawn under the control it describes; with no `text`, only the control.
@@ -360,15 +365,16 @@
       })));
   }
 
-  // The album opened in the grid: a panel under the album's row, its 340pt cover beside its header (`MacAlbumHeader`, which takes the same props), then its tracks, credits and works as children, then the release's audio line (`audio`).
+  // The album opened in the grid: a panel under the album's row, its 340pt cover beside its header (`MacAlbumHeader`, which takes the same props), then its tracks, credits and works as children, then the release's audio line (`audio`). The catalogs' popover (`recordsOpen`) comes last.
   function MacAlbumPanel(props) {
     return h('section', { className: 'bae-m-albumpanel' },
       h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
       h(Artwork, { title: props.title, size: 340, radius: 'radius-cover', missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
-        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, records: props.records, recordsHover: props.recordsHover, recordsOpen: props.recordsOpen, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingSystem: props.ratingSystem }),
+        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, records: props.records, recordsHover: props.recordsHover, recordsAnchor: props.recordsOpen, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingSystem: props.ratingSystem }),
         h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children),
-        props.audio ? h('div', { className: 'bae-m-albumpanel-audio' }, props.audio) : null));
+        props.audio ? h('div', { className: 'bae-m-albumpanel-audio' }, props.audio) : null),
+      props.recordsOpen && list(props.records).length ? releaseRecordsPopover(props.records) : null);
   }
 
   // A side's tracks in two columns once it has more than eight.
