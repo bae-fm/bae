@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.StatusRingIcons
@@ -204,27 +205,49 @@ internal fun NoticeFrame(
                             Modifier.padding(ThemeSpace.group)
                         },
                     ),
-            lead = if (tone.glyph(StatusGlyphSet.RING) != null) ({ NoticeGlyph(tone) }) else null,
+            lead =
+                if (tone.glyph(StatusGlyphSet.RING) != null) {
+                    { NoticeRing(tone, ThemeText.body.style.fontSize) }
+                } else {
+                    null
+                },
             content = content,
         )
     }
 }
 
-/** The ring of a notice's glyph is 1.19 times the size of the notice's words, as its board draws it. */
-private val NoticeGlyphSize: Dp = (ThemeText.body.style.fontSize.value * 1.19f).dp
+/** The ring of a notice's glyph is 1.19 times the size of the words beside it, as its board draws it. */
+private fun ringSizeBeside(words: TextUnit): Dp = (words.value * RING_PER_WORD).dp
 
-/** The ring fills 20 of the 24 units of its icon, so the icon's box is 1.2 times its ring. */
-private val NoticeGlyphBox: Dp = NoticeGlyphSize * 1.2f
+private const val RING_PER_WORD = 1.19f
 
-/** The tone's ring with its mark, with its ring [NoticeGlyphSize] across in a box of that width. */
+/** The ring fills 20 of the 24 units of its icon. */
+private const val ICON_PER_RING = 1.2f
+
+/** The notice's glyph beside its title, whose words are the framed layout's body text. */
+private val NoticeGlyphSize: Dp = ringSizeBeside(ThemeText.body.style.fontSize)
+
+/**
+ * The tone's ring with its mark, its ring 1.19 times [words] across. The ring fills 20 of the 24 units of its icon,
+ * so the icon's box is 1.2 times the ring.
+ */
 @Composable
-private fun NoticeGlyph(tone: StatusTone) {
-    Box(Modifier.size(NoticeGlyphSize), contentAlignment = Alignment.Center) {
+internal fun NoticeRing(
+    tone: StatusTone,
+    words: TextUnit,
+    muted: Boolean = false,
+    stage: Boolean = false,
+) {
+    val ring = ringSizeBeside(words)
+    val box = ring * ICON_PER_RING
+    Box(Modifier.size(ring), contentAlignment = Alignment.Center) {
         StatusGlyph(
             tone,
-            modifier = Modifier.requiredSize(NoticeGlyphBox),
-            size = NoticeGlyphBox,
+            modifier = Modifier.requiredSize(box),
+            size = box,
+            muted = muted,
             set = StatusGlyphSet.RING,
+            stage = stage,
         )
     }
 }
