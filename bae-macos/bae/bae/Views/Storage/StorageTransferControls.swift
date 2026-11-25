@@ -26,7 +26,7 @@ struct StorageTransferControls: View {
         VStack(spacing: 0) {
             ForEach(items, id: \.queueId) { item in
                 transfer(item, now: now)
-                Divider()
+                MacHairline()
             }
         }
     }
