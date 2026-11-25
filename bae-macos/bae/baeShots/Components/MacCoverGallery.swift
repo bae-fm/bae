@@ -8,7 +8,7 @@ extension ShotScene {
         component(
             "mac.component.cover-gallery.resting",
             width: 842,
-            height: 520,
+            height: 528,
             images: coverGalleryImages()
         ) {
             importStores(
@@ -23,7 +23,7 @@ extension ShotScene {
         component(
             "mac.component.cover-gallery.current-cover-shown",
             width: 842,
-            height: 520,
+            height: 528,
             images: coverGalleryImages()
         ) {
             importStores(
@@ -35,7 +35,7 @@ extension ShotScene {
         component(
             "mac.component.cover-gallery.no-linked-release",
             width: 842,
-            height: 520,
+            height: 528,
             images: coverGalleryImages()
         ) {
             importStores(
@@ -90,6 +90,6 @@ extension ShotScene {
             onSelect: { _ in },
             onDone: {}
         )
-        .frame(width: 842, height: 520)
+        .frame(width: 842, height: 528)
     }
 }
