@@ -202,6 +202,7 @@ mac.import.several
 mac.import.several.identifying
 mac.library.album-menu
 mac.library.albums
+mac.library.albums.album-catalog-links
 mac.library.albums.album-open
 mac.library.albums.album-two-releases
 mac.library.albums.empty

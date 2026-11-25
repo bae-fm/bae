@@ -701,6 +701,10 @@ with the track's number, the work and its composers. Clicking a work opens
 its page. On Android each track names the works it performs and tapping a
 work opens it. Credits follow the tracks and list each role and its artists
 without naming the tracks the role covers.
+On macOS, when catalogs describe the release, the album page's edition line
+and copy line and an arrow form one button, which opens a popover that links
+each catalog's page; a click away or Escape closes the popover. A release no
+catalog describes shows those two lines as plain text.
 On Android the album page gives each catalog that describes the release a
 control that opens its catalog page. Files follows Credits and names every
 file no track plays from, with its kind.

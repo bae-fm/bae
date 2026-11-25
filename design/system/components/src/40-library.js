@@ -304,7 +304,7 @@
     return h(MacSegmentedControl, { options: releases.join(','), selected: props.selected || releases[0] });
   }
 
-  // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
+  // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), with the catalogs' popover when catalogs describe the release (`records`, `recordsHover`, `recordsOpen`, as `releaseFactsLine` draws them), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
   // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it).
   function albumMark(rating, system, size, className) {
     var n = Number(rating || 0);
@@ -313,13 +313,23 @@
     return className ? h('span', { className: className }, mark) : mark;
   }
 
+  // The release's edition line and copy line. When catalogs describe the release (`records`, their names, comma-separated), the lines and an ↗ form one button: `recordsHover` draws its hover plate, and `recordsOpen` draws the popover of the catalogs' links it opens, 320pt wide, centred under the button with its arrow pointing at it.
+  function releaseFactsLine(props) {
+    var lines = props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null;
+    if (!list(props.records).length) return lines;
+    return h('div', { className: 'bae-m-albumfacts-anchor' },
+      h('button', { type: 'button', className: cx('bae-m-albumfacts', props.recordsHover && 'bae-m-albumfacts-hover') }, lines,
+        h('span', { className: 'bae-linkout bae-m-albumfacts-arrow', role: 'img', 'aria-label': 'Identified' }, h(Sym, { name: 'external', size: 12 }))),
+      props.recordsOpen ? h('div', { className: 'bae-m-albumfacts-pop' }, h(MacPopover, { flush: true, width: 320, top: 0, right: 0, arrow: 160 }, h('div', { className: 'bae-m-albumfacts-card' }, h(MacRecordLinks, { records: props.records })))) : null);
+  }
+
   function MacAlbumHeader(props) {
     var picker = h(MacReleasePicker, { releases: props.releases, selected: props.release });
     return h('div', { className: 'bae-m-albumhead' },
       h('h2', { className: 'bae-m-albumpanel-title' }, props.title),
       h('div', { className: 'bae-m-albumpanel-sub' }, h('span', { className: 'bae-muted' }, props.artist), props.year ? [h('span', { key: 'd', className: 'bae-m-tertiary' }, '·'), h('span', { key: 'y', className: 'bae-m-tertiary' }, props.year)] : null),
       list(props.releases).length > 1 ? h('div', { className: 'bae-m-albumpanel-releases' }, picker) : null,
-      props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null,
+      releaseFactsLine(props),
       // `unplayable`: where the files are, when only another device holds them; Play gives way to the words Not on this device, whose help tag names the device (`unplayableHover` draws it showing).
       h('div', { className: 'bae-m-albumpanel-actions' }, props.unplayable ? h(MacHelpTag, { text: props.unplayableHover ? props.unplayable : null }, h('span', { className: 'bae-m-albumpanel-unplayable' }, 'Not on this device')) : h(MacButton, { kind: 'primary' }, 'Play'), h(MacMoreMenu, { boxed: true, label: 'Album options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }),
         albumMark(props.rating, props.ratingSystem, 13, 'bae-m-albumpanel-rating')));
@@ -350,7 +360,7 @@
       h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
       h(Artwork, { title: props.title, size: 340, radius: 'radius-cover', missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
-        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingSystem: props.ratingSystem }),
+        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, records: props.records, recordsHover: props.recordsHover, recordsOpen: props.recordsOpen, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingSystem: props.ratingSystem }),
         h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children),
         props.audio ? h('div', { className: 'bae-m-albumpanel-audio' }, props.audio) : null));
   }

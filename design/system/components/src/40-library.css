@@ -195,6 +195,15 @@
 .bae-m-albumpanel-facts { display: flex; flex-direction: column; gap: var(--space-line); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-audio { padding-top: var(--space-related); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-facts > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The facts as a button that opens the catalogs' card: the lines, then an ↗ on the first line's baseline. The hover plate reaches past them without moving them. */
+.bae-m-albumfacts-anchor { position: relative; z-index: 1; display: flex; align-self: flex-start; min-width: 0; max-width: 100%; }
+.bae-m-albumfacts { position: relative; isolation: isolate; display: inline-flex; align-items: flex-start; gap: var(--space-inline); max-width: 100%; padding: 0; border: 0; background: none; text-align: start; cursor: default; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
+.bae-m-albumfacts > .bae-m-albumpanel-facts { min-width: 0; }
+.bae-m-albumfacts-hover::before { content: ''; position: absolute; z-index: -1; inset: calc(-1 * var(--space-line)) calc(-1 * var(--space-compact)); border-radius: var(--radius-chip); background: var(--hover); }
+.bae-m-albumfacts-arrow { flex: none; color: var(--text-secondary); }
+/* The catalogs' popover, centred under the button, its arrow's tip 2pt under it. */
+.bae-m-albumfacts-pop { position: absolute; top: calc(100% + 9px); left: 50%; width: 320px; transform: translateX(-50%); }
+.bae-m-albumfacts-card { padding: var(--space-group); }
 .bae-m-albumpanel-unplayable { display: inline-flex; align-items: center; min-height: 28px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
 .bae-m-helptag-anchor { position: relative; display: inline-flex; }
 .bae-m-helptag { position: absolute; left: 10px; top: calc(100% + 6px); z-index: 5; white-space: nowrap; padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 4px 12px var(--shadow); font: var(--type-cell-weight) var(--type-cell-size)/var(--type-cell-line-height) var(--font-sans); color: var(--text-primary); }

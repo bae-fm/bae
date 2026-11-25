@@ -4466,6 +4466,14 @@
    "x": 4920,
    "y": 1636
   },
+  "mac.library.albums.album-catalog-links.dc.html": {
+   "h": 1020,
+   "page": "home",
+   "title": "macOS: Album, its catalog links open",
+   "w": 1200,
+   "x": 6200,
+   "y": 1636
+  },
   "android.library.albums.not-on-this-device.dc.html": {
    "h": 916,
    "page": "home",
@@ -4633,6 +4641,7 @@
   "row-composers-mac",
   "composers-today",
   "code-ratings-playlists",
+  "code-album-catalog-popover",
   "row-store-mac",
   "row-store-mac-states",
   "row-sync-mac",
@@ -6015,6 +6024,14 @@
    "x": 5936,
    "y": 4700,
    "text": "What the code needs for this board:\n- Each catalog number the folder offers that no release confirms is its own outlined Catalog # chip, which puts the number into the run (decision #2237).\n- The band folds these chips after its other chips, behind a +N more button with their count; opened, the button reads Show fewer.\n- Today MacIdentifierBand's catalogCandidatesChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierBand.swift:222) draws one chip that lists every number, with no fold."
+  },
+  "code-album-catalog-popover": {
+   "page": "home",
+   "size": 24,
+   "text": "What the code needs for the catalog links:\n- `ReleaseFactsLine` (bae-macos/bae/bae/Views/Library/AlbumDetail/MacAlbumPanel.swift, line 181) draws the links in a card of its own, in the window, at the button's left edge. The board draws them in bae's popover, centred under the button with its arrow pointing at it. The code presents `ReleaseRecordsCard` with `.macPopover` and drops the card's own fill, edge and shadow.",
+   "w": 460,
+   "x": 7480,
+   "y": 1636
   }
  },
  "order": [
@@ -6211,6 +6228,7 @@
   "mac.library.albums.dc.html",
   "mac.library.albums.album-open.dc.html",
   "mac.library.albums.album-not-on-this-device.dc.html",
+  "mac.library.albums.album-catalog-links.dc.html",
   "mac.library.artists.dc.html",
   "android.library.albums.scrolled.dc.html",
   "android.library.view-menu.dc.html",
