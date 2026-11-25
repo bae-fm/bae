@@ -10,7 +10,8 @@ extension ShotScene {
         formatPicker,
         ShotScene(
             id: "mac.library.album-menu",
-            size: CGSize(width: 1_200, height: 1_020)
+            size: CGSize(width: 1_200, height: 1_020),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let detailAnswered = AlbumDetailAnswered()

@@ -13,6 +13,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.search.results",
             size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden),
             keyWindow: true
         ) {
             searchWindow(query: "low tide", results: lowTideResults)
@@ -20,6 +21,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.search.results.none",
             size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden),
             keyWindow: true
         ) {
             searchWindow(query: "zzz", results: noResults)

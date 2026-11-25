@@ -11,7 +11,8 @@ extension ShotScene {
     static let pickedTracksScenes: [ShotScene] = [
         ShotScene(
             id: "mac.album.play-picked-tracks",
-            size: CGSize(width: 1_200, height: 1_020)
+            size: CGSize(width: 1_200, height: 1_020),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let size = CGSize(width: 1_200, height: 1_020)
             let uiStore = UiStore()
@@ -47,7 +48,7 @@ extension ShotScene {
                     guard let window = host.window else { return false }
                     do {
                         let list = try ShotElementList.read(
-                            board: "mac.album.play-picked-tracks",
+                            board: "the menu of the picked tracks",
                             window: window,
                             size: size,
                             scale: ShotRenderer.scale

@@ -5,10 +5,18 @@ import SwiftUI
 
 extension ShotScene {
     static let albumStorageScenes: [ShotScene] = [
-        ShotScene(id: "mac.album.storage", size: albumStorageSize) {
+        ShotScene(
+            id: "mac.album.storage",
+            size: albumStorageSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             albumStorageStage(.cloud)
         },
-        ShotScene(id: "mac.album.storage.uploading", size: albumStorageSize) {
+        ShotScene(
+            id: "mac.album.storage.uploading",
+            size: albumStorageSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             albumStorageStage(.uploading)
         },
         ShotScene(

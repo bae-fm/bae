@@ -10,27 +10,41 @@ extension ShotScene {
     /// Heart and None systems (`mac.album.rating.heart` and `.none`), and a
     /// track's menu under each (`mac.album.track-menu-heart` and `-none`).
     static let albumRatingScenes: [ShotScene] = [
-        ratingSystemScene("mac.album.rating", system: .stars, menu: .albumRate),
-        ratingSystemScene(
-            "mac.album.rating.heart",
-            system: .heart,
-            menu: .album(highlighted: 5)
-        ),
-        ratingSystemScene(
-            "mac.album.rating.none",
-            system: .hidden,
-            menu: .album(highlighted: nil)
-        ),
-        ratingSystemScene(
-            "mac.album.track-menu-heart",
-            system: .heart,
-            menu: .track(highlighted: 4)
-        ),
-        ratingSystemScene(
-            "mac.album.track-menu-none",
-            system: .hidden,
-            menu: .track(highlighted: nil)
-        ),
+        ShotScene(
+            id: "mac.album.rating",
+            size: albumRatingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            ratingSystemStage(system: .stars, menu: .albumRate)
+        },
+        ShotScene(
+            id: "mac.album.rating.heart",
+            size: albumRatingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            ratingSystemStage(system: .heart, menu: .album(highlighted: 5))
+        },
+        ShotScene(
+            id: "mac.album.rating.none",
+            size: albumRatingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            ratingSystemStage(system: .hidden, menu: .album(highlighted: nil))
+        },
+        ShotScene(
+            id: "mac.album.track-menu-heart",
+            size: albumRatingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            ratingSystemStage(system: .heart, menu: .track(highlighted: 4))
+        },
+        ShotScene(
+            id: "mac.album.track-menu-none",
+            size: albumRatingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            ratingSystemStage(system: .hidden, menu: .track(highlighted: nil))
+        },
     ]
 
     /// The menu a rating-system scene holds open, and which line the pointer
@@ -42,48 +56,47 @@ extension ShotScene {
         case track(highlighted: Int?)
     }
 
+    private static let albumRatingSize = CGSize(width: 1_200, height: 1_020)
+
     /// The album page under the rating system `system` for its albums and its
     /// tracks, rated as the boards draw it, with `menu` open.
-    private static func ratingSystemScene(
-        _ id: String,
+    @MainActor
+    private static func ratingSystemStage(
         system: BridgeRatingSystem,
-        menu: OpenMenu,
-        height: CGFloat = 1_020
-    ) -> ShotScene {
-        let size = CGSize(width: 1_200, height: height)
-        return ShotScene(id: id, size: size) {
-            let uiStore = UiStore()
-            var detail = boardAlbum(ratedUnder: system)
-            if case .track = menu, case .heart = detail.rating {
-                // The track menu boards draw the album unhearted.
-                detail.rating = .heart(hearted: false, hearters: [])
-            }
-            let detailAnswered = AlbumDetailAnswered()
-            let backing = boardLibraryBacking(
-                uiStore: uiStore,
-                albumCount: 4,
-                openAlbum: true,
-                detailAnswered: detailAnswered,
-                detail: detail
-            )
-            let images = coverGalleryImages()
-            let rated = AlbumDetail(bridge: detail)
-            return ShotStage(
-                ZStack(alignment: .topLeading) {
-                    ShotScenes.libraryWindow(
-                        uiStore: uiStore,
-                        backing: backing,
-                        playbackStore: boardPlayback(),
-                        images: images,
-                        size: size
-                    )
-                    openMenu(menu, album: rated)
-                },
-                images: images
-            ) {
-                backing.session.albums.list?.delivered != nil
-                    && detailAnswered.answered
-            }
+        menu: OpenMenu
+    ) -> ShotStage {
+        let size = albumRatingSize
+        let uiStore = UiStore()
+        var detail = boardAlbum(ratedUnder: system)
+        if case .track = menu, case .heart = detail.rating {
+            // The track menu boards draw the album unhearted.
+            detail.rating = .heart(hearted: false, hearters: [])
+        }
+        let detailAnswered = AlbumDetailAnswered()
+        let backing = boardLibraryBacking(
+            uiStore: uiStore,
+            albumCount: 4,
+            openAlbum: true,
+            detailAnswered: detailAnswered,
+            detail: detail
+        )
+        let images = coverGalleryImages()
+        let rated = AlbumDetail(bridge: detail)
+        return ShotStage(
+            ZStack(alignment: .topLeading) {
+                ShotScenes.libraryWindow(
+                    uiStore: uiStore,
+                    backing: backing,
+                    playbackStore: boardPlayback(),
+                    images: images,
+                    size: size
+                )
+                openMenu(menu, album: rated)
+            },
+            images: images
+        ) {
+            backing.session.albums.list?.delivered != nil
+                && detailAnswered.answered
         }
     }
 

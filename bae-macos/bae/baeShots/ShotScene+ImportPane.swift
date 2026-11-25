@@ -15,36 +15,56 @@ extension ShotScene {
     /// (`PreviewData.importBoardScene`), in the states the app reads for
     /// them.
     static let importPaneScenes: [ShotScene] = [
-        importPaneScene(
-            "mac.import.folder.found",
-            height: 900,
-            .found(northbound: .importing, opening: nil)
-        ),
+        ShotScene(
+            id: "mac.import.folder.found",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: nil),
+                size: CGSize(width: 1_400, height: 900)
+            )
+        },
         importPaneScene(
             "mac.import.folder.identified",
             height: 1_260,
             .found(northbound: .identified, opening: .northbound)
         ),
-        importPaneScene(
-            "mac.import.folder.importing",
-            height: 900,
-            .found(northbound: .importing, opening: .northbound)
-        ),
+        ShotScene(
+            id: "mac.import.folder.importing",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: .northbound),
+                size: CGSize(width: 1_400, height: 900)
+            )
+        },
         importPaneScene(
             "mac.import.folder.already-in-library",
             height: 1_260,
             .found(northbound: .importing, opening: .lowTideHours)
         ),
-        importPaneScene(
-            "mac.import.folder.nothing-read",
-            height: 900,
-            .found(northbound: .importing, opening: .untitled07)
-        ),
-        importPaneScene(
-            "mac.import.folder.cue-sheets",
-            height: 1_100,
-            .found(northbound: .importing, opening: .fieldRecordings)
-        ),
+        ShotScene(
+            id: "mac.import.folder.nothing-read",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: .untitled07),
+                size: CGSize(width: 1_400, height: 900)
+            )
+        },
+        ShotScene(
+            id: "mac.import.folder.cue-sheets",
+            size: CGSize(width: 1_400, height: 1_100),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: .fieldRecordings),
+                size: CGSize(width: 1_400, height: 1_100)
+            )
+        },
         ShotScene(
             id: "mac.import.folder.imported",
             size: CGSize(width: 1_400, height: 1_300)
@@ -75,24 +95,47 @@ extension ShotScene {
             height: 1_260,
             .found(northbound: .identified, opening: .northbound)
         ),
-        importPaneScene(
-            "mac.import.narrow.several",
-            width: 900,
-            height: 900,
-            .several
-        ),
-        importPaneScene("mac.import.folder.skipped", height: 900, .skipped),
-        importPaneScene(
-            "mac.import.identify.search",
-            height: 900,
-            .found(northbound: .importing, opening: .copperSky)
-        ),
-        importPaneScene(
-            "mac.import.identify.no-discogs-key",
-            height: 900,
-            .found(northbound: .importing, opening: .winterKitchen),
-            discogsUsable: false
-        ),
+        ShotScene(
+            id: "mac.import.narrow.several",
+            size: CGSize(width: 900, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .several,
+                size: CGSize(width: 900, height: 900)
+            )
+        },
+        ShotScene(
+            id: "mac.import.folder.skipped",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .skipped,
+                size: CGSize(width: 1_400, height: 900)
+            )
+        },
+        ShotScene(
+            id: "mac.import.identify.search",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: .copperSky),
+                size: CGSize(width: 1_400, height: 900)
+            )
+        },
+        ShotScene(
+            id: "mac.import.identify.no-discogs-key",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: .winterKitchen),
+                size: CGSize(width: 1_400, height: 900),
+                discogsUsable: false
+            )
+        },
     ]
 
     /// A board shot of `board` with nothing else to state.

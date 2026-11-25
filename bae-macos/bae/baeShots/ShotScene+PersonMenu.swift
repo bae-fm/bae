@@ -10,19 +10,22 @@ extension ShotScene {
     static let personMenuScenes: [ShotScene] = [
         ShotScene(
             id: "mac.library.avatar-menu",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             personMenuWindow(hasCloudHome: true, highlighted: 3)
         },
         ShotScene(
             id: "mac.library.avatar-menu.no-cloud-home-asks",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             personMenuWindow(hasCloudHome: false, highlighted: 1)
         },
         ShotScene(
             id: "mac.library.avatar-menu.no-cloud-home-sheet",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let backing = boardLibraryBacking(uiStore: uiStore)

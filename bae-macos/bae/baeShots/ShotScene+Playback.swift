@@ -9,7 +9,8 @@ extension ShotScene {
     static let playbackScenes: [ShotScene] = [
         ShotScene(
             id: "mac.playback.queue",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             uiStore.setSidePanePresented(true)
@@ -61,7 +62,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.playback.queue.track-removed",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             uiStore.setSidePanePresented(true)

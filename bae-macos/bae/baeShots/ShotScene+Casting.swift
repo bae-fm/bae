@@ -37,7 +37,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.playback.casting.no-volume",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let backing = boardLibraryBacking(uiStore: uiStore)
@@ -73,19 +74,22 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.playback.cast-pin",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             castPinSheet(asking: pinRequest(), typed: "48")
         },
         ShotScene(
             id: "mac.playback.cast-pin.pairing",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             castPinSheet(asking: pinRequest(), typed: "4821", pairing: true)
         },
         ShotScene(
             id: "mac.playback.cast-pin.wrong-code",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             castPinSheet(
                 asking: pinRequest(lastTry: .wrongCode),
@@ -94,7 +98,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.playback.cast-pin.password",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             castPinSheet(
                 asking: BridgeAirPlayCodeRequest(

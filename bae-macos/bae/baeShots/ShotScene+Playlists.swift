@@ -10,24 +10,36 @@ extension ShotScene {
     static let playlistScenes: [ShotScene] = [
         ShotScene(
             id: "mac.playback.side-playlists",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             playlistsWindow(open: false)
         },
         ShotScene(
             id: "mac.playlists.list",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             playlistsWindow()
         },
-        newPlaylistScene("mac.playlists.new-playlist", sharing: .private),
-        newPlaylistScene(
-            "mac.playlists.new-playlist.everyone",
-            sharing: .household
-        ),
+        ShotScene(
+            id: "mac.playlists.new-playlist",
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            newPlaylistStage(sharing: .private)
+        },
+        ShotScene(
+            id: "mac.playlists.new-playlist.everyone",
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            newPlaylistStage(sharing: .household)
+        },
         ShotScene(
             id: "mac.playlists.options",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             playlistsWindow { window in
                 AnyView(
@@ -53,7 +65,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.playlists.edit",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             playlistsWindow { window in
                 AnyView(
@@ -88,7 +101,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.playlists.track-menu",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             playlistsWindow { window in
                 AnyView(
@@ -115,29 +129,27 @@ extension ShotScene {
 
     /// The New playlist sheet over the side pane's playlists, its name typed
     /// and `sharing` chosen.
-    private static func newPlaylistScene(
-        _ id: String,
+    @MainActor
+    private static func newPlaylistStage(
         sharing: BridgeSharing
-    ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 1200, height: 760)) {
-            playlistsWindow(open: false) { window in
-                AnyView(
-                    OverWindow.sheet(
-                        NewPlaylistSheet(
-                            state: .constant(
-                                NewPlaylistSheetState(
-                                    name: "Sunday morning",
-                                    sharing: sharing,
-                                    pickedTrackIds: []
-                                )
-                            ),
-                            onCancel: {},
-                            onCreate: { _ in }
+    ) -> ShotStage {
+        playlistsWindow(open: false) { window in
+            AnyView(
+                OverWindow.sheet(
+                    NewPlaylistSheet(
+                        state: .constant(
+                            NewPlaylistSheetState(
+                                name: "Sunday morning",
+                                sharing: sharing,
+                                pickedTrackIds: []
+                            )
                         ),
-                        over: window
-                    )
+                        onCancel: {},
+                        onCreate: { _ in }
+                    ),
+                    over: window
                 )
-            }
+            )
         }
     }
 

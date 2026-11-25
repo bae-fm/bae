@@ -47,7 +47,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.import.list.failed",
-            size: CGSize(width: 1_200, height: 760)
+            size: CGSize(width: 1_200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             uiStore.activeSection = .importing

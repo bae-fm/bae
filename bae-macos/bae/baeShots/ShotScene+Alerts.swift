@@ -240,7 +240,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.library.albums.failed",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let backing = LibraryView.previewUnreadableBacking(uiStore: uiStore)

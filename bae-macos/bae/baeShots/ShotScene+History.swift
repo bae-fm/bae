@@ -10,19 +10,22 @@ extension ShotScene {
     static let historyScenes: [ShotScene] = [
         ShotScene(
             id: "mac.playback.side-history",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             historyWindow(plays: boardPlays)
         },
         ShotScene(
             id: "mac.playback.side-history.empty",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             historyWindow(plays: [])
         },
         ShotScene(
             id: "mac.playback.side-history.none-from-person",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             historyWindow(plays: [], person: benMemberId)
         },

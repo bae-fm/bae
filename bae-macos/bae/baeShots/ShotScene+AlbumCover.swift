@@ -8,61 +8,68 @@ extension ShotScene {
     /// library window with the album open: the release's cover, two covers
     /// from Discogs and three image files of the release.
     static let albumCoverScenes: [ShotScene] = [
-        albumCoverScene(id: "mac.album.change-cover", linked: true),
-        albumCoverScene(
+        ShotScene(
+            id: "mac.album.change-cover",
+            size: albumCoverSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumCoverStage(linked: true)
+        },
+        ShotScene(
             id: "mac.album.change-cover.no-linked-release",
-            linked: false
-        ),
+            size: albumCoverSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumCoverStage(linked: false)
+        },
     ]
+
+    private static let albumCoverSize = CGSize(width: 1_200, height: 1_020)
 
     /// `mac.album.change-cover.no-linked-release` draws the release with no
     /// catalog release linked: no remote section and no Refresh. The sheet
     /// is the one the album page presents: `CoverSheetView` in its
     /// `CoverGalleryFrame`, raised over the window as a modal.
-    private static func albumCoverScene(id: String, linked: Bool) -> ShotScene {
-        ShotScene(
-            id: id,
-            size: CGSize(width: 1_200, height: 1_020)
-        ) {
-            let size = CGSize(width: 1_200, height: 1_020)
-            let uiStore = UiStore()
-            let backing = boardLibraryBacking(
+    @MainActor
+    private static func albumCoverStage(linked: Bool) -> ShotStage {
+        let size = albumCoverSize
+        let uiStore = UiStore()
+        let backing = boardLibraryBacking(
+            uiStore: uiStore,
+            albumCount: 4,
+            openAlbum: true
+        )
+        let gallery =
+            linked
+            ? boardCoverGallery()
+            : boardCoverGallery(remotes: [], linked: false)
+        let images = coverGalleryImages(of: "Low Tide Hours")
+        let lightboxLoad = LightboxImageLoad()
+        uiStore.presentSizedModal { host in
+            CoverGalleryFrame(host: host) {
+                CoverSheetView(
+                    owner: .release(releaseId: "rel-board-0"),
+                    lightboxLoad: lightboxLoad,
+                    onFindRelease: {},
+                    refreshCovers: {},
+                    onSelect: { _ in },
+                    onDone: {}
+                )
+            }
+            .environment(images)
+            .environment(Importer(coverGallery: { .fixed(gallery) }))
+        }
+        return ShotStage(
+            ShotScenes.libraryWindow(
                 uiStore: uiStore,
-                albumCount: 4,
-                openAlbum: true
-            )
-            let gallery =
-                linked
-                ? boardCoverGallery()
-                : boardCoverGallery(remotes: [], linked: false)
-            let images = coverGalleryImages(of: "Low Tide Hours")
-            let lightboxLoad = LightboxImageLoad()
-            uiStore.presentSizedModal { host in
-                CoverGalleryFrame(host: host) {
-                    CoverSheetView(
-                        owner: .release(releaseId: "rel-board-0"),
-                        lightboxLoad: lightboxLoad,
-                        onFindRelease: {},
-                        refreshCovers: {},
-                        onSelect: { _ in },
-                        onDone: {}
-                    )
-                }
-                .environment(images)
-                .environment(Importer(coverGallery: { .fixed(gallery) }))
-            }
-            return ShotStage(
-                ShotScenes.libraryWindow(
-                    uiStore: uiStore,
-                    backing: backing,
-                    playbackStore: boardPlayback(),
-                    images: images,
-                    size: size
-                ),
-                images: images
-            ) {
-                (backing.session.albums.list?.positionCount ?? 0) > 0
-            }
+                backing: backing,
+                playbackStore: boardPlayback(),
+                images: images,
+                size: size
+            ),
+            images: images
+        ) {
+            (backing.session.albums.list?.positionCount ?? 0) > 0
         }
     }
 
