@@ -106,7 +106,8 @@ extension ShotScene {
     ]
 
     /// `MacStorageCell`: `row`'s cell in `column`, `width` points wide, over
-    /// the upload of Field Recordings (`rel-shot-2`), 62 percent sent.
+    /// the upload of Field Recordings (`rel-shot-2`), 62 percent sent, and the
+    /// pin and move of Glass Harbor (`rel-shot-1`), 62 percent done.
     private static func storageCell(
         _ id: String,
         _ row: BridgeStorageRow,
@@ -123,7 +124,33 @@ extension ShotScene {
             )
             .frame(width: width, alignment: .leading)
             .environment(uploadingOutbox("rel-shot-2"))
-            .environment(DownloadStore())
+            .environment(
+                DownloadStore(
+                    releaseProgress: .downloads(
+                        holding: [
+                            "rel-shot-1": BridgeDownloadTransferProgress(
+                                bytesDone: 62_000_000,
+                                bytesTotal: 100_000_000,
+                                fraction: 0.62,
+                                throughputBps: 3_100_000
+                            )
+                        ]
+                    ),
+                    moveToThisDeviceTransfers: .movesToThisDevice(
+                        holding: [
+                            "rel-shot-1": BridgeMoveToThisDeviceProgress(
+                                file: BridgeMoveToThisDeviceFileProgress(
+                                    bytesDone: 10_000_000,
+                                    bytesTotal: 34_000_000
+                                ),
+                                bytesDone: 62_000_000,
+                                bytesTotal: 100_000_000,
+                                fraction: 0.62
+                            )
+                        ]
+                    )
+                )
+            )
         }
     }
 }
