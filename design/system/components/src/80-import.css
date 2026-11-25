@@ -82,8 +82,12 @@
 .bae-m-idchip-value { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bae-m-idchip-dashmark { width: 8px; height: 1.5px; background: var(--hairline-strong); }
 /* The ISRC chip's +N: a button after the first code, whose popover lists every code, a line each, under it. */
-.bae-m-idchip-more { position: relative; display: inline-flex; font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); }
-.bae-m-idchip-pop { position: absolute; left: 50%; top: 100%; }
+.bae-m-idchip-more { display: inline-flex; font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); }
+/* The popover is drawn after the band, or after a chip on its own, and hangs from the middle of the open +N button's foot. The scope keeps each band's popover on its own button. */
+.bae-m-band, .bae-m-idchip-shown { position: relative; anchor-scope: --bae-idchip-more; }
+.bae-m-idchip-shown { display: inline-flex; max-width: 100%; }
+.bae-m-idchip-more-open { anchor-name: --bae-idchip-more; }
+.bae-m-idchip-pop { position: absolute; position-anchor: --bae-idchip-more; left: anchor(center); top: anchor(bottom); }
 .bae-m-idchip-codes { padding: var(--space-group); display: flex; flex-direction: column; gap: var(--space-line); }
 .bae-m-capsule { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-hairline) var(--space-inline) var(--space-hairline) var(--space-compact); border-radius: 999px; background: var(--neutral-tint); font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-rcard { display: flex; flex-direction: column; gap: var(--space-compact); }
