@@ -39,6 +39,9 @@ extension ShotScene {
                     MacButton("Set up", kind: .primary) {}
                 }
             }
+            // The board's sheet hangs 36 points under the top of its row,
+            // as one dropped from a window's title bar does.
+            .padding(.top, 36)
         },
     ]
 
