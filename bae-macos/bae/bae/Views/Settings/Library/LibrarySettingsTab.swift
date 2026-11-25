@@ -83,6 +83,7 @@ struct LibrarySettingsTab: View {
             // their own.
             .safeAreaInset(edge: .top, spacing: 0) {
                 MacPageHeading(title: Text(SettingsTab.library.title))
+                    .placedInPane()
                     .windowBackground()
             }
             .navigationDestination(for: Page.self) { page in
@@ -223,6 +224,7 @@ private struct SyncSettingsPage: View {
                     action: { dismiss() }
                 )
             )
+            .placedInPane()
             form
         }
         .navigationBarBackButtonHidden(true)

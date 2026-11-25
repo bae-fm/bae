@@ -16,6 +16,7 @@ struct SettingsPane<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             MacPageHeading(title: Text(tab.title))
+                .placedInPane()
             content
                 .frame(
                     maxWidth: .infinity,

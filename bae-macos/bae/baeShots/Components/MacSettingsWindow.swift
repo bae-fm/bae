@@ -77,6 +77,7 @@ extension ShotScene {
             title: Text(verbatim: title),
             back: back.map { MacPageHeading.Back(title: $0, action: {}) }
         )
+        .placedInPane()
         .frame(maxHeight: .infinity, alignment: .top)
     }
 

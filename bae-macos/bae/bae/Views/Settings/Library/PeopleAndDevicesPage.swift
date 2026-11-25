@@ -163,6 +163,7 @@ struct PeopleAndDevicesPage: View {
                 title: Text(verbatim: title),
                 back: .init(title: backTitle, action: back)
             )
+            .placedInPane()
             Form {
                 if let error = store.error {
                     MacSection { MacNotice(error: error) }
