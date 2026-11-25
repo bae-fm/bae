@@ -1,5 +1,6 @@
 #if canImport(AppKit)
     import AppKit
+    import OSLog
     import SwiftUI
 
     /// Where a menu opens.
@@ -118,10 +119,16 @@
             onClose: @escaping @MainActor () -> Void = {}
         ) -> MacMenuSession? {
             current?.close()
+            guard !entries.isEmpty else { return nil }
             // With no screen to draw on, as while displays reconnect, no
             // menu opens.
-            guard !entries.isEmpty, let screen = parent.screen ?? NSScreen.main
-            else { return nil }
+            guard let screen = parent.screen ?? NSScreen.main else {
+                Logger.bae("menu")
+                    .warning(
+                        "no menu opens over the window \"\(parent.title)\": it and the app have no screen"
+                    )
+                return nil
+            }
             let session = MacMenuSession(
                 parent: parent,
                 screen: screen,
