@@ -87,7 +87,7 @@ extension ShotScene {
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: true)
+            mainWindow(section: .library, playing: true, hasCover: false)
         },
         ShotScene(
             id: "mac.component.main-window.waiting",
@@ -105,6 +105,7 @@ extension ShotScene {
         section: MainSection,
         playing: Bool,
         waitsOnStorage: Bool = false,
+        hasCover: Bool = true,
         activity: BridgeSyncActivity? = nil,
         searchFocused: Bool = false
     ) -> ShotStage {
@@ -116,7 +117,10 @@ extension ShotScene {
                 uiStore: uiStore,
                 backing: backing,
                 playbackStore: playing
-                    ? boardPlayback(waitsOnStorage: waitsOnStorage)
+                    ? boardPlayback(
+                        waitsOnStorage: waitsOnStorage,
+                        hasCover: hasCover
+                    )
                     : nothingPlayed(),
                 images: images,
                 size: CGSize(width: 1100, height: 520),

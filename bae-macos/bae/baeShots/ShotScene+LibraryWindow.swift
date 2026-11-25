@@ -284,7 +284,8 @@ extension ShotScene {
     static func boardPlayback(
         removedFromLibrary: Bool = false,
         progress: Double = 102.0 / 303.0,
-        waitsOnStorage: Bool = false
+        waitsOnStorage: Bool = false,
+        hasCover: Bool = true
     ) -> PlaybackStore {
         let store = PlaybackStore(
             trackPositions: .trackPositions(
@@ -326,7 +327,7 @@ extension ShotScene {
                         albumId: "board-0",
                         releaseId: "rel-board-0",
                         albumTitle: "Low Tide Hours",
-                        coverImage: cover("Low Tide Hours")
+                        coverImage: hasCover ? cover("Low Tide Hours") : nil
                     )
                 )
         )
