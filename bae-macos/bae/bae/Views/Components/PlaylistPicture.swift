@@ -13,11 +13,13 @@ struct PlaylistPicture: View {
             Artwork(imageRef: cover, pointSize: size, cornerRadius: nil)
                 .frame(width: size, height: size)
         case .grid(let covers):
-            // The four covers touch, as the board and Android draw them.
-            let cell = size / 2
+            // The board's grid puts the split at the half rounded up, a
+            // whole point: a 103 pt picture is 52 pt and 51 pt of covers.
+            let near = (size / 2).rounded(.toNearestOrAwayFromZero)
+            let far = size - near
             VStack(spacing: 0) {
-                row(covers, from: 0, cell: cell)
-                row(covers, from: 2, cell: cell)
+                row(covers, from: 0, height: near, near: near, far: far)
+                row(covers, from: 2, height: far, near: near, far: far)
             }
             .frame(width: size, height: size)
         }
@@ -26,16 +28,19 @@ struct PlaylistPicture: View {
     private func row(
         _ covers: [BridgeImageRef?],
         from start: Int,
-        cell: CGFloat
+        height: CGFloat,
+        near: CGFloat,
+        far: CGFloat
     ) -> some View {
         HStack(spacing: 0) {
             ForEach(start..<start + 2, id: \.self) { index in
+                let width = index == start ? near : far
                 Artwork(
                     imageRef: index < covers.count ? covers[index] : nil,
-                    pointSize: cell,
+                    pointSize: max(width, height),
                     cornerRadius: nil
                 )
-                .frame(width: cell, height: cell)
+                .frame(width: width, height: height)
                 .clipped()
             }
         }
