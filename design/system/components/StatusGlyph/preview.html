@@ -1,4 +1,4 @@
-<!-- @dsCard group="Pictures and marks" height=300 -->
+<!-- @dsCard group="Pictures and marks" height=400 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>StatusGlyph</title></head>
@@ -9,8 +9,11 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell', style: { display: 'flex', gap: 16, alignItems: 'center' } }, c)); }
   var tones = ['info', 'success', 'warning', 'danger'];
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    N('macOS', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 'medium', weight: 'semibold' }); })),
-    N('Muted', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 'medium', weight: 'semibold', muted: true }); })),
+    N('macOS', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 'large', weight: 'medium' }); })),
+    N('Regular', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 'large', weight: 'regular' }); })),
+    N('Semibold', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 'large', weight: 'semibold' }); })),
+    N('Framed', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 'large', weight: 'medium', frame: [24, 24] }); })),
+    N('Muted', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 'large', weight: 'medium', muted: true }); })),
     N('Android', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, size: 'large' }); })),
     N('Ring', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'ring', size: 'large' }); })),
     N('Inline', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'ring', inline: true }); }))));
