@@ -6,13 +6,17 @@ import SwiftUI
 extension ShotScene {
     /// `MacErrorDetails`, one shot for each row of its preview.
     static let macErrorDetailsScenes: [ShotScene] = [
-        component("mac.component.error-details.causes", height: 90) {
+        component(
+            "mac.component.error-details.causes",
+            width: 320,
+            height: 48
+        ) {
             MacErrorDetails(
                 detail: "The sign-in settings file is missing.",
                 excerpt:
                     "The sign-in settings file is missing.\nOAuthConfig: missing client id"
             )
-            .frame(width: 380, alignment: .leading)
+            .frame(width: 320, alignment: .leading)
         }
     ]
 }

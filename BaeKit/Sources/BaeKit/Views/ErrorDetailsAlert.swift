@@ -111,12 +111,15 @@
                         Label("Copy details", systemImage: "doc.on.doc")
                             .labelStyle(.iconOnly)
                             .themeIcon(.small)
-                            .foregroundStyle(text)
+                            // Hidden by its colour, not its opacity, so the button
+                            // stays in the accessibility tree for VoiceOver.
+                            .foregroundStyle(
+                                hover || copyFocused ? text : Color.clear
+                            )
                     }
                     .buttonStyle(.accentBorderless)
                     .help("Copy details")
                     .focused($copyFocused)
-                    .opacity(hover || copyFocused ? 1 : 0)
                     .padding(ThemeSpace.related)
                 }
         }
