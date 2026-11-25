@@ -424,7 +424,7 @@
 
   // A checkbox and its label, as wide as its content, as AppKit sizes a checkbox. `detail`: the label in the detail type, as under an alert's message.
   function MacCheckbox(props) {
-    return h('label', { className: cx('bae-m-checkbox', props.detail && 'bae-m-checkbox-detail'), role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph, { size: 'chip' }) : null), props.label);
+    return h('label', { className: cx('bae-m-checkbox', props.detail && 'bae-m-checkbox-detail'), role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(Glyph, { set: 'mac', name: 'checkmark', size: 'chip' }) : null), props.label);
   }
 
   // Heads an artist's albums when the grid is grouped by artist: the artist's picture, as the artist list draws it, beside the name over the album count. `noImage`: the artist has no picture.
