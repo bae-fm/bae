@@ -19,3 +19,13 @@ internal fun Modifier.pulledUpBy(
         val height = (placeable.height - top.roundToPx() - bottom.roundToPx()).coerceAtLeast(0)
         layout(placeable.width, height) { placeable.place(0, -top.roundToPx()) }
     }
+
+/**
+ * Takes [end] off the width this takes in its parent, as a button row's own padding overhangs the notice's edge:
+ * the content keeps its place, and the parent leaves the words the room that the overhang would have taken.
+ */
+internal fun Modifier.overhangingEnd(end: Dp): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints.copy(maxWidth = Constraints.Infinity))
+        layout((placeable.width - end.roundToPx()).coerceAtLeast(0), placeable.height) { placeable.place(0, 0) }
+    }

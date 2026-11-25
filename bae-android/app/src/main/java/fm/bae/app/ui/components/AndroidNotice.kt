@@ -293,7 +293,10 @@ private fun FramedNotice(
                     // The buttons' own 12dp padding overhangs: a label's right edge is the notice's.
                     trail =
                         if (hasButtons && buttons == NoticeButtons.INLINE) {
-                            { NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = TEXT_BUTTON_PADDING)) }
+                            {
+                                val overhang = Modifier.overhangingEnd(TEXT_BUTTON_PADDING)
+                                NoticeButtonRow(hasDetails, onDetails, action, overhang)
+                            }
                         } else {
                             null
                         },
