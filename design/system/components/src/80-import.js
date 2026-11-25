@@ -382,7 +382,7 @@
     var text = props.value;
     if (String(text).indexOf('|') < 0) return text;
     return sourcedParts(text).map(function (p, i) {
-      return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-m-tertiary' }, ' / ') : null, p.value, h('span', { className: 'bae-m-tertiary bae-m-prow-catalog' }, ' ' + p.catalog));
+      return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-m-tertiary' }, ' / ') : null, p.value, h('span', { className: 'bae-m-tertiary' }, ' ' + p.catalog));
     });
   }
   // The values of a sourced fact with the catalog each names, from "1992:MusicBrainz|1993:Discogs".
