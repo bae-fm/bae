@@ -65,8 +65,14 @@ extension PreviewData {
     }
 
     /// An image store that loads library covers and the images the scan read,
-    /// reading each scanned file where core would make a copy of it.
-    static func artImageStore() -> ImageStore {
+    /// reading each scanned file where core would make a copy of it. Before
+    /// it reads one for a slot of some pixels, it runs `beforeScannedFile`.
+    static func artImageStore(
+        beforeScannedFile:
+            @escaping @Sendable (_ pixels: UInt32) async throws -> Void = {
+                _ in
+            }
+    ) -> ImageStore {
         ImageStore(
             fetchLibraryImageBytes: { image, _ in
                 try BoardArtwork.data(named: image.id)
@@ -74,10 +80,11 @@ extension PreviewData {
             fetchRemoteImage: { image, _ in
                 try Data(contentsOf: URL(fileURLWithPath: image.url))
             },
-            fetchPicture: { source, _, _ in
+            fetchPicture: { source, pixels, _ in
                 switch source {
                 case .local(let file):
-                    try Data(contentsOf: file.url)
+                    try await beforeScannedFile(pixels)
+                    return try Data(contentsOf: file.url)
                 default:
                     throw ImageStoreUnavailable()
                 }

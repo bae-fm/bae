@@ -46,7 +46,7 @@ struct MacMainWindowContainer: View {
     private let initialHoveredQueueEntry: String?
     /// The lightbox's image as it loads.
     @State
-    private var lightboxLoad = LightboxImageLoad()
+    private var lightboxLoad: LightboxImageLoad
     /// The dropdown card's frame in the search overlay's space, fed to the
     /// dismiss monitor so interactions inside the card don't close it.
     @State
@@ -58,12 +58,15 @@ struct MacMainWindowContainer: View {
     @State
     private var searchFieldFrame: CGRect?
 
-    /// The window with `searchText` typed in the search field.
+    /// The window with `searchText` typed in the search field, whose lightbox
+    /// loads its image in `lightboxLoad`.
     init(
         searchText: String = "",
-        initialHoveredQueueEntry: String? = nil
+        initialHoveredQueueEntry: String? = nil,
+        lightboxLoad: LightboxImageLoad = LightboxImageLoad()
     ) {
         _searchText = State(initialValue: searchText)
+        _lightboxLoad = State(initialValue: lightboxLoad)
         self.initialHoveredQueueEntry = initialHoveredQueueEntry
     }
 
@@ -268,8 +271,20 @@ struct MacMainWindowContainer: View {
         .onDisappear { previewAudio.previewStop() }
     }
 
-    // MARK: - Search selection
+    private func endEditing() {
+        NSApp.keyWindow?.makeFirstResponder(nil)
+    }
 
+    // MARK: - Import entry
+
+    private var importFolderEntry: ImportFolderEntry {
+        ImportFolderEntry(importer: importer, uiStore: uiStore)
+    }
+}
+
+// MARK: - Search selection
+
+extension MacMainWindowContainer {
     private func selectAlbum(_ albumId: String) {
         closeSearchPopover()
         uiStore.navigateToAlbum(albumId)
@@ -304,15 +319,5 @@ struct MacMainWindowContainer: View {
         searchText = ""
         NSApp.keyWindow?.makeFirstResponder(nil)
         uiStore.searchResults = nil
-    }
-
-    private func endEditing() {
-        NSApp.keyWindow?.makeFirstResponder(nil)
-    }
-
-    // MARK: - Import entry
-
-    private var importFolderEntry: ImportFolderEntry {
-        ImportFolderEntry(importer: importer, uiStore: uiStore)
     }
 }

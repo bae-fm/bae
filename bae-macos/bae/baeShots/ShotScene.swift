@@ -32,7 +32,7 @@ struct ShotScene {
         + storageSettingsScenes + storageManagerScenes + saveAsSettingsScenes
         + alertScenes + [importSettingsScene]
         + importListScenes
-        + importPaneScenes
+        + importPaneScenes + importLightboxScenes
         + adminChangeScenes + menuScenes + playlistScenes + historyScenes
         + personMenuScenes + castingScenes + settingsPlaybackScenes
         + peopleScenes + albumCoverScenes + albumLightboxScenes + playbackScenes

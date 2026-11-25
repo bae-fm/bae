@@ -198,6 +198,9 @@ mac.import.folder.skipped
 mac.import.identify.automatic
 mac.import.identify.no-discogs-key
 mac.import.identify.search
+mac.import.lightbox
+mac.import.lightbox.failed
+mac.import.lightbox.loading
 mac.import.list.empty
 mac.import.list.failed
 mac.import.several

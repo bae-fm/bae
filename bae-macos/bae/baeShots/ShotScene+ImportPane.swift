@@ -122,35 +122,57 @@ extension ShotScene {
         releaseEditor: ReleaseEditor? = nil,
         isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
     ) throws -> ShotStage {
-        let uiStore = UiStore()
-        uiStore.activeSection = .importing
-        uiStore.setImportCandidateTab(board.tab)
-        let scene = try PreviewData.importBoardScene(board)
         let images = PreviewData.artImageStore()
         return ShotStage(
-            ShotScenes.libraryWindow(
-                uiStore: uiStore,
-                backing: boardLibraryBacking(uiStore: uiStore),
-                playbackStore: boardPlayback(),
-                importScene: scene.fixture,
-                importSelection: scene.selection,
-                candidateRuntimes: scene.runtimes,
+            try importWindow(
+                board,
+                uiStore: UiStore(),
                 images: images,
-                // The boards' library syncs, so the pane offers where an
-                // import goes.
-                configStore: PreviewData.makeConfigStore(
-                    libraryFullWidth: false,
-                    castEnabled: true,
-                    discogsUsable: discogsUsable,
-                    storage: PreviewData.previewStorage
-                ),
-                releaseEditor: releaseEditor,
-                outbox: scene.outbox,
-                importPercents: scene.importPercents,
-                size: size
+                size: size,
+                discogsUsable: discogsUsable,
+                releaseEditor: releaseEditor
             ),
             images: images,
             isDrawn: isDrawn
+        )
+    }
+
+    /// `window` on Import as `board` draws it, over `uiStore`, with its art
+    /// from `images`.
+    @MainActor
+    static func importWindow(
+        _ board: PreviewData.ImportBoard,
+        uiStore: UiStore,
+        images: ImageStore,
+        size: CGSize,
+        discogsUsable: Bool = true,
+        releaseEditor: ReleaseEditor? = nil,
+        window: AnyView = AnyView(MacMainWindowContainer())
+    ) throws -> some View {
+        uiStore.activeSection = .importing
+        uiStore.setImportCandidateTab(board.tab)
+        let scene = try PreviewData.importBoardScene(board)
+        return ShotScenes.libraryWindow(
+            uiStore: uiStore,
+            backing: boardLibraryBacking(uiStore: uiStore),
+            playbackStore: boardPlayback(),
+            importScene: scene.fixture,
+            importSelection: scene.selection,
+            candidateRuntimes: scene.runtimes,
+            images: images,
+            // The boards' library syncs, so the pane offers where an
+            // import goes.
+            configStore: PreviewData.makeConfigStore(
+                libraryFullWidth: false,
+                castEnabled: true,
+                discogsUsable: discogsUsable,
+                storage: PreviewData.previewStorage
+            ),
+            releaseEditor: releaseEditor,
+            outbox: scene.outbox,
+            importPercents: scene.importPercents,
+            size: size,
+            window: window
         )
     }
 
