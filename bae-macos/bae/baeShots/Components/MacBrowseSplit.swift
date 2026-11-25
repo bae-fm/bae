@@ -17,12 +17,14 @@ extension ShotScene {
             MacBrowseSplit {
                 VStack(spacing: ThemeSpace.hairline) {
                     MacLibraryRowButton(
+                        picture: cover("Mara Quill"),
                         title: "Mara Quill",
                         subtitle: "12 albums",
                         selected: true,
                         action: {}
                     )
                     MacLibraryRowButton(
+                        picture: cover("Odile Fen"),
                         title: "Odile Fen",
                         subtitle: "3 albums",
                         action: {}
