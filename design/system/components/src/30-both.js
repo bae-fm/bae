@@ -156,7 +156,8 @@
     var rows = props.rows, n = rows.length, cells = [];
     for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (rows[y].charAt(x) === '1') cells.push(h('rect', { key: x + '-' + y, x: x, y: y, width: 1.02, height: 1.02 }));
     if (props.module) {
-      var m = props.module;
+      // Both apps' frames land the code's side on a whole pixel, two to the point: the side its modules need, rounded to the half point, shared out among them.
+      var whole = n + 2 * QR_QUIET, m = Math.round(whole * props.module * 2) / 2 / whole;
       return h('div', { className: 'bae-scan-qr bae-scan-qr-modules', role: 'img', 'aria-label': 'QR code', style: { padding: QR_QUIET * m } },
         h('svg', { width: n * m, height: n * m, viewBox: '0 0 ' + n + ' ' + n, 'aria-hidden': true, shapeRendering: 'crispEdges' }, cells));
     }
