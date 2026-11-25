@@ -1,4 +1,4 @@
-<!-- @dsCard group="Storage and transfers" height=320 -->
+<!-- @dsCard group="Storage and transfers" height=860 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacStorageToolbar</title></head>
@@ -10,10 +10,10 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Default', h(B.MacStorageToolbar, null)),
-    W('Inspector on', h(B.MacStorageToolbar, { inspector: true })),
-    W('Filtered', h(B.MacStorageToolbar, { filter: 'Cloud', search: 'harbor' })),
-    W('No library', h(B.MacStorageToolbar, { disabled: true }))));
+    W('Default', h(B.MacStorageWindow, { width: 842, height: 172 })),
+    W('Inspector on', h(B.MacStorageWindow, { width: 842, height: 172, inspector: true })),
+    W('Filtered', h(B.MacStorageWindow, { width: 842, height: 172, filter: 'Cloud', search: 'harbor' })),
+    W('No library', h(B.MacStorageWindow, { width: 842, height: 172, disabled: true }))));
 </script>
 </body>
 </html>

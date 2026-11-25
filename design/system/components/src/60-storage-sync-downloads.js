@@ -24,7 +24,7 @@
       h('span', { className: 'bae-m-storewin-item', role: 'button', 'aria-label': 'Inspector', 'aria-disabled': props.disabled ? true : null },
         h('span', { 'aria-hidden': true }, h(MacIconButton, { icon: 'sidebar', size: 'medium', label: 'Inspector', active: props.inspector, off: props.disabled }))));
   }
-  // The Storage Manager's window, its own frame as in the app: the toolbar, then the release list and, while `inspector` is on, the inspector. The list is the MacTable with the MacStorageFooter under it (or, with no library open, the first child alone); the other children are the inspector's. `empty`: the filter matches nothing, and the window says No matches over the table.
+  // The Storage Manager's window, its own frame as in the app: the toolbar, then the release list and, while `inspector` is on, the inspector. The list is the MacTable with the MacStorageFooter under it (or, with no library open, the first child alone); the other children are the inspector's, and a window with none draws no inspector column. `empty`: the filter matches nothing, and the window says No matches over the table.
   function MacStorageWindow(props) {
     var isType = function (c, t) { var p = inner(c); return p && p.type === t; };
     // A sheet or an alert over the window is drawn last, as the window's own child, so its scrim covers the whole window.
@@ -40,7 +40,7 @@
       h(MacStorageToolbar, { filter: props.filter, search: props.search, inspector: props.inspector, disabled: props.disabled }),
       h('div', { className: 'bae-m-storewin-body' },
         h('div', { className: 'bae-m-storewin-list' }, list),
-        props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, rest) : null),
+        props.inspector && rest.length ? h('div', { className: 'bae-m-storewin-inspector' }, rest) : null),
       all.filter(isModal));
   }
   // A table's columns: "Title:width[:right][:up|:down]", the first taking the room the others leave; `up` or `down` marks the column the table sorts by.
