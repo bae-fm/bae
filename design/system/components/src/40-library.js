@@ -48,7 +48,7 @@
   }
 
   // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon. It takes the room of the symbol's frame, as SwiftUI lays the image out, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
-  // `frame` ([width, height] in points), or `square` (the size both ways): the box the app sets around the symbol, which is then the glyph's box and room, the symbol centred in it. `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward).
+  // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the box the app sets around the symbol, which is then the glyph's box and room, the symbol centred in it. `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward).
   // `button`: the glyph is a plain button by that name, with the glyph's box and room, as a SwiftUI button around one symbol is; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. Any other set draws the Material symbol (MSymbol).
   function Glyph(props) {
     var turned = props.point === 'forward' || props.point === 'backward';
@@ -58,7 +58,7 @@
     var sf = SF[key];
     if (!sf) throw new Error('SF has no symbol `' + key + '`');
     var k = iconPoints(props.size) / 24, ink = sf.ink, fx = 12 - sf.frame[0] / 2, fy = 12 - sf.frame[1] / 2;
-    var set = props.square ? [24 * k, 24 * k] : props.frame;
+    var set = props.square ? [24 * k, 24 * k] : props.frame && [props.frame[0] != null ? props.frame[0] : sf.frame[0] * k, props.frame[1] != null ? props.frame[1] : sf.frame[1] * k];
     var box = set
       ? { view: [12 - set[0] / k / 2, 12 - set[1] / k / 2, set[0] / k, set[1] / k], width: set[0], height: set[1], margin: null }
       : { view: [ink[0], ink[1], ink[2] - ink[0], ink[3] - ink[1]], width: (ink[2] - ink[0]) * k, height: (ink[3] - ink[1]) * k, margin: [ink[1] - fy, fx + sf.frame[0] - ink[2], fy + sf.frame[1] - ink[3], ink[0] - fx].map(function (m) { return thousandths(m * k) + 'px'; }).join(' ') };
@@ -318,7 +318,8 @@
     if (!list(props.records).length) return lines;
     return h('div', { className: 'bae-m-albumfacts-anchor' },
       h('button', { type: 'button', className: cx('bae-m-albumfacts', props.recordsHover && 'bae-m-albumfacts-hover') }, lines,
-        h('span', { className: 'bae-linkout bae-m-albumfacts-arrow', role: 'img', 'aria-label': 'Identified' }, h(Sym, { name: 'external', size: 12 }))),
+        // The arrow is arrow.up.right in the detail text's font (11.5 points, regular).
+        h(Glyph, { set: 'mac', name: 'external', size: 11.5, weight: 'regular', className: 'bae-m-albumfacts-arrow', label: 'Identified' })),
       props.recordsOpen ? h('div', { className: 'bae-m-albumfacts-pop' }, h(MacPopover, { flush: true, width: 320, top: 0, right: 0, arrow: 160 }, h('div', { className: 'bae-m-albumfacts-card' }, h(MacRecordLinks, { records: props.records })))) : null);
   }
 

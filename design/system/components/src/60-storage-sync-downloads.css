@@ -5,7 +5,6 @@
 .bae-mono { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-strong { font-weight: var(--type-strong-weight); }
 .bae-ellipsis { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-sym { flex: none; }
 .bae-m-iconbtn-on { color: var(--accent); }
 
 /* Storage Manager */

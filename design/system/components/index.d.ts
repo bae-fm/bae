@@ -339,7 +339,6 @@ export declare function MacSectionHeader(props: MacSectionHeaderProps): React.Re
 export declare function MacWorkDetail(props: { title: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacHairline(props: {}): React.ReactElement;
 export declare function MacContentUnavailable(props: { title: string; description?: string; children?: React.ReactNode }): React.ReactElement;
-export declare function Sym(props: { name: string; size?: number; height?: number; weight?: number }): React.ReactElement;
 export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'Cloud'; search?: string; inspector?: boolean; disabled?: boolean; empty?: boolean; width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacTable(props: { columns: string; rows?: string; selected?: number | string; loading?: number }): React.ReactElement;
 export declare function MacStorageCell(props: { value?: string; numeric?: boolean; state?: string; progress?: number | string }): React.ReactElement;

@@ -1,43 +1,5 @@
   // ==== part: storage ====
 
-  // ---- Stroke symbols for the parts below (SF Symbols and Material icons, drawn as lines) ----
-  var SYM = {
-    folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
-    pin: 'M9 3h6l-1 6 3 3H7l3-3zM12 12v9',
-    unpin: 'M9 3h6l-1 6 3 3H7l3-3zM12 12v9M4 4l16 16',
-    cloud: 'M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9z',
-    up: 'M12 20V5M6 11l6-6 6 6',
-    down: 'M12 4v15M6 13l6 6 6-6',
-    pause: 'M8 5v14M16 5v14',
-    play: 'M7 4l13 8-13 8z',
-    sidebar: 'M3 5h18v14H3zM15 5v14',
-    clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
-    xcircle: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 9l6 6M15 9l-6 6',
-    copy: 'M8 8h12v12H8zM4 16V4h12',
-    left: 'M15 5l-7 7 7 7',
-    right: 'M9 5l7 7-7 7',
-    refresh: 'M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5',
-    photo: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15 9h.01',
-    globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
-    sync: 'M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4',
-    moveToCloud: 'M12 4v12M7 11l5 5 5-5M5 20h14',
-    external: 'M7 17L17 7M9 7h8v8',
-    export: 'M12 15V3M7 8l5-5 5 5M5 12v8h14v-8',
-    saveAs: 'M12 3v12M7 10l5 5 5-5M5 12v8h14v-8',
-    grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
-    expand: 'M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7',
-    close: 'M6 6l12 12M18 6L6 18',
-    back: 'M20 12H5M11 6l-6 6 6 6',
-    more: 'M12 5h.01M12 12h.01M12 19h.01',
-    check: 'M5 12l5 5 9-10',
-    trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
-    edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
-  };
-  // A line symbol `size` points square. `height`: a shorter box, for a symbol whose frame is wider than tall, as SF Symbols frames its folder; the symbol keeps its size and centres on the box's height.
-  function Sym(props) {
-    var s = Number(props.size || 14), high = Number(props.height || s);
-    return h('svg', { width: s, height: high, viewBox: '0 ' + (12 - 12 * high / s) + ' 24 ' + (24 * high / s), 'aria-hidden': true, className: cx('bae-sym', props.className), fill: 'none', stroke: 'currentColor', strokeWidth: props.weight || 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: props.style }, h('path', { d: SYM[props.name] || '' }));
-  }
   function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
   // A grey bar where text or a picture will be while it loads: `width` and `height` in points, `radius` for a picture's corners (a bar's corners otherwise).
@@ -147,10 +109,10 @@
   // A release's transfer that stopped, at the top of the inspector: the kind's icon, title and detail, the cancel mark; under them what happened (`notice`, with `subtitle`) and its buttons. A pin (`pin`) or a move to This Mac (`moveToThisDevice`) that failed shows the notice Could not pin or Could not move to This Mac, with Details and Retry; a move to the cloud (`upload`) names its file in `subtitle` and gives its own `tone` and `action`.
   function MacFailedTransferRow(props) {
     var kind = props.kind || 'pin';
-    var icon = { moveToThisDevice: 'folder', upload: 'up', pin: 'pin' }[kind];
+    var icon = { moveToThisDevice: 'folder', upload: 'arrowUp', pin: 'pin' }[kind];
     var notice = props.notice || (kind === 'moveToThisDevice' ? 'Could not move to This Mac' : 'Could not pin');
     return h('div', { className: 'bae-m-dlrow' },
-      h(MacItem, { lead: h(Sym, { name: icon, size: 16, className: 'bae-muted' }), trail: h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Cancel', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
+      h(MacItem, { lead: h(Glyph, { set: 'mac', name: icon, size: 16, weight: 'regular', className: 'bae-muted' }), trail: h(Glyph, { set: 'mac', name: 'xcircle', size: 13, weight: 'regular', frame: [15, 18], className: 'bae-muted', button: 'Cancel' }) },
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB'))),
       h(MacNotice, { quiet: true, tone: props.tone || 'danger', title: notice, subtitle: props.subtitle, secondary: props.secondary === undefined ? 'Details' : props.secondary || null, action: props.action || 'Retry', buttons: props.subtitle ? 'below' : null }));
   }
@@ -164,9 +126,9 @@
   function MacQueueRate(props) {
     var kind = props.kind || 'uploads', wait = props.wait, paused = wait === 'Paused', label = QUEUE_PAUSE[kind];
     return h('span', { className: 'bae-m-storefoot-q' },
-      h('span', { role: 'img', 'aria-label': QUEUE_NAME[kind], style: { display: 'inline-flex' } }, h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'exports' ? null : 'bae-accent' })),
+      h(Glyph, { set: 'mac', name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'arrowUp' : 'arrowDown', size: 'small', frame: [11, 11], className: kind === 'exports' ? null : 'bae-accent', label: QUEUE_NAME[kind] }),
       wait ? h('span', null, wait) : props.rate ? h('span', { className: 'bae-num bae-m-storefoot-rate' }, h('span', { 'aria-hidden': true }, QUEUE_WIDEST[kind]), h('span', null, props.rate)) : null,
-      h('button', { type: 'button', className: 'bae-plainbtn bae-m-storefoot-qbtn', 'aria-label': paused ? label.replace('Pause', 'Resume') : label, title: paused ? label.replace('Pause', 'Resume') : label }, h(Sym, { name: paused ? 'play' : 'pause', size: 10 })));
+      h(Glyph, { set: 'mac', name: paused ? 'play' : 'pause', size: 'chip', button: paused ? label.replace('Pause', 'Resume') : label }));
   }
   // Under the list: how many releases, the total, then each queue with work (`uploads`, `pins`, `exports`: its rate) as MacQueueRate, with what holds it back (`uploadsWait`, `pinsWait`, `exportsWait`).
   function MacStorageFooter(props) {
@@ -232,12 +194,12 @@
   }
   function MacFileDetails(props) {
     return h('div', { className: 'bae-m-filedet' },
-      h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Close file details', title: 'Close file details' }, h(Sym, { name: 'xcircle', size: 15 }))),
+      h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h(Glyph, { set: 'mac', name: 'xcircle', size: 'medium', className: 'bae-muted', button: 'Close file details' })),
       h(MacFactsGrid, { facts: [['Folder', props.folder], ['Kind', props.kind], ['Format', props.format], ['Size', props.size]], numeric: 'Size' }));
   }
   // An error's causes, one a line, in an inset panel with Copy in its corner, in an alert (`MacAlert`'s `details`).
   function MacErrorDetails(props) {
-    return h('div', { className: 'bae-errdis-panel bae-errdis-panel-hover' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 })));
+    return h('div', { className: 'bae-errdis-panel bae-errdis-panel-hover' }, h('div', { className: 'bae-errdis-chain' }, props.details), h(Glyph, { set: 'mac', name: 'copy', size: 'small', className: 'bae-errdis-copy', button: 'Copy details' }));
   }
   // macOS's notice: a glyph (`icon: false` drops it), a title and a subtitle saying what to do, then up to two buttons: `action`, the primary one (Retry), and `secondary` (Dismiss, or Details, which opens MacAlert with the error's causes in `details`: a notice never shows the error itself). The buttons sit on the title's line at the right, secondary first; `buttons: 'below'` puts them on a line under the text. `dismiss` adds an × at the end of that line. `layout: 'centered'` is a failed view.
   // `opens`: a click on the row opens the error's details, so the title is the button that opens them and the notice has no Details button.

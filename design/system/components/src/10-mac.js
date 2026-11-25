@@ -416,18 +416,18 @@
   }
 
   // `divider`: a line between groups of items, as NSMenu's separator item. `off`: an item that can't be chosen now, greyed, as NSMenu disables one.
-  // One line of a MacMenu: an item (checked, highlighted, off), a `heading` over a group of items, a `divider`, or a `submenu`, whose › opens more items and which may carry an `accessory` before the ›: `problem` (a red ! in a circle, for a folder whose scan failed or that bae is not watching), `scanning` (a spinner) or `network` (a globe), with `help` as its hover text.
+  // One line of a MacMenu: an item (checked, highlighted, off), a `heading` over a group of items, a `divider`, or a `submenu`, whose › opens more items and which may carry an `accessory` before the ›: `problem` (a red ! in a circle, for a folder whose scan failed or that bae is not watching), `scanning` (a spinner) or `network` (SF Symbols' network), with `help` as its hover text.
   function MacMenuItem(props) {
     if (props.divider) return h('div', { className: 'bae-m-menu-sep', role: 'separator' });
     if (props.heading) return h('div', { className: 'bae-m-menu-heading', role: 'presentation' }, props.children);
     var on = props.highlighted && !props.off;
     var accessory = props.submenu && props.accessory ? h('span', { className: cx('bae-m-menu-accessory', !on && props.accessory === 'problem' && 'bae-m-menu-accessory-problem') },
-      props.accessory === 'problem' ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round' }, h('circle', { cx: 12, cy: 12, r: 9.5 }), h('path', { d: 'M12 7v6M12 16.6v.4' }))
+      props.accessory === 'problem' ? h(Glyph, { set: 'mac', name: 'warning', size: 'small' })
         : props.accessory === 'scanning' ? h(MacSpinner, { size: 11 })
-        : h(Sym, { name: 'globe', size: 11 })) : null;
+        : h(Glyph, { set: 'mac', name: 'network', size: 'small' })) : null;
     return h('div', { className: cx('bae-m-menu-item', on && 'bae-m-menu-item-on', props.off && 'bae-m-menu-item-off'), role: props.submenu ? 'menuitem' : 'menuitemradio', 'aria-checked': props.submenu ? null : !!props.checked, 'aria-haspopup': props.submenu ? 'menu' : null, 'aria-disabled': props.off ? true : null, title: props.help || null },
-      h('span', { className: 'bae-m-menu-check', 'aria-hidden': true }, props.checked ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M5 12.5l4.5 4.5L19 7.5' })) : null),
+      h('span', { className: 'bae-m-menu-check', 'aria-hidden': true }, props.checked ? h(Glyph, { set: 'mac', name: 'checkmark', size: 'chip' }) : null),
       props.children,
       props.submenu ? h('span', { className: 'bae-m-menu-trail' }, accessory,
-        h('svg', { width: 9, height: 9, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 3.2, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M9 5l7 7-7 7' }))) : null);
+        h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'badge', weight: 'bold' })) : null);
   }

@@ -1,5 +1,4 @@
   // ==== part: import ====
-  SYM.stop = 'M7 7h10v10H7z';
   // ---- Import (macOS) ----
   // A search or filter field: the magnifier, then the text. `kind`: `search` (the default), the title bar's rounded field, 300pt wide; `filter`, a toolbar's 160pt field; `inline`, a field with no box that fills the rest of its row. `label` names it and shows while it is empty (Search unless given); `value` is the text typed. `focused` rings the search field in the accent; `off` dims a field that has nothing to filter and takes no typing.
   function MacSearchField(props) {
@@ -37,7 +36,7 @@
       // Once text is typed, ⓧ empties the field.
       props.filter ? ind('Clear filter', 'bae-m-tertiary', h(Glyph, { set: 'mac', name: 'removefill', size: 'medium' })) : null,
       props.identifying ? ind('Identifying', null, identifyingRing(props.identifying)) : null,
-      props.importing ? ind('Importing…', 'bae-muted', h(Sym, { name: 'saveAs', size: 14 })) : null,
+      props.importing ? ind('Importing…', 'bae-muted', h(Glyph, { set: 'mac', name: 'saveAs', size: 'medium' })) : null,
       // The button's name says what the spinner shows, so the spinner is not read on its own, as the app's button reads.
       props.scanning ? ind('Scanning folders', null, h('span', { 'aria-hidden': true, style: { display: 'flex' } }, h(MacSpinner, { size: 12 }))) : null,
       ind('Sorting, filtering and watched folders', 'bae-muted', [h(Glyph, { key: 'g', set: 'mac', name: 'ellipsis', size: 'medium' }), props.filtered ? h('span', { key: 'd', className: 'bae-m-isb-dot' }) : null], { 'aria-haspopup': 'menu' }));
@@ -107,10 +106,10 @@
   // One candidate: cover, title over artist (or the folder's name), then while it imports or uploads the step or the upload with its bar, the trailing badge or wait mark. `error` is a skipped folder's reason, under the title and artist or the folder's name.
   function MacImportRow(props) {
     var trail = props.badge ? h(StatusChip, { tone: props.badgeTone || 'warning' }, props.badge)
-      : props.state === 'identifyQueued' || props.state === 'importQueued' ? h('span', { className: 'bae-muted', role: 'img', 'aria-label': props.state === 'importQueued' ? 'Queued to import' : 'Queued to identify', title: props.state === 'importQueued' ? 'Queued to import' : 'Queued to identify' }, h(Sym, { name: 'clock', size: 12 }))
+      : props.state === 'identifyQueued' || props.state === 'importQueued' ? h(Glyph, { set: 'mac', name: 'clock', size: 'small', frame: [12, 12], className: 'bae-muted', label: props.state === 'importQueued' ? 'Queued to import' : 'Queued to identify' })
       : props.state === 'identifying' ? h(MacSpinner, { size: 12 }) : null;
-    var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Sym, { name: 'folder', size: 13, className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis' }, props.folder))
-      : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', props.record ? { className: 'bae-linkout', role: 'img', 'aria-label': 'Identified' } : { className: 'bae-linkout', style: { opacity: 0 }, 'aria-hidden': true }, h(Sym, { name: 'external', size: 13, className: 'bae-muted' })));
+    var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Glyph, { set: 'mac', name: 'folder', size: 'medium', frame: [13, null], className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis' }, props.folder))
+      : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), props.record ? h(Glyph, { set: 'mac', name: 'external', size: 'medium', frame: [13, 13], className: 'bae-muted', label: 'Identified' }) : h('span', { className: 'bae-m-irow-noarrow' }));
     var line2 = props.folder ? null : h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.artist);
     var step = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: props.step || 'Reading files…', value: props.progress == null ? 0.4 : props.progress }))
       : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: 'Uploading', value: props.progress == null ? 0.4 : props.progress }))
@@ -123,7 +122,7 @@
   }
   // Above the right pane: the tab chip, a button that goes to that tab; the folder glyph, a button that reveals the folder in Finder, 15 by 12 as the app's folder symbol is framed; the folder's name.
   function MacImportFolderLine(props) {
-    return h('div', { className: 'bae-m-ifl' }, h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-tab' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found')), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-reveal bae-muted', 'aria-label': 'Reveal in Finder', title: 'Reveal in Finder' }, h(Sym, { name: 'folder', size: 15, height: 12 })), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.folder));
+    return h('div', { className: 'bae-m-ifl' }, h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-tab' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found')), h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', className: 'bae-m-tertiary' }), h(Glyph, { set: 'mac', name: 'folder', size: 'medium', className: 'bae-muted', button: 'Reveal in Finder' }), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.folder));
   }
   // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
   function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to, off: props.off }); }
@@ -262,7 +261,7 @@
     return h(opens ? 'button' : 'div', { type: opens ? 'button' : null, className: cx(opens && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': opens ? props.name : null },
       h('span', { className: 'bae-mono bae-ellipsis' }, props.name),
       props.damaged ? h('span', { className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small' }), props.damaged) : null,
-      kind === 'audio' ? h('button', { type: 'button', className: 'bae-plainbtn bae-muted bae-m-ifile-play', 'aria-label': 'Play' }, h(Sym, { name: 'play', size: 10 })) : null,
+      kind === 'audio' ? h(Glyph, { set: 'mac', name: 'play', size: 'chip', frame: [10, null], className: 'bae-muted bae-m-ifile-play', button: 'Play' }) : null,
       h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, props.size || ''));
   }
   // The release's files that are no track (a rip log, a track sheet that carves no tracks; never an image bae can show), or on a skipped folder's pane every file but its images: a ruled Files heading, then a row per file (`files`: "name|size[|kind]", comma-separated, where kind is `other`, `audio` or `damaged:why`, and a file with none opens).
@@ -289,7 +288,7 @@
   // `added`: a track a save adds and has not made yet, which plays nothing, so it has no Play button. Its column stays, empty, so the source keeps the other rows' edge.
   function MacImportTrackRow(props) {
     return h('div', { className: cx('bae-m-itable-row', 'bae-m-itable-track', props.playing && 'bae-m-itable-playing') },
-      h('span', { className: 'bae-m-isrc' }, props.added ? h('span', { className: 'bae-m-isrc-noplay', 'aria-hidden': true }) : h('button', { type: 'button', className: cx('bae-plainbtn', props.playing ? 'bae-accent' : 'bae-muted'), 'aria-label': props.playing ? 'Stop' : 'Play' }, h(Sym, { name: props.playing ? 'stop' : 'play', size: 10 })), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
+      h('span', { className: 'bae-m-isrc' }, props.added ? h('span', { className: 'bae-m-isrc-noplay', 'aria-hidden': true }) : h(Glyph, { set: 'mac', name: props.playing ? 'stop' : 'play', size: 'chip', frame: [10, 16], className: props.playing ? 'bae-accent' : 'bae-muted', button: props.playing ? 'Stop' : 'Play' }), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
       h('span', { className: 'bae-num' }, props.position),
       h('span', { className: 'bae-m-itable-cell' }, h(MacInlineField, { label: 'Title', value: props.title, placeholder: 'Untitled' })),
       h('span', { className: 'bae-m-itable-cell' }, h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, inherited: props.inherited, placeholder: 'Artist', column: true })),
@@ -364,8 +363,9 @@
   }
   // Every catalog that describes a release, as a wrapped row of links to each catalog's page, in the order core lists them (`records`: catalog names, comma-separated).
   // `buttons`: each is a button that opens the page, as on a found album's card, rather than a link.
+  // Each link ends in arrow.up.right at the chip text's small image scale, which draws it at 8.3 points, in the 12 point square the app frames it in.
   function MacRecordLinks(props) {
-    return h('span', { className: 'bae-m-reclinks' }, list(props.records).map(function (s) { return h(props.buttons ? 'button' : 'a', props.buttons ? { key: s, type: 'button', className: 'bae-m-reclink bae-m-reclink-button' } : { key: s, href: '#', className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); }));
+    return h('span', { className: 'bae-m-reclinks' }, list(props.records).map(function (s) { return h(props.buttons ? 'button' : 'a', props.buttons ? { key: s, type: 'button', className: 'bae-m-reclink bae-m-reclink-button' } : { key: s, href: '#', className: 'bae-m-reclink' }, s, h(Glyph, { set: 'mac', name: 'external', size: 8.3, frame: [12, 12] })); }));
   }
   // A found album: cover, title, artist · label, a button per catalog that has answered (`sources`) that opens the album on that catalog.
   function MacReleaseCard(props) {
@@ -390,6 +390,7 @@
     return String(text).split('|').map(function (v) { var at = v.lastIndexOf(':'); return { value: v.slice(0, at), catalog: v.slice(at + 1) }; });
   }
   // A found pressing: its edition line (`edition`: " · "-separated facts, the year, country, each label and its catalog number), then its copy line (`copy`: " · "-separated facts, the media and details) with the barcode and badges after it, then `notes` (the records' notes, a release's disambiguation, with the Notes badge), each fact a MacSourcedValue; In library, dimmed whole, for one the library has; `sources`, the catalogs whose records it holds, only those that have answered; the chevron.
+  // In library's check is checkmark.circle in the detail text's font (11.5 points, regular).
   function MacPressingRow(props) {
     var sv = function (v) { return h(MacSourcedValue, { value: v }); };
     var line = function (text) { return text ? String(text).split(' · ').map(function (part, i) { return h(React.Fragment, { key: i }, i ? ' · ' : null, sv(part)); }) : null; };
@@ -400,10 +401,10 @@
         h('div', { style: { display: 'flex', gap: 'var(--space-compact)', alignItems: 'center', flexWrap: 'wrap' } }, copy ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, copy) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
         // `notes`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ. The Notes badge and this line come from the same records, so they show together.
         props.notes ? h('div', { className: 'bae-m-tertiary bae-m-detail', style: { fontStyle: 'italic' } }, sv(props.notes)) : null),
-      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library') : null,
+      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(Glyph, { set: 'mac', name: 'checkcircle', size: 11.5, className: 'bae-success' }), 'In library') : null,
       // `sources`: the catalogs whose records the pressing holds, only those that have answered.
       props.sources ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, props.sources) : null,
-      h(Sym, { name: 'right', size: 11, className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
+      h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', frame: [11, null], className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
   }
   // One bulk action: its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the name in the strong type and the count in the accent, for Import and Combine. `to`: where the import goes, Import's destination pop-up, before the count; the row's button then holds only the name, so the pop-up is a control of its own.
   function MacBulkActionRow(props) {
