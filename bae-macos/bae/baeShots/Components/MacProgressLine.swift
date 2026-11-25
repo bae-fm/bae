@@ -13,17 +13,17 @@ extension ShotScene {
                 detail: "112 / 130"
             )
             .themeText(.body)
-            .frame(width: 380, alignment: .leading)
+            .frame(width: 320, alignment: .leading)
         },
         component("mac.component.progress-line.no-count", height: 50) {
             MacProgressLine("Reading files…", progress: 0.42)
                 .themeText(.body)
-                .frame(width: 380, alignment: .leading)
+                .frame(width: 320, alignment: .leading)
         },
         component("mac.component.progress-line.no-known-length", height: 50) {
             MacProgressLine("Importing…", progress: nil)
                 .themeText(.body)
-                .frame(width: 380, alignment: .leading)
+                .frame(width: 320, alignment: .leading)
         },
         component("mac.component.progress-line.upload", height: 50) {
             MacProgressLine(
@@ -31,7 +31,7 @@ extension ShotScene {
                 bar: ProgressTrackBar(progress: 0.15)
             )
             .themeText(.body)
-            .frame(width: 380, alignment: .leading)
+            .frame(width: 320, alignment: .leading)
         },
         component("mac.component.progress-line.long-phase", height: 50) {
             MacProgressLine(
