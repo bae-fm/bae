@@ -5,14 +5,52 @@ import SwiftUI
 
 extension ShotScene {
     /// The album page's cover gallery opened on the lightbox
-    /// (`mac.album.lightbox.zoom-failed`), over the library window with the
-    /// album open, after the release's cover failed with core's error behind
-    /// Details. The sheet is the one the album page presents: `CoverSheetView`
-    /// in its `CoverGalleryFrame`, raised over the window as a modal, with
-    /// the covers `mac.album.change-cover` shows.
+    /// (`mac.album.lightbox`), over the library window with the album open.
+    /// The sheet is the one the album page presents: `CoverSheetView` in its
+    /// `CoverGalleryFrame`, raised over the window as a modal, with the
+    /// covers `mac.album.change-cover` shows.
     static let albumLightboxScenes: [ShotScene] = [
-        ShotScene(
+        albumLightboxScene(
+            id: "mac.album.lightbox",
+            opensOn: .saved,
+            picture: .shown
+        ),
+        albumLightboxScene(
+            id: "mac.album.lightbox.failed",
+            opensOn: .remote(
+                url: BoardRemoteCover(position: 1, type: .front).imageUrl
+            ),
+            picture: .noBytes
+        ),
+        albumLightboxScene(
             id: "mac.album.lightbox.zoom-failed",
+            opensOn: .saved,
+            picture: .unreadable
+        ),
+    ]
+
+    /// How core's read of the picture at the lightbox's size ends.
+    private enum LightboxPicture {
+        /// Core reads every picture.
+        case shown
+        /// The catalog serves no image, so the failure has no Details.
+        case noBytes
+        /// Core's read of the release's cover fails, with its error behind
+        /// Details.
+        case unreadable
+    }
+
+    /// The widest the cover gallery asks for a picture, in pixels; the
+    /// lightbox asks for more.
+    nonisolated private static let galleryPixels: UInt32 = 1_600
+
+    private static func albumLightboxScene(
+        id: String,
+        opensOn cover: BridgeCoverKey,
+        picture: LightboxPicture
+    ) -> ShotScene {
+        ShotScene(
+            id: id,
             size: CGSize(width: 1_200, height: 1_020)
         ) {
             let size = CGSize(width: 1_200, height: 1_020)
@@ -23,13 +61,13 @@ extension ShotScene {
                 openAlbum: true
             )
             let gallery = boardCoverGallery()
-            let images = failedCoverImages()
+            let images = lightboxCoverImages(picture)
             let lightboxLoad = LightboxImageLoad()
             uiStore.presentSizedModal { host in
                 CoverGalleryFrame(host: host) {
                     CoverSheetView(
                         owner: .release(releaseId: "rel-board-0"),
-                        opensOn: .saved,
+                        opensOn: cover,
                         lightboxLoad: lightboxLoad,
                         onFindRelease: {},
                         refreshCovers: {},
@@ -52,15 +90,22 @@ extension ShotScene {
             ) {
                 guard (backing.session.albums.list?.positionCount ?? 0) > 0
                 else { return false }
-                if case .failed = lightboxLoad.phase { return true }
-                return false
+                switch picture {
+                case .shown:
+                    return lightboxLoad.phase.image != nil
+                case .noBytes, .unreadable:
+                    if case .failed = lightboxLoad.phase { return true }
+                    return false
+                }
             }
         }
-    ]
+    }
 
-    /// The pictures of the cover gallery, whose release cover has no large
-    /// copy: core fails reading it, and its small copies have their art.
-    private static func failedCoverImages() -> ImageStore {
+    /// The pictures of the cover gallery, which has the art of each cover, and
+    /// of the lightbox, whose picture reads as `picture` says.
+    private static func lightboxCoverImages(_ picture: LightboxPicture)
+        -> ImageStore
+    {
         ImageStore(
             fetchLibraryImageBytes: { image, _ in
                 try BoardArtwork.data(named: image.id)
@@ -68,7 +113,7 @@ extension ShotScene {
             fetchReleaseImageBytes: { _, source, pixels in
                 switch source {
                 case .cover:
-                    if (pixels ?? .max) > thumbnailPixels {
+                    if case .unreadable = picture, pixels > galleryPixels {
                         throw BridgeError.Diagnostic(
                             category: .network,
                             detail: "dns error"
@@ -79,8 +124,11 @@ extension ShotScene {
                     return try BoardArtwork.data(named: id)
                 }
             },
-            fetchRemoteImage: { image, _ in
-                try BoardArtwork.data(
+            fetchRemoteImage: { image, pixels in
+                if case .noBytes = picture, pixels > galleryPixels {
+                    return nil
+                }
+                return try BoardArtwork.data(
                     named: BoardRemoteCover.artName(forUrl: image.url)
                 )
             }

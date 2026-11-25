@@ -21,7 +21,7 @@ extension ShotScene {
 
     /// The widest a thumbnail's copy is, in pixels; the large image asks for
     /// more.
-    nonisolated static let thumbnailPixels: UInt32 = 256
+    nonisolated private static let thumbnailPixels: UInt32 = 256
 
     /// What a lightbox shows of its image.
     private enum LightboxImageState {
