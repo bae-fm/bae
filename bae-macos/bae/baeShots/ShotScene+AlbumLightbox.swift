@@ -10,24 +10,35 @@ extension ShotScene {
     /// `CoverGalleryFrame`, raised over the window as a modal, with the
     /// covers `mac.album.change-cover` shows.
     static let albumLightboxScenes: [ShotScene] = [
-        albumLightboxScene(
+        ShotScene(
             id: "mac.album.lightbox",
-            opensOn: .saved,
-            picture: .shown
-        ),
-        albumLightboxScene(
+            size: albumLightboxSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumLightboxStage(opensOn: .saved, picture: .shown)
+        },
+        ShotScene(
             id: "mac.album.lightbox.failed",
-            opensOn: .remote(
-                url: BoardRemoteCover(position: 1, type: .front).imageUrl
-            ),
-            picture: .noBytes
-        ),
-        albumLightboxScene(
+            size: albumLightboxSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumLightboxStage(
+                opensOn: .remote(
+                    url: BoardRemoteCover(position: 1, type: .front).imageUrl
+                ),
+                picture: .noBytes
+            )
+        },
+        ShotScene(
             id: "mac.album.lightbox.zoom-failed",
-            opensOn: .saved,
-            picture: .unreadable
-        ),
+            size: albumLightboxSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            albumLightboxStage(opensOn: .saved, picture: .unreadable)
+        },
     ]
+
+    private static let albumLightboxSize = CGSize(width: 1_200, height: 1_020)
 
     /// How core's read of the picture at the lightbox's size ends.
     private enum LightboxPicture {
@@ -44,59 +55,53 @@ extension ShotScene {
     /// lightbox asks for more.
     nonisolated private static let galleryPixels: UInt32 = 1_600
 
-    private static func albumLightboxScene(
-        id: String,
+    private static func albumLightboxStage(
         opensOn cover: BridgeCoverKey,
         picture: LightboxPicture
-    ) -> ShotScene {
-        ShotScene(
-            id: id,
-            size: CGSize(width: 1_200, height: 1_020)
-        ) {
-            let size = CGSize(width: 1_200, height: 1_020)
-            let uiStore = UiStore()
-            let backing = boardLibraryBacking(
-                uiStore: uiStore,
-                albumCount: 4,
-                openAlbum: true
-            )
-            let gallery = boardCoverGallery()
-            let images = lightboxCoverImages(picture)
-            let lightboxLoad = LightboxImageLoad()
-            uiStore.presentSizedModal { host in
-                CoverGalleryFrame(host: host) {
-                    CoverSheetView(
-                        owner: .release(releaseId: "rel-board-0"),
-                        opensOn: cover,
-                        lightboxLoad: lightboxLoad,
-                        onFindRelease: {},
-                        refreshCovers: {},
-                        onSelect: { _ in },
-                        onDone: {}
-                    )
-                }
-                .environment(images)
-                .environment(Importer(coverGallery: { .fixed(gallery) }))
+    ) -> ShotStage {
+        let size = albumLightboxSize
+        let uiStore = UiStore()
+        let backing = boardLibraryBacking(
+            uiStore: uiStore,
+            albumCount: 4,
+            openAlbum: true
+        )
+        let gallery = boardCoverGallery()
+        let images = lightboxCoverImages(picture)
+        let lightboxLoad = LightboxImageLoad()
+        uiStore.presentSizedModal { host in
+            CoverGalleryFrame(host: host) {
+                CoverSheetView(
+                    owner: .release(releaseId: "rel-board-0"),
+                    opensOn: cover,
+                    lightboxLoad: lightboxLoad,
+                    onFindRelease: {},
+                    refreshCovers: {},
+                    onSelect: { _ in },
+                    onDone: {}
+                )
             }
-            return ShotStage(
-                ShotScenes.libraryWindow(
-                    uiStore: uiStore,
-                    backing: backing,
-                    playbackStore: boardPlayback(),
-                    images: images,
-                    size: size
-                ),
-                images: images
-            ) {
-                guard (backing.session.albums.list?.positionCount ?? 0) > 0
-                else { return false }
-                switch picture {
-                case .shown:
-                    return lightboxLoad.phase.image != nil
-                case .noBytes, .unreadable:
-                    if case .failed = lightboxLoad.phase { return true }
-                    return false
-                }
+            .environment(images)
+            .environment(Importer(coverGallery: { .fixed(gallery) }))
+        }
+        return ShotStage(
+            ShotScenes.libraryWindow(
+                uiStore: uiStore,
+                backing: backing,
+                playbackStore: boardPlayback(),
+                images: images,
+                size: size
+            ),
+            images: images
+        ) {
+            guard (backing.session.albums.list?.positionCount ?? 0) > 0
+            else { return false }
+            switch picture {
+            case .shown:
+                return lightboxLoad.phase.image != nil
+            case .noBytes, .unreadable:
+                if case .failed = lightboxLoad.phase { return true }
+                return false
             }
         }
     }
