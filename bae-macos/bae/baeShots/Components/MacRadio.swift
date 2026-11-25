@@ -42,6 +42,8 @@ extension ShotScene {
                         selected: checked
                     ) {}
                 }
+                // The row places itself, as the settings sheet's does.
+                .containerValue(\.placesItselfInRow, true)
             }
         }
     }
