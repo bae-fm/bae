@@ -71,8 +71,10 @@ struct MacPressingRow: View {
                 }
                 .allowsHitTesting(false)
                 Spacer(minLength: ThemeSpace.related)
-                libraryMarker
-                    .allowsHitTesting(false)
+                if isInLibrary {
+                    libraryMarker
+                        .allowsHitTesting(false)
+                }
                 sourceTags
                     .allowsHitTesting(false)
                 chevron
@@ -246,7 +248,8 @@ struct MacPressingRow: View {
         .foregroundStyle(Theme.textTertiary)
     }
 
-    /// The "In library" tag, hidden by opacity so the column keeps its width.
+    /// The "In library" tag, drawn only while the library holds the pressing,
+    /// so the pressing's lines take the width otherwise.
     private var libraryMarker: some View {
         HStack(spacing: ThemeSpace.inline) {
             // The check only marks the words, so VoiceOver reads the words
@@ -255,11 +258,9 @@ struct MacPressingRow: View {
                 .foregroundStyle(Theme.success)
                 .accessibilityHidden(true)
             Text("In library")
-                .accessibilityHidden(!isInLibrary)
         }
         .themeText(.detail)
         .foregroundStyle(Theme.textTertiary)
-        .opacity(isInLibrary ? 1 : 0)
     }
 
     private var chevron: some View {
