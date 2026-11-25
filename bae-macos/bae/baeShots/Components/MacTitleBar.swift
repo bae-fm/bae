@@ -29,7 +29,11 @@ extension ShotScene {
             section: .library,
             search: "harbor"
         ),
-        titleBar("mac.component.title-bar.picture", section: .library),
+        titleBar(
+            "mac.component.title-bar.picture",
+            section: .library,
+            picture: true
+        ),
     ]
 
     /// A store whose main window shows `section`.
@@ -44,9 +48,15 @@ extension ShotScene {
         _ id: String,
         section: MainSection,
         activity: BridgeSyncActivity? = nil,
-        search: String = ""
+        search: String = "",
+        picture: Bool = false
     ) -> ShotScene {
-        component(id, width: 1_100, height: 56) {
+        component(
+            id,
+            width: 1_100,
+            height: 56,
+            images: picture ? anaPictureStore : nil
+        ) {
             let uiStore = storeShowing(section)
             let backing = boardLibraryBacking(uiStore: uiStore)
             MacTitleBar(
@@ -61,9 +71,7 @@ extension ShotScene {
             // Ana, whose picture ends the bar.
             .environment(
                 MembershipStore.stub(
-                    people: PreviewData.members(
-                        reaching: PreviewData.previewDropboxStorage
-                    ),
+                    people: members(withPicture: picture),
                     selfIsAdmin: true
                 )
             )
