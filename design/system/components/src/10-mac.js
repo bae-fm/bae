@@ -57,7 +57,7 @@
   // The round back button before a page's heading, named for where it goes back to (`to`): a Settings page under another, a playlist open in the side pane.
   function MacBackButton(props) {
     return h('button', { type: 'button', className: 'bae-m-back', 'aria-label': 'Back to ' + props.to },
-      h('svg', { width: 10, height: 10, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' })));
+      h(Glyph, { set: 'mac', name: 'down', point: 'backward', size: 'small' }));
   }
 
   // The Settings window's list of panes, on its inset panel; the window's traffic lights sit over its top. `pane` is the open pane, marked current as the app's sidebar marks its row selected; `status` puts a chip in `statusTone` (warning unless given) on `statusPane`.
