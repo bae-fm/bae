@@ -45,6 +45,9 @@ import uniffi.bae_bridge.BridgeReleasePlayability
 private val COVER_SIZE = 150.dp
 private val STAR_SIZE = 12.dp
 
+/** How far a rating mark hangs below its line's top: its centre sits 3.17 dp above the baseline. */
+private val MARK_DROP = 0.83.dp
+
 /**
  * The album page's head: the cover, then the title, the artist, the year with the person's rating after it, the
  * release's edition and copy lines. Under them, [actions] supplies Play, or [onShowWhere] opens the device
@@ -134,12 +137,14 @@ private fun YearAndRating(
         }
     if (year == null && mark == null) return
     val color = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    // The board centres the mark on the text's middle, so its foot passes the line's bottom by a little under a
+    // point; the mark hangs that far below the line's top and the line grows to hold it.
+    Row(verticalAlignment = Alignment.Top) {
         year?.let { Text(text = it, style = ThemeText.detail.style, color = color) }
         if (year != null && mark != null) {
             Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
         }
-        mark?.invoke()
+        mark?.let { Box(modifier = Modifier.padding(top = MARK_DROP)) { it() } }
     }
 }
 
