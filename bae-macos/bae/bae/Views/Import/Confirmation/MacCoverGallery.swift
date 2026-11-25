@@ -156,10 +156,10 @@ struct MacCoverGallery: View {
 
     var body: some View {
         gallery
-            .disabled(browser.layout == .lightbox)
-            // The lightbox's backdrop covers the gallery it disables, which
-            // draws as it is under the cover.
-            .environment(\.dimsWhenDisabled, browser.layout != .lightbox)
+            // The lightbox takes the pointer and the keys while it is open;
+            // the gallery under its backdrop stays as drawn, not dimmed as a
+            // disabled one is.
+            .allowsHitTesting(browser.layout != .lightbox)
             .accessibilityHidden(browser.layout == .lightbox)
             .overlay { lightboxOverlay }
             .onAppear {

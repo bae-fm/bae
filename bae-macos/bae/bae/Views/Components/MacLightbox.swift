@@ -141,6 +141,9 @@ struct MacLightbox<Item: LightboxImage>: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
+        // The keyboard stays on the lightbox: Tab would move to the gallery
+        // under its backdrop.
+        .onKeyPress(.tab) { .handled }
         .onKeyPress(.escape) {
             onDismiss()
             return .handled
