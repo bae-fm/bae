@@ -28,13 +28,11 @@ struct MacStorageUsage: View {
     private var bar: some View {
         ShareStack(spacing: Self.gap, thinnest: Self.thinnest) {
             ForEach(usage.segments) { segment in
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(segment.kind.color)
                     .layoutValue(key: ShareKey.self, value: segment.share)
             }
         }
-        // The bar's own ends are rounder than the gaps between segments.
-        .clipShape(RoundedRectangle(cornerRadius: 4))
         .frame(height: 8)
         // VoiceOver reads the bar as one image, labelled with each kind and
         // its size.
