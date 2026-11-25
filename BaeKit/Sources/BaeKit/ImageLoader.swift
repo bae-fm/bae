@@ -41,6 +41,8 @@ extension PlatformImage {
     }
 }
 
+private let logger = Logger.bae("ImageLoader")
+
 public enum ImageLoader {
     public struct DecodeError: Error {}
 
