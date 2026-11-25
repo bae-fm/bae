@@ -13,6 +13,9 @@ struct PreviewSlot: View {
         Text(verbatim: label)
             .foregroundStyle(Theme.textSecondary)
             .padding(ThemeSpace.group)
+            // The preview's slot has a 1 pt border that takes room, inside
+            // its padding.
+            .padding(1)
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay {
                 RoundedRectangle(cornerRadius: ThemeRadius.card)
