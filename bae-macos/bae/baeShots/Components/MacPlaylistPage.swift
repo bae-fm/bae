@@ -60,9 +60,10 @@ extension ShotScene {
                     empty: true
                 )
             )
-            .albumDetailPreviewEnvironment()
-            // After the preview environment, which gives an empty image store.
+            // Inside the preview environment, whose empty image store
+            // would otherwise be the nearest the page reads.
             .environment(images)
+            .albumDetailPreviewEnvironment()
             .environment(backing.session)
             .frame(width: 404, alignment: .leading)
             .overlay(alignment: .topLeading) {
