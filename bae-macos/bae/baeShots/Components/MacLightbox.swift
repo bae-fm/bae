@@ -21,17 +21,17 @@ extension ShotScene {
 
     /// The widest a thumbnail's copy is, in pixels; the large image asks for
     /// more.
-    private nonisolated static let thumbnailPixels: UInt32 = 256
+    nonisolated static let thumbnailPixels: UInt32 = 256
 
     /// What a lightbox shows of its image.
-    private enum LightboxImageState {
+    enum LightboxImageState {
         case shown, loading, failed, failedWithCauses
     }
 
     /// A store that gives the first image's large copy no bytes when it
     /// `failed` and never answers it while `loading`; its thumbnail and every
     /// other image have their art at once.
-    private static func lightboxStore(_ state: LightboxImageState)
+    static func lightboxStore(_ state: LightboxImageState)
         -> ImageStore
     {
         let first = lightboxImages[0]
@@ -55,6 +55,14 @@ extension ShotScene {
                     }
                 }
                 return try BoardArtwork.data(named: ref.id)
+            },
+            // The album page behind a lightbox draws its release's cover and
+            // image files.
+            fetchReleaseImageBytes: { _, source, _ in
+                switch source {
+                case .cover: try BoardArtwork.data(named: first)
+                case .releaseFile(let id): try BoardArtwork.data(named: id)
+                }
             }
         )
     }

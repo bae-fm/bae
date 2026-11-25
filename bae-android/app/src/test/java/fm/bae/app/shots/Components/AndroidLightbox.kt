@@ -40,7 +40,7 @@ class AndroidLightboxShots : BoardShot() {
 
 /** The lightbox on one gallery item, the release's cover.jpg, of [count] images, reading its bytes from [store]. */
 @Composable
-private fun Lightbox(
+internal fun Lightbox(
     store: ImageStore,
     count: UInt,
 ) = ScreenScene {
@@ -81,7 +81,7 @@ private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _, _ -> awa
 private fun noBytes() = ImageStore(dispatcher = Dispatchers.Unconfined)
 
 /** A store whose read of the image fails with core's error, so the lightbox shows its failure with Details. */
-private fun failing() =
+internal fun failing() =
     ImageStore(
         fetchReleaseImageBytes = { _, _, _ -> throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "dns error") },
         dispatcher = Dispatchers.Unconfined,
