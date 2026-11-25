@@ -30,16 +30,26 @@ public struct AccentFocusButtonStyle<Base: ButtonStyle>: PrimitiveButtonStyle {
 public struct PlainButtonLook: ButtonStyle {
     @Environment(\.isEnabled)
     private var isEnabled
+    @Environment(\.dimsWhenDisabled)
+    private var dimsWhenDisabled
 
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(
-                !isEnabled
+                !isEnabled && dimsWhenDisabled
                     ? ThemeOpacity.off : configuration.isPressed ? 0.5 : 1
             )
     }
+}
+
+extension EnvironmentValues {
+    /// Whether a disabled `PlainButtonLook` button draws dimmed. A screen
+    /// that disables a view only because something opaque covers it turns
+    /// this off, so the view draws as it is under the cover.
+    @Entry
+    public var dimsWhenDisabled = true
 }
 
 extension PrimitiveButtonStyle
