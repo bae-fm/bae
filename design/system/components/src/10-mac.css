@@ -133,6 +133,7 @@
 .bae-m-popupbutton { height: 24px; padding: 0; border: 0; background: none; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-related); box-sizing: border-box; cursor: pointer; }
 .bae-m-popupbutton-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bae-m-popupbutton-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--control); color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; }
+.bae-m-popupbutton-native { padding: 0 var(--space-related) 0 var(--space-group); border-radius: var(--radius-control); background: var(--tile); justify-content: space-between; }
 .bae-m-segmented { display: inline-flex; height: 28px; box-sizing: border-box; padding: calc(var(--space-line) + var(--space-hairline)); border-radius: 999px; background: var(--tile); }
 .bae-m-segment { display: flex; align-items: center; padding: 0 calc(var(--space-group) + var(--space-line)); border-radius: 999px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); cursor: pointer; }
 .bae-m-segment-on { background: var(--hover); box-shadow: inset 0 0 0 100px var(--hairline-strong); }
@@ -176,6 +177,8 @@
 .bae-m-pane-on .bae-chip { background: color-mix(in srgb, var(--on-fill) 18%, transparent); color: var(--on-fill); }
 .bae-m-popupbutton-open { position: relative; display: inline-flex; }
 .bae-m-popupbutton-menu { position: absolute; left: -31px; z-index: 6; }
+/* The menu's words line up with the value's, 12 pt into the bezel. */
+.bae-m-popupbutton-open-native > .bae-m-popupbutton-menu { left: -19px; }
 .bae-m-box:has(.bae-m-popupbutton-open) { overflow: visible; }
 .bae-m-popupbutton-menu .bae-m-menu-item { padding-right: var(--space-edge); }
 /* A button that draws nothing of its own: its component's classes give it its look. */
