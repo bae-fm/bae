@@ -16,42 +16,24 @@ import ImageIO
 #endif
 
 /// An image a decode made, which carries the bitmap it was made from, so no
-/// reader meets a decoded image that draws none.
+/// reader meets a decoded image that draws none. Its own initializer is the
+/// only one that makes one here: it sets the bitmap, and the initializers the
+/// class inherits make no instance.
 public final class DecodedImage: PlatformImage, @unchecked Sendable {
     /// The bitmap the image draws.
-    public let bitmap: CGImage
+    public private(set) var bitmap: CGImage!
 
     #if canImport(AppKit)
         /// `bitmap`, at `size` points.
-        init(bitmap: CGImage, size: CGSize) {
+        convenience init(bitmap: CGImage, size: CGSize) {
+            self.init(cgImage: bitmap, size: size)
             self.bitmap = bitmap
-            super.init(cgImage: bitmap, size: size)
-        }
-
-        @available(*, unavailable)
-        required init(coder _: NSCoder) {
-            fatalError("init(coder:) is not used")
-        }
-
-        @available(*, unavailable)
-        required convenience init(imageLiteralResourceName _: String) {
-            fatalError("init(imageLiteralResourceName:) is not used")
         }
     #elseif canImport(UIKit)
         /// `bitmap`, at `scale` pixels to a point.
-        init(bitmap: CGImage, scale: CGFloat) {
+        convenience init(bitmap: CGImage, scale: CGFloat) {
+            self.init(cgImage: bitmap, scale: scale, orientation: .up)
             self.bitmap = bitmap
-            super.init(cgImage: bitmap, scale: scale, orientation: .up)
-        }
-
-        @available(*, unavailable)
-        required init?(coder _: NSCoder) {
-            fatalError("init(coder:) is not used")
-        }
-
-        @available(*, unavailable)
-        required convenience init(imageLiteralResourceName _: String) {
-            fatalError("init(imageLiteralResourceName:) is not used")
         }
     #endif
 }
