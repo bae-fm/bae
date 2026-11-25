@@ -119,7 +119,8 @@ extension ShotScene {
         picked: Bool = false,
         rating: BridgeTrackRating = .stars(mine: nil)
     ) -> ShotScene {
-        component(id, width: 840, height: 70) {
+        // The board's row is as wide as its preview cell: 842 points.
+        component(id, width: 842, height: 70) {
             MacTrackRow(
                 track: track,
                 artist: artist,
@@ -132,7 +133,7 @@ extension ShotScene {
                 onPlay: {},
                 onTogglePlayPause: {}
             )
-            .frame(width: 840, height: artist == nil ? 40 : 52)
+            .frame(width: 842, height: artist == nil ? 40 : 52)
         }
     }
 }
