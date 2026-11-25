@@ -14,12 +14,14 @@ struct MacMatchCode: View {
 
     var body: some View {
         VStack(spacing: ThemeSpace.edge) {
+            // The tracking is set on the `Text` itself: a selectable text
+            // drops the tracking of the view around it.
             Text(verbatim: code)
+                .tracking(3)
                 .selectableCode(code)
                 // After `selectableCode`, so the text VoiceOver reads and the
                 // shots measure takes the digits' font and colour too.
                 .themeText(.figure)
-                .tracking(3)
                 .foregroundStyle(Theme.textPrimary)
             if let waiting {
                 MacSpinner(Text(verbatim: waiting))
