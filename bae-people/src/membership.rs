@@ -11,10 +11,6 @@ pub use admin_operations::{InviteError, RefusedInviteDismissError};
 mod members;
 pub(crate) use members::{member_columns, member_row, self_is_admin};
 
-/// Membership's part of the schema: `membership.sql`.
-pub const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("membership.sql")]);
-
 /// The library's members and the admin changes this device asks for, over the
 /// store.
 #[derive(Clone)]

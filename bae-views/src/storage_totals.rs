@@ -4,9 +4,6 @@
 
 use super::*;
 
-/// The SQL creating the totals' table and triggers.
-pub(super) const SQL: &str = include_str!("storage_totals.sql");
-
 /// The statement reading how many releases hold the `stored` value `stored`
 /// (both values with `None`) and their files' total size, from the stored
 /// totals.

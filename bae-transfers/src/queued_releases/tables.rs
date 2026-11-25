@@ -7,9 +7,6 @@
 //!
 //! Its tables are `tables.sql`.
 
-/// The SQL creating this part's tables and triggers.
-pub(crate) const SQL: &str = include_str!("tables.sql");
-
 use crate::download_snapshot::DownloadRequest;
 use crate::output_snapshot::{OutputKind, OutputRequest};
 #[cfg(any(desktop, test, feature = "test-utils"))]

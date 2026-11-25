@@ -21,8 +21,6 @@
 //! same write, so the count reads one row however many folders the batch
 //! holds. Its tables are `standing_rows.sql`.
 
-pub(super) const SQL: &str = include_str!("standing_rows.sql");
-
 use super::*;
 use crate::candidate_runtime::{
     IdentificationChange, IdentificationMove, IdentificationStage, StoredIdentification,

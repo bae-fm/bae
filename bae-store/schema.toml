@@ -1,0 +1,41 @@
+# The SQL functions and the collation bae's schema names whose bodies this
+# crate defines. Other crates' parts list them by their statics.
+
+[[function]]
+static = "FOLD_CASE"
+name = "bae_fold_case"
+arguments = 1
+version = 1
+compute = "crate::schema::text::fold_case"
+public = true
+
+[[function]]
+static = "SEARCH_PATTERN"
+name = "bae_search_pattern"
+arguments = 1
+version = 1
+compute = "crate::schema::text::search_pattern"
+public = true
+
+[[function]]
+static = "NAME_KEY"
+name = "bae_name_key"
+arguments = 2
+version = 1
+compute = "crate::schema::text::name_key"
+public = true
+
+[[function]]
+static = "NAME_LIST_KEY"
+name = "bae_name_list_key"
+arguments = 2
+version = 1
+compute = "crate::schema::text::name_list_key"
+public = true
+
+[[collation]]
+static = "NATURAL_ORDER"
+name = "natural_order"
+version = 1
+compare = "bae_util::natural_order::compare"
+public = true

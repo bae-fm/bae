@@ -12,10 +12,6 @@ mod removal;
 pub mod watched_path;
 pub use removal::WatchedFoldersRemoved;
 
-/// The watched folders' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("watched_folders.sql")]);
-
 /// Why a change to the watched folders, or a write about a folder under one,
 /// was refused. Nothing of it was written.
 #[derive(Debug, thiserror::Error)]

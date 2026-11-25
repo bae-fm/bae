@@ -29,7 +29,7 @@ check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
 # and run clippy with it (scripts/clippy-*.sh): a change to them changes the
 # lints of every crate, so it lints every crate, as a change to
 # rust-toolchain.toml does.
-check clippy *.rs,Cargo.toml,Cargo.lock,clippy.toml,rust-toolchain.toml,every:tools/typed-lints/*.sh,every:scripts/clippy-*.sh scripts/clippy-crates.sh {crates}
+check clippy *.rs,schema.toml,Cargo.toml,Cargo.lock,clippy.toml,rust-toolchain.toml,every:tools/typed-lints/*.sh,every:scripts/clippy-*.sh scripts/clippy-crates.sh {crates}
 
 # The apps' sources and the bridge they call
 whole uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py

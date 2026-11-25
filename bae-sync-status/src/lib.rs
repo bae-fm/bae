@@ -16,5 +16,4 @@ pub use sync_shown::{SyncCauseLine, SyncFix, SyncShown, SyncStatusWord, SyncTone
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
 
-/// The parts of the schema the sync status holds.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[sync_status::SCHEMA];
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));

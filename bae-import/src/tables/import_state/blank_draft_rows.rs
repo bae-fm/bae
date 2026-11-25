@@ -9,8 +9,6 @@
 //! table it fires on). So every state of a folder this device did not import
 //! has a draft row once the scan holds the folder's audio units.
 
-pub(super) const SQL: &str = include_str!("blank_draft_rows.sql");
-
 use super::*;
 use crate::{CandidateDraft, CandidateTrack, RawTrackEdit, TrackArtistAssignments};
 

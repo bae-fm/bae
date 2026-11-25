@@ -3,8 +3,6 @@
 //! new state starts from.
 //! Its tables are `seed_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("seed_rows.sql");
-
 use super::*;
 
 /// Make sure `files` has a state row, and record `folder` as a folder on disk

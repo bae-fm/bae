@@ -11,8 +11,6 @@
 //! the releases its answers so far combine to, then the answer it reached.
 //! Its table is `verdict_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("verdict_rows.sql");
-
 use super::column_list::{ColumnList, Columns};
 use super::ledger_rows::{
     delete_ledger, ledger_columns, read_ledger, step_columns, store_ledger, MatchPositions,

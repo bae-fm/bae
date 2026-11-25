@@ -1,0 +1,13 @@
+[[part]]
+sql = ["src/tables/queue.sql"]
+
+[[part]]
+sql = ["src/tables/now.sql"]
+
+[[part]]
+sql = ["src/tables/timeline.sql"]
+
+# The receivers' table; the key receivers order by is its function.
+[[part]]
+sql = ["src/renderer/picker.sql"]
+functions = ["bae_store::NAME_KEY"]

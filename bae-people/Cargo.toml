@@ -10,6 +10,10 @@ publish = false
 name = "bae_people"
 path = "src/lib.rs"
 
+[build-dependencies]
+# Writes the schema this crate declares from its `schema.toml`.
+bae-schema-manifest = { workspace = true }
+
 [dependencies]
 # The error categories a person is shown for a failed people, collection or
 # admin write.

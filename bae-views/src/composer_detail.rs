@@ -10,9 +10,6 @@ use crate::album_detail::{ComposerDetail, ComposerDetailItem, ComposerDetailRow,
 use crate::composer::work_summary_columns;
 use bae_records::records::read::{credit_name_column, credit_name_join};
 
-/// The SQL creating this part's tables and triggers.
-pub(super) const SQL: &str = include_str!("composer_detail.sql");
-
 impl LibraryViews {
     pub(crate) async fn find_composer_detail(
         &self,

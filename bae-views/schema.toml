@@ -1,0 +1,15 @@
+# The library views' part: one domain, its files in the order each runs after
+# the files creating the tables its triggers fire on.
+[[part]]
+sql = [
+    "src/album/listing.sql",
+    "src/artist.sql",
+    "src/composer.sql",
+    "src/composer_detail.sql",
+    "src/storage.sql",
+    "src/storage_totals.sql",
+    "src/sync_activity.sql",
+    "src/search.sql",
+    "src/name_keys.sql",
+]
+functions = ["bae_store::FOLD_CASE", "bae_store::NAME_KEY", "bae_store::NAME_LIST_KEY"]

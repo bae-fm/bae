@@ -15,12 +15,6 @@
 //! scan coordinator keeps for each folder. Their tables are `folder_scans.sql` and `folder_scans/progress.sql`,
 //! which every device's library holds.
 
-/// The folder scans' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
-    include_str!("folder_scans.sql"),
-    include_str!("folder_scans/progress.sql"),
-]);
-
 pub(super) mod columns;
 mod cover_choice;
 mod dates;

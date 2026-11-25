@@ -6,9 +6,6 @@ use super::*;
 use crate::album::AlbumAppearanceRow;
 use crate::album_detail::{AlbumAppearance, ArtistDetail};
 
-/// The SQL creating this part's tables and triggers.
-pub(super) const SQL: &str = include_str!("artist.sql");
-
 impl LibraryViews {
     pub async fn get_artist_count(&self) -> Result<u64, DbError> {
         self.store.read(|sql| artist_count_on(&sql)).await

@@ -2,8 +2,6 @@
 //! (`import_candidate_album_pick`), over the one its records name.
 //! Its table is `album_pick_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("album_pick_rows.sql");
-
 use super::*;
 
 /// The statement that reads what the person picked for the album of the

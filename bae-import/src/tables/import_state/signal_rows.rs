@@ -4,8 +4,6 @@
 //! signal reaching a candidate's rows is a defect, and the write refuses it.
 //! Its tables are `signal_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("signal_rows.sql");
-
 use super::column_list::{ColumnList, Columns};
 use super::verdict_rows::Owner;
 use super::*;

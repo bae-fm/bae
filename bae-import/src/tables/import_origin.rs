@@ -5,10 +5,6 @@
 //!
 //! Its table is `import_origin.sql`.
 
-/// The import origin's part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("import_origin.sql")]);
-
 use super::*;
 
 /// What recording an import's origin found.

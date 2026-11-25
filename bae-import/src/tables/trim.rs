@@ -4,12 +4,9 @@
 
 use rusqlite::types::Value;
 
-use bae_store::SchemaFunction;
-
 /// `bae_trim(text)`: the text without the whitespace `str::trim` removes.
-pub(crate) static TRIM: SchemaFunction = SchemaFunction {
-    name: "bae_trim",
-    arguments: 1,
-    version: 1,
-    compute: |arguments| Ok(Value::Text(arguments.get::<String>(0)?.trim().to_owned())),
-};
+pub(crate) fn trim(
+    arguments: &bae_store::SqlArguments<'_>,
+) -> rusqlite::Result<rusqlite::types::Value> {
+    Ok(Value::Text(arguments.get::<String>(0)?.trim().to_owned()))
+}

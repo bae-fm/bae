@@ -8,10 +8,6 @@
 use super::*;
 use crate::{CatalogApplyId, CatalogApplyStep};
 
-/// The catalog apply steps' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("catalog_apply_steps.sql")]);
-
 /// The stored `step` value of `step`, and its catalog.
 fn step_columns(step: CatalogApplyStep) -> (&'static str, Catalog) {
     match step {

@@ -1,0 +1,75 @@
+# The SQL functions that records.sql names, the artist functions that other
+# crates' queries call, bae_album_id, which computes the library album id that
+# the query finding a release's album calls, bae_audio_codec, which the audio
+# summary statement calls, and bae_lengths_disagree, which the import pane's
+# and the release editor's track statements mark a listed length by.
+
+[[function]]
+static = "ALBUM_IDENTITY"
+name = "bae_album_id"
+arguments = 2
+version = 1
+compute = "crate::records::album_identity::album_identity"
+
+[[function]]
+static = "CATALOG_RANK"
+name = "bae_catalog_rank"
+arguments = 1
+version = 1
+compute = "crate::records::catalog_rank::catalog_rank"
+
+[[function]]
+static = "ARTIST_NAME_KEY"
+name = "bae_artist_name_key"
+arguments = 1
+version = 1
+compute = "crate::records::artist_sql::artist_name_key"
+
+[[function]]
+static = "ARTIST_IDENTITY"
+name = "bae_artist_identity"
+arguments = 2
+version = 1
+compute = "crate::records::artist_sql::artist_identity"
+
+[[function]]
+static = "ARTIST_IS_VARIOUS_ARTISTS"
+name = "bae_artist_is_various_artists"
+arguments = 2
+version = 1
+compute = "crate::records::artist_sql::artist_is_various_artists"
+
+[[function]]
+static = "AUDIO_CODEC"
+name = "bae_audio_codec"
+arguments = 1
+version = 1
+compute = "crate::source_audio::audio_codec"
+
+[[function]]
+static = "LENGTHS_DISAGREE"
+name = "bae_lengths_disagree"
+arguments = 2
+version = 1
+compute = "crate::records::lengths_disagree::lengths_disagree"
+desktop = true
+
+# Records' part: records.sql, and the device's sort language's table.
+[[part]]
+sql = ["src/records.sql", "src/records/name_sort.sql"]
+functions = [
+    "crate::ALBUM_IDENTITY",
+    "crate::CATALOG_RANK",
+    "crate::ARTIST_NAME_KEY",
+    "crate::ARTIST_IDENTITY",
+    "crate::ARTIST_IS_VARIOUS_ARTISTS",
+    "crate::AUDIO_CODEC",
+    "crate::LENGTHS_DISAGREE",
+]
+collations = ["bae_store::NATURAL_ORDER"]
+synced = "crate::synced::synced_tables"
+namespaces = "crate::synced::namespaces"
+
+# Release storage's part.
+[[part]]
+sql = ["src/release_storage.sql"]

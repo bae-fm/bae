@@ -8,42 +8,25 @@ mod album_link_rows;
 mod catalog_apply_steps;
 mod cover_gallery;
 mod cover_labels;
-mod credit_resolutions;
+pub(crate) mod credit_resolutions;
 mod downscaled_copies;
 mod draft_layout;
 mod draft_rows;
 mod folder_scans;
-mod import_list;
+pub(crate) mod import_list;
 mod import_origin;
 pub(crate) mod import_state;
 mod layout_bindings;
 mod picture_copies;
 mod release_edit;
 mod release_groupings;
-mod release_sheet_decisions;
+pub(crate) mod release_sheet_decisions;
 mod sheet_decision_columns;
 mod skipped_candidates;
 mod source_releases;
 mod stored_credits;
-mod trim;
+pub(crate) mod trim;
 mod watched_folders;
-
-/// Import's parts of the library's schema, in the order they run.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
-    watched_folders::SCHEMA,
-    skipped_candidates::SCHEMA,
-    folder_scans::SCHEMA,
-    release_groupings::SCHEMA,
-    import_origin::SCHEMA,
-    release_sheet_decisions::SCHEMA,
-    import_state::SCHEMA,
-    source_releases::SCHEMA,
-    import_list::SCHEMA,
-    cover_gallery::SCHEMA,
-    catalog_apply_steps::SCHEMA,
-    credit_resolutions::SCHEMA,
-    picture_copies::SCHEMA,
-];
 
 pub use cover_gallery::{
     CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,

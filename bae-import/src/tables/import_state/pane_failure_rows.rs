@@ -2,8 +2,6 @@
 //! command, and why. Its table is `pane_failure_rows.sql`, which every
 //! device's library holds.
 
-pub(super) const SQL: &str = include_str!("pane_failure_rows.sql");
-
 use super::*;
 use crate::{PaneCommand, PaneFailure};
 use bae_diagnostics::{GroupingBlockReason, UiError, UiErrorCategory};

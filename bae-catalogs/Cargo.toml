@@ -13,6 +13,8 @@ path = "src/lib.rs"
 [build-dependencies]
 # Sets the `desktop` cfg for the crate's desktop-only code.
 bae-desktop-cfg = { workspace = true }
+# Writes the schema this crate declares from its `schema.toml`.
+bae-schema-manifest = { workspace = true }
 
 [dependencies]
 # The pressing values the catalog clients read releases into and whose words

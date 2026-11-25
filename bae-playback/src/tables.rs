@@ -22,7 +22,6 @@ pub use now::lose_playback_level_for_test;
 #[cfg(any(test, feature = "test-utils"))]
 pub use now::now_playing;
 pub use now::subscribe_now_playing;
-pub(super) use now::SCHEMA as NOW_SCHEMA;
 pub use now::{dismiss_playback_failure, playback_level, PlaybackNowRow};
 pub(crate) use now::{receiver_from_row, CAST_RECEIVER};
 #[cfg(any(test, feature = "test-utils"))]
@@ -31,7 +30,6 @@ pub use queue::fail_queue_writes_for_test;
 pub use queue::fill_context_lane_on;
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue::lose_up_next_for_test;
-pub(super) use queue::SCHEMA as QUEUE_SCHEMA;
 pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables};
 pub use queue_fill::{ContextFill, ContextFilled, LeftOut, ReleaseStart, TracksStart};
 pub use queue_reads::queue_value;
@@ -51,7 +49,6 @@ pub use resume::{load_playback_state, PlaybackResumeRow};
 pub use timeline::playback_timeline;
 pub use timeline::subscribe_playback_timeline;
 pub use timeline::PlaybackTimelineRow;
-pub(super) use timeline::SCHEMA as TIMELINE_SCHEMA;
 pub(crate) use track_display::subscribe_playback_track_infos;
 pub use track_display::track_display;
 #[cfg(test)]

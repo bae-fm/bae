@@ -5,13 +5,6 @@
 //! lists the same receivers. Its table is `picker.sql`; the functions here
 //! read and write it.
 
-/// The table's part of the library's schema.
-pub(crate) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("picker.sql")]).functions(SQL_FUNCTIONS);
-
-/// The SQL functions the picker's read names: the key receivers order by.
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::NAME_KEY];
-
 use bae_records::records::name_sort::sort_key_sql;
 use bae_store::DbError;
 use bae_store::Store;

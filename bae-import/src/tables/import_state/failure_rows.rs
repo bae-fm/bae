@@ -1,8 +1,6 @@
 //! Persisted terminal import failures.
 //! Its table is `failure_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("failure_rows.sql");
-
 use super::*;
 use crate::{ImportFailure, ImportFailureReason};
 use bae_util::timestamp::StoredTimestamp as _;

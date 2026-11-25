@@ -35,10 +35,7 @@ pub use release_queue::{
 pub use release_transfers::{ReleaseTransferReport, ReleaseTransfers, ReleaseTransfersWatch};
 pub use storage_moves::{StorageMoveError, StorageMoveRefusal};
 
-/// The transfer queues' part of the library's schema: one domain, its files in
-/// run order.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] =
-    &[bae_store::SchemaPart::new(&[queued_releases::tables::SQL])];
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 
 /// The schema this crate's tests open their stores on: records' and release
 /// storage's parts, preferences' (the save presets a queued save names) and

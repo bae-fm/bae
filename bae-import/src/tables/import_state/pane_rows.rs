@@ -13,10 +13,6 @@
 //! The statements that write and read labels, barcodes, artist assignments,
 //! mediums, roles and works are in `draft_values`.
 
-pub(super) const SQL: &str = include_str!("pane_rows.sql");
-pub(super) const VALUES_SQL: &str = values::SQL;
-pub(super) const PROVENANCE_SQL: &str = provenance::SQL;
-
 mod provenance;
 mod values;
 

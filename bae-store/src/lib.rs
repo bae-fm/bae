@@ -28,9 +28,9 @@ pub mod query;
 pub mod read;
 pub mod schema;
 pub use schema::{
-    configure_store, Schema, SchemaCollation, SchemaFunction, SchemaPart, SqlArguments, FOLD_CASE,
-    NAME_KEY, NAME_LIST_KEY, NATURAL_ORDER, SEARCH_PATTERN,
+    configure_store, Schema, SchemaCollation, SchemaFunction, SchemaPart, SqlArguments,
 };
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 mod store;
 pub use store::{
     unsent_to_storage, utc_now, StorageSetupSteps, Store, RECORDED_STORAGE, UNMETERED_ONLY,

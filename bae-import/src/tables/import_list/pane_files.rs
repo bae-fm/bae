@@ -7,24 +7,20 @@ use super::*;
 use crate::folder_scanner::FileVersion;
 use crate::{PaneFile, PaneFileRole, PaneFiles};
 use bae_records::source_audio::{source_audio_summary_sql, SourceAudioSummary};
-use bae_store::SchemaFunction;
 use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
 use bae_util::content_type_hint::ContentTypeHint;
 
 /// `bae_supported_cover`: whether a cover picker can show the image at the
 /// path its one argument names, as its extension says.
-pub(super) static SUPPORTED_COVER: SchemaFunction = SchemaFunction {
-    name: "bae_supported_cover",
-    arguments: 1,
-    version: 1,
-    compute: |arguments| {
-        let path = arguments.get::<String>(0)?;
-        Ok(rusqlite::types::Value::Integer(i64::from(ContentTypeHint::path_is_supported_cover(
-            std::path::Path::new(&path),
-        ))))
-    },
-};
+pub(crate) fn supported_cover(
+    arguments: &bae_store::SqlArguments<'_>,
+) -> rusqlite::Result<rusqlite::types::Value> {
+    let path = arguments.get::<String>(0)?;
+    Ok(rusqlite::types::Value::Integer(i64::from(ContentTypeHint::path_is_supported_cover(
+        std::path::Path::new(&path),
+    ))))
+}
 
 /// The pane's files of the candidate the statement binds as `:key`, as one
 /// JSON document.

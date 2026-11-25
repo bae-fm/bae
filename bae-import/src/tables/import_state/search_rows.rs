@@ -16,8 +16,6 @@
 //! search replaces it, and the table is emptied as the library opens.
 //! Its tables are `search_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("search_rows.sql");
-
 use super::cards_read::{groups_of, search_cards_sql};
 use super::column_list::{ColumnList, Columns, JsonColumns};
 use super::layout::lay_out_search_on;

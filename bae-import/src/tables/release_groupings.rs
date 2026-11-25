@@ -12,10 +12,6 @@
 //! folder's files (see `parent_files_on`). Their tables are
 //! `release_groupings.sql`.
 
-/// The release groupings' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("release_groupings.sql")]);
-
 use super::folder_scans::{self, EntrySource, RowSources};
 use super::*;
 use crate::folder_scanner::{

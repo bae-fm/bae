@@ -11,8 +11,6 @@
 //!
 //! Its table is `album_link_rows.sql`.
 
-pub(super) const SQL: &str = include_str!("album_link_rows.sql");
-
 use super::*;
 use bae_catalogs::album_links::{AlbumLinks, GroupAlbum};
 use bae_catalogs::records::MetadataRef;

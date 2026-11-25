@@ -3,8 +3,6 @@
 //! draft and read back with every read that shows it.
 //! Its table is `provenance.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("provenance.sql");
-
 use super::*;
 use crate::MetadataProvenance;
 

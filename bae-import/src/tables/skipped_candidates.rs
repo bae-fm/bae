@@ -8,10 +8,6 @@ use super::*;
 use crate::CandidateKey;
 use std::path::Path;
 
-/// The skipped candidates' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("skipped_candidates.sql")]);
-
 /// Forget every candidate set aside at or below `folders`.
 pub(super) fn forget_at_or_below(
     sql: &CovenWrite<'_>,

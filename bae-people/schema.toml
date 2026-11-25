@@ -1,0 +1,12 @@
+# People's part: the key lists of names order by is the one function its reads
+# name.
+[[part]]
+sql = ["src/people.sql"]
+functions = ["bae_store::NAME_KEY"]
+synced = "crate::synced::synced_tables"
+namespaces = "crate::synced::namespaces"
+first_write = "crate::people::rating_systems::write_first_rating_systems"
+joining_write = "crate::people::joining::write_profile"
+
+[[part]]
+sql = ["src/membership.sql"]

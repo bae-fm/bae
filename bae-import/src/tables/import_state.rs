@@ -4,32 +4,6 @@
 //! the standing and the import that commits it. Their tables are the SQL
 //! files beside the row files.
 
-/// The candidate state's part of the library's schema. Each file runs after
-/// the ones creating the tables its triggers fire on: the standings before
-/// the runs a standing moving off deletes.
-pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
-    seed_rows::SQL,
-    pane_rows::SQL,
-    pane_rows::VALUES_SQL,
-    file_decision_rows::SQL,
-    cover_rows::SQL,
-    album_pick_rows::SQL,
-    pane_rows::PROVENANCE_SQL,
-    release_link_rows::SQL,
-    claim_rows::SQL,
-    pane_failure_rows::SQL,
-    standing_rows::SQL,
-    run_rows::SQL,
-    search_rows::SQL,
-    failure_rows::SQL,
-    signal_rows::SQL,
-    lookup_choice_rows::SQL,
-    verdict_rows::SQL,
-    match_rows::SQL,
-    ledger_rows::SQL,
-    blank_draft_rows::SQL,
-]);
-
 use super::*;
 
 /// Why a write about a candidate's state, or the read a run starts from, was

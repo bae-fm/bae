@@ -155,10 +155,6 @@ fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae
     Ok(SyncActivity::new(&status, &uploads, &downloads))
 }
 
-/// The SQL creating the Uploading line's batch and its number, and the
-/// triggers that keep them.
-pub(super) const SQL: &str = include_str!("sync_activity.sql");
-
 /// The Uploading line's batch, how many files this process is sending now,
 /// and what holds the queue back. The bytes the files move are not read, so
 /// a confirmed part reruns nothing.

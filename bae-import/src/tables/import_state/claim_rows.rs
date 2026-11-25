@@ -13,8 +13,6 @@
 //! ([`ImportTables::store_import_reads`]).
 //! Its tables are `claim_rows.sql`.
 
-pub(super) const SQL: &str = include_str!("claim_rows.sql");
-
 use super::release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
 use super::*;
 use crate::ReleaseLink;

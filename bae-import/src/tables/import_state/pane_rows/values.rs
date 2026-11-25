@@ -4,8 +4,6 @@
 //! each track's rows name that track's row; `tables::draft_rows` writes
 //! and reads them. Their tables are `values.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("values.sql");
-
 #[cfg(test)]
 #[path = "values_tests.rs"]
 mod tests;

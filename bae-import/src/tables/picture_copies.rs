@@ -11,10 +11,6 @@ use crate::VolumeKind;
 use bae_pictures::{CopyFormat, PictureCopy, PictureStep};
 use std::path::Path;
 
-/// The picture copies' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("picture_copies.sql")]);
-
 /// A picture of the import list as its copies are kept: the candidate that
 /// holds its file and the volume that candidate's watched folder is on, which
 /// the picture's reads wait behind, and what names the picture: the kind of

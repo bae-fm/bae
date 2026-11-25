@@ -12,7 +12,6 @@ mod fetch;
 
 #[cfg(desktop)]
 pub use archive::{musicbrainz_gallery, musicbrainz_group_gallery};
-pub(crate) use cache::SCHEMA;
 pub use cache::{RemoteImage, RemoteImageCache};
 #[cfg(desktop)]
 pub use covers::{musicbrainz_album_cover, musicbrainz_release_cover, push_unique_cover};

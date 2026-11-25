@@ -17,10 +17,6 @@ use rusqlite::{params, Row};
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
-/// The preferences' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("row.sql")]);
-
 /// This device's preferences for the library.
 pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
     store.read(|sql| Ok(preferences_on(&sql)?)).await

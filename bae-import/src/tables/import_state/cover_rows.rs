@@ -3,8 +3,6 @@
 //! serves of a remote one in `import_candidate_cover_copy`.
 //! Its tables are `cover_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("cover_rows.sql");
-
 use super::*;
 use crate::cover_art::PreparedCover;
 use crate::tables::downscaled_copies::{copies_json_sql, copies_of};

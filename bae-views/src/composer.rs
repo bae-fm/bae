@@ -6,9 +6,6 @@
 use super::*;
 use crate::album_detail::{WorkChild, WorkDetail, WorkReleaseSummary};
 
-/// The SQL creating this part's tables and triggers.
-pub(super) const SQL: &str = include_str!("composer.sql");
-
 impl LibraryViews {
     #[cfg(test)]
     pub(crate) async fn get_composer_page(

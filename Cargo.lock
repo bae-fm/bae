@@ -975,6 +975,7 @@ dependencies = [
  "axum",
  "bae-desktop-cfg",
  "bae-diagnostics",
+ "bae-schema-manifest",
  "bae-store",
  "bae-types",
  "bae-util",
@@ -1056,6 +1057,7 @@ dependencies = [
  "bae-pictures",
  "bae-preferences",
  "bae-records",
+ "bae-schema-manifest",
  "bae-store",
  "bae-track-audio",
  "bae-types",
@@ -1105,6 +1107,7 @@ dependencies = [
  "bae-playback",
  "bae-preferences",
  "bae-records",
+ "bae-schema-manifest",
  "bae-store",
  "bae-sync-status",
  "bae-track-audio",
@@ -1171,6 +1174,7 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
  "bae-records",
+ "bae-schema-manifest",
  "bae-store",
  "bae-types",
  "bae-util",
@@ -1211,6 +1215,7 @@ dependencies = [
  "bae-people",
  "bae-preferences",
  "bae-records",
+ "bae-schema-manifest",
  "bae-store",
  "bae-track-audio",
  "bae-types",
@@ -1241,6 +1246,7 @@ dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
  "bae-diagnostics",
+ "bae-schema-manifest",
  "bae-store",
  "bae-util",
  "coven",
@@ -1258,6 +1264,7 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
+ "bae-schema-manifest",
  "bae-store",
  "bae-types",
  "bae-util",
@@ -1275,11 +1282,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-schema-manifest"
+version = "0.0.0-dev"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "bae-store"
 version = "0.0.0-dev"
 dependencies = [
  "bae-app-dir",
  "bae-desktop-cfg",
+ "bae-schema-manifest",
  "bae-util",
  "coven",
  "hex",
@@ -1335,6 +1351,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-people",
  "bae-records",
+ "bae-schema-manifest",
  "bae-store",
  "bae-types",
  "bae-util",
@@ -1378,6 +1395,7 @@ dependencies = [
  "bae-desktop-cfg",
  "bae-preferences",
  "bae-records",
+ "bae-schema-manifest",
  "bae-store",
  "bae-types",
  "bae-util",
@@ -1451,6 +1469,7 @@ dependencies = [
  "bae-people",
  "bae-playback",
  "bae-records",
+ "bae-schema-manifest",
  "bae-store",
  "bae-sync-status",
  "bae-transfers",

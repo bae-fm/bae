@@ -9,9 +9,6 @@ use bae_store::DbError;
 use bae_util::name_key::{InvalidLanguage, NameKeys, DATA_VERSION};
 use rusqlite::params;
 
-/// The SQL creating `name_sort`.
-pub(super) const SQL: &str = include_str!("name_sort.sql");
-
 /// A language bae cannot order the device's names in.
 #[derive(Debug, thiserror::Error)]
 pub enum SortLanguageError {

@@ -42,8 +42,7 @@ pub use server::{
 #[cfg(any(test, feature = "test-utils"))]
 use save::default_save_presets;
 
-/// The preferences' part of the library's schema.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[row::SCHEMA];
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 
 /// The schema this crate's tests open their stores on: the preferences' part.
 #[cfg(test)]

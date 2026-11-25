@@ -10,9 +10,6 @@ use bae_records::records::queued_uploads::{
     upload_queue_wait_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS, UPLOAD_QUEUE_HOLD,
 };
 
-/// The SQL creating this part's tables and triggers.
-pub(super) const SQL: &str = include_str!("storage.sql");
-
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {

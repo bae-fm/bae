@@ -321,7 +321,7 @@ pub use scan_passes::store_scan_item;
 pub use service::ImportService;
 pub use session::{MetadataPresentation, PaneCommand, PaneFailure, PaneOutcome};
 #[cfg(desktop)]
-pub use tables::SCHEMA_PARTS;
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 #[cfg(desktop)]
 pub use tables::{
     CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,

@@ -7,8 +7,6 @@
 //! decided nothing, which reads back as [`LookupChoices::default`].
 //! Its tables are `lookup_choice_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("lookup_choice_rows.sql");
-
 use super::*;
 use bae_identify::{LookupChoices, SearchWords};
 

@@ -13,12 +13,6 @@ use crate::{CoverImageSource, CoverSelection};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::{CoverLabel, RemoteCover};
 
-/// The cover gallery's part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
-    include_str!("cover_gallery.sql"),
-    include_str!("cover_gallery/candidate.sql"),
-]);
-
 mod candidate;
 mod walk;
 

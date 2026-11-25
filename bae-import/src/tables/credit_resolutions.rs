@@ -16,12 +16,6 @@
 
 use rusqlite::{params, OptionalExtension};
 
-/// The credit resolutions' part of the library's schema. It runs after the
-/// part creating the draft's credit tables, which its triggers fire on.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("credit_resolutions.sql")])
-        .before_commit(answer_due_credits);
-
 /// Whether a draft holds a credit of the relation row `credit` by its folded
 /// name and catalog ids, as an SQL condition.
 fn held_sql(credit: &str) -> String {
@@ -86,7 +80,7 @@ pub(super) fn rule_answer_json_sql(credit: &str) -> String {
 /// Answer every credit the transaction's writes marked due and empty the
 /// list: each one a draft still holds gets the rule's answer, written where
 /// it differs from the stored one, and each one none holds loses its answer.
-fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> {
+pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> {
     let any_due: bool =
         sql.query_row("SELECT EXISTS (SELECT 1 FROM import_credit_resolution_due)", [], |row| {
             row.get(0)

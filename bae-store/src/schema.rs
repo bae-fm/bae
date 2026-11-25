@@ -2,8 +2,7 @@
 //! migrates to, and the synced tables, collations and SQL functions the
 //! schema's parts declare.
 
-mod text;
-pub use text::{FOLD_CASE, NAME_KEY, NAME_LIST_KEY, NATURAL_ORDER, SEARCH_PATTERN};
+pub(crate) mod text;
 
 /// The most each connection to a library keeps in its page cache. A cache
 /// holds only pages its connection has read, so a small library stays below

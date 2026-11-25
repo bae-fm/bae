@@ -3,8 +3,6 @@
 //! record said and the rows hanging off it, written and read back.
 //! Its tables are `match_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("match_rows.sql");
-
 use super::verdict_rows::Owner;
 use super::*;
 use crate::tables::album_link_rows::{album_links_column, album_links_of, AlbumLinkRow};

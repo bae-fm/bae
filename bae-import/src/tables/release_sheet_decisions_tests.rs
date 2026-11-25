@@ -5,16 +5,16 @@
 
 use std::collections::BTreeSet;
 
-/// The part's SCHEMA declares both of its tables synced, each with a shared
-/// key on its primary-key columns, and declares every table the part creates.
+/// Import's parts declare both tables of `release_sheet_decisions.sql` synced,
+/// each with a shared key on its primary-key columns, and declare no other
+/// table synced.
 #[test]
 fn the_sheet_decision_tables_are_the_part_s_synced_tables() {
     let create =
         regex::Regex::new(r"(?m)^\s*CREATE (?:VIRTUAL )?TABLE (?:IF NOT EXISTS )?(\w+)").unwrap();
-    let schema = bae_store::Schema::new(&[&[super::SCHEMA]]);
-    let created: BTreeSet<&str> = schema
-        .sql()
-        .flat_map(|sql| create.captures_iter(sql))
+    let schema = bae_store::Schema::new(&[crate::SCHEMA_PARTS]);
+    let created: BTreeSet<&str> = create
+        .captures_iter(include_str!("release_sheet_decisions.sql"))
         .map(|captures| captures.get(1).unwrap().as_str())
         .collect();
     let tables = schema.synced_tables();

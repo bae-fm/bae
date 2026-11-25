@@ -13,8 +13,6 @@
 //! identification standing are a release's.
 //! Its table is `run_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("run_rows.sql");
-
 use super::cards_read::StoredVerdictCards;
 use super::column_list::JsonColumns;
 use super::match_record::{match_record_sql, StoredRecord};

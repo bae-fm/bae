@@ -43,9 +43,7 @@ pub mod timeline;
 mod track_buffered;
 mod volume_level;
 
-/// The playback tables' part of the library's schema.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] =
-    &[tables::QUEUE_SCHEMA, tables::NOW_SCHEMA, tables::TIMELINE_SCHEMA, renderer::picker::SCHEMA];
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 
 /// The schema this crate's tests open their stores on: records' and release
 /// storage's parts, people's and membership's, preferences' and playback's.

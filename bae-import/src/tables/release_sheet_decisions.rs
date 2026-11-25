@@ -7,12 +7,7 @@
 //!
 //! Its tables are `release_sheet_decisions.sql`.
 
-/// The release sheet decisions' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("release_sheet_decisions.sql")])
-        .synced(synced_tables, no_namespaces);
-
-fn synced_tables() -> Vec<coven::SyncedTable> {
+pub(crate) fn synced_tables() -> Vec<coven::SyncedTable> {
     vec![
         coven::SyncedTable::new("release_sheet_bindings", coven::RowIdentity::SharedKey)
             .key_columns(["sheet_file_id", "file_reference"]),
@@ -21,7 +16,7 @@ fn synced_tables() -> Vec<coven::SyncedTable> {
     ]
 }
 
-fn no_namespaces() -> Vec<coven::Namespace> {
+pub(crate) fn no_namespaces() -> Vec<coven::Namespace> {
     Vec::new()
 }
 

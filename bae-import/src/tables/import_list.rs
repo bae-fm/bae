@@ -38,7 +38,7 @@ mod listed;
 mod mapping_rows;
 mod order;
 mod pane;
-mod pane_files;
+pub(crate) mod pane_files;
 mod placement;
 mod read;
 mod search;
@@ -56,32 +56,6 @@ pub use folder_images::{
     FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot,
 };
 
-/// The import list's part of the library's schema. Each file runs after the
-/// ones creating the tables its triggers fire on: the placement first, then
-/// the triggers that follow other domains' tables.
-pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
-    placement::SQL,
-    groups::SQL,
-    counts::SQL,
-    search::SQL,
-    follows_scans::SQL,
-    follows_groupings::SQL,
-    follows_candidates::SQL,
-    follows_library::SQL,
-])
-.functions(SQL_FUNCTIONS)
-.collations(SQL_COLLATIONS);
-
-/// The SQL functions the import's statements name.
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
-    &bae_store::FOLD_CASE,
-    &bae_store::SEARCH_PATTERN,
-    &super::watched_path::FOLDER_BELOW,
-    &super::watched_path::FOLDER_RELATIVE,
-    &super::trim::TRIM,
-    &pane_files::SUPPORTED_COVER,
-];
-
 /// The SQL condition that the scanned file `file` (a table alias over
 /// `scan_candidate_file`'s columns) is an image the gallery shows: artwork of
 /// a format a cover can be made from. The cover picker, the pane's images and
@@ -89,9 +63,6 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
 pub(crate) fn showable_artwork_sql(file: &str) -> String {
     format!("({file}.role = 'artwork' AND bae_supported_cover({file}.relative_path))")
 }
-
-/// The collations the import list's SQL names.
-const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];
 
 fn pending_filter_column(filter: PendingFilter) -> &'static str {
     match filter {

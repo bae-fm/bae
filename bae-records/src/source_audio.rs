@@ -11,7 +11,6 @@
 //! a release's stored files, and the import pane reads it over a scanned
 //! folder's files.
 
-use bae_store::SchemaFunction;
 use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
 
@@ -76,17 +75,14 @@ pub enum SourceAudioDifference {
 
 /// `bae_audio_codec`: the name bae shows for the codec of the audio content
 /// type that its one argument names, as stored.
-pub(crate) static AUDIO_CODEC: SchemaFunction = SchemaFunction {
-    name: "bae_audio_codec",
-    arguments: 1,
-    version: 1,
-    compute: |arguments| {
-        let content_type = arguments.get::<String>(0)?;
-        Ok(rusqlite::types::Value::Text(
-            ContentType::from_mime(&content_type).display_name().to_string(),
-        ))
-    },
-};
+pub(crate) fn audio_codec(
+    arguments: &bae_store::SqlArguments<'_>,
+) -> rusqlite::Result<rusqlite::types::Value> {
+    let content_type = arguments.get::<String>(0)?;
+    Ok(rusqlite::types::Value::Text(
+        ContentType::from_mime(&content_type).display_name().to_string(),
+    ))
+}
 
 /// An SQL expression for the summary of the audio files that the statement
 /// `audio` selects: a JSON object that [`SourceAudioSummary::deserialize_stored`]

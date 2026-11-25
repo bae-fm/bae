@@ -40,17 +40,14 @@ macro_rules! release_moves {
 
 mod album;
 pub use album::PrimaryReleaseError;
-mod artist_sql;
+pub(crate) mod artist_sql;
 pub use artist_sql::credit_artist_clauses;
-pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_IS_VARIOUS_ARTISTS, ARTIST_NAME_KEY};
-mod album_identity;
-#[cfg(desktop)]
-mod lengths_disagree;
-pub(crate) use album_identity::ALBUM_IDENTITY;
-mod catalog_rank;
-pub(crate) use catalog_rank::CATALOG_RANK;
+pub(crate) mod album_identity;
 mod artist;
 pub mod artist_credit_names;
+pub(crate) mod catalog_rank;
+#[cfg(desktop)]
+pub(crate) mod lengths_disagree;
 use artist_credit_names::settle_credit_name;
 pub mod artist_resolution;
 mod catalog_match;
@@ -176,31 +173,3 @@ impl Records {
         Records { store, ids }
     }
 }
-
-/// Records' part of the schema: `records.sql`, and the device's sort
-/// language's table (`records/name_sort.sql`).
-pub const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("records.sql"), name_sort::SQL])
-        .functions(SQL_FUNCTIONS)
-        .collations(SQL_COLLATIONS)
-        .synced(crate::synced::synced_tables, crate::synced::namespaces);
-
-/// The SQL functions that `records.sql` names, the artist functions that
-/// other crates' queries call, `bae_album_id`, which computes the library
-/// album id that the query finding a release's album calls, and
-/// `bae_audio_codec`, which the audio summary statement calls, and
-/// `bae_lengths_disagree`, which the import pane's and the release editor's
-/// track statements mark a listed length by.
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
-    &ALBUM_IDENTITY,
-    &CATALOG_RANK,
-    &ARTIST_NAME_KEY,
-    &ARTIST_IDENTITY,
-    &ARTIST_IS_VARIOUS_ARTISTS,
-    &crate::source_audio::AUDIO_CODEC,
-    #[cfg(desktop)]
-    &lengths_disagree::LENGTHS_DISAGREE,
-];
-
-/// The collations `records.sql` names.
-const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];

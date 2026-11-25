@@ -15,5 +15,4 @@ pub mod test_fixtures;
 pub use membership::Membership;
 pub use people::People;
 
-/// The parts of the schema people and membership hold, in the order they run.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[people::SCHEMA, membership::SCHEMA];
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));

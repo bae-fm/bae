@@ -11,8 +11,6 @@
 //! storing one fails. A run in flight stores its ledger as it stands.
 //! Its tables are `ledger_rows.sql`, which every device's library holds.
 
-pub(super) const SQL: &str = include_str!("ledger_rows.sql");
-
 use super::cards_read::{cell_cards_sql, groups_from, StoredCard};
 use super::column_list::Columns;
 use super::layout::{store_list_text, ListLayout, ListOwner, OwnersList};

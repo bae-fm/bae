@@ -8,10 +8,6 @@
 //! screens read the same tables through live queries. Its tables, `playback_state`
 //! included, are `queue.sql`.
 
-/// The queue's part of the library's schema.
-pub(crate) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("queue.sql")]);
-
 use super::queue_fill::{fill_on, ContextFill, ContextFilled};
 use super::*;
 use crate::{QueueEntry, QueueEntryId, QueueLane, RepeatMode};

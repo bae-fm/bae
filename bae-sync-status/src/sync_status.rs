@@ -17,10 +17,6 @@ pub use start_failure::StartFailureRecordError;
 pub use status_query::sync_status_on;
 pub use storage_setup::{SetupDismissError, StorageSetupState};
 
-/// Sync status's part of the schema: `sync_status.sql`.
-pub(crate) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("sync_status.sql")]);
-
 /// The library's sync status rows over the store.
 #[derive(Clone)]
 pub struct SyncStatus {

@@ -13,15 +13,6 @@
 //! Their tables are `source_releases.sql`, `source_releases/tracklist.sql` and
 //! `album_link_rows.sql`.
 
-/// The source releases' part of the library's schema. The release tables come
-/// first; the triggers that delete a release when no row names it fire on
-/// candidate state's tables, so the part runs after candidate state's.
-pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
-    include_str!("source_releases.sql"),
-    tracklist::SQL,
-    super::album_link_rows::SQL,
-]);
-
 use super::*;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::LookupCatalog;

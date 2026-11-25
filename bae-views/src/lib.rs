@@ -104,25 +104,7 @@ fn uuid_column<I: rusqlite::RowIndex + Copy>(row: &Row, column: I) -> rusqlite::
     uuid::Uuid::parse_str(&value).map_err(|error| column_conversion_error(row, column, error))
 }
 
-/// The library views' part of the library's schema: one domain, its files in
-/// the order each runs after the files creating the tables its triggers fire
-/// on.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(&[
-    album::LISTING_SQL,
-    artist::SQL,
-    composer::SQL,
-    composer_detail::SQL,
-    storage::SQL,
-    storage_totals::SQL,
-    sync_activity::SQL,
-    search::SQL,
-    name_keys::SQL,
-])
-.functions(SQL_FUNCTIONS)];
-
-/// The SQL functions the views' SQL names.
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] =
-    &[&bae_store::FOLD_CASE, &bae_store::NAME_KEY, &bae_store::NAME_LIST_KEY];
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 
 /// The schema this crate's tests open their stores on: records' and release
 /// storage's parts, people's and membership's, the sync status's part,

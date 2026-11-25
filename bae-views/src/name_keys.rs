@@ -4,9 +4,6 @@
 //! columns the listings' triggers write (`album/listing.sql`, `artist.sql`,
 //! `composer.sql`, `composer_detail.sql`, `storage.sql`, `search.sql`).
 
-/// The SQL creating this part's trigger.
-pub(crate) const SQL: &str = include_str!("name_keys.sql");
-
 #[cfg(test)]
 impl crate::LibraryViews {
     /// Write every stored name key as an earlier build's collation data

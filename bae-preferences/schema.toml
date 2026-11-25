@@ -1,0 +1,2 @@
+[[part]]
+sql = ["src/row.sql"]

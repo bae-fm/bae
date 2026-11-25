@@ -5,9 +5,6 @@
 //!
 //! Its tables and the triggers keeping them are `search.sql`.
 
-/// The SQL creating this part's tables and triggers.
-pub(super) const SQL: &str = include_str!("search.sql");
-
 /// A non-blank library search query. [`parse`](Self::parse) is the single
 /// definition of "what counts as a searchable query": it trims surrounding
 /// whitespace and rejects an empty or all-whitespace string. A blank query is

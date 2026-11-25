@@ -17,10 +17,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tracing::{debug, warn};
 
-/// The image cache's part of the library's schema.
-pub(crate) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("cache.sql")]);
-
 /// Encoded provider images retained across launches.
 const REMOTE_IMAGE_DISK_BUDGET: u64 = 128 * 1024 * 1024;
 

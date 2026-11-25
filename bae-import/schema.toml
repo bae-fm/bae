@@ -1,0 +1,147 @@
+# The SQL functions whose bodies import defines.
+
+[[function]]
+static = "FOLDER_BELOW"
+name = "bae_folder_below"
+arguments = 2
+version = 2
+compute = "crate::tables::watched_path::folder_below_sql"
+
+[[function]]
+static = "FOLDER_RELATIVE"
+name = "bae_folder_relative"
+arguments = 2
+version = 2
+compute = "crate::tables::watched_path::folder_relative_sql"
+
+[[function]]
+static = "TRIM"
+name = "bae_trim"
+arguments = 1
+version = 1
+compute = "crate::tables::trim::trim"
+
+[[function]]
+static = "SUPPORTED_COVER"
+name = "bae_supported_cover"
+arguments = 1
+version = 1
+compute = "crate::tables::import_list::pane_files::supported_cover"
+
+# Import's parts, in the order they run.
+
+[[part]]
+sql = [
+    "src/tables/watched_folders.sql",
+]
+
+[[part]]
+sql = [
+    "src/tables/skipped_candidates.sql",
+]
+
+[[part]]
+sql = [
+    "src/tables/folder_scans.sql",
+    "src/tables/folder_scans/progress.sql",
+]
+
+[[part]]
+sql = [
+    "src/tables/release_groupings.sql",
+]
+
+[[part]]
+sql = [
+    "src/tables/import_origin.sql",
+]
+
+[[part]]
+sql = [
+    "src/tables/release_sheet_decisions.sql",
+]
+synced = "crate::tables::release_sheet_decisions::synced_tables"
+namespaces = "crate::tables::release_sheet_decisions::no_namespaces"
+
+# Each file of candidate state runs after the ones creating the tables its
+# triggers fire on: the standings before the runs a standing moving off deletes.
+[[part]]
+sql = [
+    "src/tables/import_state/seed_rows.sql",
+    "src/tables/import_state/pane_rows.sql",
+    "src/tables/import_state/pane_rows/values.sql",
+    "src/tables/import_state/file_decision_rows.sql",
+    "src/tables/import_state/cover_rows.sql",
+    "src/tables/import_state/album_pick_rows.sql",
+    "src/tables/import_state/pane_rows/provenance.sql",
+    "src/tables/import_state/release_link_rows.sql",
+    "src/tables/import_state/claim_rows.sql",
+    "src/tables/import_state/pane_failure_rows.sql",
+    "src/tables/import_state/standing_rows.sql",
+    "src/tables/import_state/run_rows.sql",
+    "src/tables/import_state/search_rows.sql",
+    "src/tables/import_state/failure_rows.sql",
+    "src/tables/import_state/signal_rows.sql",
+    "src/tables/import_state/lookup_choice_rows.sql",
+    "src/tables/import_state/verdict_rows.sql",
+    "src/tables/import_state/match_rows.sql",
+    "src/tables/import_state/ledger_rows.sql",
+    "src/tables/import_state/blank_draft_rows.sql",
+]
+
+# The release tables come first; the triggers that delete a release when no row
+# names it fire on candidate state's tables, so this part runs after candidate
+# state's.
+[[part]]
+sql = [
+    "src/tables/source_releases.sql",
+    "src/tables/source_releases/tracklist.sql",
+    "src/tables/album_link_rows.sql",
+]
+
+# The import list's files each run after the ones creating the tables its
+# triggers fire on: the placement first, then the triggers that follow other
+# domains' tables.
+[[part]]
+sql = [
+    "src/tables/import_list/placement.sql",
+    "src/tables/import_list/groups.sql",
+    "src/tables/import_list/counts.sql",
+    "src/tables/import_list/search.sql",
+    "src/tables/import_list/follows_scans.sql",
+    "src/tables/import_list/follows_groupings.sql",
+    "src/tables/import_list/follows_candidates.sql",
+    "src/tables/import_list/follows_library.sql",
+]
+functions = [
+    "bae_store::FOLD_CASE",
+    "bae_store::SEARCH_PATTERN",
+    "crate::FOLDER_BELOW",
+    "crate::FOLDER_RELATIVE",
+    "crate::TRIM",
+    "crate::SUPPORTED_COVER",
+]
+collations = ["bae_store::NATURAL_ORDER"]
+
+[[part]]
+sql = [
+    "src/tables/cover_gallery.sql",
+    "src/tables/cover_gallery/candidate.sql",
+]
+
+[[part]]
+sql = [
+    "src/tables/catalog_apply_steps.sql",
+]
+
+# Runs after the part creating the draft's credit tables, which its triggers fire on.
+[[part]]
+sql = [
+    "src/tables/credit_resolutions.sql",
+]
+before_commit = "crate::tables::credit_resolutions::answer_due_credits"
+
+[[part]]
+sql = [
+    "src/tables/picture_copies.sql",
+]

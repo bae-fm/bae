@@ -4,8 +4,6 @@
 //!
 //! Their tables are `tracklist.sql`.
 
-pub(super) const SQL: &str = include_str!("tracklist.sql");
-
 use super::*;
 
 /// The next entry and work node numbers of the release being written.

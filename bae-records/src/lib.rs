@@ -53,6 +53,4 @@ pub use resolved_track_audio::{
 };
 pub use upload_progress::{UploadActivity, UploadProgress};
 
-/// The parts of the schema records and release storage hold, in the order
-/// they run.
-pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[records::SCHEMA, release_storage::SCHEMA];
+include!(concat!(env!("OUT_DIR"), "/schema.rs"));

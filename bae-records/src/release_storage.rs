@@ -2,10 +2,6 @@
 //! table, which triggers keep from the release's files, coven's records of
 //! them, pins and the upload queue.
 
-/// Release storage's part of the schema: `release_storage.sql`.
-pub const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("release_storage.sql")]);
-
 /// Plant, in the library file under `directory`, the device `device` as the
 /// one `release`'s storage row names as alone holding one of its audio files,
 /// as damage to the row would leave it.
