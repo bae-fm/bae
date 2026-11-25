@@ -12,6 +12,7 @@
 .bae-accent { color: var(--accent); fill: var(--accent); }
 .bae-muted { color: var(--text-secondary); }
 .bae-glyph { flex: none; display: block; }
+.bae-glyph-button { flex: none; display: block; }
 .bae-ph { background: var(--missing-art); border-radius: var(--radius-bar); }
 .bae-waitarc { position: absolute; inset: 0; color: var(--accent); animation: bae-spin 1s linear infinite reverse; }
 .bae-seek { display: flex; align-items: center; gap: calc(var(--space-group) - var(--space-hairline)); width: 100%; }

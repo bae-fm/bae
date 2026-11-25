@@ -61,6 +61,12 @@
     if (iconTokens[name] === '') throw new Error('tokens.json has no icon role `' + role + '` for ' + (android ? 'Android' : 'macOS'));
     return 'var(' + name + ')';
   }
+  // A glyph's size in points: a number of points, or a macOS icon role's token.
+  function iconPoints(size) {
+    if (typeof size === 'number') return size;
+    var token = iconSize(size).slice(4, -1);
+    return parseFloat(iconTokens[token]);
+  }
   function iconBox(role, android) {
     var size = iconSize(role, android);
     return { width: size, height: size };
