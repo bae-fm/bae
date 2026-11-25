@@ -407,12 +407,11 @@
   // One sort criterion: its field's menu, its direction (`direction`: up or down) and, when the sort has several criteria (`removable`), remove.
   function MacSortPill(props) {
     var down = props.direction === 'down';
-    // The arrow is arrow.up or arrow.down at 11 points, whose frame the app's shots measure 8.5 wide: the box keeps that width, centred on the drawn arrow.
-    var arrow = h('svg', { width: 8.5, height: 11, viewBox: '2.75 0 18.5 24', style: { overflow: 'visible' }, 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: down ? 'M12 4v16M5 13l7 7 7-7' : 'M12 20V4M5 11l7-7 7 7' }));
     return h('span', { className: 'bae-m-sortpill' },
-      // The field is a menu of the fields; the arrow, named for the direction, flips it.
+      // The field is a menu of the fields.
       h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 'badge', text: true, className: 'bae-muted' })),
-      h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': down ? 'Descending' : 'Ascending' }, arrow),
+      // The arrow, arrow.up or arrow.down in the 8.5 by 11 pt frame the app sets, flips it.
+      h(Glyph, { set: 'mac', name: down ? 'arrowDown' : 'arrowUp', size: 'small', frame: [8.5, 11], button: down ? 'Descending' : 'Ascending', className: 'bae-muted' }),
       props.removable ? h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 'badge' })) : null);
   }
 
