@@ -7,17 +7,15 @@ struct PlaylistPicture: View {
     let cover: BridgePlaylistCover
     let size: CGFloat
 
-    /// The gap between the four covers of a grid.
-    private static let gap: CGFloat = 1
-
     var body: some View {
         switch cover {
         case .single(let cover):
             Artwork(imageRef: cover, pointSize: size, cornerRadius: nil)
                 .frame(width: size, height: size)
         case .grid(let covers):
-            let cell = (size - Self.gap) / 2
-            VStack(spacing: Self.gap) {
+            // The four covers touch, as the board and Android draw them.
+            let cell = size / 2
+            VStack(spacing: 0) {
                 row(covers, from: 0, cell: cell)
                 row(covers, from: 2, cell: cell)
             }
@@ -30,7 +28,7 @@ struct PlaylistPicture: View {
         from start: Int,
         cell: CGFloat
     ) -> some View {
-        HStack(spacing: Self.gap) {
+        HStack(spacing: 0) {
             ForEach(start..<start + 2, id: \.self) { index in
                 Artwork(
                     imageRef: index < covers.count ? covers[index] : nil,
