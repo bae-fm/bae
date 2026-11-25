@@ -5,6 +5,7 @@ import android.icu.text.ListFormatter
 import android.icu.text.MeasureFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
+import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -259,6 +260,12 @@ interface ErrorDisplays {
     /** Null when the play played everything it named. */
     fun display(outcome: BridgePlayOutcome): DisplayError?
 }
+
+/**
+ * The resolver of the screen being drawn, where a view has none passed to it: a shot provides a fixed one, and none
+ * provided means the device's locale ([LocaleErrorDisplays]).
+ */
+val LocalErrorDisplays = staticCompositionLocalOf<ErrorDisplays?> { null }
 
 /** The production resolver: renders for the device locale via the Core catalog. */
 class LocaleErrorDisplays(

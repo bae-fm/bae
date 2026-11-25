@@ -1,6 +1,5 @@
 package fm.bae.app.ui.albumdetail
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.compose.foundation.Canvas
@@ -22,7 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -44,12 +42,14 @@ import androidx.compose.ui.unit.IntSize
 import fm.bae.app.BaeLogger
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import fm.bae.app.LocalBugReports
+import fm.bae.app.LocalErrorDisplays
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.data.ImageContent
 import fm.bae.app.data.LocalPictureTileStore
 import fm.bae.app.data.PictureTileStore
 import fm.bae.app.data.UnreadableImage
-import fm.bae.app.displayError
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -346,13 +346,12 @@ internal fun ZoomableGalleryImage(
     val store = LocalPictureTileStore.current
     val scope = rememberScreenScope()
     val bugs = LocalBugReports.current
-    val context = LocalContext.current
-    val failures = LocalGalleryFailures.current
+    val errors = LocalErrorDisplays.current ?: LocaleErrorDisplays(LocalContext.current)
     val tiles =
         remember(content) {
             content.tiledSource?.let { source ->
                 GalleryTiles(source, store, scope) { error ->
-                    onFailure(failures.explain(context, bugs, "zoom a picture", error))
+                    onFailure(galleryFailure(errors, bugs, "zoom a picture", error))
                 }
             }
         }
@@ -438,34 +437,19 @@ internal class GalleryFailure(
 }
 
 /**
- * How a failure of a gallery picture becomes what its notice shows: [galleryFailure], which reads core's words from the
- * bridge, unless a shot, whose harness cannot load the bridge, provides the values itself.
- */
-internal fun interface GalleryFailures {
-    fun explain(
-        context: Context,
-        bugs: BugReports,
-        operation: String,
-        error: Exception,
-    ): GalleryFailure
-}
-
-internal val LocalGalleryFailures = staticCompositionLocalOf { GalleryFailures(::galleryFailure) }
-
-/**
  * What stopped a gallery picture from loading or zooming: what core says when it could not do it, whose error says
  * whether trying again can help; a picture file this device cannot decode, which retrying does not mend; and
  * otherwise a bug, which is reported and not retried.
  */
 internal fun galleryFailure(
-    context: Context,
+    errors: ErrorDisplays,
     bugs: BugReports,
     operation: String,
     error: Exception,
 ): GalleryFailure =
     when (error) {
         is BridgeException -> {
-            val shown = context.displayError(error)
+            val shown = errors.display(error)
             GalleryFailure(shown, shown?.offersRetry ?: false)
         }
 
