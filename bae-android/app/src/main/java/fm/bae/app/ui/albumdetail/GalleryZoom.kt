@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -346,11 +347,12 @@ internal fun ZoomableGalleryImage(
     val scope = rememberScreenScope()
     val bugs = LocalBugReports.current
     val context = LocalContext.current
+    val failures = LocalGalleryFailures.current
     val tiles =
         remember(content) {
             content.tiledSource?.let { source ->
                 GalleryTiles(source, store, scope) { error ->
-                    onFailure(galleryFailure(context, bugs, "zoom a picture", error))
+                    onFailure(failures.explain(context, bugs, "zoom a picture", error))
                 }
             }
         }
@@ -434,6 +436,21 @@ internal class GalleryFailure(
         val Final = GalleryFailure(null, offersRetry = false)
     }
 }
+
+/**
+ * How a failure of a gallery picture becomes what its notice shows: [galleryFailure], which reads core's words from the
+ * bridge, unless a shot, whose harness cannot load the bridge, provides the values itself.
+ */
+internal fun interface GalleryFailures {
+    fun explain(
+        context: Context,
+        bugs: BugReports,
+        operation: String,
+        error: Exception,
+    ): GalleryFailure
+}
+
+internal val LocalGalleryFailures = staticCompositionLocalOf { GalleryFailures(::galleryFailure) }
 
 /**
  * What stopped a gallery picture from loading or zooming: what core says when it could not do it, whose error says

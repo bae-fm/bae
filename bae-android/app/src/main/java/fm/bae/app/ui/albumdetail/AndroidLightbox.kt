@@ -275,6 +275,7 @@ private fun GalleryImage(
         val unloaded = stringResource(R.string.image_load_failed)
         val context = LocalContext.current
         val bugs = LocalBugReports.current
+        val failures = LocalGalleryFailures.current
 
         LaunchedEffect(content, fitSize, attempt) {
             if (fitted != null) return@LaunchedEffect
@@ -290,7 +291,7 @@ private fun GalleryImage(
                 throw e
             } catch (e: Exception) {
                 logger.error("Failed to load gallery image $label", e)
-                failure = galleryFailure(context, bugs, "load a gallery image", e)
+                failure = failures.explain(context, bugs, "load a gallery image", e)
             }
         }
 

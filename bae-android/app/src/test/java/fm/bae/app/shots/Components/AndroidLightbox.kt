@@ -3,6 +3,7 @@ package fm.bae.app.shots
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import fm.bae.app.BugReports
+import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
@@ -10,7 +11,10 @@ import fm.bae.app.data.LocalPictureTileStore
 import fm.bae.app.data.PictureTileStore
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.albumdetail.GalleryFailure
+import fm.bae.app.ui.albumdetail.GalleryFailures
 import fm.bae.app.ui.albumdetail.GalleryViewer
+import fm.bae.app.ui.albumdetail.LocalGalleryFailures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Test
@@ -28,6 +32,10 @@ class AndroidLightboxShots : BoardShot() {
     fun androidComponentLightboxFailed() = shot("android.component.lightbox.failed") { Lightbox(noBytes(), count = 4u) }
 
     @Test
+    fun androidComponentLightboxFailedDetails() =
+        shot("android.component.lightbox.failed-details") { Lightbox(failing(), count = 4u, failures = withCauses) }
+
+    @Test
     fun androidComponentLightboxOneImage() = shot("android.component.lightbox.one-image") { Lightbox(shownImage(), count = 1u) }
 }
 
@@ -36,9 +44,11 @@ class AndroidLightboxShots : BoardShot() {
 private fun Lightbox(
     store: ImageStore,
     count: UInt,
+    failures: GalleryFailures = LocalGalleryFailures.current,
 ) = ScreenScene {
     CompositionLocalProvider(
         LocalImageStore provides store,
+        LocalGalleryFailures provides failures,
         LocalPictureTileStore provides PictureTileStore(FakeAppHandle()),
         LocalBugReports provides BugReports(),
     ) {
@@ -71,3 +81,16 @@ private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _, _ -> awa
 
 /** A store with no bytes for the image, so the lightbox shows the failure with Retry and no Details. */
 private fun noBytes() = ImageStore(dispatcher = Dispatchers.Unconfined)
+
+/** A store whose read of the image fails, so the lightbox shows its failure. */
+private fun failing() =
+    ImageStore(
+        fetchReleaseImageBytes = { _, _, _ -> throw IllegalStateException("the read failed") },
+        dispatcher = Dispatchers.Unconfined,
+    )
+
+/** What core's words and causes for that failure are, which the shot states itself: the bridge is not loaded here. */
+private val withCauses =
+    GalleryFailures { _, _, _, _ ->
+        GalleryFailure(DisplayError("Could not reach the cloud.", "dns error"), offersRetry = true)
+    }
