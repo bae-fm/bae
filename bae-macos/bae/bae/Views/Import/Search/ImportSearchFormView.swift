@@ -112,7 +112,8 @@ struct ImportSearchFormView: View {
                             label: $0.title,
                             systemImage: nil
                         )
-                    }
+                    },
+                    fillsWidth: true
                 )
 
                 fields
