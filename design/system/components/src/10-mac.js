@@ -197,7 +197,7 @@
     if (kind === 'icon') {
       var icon = props.icon || 'copy';
       rest['aria-label'] = props.label || icon;
-      return h('button', rest, icon === 'check' ? h(CheckGlyph, { size: 'medium' }) : h(CopyGlyph, { size: 'medium' }));
+      return h('button', rest, h(Glyph, { set: 'mac', name: icon === 'check' ? 'checkmark' : 'copy', weight: icon === 'check' ? 'semibold' : null, size: 'small' }));
     }
     // `label` beside words names a button whose words don't say what it does, such as the ⋯ that opens the Metadata menu.
     if (props.children != null && props.label != null) rest['aria-label'] = props.label;
