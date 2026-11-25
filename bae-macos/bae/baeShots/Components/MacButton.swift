@@ -67,6 +67,7 @@ extension ShotScene {
             MacButton(kind: .secondary, action: {}) {
                 Text("Set up").frame(maxWidth: .infinity)
             }
+            .fillsWidth()
             .controlSize(.large)
         },
         component("mac.component.button.tinted", height: 50) {
