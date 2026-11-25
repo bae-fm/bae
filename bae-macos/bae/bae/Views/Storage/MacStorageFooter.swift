@@ -16,14 +16,21 @@ struct MacStorageFooter: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
+            // One text, as the board draws the count with the dot and the
+            // total; no releases, no total: the preview's empty footer counts
+            // only.
             if let count = list.count {
                 // An Int, so the text reads the catalog's "%lld releases".
-                Text("\(Int(count.rows)) releases")
+                if let totalSize, totalSize > 0 {
+                    Text("\(Int(count.rows)) releases")
+                        + Text(verbatim: " " + FactList.glyph + " ")
+                        + Text("Total: \(totalSize.fileSizeText)")
+                }
+                else {
+                    Text("\(Int(count.rows)) releases")
+                }
             }
-            // No releases, no total: the preview's empty footer counts only.
-            if let totalSize, totalSize > 0 {
-                // One text, as the preview's footer draws the dot with the
-                // total.
+            else if let totalSize, totalSize > 0 {
                 Text(verbatim: FactList.glyph + " ")
                     + Text("Total: \(totalSize.fileSizeText)")
             }
