@@ -161,7 +161,7 @@
             : [props.note, copies.length && props.note ? ' ' : null, copies.length ? h(MacCopyText, { key: 'c', hover: props.copyHover, after: copies[0].after }, copies[0].text) : null]) : null),
       props.value != null && props.value !== '' ? h('span', { className: cx('bae-m-row-value', props.tone && 'bae-tone-' + props.tone) }, props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.value) : null,
       trail.length ? h('span', { className: 'bae-m-row-trail' }, trail) : null,
-      props.chevron ? h(Chevron, { className: 'bae-m-row-chevron' }) : null);
+      props.chevron ? h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', frame: [7, null], className: 'bae-m-row-chevron' }) : null);
   }
 
   // The row piece every Mac row with a leading icon is built from: `lead` in the leading column (size-lead wide, centred on the first line, kept even when empty so the text edge holds), the content, then `trail`. It has no inset of its own: the row it sits in places it.
