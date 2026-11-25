@@ -188,7 +188,7 @@ struct MacLightbox<Item: LightboxImage>: View {
     }
 
     private func loadedImageView(
-        _ nsImage: NSImage,
+        _ nsImage: DecodedImage,
         analysis: ImageAnalysis?
     ) -> some View {
         MacZoomablePicture(

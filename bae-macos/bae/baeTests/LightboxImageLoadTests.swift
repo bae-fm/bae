@@ -57,13 +57,4 @@ struct LightboxImageLoadTests {
 
         #expect(await failure(of: images) == .bug)
     }
-
-    @Test("An image that draws no bitmap is refused as a bug of the decode")
-    func imagesWithNoBitmapAreRefused() {
-        #expect(throws: ImageLoader.NoBitmap.self) {
-            try ImageLoader.drawing(
-                NSImage(size: NSSize(width: 10, height: 10))
-            )
-        }
-    }
 }

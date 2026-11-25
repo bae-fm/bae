@@ -17,10 +17,10 @@ final class LightboxImageLoad {
         /// No image yet: its bytes are being found or decoded.
         case loading
         /// Decoded to fit the stage; Live Text is still reading it.
-        case decoded(NSImage)
+        case decoded(DecodedImage)
         /// Decoded and read for Live Text. No analysis when the read failed,
         /// which is logged and leaves the image without selectable text.
-        case analysed(NSImage, ImageAnalysis?)
+        case analysed(DecodedImage, ImageAnalysis?)
         /// No bytes for the image, or they would not read or decode; logged.
         case failed(LightboxFailure)
     }
@@ -69,7 +69,7 @@ final class LightboxImageLoad {
         fitting points: CGFloat,
         displayScale: CGFloat,
         for current: Int
-    ) async -> NSImage? {
+    ) async -> DecodedImage? {
         do {
             guard
                 let decoded = try await images.image(
@@ -87,14 +87,6 @@ final class LightboxImageLoad {
             return isCurrent(current) ? decoded : nil
         }
         catch is CancellationError {
-            return nil
-        }
-        catch is ImageLoader.NoBitmap {
-            // The decode reported the bug where it found it.
-            logger.warning(
-                "The decoded lightbox image \(image.description) draws no bitmap"
-            )
-            fail(current, .bug)
             return nil
         }
         catch is ImageLoader.DecodeError {
@@ -120,7 +112,7 @@ final class LightboxImageLoad {
 
     /// Live Text's reading of the decoded `image`, or nil when the read
     /// failed or was cancelled.
-    private func readText(of image: NSImage) async -> ImageAnalysis? {
+    private func readText(of image: DecodedImage) async -> ImageAnalysis? {
         await textReader.read(image.bitmap)
     }
 
@@ -196,7 +188,7 @@ extension LightboxImageLoad {
 
 extension LightboxImageLoad.Phase {
     /// The image decoded to fit the stage, once there is one.
-    var image: NSImage? {
+    var image: DecodedImage? {
         switch self {
         case .decoded(let image), .analysed(let image, _): image
         case .loading, .failed: nil

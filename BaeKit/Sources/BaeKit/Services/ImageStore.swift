@@ -319,7 +319,7 @@ public final class ImageStore: Sendable, Observable {
         _ content: ImageContent,
         pointSize: CGFloat,
         displayScale: CGFloat
-    ) -> PlatformImage? {
+    ) -> DecodedImage? {
         let key = cacheKey(
             content,
             pointSize: pointSize,
@@ -340,7 +340,7 @@ public final class ImageStore: Sendable, Observable {
         pointSize: CGFloat,
         displayScale: CGFloat,
         turn: BridgePictureTurn = .visible
-    ) async throws -> PlatformImage? {
+    ) async throws -> DecodedImage? {
         #if DEBUG
             asked.change(by: 1)
             defer { asked.change(by: -1) }
@@ -387,7 +387,7 @@ public final class ImageStore: Sendable, Observable {
         displayScale: CGFloat,
         turn: BridgePictureTurn,
         control: LoadControl
-    ) async throws -> PlatformImage? {
+    ) async throws -> DecodedImage? {
         let pixels = Int((pointSize * displayScale).rounded())
         guard
             let data = try await decodeSource(
@@ -641,7 +641,7 @@ private final class LoadControl: @unchecked Sendable {
 
 private final class InFlightImageLoad: @unchecked Sendable {
     let control: LoadControl
-    let task: Task<PlatformImage?, Error>
+    let task: Task<DecodedImage?, Error>
     /// The requests still waiting on this load. Guarded by the owning
     /// `InFlightImageLoads`' lock.
     fileprivate var waiters = 0
@@ -650,7 +650,7 @@ private final class InFlightImageLoad: @unchecked Sendable {
     init(
         operation:
             @escaping @Sendable (LoadControl) async throws ->
-            PlatformImage?,
+            DecodedImage?,
         onEnd: @escaping @Sendable (LoadControl) -> Void
     ) {
         let control = LoadControl()
@@ -690,7 +690,7 @@ private final class InFlightImageLoads: @unchecked Sendable {
         _ key: String,
         operation:
             @escaping @Sendable (LoadControl) async throws ->
-            PlatformImage?
+            DecodedImage?
     ) -> InFlightImageWaiter {
         lock.lock()
         defer { lock.unlock() }
@@ -765,19 +765,19 @@ private final class InFlightImageLoads: @unchecked Sendable {
 final class DecodedImageCache: @unchecked Sendable {
     private static let bytesPerPixel = 4
 
-    private let cache: NSCache<NSString, PlatformImage>
+    private let cache: NSCache<NSString, DecodedImage>
 
     init(totalCostLimit: Int) {
-        let cache = NSCache<NSString, PlatformImage>()
+        let cache = NSCache<NSString, DecodedImage>()
         cache.totalCostLimit = totalCostLimit
         self.cache = cache
     }
 
-    func image(for key: String) -> PlatformImage? {
+    func image(for key: String) -> DecodedImage? {
         cache.object(forKey: key as NSString)
     }
 
-    func store(_ image: PlatformImage, for key: String) {
+    func store(_ image: DecodedImage, for key: String) {
         cache.setObject(
             image,
             forKey: key as NSString,
@@ -792,7 +792,7 @@ final class DecodedImageCache: @unchecked Sendable {
         static let didStore = Notification.Name("ImageStore.didStoreImage")
     #endif
 
-    static func decodedByteCost(of image: PlatformImage) -> Int {
+    static func decodedByteCost(of image: DecodedImage) -> Int {
         decodedByteCost(of: image.bitmap)
     }
 

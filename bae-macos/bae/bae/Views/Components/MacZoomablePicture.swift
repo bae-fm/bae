@@ -16,7 +16,7 @@ struct MacZoomablePicture: NSViewRepresentable {
     /// viewer zooms.
     let picture: BridgeCoverImageSource?
     /// The copy decoded to fit the stage.
-    let fit: NSImage
+    let fit: DecodedImage
     /// Live Text's reading of the fitted copy, once there is one.
     let fitAnalysis: ImageAnalysis?
     let images: ImageStore
@@ -204,7 +204,7 @@ final class ZoomScrollView: NSScrollView {
     var clickedBeside: () -> Void = {}
     private let aspect: CGSize
 
-    init(fit: NSImage) {
+    init(fit: DecodedImage) {
         picture = ZoomedPictureView(fit: fit)
         aspect = fit.size
         super.init(frame: .zero)
@@ -354,7 +354,7 @@ final class ZoomedPictureView: NSView {
         didSet { updateZoomLimit() }
     }
 
-    init(fit: NSImage) {
+    init(fit: DecodedImage) {
         fitBitmap = fit.bitmap
         super.init(frame: .zero)
         copy.image = fit

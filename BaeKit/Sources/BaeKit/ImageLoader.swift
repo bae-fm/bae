@@ -1,7 +1,6 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import os.log
 
 #if canImport(AppKit)
     import AppKit
@@ -16,55 +15,52 @@ import os.log
     public typealias PlatformImage = UIImage
 #endif
 
-extension PlatformImage {
-    /// The bitmap the image draws, or nil for an image that draws none.
-    public var drawnBitmap: CGImage? {
-        #if canImport(AppKit)
-            var rect = CGRect(origin: .zero, size: size)
-            return cgImage(
-                forProposedRect: &rect,
-                context: nil,
-                hints: nil
-            )
-        #elseif canImport(UIKit)
-            return cgImage
-        #endif
-    }
+/// An image a decode made, which carries the bitmap it was made from, so no
+/// reader meets a decoded image that draws none.
+public final class DecodedImage: PlatformImage, @unchecked Sendable {
+    /// The bitmap the image draws.
+    public let bitmap: CGImage
 
-    /// The bitmap the image draws. Every decode here makes one, and a viewer
-    /// that takes an image from a store checks it with `drawnBitmap` first,
-    /// so an image with none that reaches here is a bug.
-    public var bitmap: CGImage {
-        guard let bitmap = drawnBitmap else {
-            preconditionFailure("a decoded image is a bitmap")
+    #if canImport(AppKit)
+        /// `bitmap`, at `size` points.
+        init(bitmap: CGImage, size: CGSize) {
+            self.bitmap = bitmap
+            super.init(cgImage: bitmap, size: size)
         }
-        return bitmap
-    }
-}
 
-private let logger = Logger.bae("ImageLoader")
+        @available(*, unavailable)
+        required init?(coder _: NSCoder) {
+            fatalError("init(coder:) is not used")
+        }
+
+        @available(*, unavailable)
+        required init(
+            pasteboardPropertyList _: Any,
+            ofType _: NSPasteboard.PasteboardType
+        ) {
+            fatalError("init(pasteboardPropertyList:ofType:) is not used")
+        }
+    #elseif canImport(UIKit)
+        /// `bitmap`, at `scale` pixels to a point.
+        init(bitmap: CGImage, scale: CGFloat) {
+            self.bitmap = bitmap
+            super.init(cgImage: bitmap, scale: scale, orientation: .up)
+        }
+
+        @available(*, unavailable)
+        required init?(coder _: NSCoder) {
+            fatalError("init(coder:) is not used")
+        }
+
+        @available(*, unavailable)
+        required convenience init(imageLiteralResourceName _: String) {
+            fatalError("init(imageLiteralResourceName:) is not used")
+        }
+    #endif
+}
 
 public enum ImageLoader {
     public struct DecodeError: Error {}
-
-    /// A decode made an image that draws no bitmap, which no decode here
-    /// does: a bug, reported where it is found, unlike bytes that are no
-    /// image.
-    public struct NoBitmap: Error {}
-
-    /// `image` when it draws a bitmap, so nothing after the decode meets one
-    /// without; for one that draws none, reports the bug and throws
-    /// `NoBitmap`.
-    public static func drawing(_ image: PlatformImage) throws -> PlatformImage {
-        guard image.drawnBitmap != nil else {
-            let operation = "decode an image"
-            let detail = "the decoded image draws no bitmap"
-            logger.error("\(operation) failed: \(detail)")
-            CoreBugReporter().report(operation: operation, detail: detail)
-            throw NoBitmap()
-        }
-        return image
-    }
 
     /// Decodes the image in `data`, bytes already in memory (core reads files
     /// and hands over what the slot needs), to at most `points ×
@@ -73,7 +69,7 @@ public enum ImageLoader {
     /// produces an image backed by an already-decoded CGImage. Throws
     /// `CancellationError` if the surrounding task is cancelled, or
     /// `shouldStart` answers false, before the decode starts, or
-    /// `DecodeError` if the bytes can't be decoded, or `NoBitmap`. A decode that has started
+    /// `DecodeError` if the bytes can't be decoded. A decode that has started
     /// is not interrupted: its image is returned even to a cancelled caller.
     public static func load(
         data: Data,
@@ -81,14 +77,14 @@ public enum ImageLoader {
         displayScale: CGFloat,
         queue: ImageDecodeQueue,
         shouldStart: @escaping @Sendable () -> Bool
-    ) async throws -> PlatformImage {
+    ) async throws -> DecodedImage {
         let decoded = try await queue.run(shouldStart: shouldStart) {
             thumbnail(of: data, points: points, displayScale: displayScale)
         }
         guard let decoded else {
             throw DecodeError()
         }
-        return try drawing(decoded)
+        return decoded
     }
 
     /// Decodes the image in `data` at its own resolution, eagerly, for a
@@ -118,13 +114,13 @@ public enum ImageLoader {
     }
 }
 
-/// Decodes `data` to a platform image of at most `points × displayScale`
+/// Decodes `data` to an image of at most `points × displayScale`
 /// pixels, on the calling thread; nil when the bytes can't be decoded.
 private func thumbnail(
     of data: Data,
     points: CGFloat,
     displayScale: CGFloat
-) -> PlatformImage? {
+) -> DecodedImage? {
     // ShouldCacheImmediately forces the bytes-to-bitmap step to run on the
     // decode queue's thread instead of being deferred until first draw on
     // the main thread.
@@ -146,8 +142,8 @@ private func thumbnail(
     // The platform image's point size is the pixel size divided by
     // `displayScale`.
     #if canImport(AppKit)
-        return NSImage(
-            cgImage: cg,
+        return DecodedImage(
+            bitmap: cg,
             size: NSSize(
                 width: CGFloat(cg.width) / displayScale,
                 height: CGFloat(cg.height) / displayScale
@@ -156,6 +152,6 @@ private func thumbnail(
     #elseif canImport(UIKit)
         // Orientation is `.up`: the thumbnail decode already applied any EXIF
         // transform.
-        return UIImage(cgImage: cg, scale: displayScale, orientation: .up)
+        return DecodedImage(bitmap: cg, scale: displayScale)
     #endif
 }
