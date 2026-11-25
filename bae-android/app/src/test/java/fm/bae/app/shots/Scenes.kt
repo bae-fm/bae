@@ -398,6 +398,11 @@ internal fun BoxScope.OpenMenu(
 @Composable
 internal fun OnTheBackdrop(content: @Composable () -> Unit) = Row(modifier = Modifier.background(BaeTheme.colors.backdrop)) { content() }
 
+/** A queue row on the surface the queue's sheet gives it, as the board draws the row on its own surface. */
+@Composable
+internal fun OnTheSheet(content: @Composable () -> Unit) =
+    Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) { content() }
+
 /** [content] with an image store that resolves no image, so each cover draws its placeholder. */
 @Composable
 internal fun Images(content: @Composable () -> Unit) =

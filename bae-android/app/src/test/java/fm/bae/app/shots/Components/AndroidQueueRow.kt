@@ -9,41 +9,47 @@ class AndroidQueueRowShots : BoardShot() {
     @Test
     fun androidComponentQueueRowQueued() =
         component("android.component.queue-row.queued") {
-            Covers {
-                AndroidQueueRow(
-                    title = "Margins",
-                    artist = "Mara Quill",
-                    cover = PreviewData.imageRef("Northbound"),
-                    album = "Northbound",
-                    duration = "4:55",
-                )
+            OnTheSheet {
+                Covers {
+                    AndroidQueueRow(
+                        title = "Margins",
+                        artist = "Mara Quill",
+                        cover = PreviewData.imageRef("Northbound"),
+                        album = "Northbound",
+                        duration = "4:55",
+                    )
+                }
             }
         }
 
     @Test
     fun androidComponentQueueRowNowPlaying() =
         component("android.component.queue-row.now-playing") {
-            Covers {
-                AndroidQueueRow(
-                    title = "Low Tide Hours",
-                    artist = "Mara Quill",
-                    cover = PreviewData.imageRef("Low Tide Hours"),
-                    current = true,
-                )
+            OnTheSheet {
+                Covers {
+                    AndroidQueueRow(
+                        title = "Low Tide Hours",
+                        artist = "Mara Quill",
+                        cover = PreviewData.imageRef("Low Tide Hours"),
+                        current = true,
+                    )
+                }
             }
         }
 
     @Test
     fun androidComponentQueueRowDragging() =
         component("android.component.queue-row.dragging") {
-            Covers {
-                AndroidQueueRow(
-                    title = "Margins",
-                    artist = "Mara Quill",
-                    cover = PreviewData.imageRef("Northbound"),
-                    album = "Northbound",
-                    duration = "4:55",
-                )
+            OnTheSheet {
+                Covers {
+                    AndroidQueueRow(
+                        title = "Margins",
+                        artist = "Mara Quill",
+                        cover = PreviewData.imageRef("Northbound"),
+                        album = "Northbound",
+                        duration = "4:55",
+                    )
+                }
             }
         }
 }

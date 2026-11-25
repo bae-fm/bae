@@ -10,21 +10,23 @@ import org.junit.Test
 class AndroidQueuePlaceholderRowShots : BoardShot() {
     @Test
     fun androidComponentQueuePlaceholderRowNotLoaded() =
-        component("android.component.queue-placeholder-row.not-loaded") { AndroidQueuePlaceholderRow() }
+        component("android.component.queue-placeholder-row.not-loaded") { OnTheSheet { AndroidQueuePlaceholderRow() } }
 
     @Test
     fun androidComponentQueuePlaceholderRowBesideALoadedRow() =
         component("android.component.queue-placeholder-row.beside-a-loaded-row") {
-            Covers {
-                Column {
-                    AndroidQueueRow(
-                        title = "Margins",
-                        artist = "Mara Quill",
-                        cover = PreviewData.imageRef("Northbound"),
-                        album = "Northbound",
-                        duration = "4:55",
-                    )
-                    AndroidQueuePlaceholderRow()
+            OnTheSheet {
+                Covers {
+                    Column {
+                        AndroidQueueRow(
+                            title = "Margins",
+                            artist = "Mara Quill",
+                            cover = PreviewData.imageRef("Northbound"),
+                            album = "Northbound",
+                            duration = "4:55",
+                        )
+                        AndroidQueuePlaceholderRow()
+                    }
                 }
             }
         }
