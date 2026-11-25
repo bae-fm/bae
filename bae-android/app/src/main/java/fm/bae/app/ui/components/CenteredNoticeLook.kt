@@ -1,6 +1,7 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -23,8 +24,16 @@ internal fun centeredTitleColor(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-/** A centred notice's space: all it is given, at least [CENTERED_MIN] tall, and padded. */
-internal fun Modifier.centeredFill(): Modifier = fillMaxSize().heightIn(min = CENTERED_MIN).padding(ThemeSpace.section)
+/**
+ * A centred notice's space: the width it is given and, except on the stage, all its height, at least [CENTERED_MIN]
+ * tall, and padded: a stage notice is as tall as its words.
+ */
+internal fun Modifier.centeredFill(stage: Boolean): Modifier =
+    if (stage) {
+        fillMaxWidth()
+    } else {
+        fillMaxSize().heightIn(min = CENTERED_MIN).padding(ThemeSpace.section)
+    }
 
 /** What a centred notice stands at least this tall, where its space is unbounded. */
 private val CENTERED_MIN = 300.dp

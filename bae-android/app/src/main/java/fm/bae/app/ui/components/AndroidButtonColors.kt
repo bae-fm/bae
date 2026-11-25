@@ -2,6 +2,7 @@ package fm.bae.app.ui.components
 
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,26 +20,26 @@ internal fun tonalColors(): ButtonColors =
         disabledContentColor = disabledContent(),
     )
 
+/** Dark mode's colour scheme, which the gallery's backdrop is drawn in, whichever appearance is chosen. */
+@Composable
+private fun stageScheme(): ColorScheme {
+    val preferences by LocalAppearanceStore.current.preferences.collectAsState()
+    return remember(preferences) { appearanceColorScheme(preferences, dark = true) }
+}
+
 /** A tonal button on the gallery's backdrop, which is dark in both modes: dark mode's tile under white words. */
 @Composable
-internal fun stageTonalColors(): ButtonColors {
-    val preferences by LocalAppearanceStore.current.preferences.collectAsState()
-    val dark = remember(preferences) { appearanceColorScheme(preferences, dark = true) }
-    return ButtonDefaults.filledTonalButtonColors(
-        containerColor = dark.secondaryContainer,
+internal fun stageTonalColors(): ButtonColors =
+    ButtonDefaults.filledTonalButtonColors(
+        containerColor = stageScheme().secondaryContainer,
         contentColor = BaeTheme.colors.onFill,
         disabledContainerColor = disabledContainer(),
         disabledContentColor = disabledContent(),
     )
-}
 
 /** A text button on the gallery's backdrop, which is dark in both modes: dark mode's accent. */
 @Composable
-internal fun stageTextColors(): ButtonColors {
-    val preferences by LocalAppearanceStore.current.preferences.collectAsState()
-    val dark = remember(preferences) { appearanceColorScheme(preferences, dark = true) }
-    return ButtonDefaults.textButtonColors(contentColor = dark.primary, disabledContentColor = disabledContent())
-}
+internal fun stageTextColors(): ButtonColors = textColors(stageScheme().primary)
 
 @Composable
 internal fun outlinedColors(tone: Color): ButtonColors =

@@ -210,7 +210,7 @@ private fun CenteredNotice(
     stage: Boolean,
 ) {
     Column(
-        modifier = if (stage) modifier else modifier.centeredFill(),
+        modifier = modifier.centeredFill(stage),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
     ) {
