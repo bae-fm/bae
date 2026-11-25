@@ -21,7 +21,7 @@
 /* The image, as large as the stage holds inside its margins, under the arrows. */
 .bae-m-lb-picture { position: absolute; inset: var(--space-edge) var(--space-page); container-type: size; display: flex; align-items: center; justify-content: center; }
 .bae-m-lb-fit { width: min(100cqw, 100cqh); }
-.bae-m-lb-arrow { position: relative; z-index: 1; width: 48px; height: 48px; border-radius: 999px; background: var(--scrim); display: flex; align-items: center; justify-content: center; }
+.bae-m-lb-arrow { position: relative; z-index: 1; width: 48px; height: 48px; border-radius: 999px; background: var(--scrim); display: flex; align-items: center; justify-content: center; color: var(--on-fill-secondary); }
 .bae-m-lb-cap { text-align: center; padding: var(--space-related) var(--space-section); }
 .bae-m-lb-strip { height: 64px; display: flex; align-items: flex-start; justify-content: center; gap: var(--space-compact); padding-bottom: var(--space-group); }
 .bae-m-lb-thumb { display: flex; border-radius: var(--radius-artwork); box-shadow: 0 0 0 1px var(--on-fill-secondary); }
