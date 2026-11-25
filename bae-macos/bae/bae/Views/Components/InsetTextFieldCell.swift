@@ -9,18 +9,22 @@ protocol InsetCell: NSTextFieldCell {
 }
 
 extension InsetCell {
-    /// How far AppKit's own cell insets its text from the frame it draws in,
-    /// on each side; measured at 1.75–1.9 points for every font the fields
-    /// use.
-    static var appKitTextInset: CGFloat { 2 }
-
-    /// The frame to draw in so the text sits `insets` inside the field: the
-    /// cell adds its own inset to what this leaves.
-    fileprivate func inset(_ rect: NSRect) -> NSRect {
-        rect.insetBy(
-            dx: insets.width - Self.appKitTextInset,
-            dy: insets.height
-        )
+    /// The frame to draw in so the text sits `insets` inside the field. The
+    /// cell adds no inset of its own to it.
+    ///
+    /// SwiftUI's `Text` seats the font's line at the bottom of the
+    /// whole-point height it lays out, and the cell draws the line at the top
+    /// of that height, so the frame moves down on screen by the difference,
+    /// rounded to a whole point: a shift of 0.09 points moved the title's
+    /// ink by half a point, which the board does not have.
+    fileprivate func inset(_ rect: NSRect, in view: NSView) -> NSRect {
+        var inset = rect.insetBy(dx: insets.width, dy: insets.height)
+        if let font {
+            let line = font.ascender - font.descender + font.leading
+            let down = (line.rounded(.up) - line).rounded()
+            inset.origin.y += view.isFlipped ? down : -down
+        }
+        return inset
     }
 }
 
@@ -31,7 +35,11 @@ final class InsetTextFieldCell: NSTextFieldCell, InsetCell {
         withFrame cellFrame: NSRect,
         in controlView: NSView
     ) {
-        super.drawInterior(withFrame: inset(cellFrame), in: controlView)
+        super
+            .drawInterior(
+                withFrame: inset(cellFrame, in: controlView),
+                in: controlView
+            )
     }
 
     override func edit(
@@ -43,7 +51,7 @@ final class InsetTextFieldCell: NSTextFieldCell, InsetCell {
     ) {
         super
             .edit(
-                withFrame: inset(rect),
+                withFrame: inset(rect, in: controlView),
                 in: controlView,
                 editor: textObj,
                 delegate: delegate,
@@ -61,7 +69,7 @@ final class InsetTextFieldCell: NSTextFieldCell, InsetCell {
     ) {
         super
             .select(
-                withFrame: inset(rect),
+                withFrame: inset(rect, in: controlView),
                 in: controlView,
                 editor: textObj,
                 delegate: delegate,
@@ -79,7 +87,11 @@ final class InsetSecureTextFieldCell: NSSecureTextFieldCell, InsetCell {
         withFrame cellFrame: NSRect,
         in controlView: NSView
     ) {
-        super.drawInterior(withFrame: inset(cellFrame), in: controlView)
+        super
+            .drawInterior(
+                withFrame: inset(cellFrame, in: controlView),
+                in: controlView
+            )
     }
 
     override func edit(
@@ -91,7 +103,7 @@ final class InsetSecureTextFieldCell: NSSecureTextFieldCell, InsetCell {
     ) {
         super
             .edit(
-                withFrame: inset(rect),
+                withFrame: inset(rect, in: controlView),
                 in: controlView,
                 editor: textObj,
                 delegate: delegate,
@@ -109,7 +121,7 @@ final class InsetSecureTextFieldCell: NSSecureTextFieldCell, InsetCell {
     ) {
         super
             .select(
-                withFrame: inset(rect),
+                withFrame: inset(rect, in: controlView),
                 in: controlView,
                 editor: textObj,
                 delegate: delegate,
