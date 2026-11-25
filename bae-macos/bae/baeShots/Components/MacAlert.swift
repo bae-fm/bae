@@ -99,6 +99,8 @@ extension ShotScene {
     ) -> some View {
         ZStack(alignment: .top) {
             Rectangle().fill(Theme.background)
+            // The dimming the window shows behind an alert, as the board draws it.
+            Theme.scrim
             MacAlert(words, buttons: buttons)
                 .sheetFace()
                 .padding(.top, OverWindow.hangs)
