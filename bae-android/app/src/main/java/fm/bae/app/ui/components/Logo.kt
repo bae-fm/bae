@@ -37,6 +37,7 @@ import fm.bae.app.ui.appearance.SemanticColors
 import fm.bae.app.ui.appearance.observeAndroidAnimatorScale
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
@@ -75,6 +76,8 @@ private object Motion {
 
 private val wordEdgeOffset = 1.dp
 
+private fun wholeDp(length: Dp): Dp = length.value.roundToInt().dp
+
 /**
  * The sheep over the word "bae". [size] is the sheep's width; the word and the
  * glow scale with it. With [bob] the sheep and the word each float and tilt,
@@ -90,14 +93,15 @@ internal fun Logo(
 ) {
     val colors = BaeTheme.colors
     val sheepHeight = size * Proportion.SHEEP_HEIGHT
-    val wordWidth = size * Proportion.WORD_WIDTH
-    val wordHeight = wordWidth / Proportion.WORD_ASPECT
+    // The word's box and the gap are whole dp, as the board draws them.
+    val wordWidth = wholeDp(size * Proportion.WORD_WIDTH)
+    val wordHeight = wholeDp(wordWidth / Proportion.WORD_ASPECT)
     val wordRise = Proportion.WORD_RISE * wordHeight
     val seconds = rememberBobSeconds(bob)
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(size * Proportion.GAP),
+        verticalArrangement = Arrangement.spacedBy(wholeDp(size * Proportion.GAP)),
     ) {
         // The sheep's slot is the glow's anchor, so the glow stays still while the sheep floats over it.
         Box(
