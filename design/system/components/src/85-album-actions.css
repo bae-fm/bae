@@ -10,7 +10,7 @@
 .bae-m-cgal-right { width: 360px; flex: none; background: var(--well); padding: var(--space-section); display: flex; flex-direction: column; align-items: center; gap: var(--space-compact); border-left: 1px solid var(--hairline); }
 .bae-m-cgal-foot { display: flex; justify-content: flex-end; padding: var(--space-edge) var(--space-section); border-top: 1px solid var(--hairline); }
 .bae-m-cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--space-section) var(--space-edge); }
-.bae-m-ctile { display: flex; flex-direction: column; gap: var(--space-inline); min-width: 0; }
+.bae-m-ctile { display: flex; flex-direction: column; gap: var(--space-inline); width: 100%; min-width: 0; }
 .bae-m-ctile-img { height: 138px; display: flex; align-items: center; justify-content: center; background: var(--hover); border-radius: var(--radius-artwork); }
 .bae-m-ctile-sel { box-shadow: inset 0 0 0 2px var(--accent); }
 .bae-m-lightbox { position: absolute; inset: 0; z-index: 12; background: var(--backdrop); color: var(--on-fill); display: flex; flex-direction: column; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
