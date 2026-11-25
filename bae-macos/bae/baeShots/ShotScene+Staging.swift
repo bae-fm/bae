@@ -9,29 +9,9 @@ import SwiftUI
 /// shows these in AppKit's own windows, which a capture of the view can't
 /// reach, so the scene lays the dialog's content over the window itself.
 enum OverWindow {
-    /// How far below the window's top a sheet or an alert hangs (the boards'
-    /// `margin-top` on `bae-m-sheet` and `bae-m-alert`).
+    /// How far below the window's top an alert hangs (the boards'
+    /// `margin-top` on `bae-m-alert`).
     static let hangs: CGFloat = 36
-
-    /// A sheet, hung from the top edge, centred, over the scrim that dims the
-    /// whole window. The app's sheet is a window of its own, which dims the
-    /// window it hangs from.
-    @MainActor
-    static func sheet(
-        _ dialog: some View,
-        over window: some View
-    ) -> some View {
-        ZStack(alignment: .top) {
-            window
-            MacScrim()
-            dialog
-                .sheetFace()
-                .padding(.top, hangs)
-                // The app's sheet is a window of its own, read after the
-                // window it hangs from, not among what it covers.
-                .accessibilitySortPriority(-1)
-        }
-    }
 
     /// A sheet presented as the app presents one: a real sheet attached to
     /// the window, over the dimming macOS draws behind it. The scene is shot
@@ -43,24 +23,6 @@ enum OverWindow {
     ) -> some View {
         window.sheet(isPresented: .constant(true)) {
             dialog.background { DisableSheetAnimation() }
-        }
-    }
-
-    /// A sheet centred over the scrim that dims the whole window, as macOS
-    /// places a sheet over the welcome window.
-    @MainActor
-    static func centredSheet(
-        _ dialog: some View,
-        over window: some View
-    ) -> some View {
-        ZStack {
-            window
-            MacScrim()
-            dialog
-                .sheetFace()
-                // The app's sheet is a window of its own, read after the
-                // window it covers.
-                .accessibilitySortPriority(-1)
         }
     }
 

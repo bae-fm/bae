@@ -6,25 +6,22 @@ import SwiftUI
 extension ShotScene {
     /// `MacSheet`, one shot for each row of its preview.
     static let macSheetScenes: [ShotScene] = [
-        component(
-            "mac.component.sheet.default",
-            width: 600,
-            height: 240
+        // A real sheet is a window of its own, which a component's shot of
+        // its view alone leaves out, so these rows are shot in a window the
+        // size of the row's cell on the preview.
+        ShotScene(
+            id: "mac.component.sheet.default",
+            size: sheetRowSize,
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            OverWindow.sheet(
-                cloudHomeSheet(),
-                over: Rectangle().fill(Theme.background)
-            )
+            attachedCloudHomeSheet()
         },
-        component(
-            "mac.component.sheet.centred",
-            width: 600,
-            height: 240
+        ShotScene(
+            id: "mac.component.sheet.centred",
+            size: sheetRowSize,
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            OverWindow.centredSheet(
-                cloudHomeSheet(),
-                over: Rectangle().fill(Theme.background)
-            )
+            attachedCloudHomeSheet()
         },
         component("mac.component.sheet.without-scrim", width: 600, height: 240)
         {
@@ -44,6 +41,23 @@ extension ShotScene {
             .padding(.top, 36)
         },
     ]
+
+    /// The cell of the sheet's preview rows with a scrim: as wide as the
+    /// preview's column, 240 points tall.
+    private static let sheetRowSize = CGSize(width: 874, height: 240)
+
+    /// The cloud home sheet attached to a window drawn in the background
+    /// colour, as the default and centred rows show it.
+    @MainActor
+    private static func attachedCloudHomeSheet() -> ShotStage {
+        ShotStage(
+            OverWindow.attachedSheet(
+                cloudHomeSheet(),
+                over: Rectangle().fill(Theme.background)
+            )
+        )
+        .awaitingSheet()
+    }
 
     /// The sheet the default and centred rows show.
     private static func cloudHomeSheet() -> some View {
