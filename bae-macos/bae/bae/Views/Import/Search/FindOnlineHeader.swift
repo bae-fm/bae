@@ -18,8 +18,6 @@ struct FindOnlineHeader: View {
                         HStack(spacing: ThemeSpace.inline) {
                             Image(systemName: "chevron.backward")
                                 .themeIcon(.small)
-                                // The board's 12 pt chevron box.
-                                .frame(width: 12)
                                 .accessibilityHidden(true)
                             Text("Back")
                         }
