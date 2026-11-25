@@ -193,7 +193,7 @@ extension ShotScene {
                     syncs: syncs
                 )
                 if openAlbum, let album {
-                    albumMenu(album, x: 209, y: 139)
+                    albumMenu(album, x: 214.5, y: 147)
                 }
             }
             // The preview's row cell is wider than the editor's 720-point
