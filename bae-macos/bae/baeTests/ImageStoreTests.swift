@@ -5,7 +5,7 @@ import Testing
 @testable import BaeKit
 @testable import bae
 
-private func makeDecodedImage(width: Int, height: Int) throws -> NSImage {
+private func makeDecodedImage(width: Int, height: Int) throws -> DecodedImage {
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     let context = try #require(
         CGContext(
@@ -21,8 +21,8 @@ private func makeDecodedImage(width: Int, height: Int) throws -> NSImage {
     context.setFillColor(CGColor(gray: 0, alpha: 1))
     context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     let cgImage = try #require(context.makeImage())
-    return NSImage(
-        cgImage: cgImage,
+    return DecodedImage(
+        bitmap: cgImage,
         size: NSSize(width: width, height: height)
     )
 }
