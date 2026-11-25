@@ -312,6 +312,9 @@ extension QueueSection {
                 )
             )
         )
+        // In line with the rows' content, so Clear and shuffle sit over the
+        // remove buttons.
+        .padding(.horizontal, Self.rowInset)
     }
 
     /// What this lane's Clear empties, named for the tooltip and VoiceOver.

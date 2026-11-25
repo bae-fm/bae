@@ -36,7 +36,8 @@ struct MacQueueSection: View {
     /// list leaves between the heading and the first row.
     private static let headingGap = ThemeSpace.inline + ThemeSpace.hairline
 
-    /// The inset of the lane's rows.
+    /// The inset of a lane's heading. The lane that holds the rows adds the
+    /// rows' own inset, which puts Clear and shuffle over the remove buttons.
     private static let rowInset = ThemeSpace.related
 
     @ViewBuilder
@@ -54,12 +55,7 @@ struct MacQueueSection: View {
                         MacShuffleButton(shuffle: shuffle, glyph: .small)
                     }
                 }
-                // In line with the rows' content, so Clear and shuffle sit
-                // over the remove buttons.
-                .padding(
-                    .horizontal,
-                    Self.rowInset + MacQueueRow.horizontalInset
-                )
+                .padding(.horizontal, Self.rowInset)
                 .padding(.top, ThemeSpace.group)
                 .padding(.bottom, Self.headingGap)
             }
