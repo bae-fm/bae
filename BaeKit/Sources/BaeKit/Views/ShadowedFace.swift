@@ -24,11 +24,13 @@ public struct ShadowedFace: View {
         self.fill = fill
     }
 
-    /// The radius of SwiftUI's shadow that spreads as far as a board's blur.
-    /// Measured in the sheet shots: a radius of 45 reaches as far below the
-    /// face as the board's blur of 30.
+    /// The radius of SwiftUI's shadow that blurs as a board's `blur` does. A
+    /// CSS blur of B is a Gaussian of deviation B / 2, and so is SwiftUI's
+    /// radius of B: the pixels under a sheet's shadow in the delete-album and
+    /// new-playlist shots (darker than the board's 40 points below the face,
+    /// lighter beside it) show that a radius of 1.5 B blurs wider.
     private nonisolated static func radius(blur: CGFloat) -> CGFloat {
-        1.5 * blur
+        blur
     }
 
     /// How far the shadow reaches beyond the face on its widest side.
