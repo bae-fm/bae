@@ -411,21 +411,24 @@ extension MacNotice {
             ? Theme.onFillSecondary
             : hasAdvice ? Theme.textPrimary : secondaryColor
         return VStack(spacing: ThemeSpace.group) {
-            HStack(
-                alignment: .firstTextBaseline,
-                spacing: ThemeSpace.compact
-            ) {
-                if onStage, let symbol = tone.symbol {
-                    Image(systemName: symbol)
-                        .font(Self.glyphFont(scaledTo: .heading))
-                        .foregroundStyle(Theme.onFillSecondary)
-                        .accessibilityHidden(true)
+            // The glyph is centred on the title's first line and takes no
+            // more height than the line, as the board draws it: a glyph in
+            // the line's baseline row would add its own ascent above the
+            // words.
+            HStack(alignment: .top, spacing: ThemeSpace.compact) {
+                Group {
+                    if onStage, let symbol = tone.symbol {
+                        Image(systemName: symbol)
+                            .font(Self.glyphFont(scaledTo: .heading))
+                            .foregroundStyle(Theme.onFillSecondary)
+                    }
+                    else {
+                        StatusGlyph(tone, muted: true)
+                            .font(Self.glyphFont(scaledTo: .heading))
+                    }
                 }
-                else {
-                    StatusGlyph(tone, muted: true)
-                        .font(Self.glyphFont(scaledTo: .heading))
-                        .accessibilityHidden(true)
-                }
+                .frame(height: ThemeText.heading.macOSLine)
+                .accessibilityHidden(true)
                 Text(verbatim: centeredTitle)
                     .themeText(.heading)
                     .foregroundStyle(titleColor)
