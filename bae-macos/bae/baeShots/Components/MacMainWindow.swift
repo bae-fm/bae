@@ -131,7 +131,11 @@ extension ShotScene {
                             onSearchFieldFrame: { _ in }
                         )
                     } content: {
-                        Color.clear
+                        // The slot the preview draws for the section, with the
+                        // margin its slots have.
+                        PreviewSlot("The section’s content")
+                            .padding(ThemeSpace.group)
+                            .frame(maxHeight: .infinity, alignment: .top)
                     } queuePanel: {
                         EmptyView()
                     } nowPlayingBar: {
