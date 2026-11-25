@@ -10,7 +10,6 @@ struct MacInlineField: View {
     let value: String
     /// What assistive technology calls the field.
     var name: String?
-    var monospaced = false
     /// The field is as wide as its value, and `emptyWidth` while it is empty,
     /// so there is something to click into, and never wider than its column
     /// gives it: for a field in a list row or a heading. Any
@@ -42,7 +41,6 @@ struct MacInlineField: View {
             placeholder: placeholder,
             value: value,
             name: name,
-            monospaced: monospaced,
             chrome: .inline,
             fillsWidth: !fitsValue,
             emptyMinWidth: fitsValue ? Self.emptyWidth : nil,

@@ -51,7 +51,6 @@ struct CommittedTextField: View {
     /// What assistive technology calls the field, such as the row it sits
     /// in; `nil` leaves it to the placeholder.
     var name: String?
-    var monospaced: Bool = false
     var chrome: FieldChrome.Style = .boxed
     var fillsWidth = false
     /// The field's least width, chrome included, while it is empty, so there
@@ -127,8 +126,7 @@ struct CommittedTextField: View {
                     placeholder: placeholder,
                     placeholderRole: placeholderRole,
                     name: name,
-                    font: valueFont,
-                    placeholderFont: font,
+                    font: font,
                     textColor: textColor,
                     insets: FieldChrome.padding(of: chrome),
                     onSubmit: { startCommit(draft) }
@@ -165,7 +163,7 @@ struct CommittedTextField: View {
     /// neighbour's height and clip.
     private var field: some View {
         Text(verbatim: draft.isEmpty ? placeholder : draft)
-            .font(Font(draft.isEmpty ? font : valueFont))
+            .font(Font(font))
             .lineLimit(1)
             .hidden()
             .frame(
@@ -176,19 +174,6 @@ struct CommittedTextField: View {
                 maxWidth: fillsWidth ? .infinity : nil,
                 alignment: .leading
             )
-    }
-
-    /// The value takes the monospaced design; the placeholder keeps `font`
-    /// as given, so an empty mark is the same glyph in every field.
-    private var valueFont: NSFont {
-        guard monospaced,
-            let descriptor = font.fontDescriptor.withDesign(.monospaced),
-            let monospacedFont = NSFont(
-                descriptor: descriptor,
-                size: font.pointSize
-            )
-        else { return font }
-        return monospacedFont
     }
 
     /// Send `text` unless it is already what is stored — a focus change over
@@ -217,7 +202,6 @@ private struct CommittedTextEditor: NSViewRepresentable {
     let placeholderRole: CommittedTextField.PlaceholderRole
     let name: String?
     let font: NSFont
-    let placeholderFont: NSFont
     let textColor: NSColor
     /// How far the text sits inside the field's frame.
     let insets: NSSize
@@ -282,7 +266,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
         // leading edge.
         let showsPlaceholder = placeholderRole == .hint || !focused
         if showsPlaceholder {
-            field.setBoxedPlaceholder(placeholder, font: placeholderFont)
+            field.setBoxedPlaceholder(placeholder, font: font)
         }
         else {
             field.placeholderAttributedString = nil

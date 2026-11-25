@@ -63,12 +63,6 @@ extension ShotScene {
             fits: true
         ),
         inlineFieldScene(
-            "mac.component.inline-field.mono",
-            placeholder: "—",
-            value: "Harbor Records",
-            mono: true
-        ),
-        inlineFieldScene(
             "mac.component.inline-field.off",
             placeholder: "—",
             value: "Harbor Records",
@@ -86,7 +80,6 @@ extension ShotScene {
         value: String,
         large: Bool = false,
         quiet: Bool = false,
-        mono: Bool = false,
         fits: Bool = false,
         off: Bool = false
     ) -> ShotScene {
@@ -99,7 +92,6 @@ extension ShotScene {
                 placeholder: placeholder,
                 value: value,
                 name: placeholder == "—" ? "Label" : placeholder,
-                monospaced: mono,
                 fitsValue: fits,
                 font: large ? ThemeText.title.nsFont : ThemeText.body.nsFont,
                 textColor: quiet

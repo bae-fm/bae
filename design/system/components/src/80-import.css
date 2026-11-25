@@ -134,7 +134,6 @@
 .bae-m-icell.bae-m-icell-fit:placeholder-shown { min-width: 96px; }
 /* In the identity's column a fitted field keeps its own width. */
 .bae-m-idraft-id > .bae-m-icell-fit { align-self: flex-start; }
-.bae-m-icell.bae-m-icell-mono { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-m-idraft-entry { display: flex; align-items: center; gap: var(--space-compact); min-width: 0; }
 /* One row of a list of fields: each field and ⊗ as wide as its content. Where they don't all fit, the widest field is cut first, so ⊗ ends at the column's edge, as an HStack divides its width. */
 .bae-m-idraft-fields { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, max-content); align-items: center; gap: var(--space-compact); min-width: 0; }

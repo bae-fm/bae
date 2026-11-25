@@ -487,7 +487,7 @@ export declare function MacImportEmptyState(props: { discogs?: boolean }): React
 /** The Import window's content: the list column (the first child) beside the pane (the other children). noSelection draws the pane's Select a folder state instead. */
 export declare function MacImportWindow(props: { noSelection?: boolean; children?: React.ReactNode }): React.ReactElement;
 /** A field drawn as its value until the pointer is over it or it has focus. large sets it in the album title's size; quiet draws its value in the tertiary colour. */
-export declare function MacInlineField(props: { label: string; value?: string; placeholder?: string; large?: boolean; quiet?: boolean; fit?: boolean; mono?: boolean }): React.ReactElement;
+export declare function MacInlineField(props: { label: string; value?: string; placeholder?: string; large?: boolean; quiet?: boolean; fit?: boolean }): React.ReactElement;
 /** A ruled heading over a part of a form: Release, Images, Files, Credits. */
 export declare function MacFormHeading(props: { children?: React.ReactNode }): React.ReactElement;
 /** The release editor's top row: Identify with Automatic, Search and the Metadata menu, then the action row: where the import goes and Import or Retry import, or Cancel once something changed and Save. */
