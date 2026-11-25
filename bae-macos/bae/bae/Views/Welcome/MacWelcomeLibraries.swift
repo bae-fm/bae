@@ -46,9 +46,8 @@ struct MacWelcomeLibraries: View {
                     id: \.element.id
                 ) { index, library in
                     if index > 0 {
-                        MacHairline()
+                        MacHairline(faint: true)
                             .padding(.horizontal, ThemeSpace.group)
-                            .opacity(0.6)
                     }
                     LibraryRow(
                         library: library,
@@ -74,9 +73,8 @@ struct MacWelcomeLibraries: View {
                 }
                 if let unreadableInstallation {
                     if !libraries.isEmpty {
-                        MacHairline()
+                        MacHairline(faint: true)
                             .padding(.horizontal, ThemeSpace.group)
-                            .opacity(0.6)
                     }
                     UnreadableInstallationRow(
                         libraryId: unreadableInstallation,
