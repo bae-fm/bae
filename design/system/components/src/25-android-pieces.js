@@ -64,12 +64,12 @@
     return h('div', { className: 'bae-a-gallery-caption' }, h('div', null, props.label), count > 1 ? h('div', { className: 'bae-a-gallery-caption-count' }, (props.page || 1) + ' / ' + count) : null);
   }
 
-  // A release's images, full screen on the backdrop, as GalleryDialog draws them: close at the top end, the image (`title` is the release whose art it stands in for) fitted to the width, and the caption at the foot. `state`: `loading`, a spinner over Loading the image… in the image's place; `failed`, the centred notice Could not load image with Retry, which `details` gives Details for a failure with causes behind it, such as a zoom whose tiles core could not read.
+  // A release's images, full screen on the backdrop, as GalleryDialog draws them: close at the top end, the image (`title` is the release whose art it stands in for) fitted to the width, and the caption at the foot. `state`: `loading`, a spinner over Loading the image… in the image's place; `failed`, the centred notice Could not load image with Retry, which `details` gives Details for core's error behind it, such as a zoom whose tiles core could not read, and `final` takes Retry from, for a picture file the phone cannot decode or a bug.
   function AndroidLightbox(props) {
     return h('div', { className: 'bae-a-screen bae-a-lightbox', role: 'dialog', 'aria-label': props.label },
       h('span', { className: 'bae-a-lightbox-close' }, h(AndroidIconButton, { icon: 'close', label: 'Close', tone: 'onfill' })),
       props.state === 'loading' ? h('div', { className: 'bae-a-lightbox-wait' }, h(AndroidSpinner, { onfill: true }), h('span', { className: 'bae-a-lightbox-secondary' }, 'Loading the image…'))
-        : props.state === 'failed' ? h(AndroidNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load image', secondary: props.details ? 'Details' : null, action: 'Retry' })
+        : props.state === 'failed' ? h(AndroidNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load image', secondary: props.details ? 'Details' : null, action: props.final ? null : 'Retry' })
         : h(Artwork, { title: props.title, label: props.title, size: 412, radius: 0 }),
       h(AndroidGalleryCaption, { label: props.label, page: props.page, count: props.count }));
   }

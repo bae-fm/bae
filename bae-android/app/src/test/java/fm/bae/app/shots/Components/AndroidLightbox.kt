@@ -29,7 +29,7 @@ class AndroidLightboxShots : BoardShot() {
     fun androidComponentLightboxLoading() = shot("android.component.lightbox.loading") { Lightbox(neverLoaded(), count = 4u) }
 
     @Test
-    fun androidComponentLightboxFailed() = shot("android.component.lightbox.failed") { Lightbox(noBytes(), count = 4u) }
+    fun androidComponentLightboxFailed() = shot("android.component.lightbox.failed") { Lightbox(unreadable(), count = 4u) }
 
     @Test
     fun androidComponentLightboxFailedDetails() = shot("android.component.lightbox.failed-details") { Lightbox(failing(), count = 4u) }
@@ -77,8 +77,9 @@ private fun shownImage() =
 /** A store whose bytes never arrive, so the lightbox stays on its load. */
 private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _, _ -> awaitCancellation() }, dispatcher = Dispatchers.Unconfined)
 
-/** A store with no bytes for the image, so the lightbox shows the failure with Retry and no Details. */
-private fun noBytes() = ImageStore(dispatcher = Dispatchers.Unconfined)
+/** A store whose bytes for the image are no picture the phone decodes, so the lightbox shows the failure with no Retry
+ *  and no Details. */
+private fun unreadable() = ImageStore(fetchReleaseImageBytes = { _, _, _ -> byteArrayOf(1, 2, 3) }, dispatcher = Dispatchers.Unconfined)
 
 /** A store whose read of the image fails with core's error, so the lightbox shows its failure with Details. */
 internal fun failing() =

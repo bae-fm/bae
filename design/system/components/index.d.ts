@@ -586,7 +586,7 @@ export interface AndroidPinsAtOnceProps { selected?: number | string; limit?: nu
 export declare function AndroidPinsAtOnce(props: AndroidPinsAtOnceProps): React.ReactElement;
 export interface AndroidReleasePickerProps { releases: string; selected?: string }
 export declare function AndroidReleasePicker(props: AndroidReleasePickerProps): React.ReactElement;
-export interface AndroidLightboxProps { title?: string; label?: string; page?: number | string; count?: number | string; state?: 'loading' | 'failed'; details?: boolean }
+export interface AndroidLightboxProps { title?: string; label?: string; page?: number | string; count?: number | string; state?: 'loading' | 'failed'; details?: boolean; /** A failure that trying again does not mend: no Retry. */ final?: boolean }
 export declare function AndroidLightbox(props: AndroidLightboxProps): React.ReactElement;
 export interface AndroidGalleryCaptionProps { label?: string; page?: number | string; count?: number | string }
 export declare function AndroidGalleryCaption(props: AndroidGalleryCaptionProps): React.ReactElement;
