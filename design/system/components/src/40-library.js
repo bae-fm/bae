@@ -322,9 +322,10 @@
     var lines = props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null;
     if (!list(props.records).length) return lines;
     return h('div', { className: 'bae-m-albumfacts-anchor' },
-      h('button', { type: 'button', className: cx('bae-m-albumfacts', props.recordsHover && 'bae-m-albumfacts-hover') }, lines,
+      // VoiceOver reads the button as its parts with a comma between, the arrow's the word Identified.
+      h('button', { type: 'button', 'aria-label': [props.edition, props.copy, 'Identified'].filter(Boolean).join(', '), className: cx('bae-m-albumfacts', props.recordsHover && 'bae-m-albumfacts-hover') }, lines,
         // The arrow is arrow.up.right in the detail text's font (11.5 points, regular).
-        h(Glyph, { set: 'mac', name: 'external', size: 11.5, weight: 'regular', className: 'bae-m-albumfacts-arrow', label: 'Identified' })),
+        h(Glyph, { set: 'mac', name: 'external', size: 11.5, weight: 'regular', className: 'bae-m-albumfacts-arrow' })),
       props.recordsOpen ? h('div', { className: 'bae-m-albumfacts-pop' }, h(MacPopover, { flush: true, width: 320, top: 0, right: 0, arrow: 160 }, h('div', { className: 'bae-m-albumfacts-card' }, h(MacRecordLinks, { records: props.records })))) : null);
   }
 
