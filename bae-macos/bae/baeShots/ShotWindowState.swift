@@ -1,5 +1,7 @@
 import AppKit
 
+@testable import bae
+
 /// What the window server and the displays held when a scene's window was
 /// not shown: the failure names it, so whoever reads the failure sees why
 /// the window was missing.
