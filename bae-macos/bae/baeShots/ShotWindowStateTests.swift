@@ -79,6 +79,7 @@ struct ShotWindowStateTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none
         window.orderFront(nil)
         defer { window.close() }
         let number = CGWindowID(window.windowNumber)
