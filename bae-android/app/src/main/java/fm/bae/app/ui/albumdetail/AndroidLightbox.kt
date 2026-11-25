@@ -50,7 +50,6 @@ import androidx.core.view.WindowCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.LocalBugReports
 import fm.bae.app.LocalErrorDisplays
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DecodeSize
@@ -275,9 +274,8 @@ private fun GalleryImage(
         var attempt by remember(content) { mutableIntStateOf(0) }
         var failure by remember(content, attempt) { mutableStateOf<GalleryFailure?>(null) }
         val unloaded = stringResource(R.string.image_load_failed)
-        val context = LocalContext.current
         val bugs = LocalBugReports.current
-        val errors = LocalErrorDisplays.current ?: LocaleErrorDisplays(context)
+        val errors = LocalErrorDisplays.current
 
         LaunchedEffect(content, fitSize, attempt) {
             if (fitted != null) return@LaunchedEffect

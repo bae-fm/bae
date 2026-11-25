@@ -262,10 +262,13 @@ interface ErrorDisplays {
 }
 
 /**
- * The resolver of the screen being drawn, where a view has none passed to it: a shot provides a fixed one, and none
- * provided means the device's locale ([LocaleErrorDisplays]).
+ * The resolver of the open library's errors, provided once beside the library's stores (`SessionPictures`). No default:
+ * resolving a failure outside that provider is a wiring bug, so it fails loudly.
  */
-val LocalErrorDisplays = staticCompositionLocalOf<ErrorDisplays?> { null }
+val LocalErrorDisplays =
+    staticCompositionLocalOf<ErrorDisplays> {
+        error("LocalErrorDisplays not provided")
+    }
 
 /** The production resolver: renders for the device locale via the Core catalog. */
 class LocaleErrorDisplays(

@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -45,7 +44,6 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.LocalBugReports
 import fm.bae.app.LocalErrorDisplays
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.data.ImageContent
 import fm.bae.app.data.LocalPictureTileStore
 import fm.bae.app.data.PictureTileStore
@@ -346,7 +344,7 @@ internal fun ZoomableGalleryImage(
     val store = LocalPictureTileStore.current
     val scope = rememberScreenScope()
     val bugs = LocalBugReports.current
-    val errors = LocalErrorDisplays.current ?: LocaleErrorDisplays(LocalContext.current)
+    val errors = LocalErrorDisplays.current
     val tiles =
         remember(content) {
             content.tiledSource?.let { source ->
