@@ -37,7 +37,8 @@ extension ShotScene {
                     cornerRadius: nil
                 )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // The board's strip sits at the top of its cell.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.backdrop)
         }
     }
