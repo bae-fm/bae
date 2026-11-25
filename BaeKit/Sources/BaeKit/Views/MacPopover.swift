@@ -111,7 +111,9 @@
                 .padding(arrowEdges, MacPopoverMetrics.arrowLength)
                 .background {
                     // The body's shadow below it, rasterized with its face
-                    // (`ShadowedFace`), then the face with its arrow over it.
+                    // (`ShadowedFace`), the hairline outside the face as the
+                    // board's `0 0 0 1px` ring is, then the face with its
+                    // arrow over the hairline's inner half.
                     ZStack {
                         ShadowedFace(
                             cornerRadius: MacPopoverMetrics.cornerRadius,
@@ -119,10 +121,10 @@
                             offset: MacPopoverMetrics.shadowOffset
                         )
                         .padding(arrowEdges, MacPopoverMetrics.arrowLength)
+                        outline.stroke(Theme.hairline, lineWidth: 2)
                         outline.fill(Theme.surfaceElevated)
                     }
                 }
-                .overlay(outline.stroke(Theme.hairline, lineWidth: 1))
                 .padding(MacPopoverMetrics.shadowRoom)
         }
 
