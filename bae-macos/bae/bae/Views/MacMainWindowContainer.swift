@@ -262,7 +262,6 @@ struct MacMainWindowContainer: View {
         .fileDialogConfirmationLabel("Add")
         .toolbar(.hidden)
         .ignoresSafeArea(.all, edges: .top)
-        .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))
         .onDrop(of: [.fileURL], isTargeted: nil) {
             importFolderEntry.take(dropped: $0)
         }

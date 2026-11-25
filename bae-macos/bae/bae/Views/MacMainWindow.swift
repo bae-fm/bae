@@ -48,5 +48,8 @@ struct MacMainWindow<
 
             nowPlayingBar()
         }
+        // The board draws the lights 6 pt right and 7 pt down from AppKit's
+        // place, beside the title bar's controls.
+        .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))
     }
 }
