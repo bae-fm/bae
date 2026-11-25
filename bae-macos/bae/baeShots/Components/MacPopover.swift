@@ -28,10 +28,8 @@ extension ShotScene {
         padded: Bool = true
     ) -> ShotScene {
         let bodyWidth: CGFloat = padded ? 280 + 2 * 14 : 280
-        // BaeKit's `MacPopoverFace` draws a 7 point arrow and a room of 40
-        // points for the shadow around the body.
-        let arrowLength: CGFloat = 7
-        let shadowRoom: CGFloat = 40
+        let arrowLength = MacPopoverMetrics.arrowLength
+        let shadowRoom = MacPopoverMetrics.shadowRoom
         let distance: CGFloat = 10
         return component(id, width: 842, height: 160) {
             ZStack(

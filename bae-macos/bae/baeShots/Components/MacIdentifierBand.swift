@@ -147,14 +147,15 @@ extension ShotScene {
         buttonCenter: CGFloat,
         buttonBottom: CGFloat
     ) -> some View {
-        // BaeKit's `MacPopoverFace` draws a 7 point arrow and a room of 40
-        // points for the shadow around the body.
         let width: CGFloat = 150 + 2 * 14
         return MacPopoverInPlace(arrowSide: .top, arrowOffset: width - 75) {
             MacIdentifierValuesPopover(lines: lines)
         }
-        .padding(.leading, buttonCenter + 75 - width - 40)
-        .padding(.top, buttonBottom + 10 - 7 - 40)
+        .padding(.leading, buttonCenter + 75 - width - popoverShadowRoom)
+        .padding(
+            .top,
+            buttonBottom + 10 - popoverArrowLength - popoverShadowRoom
+        )
     }
 
     /// A Disc ID that two MusicBrainz releases carry, and a catalog number

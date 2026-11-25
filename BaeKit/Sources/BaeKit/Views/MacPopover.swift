@@ -3,12 +3,20 @@
 
     /// Sizes of a bae popover, from the design system's `MacPopover`: a
     /// face 10 points rounded, its arrow 14 wide and 7 long.
-    enum MacPopoverMetrics {
+    public enum MacPopoverMetrics {
         static let cornerRadius: CGFloat = 10
         static let arrowWidth: CGFloat = 14
-        static let arrowLength: CGFloat = 7
-        /// Room around the face, for its shadow.
-        static let shadowRoom: CGFloat = 40
+        public static let arrowLength: CGFloat = 7
+        /// The board's shadow, 0 10px 30px: a blur radius of 30 and 10 points
+        /// down.
+        static let shadowRadius: CGFloat = 30
+        static let shadowOffset: CGFloat = 10
+        /// Room around the face, for its shadow: what `ShadowedFace` needs to
+        /// draw it.
+        public static let shadowRoom = ShadowedFace.shadowRoom(
+            radius: shadowRadius,
+            offset: shadowOffset
+        )
         /// The gap between the anchor and the arrow's tip.
         static let gap: CGFloat = 2
     }
@@ -102,10 +110,19 @@
                     )
                 )
                 .padding(arrowEdges, MacPopoverMetrics.arrowLength)
-                .background(
-                    outline.fill(Theme.surfaceElevated)
-                        .shadow(color: Theme.shadow, radius: 15, y: 6)
-                )
+                .background {
+                    // The body's shadow below it, rasterized with its face
+                    // (`ShadowedFace`), then the face with its arrow over it.
+                    ZStack {
+                        ShadowedFace(
+                            cornerRadius: MacPopoverMetrics.cornerRadius,
+                            radius: MacPopoverMetrics.shadowRadius,
+                            offset: MacPopoverMetrics.shadowOffset
+                        )
+                        .padding(arrowEdges, MacPopoverMetrics.arrowLength)
+                        outline.fill(Theme.surfaceElevated)
+                    }
+                }
                 .overlay(outline.stroke(Theme.hairline, lineWidth: 1))
                 .padding(MacPopoverMetrics.shadowRoom)
         }
