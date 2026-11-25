@@ -2110,7 +2110,8 @@ sheet. Each entry shows its image and name, and its section names its source.
 The preview and the lightbox show the focused cover's name and source: *Library*
 for a library release's saved cover, the catalog's name for a catalog's image,
 and *Release files* for an image file.
-Clicking an entry shows it in the preview; double-clicking opens the lightbox. Until the
+Clicking an entry shows it in the preview; double-clicking opens the lightbox,
+whose *Browse all images* button closes the lightbox and shows the picker's entries. Until the
 picker fetches the catalogs' covers (below), a draft read from the tags, typed
 in or cleared, or a candidate linked to an album or to nothing, has no
 catalog's covers to offer. The fetch finds the covers of the candidate's link:
@@ -2420,7 +2421,8 @@ moved to while the folder holds it, otherwise the folder's first image, and its
 arrows move to the images before and after it, wrapping around the ends; a lone
 image has none. On the Mac, the lightbox's strip shows a thumbnail of each image
 when it holds more than one, and VoiceOver reads each thumbnail button by its
-image's name, the caption the lightbox shows for it. Clicking an image in the
+image's name, the caption the lightbox shows for it. The folder's lightbox has no
+*Browse all images* button. Clicking an image in the
 *Edit release* sheet opens the *Change cover* sheet's lightbox at that image,
 with the lightbox's arrows (§3.7).
 
