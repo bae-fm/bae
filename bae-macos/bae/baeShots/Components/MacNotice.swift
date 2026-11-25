@@ -129,13 +129,21 @@ extension ShotScene {
                 action: ErrorAction(perform: {})
             )
         },
-        notice("mac.component.notice.stage", height: 70) {
+        component("mac.component.notice.stage", width: 842, height: 70) {
             MacNotice(
-                title: "This library has no albums yet.",
+                title: "Could not read your library",
                 advice: nil,
-                error: nil,
-                tone: .neutral
+                error: DisplayError(
+                    line: "Could not read your library",
+                    detail: "database error"
+                ),
+                look: .centeredOnStage,
+                action: ErrorAction(perform: {})
             )
+            // The stage notice fills the stage; its board is as tall as its
+            // words and buttons.
+            .fixedSize(horizontal: false, vertical: true)
+            .background(Theme.backdrop)
         },
     ]
 

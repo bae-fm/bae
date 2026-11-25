@@ -208,10 +208,10 @@
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
     // Centred, the notice is quiet words: its button's label is secondary text, so nothing in it is brighter than the message; Details is in the accent, as in every notice, apart from the grey title.
-    var stage = !!props.stage;
+    var stage = centered && !!props.stage;
     var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet, stage: stage }, props.action) : null;
     // On the stage, Details takes the stage's grey as Retry does, so nothing in the notice is brighter than its words.
-    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered && stage, stage: stage }, props.secondary) : null;
+    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: stage, stage: stage }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 'medium', faint: true, label: 'Dismiss' })) : null;
     // `leave`: the label of the button that leaves a screen the notice fills (Cancel), first in the row, where it is the screen's only way back.
     var leave = centered && props.leave ? h(MacButton, { key: 'l', muted: true }, props.leave) : null;
@@ -231,7 +231,7 @@
     var body = h('div', { className: 'bae-m-notice' }, top, below ? buttons : null);
     // The glyph sits in the row piece's leading column, so a notice among rows shares their text edge.
     var glyph = noticeGlyph(tone, props.icon, { quiet: props.quiet });
-    return NoticeBox(tone, false, glyph ? h(MacItem, { lead: glyph }, body) : body, { platform: 'bae-m-notice-box', quiet: props.quiet, centered: false, stage: props.stage });
+    return NoticeBox(tone, false, glyph ? h(MacItem, { lead: glyph }, body) : body, { platform: 'bae-m-notice-box', quiet: props.quiet, centered: false });
   }
 
   // A popover hanging off the control that opened it. Placed with `top`, it hangs below the control, its arrow on its upper edge pointing up; placed with `bottom`, it opens above, its arrow on its lower edge pointing down. `arrow`: the arrow's middle from the right edge (40). `flush`: no padding, for content that pads itself.
