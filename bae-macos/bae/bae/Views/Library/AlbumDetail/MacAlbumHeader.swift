@@ -77,6 +77,10 @@ struct MacAlbumHeader: View {
                     currentReleaseId: currentReleaseId,
                     onSelect: onSelectRelease
                 )
+                // The room the header gives the picker, as the board's
+                // wrapper does.
+                .padding(.top, ThemeSpace.inline)
+                .padding(.bottom, ThemeSpace.line)
             }
             ReleaseFactsLine(
                 editionLine: selectedRelease.editionLine,

@@ -28,7 +28,5 @@ struct MacReleasePicker: View {
                 )
             },
         )
-        .padding(.top, ThemeSpace.inline)
-        .padding(.bottom, ThemeSpace.line)
     }
 }
