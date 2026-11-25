@@ -264,12 +264,20 @@
     var value = props.children != null ? props.children : props.value;
     var btn = h(MacPopUpFace, props, value);
     if (!props.open) return btn;
-    var checked = props.chosen || String(value), items = list(props.items), chosen = items.indexOf(checked), seps = items.slice(0, Math.max(chosen, 0)).filter(function (t) { return t === '-'; }).length;
-    var top = -(6 + (Math.max(chosen, 0) - seps) * 24 + seps * 11);
+    var checked = props.chosen || String(value), items = list(props.items), top = popUpMenuTop(items, checked);
     return h('span', { className: 'bae-m-popupbutton-open' }, btn,
-      h('div', { className: 'bae-m-popupbutton-menu', style: props.menuInside ? { top: props.menuTop != null ? Number(props.menuTop) : top, left: 'auto', right: -6 } : { top: props.menuTop != null ? Number(props.menuTop) : top } }, h(MacMenu, null, items.map(function (t, i) {
-        return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, checked: t === checked, highlighted: t === (props.highlighted || checked) }, t);
-      }))));
+      h('div', { className: 'bae-m-popupbutton-menu', style: props.menuInside ? { top: props.menuTop != null ? Number(props.menuTop) : top, left: 'auto', right: -6 } : { top: props.menuTop != null ? Number(props.menuTop) : top } }, popUpMenu(items, checked, props.highlighted)));
+  }
+  // The menu a pop-up opens: `items` in order ("-" for a line between groups), `checked` ticked, and `highlighted` under the pointer, the checked one unless given.
+  function popUpMenu(items, checked, highlighted) {
+    return h(MacMenu, null, items.map(function (t, i) {
+      return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, checked: t === checked, highlighted: t === (highlighted || checked) }, t);
+    }));
+  }
+  // Where the menu's top sits against the pop-up's, so that macOS opens the checked item on the pop-up's line.
+  function popUpMenuTop(items, checked) {
+    var chosen = items.indexOf(checked), seps = items.slice(0, Math.max(chosen, 0)).filter(function (t) { return t === '-'; }).length;
+    return -(6 + (Math.max(chosen, 0) - seps) * 24 + seps * 11);
   }
   // `label` names the pop-up by what it chooses (Import to, Album), as the app's Picker is named by its title, and the value it shows is its value.
   function MacPopUpFace(props) {

@@ -74,4 +74,12 @@
 .bae-a-syncstatus-fix { padding: var(--space-line) var(--space-edge) calc(var(--space-group) + var(--space-line)); }
 .bae-a-syncstatus-when { padding: 0 var(--space-edge) calc(var(--space-group) + var(--space-line)); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 
-.bae-m-savepanel-format { display: flex; gap: var(--space-inline); align-items: center; justify-content: center; padding: var(--space-related); border-top: 1px solid var(--hairline); }
+/* The accessory view as MacSavePanelFormat.swift lays it out, 250 by 34 pt: the label's 50 pt text field, which sets its words 2 pt in, then the 190 by 24 pt pop-up 54 pt from the view's left. */
+.bae-m-savepanel-format { display: flex; justify-content: center; }
+.bae-m-savepanel-format-line { width: 250px; height: 34px; display: flex; align-items: center; gap: var(--space-inline); }
+.bae-m-savepanel-format-label { flex: none; width: 50px; padding-left: var(--space-line); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); text-align: start; white-space: nowrap; }
+.bae-m-savepanel-format-popup { flex: none; width: 190px; height: var(--size-control); padding: 0 var(--space-related) 0 var(--space-group); border: 0; border-radius: var(--radius-control); background: var(--tile); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); display: inline-flex; align-items: center; justify-content: space-between; box-sizing: border-box; cursor: pointer; }
+.bae-m-savepanel-format-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bae-m-savepanel-format-open { position: relative; display: inline-flex; }
+/* The menu's words line up with the value's, 12 pt into the bezel. */
+.bae-m-savepanel-format-menu { position: absolute; left: -19px; z-index: 6; }

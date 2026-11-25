@@ -295,8 +295,17 @@
         props.lastSynced ? h('div', { className: 'bae-a-syncstatus-when' }, 'Last synced ' + props.lastSynced) : null));
   }
 
-  // The Save as panel's Format line: "Format:" and the format pop-up, centred under the panel's fields. `value`, `open`, `items` and `chosen` are MacPopUpButton's.
+  // The Save as panel's Format line, centred under the panel's fields: "Format:" and the format pop-up, which is AppKit's NSPopUpButton, a filled bezel with the chevrons at its end. `value` is the chosen format; `open` draws the menu the pop-up opens, with `items` the formats in order ("-" for a line between groups) and `chosen` the checked one when its words differ from the value.
   function MacSavePanelFormat(props) {
-    return h('div', { className: 'bae-m-savepanel-format' }, 'Format: ',
-      h(MacPopUpButton, { label: 'Format', value: props.value, width: 190, open: props.open, items: props.items, chosen: props.chosen }));
+    var popup = h('button', { type: 'button', className: 'bae-m-savepanel-format-popup', role: 'combobox', 'aria-label': 'Format', 'aria-expanded': !!props.open },
+      h('span', { className: 'bae-m-savepanel-format-value' }, props.value),
+      h(Glyph, { set: 'mac', name: 'updown', size: 10 }));
+    var checked = props.chosen || String(props.value), items = list(props.items);
+    return h('div', { className: 'bae-m-savepanel-format' },
+      h('div', { className: 'bae-m-savepanel-format-line' },
+        h('span', { className: 'bae-m-savepanel-format-label' }, 'Format:'),
+        props.open
+          ? h('span', { className: 'bae-m-savepanel-format-open' }, popup,
+            h('div', { className: 'bae-m-savepanel-format-menu', style: { top: popUpMenuTop(items, checked) } }, popUpMenu(items, checked)))
+          : popup));
   }
