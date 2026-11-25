@@ -164,7 +164,7 @@ extension ShotScene {
 /// The requests that the search field take the keyboard focus, as the
 /// window's Search menu item sends them.
 @MainActor
-private final class SearchFocus {
+final class SearchFocus {
     let requests = PassthroughSubject<Void, Never>()
 
     /// Whether a field of `host` is first responder in its window. When none

@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
@@ -51,11 +52,20 @@ extension ShotScene {
         search: String = "",
         picture: Bool = false
     ) -> ShotScene {
-        component(
+        // A bar holding typed words has the keyboard in its search field, as
+        // the board draws it.
+        let focus = SearchFocus()
+        let drawn: @MainActor (NSView) -> Bool = { host in
+            guard !search.isEmpty else { return true }
+            focus.requests.send()
+            return focus.fieldHasKeyboard(in: host)
+        }
+        return component(
             id,
             width: 1_100,
             height: 56,
-            images: picture ? anaPictureStore : nil
+            images: picture ? anaPictureStore : nil,
+            isDrawn: drawn
         ) {
             let uiStore = storeShowing(section)
             let backing = boardLibraryBacking(uiStore: uiStore)
@@ -63,6 +73,7 @@ extension ShotScene {
                 searchText: .constant(search),
                 onSearchFieldFrame: { _ in }
             )
+            .environment(\.searchFocusRequests, focus.requests)
             .environment(uiStore)
             .environment(LibraryProjectionStore(library: backing.library))
             .environment(activityStore(activity))
