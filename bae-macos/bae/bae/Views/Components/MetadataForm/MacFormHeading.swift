@@ -6,13 +6,15 @@ struct MacFormHeading: View {
     let title: String
 
     var body: some View {
-        Text(verbatim: title)
-            .themeText(.detail)
-            .foregroundStyle(Theme.textSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, ThemeSpace.inline)
-            .overlay(alignment: .bottom) {
-                MacHairline()
-            }
+        // The hairline sits under the name's padding and adds its own point
+        // to the height, as the board's bottom border does.
+        VStack(spacing: 0) {
+            Text(verbatim: title)
+                .themeText(.detail)
+                .foregroundStyle(Theme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, ThemeSpace.inline)
+            MacHairline()
+        }
     }
 }
