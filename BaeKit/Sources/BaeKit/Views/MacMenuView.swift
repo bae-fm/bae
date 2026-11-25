@@ -213,7 +213,9 @@
                         .lineLimit(1)
                 }
                 if submenu {
-                    Spacer(minLength: ThemeSpace.edge)
+                    // The words end an edge space plus the line's own gap
+                    // before what follows, as the board's submenu line does.
+                    Spacer(minLength: ThemeSpace.edge - ThemeSpace.compact)
                     if let accessory {
                         accessoryGlyph(accessory, highlighted)
                     }
