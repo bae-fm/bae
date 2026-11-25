@@ -17,8 +17,11 @@
 .bae-m-lb-top { display: flex; justify-content: space-between; padding: var(--space-group); }
 .bae-m-lb-pill { display: inline-flex; align-items: center; padding: var(--space-compact) var(--space-group); border-radius: 999px; background: var(--scrim); }
 .bae-m-lb-close { width: 36px; height: 36px; border-radius: 999px; background: var(--scrim); display: flex; align-items: center; justify-content: center; color: var(--on-fill-secondary); }
-.bae-m-lb-stage { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-edge); }
-.bae-m-lb-arrow { width: 48px; height: 48px; border-radius: 999px; background: var(--scrim); display: flex; align-items: center; justify-content: center; }
+.bae-m-lb-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-edge); }
+/* The image, as large as the stage holds inside its margins, under the arrows. */
+.bae-m-lb-picture { position: absolute; inset: var(--space-edge) var(--space-page); container-type: size; display: flex; align-items: center; justify-content: center; }
+.bae-m-lb-fit { width: min(100cqw, 100cqh); }
+.bae-m-lb-arrow { position: relative; z-index: 1; width: 48px; height: 48px; border-radius: 999px; background: var(--scrim); display: flex; align-items: center; justify-content: center; }
 .bae-m-lb-cap { text-align: center; padding: var(--space-related) var(--space-section); }
 .bae-m-lb-strip { height: 64px; display: flex; align-items: flex-start; justify-content: center; gap: var(--space-compact); padding-bottom: var(--space-group); }
 .bae-m-lb-thumb { display: flex; border-radius: var(--radius-artwork); box-shadow: 0 0 0 1px var(--on-fill-secondary); }
