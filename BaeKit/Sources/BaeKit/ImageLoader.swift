@@ -29,16 +29,13 @@ public final class DecodedImage: PlatformImage, @unchecked Sendable {
         }
 
         @available(*, unavailable)
-        required init?(coder _: NSCoder) {
+        required init(coder _: NSCoder) {
             fatalError("init(coder:) is not used")
         }
 
         @available(*, unavailable)
-        required init(
-            pasteboardPropertyList _: Any,
-            ofType _: NSPasteboard.PasteboardType
-        ) {
-            fatalError("init(pasteboardPropertyList:ofType:) is not used")
+        required convenience init(imageLiteralResourceName _: String) {
+            fatalError("init(imageLiteralResourceName:) is not used")
         }
     #elseif canImport(UIKit)
         /// `bitmap`, at `scale` pixels to a point.
