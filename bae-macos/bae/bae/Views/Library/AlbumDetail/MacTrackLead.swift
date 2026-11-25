@@ -17,6 +17,11 @@ struct MacTrackLead: View {
     let onPlay: () -> Void
     let onTogglePlayPause: () -> Void
 
+    /// The lead reads first in its row. Each piece carries the priority, since
+    /// one on the lead as a whole makes VoiceOver give each piece the lead's
+    /// own box.
+    static let sortPriority: Double = 4
+
     /// A track's position as the track list draws it, on one line: the list
     /// measures every one to size the leads' number column.
     static func number(_ text: String) -> some View {
@@ -35,6 +40,7 @@ struct MacTrackLead: View {
             Self.number(text)
                 .foregroundStyle(Theme.textTertiary)
                 .opacity(!isCurrent && !hover ? 1 : 0)
+                .accessibilitySortPriority(Self.sortPriority)
 
             Button(action: isCurrent ? onTogglePlayPause : onPlay) {
                 Image(
@@ -46,6 +52,7 @@ struct MacTrackLead: View {
             .buttonStyle(.accentPlain)
             .opacity(hover ? 1 : 0)
             .allowsHitTesting(hover)
+            .accessibilitySortPriority(Self.sortPriority)
 
             Image(systemName: "speaker.wave.2.fill")
                 .themeIcon(.small)
@@ -54,6 +61,7 @@ struct MacTrackLead: View {
                 .accessibilityLabel("Now playing")
                 // Under the pointer the button takes the speaker's place.
                 .accessibilityHidden(!isCurrent || hover)
+                .accessibilitySortPriority(Self.sortPriority)
         }
         // The Play icon is wider than a one-digit number's column: the extra
         // width hangs to the left, so the number ends where the column ends.

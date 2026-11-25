@@ -77,7 +77,6 @@ struct MacTrackRow: View {
                 onPlay: onPlay,
                 onTogglePlayPause: onTogglePlayPause
             )
-            .accessibilitySortPriority(4)
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.title)
                     .themeText(.rowTitle)
