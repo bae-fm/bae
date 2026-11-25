@@ -4499,7 +4499,7 @@
    "y": 240
   },
   "mac.album.rating.heart.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: an album and its tracks under Heart",
    "w": 1200,
@@ -4507,7 +4507,7 @@
    "y": 240
   },
   "mac.album.track-menu-heart.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: a track’s menu under Heart",
    "w": 1200,
@@ -4515,7 +4515,7 @@
    "y": 240
   },
   "mac.album.rating.none.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: an album and its tracks under None",
    "w": 1200,
@@ -4523,7 +4523,7 @@
    "y": 240
   },
   "mac.album.track-menu-none.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: a track’s menu under None",
    "w": 1200,
