@@ -12,14 +12,10 @@ extension ShotScene {
             height: 110
         ) {
             MacLibraryHeading(collapseProgress: 1, fullWidth: false) {
-                MacSortCriteria(
-                    criteria: .constant([
-                        BridgeSortCriterion(
-                            field: .dateAdded,
-                            direction: .descending
-                        )
-                    ])
-                )
+                // The preview's slot, as wide as its words: the heading
+                // holds the sort controls as children it does not own.
+                PreviewSlot("Group and sort")
+                    .fixedSize()
             }
             .environment(UiStore())
         },
