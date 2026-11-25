@@ -29,8 +29,18 @@ struct ShotWindowState: Sendable, Equatable {
         let entry: Entry?
     }
 
+    /// A window of this process the scene did not ask for.
+    struct Other: Sendable, Equatable {
+        let entry: Entry
+        let className: String
+    }
+
     /// One listing for each of the scene's windows, in order.
     let windows: [Listing]
+    /// Every other window of this process that the window server shows on
+    /// the screen, with the class AppKit gives it: a window left over from an
+    /// earlier scene can cover one of the scene's.
+    var others: [Other] = []
     let displays: [Display]
     /// The display the scene is drawn on.
     let shotDisplay: CGDirectDisplayID
@@ -47,10 +57,32 @@ struct ShotWindowState: Sendable, Equatable {
             (CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID)
                 as? [[String: Any]]) ?? []
         let entries = listed.compactMap(entry(from:))
+        let pid = Int(getpid())
+        let ours = Set(
+            listed.compactMap { info -> CGWindowID? in
+                guard info[kCGWindowOwnerPID as String] as? Int == pid else {
+                    return nil
+                }
+                return (info[kCGWindowNumber as String] as? Int)
+                    .map(CGWindowID.init)
+            }
+        )
+        let classes = Dictionary(
+            NSApp.windows.map { (CGWindowID($0.windowNumber), $0.className) },
+            uniquingKeysWith: { first, _ in first }
+        )
         return Self(
             windows: windowIDs.map { id in
                 Listing(id: id, entry: entries.first { $0.id == id })
             },
+            others:
+                entries.filter {
+                    ours.contains($0.id) && $0.onScreen
+                        && !windowIDs.contains($0.id)
+                }
+                .map {
+                    Other(entry: $0, className: classes[$0.id] ?? "unknown")
+                },
             displays: NSScreen.screens.compactMap { screen in
                 screen.displayNumber.map {
                     Display(
@@ -90,12 +122,18 @@ struct ShotWindowState: Sendable, Equatable {
                     + "\($0.onScreen ? "on" : "not on") the screen"
             } ?? "window \(listing.id): the window server lists no entry"
         }
+        let otherLines = others.map {
+            "other window \($0.entry.id) (\($0.className)) of this process: "
+                + "window server frame \($0.entry.frame), layer "
+                + "\($0.entry.layer), on the screen"
+        }
         let displayLines = displays.map {
             "display \($0.id)\($0.id == shotDisplay ? " (the shot display)" : ""): "
                 + "frame \($0.frame), \($0.scale)x"
         }
         return
-            (windowLines + displayLines + ["shot display held as: \(holder)"])
+            (windowLines + otherLines + displayLines
+            + ["shot display held as: \(holder)"])
             .joined(separator: "; ")
     }
 }
