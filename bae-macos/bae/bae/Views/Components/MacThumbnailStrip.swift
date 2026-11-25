@@ -5,6 +5,9 @@ import SwiftUI
 enum MacThumbnailStripLayout {
     /// Each thumbnail's side, which callers also decode their images at.
     static let thumbnailSize: CGFloat = 56
+    /// The strip's height: the room above and below each thumbnail is for
+    /// its ring.
+    static let height: CGFloat = 64
 }
 
 /// A horizontal strip of thumbnails that keeps the current item centered; the
@@ -35,7 +38,7 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                 strip(minWidth: nil)
             }
         }
-        .frame(height: 64)
+        .frame(height: MacThumbnailStripLayout.height)
     }
 
     private func strip(minWidth: CGFloat?) -> some View {
@@ -48,6 +51,11 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                     }
                 }
                 .padding(.horizontal, ThemeSpace.related)
+                .padding(
+                    .vertical,
+                    (MacThumbnailStripLayout.height
+                        - MacThumbnailStripLayout.thumbnailSize) / 2
+                )
                 .frame(minWidth: minWidth)
             }
             .onAppear {
@@ -74,10 +82,15 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                     height: MacThumbnailStripLayout.thumbnailSize
                 )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        .stroke(color, lineWidth: lineWidth)
-                )
+                // The whole ring lies outside the thumbnail, as the board's
+                // ring does, so the strip holds room for it above and below.
+                .overlay {
+                    RoundedRectangle(
+                        cornerRadius: ThemeRadius.artwork + lineWidth
+                    )
+                    .strokeBorder(color, lineWidth: lineWidth)
+                    .padding(-lineWidth)
+                }
         }
         .buttonStyle(.accentPlain)
         .accessibilityLabel(Text(verbatim: name(item)))
