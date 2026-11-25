@@ -64,7 +64,7 @@ extension ShotScene {
             .overlay(alignment: .topLeading) {
                 if optionsOpen {
                     // Under the ⋯, which follows Play: the menu's right edge
-                    // is the button's, 242.5 points in, and its top 4 points
+                    // is the button's, 234.5 points in, and its top 4 points
                     // under the button's bottom.
                     MacMenuInPlace(
                         {
@@ -78,7 +78,7 @@ extension ShotScene {
                         },
                         highlighted: 0
                     )
-                    .padding(.leading, 242.5 - 141)
+                    .padding(.leading, 234.5 - 141)
                     .padding(.top, 119)
                 }
             }
