@@ -116,10 +116,6 @@ struct MacNowPlayingBar: View {
                         width: ThemeSize.barArtwork,
                         height: ThemeSize.barArtwork
                     )
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    )
-                    .shadow(color: Theme.shadow, radius: 8, y: 4)
             }
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -143,7 +139,8 @@ struct MacNowPlayingBar: View {
         Artwork(
             content: cover,
             pointSize: ThemeSize.barArtwork,
-            cornerRadius: nil
+            cornerRadius: ThemeRadius.artwork,
+            shadow: .bar
         )
     }
 
