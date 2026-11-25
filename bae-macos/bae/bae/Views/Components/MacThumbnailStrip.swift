@@ -77,23 +77,26 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
 
     private func cell(_ item: Item) -> some View {
         let (color, lineWidth) = stroke(item, item.id == current)
-        return Button {
-            onSelect(item.id)
-        } label: {
-            content(item)
-                .frame(
-                    width: MacThumbnailStripLayout.thumbnailSize,
-                    height: MacThumbnailStripLayout.thumbnailSize
-                )
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-        }
-        .buttonStyle(.accentPlain)
-        // The whole ring lies outside the thumbnail, as the board's ring
-        // does. The stroke is drawn past the thumbnail's box and takes none
-        // of the layout or of VoiceOver's box for the button.
-        .overlay {
+        // The ring is beside the button, not on it, so VoiceOver's box for the
+        // button is the thumbnail's own: the stroke lies outside the
+        // thumbnail, as the board's ring does, and takes none of the layout.
+        return ZStack {
+            Button {
+                onSelect(item.id)
+            } label: {
+                content(item)
+                    .frame(
+                        width: MacThumbnailStripLayout.thumbnailSize,
+                        height: MacThumbnailStripLayout.thumbnailSize
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
+            }
+            .buttonStyle(.accentPlain)
+            .accessibilityLabel(Text(verbatim: name(item)))
             RoundedRectangle(
-                cornerRadius: ThemeRadius.artwork + lineWidth / 2,
+                cornerRadius: ThemeRadius.artwork,
                 style: .circular
             )
             .inset(by: -lineWidth / 2)
@@ -101,6 +104,5 @@ struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
-        .accessibilityLabel(Text(verbatim: name(item)))
     }
 }
