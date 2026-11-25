@@ -13,11 +13,11 @@
       stars);
   }
   // A heart, the rating of a library whose system is Heart, read-only: filled when `on` (the person's stars are three or more), an outline otherwise. A screen reader reads the filled heart as a picture named Hearted and skips the outline.
-  // set="mac" for macOS: the SF Symbol heart.fill or heart at `size` points, in a square frame of that size, which is its box. Without it, Android's Material favorite symbol, filled or its outline, `size` points square.
+  // set="mac" for macOS: the SF Symbol heart.fill or heart at `size` points, in a square frame of that size. Without it, Android's Material favorite symbol, filled or its outline, `size` points square.
   function Heart(props) {
     var s = Number(props.size || 14), on = !!props.on;
     var label = on ? 'Hearted' : null, className = cx('bae-heart', on && 'bae-heart-on');
-    if (props.set === 'mac') return h(Glyph, { set: 'mac', name: on ? 'heartfill' : 'heart', weight: 'regular', size: s, square: true, contentShape: true, label: label, className: className });
+    if (props.set === 'mac') return h(Glyph, { set: 'mac', name: on ? 'heartfill' : 'heart', weight: 'regular', size: s, square: true, label: label, className: className });
     return h(MSymbol, { name: on ? 'favorite' : 'favorite_border', size: s, fill: 'currentColor', label: label, className: className });
   }
   // A person's small picture, or initials, beside their name (`name`), as a history row ends in whose play it was. `strong` is a playlist header's owner line: the name in the header's semibold, at the size of the text around it.
