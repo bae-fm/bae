@@ -28,7 +28,7 @@ final class SelectionActionProgressNSView: NSView {
         let stack = NSStackView(views: [label, bar])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = ThemeSpace.inline
+        stack.spacing = ThemeSpace.related
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         NSLayoutConstraint.activate([
