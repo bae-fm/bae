@@ -21,11 +21,27 @@ private struct ThemeTextLine: ViewModifier {
             if let line = text.macOSLine {
                 // SwiftUI puts the spacing between lines only, so the first
                 // line gets it above, and n lines are n times the line high.
-                // The board's line holds its spare height above the words.
-                let spacing = max(0, line - text.swiftUILineHeight)
+                // The board's line holds the spare height above the words.
+                let natural = text.swiftUILineHeight
+                let spacing = max(0, line - natural)
+                // A line SwiftUI already makes as tall as the role's has no
+                // spare height. The board's line still splits what the font's
+                // whole-point ascent and descent leave of it, half above the
+                // words and half below, where SwiftUI's holds all of it
+                // above: mono 12's baseline is 12.47 points down SwiftUI's
+                // 15 point line and 12 down the board's.
+                let font = text.nsFont
+                let ascent = font.ascender.rounded()
+                let descent = (-font.descender).rounded()
+                let above =
+                    line == natural
+                    ? (line - ascent - descent) / 2 + ascent
+                        - (natural + font.descender)
+                    : 0
                 content
                     .lineSpacing(spacing)
-                    .padding(.top, spacing)
+                    .padding(.top, spacing + above)
+                    .padding(.bottom, -above)
                     .frame(minHeight: line)
             }
             else {
