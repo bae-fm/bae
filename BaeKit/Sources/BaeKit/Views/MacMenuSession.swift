@@ -92,6 +92,8 @@
         private static var current: MacMenuSession?
 
         private let parent: NSWindow
+        /// The screen a menu goes on when its position is on none.
+        private let fallbackScreen: NSScreen
         private let appearance: HostedAppearance
         private let colorScheme: ColorScheme
         private let isPopUp: Bool
@@ -116,9 +118,13 @@
             onClose: @escaping @MainActor () -> Void = {}
         ) -> MacMenuSession? {
             current?.close()
-            guard !entries.isEmpty else { return nil }
+            // With no screen to draw on, as while displays reconnect, no
+            // menu opens.
+            guard !entries.isEmpty, let screen = parent.screen ?? NSScreen.main
+            else { return nil }
             let session = MacMenuSession(
                 parent: parent,
+                screen: screen,
                 appearance: appearance,
                 isPopUp: isPopUp,
                 onClose: onClose
@@ -130,11 +136,13 @@
 
         private init(
             parent: NSWindow,
+            screen: NSScreen,
             appearance: HostedAppearance,
             isPopUp: Bool,
             onClose: @escaping @MainActor () -> Void
         ) {
             self.parent = parent
+            self.fallbackScreen = screen
             self.appearance = appearance
             self.isPopUp = isPopUp
             self.onClose = onClose
@@ -266,10 +274,8 @@
                 NSScreen.screens.first {
                     $0.frame.contains(NSPoint(x: origin.x, y: origin.y))
                         || $0.frame.contains(NSEvent.mouseLocation)
-                } ?? parent.screen ?? NSScreen.main
-            guard let visible = screen?.visibleFrame else {
-                preconditionFailure("a menu opens on a screen")
-            }
+                } ?? fallbackScreen
+            let visible = screen.visibleFrame
             let tallest = MacMenuMetrics.tallestFace(onScreenOf: visible.height)
             size.height = MacMenuMetrics.faceHeight(
                 of: entries,
