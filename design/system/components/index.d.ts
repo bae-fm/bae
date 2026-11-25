@@ -390,7 +390,7 @@ export declare function MacImportBulk(props: { count?: number; ready?: number; r
 export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacCoverGallery(props: { title?: string; selected?: string; source?: string; current?: string; remote?: 'unlinked'; remoteNames?: string; files?: string }): React.ReactElement;
-export declare function MacLightbox(props: { title?: string; label?: string; source?: string; images?: string; selected?: string; browse?: boolean; state?: 'loading' | 'failed' }): React.ReactElement;
+export declare function MacLightbox(props: { title?: string; label?: string; source?: string; images?: string; selected?: string; browse?: boolean; state?: 'loading' | 'failed'; details?: boolean }): React.ReactElement;
 export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed'; moveToThisDevice?: 'queued' | 'moving' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 /** A rating under the Heart system, read-only: filled when `on` (three stars or more). */

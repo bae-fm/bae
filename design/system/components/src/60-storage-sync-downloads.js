@@ -208,7 +208,8 @@
     var centered = props.layout === 'centered';
     // Centred, the notice is quiet words: its button's label is secondary text, so nothing in it is brighter than the message; Details is in the accent, as in every notice, apart from the grey title.
     var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet }, props.action) : null;
-    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless' }, props.secondary) : null;
+    // On the stage, Details takes the stage's grey as Retry does, so nothing in the notice is brighter than its words.
+    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered && !!props.stage }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 'medium', faint: true, label: 'Dismiss' })) : null;
     // `leave`: the label of the button that leaves a screen the notice fills (Cancel), first in the row, where it is the screen's only way back.
     var leave = centered && props.leave ? h(MacButton, { key: 'l', muted: true }, props.leave) : null;

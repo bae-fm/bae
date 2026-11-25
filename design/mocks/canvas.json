@@ -162,12 +162,20 @@
    "x": 11520,
    "y": 15812
   },
+  "mac.album.lightbox.zoom-failed.dc.html": {
+   "h": 1020,
+   "page": "home",
+   "title": "macOS: lightbox, zoom failed",
+   "w": 1200,
+   "x": 12800,
+   "y": 15812
+  },
   "mac.album.save-as.dc.html": {
    "h": 1020,
    "page": "home",
    "title": "macOS: Save as… on a track",
    "w": 1200,
-   "x": 12800,
+   "x": 14080,
    "y": 15812
   },
   "mac.album.storage.dc.html": {
@@ -2959,7 +2967,7 @@
    "page": "home",
    "title": "macOS: Storage…: every state",
    "w": 1452,
-   "x": 14080,
+   "x": 15360,
    "y": 15812
   },
   "mac.album.storage.unpin.dc.html": {
@@ -2967,7 +2975,7 @@
    "page": "home",
    "title": "macOS: Unpin, asking first",
    "w": 1200,
-   "x": 15612,
+   "x": 16892,
    "y": 15812
   },
   "android.album.page.every-storage-state.dc.html": {
@@ -6367,6 +6375,7 @@
   "mac.album.change-cover.no-linked-release.dc.html",
   "mac.album.lightbox.dc.html",
   "mac.album.lightbox.failed.dc.html",
+  "mac.album.lightbox.zoom-failed.dc.html",
   "mac.album.save-as.dc.html",
   "mac.album.save-as.format-menu.dc.html",
   "mac.album.save-as.edit-formats.dc.html",
