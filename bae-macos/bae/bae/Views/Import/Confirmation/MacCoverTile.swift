@@ -19,6 +19,9 @@ struct MacCoverTile: View {
                     pointSize: 180,
                     cornerRadius: nil
                 )
+                // The picture's own corners, which Artwork leaves to the
+                // view around it when it fits its picture.
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .padding(ThemeSpace.related + ThemeSpace.line)
                 .frame(height: 138)
                 .frame(maxWidth: .infinity)
