@@ -23,6 +23,9 @@ struct MacInlineField: View {
     /// Send the typed value to wherever it lives.
     let onCommit: @MainActor (String) async -> Void
 
+    @Environment(\.isEnabled)
+    private var isEnabled
+
     static let emptyWidth: CGFloat = 96
 
     var body: some View {
@@ -31,6 +34,7 @@ struct MacInlineField: View {
         // column's trailing edge, as the board's does.
         field
             .padding(.leading, -FieldChrome.inlineHorizontalPadding)
+            .opacity(isEnabled ? 1 : ThemeOpacity.off)
     }
 
     private var field: some View {
