@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
+import fm.bae.app.LocalErrorDisplays
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
@@ -37,7 +39,11 @@ class GalleryLoadingTest {
             }, fetchReleaseImageBytes = { _, _, _ -> awaitCancellation() })
         compose.setContent {
             TestTheme {
-                CompositionLocalProvider(LocalImageStore provides store, LocalBugReports provides BugReports()) {
+                CompositionLocalProvider(
+                    LocalImageStore provides store,
+                    LocalBugReports provides BugReports(),
+                    LocalErrorDisplays provides NoErrorDisplays,
+                ) {
                     AndroidLightbox(
                         releaseId = "rel-1",
                         title = "Low Tide Hours",
