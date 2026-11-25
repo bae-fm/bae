@@ -136,7 +136,7 @@
     return h('span', { className: cx('bae-m-copytext', props.hover && 'bae-m-copytext-hover') },
       h('span', { className: 'bae-m-copytext-text' }, props.children != null ? props.children : props.text),
       props.after ? h('span', null, props.after) : null,
-      h('button', { type: 'button', className: 'bae-m-copytext-btn', 'aria-label': props.label || 'Copy' }, h(CopyGlyph, { size: 'small' })));
+      h('button', { type: 'button', className: 'bae-m-copytext-btn', 'aria-label': props.label || 'Copy' }, h(Glyph, { set: 'mac', name: 'copy', size: 'small' })));
   }
 
   function MacRow(props) {
