@@ -25,20 +25,37 @@ struct MacProgressLine<Label: View, Bar: View>: View {
     }
 
     var body: some View {
-        // A line too narrow for all three parts drops the count first.
+        // The phase at its own width and the bar filling the rest, with the
+        // count if all three fit; without the count if two fit; otherwise
+        // the phase takes all the room but the bar's least width and
+        // truncates. The truncated phase fills that room, so the bar is
+        // not left the part of a character the cut leaves over.
         ViewThatFits(in: .horizontal) {
-            line(detail: detail)
-            line(detail: nil)
+            line(detail: detail, phase: .whole)
+            line(detail: nil, phase: .whole)
+            line(detail: nil, phase: .cut)
         }
     }
 
-    private func line(detail: String?) -> some View {
+    private enum Phase {
+        case whole
+        case cut
+    }
+
+    private func line(detail: String?, phase: Phase) -> some View {
         HStack(spacing: ThemeSpace.related) {
-            label
-                .foregroundStyle(Theme.textSecondary)
-                // A long phase truncates rather than squeezing out the bar.
-                .cutLine(.prose)
-                .layoutPriority(1)
+            switch phase {
+            case .whole:
+                label
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: true, vertical: false)
+            case .cut:
+                label
+                    .foregroundStyle(Theme.textSecondary)
+                    .cutLine(.prose)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
+            }
             bar
                 .frame(minWidth: 48)
                 .accessibilityLabel(barName)
