@@ -89,6 +89,9 @@ public struct MacRestoreCode<Header: View>: View {
                     )
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    // The groups take the room the last group leaves, so the
+                    // last group ends the row, as the board's does.
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     if let last = share.maskedGroups.last {
                         Text(last)
                             .layoutPriority(1)
