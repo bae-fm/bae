@@ -41,12 +41,6 @@
     return out;
   }
 
-  // A right-pointing chevron; a class turns it to point down.
-  function Chevron(props) {
-    return h('svg', { className: props.className, width: 7, height: 12, viewBox: '0 0 7 12', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' },
-      h('path', { d: 'M1.5 1.5 5.5 6l-4 4.5' }));
-  }
-
   // A length a component takes as a prop: pixels, or the name of a token (`radius-artwork`, `size-row-artwork`).
   function measure(v) {
     return /^(size|radius|space)-/.test(v) ? 'var(--' + v + ')' : Number(v);
@@ -72,16 +66,6 @@
     return { width: size, height: size };
   }
 
-  // Glyphs: the few the components draw. Stroke icons for macOS. `size` is an icon role.
-  function CopyGlyph(props) {
-    return h('svg', { style: iconBox(props.size), viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-      h('rect', { x: 9, y: 9, width: 11, height: 11, rx: 2 }),
-      h('path', { d: 'M5 15V5a2 2 0 0 1 2-2h8' }));
-  }
-  function CheckGlyph(props) {
-    return h('svg', { style: iconBox(props.size), viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-      h('path', { d: 'M5 12l5 5L20 7' }));
-  }
   // The components' names for Android's icons, each a Material Symbol's name.
   var SYMBOL = { back: 'arrow_back', edit: 'edit', chevron: 'chevron_right', expand: 'expand_more', more: 'more_vert', search: 'search', add: 'add', refresh: 'refresh', copy: 'content_copy',
     play: 'play_arrow', pause: 'pause', previous: 'skip_previous', next: 'skip_next', cast: 'cast', queue: 'list', repeat: 'repeat', nowplaying: 'volume_up', down: 'keyboard_arrow_down',
