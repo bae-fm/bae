@@ -1,6 +1,6 @@
 # MacImportReleaseSummary
 
-The release a folder holds, as the import pane shows it beside the folder's cover while bae imports it: the album title as a heading, the album artist under it, then the release lines, edition, copy and audio, in small tertiary text.
+The release a folder holds, as the import pane shows it beside the folder's cover while bae imports it: the album title as a heading, the album artist under it, then the release lines, edition, copy and audio, in small tertiary text. The title and the artist each keep to one line and lose their end to "…" when they don't fit.
 
 | Prop | What it does |
 |---|---|

@@ -154,8 +154,8 @@
 .bae-m-sfield-filter { display: inline-flex; gap: var(--space-compact); width: 160px; height: 24px; box-sizing: border-box; padding: 0 var(--space-related); border-radius: var(--radius-artwork); background: var(--field); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
 .bae-m-sfield-inline { flex: 1; min-width: 0; gap: var(--space-related); }
 .bae-m-isummary { min-width: 0; display: flex; flex-direction: column; gap: var(--space-line); }
-.bae-m-isummary-title { font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); overflow: hidden; text-overflow: ellipsis; }
-.bae-m-isummary-artist { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
+.bae-m-isummary-title { font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-isummary-artist { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-isummary-facts { padding-top: var(--space-inline); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-isummary-audio { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-answer { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-line); }
