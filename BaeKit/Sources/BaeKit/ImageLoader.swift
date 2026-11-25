@@ -56,11 +56,10 @@ public enum ImageLoader {
     /// `NoBitmap`.
     public static func drawing(_ image: PlatformImage) throws -> PlatformImage {
         guard image.drawnBitmap != nil else {
-            CoreBugReporter()
-                .report(
-                    operation: "decode an image",
-                    detail: "the decoded image draws no bitmap"
-                )
+            let operation = "decode an image"
+            let detail = "the decoded image draws no bitmap"
+            logger.error("\(operation) failed: \(detail)")
+            CoreBugReporter().report(operation: operation, detail: detail)
             throw NoBitmap()
         }
         return image
