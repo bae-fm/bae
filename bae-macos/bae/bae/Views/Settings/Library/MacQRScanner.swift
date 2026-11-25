@@ -37,6 +37,9 @@ struct MacQRScanner: View {
                 placeholder(String(localized: "Starting camera…"))
             case .ready(let capture):
                 CameraPreview(capture: capture, onScan: onScan)
+                    // Dark behind the picture, as the board's camera view is,
+                    // where the video does not reach.
+                    .background(Theme.backdrop)
                     // A picture of what the camera sees: the code in it is
                     // read for the person, not by them.
                     .accessibilityElement(children: .ignore)
