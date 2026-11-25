@@ -146,8 +146,8 @@ enum OverWindow {
 
 /// The length of a popover's arrow and the room around its face for the
 /// shadow, which BaeKit's `MacPopoverFace` draws.
-private let popoverArrowLength: CGFloat = 7
-private let popoverShadowRoom: CGFloat = 40
+let popoverArrowLength: CGFloat = 7
+let popoverShadowRoom: CGFloat = 40
 
 /// `content` in the popover face the app draws, its arrow on the `arrowSide`
 /// edge `arrowFromTrailing` points in from the right edge.

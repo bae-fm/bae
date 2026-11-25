@@ -25,6 +25,9 @@ struct MacAlbumHeader: View {
     /// Draw the help tag of Not on this device, which a shot cannot get from
     /// the system.
     let showsUnplayableHelp: Bool
+    /// Draw the hover plate of the catalog links' button, which a shot
+    /// cannot get from the pointer.
+    let showsRecordsHover: Bool
 
     init(
         detail: AlbumDetail,
@@ -33,6 +36,7 @@ struct MacAlbumHeader: View {
         onPlay: @escaping () -> Void,
         rating: BridgeAlbumRating,
         showsUnplayableHelp: Bool = false,
+        showsRecordsHover: Bool = false,
         @MacMenuBuilder menu: @escaping () -> [MacMenuEntry]
     ) {
         self.detail = detail
@@ -41,6 +45,7 @@ struct MacAlbumHeader: View {
         self.onPlay = onPlay
         self.rating = rating
         self.showsUnplayableHelp = showsUnplayableHelp
+        self.showsRecordsHover = showsRecordsHover
         self.menu = menu
     }
 
@@ -77,7 +82,8 @@ struct MacAlbumHeader: View {
                 editionLine: selectedRelease.editionLine,
                 copyLine: selectedRelease.copyLine,
                 records: selectedRelease.records,
-                hasRecords: selectedRelease.hasRecords
+                hasRecords: selectedRelease.hasRecords,
+                showsHover: showsRecordsHover
             )
             HStack(spacing: ThemeSpace.related) {
                 playOrWhy
@@ -90,8 +96,6 @@ struct MacAlbumHeader: View {
             }
             .padding(.top, ThemeSpace.group)
         }
-        // Over the rows below the head, which the facts' card lies across.
-        .zIndex(1)
     }
 
     /// Play, or when this Mac can't play the release, the words Not on this

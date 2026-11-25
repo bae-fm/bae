@@ -39,7 +39,7 @@ struct ShotScene {
         + albumEditorScenes + pickedTracksScenes
         + albumRatingScenes + albumCreditsScenes + albumStorageScenes
         + searchScenes
-        + [groupedAlbumsScene]
+        + [groupedAlbumsScene, albumCatalogLinksScene]
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows

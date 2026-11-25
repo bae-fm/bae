@@ -187,31 +187,24 @@ struct MacAlbumPanel: View {
     }
 }
 
-/// The release's edition line and copy line, each cut short on its own. When a catalog describes the release, an arrow beside the
-/// first line marks them and a click toggles a card naming the catalogs.
-///
-/// The card is drawn in the window rather than as a popover, so it carries its
-/// own monitor that closes it on a click away or Escape.
+/// The release's edition line and copy line, each cut short on its own. When a
+/// catalog describes the release, an arrow beside the first line marks them
+/// and a click opens a popover of the catalogs' links.
 struct ReleaseFactsLine: View {
     let editionLine: String
     let copyLine: String
     let records: [BridgeReleaseRecord]
     /// Whether any catalog describes the release, so the line offers the
-    /// card naming them.
+    /// popover of them.
     let hasRecords: Bool
-
-    /// How far under the line the card's top sits.
-    private static let cardOffset = ThemeSpace.related
+    /// Draw the hover plate as if the pointer were on the button, which a
+    /// shot cannot do.
+    var showsHover = false
 
     @State
     private var isHovering = false
     @State
-    private var isShowingCard = false
-    @State
-    private var trigger = OverlayAnchor()
-    /// The facts' own height, which is where the card hangs from.
-    @State
-    private var lineHeight: CGFloat = 0
+    private var isShowingPopover = false
 
     var body: some View {
         if !hasRecords {
@@ -219,7 +212,7 @@ struct ReleaseFactsLine: View {
         }
         else {
             Button {
-                isShowingCard.toggle()
+                isShowingPopover = true
             } label: {
                 HStack(
                     alignment: .firstTextBaseline,
@@ -234,45 +227,19 @@ struct ReleaseFactsLine: View {
                             localizedCoreString("core.identity.identified")
                         )
                 }
-                .hoverPlate(isHovering, cornerRadius: ThemeRadius.chip)
+                .hoverPlate(
+                    isHovering || showsHover,
+                    cornerRadius: ThemeRadius.chip
+                )
             }
             .buttonStyle(.accentPlain)
-            .background { OverlayTrigger(anchor: trigger) }
             .onHover { isHovering = $0 }
             .accessibilityIdentifier("release-facts")
-            .onGeometryChange(for: CGFloat.self) { geometry in
-                geometry.size.height
-            } action: {
-                lineHeight = $0
+            .macPopover(isPresented: $isShowingPopover, arrowEdge: .bottom) {
+                ReleaseRecordsCard(records: records)
+                    .accessibilityIdentifier("release-facts-card")
             }
-            .overlay(alignment: .topLeading) {
-                if isShowingCard {
-                    card.offset(y: lineHeight + Self.cardOffset)
-                }
-            }
-            // Over the rows that follow the line, which the card lies across.
-            .zIndex(1)
         }
-    }
-
-    private var card: some View {
-        ReleaseRecordsCard(records: records)
-            .background(
-                Theme.tile,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: ThemeRadius.control)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-            }
-            .shadow(color: Theme.shadow, radius: 14, y: 8)
-            .background {
-                OverlayDismissMonitor(trigger: trigger) {
-                    isShowingCard = false
-                }
-            }
-            .fixedSize()
-            .accessibilityIdentifier("release-facts-card")
     }
 
     /// The lines the release states, each on one line of its own.

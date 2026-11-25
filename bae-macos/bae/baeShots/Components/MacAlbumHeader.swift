@@ -6,8 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// `MacAlbumHeader` at rest, over two releases, on another Mac's disk with and
     /// without its help tag,
-    /// rated, rated under the Heart and None systems, with its menu open and
-    /// with no year.
+    /// rated, rated under the Heart and None systems, with its menu open,
+    /// with no year, and with catalog links at rest, hovered and open.
     static let macAlbumHeaderScenes: [ShotScene] = [
         albumHeader("mac.component.album-header.resting", panelDetail()),
         albumHeader(
@@ -50,6 +50,20 @@ extension ShotScene {
             "mac.component.album-header.no-year",
             panelDetail(year: nil)
         ),
+        albumHeader(
+            "mac.component.album-header.catalog-links",
+            panelDetail(records: catalogLinkRecords)
+        ),
+        albumHeader(
+            "mac.component.album-header.catalog-links-hovered",
+            panelDetail(records: catalogLinkRecords),
+            showsRecordsHover: true
+        ),
+        albumHeader(
+            "mac.component.album-header.catalog-links-open",
+            panelDetail(records: catalogLinkRecords),
+            popoverOpen: true
+        ),
     ]
 
     private static func albumHeader(
@@ -57,7 +71,9 @@ extension ShotScene {
         _ detail: AlbumDetail,
         height: CGFloat = 250,
         optionsOpen: Bool = false,
-        showsUnplayableHelp: Bool = false
+        showsUnplayableHelp: Bool = false,
+        showsRecordsHover: Bool = false,
+        popoverOpen: Bool = false
     ) -> ShotScene {
         component(id, width: 540, height: height) {
             MacAlbumHeader(
@@ -66,7 +82,8 @@ extension ShotScene {
                 onSelectRelease: { _ in },
                 onPlay: {},
                 rating: detail.rating,
-                showsUnplayableHelp: showsUnplayableHelp
+                showsUnplayableHelp: showsUnplayableHelp,
+                showsRecordsHover: showsRecordsHover
             ) {
                 MacMenuItem("Edit…") {}
                 MacMenuItem("Change cover…") {}
@@ -76,6 +93,13 @@ extension ShotScene {
             }
             .frame(width: 540, alignment: .leading)
             .overlay(alignment: .topLeading) {
+                if popoverOpen {
+                    catalogLinksPopover(
+                        catalogLinkRecords,
+                        buttonX: 0,
+                        buttonTop: 62
+                    )
+                }
                 if optionsOpen {
                     // Under the ⋯, which follows Play: the menu's right edge
                     // is the ⋯'s (85.5 pt in) and its top is 4 pt below it

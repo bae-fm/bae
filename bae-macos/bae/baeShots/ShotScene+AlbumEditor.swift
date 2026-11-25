@@ -68,7 +68,7 @@ extension ShotScene {
 
     /// The album page behind the editor: Northbound, the first card of the
     /// board's grid, with its four tracks and its cover.
-    private static var northboundAlbumDetail: BridgeAlbumDetail {
+    static var northboundAlbumDetail: BridgeAlbumDetail {
         var detail = PreviewData.boardAlbumDetail(
             title: "Northbound",
             year: 1974,

@@ -7,7 +7,7 @@ import SwiftUI
 extension ShotScene {
     /// `MacAlbumPanel` for "Low Tide Hours", the first track playing: at
     /// rest, with a CD and an LP, rated by the person and by Ana, rated under the Heart and None systems, on another
-    /// Mac's disk, and with no cover.
+    /// Mac's disk, with no cover, and with its catalog links open.
     static let macAlbumPanelScenes: [ShotScene] = [
         albumPanel("mac.component.album-panel.resting", detail: panelDetail()),
         albumPanel(
@@ -40,7 +40,18 @@ extension ShotScene {
             "mac.component.album-panel.no-cover",
             detail: panelDetail(covered: false)
         ),
+        albumPanel(
+            "mac.component.album-panel.catalog-links-open",
+            detail: panelDetail(records: catalogLinkRecords),
+            popoverOpen: true
+        ),
     ]
+
+    /// The seven catalogs the album facts' previews name, MusicBrainz to
+    /// Genius.
+    static var catalogLinkRecords: [BridgeReleaseRecord] {
+        Array(PreviewData.releaseRecordsEveryCatalog.prefix(7))
+    }
 
     /// The album the panel and the track list draw: "Low Tide Hours" on a
     /// release named `name`, one track.
@@ -105,7 +116,8 @@ extension ShotScene {
         playability: BridgeReleasePlayability = .playable,
         year: Int32? = 1992,
         covered: Bool = true,
-        reissueYear: Int32? = nil
+        reissueYear: Int32? = nil,
+        records: [BridgeReleaseRecord] = []
     ) -> AlbumDetail {
         var detail = PreviewData.boardAlbumDetail()
         // The tracks follow the album's system: one system for both.
@@ -126,6 +138,10 @@ extension ShotScene {
                 )
             }
         releases[0].distinctYear = reissueYear
+        for index in releases.indices {
+            releases[index].records = records
+            releases[index].hasRecords = !records.isEmpty
+        }
         for index in releases.indices {
             for track in releases[index].tracks.indices {
                 releases[index].tracks[track].rating = tracksRating
@@ -152,7 +168,8 @@ extension ShotScene {
         _ id: String,
         detail: AlbumDetail,
         height: CGFloat = 480,
-        showsUnplayableHelp: Bool = false
+        showsUnplayableHelp: Bool = false,
+        popoverOpen: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -195,6 +212,15 @@ extension ShotScene {
             // which sets a stub one that would hide it.
             .environment(browsePanelImages)
             .albumDetailPreviewEnvironment()
+            .overlay(alignment: .topLeading) {
+                if popoverOpen {
+                    catalogLinksPopover(
+                        catalogLinkRecords,
+                        buttonX: 404,
+                        buttonTop: 94
+                    )
+                }
+            }
         }
     }
 
