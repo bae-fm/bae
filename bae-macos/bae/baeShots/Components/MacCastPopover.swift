@@ -66,19 +66,31 @@ extension ShotScene {
         connecting: CastStart.Connecting? = nil
     ) -> ShotScene {
         component(id, width: wideColumn, height: 260) {
-            MacCastPopover(
-                receivers: BridgeCastReceiverList(
-                    casting: casting,
-                    found: found,
-                    isEmpty: casting == nil && found.isEmpty
-                ),
-                endedFailure: nil,
-                onDisconnect: {}
+            // The board draws the popover's face with its arrow at the
+            // middle of the lower edge, as the app's popover panel does.
+            // Its body ends 10 points above the cell's bottom, flush with
+            // the cell's end, which reaches 32 points past the wide column.
+            MacPopoverInPlace(arrowSide: .bottom, arrowOffset: 130) {
+                MacCastPopover(
+                    receivers: BridgeCastReceiverList(
+                        casting: casting,
+                        found: found,
+                        isEmpty: casting == nil && found.isEmpty
+                    ),
+                    endedFailure: nil,
+                    onDisconnect: {}
+                )
+                // The board's popover is 260 points wide, which the names
+                // wrap within.
+                .frame(width: 260)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(
+                .bottom,
+                10 - MacPopoverMetrics.arrowLength
+                    - MacPopoverMetrics.shadowRoom
             )
-            // The board puts the popover at the end of its cell, which
-            // reaches 32 points past the wide column, 10 points above its
-            // bottom.
-            .padding(.bottom, 10)
+            .padding(.trailing, -MacPopoverMetrics.shadowRoom)
             .frame(
                 width: wideColumn + 32,
                 height: 260,
