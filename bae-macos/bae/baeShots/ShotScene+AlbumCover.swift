@@ -72,6 +72,9 @@ extension ShotScene {
         let position: UInt32
         let type: BridgeCoverImageType
 
+        /// Where the board's covers are served from.
+        static let imageHost = "https://images.example/"
+
         /// The name of the cover's tile on the board, which the board draws
         /// the cover's art from: `Discogs · 1 · Front`.
         var tileName: String {
@@ -81,11 +84,15 @@ extension ShotScene {
         /// The address of the cover's image, which holds the tile's name so
         /// the shot's image store serves the art the board draws.
         var imageUrl: String {
-            "https://images.example/\(tileName).png"
+            "\(Self.imageHost)\(tileName).png"
         }
 
         /// The art the board draws for the Discogs image at `url`.
         static func artName(forUrl url: String) -> String {
+            // A title that holds a slash is the whole name, not its last part.
+            if url.hasPrefix(Self.imageHost), url.hasSuffix(".png") {
+                return String(url.dropFirst(Self.imageHost.count).dropLast(4))
+            }
             let name = (url as NSString).lastPathComponent
             return (name as NSString).deletingPathExtension
         }

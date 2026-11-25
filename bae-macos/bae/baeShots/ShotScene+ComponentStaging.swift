@@ -521,9 +521,14 @@ extension ShotScene {
 
     static let sampleBarcode = "0 41234 56789 2"
 
-    /// The album's cover, which the catalog serves under the album's title.
-    static let lowTideHoursCover: BridgeRemoteCover = {
-        let image = BridgeRemoteImageSet(url: "Low Tide Hours", downscaled: [])
+    /// The album's cover, which the catalog serves under the title `name`.
+    static func lowTideHoursCover(named name: String = "Low Tide Hours")
+        -> BridgeRemoteCover
+    {
+        let image = BridgeRemoteImageSet(
+            url: "\(BoardRemoteCover.imageHost)\(name).png",
+            downscaled: []
+        )
         return BridgeRemoteCover(
             coverChoice: PreviewData.catalogCoverChoice(
                 image,
@@ -532,7 +537,7 @@ extension ShotScene {
             sourceName: "Cover Art Archive",
             label: .lead(releaseGroup: true)
         )
-    }()
+    }
 
     /// Low Tide Hours by Mara Quill on Harbor Records, as the catalogs
     /// `sources` list it, with `pressings` under it.
@@ -547,7 +552,9 @@ extension ShotScene {
                 titles: titles,
                 artists: [.named("Mara Quill")],
                 labels: ["Harbor Records"],
-                coverArt: lowTideHoursCover,
+                coverArt: lowTideHoursCover(
+                    named: titles.joined(separator: " / ")
+                ),
                 sources: sources.map {
                     BridgeReleaseGroupSource(
                         source: $0,
