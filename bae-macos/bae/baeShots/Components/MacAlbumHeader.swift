@@ -99,6 +99,9 @@ extension ShotScene {
                         buttonX: 0,
                         buttonTop: 62
                     )
+                    // The app's popover is a window of its own, and the
+                    // board reads it after the header.
+                    .accessibilitySortPriority(-1)
                 }
                 if optionsOpen {
                     // Under the ⋯, which follows Play: the menu's right edge

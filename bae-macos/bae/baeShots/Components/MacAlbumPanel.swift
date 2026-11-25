@@ -219,6 +219,9 @@ extension ShotScene {
                         buttonX: 404,
                         buttonTop: 94
                     )
+                    // The app's popover is a window of its own, and the
+                    // board reads it after the panel.
+                    .accessibilitySortPriority(-1)
                 }
             }
         }
