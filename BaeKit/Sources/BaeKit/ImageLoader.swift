@@ -16,20 +16,25 @@ import ImageIO
 #endif
 
 extension PlatformImage {
-    /// The bitmap the image draws. Every decode here makes one, so an image
-    /// with none is a bug.
-    public var bitmap: CGImage {
+    /// The bitmap the image draws, or nil for an image that draws none.
+    public var drawnBitmap: CGImage? {
         #if canImport(AppKit)
             var rect = CGRect(origin: .zero, size: size)
-            let bitmap = cgImage(
+            return cgImage(
                 forProposedRect: &rect,
                 context: nil,
                 hints: nil
             )
         #elseif canImport(UIKit)
-            let bitmap = cgImage
+            return cgImage
         #endif
-        guard let bitmap else {
+    }
+
+    /// The bitmap the image draws. Every decode here makes one, and a viewer
+    /// that takes an image from a store checks it with `drawnBitmap` first,
+    /// so an image with none that reaches here is a bug.
+    public var bitmap: CGImage {
+        guard let bitmap = drawnBitmap else {
             preconditionFailure("a decoded image is a bitmap")
         }
         return bitmap

@@ -84,6 +84,17 @@ final class LightboxImageLoad {
                 fail(current, .noBytes)
                 return nil
             }
+            // Every decode makes a bitmap, so an image with none is a bug.
+            guard decoded.drawnBitmap != nil else {
+                logger.reportBug(
+                    operation: "load a lightbox image",
+                    detail:
+                        "the decoded image of \(image.description) has no bitmap",
+                    to: CoreBugReporter()
+                )
+                fail(current, .bug)
+                return nil
+            }
             return isCurrent(current) ? decoded : nil
         }
         catch is CancellationError {

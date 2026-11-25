@@ -57,4 +57,9 @@ struct LightboxImageLoadTests {
 
         #expect(await failure(of: images) == .bug)
     }
+
+    @Test("An image that draws no bitmap has none to hand a viewer")
+    func imagesWithNoBitmapAreNoticed() {
+        #expect(NSImage(size: NSSize(width: 10, height: 10)).drawnBitmap == nil)
+    }
 }
