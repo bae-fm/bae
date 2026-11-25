@@ -121,7 +121,7 @@ final class InsetSecureTextFieldCell: NSSecureTextFieldCell, InsetCell {
 
 extension NSTextField {
     /// Makes the field the editor of a boxed field: no bezel, background or
-    /// ring of its own, one clipped line, its text inset by the cell, which
+    /// ring of its own, one line, its text inset by the cell, which
     /// the chrome around it pads.
     func useAsBoxedEditor(cell: NSTextFieldCell) {
         cell.isEditable = true
@@ -131,9 +131,11 @@ extension NSTextField {
         isBezeled = false
         drawsBackground = false
         focusRingType = .none
-        lineBreakMode = .byClipping
         cell.isScrollable = true
         cell.wraps = false
+        // A value too long for the field ends in "…" while nobody edits it;
+        // typing scrolls it. Set after `isScrollable`, which sets its own.
+        lineBreakMode = .byTruncatingTail
     }
 
     /// The placeholder in the tertiary colour, in `font`.
