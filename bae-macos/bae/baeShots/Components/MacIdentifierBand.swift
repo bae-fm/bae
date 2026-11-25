@@ -32,6 +32,11 @@ extension ShotScene {
             catalogNumbersRun
         ),
         identifierBandScene(
+            "mac.component.identifier-band.catalog-numbers-shown",
+            catalogNumbersRun,
+            listsCatalogCandidates: true
+        ),
+        identifierBandScene(
             "mac.component.identifier-band.struck",
             struckRun
         ),
@@ -108,7 +113,7 @@ extension ShotScene {
     )
 
     /// No Disc ID, barcode or ISRC, and two catalog numbers that no
-    /// release confirms, each a button that puts it into the run.
+    /// release confirms, behind their count.
     private static let catalogNumbersRun = BridgeIdentifyRun(
         providers: [.musicBrainz, .discogs],
         discId: .absent,
@@ -165,7 +170,8 @@ extension ShotScene {
         _ id: String,
         _ run: BridgeIdentifyRun,
         width: CGFloat = 580,
-        height: CGFloat = 70
+        height: CGFloat = 70,
+        listsCatalogCandidates: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -177,7 +183,8 @@ extension ShotScene {
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
-                onEditTitleSearch: { _, _ in }
+                onEditTitleSearch: { _, _ in },
+                listsCatalogCandidates: listsCatalogCandidates
             )
         }
     }

@@ -2,8 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// The run as one wrapping band of chips — Disc ID, Barcode, Catalog #, ISRC,
-/// Title, then one chip listing every catalog number nothing confirmed —
-/// each with every provider's answer.
+/// Title, then the catalog numbers nothing confirmed folded behind their
+/// count — each with every provider's answer.
 struct MacIdentifierBand: View {
     let run: BridgeIdentifyRun
     /// Leave an identifier out of the run, or ask about it again.
@@ -17,6 +17,29 @@ struct MacIdentifierBand: View {
     /// the draft's.
     let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
 
+    /// Whether the catalog numbers nothing confirmed are listed.
+    @State
+    private var showsCatalogCandidates: Bool
+
+    /// `listsCatalogCandidates` opens the band with the catalog numbers
+    /// nothing confirmed already listed.
+    init(
+        run: BridgeIdentifyRun,
+        onToggleLookup: @escaping (LookupToggle) -> Void,
+        onToggleCatalogAgreement: @escaping (String) -> Void,
+        onRetryFailed: @escaping () -> Void,
+        onEditTitleSearch:
+            @escaping (_ album: String, _ artist: String) -> Void,
+        listsCatalogCandidates: Bool = false
+    ) {
+        self.run = run
+        self.onToggleLookup = onToggleLookup
+        self.onToggleCatalogAgreement = onToggleCatalogAgreement
+        self.onRetryFailed = onRetryFailed
+        self.onEditTitleSearch = onEditTitleSearch
+        _showsCatalogCandidates = State(initialValue: listsCatalogCandidates)
+    }
+
     var body: some View {
         FlowLayout(spacing: ThemeSpace.compact) {
             discIdChips
@@ -24,7 +47,7 @@ struct MacIdentifierBand: View {
             catalogChips
             isrcChip
             titleChip
-            catalogCandidatesChip
+            catalogCandidates
             if let wait = ChipWait(readingArtworkOf: run) {
                 ScanningChip(wait: wait)
             }
@@ -214,28 +237,50 @@ struct MacIdentifierBand: View {
         }
     }
 
-    /// One chip listing every catalog number the folder offers that no
-    /// release confirms, each one a button that puts it into the run.
+    /// The catalog numbers the folder offers that no release confirms: behind
+    /// a "+N more" button with their count, or, once it is pressed, each as
+    /// its own chip that puts the number into the run, then "Show fewer".
     @ViewBuilder
-    private var catalogCandidatesChip: some View {
-        let values = run.catalogCandidateValues
-        if !values.isEmpty {
-            MacIdentifierChip(
-                label: String(localized: "Catalog #"),
-                values: values,
-                style: .outlined,
-                onValue: { onToggleLookup(.catalog($0)) }
-            ) {
-                EmptyView()
-            }
-            .help("Look this catalog number up")
+    private var catalogCandidates: some View {
+        let fold = CatalogCandidateFold(values: run.catalogCandidateValues)
+        ForEach(fold.shown(expanded: showsCatalogCandidates), id: \.self) {
+            value in
+            CatalogCandidateChip(
+                value: value,
+                onActivate: { onToggleLookup(.catalog(value)) }
+            )
+        }
+        if let title = fold.buttonTitle(expanded: showsCatalogCandidates) {
+            CatalogCandidatesDisclosure(
+                title: title,
+                isExpanded: $showsCatalogCandidates
+            )
         }
     }
 }
 
+/// The catalog numbers nothing confirmed, and what the band draws of them.
+struct CatalogCandidateFold {
+    let values: [String]
+
+    /// The numbers drawn as chips: none while folded.
+    func shown(expanded: Bool) -> [String] {
+        expanded ? values : []
+    }
+
+    /// The button's words, with the count while folded; `nil` with no number
+    /// to fold.
+    func buttonTitle(expanded: Bool) -> String? {
+        guard !values.isEmpty else { return nil }
+        return expanded
+            ? String(localized: "Show fewer")
+            : String(localized: "+\(values.count) more")
+    }
+}
+
 extension BridgeIdentifyRun {
-    /// The catalog numbers the folder offers that are not in effect, every
-    /// one, in the order core lists them.
+    /// The catalog numbers the folder offers that are not in effect, in the
+    /// order core lists them.
     var catalogCandidateValues: [String] {
         guard case .numbers(_, let candidates) = catalog else {
             return []

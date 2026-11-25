@@ -28,19 +28,34 @@ struct MacIdentifierChipValuesTests {
         }
     }
 
-    @Test("every catalog number nothing confirms is listed, none folded away")
-    func catalogCandidatesListEveryNumber() {
-        var run = PreviewData.identifyRunFound
+    @Test("catalog numbers nothing confirms are folded behind their count")
+    func catalogCandidatesFoldBehindTheirCount() {
         let numbers = (1...8).map { "HR-100\($0)" }
+        let fold = CatalogCandidateFold(values: numbers)
+
+        #expect(fold.shown(expanded: false).isEmpty)
+        #expect(fold.buttonTitle(expanded: false) == "+8 more")
+        #expect(fold.shown(expanded: true) == numbers)
+        #expect(fold.buttonTitle(expanded: true) == "Show fewer")
+    }
+
+    @Test("with no catalog number to fold, the band draws no button")
+    func noCandidatesNoButton() {
+        let fold = CatalogCandidateFold(values: [])
+
+        #expect(fold.buttonTitle(expanded: false) == nil)
+        #expect(fold.buttonTitle(expanded: true) == nil)
+    }
+
+    @Test("the run's candidates are the numbers core lists, in its order")
+    func runCandidatesKeepCoreOrder() {
+        var run = PreviewData.identifyRunFound
+        let numbers = (1...3).map { "HR-100\($0)" }
         run.catalog = .numbers(
             rows: [],
             candidates: numbers.map { BridgeCatalogCandidate(value: $0) }
         )
 
         #expect(run.catalogCandidateValues == numbers)
-        #expect(
-            MacIdentifierChipValues.text(run.catalogCandidateValues)
-                == numbers.joined(separator: " · ")
-        )
     }
 }

@@ -1727,10 +1727,11 @@ still being read, which can add barcodes and catalog numbers. The search
 form reports that bae is still reading the artwork.
 
 The pane lists every ISRC from the files' tags, separated by " · ", and
-screen readers read them all. The pane lists every catalog number the
-folder's text offers that no release confirms. Each number is a button
-that puts the number into the run, and the pane hides none behind a count.
-The pane lists each number once. These are no catalog number: a copyright
+screen readers read them all. The pane folds the catalog numbers the
+folder's text offers that no release confirms behind one "+N more" button,
+where N is how many there are. Pressing it lists each number as its own
+outlined Catalog # chip, a button that puts the number into the run, and the
+button then reads "Show fewer". The pane lists each number once. These are no catalog number: a copyright
 line such as `P 2007`; an ISRC; a checksum from a rip report (8, 32, 40 or 64
 hex digits holding a letter and a digit); a number followed by `%`
 (`CDDA 100%`) or a version of one or two digits, a dot and one or two digits

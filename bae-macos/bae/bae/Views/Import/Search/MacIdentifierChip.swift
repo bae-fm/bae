@@ -29,9 +29,6 @@ struct MacIdentifierChip<Trailing: View>: View {
     /// Takes the place of `value`.
     var values: [String] = []
     var style: MacIdentifierChipStyle = .filled
-    /// Where each of `values` is a button, what it does: the value written
-    /// in the list, separated and wrapping as the values of a chip are.
-    var onValue: ((String) -> Void)?
     /// Where pressing the chip does something, what it does. The chip's label,
     /// value and answers stay separate elements for accessibility, as the
     /// board draws them.
@@ -55,33 +52,7 @@ struct MacIdentifierChip<Trailing: View>: View {
     private var content: some View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
-            if !values.isEmpty, let onValue {
-                FlowLayout(
-                    spacing: ThemeSpace.line,
-                    maxWidth: identifierListWidth
-                ) {
-                    ForEach(Array(values.enumerated()), id: \.offset) {
-                        index,
-                        value in
-                        HStack(spacing: ThemeSpace.line) {
-                            Button {
-                                onValue(value)
-                            } label: {
-                                Text(value)
-                                    .themeText(.mono)
-                                    .foregroundStyle(valueStyle)
-                            }
-                            .buttonStyle(.accentPlain)
-                            if index < values.count - 1 {
-                                Text(verbatim: FactList.glyph)
-                                    .themeText(.mono)
-                                    .foregroundStyle(valueStyle)
-                            }
-                        }
-                    }
-                }
-            }
-            else if !values.isEmpty {
+            if !values.isEmpty {
                 Text(MacIdentifierChipValues.text(values))
                     .themeText(.mono)
                     .foregroundStyle(valueStyle)
