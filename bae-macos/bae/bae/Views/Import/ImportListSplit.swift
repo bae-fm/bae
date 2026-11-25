@@ -5,9 +5,9 @@ import SwiftUI
 /// The import list beside its pane, with a divider the person drags to
 /// resize the list.
 ///
-/// The list opens at its ideal width, 420 points, as the board draws it, and
-/// the divider moves it between its floor, 410, and its ceiling, 460, never
-/// leaving the pane less than its own floor.
+/// The list opens at its ideal width, 420 points, as the board draws it, with
+/// the divider's hairline after it, and the divider moves it between its floor,
+/// 410, and its ceiling, 460, never leaving the pane less than its own floor.
 struct ImportListSplit<List: View, Pane: View>: View {
     static var floorWidth: CGFloat { 410 }
     static var idealWidth: CGFloat { 420 }
@@ -32,9 +32,7 @@ struct ImportListSplit<List: View, Pane: View>: View {
                 list()
                     .frame(width: width)
                     .frame(maxHeight: .infinity)
-                    .overlay(alignment: .trailing) {
-                        divider(width: width, in: proxy.size.width)
-                    }
+                divider(width: width, in: proxy.size.width)
                 pane()
             }
         }
@@ -48,7 +46,7 @@ struct ImportListSplit<List: View, Pane: View>: View {
         return min(max(width, Self.floorWidth), ceiling)
     }
 
-    /// A hairline on the list's trailing edge, with a wider strip that takes
+    /// A hairline after the list, outside its width as the board's border is, with a wider strip that takes
     /// the drag and shows the resize cursor.
     private func divider(width: CGFloat, in total: CGFloat) -> some View {
         MacHairline(axis: .vertical)
