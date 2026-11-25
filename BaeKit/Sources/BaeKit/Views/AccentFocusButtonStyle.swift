@@ -30,18 +30,13 @@ public struct AccentFocusButtonStyle<Base: ButtonStyle>: PrimitiveButtonStyle {
 public struct PlainButtonLook: ButtonStyle {
     @Environment(\.isEnabled)
     private var isEnabled
-    private let dimsWhenDisabled: Bool
 
-    /// With `dimsWhenDisabled` false, the button draws as enabled while it
-    /// is disabled, for one that something drawn over it covers.
-    public init(dimsWhenDisabled: Bool = true) {
-        self.dimsWhenDisabled = dimsWhenDisabled
-    }
+    public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(
-                !isEnabled && dimsWhenDisabled
+                !isEnabled
                     ? ThemeOpacity.off : configuration.isPressed ? 0.5 : 1
             )
     }
@@ -52,12 +47,6 @@ where Self == AccentFocusButtonStyle<PlainButtonLook> {
     /// `.plain` with bae's off opacity, wearing the accent's focus ring.
     public static var accentPlain: Self {
         PlainButtonLook().accentFocus()
-    }
-
-    /// `accentPlain` that draws a disabled button undimmed when
-    /// `dimsWhenDisabled` is false.
-    public static func accentPlain(dimsWhenDisabled: Bool) -> Self {
-        PlainButtonLook(dimsWhenDisabled: dimsWhenDisabled).accentFocus()
     }
 }
 

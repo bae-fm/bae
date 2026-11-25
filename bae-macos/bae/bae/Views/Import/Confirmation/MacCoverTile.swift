@@ -9,9 +9,6 @@ struct MacCoverTile: View {
     let selected: Bool
     let onFocus: () -> Void
     let onOpenLightbox: () -> Void
-    /// Whether the lightbox is drawn over the gallery: the tile, disabled
-    /// then, draws as it is under the lightbox's backdrop.
-    let isCovered: Bool
 
     var body: some View {
         Button(action: onFocus) {
@@ -43,7 +40,7 @@ struct MacCoverTile: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.accentPlain(dimsWhenDisabled: !isCovered))
+        .buttonStyle(.accentPlain)
         .help(item.label)
         .accessibilityLabel(item.label)
         .accessibilityAddTraits(selected ? .isSelected : [])

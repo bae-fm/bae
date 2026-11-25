@@ -32,8 +32,7 @@ extension ShotScene {
                 item: CoverItem(gallery: coverEntry(name)),
                 selected: selected,
                 onFocus: {},
-                onOpenLightbox: {},
-                isCovered: false
+                onOpenLightbox: {}
             )
             .frame(width: 130)
         }

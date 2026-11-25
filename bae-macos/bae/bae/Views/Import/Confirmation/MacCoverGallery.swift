@@ -44,7 +44,7 @@ struct MacCoverGallery: View {
                         .disabled(remoteItems.isLoading || isSaving)
                 }
                 MacButton("Done", action: onDone)
-                    .keyboardShortcut(.cancelAction)
+                    .keyboardShortcut(shortcutWhenUncovered(.cancelAction))
                     .disabled(isSaving)
             }
             HStack(spacing: 0) {
@@ -100,7 +100,6 @@ struct MacCoverGallery: View {
                 MacCoverPreview(
                     content: content,
                     isSaving: isSaving,
-                    isCovered: browser.layout == .lightbox,
                     previewFocused: $previewFocused,
                     onOpenLightbox: { browser.layout = .lightbox },
                     onFocus: { self.focus($0) }
@@ -122,7 +121,7 @@ struct MacCoverGallery: View {
                         onSelect(CoverItem(gallery: focus.cover))
                     }
                 }
-                .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(shortcutWhenUncovered(.defaultAction))
                 .disabled(
                     content.focus?.cover.selection == nil
                         || content.focus?.cover.selection == selectedCover
@@ -157,7 +156,10 @@ struct MacCoverGallery: View {
 
     var body: some View {
         gallery
-            .disabled(browser.layout == .lightbox)
+            // The lightbox takes the pointer and the keys while it is open;
+            // the gallery under its backdrop draws as it is, not dimmed as a
+            // disabled one is, so its shortcuts are the lightbox's to take.
+            .allowsHitTesting(browser.layout != .lightbox)
             .accessibilityHidden(browser.layout == .lightbox)
             .overlay { lightboxOverlay }
             .onAppear {
@@ -227,6 +229,14 @@ struct MacCoverGallery: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    /// `shortcut` while the grid shows; the lightbox over the gallery owns
+    /// the keys, so the gallery's buttons keep none.
+    private func shortcutWhenUncovered(
+        _ shortcut: KeyboardShortcut
+    ) -> KeyboardShortcut? {
+        browser.layout == .lightbox ? nil : shortcut
     }
 
     private var gridPreviewShown: Bool {
@@ -303,8 +313,7 @@ extension MacCoverGallery {
             item: item,
             selected: content.focus?.cover.key == item.id,
             onFocus: { focusedCover = item.id },
-            onOpenLightbox: { browser.layout = .lightbox },
-            isCovered: browser.layout == .lightbox
+            onOpenLightbox: { browser.layout = .lightbox }
         )
         .disabled(isSaving)
     }
