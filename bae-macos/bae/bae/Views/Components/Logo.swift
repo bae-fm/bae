@@ -1,8 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// The sheep over the word "bae". With `glow` a soft pink and purple glow sits
-/// behind the sheep and a pool of light under it, both still; with `bob` the
+/// The sheep over the word "bae". The word is in the primary text colour.
+/// With `glow` a soft pink and purple glow sits behind the sheep and a pool
+/// of light under it, both still, and the word takes the sheep's cream and a
+/// thin edge to its lower right; with `bob` the
 /// sheep and the word each float and tilt (unless motion is reduced). The logo
 /// guideline (`the-sheep-logo-and-its-forms.md`, which
 /// `design/system/README.md` lists) is the source of every proportion and
@@ -82,8 +84,13 @@ struct Logo: View {
                 Image("LogoWord")
                     .resizable()
                     .scaledToFit()
-                    .foregroundStyle(Theme.logoWord)
-                    .shadow(color: Theme.logoWordEdge, radius: 0, x: 1, y: 1)
+                    .foregroundStyle(glow ? Theme.logoWord : Theme.textPrimary)
+                    .shadow(
+                        color: glow ? Theme.logoWordEdge : .clear,
+                        radius: 0,
+                        x: 1,
+                        y: 1
+                    )
                     .frame(width: wordWidth, height: wordHeight)
                     .modifier(
                         Bob(
