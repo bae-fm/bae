@@ -37,6 +37,35 @@ pub fn kotlin(theme: &Theme) -> String {
     out
 }
 
+/// Roboto's ascent and descent, in em: its hhea metrics, 1900 and 500 of 2048 units.
+const ROBOTO_ASCENT: f64 = 1900.0 / 2048.0;
+const ROBOTO_DESCENT: f64 = 500.0 / 2048.0;
+
+/// The density the boards' pictures are taken at, which the Android shots also use.
+const BOARD_DENSITY: f64 = 2.0;
+
+/// How much of a line's spare height Compose puts above a line of Roboto at `size` in a line `line` tall, in
+/// as a fraction, so the baseline falls where the board's browser puts it.
+///
+/// The browser rounds the font's ascent and descent each to whole pixels, centres that content in the line and
+/// drops a half pixel of spare height, so the baseline sits `floor((line - content) / 2) + ascent` below the
+/// line's top. Compose rounds ascent and descent at the device's density and places the baseline `ascent` plus
+/// the rounded share of the spare height below it; the share is chosen to give the same baseline, a quarter pixel
+/// into its pixel so the rounding does not decide it.
+fn top_ratio(size: f64, line: f64) -> f64 {
+    let browser_ascent = (ROBOTO_ASCENT * size).round();
+    let browser_descent = (ROBOTO_DESCENT * size).round();
+    let baseline = ((line - browser_ascent - browser_descent) / 2.0).floor() + browser_ascent;
+    let ascent = (ROBOTO_ASCENT * size * BOARD_DENSITY).round();
+    let descent = (ROBOTO_DESCENT * size * BOARD_DENSITY).round();
+    let spare = line * BOARD_DENSITY - ascent - descent;
+    if spare <= 0.0 {
+        return 0.5;
+    }
+    let top = (baseline * BOARD_DENSITY - ascent).clamp(0.0, spare - 1.0);
+    (top + 0.25) / spare
+}
+
 /// The theme as Kotlin, written to `out`.
 fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
     out.push_str(
@@ -123,9 +152,10 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
         let line = text
             .android_line
             .map(|line| {
+                let top = top_ratio(android, line);
                 format!(
                     "                    lineHeight = {line}.sp,\n                    \
-                     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),\n"
+                     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment({top:.3}f), LineHeightStyle.Trim.None),\n"
                 )
             })
             .unwrap_or_default();

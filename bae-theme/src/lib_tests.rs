@@ -458,6 +458,15 @@ fn a_text_role_with_an_android_line_height_carries_it_into_kotlin() {
     assert!(kotlin.contains("fontSize = 14.sp,\n                    lineHeight = 22.sp,\n"));
 }
 
+/// The board's browser sets a 14 px line 20 px tall with its baseline 15 px down; Compose's centred line puts it
+/// half a point higher, so the generated style asks for more of the spare height above.
+#[test]
+fn a_line_height_places_the_baseline_where_the_boards_browser_does() {
+    let theme = theme_with_text(BODY).unwrap();
+    let kotlin = android::kotlin(&theme);
+    assert!(kotlin.contains("LineHeightStyle.Alignment(0.607f), LineHeightStyle.Trim.None"));
+}
+
 #[test]
 fn a_text_role_with_an_apple_line_height_carries_it_into_swift() {
     let sized = BODY.replace(r#""ios": "body""#, r#""lineHeight": "15px", "ios": "body""#);
