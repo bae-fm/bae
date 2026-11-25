@@ -8,7 +8,7 @@ extension ShotScene {
     static let macArtistAlbumGridScenes: [ShotScene] = [
         component(
             "mac.component.artist-album-grid.three-albums",
-            width: 524,
+            width: wideColumn,
             height: 250,
             images: coverStore()
         ) {
@@ -17,7 +17,7 @@ extension ShotScene {
                 artistAlbum("Field Recordings", 1979),
                 artistAlbum("Northbound", 1974),
             ])
-            .frame(width: 524, alignment: .leading)
+            .frame(width: wideColumn, alignment: .leading)
             .environment(UiStore())
         }
     ]
