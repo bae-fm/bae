@@ -184,7 +184,7 @@ struct MacPressingRow: View {
     @ViewBuilder
     private var signalBadges: some View {
         if let agreements {
-            HStack(spacing: ThemeSpace.inline) {
+            HStack(spacing: ThemeSpace.compact) {
                 agreementBadge(.discId, on: agreements.discId)
                 agreementBadge(.barcode, on: agreements.barcode)
                 agreementBadge(.catalog, on: agreements.catalog)
