@@ -467,6 +467,13 @@ fn a_line_height_places_the_baseline_where_the_boards_browser_does() {
     assert!(kotlin.contains("LineHeightStyle.Alignment(0.607f), LineHeightStyle.Trim.None"));
 }
 
+/// The board's browser sets text with the font's exact advances, not advances rounded to whole device pixels.
+#[test]
+fn a_text_role_asks_compose_for_the_fonts_exact_advances() {
+    let kotlin = android::kotlin(&theme_with_text(BODY).unwrap());
+    assert!(kotlin.contains("textMotion = TextMotion.Animated,\n"));
+}
+
 #[test]
 fn a_text_role_with_an_apple_line_height_carries_it_into_swift() {
     let sized = BODY.replace(r#""ios": "body""#, r#""lineHeight": "15px", "ios": "body""#);

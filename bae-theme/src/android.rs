@@ -75,7 +75,7 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
          import androidx.compose.ui.text.TextStyle\n\
          import androidx.compose.ui.text.font.FontFamily\n\
          import androidx.compose.ui.text.font.FontWeight\n\
-         import androidx.compose.ui.text.style.LineHeightStyle\n\
+         import androidx.compose.ui.text.style.LineHeightStyle\n         import androidx.compose.ui.text.style.TextMotion\n\
          import androidx.compose.ui.unit.dp\n\
          import androidx.compose.ui.unit.sp\n",
     );
@@ -163,7 +163,7 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
             out,
             "        val {role} =\n            ThemeText(\n                TextStyle(\n                    \
              fontSize = {}.sp,\n{line}                    fontWeight = {},\n                    \
-             letterSpacing = ({}).sp,\n                    fontFamily = {family},\n                ),\n            )",
+             letterSpacing = ({}).sp,\n                    fontFamily = {family},\n                    textMotion = TextMotion.Animated,\n                ),\n            )",
             android,
             text.weight.kotlin(),
             text.tracking
