@@ -10,6 +10,7 @@ mod test_bootstrap_fixture;
 mod test_bootstrap_pointer;
 mod test_close_open_files;
 mod test_discogs_switch;
+mod test_first_selection;
 mod test_import_live_query_reruns;
 mod test_import_pane;
 mod test_import_selection;

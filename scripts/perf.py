@@ -136,6 +136,11 @@ SCENARIOS: tuple[Scenario, ...] = (
         "how often the import screen's live queries rerun during a scan",
     ),
     Scenario(
+        "first-selection",
+        test_command("bae-app", ("--test", "integration"), ("test_first_selection::",)),
+        "the import pane's first and second selection in a fresh store",
+    ),
+    Scenario(
         "library-create",
         test_command("bae-library", ("--test", "integration"), ("test_library_create_cost::",)),
         "creating a library",
