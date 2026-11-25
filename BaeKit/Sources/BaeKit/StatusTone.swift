@@ -190,7 +190,7 @@ extension View {
                 if elevated {
                     ShadowedFace(
                         cornerRadius: ThemeRadius.card,
-                        radius: ThemeSpace.group,
+                        blur: ThemeSpace.group,
                         offset: ThemeSpace.compact
                     )
                 }

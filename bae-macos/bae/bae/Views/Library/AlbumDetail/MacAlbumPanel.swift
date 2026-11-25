@@ -77,7 +77,7 @@ struct MacAlbumPanel: View {
                     .background {
                         ShadowedFace(
                             cornerRadius: ThemeRadius.cover,
-                            radius: 20,
+                            blur: 20,
                             offset: 12
                         )
                     }
@@ -140,7 +140,7 @@ struct MacAlbumPanel: View {
         .background {
             ShadowedFace(
                 cornerRadius: ThemeRadius.panel,
-                radius: 28,
+                blur: 28,
                 offset: 18
             )
         }

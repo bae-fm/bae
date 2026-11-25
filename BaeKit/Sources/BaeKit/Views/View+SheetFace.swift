@@ -1,13 +1,14 @@
 import SwiftUI
 
-/// The shadow of the face every Mac sheet shares.
+/// The shadow of the face every Mac sheet shares, the board's
+/// `0 10px 30px`: a blur of 30 and 10 points down.
 public enum SheetFaceMetrics {
-    static let shadowRadius: CGFloat = 15
+    static let shadowBlur: CGFloat = 30
     static let shadowOffset: CGFloat = 10
 
     /// The room around a sheet that its shadow needs.
     public static let shadowRoom = ShadowedFace.shadowRoom(
-        radius: shadowRadius,
+        blur: shadowBlur,
         offset: shadowOffset
     )
 }
@@ -23,7 +24,7 @@ extension View {
             .background {
                 ShadowedFace(
                     cornerRadius: ThemeRadius.panel,
-                    radius: SheetFaceMetrics.shadowRadius,
+                    blur: SheetFaceMetrics.shadowBlur,
                     offset: SheetFaceMetrics.shadowOffset
                 )
             }

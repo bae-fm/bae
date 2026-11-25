@@ -15,8 +15,14 @@
         static let headerHeight: CGFloat = 22
         static let dividerHeight: CGFloat = 11
         static let markWidth: CGFloat = 11
+        /// The board's shadow, 0 8px 24px.
+        static let shadowBlur: CGFloat = 24
+        static let shadowOffset: CGFloat = 8
         /// Room around the face, for its shadow.
-        static let shadowRoom: CGFloat = 24
+        static let shadowRoom = ShadowedFace.shadowRoom(
+            blur: shadowBlur,
+            offset: shadowOffset
+        )
         /// From the face's left edge to its items' words.
         static let wordsInset: CGFloat =
             padding + ThemeSpace.related + markWidth + ThemeSpace.compact
@@ -105,8 +111,8 @@
             .background(
                 ShadowedFace(
                     cornerRadius: MacMenuMetrics.cornerRadius,
-                    radius: 12,
-                    offset: 8
+                    blur: MacMenuMetrics.shadowBlur,
+                    offset: MacMenuMetrics.shadowOffset
                 )
             )
             .overlay(

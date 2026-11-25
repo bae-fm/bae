@@ -7,14 +7,13 @@
         static let cornerRadius: CGFloat = 10
         static let arrowWidth: CGFloat = 14
         public static let arrowLength: CGFloat = 7
-        /// The board's shadow, 0 10px 30px: a blur radius of 30 and 10 points
-        /// down.
-        static let shadowRadius: CGFloat = 30
+        /// The board's shadow, 0 10px 30px: a blur of 30 and 10 points down.
+        static let shadowBlur: CGFloat = 30
         static let shadowOffset: CGFloat = 10
         /// Room around the face, for its shadow: what `ShadowedFace` needs to
         /// draw it.
         public static let shadowRoom = ShadowedFace.shadowRoom(
-            radius: shadowRadius,
+            blur: shadowBlur,
             offset: shadowOffset
         )
         /// The gap between the anchor and the arrow's tip.
@@ -116,7 +115,7 @@
                     ZStack {
                         ShadowedFace(
                             cornerRadius: MacPopoverMetrics.cornerRadius,
-                            radius: MacPopoverMetrics.shadowRadius,
+                            blur: MacPopoverMetrics.shadowBlur,
                             offset: MacPopoverMetrics.shadowOffset
                         )
                         .padding(arrowEdges, MacPopoverMetrics.arrowLength)
