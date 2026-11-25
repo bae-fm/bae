@@ -2,7 +2,9 @@ package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.components.StatusGlyph
@@ -16,7 +18,7 @@ class StatusGlyphShots : BoardShot() {
     fun androidComponentStatusGlyphAndroid() =
         component("android.component.status-glyph.android") {
             // The preview's cell sets the glyphs side by side, 16 apart.
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.offset(y = PREVIEW_RISE)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
                     StatusGlyph(tone, size = 24.dp)
                 }
@@ -33,7 +35,7 @@ class StatusGlyphShots : BoardShot() {
 /** The ring row as the preview draws it: four rings [ring] across with the preview cell's 16 between them. */
 @Composable
 private fun RingRow(ring: Dp) {
-    Row(horizontalArrangement = Arrangement.spacedBy(ROW_GAP)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(ROW_GAP), modifier = Modifier.offset(y = PREVIEW_RISE)) {
         listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
             StatusGlyph(tone, size = ring, set = StatusGlyphSet.RING)
         }
@@ -44,3 +46,6 @@ private fun RingRow(ring: Dp) {
 private val INLINE_RING = (13 * 1.19f).dp
 
 private val ROW_GAP = 16.dp
+
+/** The preview's cell sets its glyphs one pixel (half a dp) above the top of the frame. */
+private val PREVIEW_RISE = (-0.5).dp
