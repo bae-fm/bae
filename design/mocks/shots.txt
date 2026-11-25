@@ -8,6 +8,7 @@ android.album.delete
 android.album.delete.failed
 android.album.gallery
 android.album.gallery.loading
+android.album.gallery.zoom-failed
 android.album.menu
 android.album.on-another-device-sheet
 android.album.page
@@ -172,6 +173,7 @@ mac.album.edit
 mac.album.edit.cue-image
 mac.album.lightbox
 mac.album.lightbox.failed
+mac.album.lightbox.zoom-failed
 mac.album.save-as
 mac.album.save-as.edit-formats
 mac.album.save-as.edit-formats-added
