@@ -12,8 +12,6 @@ pub enum BridgeLookupChoiceEdit {
     ToggleDiscId,
     /// Leave one barcode out, or ask about it again.
     ToggleBarcode { code: String },
-    /// Look one catalog number up, or stop looking it up.
-    ToggleCatalog { number: String },
     /// Look one catalog number up; a number already looked up stays so.
     ChooseCatalog { number: String },
     /// Search by these words, or by the draft's own title when both are blank.
@@ -30,7 +28,6 @@ mirror_enum! {
     variants: {
         ToggleDiscId,
         ToggleBarcode { code },
-        ToggleCatalog { number },
         ChooseCatalog { number },
         SearchBy { album, artist },
         ToggleDiscounted { number },

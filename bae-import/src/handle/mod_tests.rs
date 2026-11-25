@@ -279,7 +279,7 @@ pub(super) async fn rescan_all_into(
 }
 
 pub(super) fn catalog(number: &str) -> LookupChoiceEdit {
-    LookupChoiceEdit::ToggleCatalog { number: number.to_string() }
+    LookupChoiceEdit::ChooseCatalog { number: number.to_string() }
 }
 
 pub(super) async fn pick(

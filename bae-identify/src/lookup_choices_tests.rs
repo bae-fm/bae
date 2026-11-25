@@ -29,14 +29,12 @@ fn one_change_leaves_every_other_choice_alone() {
     assert!(held().edited(barcode("9999999999999")).excluded_barcodes.is_empty());
 }
 
-/// Chosen numbers are looked up in the order they were chosen, and a
-/// number chosen again is taken out.
+/// Chosen numbers are looked up in the order they were chosen.
 #[test]
-fn a_catalog_number_joins_and_leaves_in_order() {
-    let catalog = |number: &str| LookupChoiceEdit::ToggleCatalog { number: number.to_string() };
-    let added = held().edited(catalog("LBL 002"));
-    assert_eq!(added.chosen_catalogs, strings(&["LBL 001", "LBL 002"]));
-    assert_eq!(added.edited(catalog("LBL 001")).chosen_catalogs, strings(&["LBL 002"]));
+fn a_catalog_number_joins_in_order() {
+    let catalog = |number: &str| LookupChoiceEdit::ChooseCatalog { number: number.to_string() };
+    let added = held().edited(catalog("LBL 002")).edited(catalog("LBL 003"));
+    assert_eq!(added.chosen_catalogs, strings(&["LBL 001", "LBL 002", "LBL 003"]));
 }
 
 /// A number chosen twice is looked up once and stays chosen: the command

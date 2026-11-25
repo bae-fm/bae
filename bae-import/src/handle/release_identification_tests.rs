@@ -18,7 +18,7 @@ async fn a_release_session_keeps_its_choices_in_core() {
     handle
         .edit_release_lookup_choices(
             release.clone(),
-            LookupChoiceEdit::ToggleCatalog { number: "WPCR-80001".to_string() },
+            LookupChoiceEdit::ChooseCatalog { number: "WPCR-80001".to_string() },
         )
         .await
         .unwrap();

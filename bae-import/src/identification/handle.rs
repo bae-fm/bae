@@ -72,7 +72,6 @@ impl IdentificationHandle {
         let command = match &edit {
             LookupChoiceEdit::ToggleDiscId
             | LookupChoiceEdit::ToggleBarcode { .. }
-            | LookupChoiceEdit::ToggleCatalog { .. }
             | LookupChoiceEdit::ChooseCatalog { .. } => crate::PaneCommand::ChangeLookups,
             LookupChoiceEdit::SearchBy { .. } => crate::PaneCommand::ChangeSearchWords,
             LookupChoiceEdit::ToggleDiscounted { .. } => crate::PaneCommand::ChangeAgreements,

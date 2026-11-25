@@ -71,8 +71,6 @@ pub enum LookupChoiceEdit {
     ToggleDiscId,
     /// Leave one barcode out, or ask about it again.
     ToggleBarcode { code: String },
-    /// Look one catalog number up, or stop looking it up.
-    ToggleCatalog { number: String },
     /// Look one catalog number up; a number already looked up stays so.
     ChooseCatalog { number: String },
     /// Search by these words, or by the draft's own title when both are blank.
@@ -111,14 +109,6 @@ impl LookupChoices {
             }
             // The chosen numbers are looked up in the order they were chosen,
             // so they stay a list rather than a set.
-            LookupChoiceEdit::ToggleCatalog { number } => {
-                match self.chosen_catalogs.iter().position(|held| *held == number) {
-                    Some(index) => {
-                        self.chosen_catalogs.remove(index);
-                    }
-                    None => self.chosen_catalogs.push(number),
-                }
-            }
             LookupChoiceEdit::ChooseCatalog { number } => {
                 // A number already chosen is dropped again when the choices are
                 // normalized.
