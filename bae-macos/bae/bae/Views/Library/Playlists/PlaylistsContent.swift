@@ -13,6 +13,8 @@ struct PlaylistsContent: View {
         Group {
             if let playlistId = uiStore.openPlaylistId {
                 MacPlaylistPage(detail: openDetail(playlistId))
+                    // The side pane's body sets the page in from its edge.
+                    .padding(.horizontal, ThemeSpace.related)
             }
             else if let listing = libraryProjections.playlists.value {
                 PlaylistList(listing: listing)

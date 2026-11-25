@@ -67,8 +67,7 @@ struct MacPlaylistPage: View {
             // picture's edge.
             .padding(
                 .horizontal,
-                ThemeSpace.related
-                    + MacListRow.hang(leadWidth: Self.numberWidth)
+                MacListRow.hang(leadWidth: Self.numberWidth)
             )
             .frame(maxWidth: .infinity, alignment: .leading)
         }
