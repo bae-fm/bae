@@ -269,11 +269,9 @@ final class PictureTileSource: @unchecked Sendable {
             return first
         }
         guard first else { return }
-        if error is BridgeError {
-            logger.warning(
-                "No tiles of \(String(describing: self.picture)): \(String(reflecting: error))"
-            )
-        }
+        logger.warning(
+            "No tiles of \(String(describing: self.picture)): \(String(reflecting: error))"
+        )
         await failed(LightboxFailure(of: error, operation: "zoom a picture"))
     }
 
