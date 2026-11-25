@@ -23,12 +23,11 @@ extension ShotScene {
         },
         component(
             "mac.component.find-online.not-started",
-            page: true,
             width: 842,
-            height: 264,
+            height: 296,
             images: PreviewData.artImageStore()
         ) {
-            findOnline(height: 264, state: PreviewData.searchStateIdle)
+            findOnline(height: 296, state: PreviewData.searchStateIdle)
         },
         component(
             "mac.component.find-online.sentence",
