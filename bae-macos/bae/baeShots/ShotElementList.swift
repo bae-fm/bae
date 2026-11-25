@@ -163,18 +163,36 @@ extension ShotElementList.Element {
                     ?? node.titleElementWords,
             value: isSecure && value != nil ? "\u{F79A}" : value,
             placeholder: node.placeholder,
-            bounds: ShotElementList.Bounds(
-                x: node.x,
-                y: node.y,
-                width: node.width,
-                height: node.height
-            ),
+            bounds: Self.bounds(of: node),
             enabled: node.enabled,
             selected: role == "radio"
                 ? Self.radioChecked(node.value) : node.selected,
             focused: node.focused,
             text: role == "text" ? node.style.flatMap(Self.textStyle) : nil,
             parent: node.parent
+        )
+    }
+
+    /// The box of a text is its words' own when they sit inside the element's
+    /// box with room on both sides: a text that is the only child of a
+    /// padded container, such as a chip or a cell, has the container's box,
+    /// where the board's text has its own. A text that starts at the box's
+    /// edge keeps the box, which is what the board's text fills.
+    private static func bounds(of node: AccessibilityTree.Node)
+        -> ShotElementList.Bounds
+    {
+        let frame = node.frame
+        let box =
+            node.wordsBox.flatMap {
+                frame.insetBy(dx: -0.5, dy: -0.5).contains($0)
+                    && $0.minX - frame.minX >= 1 && frame.maxX - $0.maxX >= 1
+                    ? $0 : nil
+            } ?? frame
+        return ShotElementList.Bounds(
+            x: box.minX,
+            y: box.minY,
+            width: box.width,
+            height: box.height
         )
     }
 

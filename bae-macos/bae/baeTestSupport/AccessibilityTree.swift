@@ -1,7 +1,11 @@
 import AppKit
 import ApplicationServices
+import BaeKit
 import CoreGraphics
 import Foundation
+import OSLog
+
+private let treeLogger = Logger.bae("AccessibilityTree")
 
 /// The accessibility tree of one of this process's own windows, read the way
 /// an assistive client reads it: through the accessibility API.
@@ -53,6 +57,10 @@ struct AccessibilityTree: Sendable {
         let style: TextStyle?
         /// The index in `nodes` of the element that holds this one.
         let parent: Int?
+        /// For a static text, the box of its words alone, as the tree gives
+        /// the bounds of the text's whole range. The element's own box is
+        /// its container's when it is the container's only child.
+        var wordsBox: CGRect?
     }
 
     /// The window's elements, each before the ones it holds, in the order an
@@ -141,7 +149,7 @@ struct AccessibilityTree: Sendable {
                     continue
                 }
                 let index = nodes.count
-                guard let node = node(of: child, parent: parent) else {
+                guard let node = try node(of: child, parent: parent) else {
                     continue
                 }
                 nodes.append(node)
@@ -152,7 +160,8 @@ struct AccessibilityTree: Sendable {
             }
         }
 
-        private func node(of element: AXUIElement, parent: Int?) -> Node? {
+        private func node(of element: AXUIElement, parent: Int?) throws -> Node?
+        {
             guard let frame = Self.frame(of: element),
                 let role = Self.string(element, kAXRoleAttribute)
             else { return nil }
@@ -172,26 +181,22 @@ struct AccessibilityTree: Sendable {
                 enabled: Self.bool(element, kAXEnabledAttribute) ?? true,
                 selected: Self.bool(element, kAXSelectedAttribute),
                 focused: Self.bool(element, kAXFocusedAttribute),
-                style: Self.style(of: element, value: value, role: role),
-                parent: parent
+                style: try Self.style(
+                    of: element,
+                    value: value,
+                    role: role,
+                    subject: subject
+                ),
+                parent: parent,
+                wordsBox:
+                    try Self.wordsBox(
+                        of: element,
+                        value: value,
+                        role: role,
+                        subject: subject
+                    )
+                    .map { $0.offsetBy(dx: -origin.x, dy: -origin.y) }
             )
-        }
-
-        /// The words of the element `element` names itself by, which are the
-        /// label's value, without the colon that ends a label: VoiceOver does
-        /// not read it.
-        private static func titleElementWords(of element: AXUIElement)
-            -> String?
-        {
-            guard
-                let named = attribute(element, kAXTitleUIElementAttribute),
-                CFGetTypeID(named) == AXUIElementGetTypeID(),
-                let words = string(
-                    unsafeDowncast(named, to: AXUIElement.self),
-                    kAXValueAttribute
-                )
-            else { return nil }
-            return words.hasSuffix(":") ? String(words.dropLast()) : words
         }
 
         static func frame(of element: AXUIElement) -> CGRect? {
@@ -261,20 +266,18 @@ struct AccessibilityTree: Sendable {
         private static func style(
             of element: AXUIElement,
             value: Value?,
-            role: String
-        ) -> TextStyle? {
-            guard let words = Node.staticText(role: role, value: value)
-            else { return nil }
-            var range = CFRange(location: 0, length: words.utf16.count)
-            var attributed: CFTypeRef?
-            guard let rangeValue = AXValueCreate(.cfRange, &range),
-                AXUIElementCopyParameterizedAttributeValue(
-                    element,
-                    kAXAttributedStringForRangeParameterizedAttribute
-                        as CFString,
-                    rangeValue,
-                    &attributed
-                ) == .success,
+            role: String,
+            subject: String
+        ) throws -> TextStyle? {
+            guard
+                let attributed = try wholeRange(
+                    of: element,
+                    attribute:
+                        kAXAttributedStringForRangeParameterizedAttribute,
+                    value: value,
+                    role: role,
+                    subject: subject
+                ),
                 let text = attributed as? NSAttributedString,
                 text.length > 0
             else { return nil }
@@ -302,6 +305,122 @@ struct AccessibilityTree: Sendable {
                 alpha: c[3]
             )
         }
+    }
+}
+
+extension AccessibilityTree.Reader {
+    /// The words of the element `element` names itself by, which are the
+    /// label's value, without the colon that ends a label: VoiceOver does
+    /// not read it.
+    fileprivate static func titleElementWords(of element: AXUIElement)
+        -> String?
+    {
+        guard
+            let named = attribute(element, kAXTitleUIElementAttribute),
+            CFGetTypeID(named) == AXUIElementGetTypeID(),
+            let words = string(
+                unsafeDowncast(named, to: AXUIElement.self),
+                kAXValueAttribute
+            )
+        else { return nil }
+        return words.hasSuffix(":") ? String(words.dropLast()) : words
+    }
+
+    /// What the tree gives under the parameterized `attribute` for the whole
+    /// range of a static text's words; nil when the element is no static
+    /// text or has nothing to give, and an error when the read fails.
+    fileprivate static func wholeRange(
+        of element: AXUIElement,
+        attribute: String,
+        value: AccessibilityTree.Value?,
+        role: String,
+        subject: String
+    ) throws -> CFTypeRef? {
+        guard
+            let words = AccessibilityTree.Node.staticText(
+                role: role,
+                value: value
+            )
+        else { return nil }
+        var range = CFRange(location: 0, length: words.utf16.count)
+        guard let rangeValue = AXValueCreate(.cfRange, &range) else {
+            throw AccessibilityTree.ReadError.attributeFailed(
+                subject,
+                element: described(element),
+                attribute: attribute,
+                status: AXError.illegalArgument.rawValue
+            )
+        }
+        var result: CFTypeRef?
+        let status = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            attribute as CFString,
+            rangeValue,
+            &result
+        )
+        switch status {
+        case .success:
+            return result
+        // The tree lists some static texts, such as a few of a scene's
+        // credits and addresses, that refuse the range of their own words as
+        // an illegal argument, or no longer answer: they have nothing to
+        // give. Any other failure is an error.
+        case .attributeUnsupported, .parameterizedAttributeUnsupported,
+            .noValue, .invalidUIElement, .illegalArgument:
+            treeLogger.debug(
+                "No \(attribute) for \(described(element)): error \(status.rawValue)"
+            )
+            return nil
+        default:
+            throw AccessibilityTree.ReadError.attributeFailed(
+                subject,
+                element: described(element),
+                attribute: attribute,
+                status: status.rawValue
+            )
+        }
+    }
+
+    /// The bounds the tree gives the whole range of a static text's words,
+    /// in the tree's coordinates.
+    fileprivate static func wordsBox(
+        of element: AXUIElement,
+        value: AccessibilityTree.Value?,
+        role: String,
+        subject: String
+    ) throws -> CGRect? {
+        guard
+            let bounds = try wholeRange(
+                of: element,
+                attribute: kAXBoundsForRangeParameterizedAttribute,
+                value: value,
+                role: role,
+                subject: subject
+            )
+        else { return nil }
+        var box = CGRect.zero
+        guard CFGetTypeID(bounds) == AXValueGetTypeID(),
+            AXValueGetValue(
+                unsafeDowncast(bounds, to: AXValue.self),
+                .cgRect,
+                &box
+            ), box.isFinite
+        else {
+            throw AccessibilityTree.ReadError.attributeFailed(
+                subject,
+                element: described(element),
+                attribute: kAXBoundsForRangeParameterizedAttribute,
+                status: AXError.failure.rawValue
+            )
+        }
+        guard !box.isEmpty else {
+            // A text with no words laid out has an empty box.
+            treeLogger.debug(
+                "Empty bounds of the words of \(described(element))"
+            )
+            return nil
+        }
+        return box
     }
 }
 
@@ -544,7 +663,8 @@ extension AccessibilityTree.Node {
             selected: selected,
             focused: focused,
             style: style,
-            parent: parent
+            parent: parent,
+            wordsBox: wordsBox?.offsetBy(dx: dx, dy: dy)
         )
     }
 }
