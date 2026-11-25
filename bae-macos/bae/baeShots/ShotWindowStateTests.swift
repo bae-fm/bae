@@ -82,6 +82,18 @@ struct ShotWindowStateTests {
         window.animationBehavior = .none
         window.orderFront(nil)
         defer { window.close() }
+        // The window server lists a window it has not shown yet with an empty
+        // frame, which is the failure this state names.
+        try await Wait.until(
+            notices: [
+                Wait.Notice(
+                    NSWindow.didChangeOcclusionStateNotification,
+                    of: window
+                )
+            ]
+        ) {
+            window.occlusionState.contains(.visible)
+        }
         let number = CGWindowID(window.windowNumber)
         let state = ShotWindowState.read(
             windowIDs: [number, 0xFFFF_FFF0],
@@ -89,7 +101,10 @@ struct ShotWindowStateTests {
         )
         let listed = try #require(state.windows.first?.entry)
         #expect(listed.id == number)
-        #expect(listed.frame.size == CGSize(width: 120, height: 80))
+        #expect(
+            listed.frame.size == CGSize(width: 120, height: 80),
+            "\(listed)"
+        )
         #expect(state.windows.last?.entry == nil)
         #expect(state.displays.contains { $0.id == display.id })
         #expect(state.holder.contains("owned by this process"))
