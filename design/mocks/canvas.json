@@ -4719,9 +4719,7 @@
   "row-play-pin-mac",
   "code-casting-pin",
   "code-unplayable-tiles",
-  "code-long-catalog",
-  "code-gallery-zoom-failed",
-  "code-lightbox-zoom-failed"
+  "code-long-catalog"
  ],
  "notes": {
   "canvas-key-library": {
@@ -6050,22 +6048,6 @@
    "w": 460,
    "x": 7480,
    "y": 1636
-  },
-  "code-gallery-zoom-failed": {
-   "page": "home",
-   "size": 24,
-   "text": "What the code needs for this board:\n- When core cannot give a picture's tiles, the gallery shows the failure in the picture's place, as for a picture that did not load: the centred notice Could not load image, with Details when the error has causes and Retry when trying again can help.\n- The notice takes a stage look in dark mode's colours, so its words and Retry read on the backdrop in Light too.\n- Today a failed full-resolution decode leaves the downsampled picture on screen (AndroidLightbox.kt, lines 294–299), and a failed load is plain text with no Retry or Details (AndroidLightbox.kt, lines 312–317).",
-   "w": 460,
-   "x": 2952,
-   "y": 14416
-  },
-  "code-lightbox-zoom-failed": {
-   "page": "home",
-   "size": 24,
-   "text": "What the code needs for this board:\n- When core cannot give a picture's tiles, the lightbox shows the failure in the picture's place, as for a picture that did not load, with core's error behind it: Details, then Retry when trying again can help.\n- Today a failed zoom leaves the copy on screen (MacLightbox.swift, line 170), and the failed view passes only a line, so its notice has no Details (MacLightbox.swift, lines 325–334).\n- On the stage, the notice's buttons draw in dark mode's colours, so Retry's fill reads in Light. Today Retry fills with Theme.control, white in Light (SecondaryButtonStyle.swift, line 96).",
-   "w": 460,
-   "x": 14080,
-   "y": 15812
   }
  },
  "order": [
