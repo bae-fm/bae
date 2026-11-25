@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import os.log
 
 #if canImport(AppKit)
     import AppKit
