@@ -47,7 +47,7 @@ struct CandidateListMenu: View {
 
     var body: some View {
         let state = state
-        Image(systemName: "ellipsis.circle")
+        Image(systemName: "ellipsis")
             .themeIcon(ImportFilterBarLayout.glyph)
             .overlay(alignment: .topTrailing) {
                 // A filter hiding Found's rows marks the trigger, so a short
