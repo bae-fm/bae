@@ -182,9 +182,10 @@ extension ShotScene {
             size: CGSize(width: 1200, height: 760)
         )
         return ShotStage(dressed(AnyView(window)), images: images) {
-            open
-                ? projections.playlist.delivered
-                : projections.playlists.delivered
+            (backing.session.albums.list?.positionCount ?? 0) > 0
+                && (open
+                    ? projections.playlist.delivered
+                    : projections.playlists.delivered)
         }
     }
 
