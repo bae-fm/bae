@@ -6182,6 +6182,11 @@ and confirmations block pointer, keyboard and VoiceOver access to the
 frontmost window or its open sheet until the person dismisses the alert.
 VoiceOver announces a Mac alert by its title, and the alert holds its message
 and buttons.
+A Mac alert dims the whole window behind it, title bar included, and so does a
+presentation drawn inside the window, such as a modal or the side pause. A
+sheet that macOS presents as a system sheet, such as Enter code on the welcome
+window, adds no dimming of its own: the window behind it shows only the
+dimming macOS draws.
 The first button is the default. Return presses it and Escape presses
 Cancel. A category whose line
 names the whole fault, with the counts, discs or folder it carries, shows the

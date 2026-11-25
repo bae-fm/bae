@@ -5,8 +5,9 @@ import Testing
 
 @testable import bae
 
-/// A sheet or an alert dims the whole window behind it, title bar included:
-/// one scrim window across it for as long as it shows.
+/// An alert dims the whole window behind it, title bar included: one scrim
+/// window across it for as long as it shows. A system sheet adds none, since
+/// macOS dims the window it hangs from.
 @MainActor
 @Suite("Scrim window")
 struct ScrimWindowTests {
@@ -66,8 +67,10 @@ struct ScrimWindowTests {
         }
     }
 
-    @Test("a sheet dims the window it hangs from until it ends")
-    func aSheetDimsItsWindow() async throws {
+    @Test(
+        "a system sheet adds no dimming of its own over the window it hangs from"
+    )
+    func aSheetAddsNoScrim() async throws {
         try await SnapshotTestSupport.withHostedWindow(
             Color.clear,
             size: NSSize(width: 600, height: 400)
@@ -87,30 +90,22 @@ struct ScrimWindowTests {
                     footer: { EmptyView() }
                 )
             )
-            #expect(scrims(over: window).isEmpty)
 
             autoreleasepool { window.beginSheet(sheet, completionHandler: nil) }
             try await SnapshotTestSupport.untilSheet(on: window, attached: true)
-            #expect(
-                await holds { scrims(over: window).count == 1 },
-                "the sheet dims the window"
-            )
-            // The sheet stays in front of the scrim.
-            let scrim = try #require(scrims(over: window).first)
-            #expect(scrim.frame == window.frame)
-            let order = autoreleasepool {
-                NSWindow.windowNumbers(options: []) ?? []
+            // macOS dims the window behind a system sheet by itself; a scrim
+            // of the app's would dim it twice. Give the sheet's content time
+            // to put one up if it were going to.
+            var dimmed = false
+            for _ in 0..<40 where !dimmed {
+                try await Wait.nextIdle(
+                    before: ContinuousClock.now.advanced(by: .seconds(10)),
+                    file: #filePath,
+                    line: #line
+                )
+                dimmed = !scrims(over: window).isEmpty
             }
-            let sheetIndex = try #require(
-                order.firstIndex(of: NSNumber(value: sheet.windowNumber))
-            )
-            let scrimIndex = try #require(
-                order.firstIndex(of: NSNumber(value: scrim.windowNumber))
-            )
-            #expect(
-                sheetIndex < scrimIndex,
-                "the sheet is in front of the scrim"
-            )
+            #expect(!dimmed, "the app dims the window behind a system sheet")
 
             autoreleasepool {
                 window.endSheet(sheet)
@@ -120,10 +115,6 @@ struct ScrimWindowTests {
             try await SnapshotTestSupport.untilSheet(
                 on: window,
                 attached: false
-            )
-            #expect(
-                await holds { scrims(over: window).isEmpty },
-                "the scrim goes with the sheet"
             )
         }
     }

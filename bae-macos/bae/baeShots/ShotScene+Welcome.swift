@@ -546,8 +546,8 @@ extension ShotScene {
         ) { reads.answered == reads.reads }
     }
 
-    /// A native sheet over the first-run welcome window. The sheet draws
-    /// its own scrim over the window, including the window buttons.
+    /// A native sheet over the first-run welcome window. macOS dims the
+    /// window behind it, including the window buttons.
     private static func welcomeSheetStage(_ sheet: some View) -> ShotStage {
         let welcome = welcomeStage(libraries: [])
         return ShotStage(
@@ -556,10 +556,7 @@ extension ShotScene {
             },
             isReady: welcome.isReady,
             isDrawn: { host in
-                guard let window = host.window, window.attachedSheet != nil
-                else { return false }
-                return window.childWindows?.contains { $0 is ScrimWindow }
-                    == true
+                host.window?.attachedSheet != nil
             }
         )
     }

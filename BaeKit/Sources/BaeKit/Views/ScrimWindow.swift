@@ -8,8 +8,8 @@ import SwiftUI
 
     /// A window over all of another window, title bar included, that dims it
     /// with `Theme.scrim` and takes every click aimed at it, for a
-    /// presentation that is a window of its own (`MacAlert`, a `MacSheet`'s
-    /// system sheet). It is a child of the window it covers and follows its
+    /// presentation that is a window of its own and that macOS does not dim
+    /// (`MacAlert`). It is a child of the window it covers and follows its
     /// frame. The window server passes clicks through the clear parts of a
     /// window, so the scrim's colour is what takes them.
     @MainActor
