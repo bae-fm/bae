@@ -69,6 +69,7 @@ struct MacQRScanner: View {
             .themeText(.body)
             .foregroundStyle(Theme.textSecondary)
             .multilineTextAlignment(.center)
+            .padding(ThemeSpace.edge)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.well)
     }
