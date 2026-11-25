@@ -502,11 +502,12 @@ extension ShotScene {
             let dialog = wizard
         #endif
         return ShotStage(
-            OverWindow.sheet(
+            OverWindow.attachedSheet(
                 dialog,
                 over: connected.map { syncPageWindow($0) } ?? libraryWindow()
             )
         )
+        .awaitingSheet()
     }
 
     @MainActor

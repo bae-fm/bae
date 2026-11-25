@@ -70,7 +70,7 @@ extension ShotScene {
         ) {
             playlistsWindow { window in
                 AnyView(
-                    OverWindow.sheet(
+                    OverWindow.attachedSheet(
                         EditPlaylistSheet(
                             state: .constant(
                                 EditPlaylistSheetState(boardPlaylistListing[0])
@@ -82,6 +82,7 @@ extension ShotScene {
                     )
                 )
             }
+            .awaitingSheet()
         },
         ShotScene(
             id: "mac.playlists.delete",
@@ -135,7 +136,7 @@ extension ShotScene {
     ) -> ShotStage {
         playlistsWindow(open: false) { window in
             AnyView(
-                OverWindow.sheet(
+                OverWindow.attachedSheet(
                     NewPlaylistSheet(
                         state: .constant(
                             NewPlaylistSheetState(
@@ -151,6 +152,7 @@ extension ShotScene {
                 )
             )
         }
+        .awaitingSheet()
     }
 
     /// The window with the side pane on Playlists, the first playlist open

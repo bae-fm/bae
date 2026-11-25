@@ -199,8 +199,8 @@ extension ShotScene {
 
     /// The page of the boards' S3 library, which records its old key, with
     /// the S3 key sheet open over it as `sheet` and `typed` show it. The
-    /// page's own replacement stays closed: the scene lays the sheet over
-    /// the window, as `OverWindow` says.
+    /// page's own replacement stays closed: the scene attaches the sheet to
+    /// the window, as `OverWindow.attachedSheet` does.
     @MainActor
     private static func s3SheetPage(
         _ sheet: S3KeyReplacement.Sheet,
@@ -208,7 +208,7 @@ extension ShotScene {
         typed: (accessKey: String, secretKey: String) = ("", "")
     ) -> ShotStage {
         ShotStage(
-            OverWindow.sheet(
+            OverWindow.attachedSheet(
                 S3KeySheet(
                     replacement: S3KeyReplacement(sheet: sheet),
                     accessKey: typed.accessKey,
@@ -222,6 +222,7 @@ extension ShotScene {
                 )
             )
         )
+        .awaitingSheet()
     }
 
     /// The page of the boards' S3 library, which records `key` for the

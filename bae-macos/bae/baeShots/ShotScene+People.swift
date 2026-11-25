@@ -527,7 +527,7 @@ extension ShotScene {
                 )
         )
         let framed =
-            sheet.map { AnyView(OverWindow.sheet($0(), over: window)) }
+            sheet.map { AnyView(OverWindow.attachedSheet($0(), over: window)) }
             ?? AnyView(window)
         // An open menu sits in the window at the point the board draws it.
         let content =
@@ -539,13 +539,14 @@ extension ShotScene {
                     }
                 )
             } ?? framed
-        return ShotStage(content) {
+        let stage = ShotStage(content) {
             if case .person = subpage {
                 return membership.people != nil
                     && membership.person.shown != nil
             }
             return membership.people != nil
         }
+        return sheet == nil ? stage : stage.awaitingSheet()
     }
 
     /// The invite form for `storage`, filled in for dan@example.com, as the

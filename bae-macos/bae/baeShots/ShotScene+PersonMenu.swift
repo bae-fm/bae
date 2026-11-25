@@ -37,7 +37,7 @@ extension ShotScene {
                 images: images
             )
             return ShotStage(
-                OverWindow.sheet(
+                OverWindow.attachedSheet(
                     CloudHomeFirstSheet(
                         reason: .addDevice,
                         onCancel: {},
@@ -48,6 +48,7 @@ extension ShotScene {
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
             }
+            .awaitingSheet()
         },
     ]
 

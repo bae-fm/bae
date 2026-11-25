@@ -33,6 +33,19 @@ enum OverWindow {
         }
     }
 
+    /// A sheet presented as the app presents one: a real sheet attached to
+    /// the window, over the dimming macOS draws behind it. The scene is shot
+    /// in its window, and its stage waits for the sheet (`awaitingSheet`).
+    @MainActor
+    static func attachedSheet(
+        _ dialog: some View,
+        over window: some View
+    ) -> some View {
+        window.sheet(isPresented: .constant(true)) {
+            dialog.background { DisableSheetAnimation() }
+        }
+    }
+
     /// A sheet centred over the scrim that dims the whole window, as macOS
     /// places a sheet over the welcome window.
     @MainActor
@@ -140,6 +153,34 @@ enum OverWindow {
             // one hung from the top after the window it opens from, not
             // among the rows it covers.
             .accessibilitySortPriority(-1)
+        }
+    }
+}
+
+extension ShotStage {
+    /// This stage, drawn once the window holds its attached sheet.
+    func awaitingSheet() -> ShotStage {
+        ShotStage(view, isReady: isReady) { host in
+            isDrawn(host) && host.window?.attachedSheet != nil
+        }
+    }
+}
+
+/// Turns off AppKit's sheet animation as SwiftUI puts the content in its window.
+struct DisableSheetAnimation: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { WindowAnchor() }
+
+    func updateNSView(_: NSView, context: Context) {}
+
+    private final class WindowAnchor: NSView {
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            super.viewWillMove(toWindow: newWindow)
+            guard let newWindow else { return }
+            precondition(
+                !newWindow.isVisible || newWindow.animationBehavior == .none,
+                "The sheet appeared before the shot disabled its animation."
+            )
+            newWindow.animationBehavior = .none
         }
     }
 }

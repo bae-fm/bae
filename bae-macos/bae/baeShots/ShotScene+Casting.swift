@@ -227,7 +227,7 @@ extension ShotScene {
         )
         return libraryWindowStage { window in
             AnyView(
-                OverWindow.sheet(
+                OverWindow.attachedSheet(
                     CastCodeSheet(
                         sheet: sheet,
                         typed: typed,
@@ -238,6 +238,7 @@ extension ShotScene {
                 )
             )
         }
+        .awaitingSheet()
     }
 
     /// A cast's failure alert over the library window.
