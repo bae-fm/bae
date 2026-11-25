@@ -49,7 +49,9 @@ extension ShotScene {
         summary: BridgePlaylistSummary,
         optionsOpen: Bool = false
     ) -> ShotScene {
-        component(id, width: 404, height: 240, images: coverStore()) {
+        // The store the capture waits on is the one the page draws from.
+        let images = coverStore()
+        return component(id, width: 404, height: 240, images: images) {
             let backing = boardLibraryBacking(uiStore: UiStore())
             MacPlaylistPage(
                 detail: BridgePlaylistDetail(
@@ -59,6 +61,8 @@ extension ShotScene {
                 )
             )
             .albumDetailPreviewEnvironment()
+            // After the preview environment, which gives an empty image store.
+            .environment(images)
             .environment(backing.session)
             .frame(width: 404, alignment: .leading)
             .overlay(alignment: .topLeading) {
