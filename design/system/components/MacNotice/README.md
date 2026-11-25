@@ -16,7 +16,7 @@ macOS's notice: a tinted box in its tone, the tone's glyph at the top left. It s
 | `dismiss` | A dim × at the right, level with the title: takes the notice away without fixing what it reports. For the Activity panel's problems, each of which still shows where it's fixed (such as Settings → Sync). |
 | `opens` | A click on the row opens the error's details, so the title is the button that opens them and the notice has no Details button. For a list of problems, such as the Activity panel's Needs attention. |
 | `icon` | On unless `false`. |
-| `stage` | On the lightbox's dark stage, which is dark in both modes: in dark mode's colours, so Retry's fill reads on the stage, with the stage's text colours. |
+| `stage` | On the lightbox's dark stage, in the stage's text colours; its buttons take `MacButton`'s `stage`, so Retry's fill reads on the stage in both modes. |
 | children | Other content, in place of or after the title. |
 
 Inside a `MacBox` a filled notice keeps to the rows' edges: it is inset by the rows' padding, never out to the box's sides.

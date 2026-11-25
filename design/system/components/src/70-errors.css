@@ -22,6 +22,6 @@
 .bae-a-notice-box .bae-notice-centered-sub { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 /* muted: a status glyph in the message's own grey, saying only that something went wrong (a failed view's centred notice). */
 .bae-status-glyph.bae-status-glyph-muted { color: var(--text-secondary); }
-/* stage: on the lightbox's dark stage, in dark mode's colours in both modes (NoticeBox sets data-theme), with the stage's text colours, sized to its words. */
+/* stage: on the lightbox's dark stage, in the stage's text colours, sized to its words; its buttons take their own stage variant. */
 .bae-notice-stage { --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); --text-tertiary: var(--on-fill-secondary); }
 .bae-notice.bae-notice-centered.bae-notice-stage { min-height: 0; padding: 0; }

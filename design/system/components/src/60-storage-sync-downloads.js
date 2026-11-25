@@ -207,9 +207,10 @@
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
     // Centred, the notice is quiet words: its button's label is secondary text, so nothing in it is brighter than the message; Details is in the accent, as in every notice, apart from the grey title.
-    var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet }, props.action) : null;
+    var stage = !!props.stage;
+    var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet, stage: stage }, props.action) : null;
     // On the stage, Details takes the stage's grey as Retry does, so nothing in the notice is brighter than its words.
-    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered && !!props.stage }, props.secondary) : null;
+    var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless', muted: centered && stage, stage: stage }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 'medium', faint: true, label: 'Dismiss' })) : null;
     // `leave`: the label of the button that leaves a screen the notice fills (Cancel), first in the row, where it is the screen's only way back.
     var leave = centered && props.leave ? h(MacButton, { key: 'l', muted: true }, props.leave) : null;
@@ -284,8 +285,9 @@
   function AndroidNotice(props) {
     var tone = props.tone || 'neutral';
     var centered = props.layout === 'centered';
-    var primary = props.action ? h(AndroidButton, { key: 'p', kind: centered ? 'tonal' : 'text' }, props.action) : null;
-    var secondary = props.secondary ? h(AndroidButton, { key: 's', kind: 'text' }, props.secondary) : null;
+    var stage = !!props.stage;
+    var primary = props.action ? h(AndroidButton, { key: 'p', kind: centered ? 'tonal' : 'text', stage: stage }, props.action) : null;
+    var secondary = props.secondary ? h(AndroidButton, { key: 's', kind: 'text', stage: stage }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-a-notice-dismiss' }, h(AndroidInlineIconButton, { icon: 'close', label: 'Dismiss' })) : null;
     if (centered) {
       // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.

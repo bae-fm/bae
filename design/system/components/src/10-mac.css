@@ -98,6 +98,8 @@
 .bae-m-btn.bae-m-btn-neutral { color: var(--text-primary); }
 /* muted: the label in secondary text, for buttons under quiet words (a failed view's centred notice). */
 .bae-m-btn.bae-m-btn-muted { color: var(--text-secondary); }
+/* stage: muted, the label takes the stage's grey, which is one colour in both modes. */
+.bae-m-btn.bae-m-btn-stage.bae-m-btn-muted { color: var(--on-fill-secondary); }
 .bae-m-btn-destructive { color: var(--danger); }
 .bae-m-btn-icon { width: var(--size-control); height: var(--size-control); padding: 0; background: none; color: var(--text-secondary); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; }
 /* alert: the button of a MacAlert, filling its row, the large button's height. tinted: on a filled notice, the secondary button's fill is the notice's text at 12%, so it reads on any tone. */

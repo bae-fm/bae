@@ -190,7 +190,9 @@
       // `menu`: the button opens a menu (SwiftUI's `Menu` styled as a button), which macOS reads as a pop-up button.
       'aria-haspopup': props.menu ? 'menu' : null,
       onClick: props.onClick,
-      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive', props.muted && 'bae-m-btn-muted', props.neutral && 'bae-m-btn-neutral', props.tinted && 'bae-m-btn-tinted')
+      // `stage`: on the image viewer's stage, dark in both modes, the button draws in dark mode's colours, its own fill and edge included.
+      'data-theme': props.stage ? 'dark' : null,
+      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive', props.muted && 'bae-m-btn-muted', props.stage && 'bae-m-btn-stage', props.neutral && 'bae-m-btn-neutral', props.tinted && 'bae-m-btn-tinted')
     };
     if (kind === 'icon') {
       var icon = props.icon || 'copy';
