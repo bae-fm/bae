@@ -33,7 +33,7 @@ extension ShotScene {
                 ),
                 onClose: {}
             )
-            .frame(width: 842, alignment: .leading)
+            .frame(width: 440, alignment: .leading)
         },
         component(
             "mac.component.file-details.other-file",
@@ -54,7 +54,7 @@ extension ShotScene {
                 ),
                 onClose: {}
             )
-            .frame(width: 842, alignment: .leading)
+            .frame(width: 440, alignment: .leading)
         },
     ]
 }

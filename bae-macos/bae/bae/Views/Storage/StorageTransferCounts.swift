@@ -8,12 +8,12 @@ struct StorageTransferCounts: View {
     let counts: [BridgeTransferCount]
 
     var body: some View {
-        HStack(spacing: ThemeSpace.related) {
+        HStack(spacing: 0) {
             ForEach(Array(counts.enumerated()), id: \.element.label.key) {
                 index,
                 count in
                 if index > 0 {
-                    Text(verbatim: FactList.glyph)
+                    Text(verbatim: FactList.separator)
                         .foregroundStyle(Theme.textSecondary)
                 }
                 Text(count.label.localizedLine)
