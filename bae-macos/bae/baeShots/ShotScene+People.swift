@@ -495,6 +495,13 @@ extension ShotScene {
         if !asAdmin {
             people.own?.membership.role = .member
         }
+        // The boards draw a person's picture as the artwork seeded by their
+        // name.
+        let names = Dictionary(
+            uniqueKeysWithValues: ([people.own].compactMap { $0 }
+                + people.others)
+                .compactMap { $0.profile }.map { ($0.id, $0.name) }
+        )
         let membership = MembershipStore.stub(
             people: people,
             selfIsAdmin: asAdmin,
@@ -515,7 +522,7 @@ extension ShotScene {
                 .environment(membership)
                 .environment(
                     ImageStore(fetchAvatarBytes: {
-                        try BoardArtwork.data(named: $0)
+                        try BoardArtwork.data(named: names[$0] ?? $0)
                     })
                 )
         )
