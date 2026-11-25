@@ -94,18 +94,17 @@ struct ScrimWindowTests {
             autoreleasepool { window.beginSheet(sheet, completionHandler: nil) }
             try await SnapshotTestSupport.untilSheet(on: window, attached: true)
             // macOS dims the window behind a system sheet by itself; a scrim
-            // of the app's would dim it twice. Give the sheet's content time
-            // to put one up if it were going to.
-            var dimmed = false
-            for _ in 0..<40 where !dimmed {
-                try await Wait.nextIdle(
-                    before: ContinuousClock.now.advanced(by: .seconds(10)),
-                    file: #filePath,
-                    line: #line
-                )
-                dimmed = !scrims(over: window).isEmpty
-            }
-            #expect(!dimmed, "the app dims the window behind a system sheet")
+            // of the app's would dim it twice. A sheet that put one up did so
+            // by the time it was attached and its first update had run.
+            try await Wait.nextIdle(
+                before: ContinuousClock.now.advanced(by: .seconds(10)),
+                file: #filePath,
+                line: #line
+            )
+            #expect(
+                scrims(over: window).isEmpty,
+                "the app dims the window behind a system sheet"
+            )
 
             autoreleasepool {
                 window.endSheet(sheet)
