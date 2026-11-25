@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=1900 -->
+<!-- @dsCard group="Import" height=1972 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacImportBulk</title></head>
@@ -9,10 +9,12 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
 
+  // The app's bulk view keeps the import pane's top inset, which MacImportWindow's pane gives it on a board.
+  function pane(c) { return h('div', { style: { paddingTop: 'var(--space-section)' } }, c); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Several', h(B.MacImportBulk, { count: 5, ready: 2 })),
-    W('To the cloud', h(B.MacImportBulk, { count: 5, ready: 2, cloud: true, to: 'Cloud' })),
-    W('Running', h(B.MacImportBulk, { count: 5, ready: 2, running: 'Identify selected (5)' }))));
+    W('Several', pane(h(B.MacImportBulk, { count: 5, ready: 2 }))),
+    W('To the cloud', pane(h(B.MacImportBulk, { count: 5, ready: 2, cloud: true, to: 'Cloud' }))),
+    W('Running', pane(h(B.MacImportBulk, { count: 5, ready: 2, running: 'Identify selected (5)' })))));
 </script>
 </body>
 </html>
