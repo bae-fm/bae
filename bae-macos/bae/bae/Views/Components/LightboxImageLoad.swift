@@ -89,6 +89,14 @@ final class LightboxImageLoad {
         catch is CancellationError {
             return nil
         }
+        catch is ImageLoader.NoBitmap {
+            // The decode reported the bug where it found it.
+            logger.warning(
+                "The decoded lightbox image \(image.description) draws no bitmap"
+            )
+            fail(current, .bug)
+            return nil
+        }
         catch is ImageLoader.DecodeError {
             // The bytes are not an image this Mac decodes: reading them again
             // gets the same bytes.

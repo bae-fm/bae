@@ -45,13 +45,20 @@ public enum ImageLoader {
     public struct DecodeError: Error {}
 
     /// A decode made an image that draws no bitmap, which no decode here
-    /// does: a bug, unlike bytes that are no image.
+    /// does: a bug, reported where it is found, unlike bytes that are no
+    /// image.
     public struct NoBitmap: Error {}
 
     /// `image` when it draws a bitmap, so nothing after the decode meets one
-    /// without; throws `NoBitmap` for one that draws none.
+    /// without; for one that draws none, reports the bug and throws
+    /// `NoBitmap`.
     public static func drawing(_ image: PlatformImage) throws -> PlatformImage {
         guard image.drawnBitmap != nil else {
+            CoreBugReporter()
+                .report(
+                    operation: "decode an image",
+                    detail: "the decoded image draws no bitmap"
+                )
             throw NoBitmap()
         }
         return image
