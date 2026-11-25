@@ -78,8 +78,11 @@
     var ink = props.text ? sf.ink : [sf.ink[0] + shift(0), sf.ink[1] + shift(1), sf.ink[2] + shift(0), sf.ink[3] + shift(1)];
     var room = props.text ? ink : [12 - side(0) / 2, 12 - side(1) / 2, 12 + side(0) / 2, 12 + side(1) / 2];
     var own = props.contentShape ? room : ink;
-    var margin = props.contentShape ? null : [own[1] - room[1], room[2] - own[2], room[3] - own[3], own[0] - room[0]].map(function (m) { return thousandths(m * k) + 'px'; }).join(' ');
-    var size = { width: thousandths((own[2] - own[0]) * k), height: thousandths((own[3] - own[1]) * k), overflow: 'visible' };
+    // The own box's edges in points from the room's top left corner, each on Chrome's layout grid, so its margins and size add up to the room exactly and a row of glyphs keeps the app's pitch.
+    var edge = function (v, from) { return onLayoutGrid((v - from) * k); };
+    var at = { left: edge(own[0], room[0]), top: edge(own[1], room[1]), right: edge(own[2], room[0]), bottom: edge(own[3], room[1]) };
+    var margin = props.contentShape ? null : [at.top, edge(room[2], room[0]) - at.right, edge(room[3], room[1]) - at.bottom, at.left].map(function (m) { return m + 'px'; }).join(' ');
+    var size = { width: at.right - at.left, height: at.bottom - at.top, overflow: 'visible' };
     // What the symbol paints in: in a run of text its ink, elsewhere the symbol's own frame, which SwiftUI sets on a device pixel. Chrome sets each box it paints on a device pixel too, so a box at the ink's fractional corner would move the ink up to a quarter point; inside the frame's box, the ink keeps its fractional place, as SwiftUI draws it.
     var drawn = props.text ? own : [12 - symbolFrame(0) / k / 2 + shift(0), 12 - symbolFrame(1) / k / 2 + shift(1), 12 + symbolFrame(0) / k / 2 + shift(0), 12 + symbolFrame(1) / k / 2 + shift(1)];
     var view = [drawn[0], drawn[1], drawn[2] - drawn[0], drawn[3] - drawn[1]].map(thousandths).join(' ');
@@ -87,7 +90,7 @@
     // The frame's centre is (12, 12), which sits (12 - drawn left, 12 - drawn top) into the painted box.
     var turn = props.turn == null ? null : { transform: 'rotate(' + props.turn + 'deg)', transformOrigin: thousandths((12 - drawn[0]) * k) + 'px ' + thousandths((12 - drawn[1]) * k) + 'px' };
     // The painted box, placed from the glyph's own box: none apart in a run of text.
-    var paint = props.text ? null : { position: 'absolute', left: thousandths((drawn[0] - own[0]) * k), top: thousandths((drawn[1] - own[1]) * k), width: thousandths((drawn[2] - drawn[0]) * k), height: thousandths((drawn[3] - drawn[1]) * k), overflow: 'visible' };
+    var paint = props.text ? null : { position: 'absolute', left: edge(drawn[0], room[0]) - at.left, top: edge(drawn[1], room[1]) - at.top, width: onLayoutGrid((drawn[2] - drawn[0]) * k), height: onLayoutGrid((drawn[3] - drawn[1]) * k), overflow: 'visible' };
     var svg = function (attrs) { return h('svg', Object.assign({ viewBox: view, fill: 'currentColor', 'aria-hidden': true }, attrs), path); };
     var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
     if (props.button) return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-glyph-button', props.className), 'aria-label': props.button, title: props.button, style: Object.assign({ margin: margin }, size) },
@@ -96,6 +99,8 @@
     return h('span', Object.assign({ className: cx('bae-glyph', props.className), style: Object.assign({ margin: margin }, size) }, named), svg({ style: Object.assign({}, paint, turn) }));
   }
   function thousandths(v) { return Math.round(v * 1000) / 1000; }
+  // Chrome lays boxes out in 64ths of a pixel and drops the rest of each length, so a length off that grid comes out short and the boxes after it drift; a length on it stays exact.
+  function onLayoutGrid(v) { return Math.round(v * 64) / 64; }
 
   // `large` is Android's full player's bar: a tall track with a tall thumb, and no held parts.
   // Position and the parts this device holds (`held`, "0-0.4,0.6-0.7"), drawn faint under what has played.
