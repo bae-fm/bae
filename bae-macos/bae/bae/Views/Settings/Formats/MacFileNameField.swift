@@ -136,8 +136,10 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                 .padding(.horizontal, ThemeSpace.compact)
                 .padding(.vertical, ThemeSpace.hairline)
                 .overlay(
+                    // Inside the chip's edge, as the board's outline is, so
+                    // the chip's frame is the chip.
                     RoundedRectangle(cornerRadius: ThemeRadius.chip)
-                        .stroke(
+                        .strokeBorder(
                             Theme.hairlineStrong,
                             style: StrokeStyle(lineWidth: 1, dash: [3, 2])
                         )
