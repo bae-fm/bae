@@ -9,7 +9,8 @@ extension ShotScene {
     /// popover of its catalog links open under the facts button.
     static let albumCatalogLinksScene = ShotScene(
         id: "mac.library.albums.album-catalog-links",
-        size: CGSize(width: 1_200, height: 1_020)
+        size: CGSize(width: 1_200, height: 1_020),
+        frame: .window(title: "bae", titleBar: .hidden)
     ) {
         albumCatalogLinksStage()
     }
