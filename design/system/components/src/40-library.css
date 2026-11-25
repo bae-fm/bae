@@ -352,9 +352,8 @@
 .bae-m-np-novolume { font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); color: var(--text-secondary); white-space: nowrap; }
 .bae-a-fp-novolume { justify-content: center; min-height: 48px; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: var(--accent-tint-strong); color: var(--accent); font-weight: var(--type-strong-weight); font-family: var(--font-sans); }
-/* SwiftUI centres the initials' line with its capitals 0.08 em higher than CSS centres them, as the Mac people shots measure. Android's initials sit where CSS centres them. */
-.bae-avatar-initials { position: relative; top: -0.08em; }
-.bae-avatar-android .bae-avatar-initials { top: 0; }
+/* The Mac's initials, drawn on SwiftUI's line (Avatar's macInitials). */
+.bae-avatar-initials { display: block; overflow: visible; }
 .bae-m-pane-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
 .bae-m-pane-close { justify-self: end; display: flex; }
 .bae-m-pane-new { justify-self: start; display: flex; }
