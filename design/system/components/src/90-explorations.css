@@ -1,4 +1,6 @@
 /* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: var(--space-line); }
+.bae-heart { color: var(--hairline-strong); }
+.bae-heart-on { color: var(--accent); }
 .bae-stars-btn { display: flex; padding: 0; border: 0; background: none; cursor: pointer; }
 .bae-stars-number { vertical-align: -1px; color: var(--text-secondary); }
 .bae-m-lrow { display: flex; align-items: center; gap: calc(var(--space-related) + var(--space-line)); padding: calc(var(--space-inline) + var(--space-hairline)) var(--space-related); border-radius: var(--radius-artwork); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }

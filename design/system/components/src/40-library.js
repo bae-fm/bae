@@ -255,7 +255,7 @@
     if (props.ratingSystem === 'none') return row;
     var n = Number(props.rating || 0), heart = props.ratingSystem === 'heart', shown = heart ? n >= 3 : n > 0;
     return h('div', { className: 'bae-m-track-rated' }, h('div', { className: 'bae-m-track-rated-row' }, row),
-      h('span', { className: cx('bae-m-track-stars', !shown && 'bae-m-track-stars-none'), 'aria-hidden': !shown || null }, heart ? h(Heart, { on: true, size: 10 }) : h(Stars, { value: n, size: 10 })));
+      h('span', { className: cx('bae-m-track-stars', !shown && 'bae-m-track-stars-none'), 'aria-hidden': !shown || null }, heart ? h(Heart, { set: 'mac', on: true, size: 10 }) : h(Stars, { value: n, size: 10 })));
   }
 
   // The eyebrow has no space of its own: each place that shows one spaces it, as the app's places do.
@@ -309,11 +309,11 @@
   }
 
   // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), with the catalogs' popover when catalogs describe the release (`records`, `recordsHover` as `releaseFactsLine` draws them, and `recordsOpen`, which draws the popover open after the header; the panel sets `recordsAnchor` instead, so the header marks its button open and the panel draws the popover), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
-  // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it).
-  function albumMark(rating, system, size, className) {
+  // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it). `set`: the heart's, 'mac' on macOS.
+  function albumMark(rating, system, size, className, set) {
     var n = Number(rating || 0);
     if (system === 'none' || !n || (system === 'heart' && n < 3)) return null;
-    var mark = system === 'heart' ? h(Heart, { on: true, size: size }) : h(Stars, { value: n, size: size, number: true });
+    var mark = system === 'heart' ? h(Heart, { set: set, on: true, size: size }) : h(Stars, { value: n, size: size, number: true });
     return className ? h('span', { className: className }, mark) : mark;
   }
 
@@ -342,7 +342,7 @@
       releaseFactsLine(props),
       // `unplayable`: where the files are, when only another device holds them; Play gives way to the words Not on this device, whose help tag names the device (`unplayableHover` draws it showing).
       h('div', { className: 'bae-m-albumpanel-actions' }, props.unplayable ? h(MacHelpTag, { text: props.unplayableHover ? props.unplayable : null }, h('span', { className: 'bae-m-albumpanel-unplayable' }, 'Not on this device')) : h(MacButton, { kind: 'primary' }, 'Play'), h(MacMoreMenu, { boxed: true, label: 'Album options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }),
-        albumMark(props.rating, props.ratingSystem, 13, 'bae-m-albumpanel-rating')),
+        albumMark(props.rating, props.ratingSystem, 13, 'bae-m-albumpanel-rating', 'mac')),
       popover ? releaseRecordsPopover(props.records) : null);
   }
 
