@@ -77,6 +77,8 @@ extension ShotScene {
             // and a pane that short cuts the Discogs bar's words.
             .fixedSize(horizontal: false, vertical: atContentHeight)
             .frame(height: height, alignment: .top)
+            // The import pane's surface, which the board draws under it.
+            .background(Theme.surface)
         )
     }
 }
