@@ -8,9 +8,9 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
 /**
- * The glyphs a notice leads with: a ring, 20 of the 24 units across, with a solid mark inside it. The
- * design system draws every notice's glyph this way (`STATUS_RING` and `STATUS_MARK` in its shared
- * components), on Android as on the Mac, so these are the same paths.
+ * The glyphs a notice leads with: a ring with a solid mark inside it, drawn across the ring's own 20 units as the
+ * design system draws them (`RING_DRAWING` in its shared components, whose `viewBox` is `2 2 20 20`), so an icon is
+ * as wide as its ring.
  */
 internal object StatusRingIcons {
     val Info: ImageVector by lazy {
@@ -27,14 +27,16 @@ internal object StatusRingIcons {
 
 private const val RING = "M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z"
 
-/** The ring with [mark] inside it, 24dp across, in the colour a caller tints it. */
+/** The ring with [mark] inside it, 20dp across, in the colour a caller tints it. */
 private fun ring(
     name: String,
     mark: String,
 ): ImageVector =
     ImageVector
-        .Builder(name = name, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+        .Builder(name = name, defaultWidth = 20.dp, defaultHeight = 20.dp, viewportWidth = 20f, viewportHeight = 20f)
         .apply {
+            // The paths are drawn on a 24-unit grid with the ring at 2 to 22.
+            addGroup(translationX = -2f, translationY = -2f)
             addPath(
                 pathData = PathParser().parsePathString(RING).toNodes(),
                 pathFillType = PathFillType.EvenOdd,

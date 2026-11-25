@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -221,16 +220,10 @@ private fun ringSizeBeside(words: TextUnit): Dp = (words.value * RING_PER_WORD).
 
 private const val RING_PER_WORD = 1.19f
 
-/** The ring fills 20 of the 24 units of its icon. */
-private const val ICON_PER_RING = 1.2f
-
 /** The notice's glyph beside its title, whose words are the framed layout's body text. */
 private val NoticeGlyphSize: Dp = ringSizeBeside(ThemeText.body.style.fontSize)
 
-/**
- * The tone's ring with its mark, its ring 1.19 times [words] across. The ring fills 20 of the 24 units of its icon,
- * so the icon's box is 1.2 times the ring.
- */
+/** The tone's ring with its mark, 1.19 times [words] across. */
 @Composable
 internal fun NoticeRing(
     tone: StatusTone,
@@ -238,18 +231,7 @@ internal fun NoticeRing(
     muted: Boolean = false,
     stage: Boolean = false,
 ) {
-    val ring = ringSizeBeside(words)
-    val box = ring * ICON_PER_RING
-    Box(Modifier.size(ring), contentAlignment = Alignment.Center) {
-        StatusGlyph(
-            tone,
-            modifier = Modifier.requiredSize(box),
-            size = box,
-            muted = muted,
-            set = StatusGlyphSet.RING,
-            stage = stage,
-        )
-    }
+    StatusGlyph(tone, size = ringSizeBeside(words), muted = muted, set = StatusGlyphSet.RING, stage = stage)
 }
 
 /** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
