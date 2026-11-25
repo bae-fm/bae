@@ -41,7 +41,7 @@ struct MacAlbumWorks: View {
                     }
                 }
             }
-            .padding(.vertical, ThemeSpace.related)
+            .padding(.top, ThemeSpace.related)
         }
     }
 }

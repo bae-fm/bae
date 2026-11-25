@@ -94,32 +94,49 @@ struct MacAlbumPanel: View {
                     ) {
                         albumMenuItems
                     }
-                    MacTrackColumns(
-                        release: selectedRelease,
-                        isCompilation: album.isCompilation,
-                        currentTrackId: currentTrackId,
-                        isPlaying: isPlaying,
-                        onPlayFromTrack: onPlayFromTrack,
-                        onTogglePlayPause: onTogglePlayPause,
-                        onAddNext: onAddNext,
-                        onAddToQueue: onAddToQueue,
-                        onExportTrack: onExportTrack,
-                        onRateTrack: onRateTrack,
-                        onSetTrackHearted: onSetTrackHearted,
-                        playlists: playlists,
-                        picking: picking
-                    )
-                    .padding(.top, ThemeSpace.edge)
-                    if selectedRelease.hasCredits {
-                        MacAlbumCredits(credits: selectedRelease.credits)
-                            .padding(.top, ThemeSpace.edge)
-                    }
-                    if selectedRelease.performsWorks {
-                        MacAlbumWorks(
-                            tracks: selectedRelease.tracks,
-                            onOpenWork: onOpenWork
+                    // The board puts the credits and works inside the
+                    // tracks' block, so no gap of the column's sits between
+                    // the tracks and them.
+                    VStack(alignment: .leading, spacing: 0) {
+                        MacTrackColumns(
+                            release: selectedRelease,
+                            isCompilation: album.isCompilation,
+                            currentTrackId: currentTrackId,
+                            isPlaying: isPlaying,
+                            onPlayFromTrack: onPlayFromTrack,
+                            onTogglePlayPause: onTogglePlayPause,
+                            onAddNext: onAddNext,
+                            onAddToQueue: onAddToQueue,
+                            onExportTrack: onExportTrack,
+                            onRateTrack: onRateTrack,
+                            onSetTrackHearted: onSetTrackHearted,
+                            playlists: playlists,
+                            picking: picking
                         )
+                        if selectedRelease.hasCredits
+                            || selectedRelease.performsWorks
+                        {
+                            VStack(
+                                alignment: .leading,
+                                spacing: ThemeSpace.related
+                            ) {
+                                if selectedRelease.hasCredits {
+                                    MacAlbumCredits(
+                                        credits: selectedRelease.credits
+                                    )
+                                }
+                                if selectedRelease.performsWorks {
+                                    MacAlbumWorks(
+                                        tracks: selectedRelease.tracks,
+                                        onOpenWork: onOpenWork
+                                    )
+                                }
+                            }
+                            .padding(.top, ThemeSpace.edge)
+                            .padding(.bottom, ThemeSpace.related)
+                        }
                     }
+                    .padding(.top, ThemeSpace.edge)
                     if let sourceAudio = selectedRelease.sourceAudio {
                         SourceAudioLine(sourceAudio: sourceAudio)
                             .padding(.top, ThemeSpace.related)

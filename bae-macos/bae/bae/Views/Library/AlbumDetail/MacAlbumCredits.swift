@@ -17,7 +17,6 @@ struct MacAlbumCredits: View {
                 }
             }
             .padding(.top, ThemeSpace.related)
-            .padding(.bottom, ThemeSpace.line + ThemeSpace.hairline)
         }
     }
 }
