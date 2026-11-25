@@ -21,6 +21,18 @@ class AndroidCastRowShots : BoardShot() {
         }
 
     @Test
+    fun androidComponentCastRowCast() =
+        component("android.component.cast-row.cast") {
+            AndroidCastRow(receiver("Kitchen", BridgeRendererKind.CAST), CastReceiverRole.Found {}, CastReceiverPlace.PICKER, null)
+        }
+
+    @Test
+    fun androidComponentCastRowUpnp() =
+        component("android.component.cast-row.upnp") {
+            AndroidCastRow(receiver("Kitchen", BridgeRendererKind.DLNA), CastReceiverRole.Found {}, CastReceiverPlace.PICKER, null)
+        }
+
+    @Test
     fun androidComponentCastRowCasting() =
         component("android.component.cast-row.casting") {
             AndroidCastRow(receiver("Living Room", BridgeRendererKind.CAST), CastReceiverRole.Casting {}, CastReceiverPlace.PICKER, null)
