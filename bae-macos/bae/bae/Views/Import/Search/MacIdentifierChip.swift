@@ -233,6 +233,9 @@ extension View {
                     cornerRadius: ThemeRadius.chip - ThemeSpace.hairline
                 )
             )
+            // A control on the inset is boxed with its padding, as layout
+            // boxes it, not by the words inside.
+            .contentShape(.accessibility, Rectangle())
             .padding(.vertical, -ThemeSpace.line)
             .padding(
                 .trailing,
