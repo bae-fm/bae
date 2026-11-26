@@ -525,3 +525,25 @@ async fn a_verdict_of_older_files_places_nothing() {
         moves([])
     );
 }
+
+/// A file decision clears a found verdict together with the matches under
+/// it, and the release goes back to not looked up as though no verdict had
+/// named a release.
+#[tokio::test]
+async fn clearing_a_found_verdict_takes_its_matches_and_its_placement_with_it() {
+    let lib = looked_up().await;
+    lib.run(lib.verdict("Album", "found", Some(11))).await;
+    lib.run(lib.concluded(
+        "Album",
+        found_verdict(11, [(found_release(0, (Some("listed"), Some(11))), 0)]),
+    ))
+    .await;
+
+    assert_eq!(
+        lib.moved(lib.file_decision("Album")).await,
+        now(&lib, found("Album")),
+        "the release goes back to not looked up"
+    );
+    let matches = bae_store::test_fixtures::row_count(&lib.db, "import_candidate_match").await;
+    assert_eq!(matches, 0, "no match outlives its verdict");
+}
