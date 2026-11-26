@@ -18,3 +18,14 @@ sqlive_compose::fragment!(
     FROM scan_candidate AS scan
     WHERE scan.path = :key
 "#);
+
+sqlive_compose::fragment!(
+    CandidatePartRows(key: crate::CandidateKey),
+    r#"
+    SELECT part.position
+    FROM scan_candidate AS candidate
+    JOIN scan_candidate_part AS part ON part.watched_folder_path =
+        candidate.watched_folder_path AND part.candidate_path = candidate.path
+    WHERE candidate.path = :key
+"#
+);

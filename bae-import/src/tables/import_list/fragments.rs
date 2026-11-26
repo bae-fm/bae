@@ -65,13 +65,11 @@ sqlive_compose::fragment!(
                 'skipped'), 0) AS can_restore, COALESCE((p.item = 'candidate'), 0) AS
                 can_reveal_folder,(
             SELECT COUNT(*)
-            FROM scan_candidate AS candidate
-            JOIN scan_candidate_part AS part ON part.watched_folder_path =
-                candidate.watched_folder_path AND part.candidate_path = candidate.path
-            WHERE candidate.path = p.key
+            FROM @crate::tables::folder_scans::row_fragments::CandidatePartRows(key: :key) AS part
         ) AS part_count
         FROM import_list_placement AS p
-        LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key
+        LEFT JOIN @crate::tables::import_state::fragments::Standing(
+            keys: (SELECT :key AS candidate_key)) AS st ON st.standing_key = p.key
         WHERE p.key = :key AND p.item = 'candidate'
     )
     SELECT :key AS listed_key, tab, import_failed, actionable, pending_state, needs_you_reason, reason_pressings, error_detail, can_import, can_cancel_import, can_identify, can_cancel_identification, can_retry_identification, can_reset_to_file_metadata, can_clear_metadata, can_combine, can_separate, can_skip, can_restore, can_reveal_folder, part_count
