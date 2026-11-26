@@ -250,10 +250,16 @@ case "$target" in
         native_vips=('-Dc_link_args=-Wl,-rpath,$ORIGIN' '-Dcpp_link_args=-Wl,-rpath,$ORIGIN')
         ;;
     windows-x86_64 | windows-aarch64)
-        # The libraries carry their C runtime, as the Rust code that loads
-        # them does (`crt-static` in .cargo/config.toml), so the dist needs
-        # no Visual C++ redistributable.
-        native=(-Db_vscrt=static_from_buildtype)
+        # Each library links the Visual C++ runtime into itself, so the dist
+        # needs no redistributable, and loads the Universal CRT, which is
+        # part of Windows. The DLLs have to share that one: a file
+        # descriptor and a FILE belong to the CRT that opened them, and
+        # libvips opens its files through GLib's g_open and g_fopen. With a
+        # CRT in each DLL, saving a file ends the process (0xc0000409). The
+        # link options take their dash form because Git's bash rewrites an
+        # argument that holds a slash form into a path.
+        ucrt='-NODEFAULTLIB:libucrt.lib -DEFAULTLIB:ucrt.lib'
+        native=(-Db_vscrt=static_from_buildtype "-Dc_link_args=$ucrt" "-Dcpp_link_args=$ucrt")
         native_vips=("${native[@]}")
         ;;
     android-aarch64 | android-x86_64)
