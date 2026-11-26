@@ -6,13 +6,14 @@
 //! read and write it.
 
 use bae_records::records::name_sort::sort_key_sql;
+use bae_store::statement_optional;
 use bae_store::DbError;
 use bae_store::Store;
 use coven::SqlReadContext;
-use rusqlite::{params, OptionalExtension, Row};
+use rusqlite::params;
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 
 use super::receiver::{CastReceiver, RendererKind};
-use crate::tables::{receiver_from_row, CAST_RECEIVER};
 
 /// What the Play on picker and the Playback settings list: the receiver playback is cast
 /// to, listed while a new search hasn't found it again, and every other
@@ -37,36 +38,34 @@ pub(crate) fn kind_column(kind: RendererKind) -> &'static str {
     }
 }
 
-/// The kind a `kind` column holds.
-pub(crate) fn kind_from_column<I: rusqlite::RowIndex + Copy>(
-    row: &Row<'_>,
-    column: I,
-) -> rusqlite::Result<RendererKind> {
-    match row.get::<_, String>(column)?.as_str() {
-        "cast" => Ok(RendererKind::Cast),
-        "dlna" => Ok(RendererKind::Dlna),
-        "airplay" => Ok(RendererKind::AirPlay),
-        other => Err(bae_store::read::column_conversion_error(
-            row,
-            column,
-            format!("cast device kind {other} names no renderer"),
-        )),
+impl FromSql for RendererKind {
+    /// The kind a `kind` column holds.
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_str()? {
+            "cast" => Ok(Self::Cast),
+            "dlna" => Ok(Self::Dlna),
+            "airplay" => Ok(Self::AirPlay),
+            other => Err(FromSqlError::Other(
+                format!("cast device kind {other} names no renderer").into(),
+            )),
+        }
     }
 }
+
+sqlive_compose::read!(
+    CastingNow,
+    r#"
+    SELECT casting.*
+    FROM @crate::tables::now::Casting AS casting
+"#
+);
 
 /// The picker's list: the receiver playback is cast to, then every other
 /// receiver discovery found, by name in the device's language.
 fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
-    let casting = sql
-        .query_row(
-            "SELECT cast_receiver_id, cast_receiver_name, cast_receiver_kind, \
-                    cast_receiver_model, cast_receiver_address, \
-                    cast_receiver_takes_volume \
-               FROM playback_now WHERE remote = 'on'",
-            [],
-            |row| receiver_from_row(row, &CAST_RECEIVER),
-        )
-        .optional()?;
+    let casting = statement_optional(sql, &CastingNowParams {})?
+        .map(|row| row.casting.into_receiver())
+        .transpose()?;
     let found = sql.query(
         &format!(
             "SELECT id, name, kind, model, address, takes_volume FROM cast_receiver \
@@ -79,19 +78,15 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
             Ok(CastReceiver {
                 id: row.get("id")?,
                 name: row.get("name")?,
-                kind: kind_from_column(row, "kind")?,
+                kind: row.get("kind")?,
                 model: row.get("model")?,
                 address: row.get("address")?,
                 takes_volume: row.get("takes_volume")?,
             })
         },
     )?;
-    let is_empty: bool = sql.query_row(
-        "SELECT NOT EXISTS (SELECT 1 FROM cast_receiver) \
-            AND NOT EXISTS (SELECT 1 FROM playback_now WHERE remote = 'on')",
-        [],
-        |row| row.get(0),
-    )?;
+    // With nothing cast to, `found` holds every listed receiver.
+    let is_empty = casting.is_none() && found.is_empty();
     Ok(CastReceiverList { casting, found, is_empty })
 }
 

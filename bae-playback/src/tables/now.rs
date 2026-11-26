@@ -1,6 +1,7 @@
 //! The device's `playback_now` row: what playback is doing, written as each
 //! of its values changes, and read by the screens' live query with the
 //! playing track's display and the queue's repeat mode. Its table is `now.sql`.
+//! The fragments here are what other reads take from the row.
 
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::queue::repeat_from_row;
@@ -8,7 +9,7 @@ use super::track_display::{
     now_track_display_from_row, track_display_columns, NOW_TRACK_DISPLAY_JOINS,
 };
 use super::*;
-use crate::renderer::picker::{kind_column, kind_from_column};
+use crate::renderer::picker::kind_column;
 use crate::renderer::CastReceiver;
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::{
@@ -47,23 +48,71 @@ pub async fn now_playing(store: &Store) -> Result<NowPlayingValues, DbError> {
     store.read(|sql| now_playing_on(&sql)).await
 }
 
+sqlive_compose::fragment!(
+    KeptLevel { volume: f32, is_muted: bool },
+    r#"
+    SELECT now.volume, now.is_muted
+    FROM playback_now AS now
+    WHERE now.singleton = 1
+"#
+);
+
+impl KeptLevel {
+    /// The volume and whether it is muted.
+    fn into_level(self) -> Result<(crate::Volume, bool), DbError> {
+        let volume = crate::Volume::new(self.volume)
+            .ok_or_else(|| DbError::unreadable("playback_now.volume", self.volume))?;
+        Ok((volume, self.is_muted))
+    }
+}
+
+sqlive_compose::read!(
+    PlaybackLevel,
+    r#"
+    SELECT kept.*
+    FROM @crate::tables::now::KeptLevel AS kept
+"#
+);
+
 /// The volume and mute the row holds, which resuming playback restores.
 pub async fn playback_level(store: &Store) -> Result<(crate::Volume, bool), DbError> {
-    store
-        .read(|sql| {
-            Ok(sql.query_row("SELECT volume, is_muted FROM playback_now", [], |row| {
-                let stored: f32 = row.get("volume")?;
-                let volume = crate::Volume::new(stored).ok_or_else(|| {
-                    bae_store::read::column_conversion_error(
-                        row,
-                        "volume",
-                        format!("volume {stored} is no level"),
-                    )
-                })?;
-                Ok((volume, row.get("is_muted")?))
-            })?)
+    store.read_row(PlaybackLevelParams {}).await?.kept.into_level()
+}
+
+sqlive_compose::fragment!(
+    Casting {
+        cast_receiver_id: Option<String>,
+        cast_receiver_name: Option<String>,
+        cast_receiver_kind: Option<crate::renderer::RendererKind>,
+        cast_receiver_address: Option<String>,
+        cast_receiver_takes_volume: Option<bool>
+    },
+    r#"
+    SELECT now.cast_receiver_id, now.cast_receiver_name, now.cast_receiver_kind,
+           now.cast_receiver_model, now.cast_receiver_address, now.cast_receiver_takes_volume
+    FROM playback_now AS now
+    WHERE now.remote = 'on'
+"#
+);
+
+impl Casting {
+    /// The receiver playback is cast to. The table's CHECKs give a row that
+    /// casts every column of its receiver but the model.
+    pub(crate) fn into_receiver(self) -> Result<CastReceiver, DbError> {
+        let missing = |column: &str| {
+            DbError::unreadable(format!("playback_now.{column} while casting"), None::<String>)
+        };
+        Ok(CastReceiver {
+            id: self.cast_receiver_id.ok_or_else(|| missing("cast_receiver_id"))?,
+            name: self.cast_receiver_name.ok_or_else(|| missing("cast_receiver_name"))?,
+            kind: self.cast_receiver_kind.ok_or_else(|| missing("cast_receiver_kind"))?,
+            model: self.cast_receiver_model,
+            address: self.cast_receiver_address.ok_or_else(|| missing("cast_receiver_address"))?,
+            takes_volume: self
+                .cast_receiver_takes_volume
+                .ok_or_else(|| missing("cast_receiver_takes_volume"))?,
         })
-        .await
+    }
 }
 
 impl PlaybackNowRow {
@@ -345,7 +394,7 @@ impl<'a> ReceiverValues<'a> {
 
 /// The columns a row names a receiver in: the one playback is on, or the one
 /// a failure names.
-pub(crate) struct ReceiverColumns {
+struct ReceiverColumns {
     id: &'static str,
     name: &'static str,
     kind: &'static str,
@@ -355,7 +404,7 @@ pub(crate) struct ReceiverColumns {
 }
 
 /// The receiver playback is on, or lost the link to.
-pub(crate) const CAST_RECEIVER: ReceiverColumns = ReceiverColumns {
+const CAST_RECEIVER: ReceiverColumns = ReceiverColumns {
     id: "cast_receiver_id",
     name: "cast_receiver_name",
     kind: "cast_receiver_kind",
@@ -488,14 +537,11 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
 }
 
 /// The receiver a row names in `columns`.
-pub(crate) fn receiver_from_row(
-    row: &Row<'_>,
-    columns: &ReceiverColumns,
-) -> rusqlite::Result<CastReceiver> {
+fn receiver_from_row(row: &Row<'_>, columns: &ReceiverColumns) -> rusqlite::Result<CastReceiver> {
     Ok(CastReceiver {
         id: row.get(columns.id)?,
         name: row.get(columns.name)?,
-        kind: kind_from_column(row, columns.kind)?,
+        kind: row.get(columns.kind)?,
         model: row.get(columns.model)?,
         address: row.get(columns.address)?,
         takes_volume: row.get(columns.takes_volume)?,

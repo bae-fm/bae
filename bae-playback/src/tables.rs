@@ -7,7 +7,7 @@
 //! service writes them through, and the functions here read them for
 //! everything else.
 
-mod now;
+pub mod now;
 mod preview_target;
 mod queue;
 mod queue_fill;
@@ -23,7 +23,6 @@ pub use now::lose_playback_level_for_test;
 pub use now::now_playing;
 pub use now::subscribe_now_playing;
 pub use now::{dismiss_playback_failure, playback_level, PlaybackNowRow};
-pub(crate) use now::{receiver_from_row, CAST_RECEIVER};
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue::fail_queue_writes_for_test;
 #[cfg(any(test, feature = "test-utils"))]
