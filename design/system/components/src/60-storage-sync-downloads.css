@@ -41,9 +41,9 @@
 .bae-m-progchip-label { position: relative; }
 .bae-m-storefoot { flex: none; display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-edge); border-top: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-storefoot-q { display: inline-flex; align-items: center; gap: var(--space-compact); color: var(--text-secondary); }
-/* The rate is a native label as wide as its widest text, with the label's 2pt inset each side; the hidden first line sets that width, and the rate draws over it from the left. */
-.bae-m-storefoot-rate { display: inline-grid; padding: 0 var(--space-line); }
-.bae-m-storefoot-rate > span { grid-area: 1 / 1; }
+/* The rate is a native label as wide as its widest text, with the label's 2pt inset each side; the hidden first line sets that width, and the rate draws over it from the left, in a box as wide as the label's. AppKit measures the label's text at its own width, not rounded to the half point as a SwiftUI Text is. */
+.bae-m-storefoot-rate { display: inline-grid; }
+.bae-m-storefoot-rate > span { grid-area: 1 / 1; width: auto; padding: 0 var(--space-line); }
 .bae-m-storefoot-rate > span:first-child { visibility: hidden; }
 /* The pause button is its glyph alone, as AppKit's borderless button is, not a line of text around it. */
 .bae-m-storefoot-qbtn { display: flex; }
