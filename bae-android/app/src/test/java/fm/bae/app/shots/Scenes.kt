@@ -43,10 +43,12 @@ import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidDialogActions
+import fm.bae.app.ui.components.AndroidMenuShape
 import fm.bae.app.ui.components.AndroidSheetBody
 import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.androidMenuColor
 import fm.bae.app.ui.components.dialogPane
 import kotlinx.coroutines.Dispatchers
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -366,7 +368,8 @@ internal val sceneLibrary =
 
 /**
  * An open menu's [items] on the menu's surface, [end] in from the box's right edge and [top] down from its top:
- * layoutlib draws an open menu's popup blank, so the menu's contents are drawn in a surface like its own. A menu is a
+ * layoutlib draws an open menu's popup blank, so the menu's contents are drawn in a surface like its own, in
+ * [AndroidMenu]'s shape and colour. A menu is a
  * window of its own, which TalkBack reads before the page it opens over, so the surface is marked as a window and the
  * element list reads it first.
  */
@@ -378,8 +381,8 @@ internal fun BoxScope.OpenMenu(
 ) {
     WindowOverScreen {
         Surface(
-            shape = MenuDefaults.shape,
-            color = MenuDefaults.containerColor,
+            shape = AndroidMenuShape,
+            color = androidMenuColor(),
             tonalElevation = MenuDefaults.TonalElevation,
             shadowElevation = MenuDefaults.ShadowElevation,
             modifier =
