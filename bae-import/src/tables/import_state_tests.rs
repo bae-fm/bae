@@ -606,25 +606,3 @@ impl PaneControls {
         self.preparations.set_track_edit_prepared(&self.root, &self.key, &read, row).await
     }
 }
-
-/// Every identification table has a primary key, so coven reruns a read only
-/// for a write to a row it reads (spec 3.2): a table with none reaches every
-/// read of it for every write.
-#[test]
-fn every_identification_table_has_a_primary_key() {
-    let conn = rusqlite::Connection::open_in_memory().unwrap();
-    crate::TEST_SCHEMA.open_bare_library(&conn);
-    let mut statement = conn
-        .prepare(
-            "SELECT m.name FROM sqlite_master AS m
-             WHERE m.type = 'table'
-               AND (m.name LIKE 'import\\_candidate\\_%' ESCAPE '\\'
-                    OR m.name LIKE 'import\\_identify\\_%' ESCAPE '\\')
-               AND NOT EXISTS (SELECT 1 FROM pragma_table_info(m.name) WHERE pk > 0)
-             ORDER BY m.name",
-        )
-        .unwrap();
-    let keyless: Vec<String> =
-        statement.query_map([], |row| row.get(0)).unwrap().collect::<Result<_, _>>().unwrap();
-    assert!(keyless.is_empty(), "tables with no primary key: {keyless:?}");
-}

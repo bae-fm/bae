@@ -22,6 +22,29 @@ pub fn loose_tables(schema: Schema) -> Vec<String> {
     loose
 }
 
+/// The tables of bae's own that `schema` creates with no primary key, which
+/// coven can't tell the rows of apart: a read of such a table reruns for every
+/// write to it. coven's own `coven_` tables are coven's to key.
+pub fn keyless_tables(schema: Schema) -> Vec<String> {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    schema.open_bare_library(&conn);
+    let keyless = conn
+        .prepare(
+            "SELECT name FROM pragma_table_list AS t
+             WHERE schema = 'main' AND type = 'table'
+               AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\'
+               AND name NOT LIKE 'coven\\_%' ESCAPE '\\'
+               AND NOT EXISTS (SELECT 1 FROM pragma_table_info(t.name) WHERE pk > 0)
+             ORDER BY name",
+        )
+        .unwrap()
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    keyless
+}
+
 /// Each column an `UPDATE OF` trigger of `schema` names that its table
 /// doesn't have, as `trigger: table.column`. SQLite accepts a name no column
 /// has, and the trigger then never fires on it.

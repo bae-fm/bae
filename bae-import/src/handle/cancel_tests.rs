@@ -352,7 +352,15 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
         "the failed release is Found's import error"
     );
     // Found's counts count it under Needs You with it.
-    let counts = |state: &mut StoreState| state.rows.remove("import_list_count").unwrap();
+    // Without each count's own id, which a count that is removed and added again
+    // gets anew.
+    let counts = |state: &mut StoreState| {
+        let rows = state.rows.remove("import_list_count").unwrap();
+        let mut rows: Vec<String> =
+            rows.iter().map(|row| row.split_once(" | ").unwrap().1.to_string()).collect();
+        rows.sort();
+        rows
+    };
     assert_eq!(counts(&mut before), ["pending | candidate | not_looked_up | Integer(2)"]);
     assert_eq!(
         counts(&mut after),

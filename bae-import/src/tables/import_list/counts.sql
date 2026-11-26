@@ -6,6 +6,7 @@
 -- places, moves or removes a placement row. Computed from device-local rows
 -- and never synced.
 CREATE TABLE IF NOT EXISTS import_list_count (
+    id            INTEGER PRIMARY KEY,
     tab           TEXT NOT NULL,
     item          TEXT NOT NULL,
     -- The entry of Found's filter holding the rows; NULL off Found's

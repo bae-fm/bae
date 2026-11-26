@@ -69,6 +69,7 @@ CREATE INDEX IF NOT EXISTS import_credit_resolution_artist_by_artist
 -- credit once for each write that reached it. The before-commit function
 -- empties it before every commit.
 CREATE TABLE IF NOT EXISTS import_credit_resolution_due (
+    id                    INTEGER PRIMARY KEY,
     name_key              TEXT NOT NULL,
     musicbrainz_artist_id TEXT,
     discogs_artist_id     TEXT
@@ -81,7 +82,7 @@ CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_album_credit_adde
 AFTER INSERT ON import_candidate_album_artist_assignment
 WHEN NEW.assignment_kind = 'credit'
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     VALUES (bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id);
 END;
 
@@ -89,7 +90,7 @@ CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_album_credit_remo
 AFTER DELETE ON import_candidate_album_artist_assignment
 WHEN OLD.assignment_kind = 'credit'
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     VALUES (bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id);
 END;
 
@@ -97,10 +98,10 @@ CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_album_credit_chan
 AFTER UPDATE OF assignment_kind, name, musicbrainz_artist_id, discogs_artist_id
 ON import_candidate_album_artist_assignment
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id
     WHERE OLD.assignment_kind = 'credit';
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id
     WHERE NEW.assignment_kind = 'credit';
 END;
@@ -109,7 +110,7 @@ CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_track_credit_adde
 AFTER INSERT ON import_candidate_track_artist_assignment
 WHEN NEW.assignment_kind = 'credit'
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     VALUES (bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id);
 END;
 
@@ -117,7 +118,7 @@ CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_track_credit_remo
 AFTER DELETE ON import_candidate_track_artist_assignment
 WHEN OLD.assignment_kind = 'credit'
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     VALUES (bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id);
 END;
 
@@ -125,10 +126,10 @@ CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_track_credit_chan
 AFTER UPDATE OF assignment_kind, name, musicbrainz_artist_id, discogs_artist_id
 ON import_candidate_track_artist_assignment
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id
     WHERE OLD.assignment_kind = 'credit';
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id
     WHERE NEW.assignment_kind = 'credit';
 END;
@@ -155,7 +156,7 @@ WHERE 0;
 CREATE TRIGGER IF NOT EXISTS import_credit_resolution_follow
 INSTEAD OF INSERT ON import_credit_resolution_follow
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id
     FROM import_credit_resolution AS r
     WHERE r.name_key IN (
@@ -223,7 +224,7 @@ END;
 CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_printed_name_added
 AFTER INSERT ON artist_credits
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT name_key, musicbrainz_artist_id, discogs_artist_id FROM import_credit_resolution
     WHERE name_key = NEW.name_key;
 END;
@@ -231,7 +232,7 @@ END;
 CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_printed_name_removed
 AFTER DELETE ON artist_credits
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT name_key, musicbrainz_artist_id, discogs_artist_id FROM import_credit_resolution
     WHERE name_key = OLD.name_key;
 END;
@@ -239,7 +240,7 @@ END;
 CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_printed_name_changed
 AFTER UPDATE OF artist_id, name_key ON artist_credits
 BEGIN
-    INSERT INTO import_credit_resolution_due
+    INSERT INTO import_credit_resolution_due (name_key, musicbrainz_artist_id, discogs_artist_id)
     SELECT name_key, musicbrainz_artist_id, discogs_artist_id FROM import_credit_resolution
     WHERE name_key IN (OLD.name_key, NEW.name_key);
 END;
