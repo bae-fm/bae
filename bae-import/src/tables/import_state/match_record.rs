@@ -14,7 +14,7 @@ use crate::tables::stored_credits;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::remote_image::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use bae_catalogs::search::{MetadataResult, SourceTracks};
-use bae_types::pressing::{Medium, StatedMedia};
+use bae_types::pressing::StatedMedia;
 
 sqlive_compose::fragment!(
     MatchRecord on import_candidate_match {
@@ -253,17 +253,10 @@ impl StoredRecord {
                 .map(|stored| {
                     Ok(StoredMedium {
                         kind: stored.kind,
-                        medium: stored
-                            .medium
-                            .map(|key| {
-                                Medium::from_key(&key).ok_or_else(|| {
-                                    DbError::unreadable(
-                                        "import_candidate_match_medium.medium",
-                                        &key,
-                                    )
-                                })
-                            })
-                            .transpose()?,
+                        medium: crate::tables::medium_of(
+                            "import_candidate_match_medium.medium",
+                            stored.medium,
+                        )?,
                         quantity: stored.quantity,
                     })
                 })

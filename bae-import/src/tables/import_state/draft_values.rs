@@ -381,13 +381,7 @@ pub(crate) fn mediums_of(json: &str) -> Result<Vec<bae_types::mediums::ReleaseMe
     decoded::<Vec<StoredMedium>>(json, "mediums")?
         .into_iter()
         .map(|medium| {
-            let carrier = medium
-                .carrier
-                .map(|key| {
-                    bae_types::pressing::Medium::from_key(&key)
-                        .ok_or_else(|| DbError::unreadable("a draft medium's carrier", &key))
-                })
-                .transpose()?;
+            let carrier = crate::tables::medium_of("a draft medium's carrier", medium.carrier)?;
             Ok(bae_types::mediums::ReleaseMedium { carrier, sides: medium.sides })
         })
         .collect()

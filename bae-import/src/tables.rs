@@ -72,6 +72,18 @@ use rusqlite::{named_params, params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::str::FromStr;
 
+/// The carrier that `key`, the value stored in `what`, names; `None` where
+/// nothing is stored.
+fn medium_of(
+    what: &str,
+    key: Option<String>,
+) -> Result<Option<bae_types::pressing::Medium>, DbError> {
+    key.map(|key| {
+        bae_types::pressing::Medium::from_key(&key).ok_or_else(|| DbError::unreadable(what, &key))
+    })
+    .transpose()
+}
+
 /// What a read fetched, still to be assembled — boxed so a read on either
 /// connection hands back one type.
 type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;

@@ -414,7 +414,10 @@ fn stored_release_of(
                     .into_iter()
                     .map(|format| {
                         Ok(StatedFormat {
-                            medium: medium_of("source_release_format.medium", format.medium)?,
+                            medium: super::medium_of(
+                                "source_release_format.medium",
+                                format.medium,
+                            )?,
                             quantity: format.quantity,
                         })
                     })
@@ -505,11 +508,6 @@ fn stored_release_of(
         notes: stored.notes,
         unfetched,
     })
-}
-
-/// The carrier the column `what` keys, `None` where it holds none.
-fn medium_of(what: &str, key: Option<String>) -> Result<Option<Medium>, DbError> {
-    key.map(|key| Medium::from_key(&key).ok_or_else(|| DbError::unreadable(what, &key))).transpose()
 }
 
 /// `releases` as a JSON array of `[catalog, key]` pairs, in their order, for

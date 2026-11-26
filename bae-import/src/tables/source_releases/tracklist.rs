@@ -312,7 +312,7 @@ pub(super) fn mediums_of(
         .into_iter()
         .map(|stored| {
             Ok(SourceMedium {
-                medium: super::medium_of("source_release_medium.medium", stored.medium)?,
+                medium: crate::tables::medium_of("source_release_medium.medium", stored.medium)?,
                 disc_ids: stored.disc_ids,
                 entries: Vec::new(),
             })
