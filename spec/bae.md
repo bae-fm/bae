@@ -176,8 +176,7 @@ release under its album:
   then its country, such as `2001 · Harbor Records · HR-1042 · US`. Where
   the album's year appears with the release lines, as on the album page, the
   edition line leaves out a year that matches it. The 1992 original of a 1992
-  album reads `Harbor Records · HR-1042 · US` there, and
-  `1992 · Harbor Records · HR-1042 · US` in a pressing row. A country shows in the short form
+  album reads `Harbor Records · HR-1042 · US` there. A country shows in the short form
   the person's language commonly uses where one exists (US, UK, EE. UU. in
   Spanish) and by its full name otherwise.
 - The copy line holds what the person has: the media and details, then the
