@@ -5,10 +5,9 @@
 //! lists the same receivers. Its table is `picker.sql`; the functions here
 //! read and write it.
 
-use bae_records::records::name_sort::sort_key_sql;
+use bae_store::statement_row;
 use bae_store::DbError;
 use bae_store::Store;
-use bae_store::{statement_optional, statement_row};
 use coven::SqlReadContext;
 use rusqlite::params;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
@@ -52,48 +51,69 @@ impl FromSql for RendererKind {
     }
 }
 
-sqlive_compose::read!(
-    CastingNow,
+// The receivers discovery found, apart from the one playback is cast to, by
+// name in the device's language, then id.
+sqlive_compose::fragment!(
+    FoundReceivers {
+        struct FoundReceiverDocument {
+            id: String,
+            name: String,
+            kind: String,
+            model: Option<String>,
+            address: String,
+            takes_volume: bool
+        }
+        found: json<Vec<FoundReceiverDocument>>
+    },
     r#"
-    SELECT casting.*
-    FROM @crate::tables::now::Casting AS casting
+    SELECT json_group_array(json_object(
+               'id', receiver.id, 'name', receiver.name, 'kind', receiver.kind,
+               'model', receiver.model, 'address', receiver.address,
+               'takes_volume', json(iif(receiver.takes_volume, 'true', 'false')))
+               ORDER BY bae_name_key(receiver.name, sort.language), receiver.id) AS found
+    FROM cast_receiver AS receiver
+    JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+    WHERE NOT EXISTS (SELECT 1 FROM @crate::tables::now::Casting AS casting
+                      WHERE casting.cast_receiver_id = receiver.id)
 "#
 );
 
+// What the picker lists: the found receivers, and the one playback is cast to
+// while it casts.
 sqlive_compose::read!(
-    PickerIsEmpty { is_empty: bool },
+    PickerList,
     r#"
-    SELECT NOT EXISTS (SELECT 1 FROM cast_receiver)
-           AND NOT EXISTS (SELECT 1 FROM @crate::tables::now::Casting AS casting) AS is_empty
+    SELECT listed.*, casting.*
+    FROM @crate::renderer::picker::FoundReceivers AS listed
+    LEFT JOIN @crate::tables::now::Casting AS casting ON 1
 "#
 );
 
-/// The picker's list: the receiver playback is cast to, then every other
-/// receiver discovery found, by name in the device's language.
+impl FoundReceiverDocument {
+    fn into_receiver(self) -> Result<CastReceiver, DbError> {
+        let kind = RendererKind::column_result(ValueRef::Text(self.kind.as_bytes()))
+            .map_err(|error| DbError::unreadable("cast_receiver.kind", error.to_string()))?;
+        Ok(CastReceiver {
+            id: self.id,
+            name: self.name,
+            kind,
+            model: self.model,
+            address: self.address,
+            takes_volume: self.takes_volume,
+        })
+    }
+}
+
 fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
-    let casting = statement_optional(sql, &CastingNowParams {})?
-        .map(|row| row.casting.into_receiver())
-        .transpose()?;
-    let found = sql.query(
-        &format!(
-            "SELECT id, name, kind, model, address, takes_volume FROM cast_receiver \
-               WHERE id NOT IN (SELECT cast_receiver_id FROM playback_now WHERE remote = 'on') \
-             ORDER BY {}, id",
-            sort_key_sql("name")
-        ),
-        [],
-        |row| {
-            Ok(CastReceiver {
-                id: row.get("id")?,
-                name: row.get("name")?,
-                kind: row.get("kind")?,
-                model: row.get("model")?,
-                address: row.get("address")?,
-                takes_volume: row.get("takes_volume")?,
-            })
-        },
-    )?;
-    let is_empty = statement_row(sql, &PickerIsEmptyParams {})?.is_empty;
+    let row = statement_row(sql, &PickerListParams {})?;
+    let casting = row.casting.map(|casting| casting.into_receiver()).transpose()?;
+    let found = row
+        .listed
+        .found
+        .into_iter()
+        .map(FoundReceiverDocument::into_receiver)
+        .collect::<Result<Vec<_>, _>>()?;
+    let is_empty = casting.is_none() && found.is_empty();
     Ok(CastReceiverList { casting, found, is_empty })
 }
 
@@ -135,7 +155,7 @@ impl CastPicker {
     }
 
     /// Follow the receivers the picker lists, the one playback is cast to
-    /// apart from the rest, by name in the device's language. The query reads
+    /// apart from the rest, by name in the device's language. The read reads
     /// `name_sort`, so coven reruns it when the device's language changes.
     pub fn subscribe(&self) -> coven::LiveQuery<CastReceiverList, bae_store::DbError> {
         self.store.subscribe(|sql| cast_receivers_on(&sql))

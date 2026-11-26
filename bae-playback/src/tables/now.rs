@@ -88,7 +88,7 @@ sqlive_compose::fragment!(
         cast_receiver_takes_volume: Option<bool>
     },
     r#"
-    SELECT now.cast_receiver_id, now.cast_receiver_name, now.cast_receiver_kind,
+    SELECT now.remote, now.cast_receiver_id, now.cast_receiver_name, now.cast_receiver_kind,
            now.cast_receiver_model, now.cast_receiver_address, now.cast_receiver_takes_volume
     FROM playback_now AS now
     WHERE now.remote = 'on'
