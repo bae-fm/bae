@@ -5,12 +5,16 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# The crates that depend on this one receive its fragments through this key.
+links = "bae_people_sql"
 
 [lib]
 name = "bae_people"
 path = "src/lib.rs"
 
 [build-dependencies]
+# Checks the crate's read fragments against the schema and writes the Rust they include.
+bae-fragments-build = { workspace = true }
 # Writes the schema this crate declares from its `schema.toml`.
 bae-schema-manifest = { workspace = true }
 
@@ -23,6 +27,8 @@ bae-diagnostics = { workspace = true }
 bae-records = { workspace = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }
+# The macros the read fragments are written with.
+sqlive-compose = { workspace = true }
 # The stars a rating holds.
 bae-types = { workspace = true }
 # How a refused dismissal says it holds a bug already reported.

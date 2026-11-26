@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::collections::Stars;
+use crate::membership::fragments::ViewerIsAdmin;
 
 /// How the library shows the ratings of albums, or of tracks. Each person's
 /// rating stays one to five stars, or none, under every system.
@@ -135,8 +136,9 @@ impl People {
         self.inner.store.subscribe(|sql| {
             Ok(sql.query_row(
                 &format!(
-                    "SELECT systems.*, {} AS can_change FROM ({RATING_SYSTEMS_SQL}) AS systems",
-                    crate::membership::self_is_admin!(),
+                    "SELECT systems.*, ({viewer}) AS can_change \
+                     FROM ({RATING_SYSTEMS_SQL}) AS systems",
+                    viewer = ViewerIsAdmin::SQL,
                 ),
                 [],
                 |row| {

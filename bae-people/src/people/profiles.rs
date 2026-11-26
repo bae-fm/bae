@@ -1,5 +1,5 @@
 use super::*;
-use crate::membership::{member_columns, member_row};
+use crate::membership::fragments::{EveryMember, Member};
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
 use bae_records::records::name_sort::sort_key_sql;
 
@@ -34,14 +34,14 @@ impl People {
     /// keeps writing to it.
     pub(super) async fn writing_person(&self) -> Result<Option<Person>, DbError> {
         let statement = members_sql(IS_OWN_MEMBER, "");
-        Ok(self.inner.store.read(move |sql| Ok(people_on(&sql, &statement, [])?)).await?.pop())
+        Ok(self.inner.store.read(move |sql| people_on(&sql, &statement, [])).await?.pop())
     }
 
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile, which the same registration wrote.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        Ok(self.inner.store.read(|sql| Ok(people_on(&sql, &own_person_sql(), [])?)).await?.pop())
+        Ok(self.inner.store.read(|sql| people_on(&sql, &own_person_sql(), [])).await?.pop())
     }
 
     /// The person using this device, the other people, and how many people and
@@ -250,18 +250,19 @@ fn people_sql(narrowing: &str) -> String {
 /// when it says so: a profile keeps its member id after the member's removal.
 fn members_sql(condition: &str, narrowing: &str) -> String {
     format!(
-        "SELECT {profile}, {member} \
-         FROM coven_members AS m LEFT JOIN ({PROFILES}) ON p.id = m.member \
+        "SELECT {profile}, m.* \
+         FROM ({members}) AS m LEFT JOIN ({PROFILES}) ON p.id = m.member_id \
          WHERE {condition}{narrowing} \
-         ORDER BY p.id IS NULL, {name_key}, m.member",
+         ORDER BY p.id IS NULL, {name_key}, m.member_id",
         profile = profile_columns(),
-        member = member_columns!(),
+        members = EveryMember::SQL,
         name_key = sort_key_sql("p.name"),
     )
 }
 
-/// What names the member using this device, over `coven_members AS m`: the
-/// person using this device is the member coven marks as this device's own.
+/// What names the member using this device, over `coven_members` or a read of
+/// its members as `m`: the person using this device is the member coven marks
+/// as this device's own.
 pub(super) const IS_OWN_MEMBER: &str = "m.is_self";
 
 /// The person using this device.
@@ -271,7 +272,7 @@ fn own_person_sql() -> String {
 
 /// The member bound to `?1`.
 fn person_sql() -> String {
-    people_sql(" AND m.member = ?1")
+    people_sql(" AND m.member_id = ?1")
 }
 
 /// Everyone but the person using this device.
@@ -291,16 +292,17 @@ fn people_on(
     sql: &SqlReadContext<'_>,
     statement: &str,
     params: impl Params,
-) -> rusqlite::Result<Vec<Person>> {
+) -> Result<Vec<Person>, DbError> {
     sql.query(statement, params, |row| {
-        Ok(Person {
-            profile: match row.get::<_, Option<String>>(0)? {
-                Some(_) => Some(profile_row(row)?),
-                None => None,
-            },
-            membership: member_row(row, PROFILE_COLUMN_COUNT)?,
-        })
-    })
+        let profile = match row.get::<_, Option<String>>(0)? {
+            Some(_) => Some(profile_row(row)?),
+            None => None,
+        };
+        Ok((profile, Member::read(row, PROFILE_COLUMN_COUNT)?))
+    })?
+    .into_iter()
+    .map(|(profile, member)| Ok(Person { profile, membership: member.into_membership()? }))
+    .collect()
 }
 
 fn update_profile(

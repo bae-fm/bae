@@ -1,15 +1,14 @@
 //! People and their devices, with permissions derived from coven's
 //! membership, as db reads them from coven's views.
 
-use bae_store::read::json_column;
 use bae_store::{DbError, Store};
 use coven::{CovenWrite, SqlReadContext};
-use rusqlite::{params, Row};
+use rusqlite::params;
 
 mod admin_operations;
 pub use admin_operations::{InviteError, RefusedInviteDismissError};
+pub mod fragments;
 mod members;
-pub(crate) use members::{member_columns, member_row, self_is_admin};
 
 /// The library's members and the admin changes this device asks for, over the
 /// store.

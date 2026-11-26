@@ -1190,6 +1190,7 @@ name = "bae-people"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-records",
  "bae-schema-manifest",
  "bae-store",
@@ -1199,6 +1200,7 @@ dependencies = [
  "regex",
  "rusqlite",
  "serde",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "time",
  "tokio",

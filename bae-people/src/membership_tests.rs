@@ -18,20 +18,51 @@ fn a_member_removes_only_their_own_other_devices() {
     assert!(!ActiveDevice::removable(true, true, true));
 }
 
+/// The values of a member row's columns that the tests vary.
+struct MemberValues<'a> {
+    account: Option<&'a str>,
+    access_key_id: Option<&'a str>,
+    active: &'a str,
+    former: &'a str,
+    self_is_admin: bool,
+}
+
+const NO_DEVICES: MemberValues<'static> = MemberValues {
+    account: None,
+    access_key_id: None,
+    active: "[]",
+    former: "[]",
+    self_is_admin: false,
+};
+
+/// The member that a row of the member fragment's columns, in their order,
+/// holds with `values`.
+fn member_of(values: MemberValues<'_>) -> Result<MembershipMember, bae_store::DbError> {
+    let connection = rusqlite::Connection::open_in_memory().unwrap();
+    connection
+        .query_row(
+            "SELECT '00000000-0000-4000-8000-000000000001', 0, 'member', 0, \
+             ?1, ?2, ?3, ?4, 0, 0, ?5",
+            rusqlite::params![
+                values.account,
+                values.access_key_id,
+                values.active,
+                values.former,
+                values.self_is_admin
+            ],
+            |row| super::fragments::Member::read(row, 0),
+        )
+        .unwrap()
+        .into_membership()
+}
+
 /// How a `coven_members` row reaches storage: an account, an S3 key id, or,
 /// for the library's creator until Set up storage records theirs, neither.
 /// Both at once is no row coven writes.
 #[test]
 fn a_members_access_is_an_account_a_key_or_not_yet_recorded() {
-    let connection = rusqlite::Connection::open_in_memory().unwrap();
-    let read = |account: Option<&str>, access_key_id: Option<&str>| {
-        connection.query_row(
-            "SELECT '00000000-0000-4000-8000-000000000001', 'admin', 1, \
-             ?1, ?2, '[]', '[]', 0, 0, 1",
-            [account, access_key_id],
-            |row| super::members::member_row(row, 0),
-        )
-    };
+    let read =
+        |account, access_key_id| member_of(MemberValues { account, access_key_id, ..NO_DEVICES });
     assert_eq!(
         read(Some("ana@example.com"), None).unwrap().access,
         Some(coven::MemberAccess::ProviderAccount("ana@example.com".into()))
@@ -48,20 +79,18 @@ fn a_members_access_is_an_account_a_key_or_not_yet_recorded() {
 /// member's and their devices' removal flags follow from it.
 #[test]
 fn a_members_removal_flags_follow_the_admin_column_of_their_row() {
-    let connection = rusqlite::Connection::open_in_memory().unwrap();
-    let read = |self_is_admin: bool| {
-        connection
-            .query_row(
-                "SELECT '00000000-0000-4000-8000-000000000001', 'member', 0, \
-                 NULL, NULL, '[[\"01\",\"Phone\",false]]', '[]', 1, 0, ?1",
-                [self_is_admin],
-                |row| super::members::member_row(row, 0),
-            )
-            .unwrap()
+    let read = |self_is_admin| {
+        member_of(MemberValues {
+            active: r#"[{"id":"0000000000000001","name":"Phone","is_self":false}]"#,
+            self_is_admin,
+            ..NO_DEVICES
+        })
+        .unwrap()
     };
     let by_admin = read(true);
     assert!(by_admin.can_remove);
     assert!(by_admin.active_devices[0].can_remove);
+    assert_eq!(by_admin.active_devices[0].id, coven::DeviceId(1));
     let by_member = read(false);
     assert!(!by_member.can_remove);
     assert!(!by_member.active_devices[0].can_remove);
@@ -71,16 +100,12 @@ fn a_members_removal_flags_follow_the_admin_column_of_their_row() {
 /// fails on text that names no state of coven's.
 #[test]
 fn a_former_devices_state_reads_by_coven_s_name() {
-    let connection = rusqlite::Connection::open_in_memory().unwrap();
-    let read = |former: &str| {
-        connection.query_row(
-            "SELECT '00000000-0000-4000-8000-000000000001', 'member', 0, \
-             NULL, NULL, '[]', ?1, 0, 2, 0",
-            [former],
-            |row| super::members::member_row(row, 0),
-        )
-    };
-    let member = read(r#"[["02","Old Phone","replaced"],["03","Tablet","removed"]]"#).unwrap();
+    let read = |former| member_of(MemberValues { former, ..NO_DEVICES });
+    let member = read(
+        r#"[{"id":"0000000000000002","name":"Old Phone","state":"replaced"},
+            {"id":"0000000000000003","name":"Tablet","state":"removed"}]"#,
+    )
+    .unwrap();
     assert_eq!(
         member.former_devices,
         [
@@ -96,7 +121,7 @@ fn a_former_devices_state_reads_by_coven_s_name() {
             },
         ]
     );
-    assert!(read(r#"[["02","Old Phone","lost"]]"#).is_err());
+    assert!(read(r#"[{"id":"0000000000000002","name":"Old Phone","state":"lost"}]"#).is_err());
 }
 
 /// Each place's statement returns the changes of its own kinds, and every
