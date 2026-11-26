@@ -8,7 +8,8 @@
 .bae-m-iconbtn-on { color: var(--accent); }
 
 /* Storage Manager */
-.bae-m-storewin { position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
+/* macOS draws no ring on the window's sides or bottom, so the window paints only its background up to its rounded edge; the toolbar covers the top edge. */
+.bae-m-storewin { position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-storewin-bar { flex: none; position: relative; height: 52px; background: var(--background); display: flex; align-items: center; padding: 0 var(--space-inline) 0 108px; }
 .bae-m-storewin > .bae-m-lights { top: 19px; left: 19px; z-index: 1; }
 .bae-m-storewin-centre { position: absolute; inset: 0; width: fit-content; height: fit-content; margin: auto; }
