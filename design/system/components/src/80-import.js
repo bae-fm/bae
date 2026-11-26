@@ -293,7 +293,7 @@
       h('span', { className: 'bae-num' }, props.position),
       h('span', { className: 'bae-m-itable-cell' }, h(MacInlineField, { label: 'Title', value: props.title, placeholder: 'Untitled' })),
       h('span', { className: 'bae-m-itable-cell' }, h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, inherited: props.inherited, placeholder: 'Artist', column: true })),
-      h('span', { className: 'bae-num', style: { textAlign: 'right' } }, props.length, props.listed ? h('span', { className: 'bae-warning', title: 'Listed length' }, ' ' + props.listed) : null));
+      h('span', { className: 'bae-num', style: { justifySelf: 'end', textAlign: 'right' } }, props.length, props.listed ? h('span', { className: 'bae-warning', title: 'Listed length' }, ' ' + props.listed) : null));
   }
   // A CUE sheet's caption: the pop-up of which side or disc the sheet is on (Side A on a record or cassette, Disc 1 elsewhere), CUE, the sheet's name (a button that opens it in the viewer), → and the pop-up of the audio its FILE line is bound to.
   function MacImportSheetCaption(props) {
@@ -311,7 +311,7 @@
     var k = kids(props.children);
     var auto = props.automatic || 'found';
     return h('div', { className: 'bae-m-card bae-m-fo' },
-      h('div', { className: 'bae-m-fo-head' }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent bae-m-fo-back' }, h(Glyph, { set: 'mac', name: 'down', point: 'backward', size: 'small' }), 'Back'), h('span', { className: 'bae-strong', style: { position: 'absolute', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' } }, 'Identify')),
+      h('div', { className: 'bae-m-fo-head' }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent bae-m-fo-back' }, h(Glyph, { set: 'mac', name: 'down', point: 'backward', size: 'small' }), 'Back'), h('span', { className: 'bae-strong', style: { position: 'absolute', left: 0, right: 0, margin: '0 auto', textAlign: 'center', pointerEvents: 'none' } }, 'Identify')),
       h('div', { className: 'bae-divider' }),
       // The Discogs bar is the shared notice: its title, what to do, Open settings and the × that dismisses it.
       props.discogsBar ? h('div', { style: { padding: 'var(--space-group)' } }, h(MacNotice, { tone: 'info', title: 'Add Discogs to find more pressings', subtitle: 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.', action: 'Open settings', dismiss: true })) : null,

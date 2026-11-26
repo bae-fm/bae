@@ -1765,14 +1765,15 @@ A pressing's row lists every record's value where its records state a fact
 differently: the year, a catalog number, the country, the format.
 Each value is followed by the catalogs that state it, `1992 MusicBrainz / 1993
 Discogs`; a fact the records agree on, or only one record states, is listed as
-stated with no catalog. Two spellings of one catalog number or barcode are one
-value. The row lists the notes of its records the folder's text names it by,
-each followed by its catalog where they differ.
-What the row lists is what look-alike rows are compared by, so two pressings
-that differ only in what a second record states are two rows. Picking the
-row still applies its lead record alone. An album's header lists every title
-and every artist its records state, each once, `Low Tide Hours / Low Tide Hours
-(Remastered)`: titles and artists that differ only in case, accents or
+stated with no catalog. Two spellings of one catalog number are one value. The
+row lists the notes of its records the folder's text names it by, each
+followed by its catalog where they differ. The row shows no barcode.
+bae compares look-alike rows by what each row lists and by the barcodes its
+records state, two spellings of one barcode counting as one. So two pressings
+that differ only in a barcode, or only in what a second record states, are two
+rows. Picking the row still applies its lead record alone. An album's header
+lists every title and every artist its records state, each once, `Low Tide
+Hours / Low Tide Hours (Remastered)`: titles and artists that differ only in case, accents or
 punctuation are one.
 
 The pane lists the found albums as one table. Each album has a header with its
