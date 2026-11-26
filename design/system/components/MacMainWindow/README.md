@@ -1,6 +1,6 @@
 # MacMainWindow
 
-The main window every library and playback board sits in: the title bar (Library and Import, search, Activity, Settings), the content, and the now playing bar along the bottom. The `track…` props feed the bar; leave `trackTitle` out when nothing has played. A sheet or an alert over the window goes among its children, so its scrim dims the whole window, title bar and now playing bar included.
+The main window every library and playback board sits in: the title bar (Library and Import, search, Activity, Settings), the content, and the now playing bar along the bottom. The `track…` props feed the bar; leave `trackTitle` out when nothing has played. A sheet or an alert over the window goes among its children, so its scrim dims the whole window, title bar and now playing bar included. While a sheet is open, macOS draws the traffic lights over its dimming and turns the close button off.
 
 `inactive`: another window, such as the save panel, is the key window, so macOS draws the window's traffic lights grey. The app's own title bar draws the same either way.
 

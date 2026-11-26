@@ -30,6 +30,9 @@
 :root, [data-theme="dark"] { --bae-m-light-inactive: linear-gradient(#B3B3B3 0.25px, #747479 0.75px, #3F3F47 1.25px, #3F3F46 3.25px, #3E3E45 4.25px, #3D3D45 5.25px, #3B3B43 6.25px, #3A3A42 7.25px, #37373F 8.25px, #35353E 9.25px, #34343D 10.25px, #34343D 12.25px, #35353E 12.75px, #69696E 13.25px, #ACACAC 13.75px); --bae-m-light-inactive-rim: none; }
 [data-theme="light"] { --bae-m-light-inactive: #D6D6D6; --bae-m-light-inactive-rim: inset 0 0 0 0.5px #C4C4C4; }
 .bae-m-lights-inactive span, .bae-m-lights-inactive span + span, .bae-m-lights-inactive span + span + span { background: var(--bae-m-light-inactive); box-shadow: var(--bae-m-light-inactive-rim); }
+/* While a system sheet (MacSheet's `overlay`) is attached to a window, macOS draws the window's lights over the sheet's dimming and turns the close button off, which draws it as an inactive window's light. */
+.bae-m-window:has(.bae-m-scrim-sheet) > .bae-m-lights, .bae-m-mainwin:has(.bae-m-scrim-sheet) > .bae-m-lights, .bae-m-storewin:has(.bae-m-scrim-sheet) > .bae-m-lights { z-index: 11; }
+.bae-m-window:has(.bae-m-scrim-sheet) > .bae-m-lights > span:first-child, .bae-m-mainwin:has(.bae-m-scrim-sheet) > .bae-m-lights > span:first-child, .bae-m-storewin:has(.bae-m-scrim-sheet) > .bae-m-lights > span:first-child { background: var(--bae-m-light-inactive); box-shadow: var(--bae-m-light-inactive-rim); }
 .bae-m-pane { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); padding: calc(var(--space-inline) + var(--space-hairline)) calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); cursor: pointer; }
 .bae-m-pane-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
