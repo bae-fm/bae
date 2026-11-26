@@ -112,7 +112,7 @@
     var icon = { moveToThisDevice: 'folder', upload: 'arrowUp', pin: 'pin' }[kind];
     var notice = props.notice || (kind === 'moveToThisDevice' ? 'Could not move to This Mac' : 'Could not pin');
     return h('div', { className: 'bae-m-dlrow' },
-      h(MacItem, { lead: h(Glyph, { set: 'mac', name: icon, size: 16, weight: 'regular', className: 'bae-muted' }), trail: h(Glyph, { set: 'mac', name: 'xcircle', size: 13, weight: 'regular', frame: [15, 18], contentShape: true, className: 'bae-muted', button: 'Cancel' }) },
+      h(MacItem, { lead: h(Glyph, { set: 'mac', name: icon, size: 16, weight: 'regular', className: 'bae-muted' }), trail: h(Glyph, { set: 'mac', name: 'xcircle', size: 13, weight: 'regular', frame: [15, 18], className: 'bae-muted', button: 'Cancel' }) },
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB'))),
       h(MacNotice, { quiet: true, tone: props.tone || 'danger', title: notice, subtitle: props.subtitle, secondary: props.secondary === undefined ? 'Details' : props.secondary || null, action: props.action || 'Retry', buttons: props.subtitle ? 'below' : null }));
   }
@@ -128,7 +128,7 @@
     return h('span', { className: 'bae-m-storefoot-q' },
       h(Glyph, { set: 'mac', name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'arrowUp' : 'arrowDown', size: 'small', frame: [11, 11], className: kind === 'exports' ? null : 'bae-accent', label: QUEUE_NAME[kind] }),
       wait ? h('span', null, wait) : props.rate ? h('span', { className: 'bae-num bae-m-storefoot-rate' }, h('span', { 'aria-hidden': true }, QUEUE_WIDEST[kind]), h('span', null, props.rate)) : null,
-      h(Glyph, { set: 'mac', name: paused ? 'play' : 'pause', size: 'chip', weight: 'bold', contentShape: true, button: paused ? label.replace('Pause', 'Resume') : label }));
+      h(Glyph, { set: 'mac', name: paused ? 'play' : 'pause', size: 'chip', weight: 'bold', button: paused ? label.replace('Pause', 'Resume') : label }));
   }
   // Under the list: how many releases, the total, then each queue with work (`uploads`, `pins`, `exports`: its rate) as MacQueueRate, with what holds it back (`uploadsWait`, `pinsWait`, `exportsWait`).
   function MacStorageFooter(props) {

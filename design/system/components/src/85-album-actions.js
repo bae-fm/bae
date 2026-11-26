@@ -21,7 +21,7 @@
       h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'View in lightbox', title: 'View in lightbox' }, h(Artwork, { title: props.image || props.name, size: 300, radius: 'radius-artwork' })),
       h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.name),
       h('div', { className: 'bae-muted bae-m-detail' }, props.source),
-      h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h(Glyph, { set: 'mac', name: 'down', point: 'backward', size: 13, weight: 'regular', frame: [12, 16], contentShape: true, button: 'Previous image' }), h('span', { className: 'bae-muted bae-num' }, (props.position || 1) + ' of ' + props.count), h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 13, weight: 'regular', frame: [12, 16], contentShape: true, button: 'Next image' })));
+      h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h(Glyph, { set: 'mac', name: 'down', point: 'backward', size: 13, weight: 'regular', frame: [12, 16], button: 'Previous image' }), h('span', { className: 'bae-muted bae-num' }, (props.position || 1) + ' of ' + props.count), h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 13, weight: 'regular', frame: [12, 16], button: 'Next image' })));
   }
   // The cover gallery: Source, sections of tiles, the preview with its count, Use this cover, off while the preview shows the current cover.
   function MacCoverGallery(props) {

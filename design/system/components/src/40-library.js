@@ -48,8 +48,8 @@
   }
 
   // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon, or the weight its own entry is traced in. It takes the room of the frame SwiftUI lays the image out in at that size (SF's `frames`), the symbol centred in it, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
-  // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the frame the app sets around the symbol, which is then its room, the symbol's own frame centred in it with its corner on a device pixel, as SwiftUI places it. `contentShape`: the app gives the symbol a content shape, which makes the room its own box too. `text`: the symbol sits in a run of text, as Text(Image) sets it, and takes its ink's room alone.
-  // `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward). `button`: the glyph is a plain button by that name, with the glyph's box and room, as a SwiftUI button around one symbol is; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. `turn`: the degrees the glyph turns about its frame's centre, as SwiftUI's rotationEffect turns an image, with its room and box left as they are. Any other set draws the Material symbol (MSymbol).
+  // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the frame the app sets around the symbol, which is then its room, the symbol's own frame centred in it with its corner on a device pixel, as SwiftUI places it. `text`: the symbol sits in a run of text, as Text(Image) sets it, and takes its ink's room alone.
+  // `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward). `button`: the glyph is a plain button by that name, whose box is the glyph's room, the symbol's frame at its size or the frame the caller sets, as a control's box is its layout box; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. `turn`: the degrees the glyph turns about its frame's centre, as SwiftUI's rotationEffect turns an image, with its room and box left as they are. Any other set draws the Material symbol (MSymbol).
   function Glyph(props) {
     var turned = props.point === 'forward' || props.point === 'backward';
     if (props.point != null && !(turned && props.name === 'down' && props.set === 'mac')) throw new Error('Glyph turns only the Mac `down` chevron, to point `forward` or `backward`');
@@ -77,11 +77,11 @@
     };
     var ink = props.text ? sf.ink : [sf.ink[0] + shift(0), sf.ink[1] + shift(1), sf.ink[2] + shift(0), sf.ink[3] + shift(1)];
     var room = props.text ? ink : [12 - side(0) / 2, 12 - side(1) / 2, 12 + side(0) / 2, 12 + side(1) / 2];
-    var own = props.contentShape ? room : ink;
+    var own = props.button ? room : ink;
     // The own box's edges in points from the room's top left corner, each on Chrome's layout grid, so its margins and size add up to the room exactly and a row of glyphs keeps the app's pitch.
     var edge = function (v, from) { return onLayoutGrid((v - from) * k); };
     var at = { left: edge(own[0], room[0]), top: edge(own[1], room[1]), right: edge(own[2], room[0]), bottom: edge(own[3], room[1]) };
-    var margin = props.contentShape ? null : [at.top, edge(room[2], room[0]) - at.right, edge(room[3], room[1]) - at.bottom, at.left].map(function (m) { return m + 'px'; }).join(' ');
+    var margin = props.button ? null : [at.top, edge(room[2], room[0]) - at.right, edge(room[3], room[1]) - at.bottom, at.left].map(function (m) { return m + 'px'; }).join(' ');
     var size = { width: at.right - at.left, height: at.bottom - at.top, overflow: 'visible' };
     // What the symbol paints in: in a run of text its ink, elsewhere the symbol's own frame, which SwiftUI sets on a device pixel. Chrome sets each box it paints on a device pixel too, so a box at the ink's fractional corner would move the ink up to a quarter point; inside the frame's box, the ink keeps its fractional place, as SwiftUI draws it.
     var drawn = props.text ? own : [12 - symbolFrame(0) / k / 2 + shift(0), 12 - symbolFrame(1) / k / 2 + shift(1), 12 + symbolFrame(0) / k / 2 + shift(0), 12 + symbolFrame(1) / k / 2 + shift(1)];
