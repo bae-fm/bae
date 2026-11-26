@@ -206,6 +206,7 @@ fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i
     }
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// Everything one candidate's pane settled: its cover, its album fields, its
 /// row edits, the failure its last import left, and the failure of the
 /// pane's last command.
@@ -238,6 +239,7 @@ impl ImportTables {
     }
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// Whether the draft of `candidate` is blank and whether it would import, as
 /// its row stores them beside its fields, in the write that stored them.
 fn load_draft_columns_on(

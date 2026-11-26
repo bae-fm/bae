@@ -87,14 +87,17 @@ pub(super) use claim_rows::{
 };
 pub(crate) use cover_rows::StoredCover;
 pub(super) use cover_rows::{cover_read_columns, read_cover};
+use failure_rows::delete_failure_on;
 pub(crate) use failure_rows::failure_of;
-use failure_rows::{delete_failure_on, load_failure_on};
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+use failure_rows::load_failure_on;
 pub(super) use file_decision_rows::load_candidate_file_edits_on;
 use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_candidates};
 pub(crate) use import_commit::{
     CommittingCandidate, ImportCommitGuard, ImportRows, NewAlbum, NewArtistImages,
 };
 pub use import_commit::{ImportCommitError, ImportCommitRefusal};
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 use pane_failure_rows::load_pane_failure_on;
 pub(crate) use pane_failure_rows::pane_failure_of;
 pub(crate) use pane_rows::draft_of;

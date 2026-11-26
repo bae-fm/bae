@@ -265,6 +265,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
     })
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// The failure the pane states for `candidate`'s last command, or `None`
 /// when that command did not fail.
 pub(super) fn load_pane_failure_on(

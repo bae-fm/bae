@@ -12,6 +12,7 @@ pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> rusqlite::Result<ImportF
     Ok(ImportFailureReason { detail: row.get("failure_error")? })
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// The failure the last import of `candidate` left.
 pub(super) fn load_failure_on(
     sql: &SqlReadContext<'_>,
