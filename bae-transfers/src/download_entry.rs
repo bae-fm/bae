@@ -47,14 +47,36 @@ pub enum DownloadStep {
     Failed { error: String },
 }
 
+// Each release's entry in the download queue, by the release.
+sqlive_compose::fragment!(
+    QueuedDownloadEntry,
+    r#"
+    SELECT queued.release_id, queued.kind, queued.state, queued.error
+    FROM download_queue AS queued
+"#
+);
+
+// Every entry of the download queue, whose SQL a statement built as text
+// holds.
+sqlive_compose::read!(
+    QueuedDownloadEntries,
+    r#"
+    SELECT entry.*
+    FROM @crate::download_entry::QueuedDownloadEntry AS entry
+"#
+);
+
 /// The columns [`download_entry_column`] reads, for the release `release` (an
 /// SQL expression naming its id): the entry's kind, state and error.
 pub fn download_entry_sql(release: &str) -> String {
-    format!(
-        "(SELECT q.kind FROM download_queue q WHERE q.release_id = {release}) AS download_kind, \
-         (SELECT q.state FROM download_queue q WHERE q.release_id = {release}) AS download_state, \
-         (SELECT q.error FROM download_queue q WHERE q.release_id = {release}) AS download_error"
-    )
+    let column = |name: &str| {
+        format!(
+            "(SELECT entry.{name} FROM ({entries}) AS entry \
+              WHERE entry.release_id = {release}) AS download_{name}",
+            entries = QueuedDownloadEntries::SQL,
+        )
+    };
+    [column("kind"), column("state"), column("error")].join(", ")
 }
 
 /// The entry [`download_entry_sql`] read from `row`; `None` when the release

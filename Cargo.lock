@@ -1425,6 +1425,7 @@ name = "bae-transfers"
 version = "0.0.0-dev"
 dependencies = [
  "bae-desktop-cfg",
+ "bae-fragments-build",
  "bae-preferences",
  "bae-records",
  "bae-schema-manifest",
@@ -1434,6 +1435,7 @@ dependencies = [
  "coven",
  "rusqlite",
  "serde_json",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "tokio",
  "tracing",

@@ -5,12 +5,16 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# The crates that depend on this one receive its fragments through this key.
+links = "bae_transfers_sql"
 
 [lib]
 name = "bae_transfers"
 path = "src/lib.rs"
 
 [build-dependencies]
+# Checks the crate's read fragments against the schema and writes the Rust they include.
+bae-fragments-build = { workspace = true }
 # Sets the `desktop` cfg for the crate's desktop-only code.
 bae-desktop-cfg = { workspace = true }
 # Writes the schema this crate declares from its `schema.toml`.
@@ -21,6 +25,8 @@ bae-schema-manifest = { workspace = true }
 # windows a queue's pane reads.
 bae-store = { workspace = true }
 bae-records = { workspace = true }
+# The macros the read fragments are written with.
+sqlive-compose = { workspace = true }
 # The save preset a queued save carries whole.
 bae-preferences = { workspace = true }
 # The storage transition a release's reads show.
