@@ -300,10 +300,8 @@ sqlive_compose::fragment!(
         SELECT command, category, detail
         FROM import_candidate_pane_failure
             WHERE content_hash =(
-            SELECT scan.content_hash
-            FROM scan_candidate AS scan
-            WHERE scan.path = :key
-        )
+                SELECT scan.content_hash
+                FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
     )
     SELECT :key AS pane_failure_key, pane_failure_command, pane_failure_category, pane_failure_detail
     FROM statement
