@@ -6,7 +6,6 @@
 
 use super::*;
 use crate::tables::import_list::artist_field_of_json;
-use std::collections::HashMap;
 
 sqlive_compose::read!(
     FormArtistFields(album_artists: String, track_artists: String),
@@ -49,56 +48,31 @@ sqlive_compose::read!(
 "#
 );
 
-/// The standing of each artist field of a form: the album's, and each
-/// explicit track's by its track id, as the JSON `artist_field_of_json` reads.
-pub(super) struct FormArtistStandings {
-    album: Option<String>,
-    tracks: HashMap<String, String>,
-}
-
-impl FormArtistStandings {
-    /// The fields of the form whose album artists and explicit tracks' artists
-    /// are the JSON arrays `album_artists` and `track_artists`.
-    pub(super) fn of_form(
-        sql: &impl coven::SqlRead,
-        album_artists: &str,
-        track_artists: &str,
-    ) -> Result<Self, DbError> {
-        let request = FormArtistFieldsParams {
-            album_artists: album_artists.to_string(),
-            track_artists: track_artists.to_string(),
-        };
-        let mut standings = Self { album: None, tracks: HashMap::new() };
-        for row in sql.query(
-            FormArtistFields::SQL,
-            request.params().as_slice(),
-            FormArtistFieldsRow::read,
-        )? {
-            match row.standing.into_columns() {
-                (0, None, field) => standings.album = Some(field),
-                (1, Some(track_id), field) => {
-                    standings.tracks.insert(track_id, field);
-                }
-                (part, track_id, _) => {
-                    return Err(DbError::unreadable(
-                        "the part and track of a form's artist field",
-                        format!("{part} {track_id:?}"),
-                    ))
-                }
-            }
+/// The JSON of the album's artist field of the form whose album artists and
+/// explicit tracks' artists are the JSON arrays `album_artists` and
+/// `track_artists`, as `artist_field_of_json` reads it; `None` when the album
+/// has none.
+pub(super) fn album_artist_field_on(
+    sql: &impl coven::SqlRead,
+    album_artists: &str,
+    track_artists: &str,
+) -> Result<Option<crate::ArtistField>, DbError> {
+    let request = FormArtistFieldsParams {
+        album_artists: album_artists.to_string(),
+        track_artists: track_artists.to_string(),
+    };
+    let mut album = None;
+    for row in
+        sql.query(FormArtistFields::SQL, request.params().as_slice(), FormArtistFieldsRow::read)?
+    {
+        if let (0, None, field) = row.standing.into_columns() {
+            album = Some(field);
         }
-        Ok(standings)
     }
-
-    /// The album's artists with how each stands to the library; `None` when
-    /// the album has none.
-    pub(super) fn album(&self) -> Result<Option<crate::ArtistField>, DbError> {
-        self.album.as_deref().map(artist_field_of_json).transpose()
-    }
-
-    /// The JSON of the field of the explicit track `track_id`; `None` when the
-    /// track takes its album's artists or has none of its own.
-    pub(super) fn track(&self, track_id: &str) -> Option<String> {
-        self.tracks.get(track_id).cloned()
-    }
+    album.as_deref().map(artist_field_of_json).transpose()
 }
+
+/// The standing of every explicit track's own artists, as a table with
+/// `part`, `track_id` and `field` for a statement to join, which binds
+/// `:album_artists` and `:track_artists`.
+pub(super) const FORM_ARTIST_FIELDS: &str = FormArtistFields::SQL;

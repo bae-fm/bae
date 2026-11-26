@@ -11,7 +11,6 @@
 use super::import_list::artist_field_of_json;
 use super::*;
 use crate::{ReleaseEditDraft, ReleaseEditForm, ReleaseEditLoadError, ReleaseEditSeed};
-use artist_fields::FormArtistStandings;
 pub(crate) use draft::{release_edit_draft_rows_on, ReleaseEditDraftRows};
 pub use layout::{release_edit_layout_on, store_release_edit_sheet_decisions_on};
 pub use seed::ReleaseEditContext;

@@ -7,6 +7,7 @@
 //! picked artists as the library holds them.
 
 use super::super::layout_bindings::{json, mediums_json, moves_json, places_json};
+use super::artist_fields::FORM_ARTIST_FIELDS;
 use super::form_assignments::{assignment_rows, assignment_rows_sql};
 use super::*;
 use crate::tables::draft_rows::{
@@ -166,7 +167,7 @@ fn release_edit_album_on(
                  UNION ALL \
                  SELECT 'named', r.album_id FROM releases AS r \
                  WHERE r.id = :release AND NOT EXISTS (SELECT 1 FROM pick) AND NOT :linked) \
-             SELECT choice.kind, a.id, a.title, {credits} \
+             SELECT choice.kind, a.id, a.title, CASE WHEN a.id IS NOT NULL THEN {credits} END \
              FROM choice LEFT JOIN albums AS a ON a.id = choice.album_id",
             credits = bae_records::records::query::album_credits_json_sql(),
         ),
@@ -271,21 +272,20 @@ pub(crate) fn release_edit_draft_rows_on(
     if !held {
         return Ok(None);
     }
-    let standings =
-        FormArtistStandings::of_form(sql, &params.album_artists, &params.track_artists)?;
     Ok(Some(ReleaseEditDraftRows {
         form: form.clone(),
-        album_artists: standings.album()?,
+        album_artists: super::artist_fields::album_artist_field_on(
+            sql,
+            &params.album_artists,
+            &params.track_artists,
+        )?,
         album: release_edit_album_on(sql, &params)?,
         cover_version: sql.query_row(
             &format!("SELECT {}", bae_records::records::files::cover_version_sql(":release")),
             release,
             |row| row.get(0),
         )?,
-        tracks: draft_tracks_on(sql, &params)?
-            .into_iter()
-            .map(|row| row.with_artists(&standings))
-            .collect(),
+        tracks: draft_tracks_on(sql, &params)?,
         files_to_read: bae_records::records::sheet_files::sheet_files_to_read_on(
             sql,
             ":release",
@@ -341,14 +341,21 @@ fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<D
     let mediums = bae_records::records::layout::base_mediums_source();
     let places = bae_records::records::layout::laid_places_source();
     let layout = form.layout();
-    let mut params: Vec<(&'static str, &dyn rusqlite::ToSql)> =
-        vec![(":form_tracks", &form.form_tracks as &dyn rusqlite::ToSql)];
+    let mut params: Vec<(&'static str, &dyn rusqlite::ToSql)> = vec![
+        (":form_tracks", &form.form_tracks as &dyn rusqlite::ToSql),
+        (":album_artists", &form.album_artists as &dyn rusqlite::ToSql),
+        (":track_artists", &form.track_artists as &dyn rusqlite::ToSql),
+    ];
     params.extend(layout.named());
     Ok(sql.query(
         &format!(
             "SELECT library.*, \
-                    (SELECT {track} FROM {FORM_TRACKS} AS f WHERE f.id = library.row_id) AS form \
-             FROM ({tracks}) AS library ORDER BY library.placed_medium, library.placed_position",
+                    (SELECT {track} FROM {FORM_TRACKS} AS f WHERE f.id = library.row_id) AS form, \
+                    standing.field AS artists \
+             FROM ({tracks}) AS library \
+             LEFT JOIN ({FORM_ARTIST_FIELDS}) AS standing \
+                 ON standing.part = 1 AND standing.track_id = library.row_id \
+             ORDER BY library.placed_medium, library.placed_position",
             track = form_track_json_sql(),
             tracks = bae_records::records::release_edit_tracks_sql(
                 ":release",
@@ -362,27 +369,13 @@ fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<D
                 bae_records::DbReleaseEditRow::Stored(track) => DraftRow::Stored(DraftTrackRow {
                     track: *track,
                     form: row.get("form")?,
-                    artists: None,
+                    artists: row.get("artists")?,
                 }),
                 bae_records::DbReleaseEditRow::Added(added) => DraftRow::Added(added),
                 bae_records::DbReleaseEditRow::EmptySide(side) => DraftRow::EmptySide(side),
             })
         },
     )?)
-}
-
-impl DraftRow {
-    /// The row with the standing of its own artists, when it is a track the
-    /// library holds that has some.
-    fn with_artists(self, standings: &FormArtistStandings) -> Self {
-        match self {
-            Self::Stored(mut track) => {
-                track.artists = standings.track(&track.track.track.id);
-                Self::Stored(track)
-            }
-            other => other,
-        }
-    }
 }
 
 impl DraftTrackRow {
