@@ -164,8 +164,7 @@ struct MacCoverGallery: View {
             // While the lightbox is open, Tab and VoiceOver reach only the
             // lightbox. A view that is focusable only when the lightbox is
             // closed passes that on to the buttons inside it.
-            .focusable(browser.layout != .lightbox)
-            .focusEffectDisabled()
+            .modifier(KeyboardOnlyWhenOpen(open: browser.layout == .lightbox))
             .overlay { lightboxOverlay }
             .onAppear {
                 if opensOnLightbox { browser.layout = .lightbox }
@@ -349,6 +348,22 @@ extension MacCoverGallery {
                 .foregroundStyle(Theme.textSecondary)
         case .linked, .failed:
             EmptyView()
+        }
+    }
+}
+
+/// While `open`, nothing under the view takes the keyboard. Closed, the view
+/// is left as it is, so it adds no Tab stop of its own.
+private struct KeyboardOnlyWhenOpen: ViewModifier {
+    let open: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if open {
+            content.focusable(false)
+        }
+        else {
+            content
         }
     }
 }

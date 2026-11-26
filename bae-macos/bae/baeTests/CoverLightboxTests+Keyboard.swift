@@ -110,8 +110,14 @@ extension CoverLightboxTests {
     func closedTabStopsAreNamed() async throws {
         try await withGallery { window, host, _, _ in
             let walk = try await tabWalk(in: window, host: host, steps: 24)
-            print("TABWALK", walk)
-            #expect(!walk.joined().contains { $0.hasSuffix(" unnamed") })
+            // Every stop is a named button; none is the gallery itself, which
+            // the tree lists as no focused element.
+            #expect(
+                walk.allSatisfy { stop in
+                    stop.contains { $0.hasPrefix("AXButton ") }
+                        && !stop.contains { $0 == "AXButton unnamed" }
+                }
+            )
         }
     }
 
