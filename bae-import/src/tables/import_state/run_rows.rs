@@ -118,6 +118,9 @@ fn published_of(
     let state = row.state.ok_or_else(|| {
         DbError::unreadable(format!("the stored rows of {key}'s run {run}"), None::<String>)
     })?;
+    let cards_row = row.cards.ok_or_else(|| {
+        DbError::unreadable(format!("the cards row of {key}'s run {run}"), None::<String>)
+    })?;
     let owner = format!("run {run}");
     let verdict = super::verdict_rows::verdict_row_of_state(&state)?.ok_or_else(|| {
         DbError::unreadable(format!("the verdict row of {key}'s run {run}"), None::<String>)
@@ -130,9 +133,7 @@ fn published_of(
         RunOutcome::Running { .. } => true,
         RunOutcome::Answered(verdict) => verdict.findings().is_some(),
     }
-    .then(|| {
-        super::verdict_cards_of_column(row.cards.and_then(|cards| cards.verdict_cards).as_deref())
-    })
+    .then(|| super::verdict_cards_of_column(cards_row.verdict_cards.as_deref()))
     .transpose()?
     .unwrap_or_default();
     let signals = StoredPaneSignals::of(state.signals.as_ref())
