@@ -638,15 +638,7 @@ sqlive_compose::fragment!(
                             WHERE asked.search_run = found.search_run
                         ) AND release_link.kind = 'pressing' AND release_link.source =
                             found.source AND release_link.release_id = found.release_id
-                        ) OR (0 AND NOT EXISTS (
-                        SELECT 1
-                        FROM import_candidate_release_link AS release_link
-                            WHERE release_link.content_hash =(
-                            SELECT asked.content_hash
-                            FROM import_candidate_search AS asked
-                            WHERE asked.search_run = found.search_run
-                        ) AND release_link.kind = 'pressing'
-                    ))) AS chosen, 0 AS pick_being_read
+                        )) AS chosen, 0 AS pick_being_read
                     FROM import_candidate_match AS found
                     JOIN import_candidate_search_source AS part ON part.search_run =
                         found.search_run AND part.catalog = found.source

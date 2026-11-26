@@ -161,16 +161,7 @@ sqlive_compose::fragment!(
                                     )) AND release_link.kind = 'pressing' AND
                                         release_link.source = matched.source AND
                                         release_link.release_id = matched.release_id
-                                    ) OR (0 AND NOT EXISTS (
-                                    SELECT 1
-                                    FROM import_candidate_release_link AS release_link
-                                        WHERE release_link.content_hash =
-                                            COALESCE(verdict.content_hash,(
-                                        SELECT run_standing.content_hash
-                                        FROM import_candidate_standing AS run_standing
-                                        WHERE run_standing.identify_run = verdict.identify_run
-                                    )) AND release_link.kind = 'pressing'
-                                ))) AS chosen, 0 AS pick_being_read
+                                    )) AS chosen, 0 AS pick_being_read
                                 FROM import_candidate_lookup_release AS found
                                 JOIN import_candidate_match AS matched ON matched.verdict_id =
                                     found.verdict_id AND matched.position = found.match_position
