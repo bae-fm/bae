@@ -6,7 +6,6 @@
 
 mod cache_limit;
 pub mod credits;
-pub mod fragments;
 pub mod identity;
 mod models;
 pub mod records;

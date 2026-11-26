@@ -21,8 +21,6 @@ bae-desktop-cfg = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the crate's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The natural order and the search folding the schema's functions compute.
 bae-util = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.

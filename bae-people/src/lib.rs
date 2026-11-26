@@ -4,7 +4,6 @@
 
 pub mod admin_change;
 pub mod collections;
-pub mod fragments;
 pub mod history;
 pub mod membership;
 pub mod people;

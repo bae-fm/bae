@@ -21,8 +21,6 @@ bae-desktop-cfg = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the crate's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The catalogs' descriptions of a release its detail shows.
 bae-catalogs = { workspace = true }
 # The store the views read, its records, list windows and live queries, and

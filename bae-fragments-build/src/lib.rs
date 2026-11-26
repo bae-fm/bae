@@ -64,30 +64,35 @@ fn environment(name: &str) -> Result<PathBuf, String> {
     std::env::var_os(name).map(PathBuf::from).ok_or_else(|| format!("cargo sets {name}"))
 }
 
-fn run() -> Result<(), String> {
-    let crate_name = std::env::var("CARGO_PKG_NAME").map_err(|error| error.to_string())?;
-    let crate_dir = environment("CARGO_MANIFEST_DIR")?;
-    let out_dir = environment("OUT_DIR")?;
-    let root = crate_dir.parent().ok_or("the crate is in the workspace")?.to_path_buf();
-    let workspace = |path: &Path| read_file(&root.join(path));
+/// What a crate's build step compiled.
+struct Checked {
+    output: sqlive_compose::compiler::Output,
+    /// The schema files the compile read, relative to the workspace.
+    schema_files: Vec<PathBuf>,
+}
 
-    let policy_path = root.join("owner-construction-check.toml");
-    let owners =
-        domains::TableOwners::from_policy(&read_file(&policy_path).map_err(|e| e.to_string())?)?;
+/// Compile the crate `crate_name`, whose folder is `crate_dir` in the
+/// workspace `root`, against the library's schema for each kind of device the
+/// crate is built for, and refuse a call that reads another crate's table.
+/// `manifests` are the fragments of the crates it depends on.
+fn check_crate(
+    crate_name: &str,
+    crate_dir: &Path,
+    root: &Path,
+    manifests: &[String],
+) -> Result<Checked, String> {
+    let workspace = |path: &Path| read_file(&root.join(path));
+    let policy_text = read_file(&root.join("owner-construction-check.toml"))
+        .map_err(|error| error.to_string())?;
+    let owners = domains::TableOwners::from_policy(&policy_text)?;
     let members = members(&workspace).map_err(|error| error.to_string())?;
     let coven = coven_objects::coven_objects();
-
-    let mut manifests = Vec::new();
-    for (_, path) in fragment_manifest_variables() {
-        println!("cargo::rerun-if-changed={path}");
-        manifests.push(read_file(Path::new(&path)).map_err(|error| error.to_string())?);
-    }
 
     let mut output = None;
     let mut schema_files: Vec<PathBuf> = Vec::new();
     let mut failures = Vec::new();
     for desktop in [true, false] {
-        if !desktop && !members.on_phone(&crate_name) {
+        if !desktop && !members.on_phone(crate_name) {
             continue;
         }
         let migration = migration(&workspace, desktop).map_err(|error| error.to_string())?;
@@ -96,9 +101,9 @@ fn run() -> Result<(), String> {
         // The compiler tells a missing file from another failure by the error's kind.
         let source_reader = |path: &str| read_text(&crate_dir.join(path));
         let compiled = compile_crate(Input {
-            crate_name: crate_name.clone(),
+            crate_name: crate_name.to_owned(),
             source_reader: &source_reader,
-            manifests: manifests.clone(),
+            manifests: manifests.to_vec(),
             setup,
         });
         let label = if desktop { "desktop" } else { "phone" };
@@ -114,11 +119,25 @@ fn run() -> Result<(), String> {
         return Err(failures.join("\n"));
     }
     let output = output.ok_or("the crate compiled for no schema")?;
-
-    let foreign = foreign_reads(&crate_name, &owners, &output.calls);
+    let foreign = foreign_reads(crate_name, &owners, &output.calls);
     if !foreign.is_empty() {
         return Err(foreign.join("\n"));
     }
+    Ok(Checked { output, schema_files })
+}
+
+fn run() -> Result<(), String> {
+    let crate_name = std::env::var("CARGO_PKG_NAME").map_err(|error| error.to_string())?;
+    let crate_dir = environment("CARGO_MANIFEST_DIR")?;
+    let out_dir = environment("OUT_DIR")?;
+    let root = crate_dir.parent().ok_or("the crate is in the workspace")?.to_path_buf();
+
+    let mut manifests = Vec::new();
+    for (_, path) in fragment_manifest_variables() {
+        println!("cargo::rerun-if-changed={path}");
+        manifests.push(read_file(Path::new(&path)).map_err(|error| error.to_string())?);
+    }
+    let Checked { output, schema_files } = check_crate(&crate_name, &crate_dir, &root, &manifests)?;
 
     let generated = out_dir.join("sqlive_compose");
     make_folder(&generated)?;
@@ -133,7 +152,7 @@ fn run() -> Result<(), String> {
     for path in schema_files.iter().collect::<std::collections::BTreeSet<_>>() {
         println!("cargo::rerun-if-changed={}", root.join(path).display());
     }
-    println!("cargo::rerun-if-changed={}", policy_path.display());
+    println!("cargo::rerun-if-changed={}", root.join("owner-construction-check.toml").display());
     for warning in &output.warnings {
         println!("cargo::warning={warning}");
     }
@@ -180,3 +199,7 @@ fn foreign_reads(
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "wiring_tests.rs"]
+mod wiring_tests;

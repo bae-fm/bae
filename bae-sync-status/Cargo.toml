@@ -19,8 +19,6 @@ bae-fragments-build = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the crate's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The error categories a person is shown for a failed sync start.
 bae-diagnostics = { workspace = true }
 # The records' schema, which the test fixtures build on.

@@ -3,7 +3,6 @@
 //! what a retry would do and why this device's last start failed, behind the
 //! `SyncStatus` owner.
 
-pub mod fragments;
 mod pending_item;
 pub use pending_item::{FileProblem, PendingItem, PendingSubjectName, PendingWait};
 mod sync_status;

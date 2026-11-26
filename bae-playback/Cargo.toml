@@ -21,8 +21,6 @@ bae-desktop-cfg = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the crate's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The decode a track plays from, its resampling and the stream the device
 # pulls.
 bae-audio = { workspace = true }

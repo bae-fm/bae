@@ -21,8 +21,6 @@ bae-desktop-cfg = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the crate's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The decode, probe and transcode an import reads its files with.
 bae-audio = { workspace = true }
 # The catalog clients, the catalog model a draft is read from, and the image

@@ -13,7 +13,6 @@ mod clock;
 mod context;
 #[cfg(not(target_os = "android"))]
 pub mod cpal_output;
-pub mod fragments;
 // The formats bae puts Mac output devices back to; its tests run on any host.
 #[cfg(any(target_os = "macos", test))]
 mod device_formats;

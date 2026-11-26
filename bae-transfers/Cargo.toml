@@ -21,8 +21,6 @@ bae-desktop-cfg = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the crate's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The store the queues' tables and the transitions live in, and the list
 # windows a queue's pane reads.
 bae-store = { workspace = true }
