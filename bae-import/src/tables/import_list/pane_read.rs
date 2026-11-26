@@ -57,6 +57,6 @@ sqlive_compose::read!(
         ON imported.imported_key IS NULL
     LEFT JOIN @crate::tables::import_state::fragments::CandidateAlbum(key: :key) AS album
         ON imported.imported_key IS NULL
-    LEFT JOIN @crate::tables::folder_scans::fragments::CoverChoice(key: :key) AS cover
+    LEFT JOIN @crate::tables::import_state::fragments::CoverChoice(key: :key) AS cover
         ON imported.imported_key IS NULL
 "#);

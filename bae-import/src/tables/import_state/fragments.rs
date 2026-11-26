@@ -1,4 +1,4 @@
-//! What the candidate state offers the candidate pane: what is running for the candidate, the evidence in its files, its draft, its failures, and the records and album its draft links to.
+//! What the candidate state offers the candidate pane: what is running for the candidate, the evidence in its files, its draft and cover, its failures, and the records and album its draft links to.
 
 sqlive_compose::fragment!(
     Standing with keys(candidate_key TEXT) {
@@ -332,4 +332,52 @@ sqlive_compose::fragment!(
                     FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
         ) ELSE '[]' END
     ) AS claimed_records
+"#);
+
+sqlive_compose::fragment!(
+    CoverChoice(key: crate::CandidateKey) {
+        cover_choice_key: crate::CandidateKey,
+        cover_row: String,
+        cover_kind: String,
+        cover_file_id: Option<String>,
+        cover_url: Option<String>,
+        cover_source: Option<String>,
+        cover_copies: String,
+        cover_local_path: Option<Vec<u8>>,
+        cover_local_size: Option<i64>,
+        cover_local_modified: Option<i64>,
+        cover_embedded_source: Option<String>,
+        cover_embedded_size: Option<i64>,
+        cover_embedded_modified: Option<i64>,
+        cover_embedded_path: Option<Vec<u8>>
+    },
+    r#"
+    WITH statement(cover_row, cover_kind, cover_file_id, cover_url, cover_source, cover_copies, cover_local_path, cover_local_size, cover_local_modified, cover_embedded_source, cover_embedded_size, cover_embedded_modified, cover_embedded_path) AS (
+            SELECT cover.content_hash AS cover_row, cover.kind AS cover_kind, cover.file_id AS
+                cover_file_id, cover.url AS cover_url, cover.source AS cover_source,(
+            SELECT json_group_array(json_object('url', copy.url, 'max_edge', copy.max_edge)
+                ORDER BY copy.max_edge)
+            FROM import_candidate_cover_copy AS copy
+            WHERE copy.content_hash = cover.content_hash AND copy.image_url = cover.url
+        ) AS cover_copies, cover_local.absolute_path AS cover_local_path, cover_local.size AS
+            cover_local_size, cover_local.modified_at_ns AS cover_local_modified,
+            cover_snapshot.embedded_cover_source_relative_path AS cover_embedded_source,
+            cover_tags.file_size AS cover_embedded_size, cover_tags.modified_at_ns AS
+            cover_embedded_modified, cover_source.absolute_path AS cover_embedded_path
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS c
+        JOIN import_candidate_cover AS cover ON cover.content_hash = c.content_hash
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key)
+            AS cover_local ON cover.kind = 'local' AND cover_local.relative_path = cover.file_id
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateTagSnapshot(key: :key)
+            AS cover_snapshot ON cover.kind = 'embedded'
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFileTags(key: :key)
+            AS cover_tags ON cover_snapshot.candidate_path IS NOT NULL AND
+            cover_tags.relative_path = cover.file_id
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key)
+            AS cover_source ON cover_snapshot.candidate_path IS NOT NULL AND
+            cover_source.relative_path = cover.file_id
+        LIMIT 1
+    )
+    SELECT :key AS cover_choice_key, cover_row, cover_kind, cover_file_id, cover_url, cover_source, cover_copies, cover_local_path, cover_local_size, cover_local_modified, cover_embedded_source, cover_embedded_size, cover_embedded_modified, cover_embedded_path
+    FROM statement
 "#);

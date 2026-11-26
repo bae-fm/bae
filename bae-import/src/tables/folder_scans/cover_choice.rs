@@ -208,9 +208,9 @@ impl CoverVersionColumns {
 }
 
 /// The cover choice that a pane's read selects, as
-/// [`super::fragments::CoverChoice`] names it.
+/// [`crate::tables::import_state::fragments::CoverChoice`] names it.
 pub(crate) fn cover_choice_of(
-    cover: super::fragments::CoverChoice,
+    cover: crate::tables::import_state::fragments::CoverChoice,
     key: &CandidateKey,
 ) -> Result<CoverChoice, DbError> {
     let versions = CoverVersionColumns {
