@@ -129,7 +129,7 @@ pub(super) fn verdict_text_on(
 
 sqlive_compose::read!(
     VerdictOf(content_hash: Option<String>, run: Option<i64>)
-        { verdict_id: Option<crate::tables::import_state::verdict_rows::VerdictId> },
+        { verdict_id: crate::tables::import_state::verdict_rows::VerdictId },
     r#"
     SELECT verdict.verdict_id AS verdict_id, state.*
     FROM import_candidate_verdict AS verdict
@@ -152,9 +152,7 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
     let Some(stored) = stored else {
         return Ok(());
     };
-    let verdict = stored.verdict_id.ok_or_else(|| {
-        DbError::unreadable(format!("the verdict row of {owner}"), None::<String>)
-    })?;
+    let verdict = stored.verdict_id;
     let row = verdict_row_of_state(&stored.state)?.ok_or_else(|| {
         DbError::unreadable(format!("the verdict row of {owner}"), None::<String>)
     })?;
