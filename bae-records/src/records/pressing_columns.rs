@@ -174,17 +174,3 @@ pub fn facts_without_media_of(
         .transpose()?;
     Ok(PressingFacts { area, media: Vec::new(), status, packaging, discogs_details })
 }
-
-/// A nullable column holding one vocabulary's key.
-pub fn keyed<T>(
-    row: &Row,
-    column: &str,
-    from_key: fn(&str) -> Option<T>,
-) -> rusqlite::Result<Option<T>> {
-    let key: Option<String> = row.get(column)?;
-    key.map(|key| {
-        from_key(&key)
-            .ok_or_else(|| column_conversion_error(row, column, format!("{column} {key:?}")))
-    })
-    .transpose()
-}
