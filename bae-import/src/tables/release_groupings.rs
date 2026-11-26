@@ -27,8 +27,8 @@ pub(super) mod entry;
 pub(super) mod folder_readings;
 pub(crate) mod fragments;
 pub(crate) use entry::{
-    load_candidate_entry_on, require_editable_files_on, require_workable_on, CandidateEntry,
-    ScannedEntry,
+    listed_entry_of, load_candidate_entry_on, require_editable_files_on, require_workable_on,
+    CandidateEntry, ScannedEntry,
 };
 pub use folder_readings::FolderReadingRefusal;
 

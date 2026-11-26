@@ -309,6 +309,33 @@ fn step_of(event: ImportEvent, import_id: &str) -> Option<crate::ImportStep> {
     }
 }
 
+/// The import reads the album pick with the preparation and deletes the pick
+/// as it commits. A pick made between the two is refused, so the commit
+/// deletes no pick the import did not follow.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_made_while_the_import_runs_is_refused() {
+    let pick = picked_discogs_release().await;
+    let picture_url = pick.images.serve_image(&pick.picture_path, large_picture());
+    let hold = pick.images.hold_image(&pick.picture_path);
+    pick.seed_artists(picture_url);
+
+    let mut events = pick.handle.every_event();
+    let import_id = pick.handle.start_import(&pick.key).await.unwrap().expect_queued();
+    // The import has read its preparation by the time it fetches a picture.
+    tokio::time::timeout(HANG_GUARD, hold.arrived())
+        .await
+        .expect("the import asks for the track artist's picture");
+
+    let refused = pick.handle.set_candidate_album(&pick.key, crate::AlbumPick::New).await;
+    assert!(matches!(refused, Err(crate::ImportError::CandidateImportInProgress)), "{refused:?}");
+
+    hold.release();
+    await_import_outcome(&mut events, &import_id)
+        .await
+        .unwrap_or_else(|error| panic!("import failed: {error}"));
+    shut_down(pick.handle).await;
+}
+
 /// While the import waits on a new artist's picture, the candidate says it
 /// is fetching artist pictures: the step is reported before the picture is
 /// asked for, and no file is read until it answers.

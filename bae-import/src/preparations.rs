@@ -13,7 +13,7 @@ mod preparation;
 
 use crate::tables::CandidateStateRefusal;
 pub use pane_edits::TrackEditRefusal;
-pub(crate) use preparation::stored_preparation;
+pub(crate) use preparation::{read_preparation, stored_of, stored_preparation, StoredPreparation};
 pub use preparation::{
     CandidateAsRead, CandidatePreparation, MetadataAuthor, ProvenanceContradiction,
 };
@@ -93,11 +93,12 @@ impl ImportTables {
         Option<(CandidatePreparation, CandidateSaveExpectation, CandidateSaveExtras)>,
         ImportError,
     > {
-        let Some(crate::tables::CandidatePreparationRead::Stored(mut prep)) =
+        let Some(crate::tables::CandidatePreparationRead::Stored(stored)) =
             self.load_candidate_preparation(&verdict.content_hash).await?
         else {
             return Ok(None);
         };
+        let mut prep = stored.preparation;
         if !prep.file_edits.is_at_revision(verdict.file_edit_revision) {
             return Ok(None);
         }

@@ -197,14 +197,7 @@ impl ImportServiceHandle {
                 "{candidate_key} has no complete preparation for file revision {expected_revision}"
             ),
                 })?;
-        let mut edits = self.services.tables.load_candidate_file_edits(&content_hash).await?;
-        if !edits.is_at_revision(expected_revision) {
-            return Err(crate::ImportError::Internal {
-                detail: format!(
-                    "{candidate_key} file decisions changed from revision {expected_revision}"
-                ),
-            });
-        }
+        let mut edits = preparation.file_edits.clone();
         decide(&mut edits);
 
         loop {

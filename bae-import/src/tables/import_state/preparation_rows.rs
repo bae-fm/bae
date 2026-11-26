@@ -7,11 +7,13 @@
 //! guarded by the revisions the caller loaded. The rules about what a
 //! candidate may hold live on the value, not here.
 
+use super::rows::full_state_of;
 use super::*;
 use crate::folder_scanner::CategorizedFiles;
 use crate::folder_scanner::FolderCandidate;
-use crate::preparations::CandidatePreparation;
+use crate::preparations::{CandidatePreparation, StoredPreparation};
 use crate::tables::release_groupings::{load_candidate_entry_on, require_editable_files_on};
+use bae_store::statement_optional;
 
 /// The revisions a save was prepared against, and — for a person's write —
 /// the candidate it edits.
@@ -79,7 +81,7 @@ pub(crate) enum CandidateSaved {
 /// candidate holds no draft.
 #[derive(Debug)]
 pub(crate) enum CandidatePreparationRead {
-    Stored(CandidatePreparation),
+    Stored(Box<StoredPreparation>),
     Imported { release_id: String },
 }
 
@@ -88,45 +90,104 @@ impl CandidatePreparationRead {
     /// The stored state; `None` for an imported candidate.
     pub(crate) fn stored(self) -> Option<CandidatePreparation> {
         match self {
-            Self::Stored(prep) => Some(prep),
+            Self::Stored(stored) => Some(stored.preparation),
             Self::Imported { .. } => None,
         }
     }
 }
 
+// Everything stored under `content_hash` when a candidate holds a state row
+// there: the state with its verdict, signals, file decisions, link and lookup
+// choices, the release this device imported from its files, its draft, its
+// cover with the bytes prepared for it, and the album picked for it.
+sqlive_compose::fragment!(
+    Preparation(content_hash: String) {},
+    r#"
+    SELECT state.*, lines.*, origin.*, draft.*, cover.*, pick.*
+    FROM @crate::tables::import_state::state_fragments::CurrentState(owner: (
+        SELECT stored.content_hash AS content_hash, NULL AS identify_run
+        FROM import_candidate_state AS stored
+        WHERE stored.content_hash = :content_hash)) AS state
+    LEFT JOIN @crate::tables::import_state::state_fragments::SignalTextPool(owner: (
+        SELECT stored.content_hash AS content_hash, NULL AS identify_run
+        FROM import_candidate_state AS stored
+        WHERE stored.content_hash = :content_hash)) AS lines
+        ON lines.owner_row = state.owner_row
+    LEFT JOIN @crate::tables::import_origin::fragments::ReleaseOrigin AS origin
+        ON origin.origin_hash = :content_hash
+    LEFT JOIN @crate::tables::import_state::fragments::DraftRows(
+        candidate: (SELECT :content_hash AS content_hash)) AS draft ON 1
+    LEFT JOIN @crate::tables::import_state::cover_rows::ChosenCover AS cover
+        ON cover.prepared_hash = :content_hash
+    LEFT JOIN @crate::tables::import_state::album_pick_rows::AlbumPickRow AS pick
+        ON pick.pick_hash = :content_hash
+"#
+);
+
+sqlive_compose::read!(
+    PreparationOf(content_hash: String),
+    r#"
+    SELECT preparation.*
+    FROM @crate::tables::import_state::preparation_rows::Preparation(
+        content_hash: :content_hash) AS preparation
+"#
+);
+
+sqlive_compose::read!(
+    PreparationWithCardsOf(content_hash: String),
+    r#"
+    SELECT preparation.*, cards.*
+    FROM @crate::tables::import_state::preparation_rows::Preparation(
+        content_hash: :content_hash) AS preparation
+    LEFT JOIN @crate::tables::import_state::card_fragments::VerdictCards(owner: (
+        SELECT :content_hash AS content_hash, NULL AS identify_run)) AS cards ON 1
+"#
+);
+
+/// [`PreparationOf`] on the connection the caller holds, a read's or a
+/// write's; `None` for a hash no candidate holds state under.
 pub(super) fn load_preparation_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Option<CandidatePreparationRead>, DbError> {
-    let Some(state) = load_states_on(sql, CandidateRows::One(OneCandidate::Hash(content_hash)))?
-        .remove(content_hash)
-    else {
-        return Ok(None);
-    };
-    if let Some(release_id) = crate::tables::import_origin::imported_release_on(sql, content_hash)?
-    {
-        return Ok(Some(CandidatePreparationRead::Imported { release_id }));
+    let request = PreparationOfParams { content_hash: content_hash.to_string() };
+    statement_optional(sql, &request)?.map(|row| preparation_of(row.preparation)).transpose()
+}
+
+/// What the row of a read of [`Preparation`] holds. Every state of a
+/// candidate this device did not import holds a draft row (the scan seeds it,
+/// and deleting the release it imported seeds it again), so a state with none
+/// is a damaged one and the read fails.
+fn preparation_of(row: Preparation) -> Result<CandidatePreparationRead, DbError> {
+    let Preparation { state, lines, origin, draft, cover, pick } = row;
+    let state = full_state_of(state, lines)?;
+    if let Some(origin) = origin {
+        return Ok(CandidatePreparationRead::Imported { release_id: origin.origin_release_id });
     }
-    let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, OneCandidate::Hash(content_hash))?;
-    #[expect(
-        clippy::read_keyed_statement,
-        reason = "kept finding: reads the prepared cover keyed by the cover the first statement returned"
-    )]
-    let cover = cover_rows::load_prepared_cover_on(sql, content_hash, cover)?;
-    Ok(Some(CandidatePreparationRead::Stored(CandidatePreparation {
-        content_hash: state.content_hash,
-        candidate_key: state.candidate_key,
-        file_edits: state.file_edits,
-        metadata_revision: state.metadata_revision,
-        author: state.metadata_author,
-        metadata: crate::CandidateMetadataDraft {
-            draft,
-            provenance: state.metadata_provenance,
-            cover,
+    let draft = draft.ok_or_else(|| {
+        DbError::unreadable(
+            "import_candidate_edit of a candidate not imported here",
+            &state.content_hash,
+        )
+    })?;
+    Ok(CandidatePreparationRead::Stored(Box::new(StoredPreparation {
+        preparation: CandidatePreparation {
+            content_hash: state.content_hash,
+            candidate_key: state.candidate_key,
+            file_edits: state.file_edits,
+            metadata_revision: state.metadata_revision,
+            author: state.metadata_author,
+            metadata: crate::CandidateMetadataDraft {
+                draft: super::pane_rows::draft_of(&draft)?,
+                provenance: state.metadata_provenance,
+                cover: cover.map(super::cover_rows::ChosenCover::prepared).transpose()?,
+            },
+            link: state.release_link,
+            identification: state.identify,
+            signals: state.signals,
         },
-        link: state.release_link,
-        identification: state.identify,
-        signals: state.signals,
+        lookup_choices: state.lookup_choices,
+        album_pick: super::album_pick_rows::album_pick_of(pick),
     })))
 }
 
@@ -242,7 +303,7 @@ pub(super) fn save_preparation_on(
     // its album artists, its provenance) are changed in place, so no
     // statement shows the list the candidate as something it is not.
     let stored = match load_preparation_on(sql, content_hash)? {
-        Some(CandidatePreparationRead::Stored(stored)) => stored,
+        Some(CandidatePreparationRead::Stored(stored)) => stored.preparation,
         Some(CandidatePreparationRead::Imported { .. }) => {
             return Err(PreparationRefusal::Imported(content_hash.to_string()).into())
         }
@@ -271,32 +332,19 @@ pub(super) fn save_preparation_on(
         super::release_link_rows::store_release_link(sql, content_hash, prep.link.as_ref())?;
     }
     // `validate` has already refused an author the provenance cannot have.
-    if pane_rows::has_draft_row_on(sql, content_hash)? {
-        super::draft_store::store_draft(
-            sql,
-            content_hash,
-            (&stored.metadata.draft, stored.author),
-            (&prep.metadata.draft, prep.author),
-        )?;
-        if stored.metadata.provenance != prep.metadata.provenance {
-            pane_rows::store_provenance(sql, content_hash, prep.metadata.provenance.as_ref())?;
-        }
-        if stored.metadata.cover != prep.metadata.cover {
-            match &prep.metadata.cover {
-                Some(cover) => cover_rows::save_cover(sql, content_hash, cover)?,
-                None => cover_rows::delete_cover(sql, content_hash)?,
-            }
-        }
-    } else {
-        // A candidate holding no draft row read as its blank draft and the
-        // folder's own cover, which no row holds: the first save stores the
-        // draft, its source and its cover whole.
-        pane_rows::insert_draft(sql, content_hash, &prep.metadata.draft, prep.author)?;
-        if let Some(provenance) = &prep.metadata.provenance {
-            pane_rows::insert_provenance(sql, content_hash, provenance)?;
-        }
-        if let Some(cover) = &prep.metadata.cover {
-            cover_rows::save_cover(sql, content_hash, cover)?;
+    super::draft_store::store_draft(
+        sql,
+        content_hash,
+        (&stored.metadata.draft, stored.author),
+        (&prep.metadata.draft, prep.author),
+    )?;
+    if stored.metadata.provenance != prep.metadata.provenance {
+        pane_rows::store_provenance(sql, content_hash, prep.metadata.provenance.as_ref())?;
+    }
+    if stored.metadata.cover != prep.metadata.cover {
+        match &prep.metadata.cover {
+            Some(cover) => cover_rows::save_cover(sql, content_hash, cover)?,
+            None => cover_rows::delete_cover(sql, content_hash)?,
         }
     }
     if (&stored.file_edits.sheet_bindings, &stored.file_edits.sheet_places)
@@ -370,6 +418,22 @@ impl ImportTables {
     ) -> Result<Option<CandidatePreparationRead>, DbError> {
         let content_hash = content_hash.to_string();
         self.store.read(move |sql| load_preparation_on(&sql, &content_hash)).await
+    }
+
+    /// [`Self::load_candidate_preparation`] with the cards of the verdict it
+    /// holds, as one statement.
+    pub(crate) async fn load_candidate_preparation_with_cards(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<(CandidatePreparationRead, bae_identify::VerdictCards)>, DbError> {
+        let request = PreparationWithCardsOfParams { content_hash: content_hash.to_string() };
+        let Some(row) = self.store.read_rows(request).await?.pop() else {
+            return Ok(None);
+        };
+        let cards = super::cards_read::verdict_cards_of_column(
+            row.cards.and_then(|cards| cards.verdict_cards).as_deref(),
+        )?;
+        Ok(Some((preparation_of(row.preparation)?, cards)))
     }
 
     /// Write one candidate's whole state, in one transaction, if its stored

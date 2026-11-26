@@ -137,9 +137,11 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     // releases a disc ID's lookup found agree on it, and no other.
     let (db, hash, _tmp) = stored_verdict(&verdict).await;
     let agreements = crate::tables::ImportTables::new(db.clone())
-        .load_verdict_cards(&hash)
+        .load_candidate_preparation_with_cards(&hash)
         .await
         .unwrap()
+        .expect("the state is stored")
+        .1
         .agreements;
     let by_disc_id = |id: &str| {
         agreements

@@ -23,7 +23,7 @@ struct StoredCandidate<Signals> {
     signals: Option<Signals>,
     provenance: Option<StoredProvenance>,
     link: Option<StoredReleaseLink>,
-    lookup_choices: Option<super::lookup_choice_rows::StoredLookupChoices>,
+    lookup_choices: Option<super::lookup_choice_rows::LookupChoiceRow>,
     verdict: Option<VerdictRow>,
     /// The candidate's matches in position order, a JSON array.
     matches: String,
@@ -64,6 +64,7 @@ sqlive_compose::read!(
 /// Every stored candidate row, or the one `only` names, assembled with the
 /// verdict, signals, provenance, and file-decision rows that share its
 /// content hash.
+#[cfg(test)]
 pub(crate) fn load_states_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
@@ -115,7 +116,7 @@ fn stored_candidate_of<Signals>(
         signals,
         provenance: StoredProvenance::of(&state)?,
         link: StoredReleaseLink::of(&state)?,
-        lookup_choices: super::lookup_choice_rows::StoredLookupChoices::of(&state)?,
+        lookup_choices: state.choices.clone(),
         verdict: super::verdict_rows::verdict_row_of_state(&state)?,
         matches: state.candidate_matches,
     })
@@ -132,7 +133,7 @@ pub(crate) fn current_state_of(
 
 /// The state of a candidate with the signals' text lines, which `lines`
 /// holds, as the runs of the candidate start from them.
-fn full_state_of(
+pub(super) fn full_state_of(
     state: CurrentState,
     lines: Option<SignalTextPool>,
 ) -> Result<DbImportCandidateState, DbError> {

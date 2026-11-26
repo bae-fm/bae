@@ -1328,10 +1328,17 @@ Every other read of a candidate's current state, its verdict's cards and its
 matches spreads the same fragments, each handed the owners whose rows it reads,
 a candidate's content hash or an identify run: the candidate's runtime reads its
 stored verdict and the run it shows from them, with the run's signals and its
-typed search, and the candidate's preparation and the start of an identify run
-read its state from them.
-The candidate's preparation and the start of an identify run read its draft from
-the same draft fragment, given the candidate's content hash.
+typed search, and the candidate's preparation reads its state from them.
+The candidate's preparation is one composed statement, given the candidate's
+content hash: its state, the release this device imported from its files, its
+draft from the same draft fragment, its cover with the bytes fetched for it and
+the album picked for it. The start of an identify run and the import worker
+read it, and a save of the preparation runs the same statement inside its
+transaction. Reading the blank draft of a folder is one statement, and so is
+reading which of a set of found folders already hold a verdict for their files,
+and whether showing identification's results owes a run, which reads the
+candidate's entry with it. A change to what a candidate's identification asks
+about reads the stored choices and the candidate's entry inside its own write.
 Before a pane control, the import worker, identification or automation acts on
 a scanned candidate, bae reads the candidate's entry (what the scan stored and,
 for a grouping, whether it can be worked on) and where it stands (set aside,

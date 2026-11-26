@@ -23,30 +23,8 @@ use bae_identify::release_group::{
     StatedLabelLine, Statement, Statements,
 };
 use bae_identify::{Agreements, AlbumLink, RowAgreements, SharedAlbum, VerdictCards};
-use bae_store::statement_row;
 use bae_types::pressing::{MediaCount, ReleaseArea};
 use std::str::FromStr;
-
-sqlive_compose::read!(
-    CardsOfCandidate(candidate: String),
-    r#"
-    SELECT cards.*
-    FROM @crate::tables::import_state::card_fragments::VerdictCards(
-        owner: (SELECT :candidate AS content_hash, NULL AS identify_run)) AS cards
-"#
-);
-
-/// Returns the cards of the verdict stored under `content_hash`, which its
-/// rows stored, in one statement. Returns no cards unless the verdict holds
-/// findings.
-pub(crate) fn load_verdict_cards_on(
-    sql: &impl coven::SqlRead,
-    content_hash: &str,
-) -> Result<VerdictCards, DbError> {
-    let request = CardsOfCandidateParams { candidate: content_hash.to_string() };
-    let row = statement_row(sql, &request)?;
-    verdict_cards_of_column(row.cards.verdict_cards.as_deref())
-}
 
 /// The cards the JSON document `json` holds, which a pane's read selects;
 /// none for a candidate whose verdict holds no findings.

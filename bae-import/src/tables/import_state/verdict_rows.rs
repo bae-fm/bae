@@ -633,39 +633,104 @@ pub(super) fn medium_conflict_of(
 }
 
 impl ImportTables {
-    /// The cards of the verdict stored under `content_hash`, as its rows hold
-    /// them.
-    pub(crate) async fn load_verdict_cards(
+    /// Which of `files` a verdict is stored for, as their file decisions
+    /// stand at the revision named, read as one statement.
+    pub(crate) async fn answered_files(
         &self,
-        content_hash: &str,
-    ) -> Result<bae_identify::VerdictCards, DbError> {
-        let content_hash = content_hash.to_string();
-        self.store.read(move |sql| super::load_verdict_cards_on(&sql, &content_hash)).await
+        files: &[crate::CandidateFiles],
+    ) -> Result<std::collections::HashSet<crate::CandidateFiles>, DbError> {
+        let asked = files
+            .iter()
+            .map(|files| {
+                Ok(serde_json::json!({
+                    "content_hash": files.content_hash,
+                    "edit_revision": to_i64(files.file_edit_revision, "a file edit revision")?,
+                }))
+            })
+            .collect::<Result<Vec<_>, DbError>>()?;
+        let request = AnsweredOfParams {
+            files: serde_json::to_string(&asked)
+                .map_err(|error| DbError::encode("the files to look for verdicts of", error))?,
+        };
+        self.store
+            .read_rows(request)
+            .await?
+            .into_iter()
+            .map(|row| {
+                Ok(crate::CandidateFiles {
+                    file_edit_revision: to_u64(
+                        row.answered.answered_revision,
+                        "import_candidate_state.edit_revision",
+                    )?,
+                    content_hash: row.answered.answered_hash,
+                })
+            })
+            .collect()
     }
 
-    /// Whether a verdict is stored for the files at `content_hash` as their
-    /// file decisions stand at `edit_revision`.
-    pub(crate) async fn verdict_stored_for(
+    /// Whether showing identification's results for the candidate at `key`
+    /// owes a run: none while a verdict is stored for its files as they
+    /// stand, read with the candidate's entry as one statement. Refused for a
+    /// candidate the import list doesn't show, and for one whose files this
+    /// device imported.
+    pub(crate) async fn automatic_run_owed(
         &self,
-        content_hash: &str,
-        edit_revision: u64,
-    ) -> Result<bool, DbError> {
-        let content_hash = content_hash.to_string();
-        let edit_revision = to_i64(edit_revision, "a candidate's file edit revision")?;
-        self.store
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM import_candidate_state AS state \
-                     JOIN import_candidate_verdict AS verdict \
-                       ON verdict.content_hash = state.content_hash \
-                     WHERE state.content_hash = ? AND state.edit_revision = ?)",
-                    params![content_hash, edit_revision],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
+        key: &crate::CandidateKey,
+    ) -> Result<bool, crate::ImportError> {
+        let request = CandidateAnswerParams { key: key.clone() };
+        let (entries, answered): (Vec<_>, Vec<_>) = self
+            .store
+            .read_rows(request)
+            .await?
+            .into_iter()
+            .map(|row| (row.entry, row.answered))
+            .unzip();
+        let entry = crate::tables::release_groupings::listed_entry_of(key, entries)?;
+        if let Some(release_id) = entry.imported {
+            return Err(crate::ImportError::FilesAlreadyImported { release_id });
+        }
+        Ok(answered.iter().all(Option::is_none))
     }
 }
+
+// The files among `files` that a verdict is stored for: the candidate state
+// holds them at the file decision revision named, with a verdict.
+sqlive_compose::fragment!(
+    AnsweredFiles with files(content_hash TEXT, edit_revision INTEGER) {},
+    r#"
+    SELECT state.content_hash AS answered_hash, state.edit_revision AS answered_revision
+    FROM files
+    JOIN import_candidate_state AS state ON state.content_hash = files.content_hash
+        AND state.edit_revision = files.edit_revision
+    JOIN import_candidate_verdict AS verdict ON verdict.content_hash = state.content_hash
+"#
+);
+
+sqlive_compose::read!(
+    AnsweredOf(files: String),
+    r#"
+    SELECT answered.*
+    FROM @crate::tables::import_state::verdict_rows::AnsweredFiles(files: (
+        SELECT asked.value ->> 'content_hash' AS content_hash,
+               asked.value ->> 'edit_revision' AS edit_revision
+        FROM json_each(:files) AS asked)) AS answered
+"#
+);
+
+// A candidate's entry, with whether a verdict is stored for its files as the
+// scan holds them.
+sqlive_compose::read!(
+    CandidateAnswer(key: crate::CandidateKey),
+    r#"
+    SELECT entry.*, answered.*
+    FROM @crate::tables::release_groupings::fragments::EnteredCandidate(key: :key) AS entry
+    LEFT JOIN @crate::tables::import_state::verdict_rows::AnsweredFiles(files: (
+        SELECT scanned.content_hash AS content_hash,
+               scanned.file_edit_revision AS edit_revision
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scanned))
+        AS answered ON 1
+"#
+);
 
 /// What a caller supplies to record one candidate's identify verdict via
 /// [`crate::tables::ImportTables::store_verdict`]. Every outcome,

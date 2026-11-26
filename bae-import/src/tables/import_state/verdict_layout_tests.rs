@@ -190,7 +190,11 @@ async fn two_records_of_one_pressing_lay_out_as_one_row() {
 /// Loads the verdict's cards from the stored rows, the way the pane reads
 /// them.
 async fn stored_cards(db: &Store, hash: &str) -> bae_identify::VerdictCards {
-    crate::tables::ImportTables::new(db.clone()).load_verdict_cards(hash).await.unwrap()
+    let read = crate::tables::ImportTables::new(db.clone())
+        .load_candidate_preparation_with_cards(hash)
+        .await
+        .unwrap();
+    read.expect("the state is stored").1
 }
 
 /// The statement returns the cards the verdict's write laid out: the card

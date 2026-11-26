@@ -11,11 +11,11 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<
-        (crate::folder_scanner::FolderCandidate, crate::preparations::CandidatePreparation),
+        (crate::folder_scanner::FolderCandidate, crate::preparations::StoredPreparation),
         crate::ImportError,
     > {
         let candidate = self.require_release_candidate(candidate_key).await?;
-        let current = crate::preparations::stored_preparation(
+        let current = crate::preparations::read_preparation(
             &self.services.tables,
             &candidate.files.content_hash(),
         )
@@ -47,7 +47,8 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let (candidate, stored) = self.metadata_write_base(&candidate_key).await?;
+        let current = stored.preparation;
         let content_hash = candidate.files.content_hash();
         let mut draft =
             self.services.tables.load_blank_draft(&content_hash).await?.ok_or_else(|| {
@@ -86,7 +87,8 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let (candidate, stored) = self.metadata_write_base(&candidate_key).await?;
+        let current = stored.preparation;
         let content_hash = candidate.files.content_hash();
         let _commit = self.services.folder_state_commit.lock("keep the folder's own draft").await;
         self.services
@@ -120,7 +122,8 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let (candidate, stored) = self.metadata_write_base(&candidate_key).await?;
+        let current = stored.preparation;
         let content_hash = candidate.files.content_hash();
         let _commit = self.services.folder_state_commit.lock("unlink the release").await;
         self.services

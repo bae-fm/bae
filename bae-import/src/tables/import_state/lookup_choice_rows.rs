@@ -8,60 +8,81 @@
 //! Its tables are `lookup_choice_rows.sql`, which every device's library holds.
 
 use super::*;
-use bae_identify::{LookupChoices, SearchWords};
+use bae_identify::{ChoiceChange, LookupChoices, SearchWords};
+use bae_store::statement_optional;
 
-/// What a candidate decided its identification asks about, as the state's
-/// columns hold it, its lists still JSON.
-pub(super) struct StoredLookupChoices {
-    disc_id_excluded: bool,
-    search_words: Option<SearchWords>,
-    chosen_catalogs: String,
-    discounted_catalogs: String,
-    excluded_barcodes: String,
-}
+// What a person decided the identification of each candidate that has decided
+// anything asks about: the header row, with its lists as JSON arrays.
+sqlive_compose::fragment!(
+    LookupChoiceRow {
+        choices_disc_id_excluded: bool,
+        choices_chosen_catalogs: String,
+        choices_discounted_catalogs: String,
+        choices_excluded_barcodes: String
+    },
+    r#"
+    SELECT choices.content_hash AS choices_hash,
+        choices.disc_id_excluded AS choices_disc_id_excluded,
+        choices.search_album AS choices_search_album,
+        choices.search_artist AS choices_search_artist,
+        (SELECT json_group_array(chosen.value ORDER BY chosen.position)
+         FROM import_candidate_chosen_catalog AS chosen
+         WHERE chosen.content_hash = choices.content_hash) AS choices_chosen_catalogs,
+        (SELECT json_group_array(struck.value ORDER BY struck.value)
+         FROM import_candidate_discounted_catalog AS struck
+         WHERE struck.content_hash = choices.content_hash) AS choices_discounted_catalogs,
+        (SELECT json_group_array(left_out.value ORDER BY left_out.value)
+         FROM import_candidate_excluded_barcode AS left_out
+         WHERE left_out.content_hash = choices.content_hash) AS choices_excluded_barcodes
+    FROM import_candidate_lookup_choices AS choices
+"#
+);
 
-impl StoredLookupChoices {
-    /// The choices a pane's read selects, as
-    /// [`super::state_fragments::CurrentState`] names them; none for a
-    /// candidate that has decided nothing.
-    pub(super) fn of(
-        state: &super::state_fragments::CurrentState,
-    ) -> Result<Option<Self>, DbError> {
-        if state.choices_row.is_none() {
-            return Ok(None);
-        }
-        let search_words =
-            match (state.choices_search_album.clone(), state.choices_search_artist.clone()) {
-                (Some(album), Some(artist)) => Some(SearchWords { album, artist }),
-                _ => None,
-            };
-        Ok(Some(Self {
-            disc_id_excluded: super::required(
-                state.choices_disc_id_excluded,
-                "choices_disc_id_excluded",
-            )?,
-            search_words,
-            chosen_catalogs: state.choices_chosen_catalogs.clone(),
-            discounted_catalogs: state.choices_discounted_catalogs.clone(),
-            excluded_barcodes: state.choices_excluded_barcodes.clone(),
-        }))
-    }
-}
+sqlive_compose::read!(
+    LookupChoicesOf(content_hash: String),
+    r#"
+    SELECT choices.*
+    FROM @crate::tables::import_state::lookup_choice_rows::LookupChoiceRow AS choices
+    WHERE choices.choices_hash = :content_hash
+"#
+);
 
-impl StoredLookupChoices {
-    pub(super) fn choices(self) -> Result<LookupChoices, DbError> {
+impl LookupChoiceRow {
+    pub(super) fn choices(&self) -> Result<LookupChoices, DbError> {
         let list = |json: &str, what: &str| {
             serde_json::from_str::<Vec<String>>(json)
                 .map_err(|error| DbError::unreadable_json(format!("stored {what}"), json, error))
         };
+        let search_words = match (&self.choices_search_album, &self.choices_search_artist) {
+            (Some(album), Some(artist)) => {
+                Some(SearchWords { album: album.clone(), artist: artist.clone() })
+            }
+            _ => None,
+        };
         Ok(LookupChoices {
-            disc_id_excluded: self.disc_id_excluded,
-            excluded_barcodes: list(&self.excluded_barcodes, "left-out barcodes")?,
-            chosen_catalogs: list(&self.chosen_catalogs, "chosen catalog numbers")?,
-            search_words: self.search_words,
-            discounted_catalogs: list(&self.discounted_catalogs, "struck-out catalog numbers")?,
+            disc_id_excluded: self.choices_disc_id_excluded,
+            excluded_barcodes: list(&self.choices_excluded_barcodes, "left-out barcodes")?,
+            chosen_catalogs: list(&self.choices_chosen_catalogs, "chosen catalog numbers")?,
+            search_words,
+            discounted_catalogs: list(
+                &self.choices_discounted_catalogs,
+                "struck-out catalog numbers",
+            )?,
         })
     }
+}
+
+/// What the candidate `content_hash` decided its identification asks about:
+/// the default when it has decided nothing.
+fn load_lookup_choices_on(
+    sql: &impl coven::SqlRead,
+    content_hash: &str,
+) -> Result<LookupChoices, DbError> {
+    let request = LookupChoicesOfParams { content_hash: content_hash.to_string() };
+    Ok(statement_optional(sql, &request)?
+        .map(|row| row.choices.choices())
+        .transpose()?
+        .unwrap_or_default())
 }
 
 /// The rows under `content_hash` become exactly `choices`, on the
@@ -103,7 +124,7 @@ pub(super) fn replace_lookup_choices_on(
             content_hash,
         ],
     )?;
-    // A pane's save reads the candidate listed in this transaction, and a
+    // A pane's edit reads the candidate listed in this transaction, and a
     // listed candidate holds a state row.
     assert!(affected == 1, "a candidate's lookup choices have no candidate state row to hang off");
     sql.execute(
@@ -154,32 +175,38 @@ pub(super) fn replace_lookup_choices_on(
 }
 
 impl ImportTables {
-    /// Record what the identification of the candidate at `key`, holding the
-    /// files hashed `content_hash`, asks about, whole. The write reads the
-    /// candidate's entry and standing itself. It refuses a candidate the
-    /// import list doesn't show with those files, and one this device
-    /// imported.
-    pub(crate) async fn save_pane_lookup_choices(
+    /// Make `edit` to what the identification of the candidate at `key` asks
+    /// about, and answer what the change asks of it. One write reads the
+    /// candidate's entry and its stored choices and stores the edited ones,
+    /// so each change is made to the value the one before it left. It
+    /// refuses a candidate the import list doesn't show, and one whose files
+    /// this device imported.
+    pub(crate) async fn edit_pane_lookup_choices(
         &self,
         key: &crate::CandidateKey,
-        content_hash: &str,
-        choices: &LookupChoices,
-    ) -> Result<(), crate::ImportError> {
+        edit: bae_identify::LookupChoiceEdit,
+    ) -> Result<ChoiceChange, crate::ImportError> {
         let key = key.clone();
-        let content_hash = content_hash.to_string();
-        let choices = choices.clone();
         self.store
             .write(move |sql| {
                 let sql = &sql;
                 let entry = crate::tables::release_groupings::load_candidate_entry_on(sql, &key)?
-                    .filter(|entry| {
-                        entry.listed() && entry.candidate.files.content_hash() == content_hash
-                    })
-                    .ok_or_else(|| crate::tables::PreparationRefusal::Changed(key.clone()))?;
+                    .filter(|entry| entry.listed())
+                    .ok_or_else(|| crate::ImportError::Internal {
+                        detail: format!("{key} is not a scanned folder candidate"),
+                    })?;
                 if let Some(release_id) = entry.imported {
                     return Err(crate::ImportError::FilesAlreadyImported { release_id });
                 }
-                Ok(replace_lookup_choices_on(sql, &content_hash, &choices)?)
+                let content_hash = entry.candidate.files.content_hash();
+                let stored = load_lookup_choices_on(sql, &content_hash)?;
+                let choices = stored.clone().edited(edit);
+                let change = match choices.asks_the_same_as(&stored) {
+                    true => ChoiceChange::Ranking,
+                    false => ChoiceChange::Lookups,
+                };
+                replace_lookup_choices_on(sql, &content_hash, &choices)?;
+                Ok(change)
             })
             .await
     }

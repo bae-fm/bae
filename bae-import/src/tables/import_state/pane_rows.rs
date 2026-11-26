@@ -31,8 +31,8 @@ pub(crate) use provenance::{
 
 use super::*;
 use crate::{
-    AudioFile, CandidateDraft, CandidateTrack, CoverSelection, MetadataAuthor, RawLabelEdit,
-    RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
+    AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, RawLabelEdit, RawPressingEdit,
+    RawTrackEdit, TrackArtistAssignments,
 };
 use rusqlite::ToSql;
 
@@ -204,6 +204,21 @@ fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i
     }
 }
 
+/// The preparation of the candidate `content_hash`, which the caller knows
+/// holds a state row and no import of it.
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+fn stored_for_test_on(
+    sql: &impl coven::SqlRead,
+    content_hash: &str,
+) -> Result<crate::preparations::CandidatePreparation, DbError> {
+    match super::preparation_rows::load_preparation_on(sql, content_hash)? {
+        Some(super::preparation_rows::CandidatePreparationRead::Stored(stored)) => {
+            Ok(stored.preparation)
+        }
+        _ => Err(DbError::unreadable("the preparation of a stored candidate", content_hash)),
+    }
+}
+
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// Everything one candidate's pane settled: its cover, its album fields, its
 /// row edits, the failure its last import left, and the failure of the
@@ -212,11 +227,12 @@ pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     candidate: OneCandidate<'_>,
 ) -> Result<DbCandidatePaneRows, DbError> {
-    let (draft, cover) = load_draft_and_cover_on(sql, candidate)?;
+    let OneCandidate::Hash(content_hash) = candidate;
+    let stored = stored_for_test_on(sql, content_hash)?;
     let (draft_blank, draft_valid) = load_draft_columns_on(sql, candidate)?;
     Ok(DbCandidatePaneRows {
-        cover,
-        draft,
+        cover: stored.metadata.cover.map(|cover| cover.selection()),
+        draft: stored.metadata.draft,
         draft_blank,
         draft_valid,
         failure: load_failure_on(sql, candidate)?,
@@ -273,23 +289,6 @@ pub(super) fn has_draft_row_on(
 /// [`super::fragments::DraftRows`] names it.
 pub(crate) fn draft_of(draft: &super::fragments::DraftRows) -> Result<CandidateDraft, DbError> {
     StoredDraftRow::of(draft)?.draft()
-}
-
-/// The candidate's draft and cover, from its rows. Every state of a candidate
-/// this device did not import holds a draft row (the scan seeds it, and
-/// deleting the release it imported seeds it again), so a state with none is
-/// a damaged one and the read fails. The caller found in the same read that
-/// the candidate holds a state row and was not imported, since one this device
-/// imported holds no draft.
-pub(super) fn load_draft_and_cover_on(
-    sql: &impl coven::SqlRead,
-    candidate: OneCandidate<'_>,
-) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
-    let OneCandidate::Hash(content_hash) = candidate;
-    let draft = super::draft_read::load_draft_on(sql, content_hash)?.ok_or_else(|| {
-        DbError::unreadable("import_candidate_edit of a candidate not imported here", candidate)
-    })?;
-    Ok((draft, super::cover_rows::load_cover_on(sql, candidate)?))
 }
 
 /// One `import_candidate_edit` row as SQLite hands it over, its lists still
@@ -500,8 +499,7 @@ impl ImportTables {
         let (content_hash, draft) = (content_hash.to_string(), draft.clone());
         self.store
             .write(move |sql| {
-                let stored = super::draft_read::load_draft_on(&sql, &content_hash)?
-                    .expect("the state holds the draft the scan seeded");
+                let stored = stored_for_test_on(&sql, &content_hash)?.metadata.draft;
                 super::draft_store::store_draft(
                     &sql,
                     &content_hash,

@@ -167,8 +167,11 @@ impl ImportService {
         let source_name = stored_candidate.name.to_string();
         let categorized = stored_candidate.files;
 
-        let preparation =
-            crate::preparations::stored_preparation(&self.tables, &expected_content_hash)
+        // The album pick is read with the preparation. No pick can be stored
+        // while this import claims the candidate, so the commit deletes the
+        // one read here.
+        let crate::preparations::StoredPreparation { preparation, album_pick, .. } =
+            crate::preparations::read_preparation(&self.tables, &expected_content_hash)
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),
@@ -221,7 +224,6 @@ impl ImportService {
         )?;
         let track_bindings = assembled.bindings;
 
-        let album_pick = self.tables.candidate_album_pick(&categorized.content_hash()).await?;
         let mut prepared = self
             .reconcile_prepared_release(assembled.parsed, records, album_pick, assembled.picked)
             .await?;

@@ -4,43 +4,26 @@
 
 use super::*;
 
-/// The statement that reads what the person picked for the album of the
-/// candidate whose content hash the SQL expression `content_hash` gives. It
-/// returns one row. Its `pick` is 'records' when the person picked nothing,
-/// 'new' when they picked a new album, and 'album' when they picked the
-/// library album `album_id`.
-pub(crate) fn album_pick_sql(content_hash: &str) -> String {
-    format!(
-        "SELECT CASE WHEN pick.content_hash IS NULL THEN 'records' \
-                     WHEN pick.album_id IS NULL THEN 'new' \
-                     ELSE 'album' END AS pick, \
-                pick.album_id AS album_id \
-         FROM (SELECT 1) \
-         LEFT JOIN import_candidate_album_pick AS pick ON pick.content_hash = {content_hash}"
-    )
-}
+// What the person picked for the album of each candidate they picked one for:
+// the library album `picked_album_id`, or a new album when it is NULL.
+sqlive_compose::fragment!(
+    AlbumPickRow {},
+    r#"
+    SELECT pick.content_hash AS pick_hash, pick.album_id AS picked_album_id
+    FROM import_candidate_album_pick AS pick
+"#
+);
 
-/// The album the person picked for the candidate `content_hash`: a library
-/// album, a new album, or, when they picked none, the album its records name.
-pub(crate) fn load_album_pick_on(
-    sql: &impl coven::SqlRead,
-    content_hash: &str,
-) -> Result<crate::AlbumPick, DbError> {
-    let (pick, album_id): (String, Option<String>) =
-        sql.query_row(&album_pick_sql("?"), params![content_hash], |row| {
-            Ok((row.get("pick")?, row.get("album_id")?))
-        })?;
-    Ok(match (pick.as_str(), album_id) {
-        ("records", None) => crate::AlbumPick::Records,
-        ("new", None) => crate::AlbumPick::New,
-        ("album", Some(album_id)) => crate::AlbumPick::Album { album_id },
-        (pick, album_id) => {
-            return Err(DbError::unreadable(
-                "a candidate's album pick",
-                (pick.to_string(), album_id),
-            ))
+/// The album the person picked, from the pick row a candidate holds: with no
+/// row they picked none, and the candidate joins the album its records name.
+pub(super) fn album_pick_of(row: Option<AlbumPickRow>) -> crate::AlbumPick {
+    match row {
+        None => crate::AlbumPick::Records,
+        Some(AlbumPickRow { picked_album_id: None, .. }) => crate::AlbumPick::New,
+        Some(AlbumPickRow { picked_album_id: Some(album_id), .. }) => {
+            crate::AlbumPick::Album { album_id }
         }
-    })
+    }
 }
 
 /// Leave the candidate `content_hash` to the album its records name.
@@ -50,17 +33,6 @@ pub(super) fn delete_album_pick(sql: &CovenWrite<'_>, content_hash: &str) -> Res
 }
 
 impl ImportTables {
-    /// The album the person picked for the candidate `content_hash`: a
-    /// library album, a new album, or, when they picked none, the album its
-    /// records name.
-    pub(crate) async fn candidate_album_pick(
-        &self,
-        content_hash: &str,
-    ) -> Result<crate::AlbumPick, DbError> {
-        let content_hash = content_hash.to_string();
-        self.store.read(move |sql| load_album_pick_on(&sql, &content_hash)).await
-    }
-
     /// Record `pick` for the candidate at `key`. Refused unless the write
     /// reads it as a release that may be worked on and edited. The table's
     /// foreign key refuses an album the library no longer holds.

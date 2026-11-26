@@ -156,18 +156,44 @@ impl CandidatePreparation {
     }
 }
 
-/// The candidate `content_hash`'s whole stored state, or `None` for a hash no
-/// scan stored a candidate under. A candidate whose files this device already
-/// imported holds no draft, so reading it fails as an import of those files
-/// does.
+/// A candidate's preparation as one statement reads it, with what is stored
+/// under the same hash that a preparation's save leaves alone.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct StoredPreparation {
+    pub preparation: CandidatePreparation,
+    /// What a person decided its identification asks about, which only a
+    /// change of those choices writes.
+    pub lookup_choices: bae_identify::LookupChoices,
+    /// The album a person picked for it to join, which only a pick writes.
+    pub album_pick: crate::AlbumPick,
+}
+
+/// [`read_preparation`]'s preparation alone.
 pub(crate) async fn stored_preparation(
     tables: &crate::tables::ImportTables,
     content_hash: &str,
 ) -> Result<Option<CandidatePreparation>, crate::ImportError> {
-    match tables.load_candidate_preparation(content_hash).await? {
-        None => Ok(None),
-        Some(crate::tables::CandidatePreparationRead::Stored(preparation)) => Ok(Some(preparation)),
-        Some(crate::tables::CandidatePreparationRead::Imported { release_id }) => {
+    Ok(read_preparation(tables, content_hash).await?.map(|stored| stored.preparation))
+}
+
+/// The candidate `content_hash`'s whole stored state, or `None` for a hash no
+/// scan stored a candidate under. A candidate whose files this device already
+/// imported holds no draft, so reading it fails as an import of those files
+/// does.
+pub(crate) async fn read_preparation(
+    tables: &crate::tables::ImportTables,
+    content_hash: &str,
+) -> Result<Option<StoredPreparation>, crate::ImportError> {
+    tables.load_candidate_preparation(content_hash).await?.map(stored_of).transpose()
+}
+
+/// The state `read` found, refused for a candidate this device imported.
+pub(crate) fn stored_of(
+    read: crate::tables::CandidatePreparationRead,
+) -> Result<StoredPreparation, crate::ImportError> {
+    match read {
+        crate::tables::CandidatePreparationRead::Stored(stored) => Ok(*stored),
+        crate::tables::CandidatePreparationRead::Imported { release_id } => {
             Err(crate::ImportError::FilesAlreadyImported { release_id })
         }
     }

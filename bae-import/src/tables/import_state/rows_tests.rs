@@ -67,7 +67,7 @@ async fn a_run_starts_from_no_candidate_without_state() {
     let (db, _tmp) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db);
 
-    assert!(tables.load_candidate_run_start("unscanned").await.unwrap().is_none());
+    assert!(tables.load_candidate_preparation("unscanned").await.unwrap().is_none());
 }
 
 /// When one statement loads several candidates, each candidate keeps its own

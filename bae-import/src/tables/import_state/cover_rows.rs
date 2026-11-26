@@ -171,55 +171,72 @@ impl StoredCover {
     }
 }
 
-/// The cover `candidate` chose, if it chose one.
-pub(super) fn load_cover_on(
-    sql: &impl coven::SqlRead,
-    candidate: OneCandidate<'_>,
-) -> Result<Option<CoverSelection>, DbError> {
-    let filter = candidate.filter("cover.content_hash");
-    sql.query_row(
-        &format!(
-            "SELECT {} FROM import_candidate_cover AS cover {}",
-            cover_read_columns(),
-            filter.clause
-        ),
-        filter.params().as_slice(),
-        read_cover,
-    )
-    .optional()?
-    .flatten()
-    .map(StoredCover::selection)
-    .transpose()
-}
+// The cover each candidate chose, with the copies the catalog serves of a
+// remote one as a JSON array, and the bytes a remote one was fetched with.
+sqlive_compose::fragment!(
+    ChosenCover {
+        prepared_copies: String,
+        prepared_content_type: Option<String>,
+        prepared_bytes: Option<Vec<u8>>
+    },
+    r#"
+    SELECT cover.content_hash AS prepared_hash, cover.kind AS prepared_kind,
+        cover.file_id AS prepared_file_id, cover.url AS prepared_url,
+        cover.source AS prepared_source,
+        (SELECT json_group_array(json_object('url', copy.url, 'max_edge', copy.max_edge)
+                    ORDER BY copy.max_edge)
+         FROM import_candidate_cover_copy AS copy
+         WHERE copy.content_hash = cover.content_hash AND copy.image_url = cover.url)
+            AS prepared_copies,
+        cover.content_type AS prepared_content_type, cover.bytes AS prepared_bytes
+    FROM import_candidate_cover AS cover
+"#
+);
 
-/// The candidate's cover `selection` with the bytes stored for it: a remote
-/// selection with the image its write fetched, which its row holds, a
-/// folder's image as it is.
-pub(super) fn load_prepared_cover_on(
-    sql: &impl coven::SqlRead,
-    content_hash: &str,
-    selection: Option<CoverSelection>,
-) -> Result<Option<PreparedCover>, DbError> {
-    Ok(match selection {
-        None => None,
-        Some(CoverSelection::Local(file_id)) => Some(PreparedCover::Local(file_id)),
-        Some(CoverSelection::Embedded(source_file_id)) => {
-            Some(PreparedCover::Embedded(source_file_id))
-        }
-        Some(CoverSelection::Remote(image, source)) => {
-            let fetched = sql.query_row(
-                "SELECT content_type, bytes FROM import_candidate_cover WHERE content_hash = ?",
-                [content_hash],
-                |row| {
-                    Ok(bae_catalogs::remote_image::RemoteImage {
-                        content_type: ContentType::from_mime(&row.get::<_, String>(0)?),
-                        bytes: row.get(1)?,
-                    })
-                },
-            )?;
-            Some(PreparedCover::Remote { image, source, fetched })
-        }
-    })
+impl ChosenCover {
+    /// The cover the row chose, with the bytes stored for it: a remote one
+    /// with the image its write fetched, which its row holds, a folder's
+    /// image as it is.
+    pub(super) fn prepared(self) -> Result<PreparedCover, DbError> {
+        let ChosenCover {
+            prepared_kind,
+            prepared_file_id,
+            prepared_url,
+            prepared_source,
+            prepared_copies,
+            prepared_content_type,
+            prepared_bytes,
+            ..
+        } = self;
+        let selection = StoredCover::new(
+            prepared_kind,
+            prepared_file_id,
+            prepared_url,
+            prepared_source,
+            prepared_copies,
+        )
+        .selection()?;
+        Ok(match selection {
+            CoverSelection::Local(file_id) => PreparedCover::Local(file_id),
+            CoverSelection::Embedded(source_file_id) => PreparedCover::Embedded(source_file_id),
+            CoverSelection::Remote(image, source) => {
+                // The table's CHECK keeps a remote row's bytes filled, so one
+                // without them is a row nothing here writes.
+                let (Some(content_type), Some(bytes)) = (prepared_content_type, prepared_bytes)
+                else {
+                    return Err(DbError::unreadable(
+                        "the fetched bytes of a remote import_candidate_cover",
+                        image.url,
+                    ));
+                };
+                let fetched = bae_catalogs::remote_image::RemoteImage {
+                    content_type: ContentType::from_mime(&content_type),
+                    bytes,
+                };
+                PreparedCover::Remote { image, source, fetched }
+            }
+        })
+    }
 }
 
 impl ImportTables {

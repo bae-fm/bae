@@ -56,14 +56,18 @@ pub(super) fn imported_release_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Option<String>, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT release_id FROM local_release_origin WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get(0),
-        )
-        .optional()?)
+    let request = OriginOfParams { content_hash: content_hash.to_string() };
+    Ok(statement_optional(sql, &request)?.map(|row| row.origin.origin_release_id))
 }
+
+sqlive_compose::read!(
+    OriginOf(content_hash: String),
+    r#"
+    SELECT origin.*
+    FROM @crate::tables::import_origin::fragments::ReleaseOrigin AS origin
+    WHERE origin.origin_hash = :content_hash
+"#
+);
 
 #[cfg(test)]
 #[path = "import_origin_tests.rs"]

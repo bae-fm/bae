@@ -128,7 +128,15 @@ fn load_scanned_entry_on(
     sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<Option<ScannedEntry>, DbError> {
-    let mut rows = statement_rows(sql, &CandidateEntryAtParams { key: key.clone() })?;
+    let rows = statement_rows(sql, &CandidateEntryAtParams { key: key.clone() })?;
+    scanned_entry_of(key, rows.into_iter().map(|row| row.entry).collect())
+}
+
+/// What the rows a read of [`EnteredCandidate`] returned for `key` hold.
+fn scanned_entry_of(
+    key: &CandidateKey,
+    mut rows: Vec<EnteredCandidate>,
+) -> Result<Option<ScannedEntry>, DbError> {
     if rows.len() > 1 {
         return Err(DbError::unreadable(
             format!("the watched folders scan_candidate stores {key} under"),
@@ -137,13 +145,27 @@ fn load_scanned_entry_on(
     }
     rows.pop()
         .map(|row| {
-            let EnteredCandidate { scan, grouping, standing, imported } = row.entry;
+            let EnteredCandidate { scan, grouping, standing, imported } = row;
             Ok(match CandidateEntry::of(scan, grouping, standing, imported)? {
                 Some(entry) => ScannedEntry::Release(Box::new(entry)),
                 None => ScannedEntry::InvalidFolder,
             })
         })
         .transpose()
+}
+
+/// The release at `key` that the import list shows, from the rows a read of
+/// [`EnteredCandidate`] returned; refused when the list shows none there.
+pub(crate) fn listed_entry_of(
+    key: &CandidateKey,
+    rows: Vec<EnteredCandidate>,
+) -> Result<CandidateEntry, ImportError> {
+    match scanned_entry_of(key, rows)? {
+        Some(ScannedEntry::Release(entry)) if entry.listed() => Ok(*entry),
+        _ => Err(ImportError::Internal {
+            detail: format!("{key} is not a scanned folder candidate"),
+        }),
+    }
 }
 
 /// The release stored at `key` and where it stands, or `None` when the scan

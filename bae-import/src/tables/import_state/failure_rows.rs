@@ -93,6 +93,17 @@ fn save_failure_on(
 }
 
 impl ImportTables {
+    /// The failure the last import of the candidate `content_hash` left,
+    /// read apart from the candidate's other rows, which a test may damage.
+    #[cfg(test)]
+    pub(crate) async fn load_import_failure(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<ImportFailure>, DbError> {
+        let content_hash = content_hash.to_string();
+        self.store.read(move |sql| load_failure_on(&sql, OneCandidate::Hash(&content_hash))).await
+    }
+
     /// Record that an import of this candidate failed, so the pane still
     /// offers Retry after a relaunch.
     pub async fn save_import_candidate_failure(

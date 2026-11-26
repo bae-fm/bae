@@ -29,18 +29,24 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let candidate = self.require_release_candidate(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let state = self
+        let (read, cards) = self
             .services
             .tables
-            .load_import_candidate_state(&content_hash)
+            .load_candidate_preparation_with_cards(&content_hash)
             .await?
-            .filter(|state| state.file_edits.is_at_revision(candidate.file_edit_revision))
             .ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{candidate_key} has no state for its files as they stand"),
+                detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        if state.identify.is_none() {
+        let crate::preparations::StoredPreparation { preparation: current, lookup_choices, .. } =
+            crate::preparations::stored_of(read)?;
+        if !current.file_edits.is_at_revision(candidate.file_edit_revision) {
+            return Err(crate::ImportError::Internal {
+                detail: format!("{candidate_key} has no state for its files as they stand"),
+            });
+        }
+        if current.identification.is_none() {
             return Err(crate::ImportError::Internal {
                 detail: format!(
                     "{candidate_key} has no lookup whose pressings to link the album of"
@@ -50,8 +56,7 @@ impl ImportServiceHandle {
         // The rows as the pane lists them: ranked by the candidate's own text,
         // as it reads now.
         let text =
-            bae_identify::CandidateText::of_stored(state.signals.as_ref(), &state.lookup_choices);
-        let cards = self.services.tables.load_verdict_cards(&content_hash).await?;
+            bae_identify::CandidateText::of_stored(current.signals.as_ref(), &lookup_choices);
         let shared = cards.shared_album.ok_or_else(|| crate::ImportError::Internal {
             detail: format!("{candidate_key}'s lookup did not find several pressings of one album"),
         })?;

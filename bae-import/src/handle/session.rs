@@ -14,8 +14,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<bool, crate::ImportError> {
-        let projection = self.drafting_candidate(candidate_key).await?;
-        Ok(projection.stored_verdict.is_none())
+        self.services.tables.automatic_run_owed(candidate_key).await
     }
 
     /// Clear the failure the pane states for its last command, as its next
@@ -79,27 +78,6 @@ impl ImportServiceHandle {
             this.services.tables.save_import_pane_failure(&candidate_key, failure).await
         })
         .await
-    }
-
-    /// The candidate `candidate_key` names, while it holds a draft: an
-    /// imported candidate holds none, and is answered that its files are in
-    /// the library.
-    async fn drafting_candidate(
-        &self,
-        candidate_key: &crate::CandidateKey,
-    ) -> Result<crate::ImportCandidateDetailProjection, crate::ImportError> {
-        let projection =
-            self.services.tables.load_import_candidate(candidate_key).await?.ok_or_else(|| {
-                crate::ImportError::Internal {
-                    detail: format!("{candidate_key} is not a scanned folder candidate"),
-                }
-            })?;
-        if let crate::ProjectedStage::Imported { release } = &projection.stage {
-            return Err(crate::ImportError::FilesAlreadyImported {
-                release_id: release.release_id.clone(),
-            });
-        }
-        Ok(projection)
     }
 }
 

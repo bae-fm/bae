@@ -11,30 +11,38 @@ pub(super) async fn admit_found(
     queue: &mut Queue,
     keys: Vec<crate::CandidateKey>,
 ) {
-    let mut admitted = Vec::with_capacity(keys.len());
+    let mut answerable = Vec::with_capacity(keys.len());
     for key in keys {
-        let candidate = match context.import.answerable_candidate(&key).await {
-            Ok(Some(candidate)) => candidate,
-            Ok(None) => continue,
+        match context.import.answerable_candidate(&key).await {
+            Ok(Some(candidate)) => answerable.push(candidate),
+            Ok(None) => {}
             Err(error) => {
                 super::queue::record(
                     context,
                     &format!("read {key} to admit it once found"),
                     Err(error),
                 );
-                continue;
             }
-        };
-        match context
-            .tables
-            .verdict_stored_for(&candidate.files.content_hash(), candidate.file_edit_revision)
-            .await
-        {
-            Ok(true) => {
-                info!("identification: {key} was found with its files already answered");
+        }
+    }
+    let files: Vec<CandidateFiles> = answerable.iter().map(CandidateFiles::of).collect();
+    let answered = match context.tables.answered_files(&files).await {
+        Ok(answered) => answered,
+        Err(error) => {
+            let error = error.into();
+            for candidate in &answerable {
+                fail_unchecked(context, candidate, &error).await;
             }
-            Ok(false) => admitted.push(candidate),
-            Err(error) => fail_unchecked(context, &candidate, &error.into()).await,
+            return;
+        }
+    };
+    let mut admitted = Vec::with_capacity(answerable.len());
+    for (candidate, files) in answerable.into_iter().zip(files) {
+        if answered.contains(&files) {
+            let key = candidate.key();
+            info!("identification: {key} was found with its files already answered");
+        } else {
+            admitted.push(candidate);
         }
     }
     if !admitted.is_empty() {
@@ -76,22 +84,26 @@ pub(super) struct CandidateRunStart {
     pub(super) title_search: Option<TitleSearch>,
 }
 
-/// Read what a run begins from. The draft comes from the pane's rows, because
-/// the surface's projection fails for a pick whose documents were cleared.
+/// Read what a run begins from, with the candidate's preparation. The draft
+/// comes from the stored rows, because the surface's projection fails for a
+/// pick whose documents were cleared.
 pub(super) async fn candidate_run_start(
     context: &Context,
     candidate: &FolderCandidate,
 ) -> Result<CandidateRunStart, crate::ImportError> {
     let content_hash = candidate.files.content_hash();
-    let Some((state, draft)) = context.tables.load_candidate_run_start(&content_hash).await? else {
+    let Some(crate::tables::CandidatePreparationRead::Stored(stored)) =
+        context.tables.load_candidate_preparation(&content_hash).await?
+    else {
         return Err(crate::tables::CandidateStateRefusal::NoDraft(content_hash).into());
     };
+    let draft = &stored.preparation.metadata.draft;
     let artist = crate::credited_line(&draft.album_artist_assignments).plain_text();
-    let title_search = match &state.lookup_choices.search_words {
+    let title_search = match &stored.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),
         None => TitleSearch::of_draft(&draft.album_title, &artist),
     };
-    Ok(CandidateRunStart { choices: state.lookup_choices, title_search })
+    Ok(CandidateRunStart { choices: stored.lookup_choices, title_search })
 }
 
 #[cfg(test)]

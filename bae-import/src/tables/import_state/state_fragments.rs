@@ -13,13 +13,6 @@ sqlive_compose::fragment!(
         link_release_id: Option<String>,
         link_partners: String,
         link_albums: String,
-        choices_row: Option<String>,
-        choices_disc_id_excluded: Option<bool>,
-        choices_search_album: Option<String>,
-        choices_search_artist: Option<String>,
-        choices_chosen_catalogs: String,
-        choices_discounted_catalogs: String,
-        choices_excluded_barcodes: String,
         verdict_row: Option<String>,
         verdict_kind: Option<String>,
         verdict_track_count: Option<i64>,
@@ -45,7 +38,7 @@ sqlive_compose::fragment!(
         candidate_matches: String
     },
     r#"
-    WITH statement(owner_row, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, choices_row, choices_disc_id_excluded, choices_search_album, choices_search_artist, choices_chosen_catalogs, choices_discounted_catalogs, choices_excluded_barcodes, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches) AS (
+    WITH statement(owner_row, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches) AS (
             SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row,
                   provenance.content_hash AS provenance_row, provenance.kind
                 AS provenance_kind, provenance.source AS provenance_source,
@@ -61,21 +54,7 @@ sqlive_compose::fragment!(
                 bae_catalog_rank(album.catalog))
             FROM import_candidate_release_link_album AS album
             WHERE album.content_hash = link.content_hash
-            ) AS link_albums, choices.content_hash AS choices_row, choices.disc_id_excluded AS
-                choices_disc_id_excluded, choices.search_album AS choices_search_album,
-                choices.search_artist AS choices_search_artist,(
-            SELECT json_group_array(chosen.value ORDER BY chosen.position)
-            FROM import_candidate_chosen_catalog AS chosen
-            WHERE chosen.content_hash = choices.content_hash
-            ) AS choices_chosen_catalogs,(
-            SELECT json_group_array(struck.value ORDER BY struck.value)
-            FROM import_candidate_discounted_catalog AS struck
-            WHERE struck.content_hash = choices.content_hash
-            ) AS choices_discounted_catalogs,(
-            SELECT json_group_array(left_out.value ORDER BY left_out.value)
-            FROM import_candidate_excluded_barcode AS left_out
-            WHERE left_out.content_hash = choices.content_hash
-            ) AS choices_excluded_barcodes, COALESCE(verdict.content_hash, 'run ' ||
+            ) AS link_albums, COALESCE(verdict.content_hash, 'run ' ||
                 verdict.identify_run) AS verdict_row, verdict.kind AS verdict_kind,
                 verdict.track_count AS verdict_track_count,(
             SELECT json_group_array(json_object('lookup', failure.lookup, 'catalog',
@@ -207,13 +186,13 @@ sqlive_compose::fragment!(
             owner.content_hash
         LEFT JOIN import_candidate_release_link AS link ON link.content_hash =
             owner.content_hash
-        LEFT JOIN import_candidate_lookup_choices AS choices ON choices.content_hash =
-            owner.content_hash
         LEFT JOIN import_candidate_verdict AS verdict ON verdict.content_hash IS
             owner.content_hash AND verdict.identify_run IS owner.identify_run
     )
-    SELECT statement.owner_row, statement.provenance_row, statement.provenance_kind, statement.provenance_source, statement.provenance_release_id, statement.link_row, statement.link_kind, statement.link_source, statement.link_release_id, statement.link_partners, statement.link_albums, statement.choices_row, statement.choices_disc_id_excluded, statement.choices_search_album, statement.choices_search_artist, statement.choices_chosen_catalogs, statement.choices_discounted_catalogs, statement.choices_excluded_barcodes, statement.verdict_row, statement.verdict_kind, statement.verdict_track_count, statement.verdict_failures, statement.verdict_error_detail, statement.verdict_medium_conflict, statement.verdict_kept_own_draft, statement.ledger_disc_id_step, statement.ledger_barcode_step, statement.ledger_catalog_step, statement.ledger_isrc_step, statement.ledger_search_step, statement.ledger_search_album, statement.ledger_search_artist, statement.ledger_stray_unlisted, statement.ledger_providers, statement.ledger_isrcs, statement.ledger_isrc_shown, statement.ledger_isrc_more_count, statement.ledger_offered_catalogs, statement.ledger_offered_catalog_count, statement.ledger_rows, statement.candidate_matches, signals.*, state_row.*
+    SELECT statement.owner_row, statement.provenance_row, statement.provenance_kind, statement.provenance_source, statement.provenance_release_id, statement.link_row, statement.link_kind, statement.link_source, statement.link_release_id, statement.link_partners, statement.link_albums, statement.verdict_row, statement.verdict_kind, statement.verdict_track_count, statement.verdict_failures, statement.verdict_error_detail, statement.verdict_medium_conflict, statement.verdict_kept_own_draft, statement.ledger_disc_id_step, statement.ledger_barcode_step, statement.ledger_catalog_step, statement.ledger_isrc_step, statement.ledger_search_step, statement.ledger_search_album, statement.ledger_search_artist, statement.ledger_stray_unlisted, statement.ledger_providers, statement.ledger_isrcs, statement.ledger_isrc_shown, statement.ledger_isrc_more_count, statement.ledger_offered_catalogs, statement.ledger_offered_catalog_count, statement.ledger_rows, statement.candidate_matches, choices.*, signals.*, state_row.*
     FROM statement
+    LEFT JOIN @crate::tables::import_state::lookup_choice_rows::LookupChoiceRow AS choices
+        ON choices.choices_hash = statement.owner_row
     LEFT JOIN @crate::tables::import_state::state_fragments::StateRow(owner: (SELECT * FROM owner))
         AS state_row ON state_row.owner_row = statement.owner_row
     LEFT JOIN @crate::tables::import_state::state_fragments::Signals(owner: (SELECT * FROM owner))

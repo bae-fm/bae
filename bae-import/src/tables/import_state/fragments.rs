@@ -80,13 +80,13 @@ sqlive_compose::fragment!(
     },
     r#"
     WITH pick AS (
-        SELECT CASE WHEN pick.content_hash IS NULL THEN 'records'
-                    WHEN pick.album_id IS NULL THEN 'new'
+        SELECT CASE WHEN pick.pick_hash IS NULL THEN 'records'
+                    WHEN pick.picked_album_id IS NULL THEN 'new'
                     ELSE 'album' END AS pick,
-               pick.album_id AS album_id
+               pick.picked_album_id AS album_id
         FROM (SELECT 1)
-        LEFT JOIN import_candidate_album_pick AS pick
-               ON pick.content_hash = (
+        LEFT JOIN @crate::tables::import_state::album_pick_rows::AlbumPickRow AS pick
+               ON pick.pick_hash = (
                    SELECT scan.content_hash
                    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
                        AS scan)),

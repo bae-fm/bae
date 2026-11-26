@@ -3,6 +3,7 @@
 //! ends the candidate's identification.
 
 use super::*;
+use crate::preparations::StoredPreparation;
 use bae_catalogs::rate_limiter::CallClass;
 
 impl ImportServiceHandle {
@@ -212,7 +213,8 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let (candidate, stored) = self.metadata_write_base(&candidate_key).await?;
+        let current = stored.preparation;
         let content_hash = candidate.files.content_hash();
         loop {
             // Read tags before taking the commit lock: a network share can be
@@ -265,7 +267,8 @@ impl ImportServiceHandle {
         link: bae_identify::PressingLink,
         steps: &crate::CatalogApplySteps,
     ) -> Result<u64, crate::ImportError> {
-        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let (candidate, stored) = self.metadata_write_base(&candidate_key).await?;
+        let StoredPreparation { preparation: current, lookup_choices, .. } = stored;
         let content_hash = candidate.files.content_hash();
         let prepared = self.release_for_pick(&candidate_key, &link.record, steps).await?;
         let release = &prepared.release;
@@ -323,16 +326,13 @@ impl ImportServiceHandle {
         // already stands.
         let detail = release.detail(&prepared_partners);
         let picked = bae_catalogs::search::MetadataResult::of_pick(&detail, listed);
-        // The records of the pressing picked, as the folder's text reads them
-        // now: what the year falls back on.
+        // The records of the pressing picked, as the folder's text read them
+        // when the pick began: what the year falls back on.
         let records: Vec<bae_catalogs::search::MetadataResult> = std::iter::once(picked.clone())
             .chain(prepared_partners.iter().map(bae_catalogs::search::MetadataResult::of_release))
             .collect();
-        let state = self.services.tables.load_import_candidate_state(&content_hash).await?;
-        let text = bae_identify::CandidateText::of_stored(
-            state.as_ref().and_then(|state| state.signals.as_ref()),
-            &state.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default(),
-        );
+        let text =
+            bae_identify::CandidateText::of_stored(current.signals.as_ref(), &lookup_choices);
         let metadata = self
             .external_candidate_metadata(
                 release,

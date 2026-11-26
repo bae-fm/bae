@@ -97,6 +97,59 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
 }
 
+#[tokio::test]
+async fn one_statement_reads_a_whole_preparation() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    save_verdict(&db, &candidate, "mb-verdict").await;
+    let key = crate::CandidateKey::folder(&candidate.path);
+    let hash = candidate.files.content_hash();
+    tables.set_candidate_album_pick(&key, crate::AlbumPick::New).await.unwrap();
+
+    let counter = db.track_work_for_test().await.unwrap();
+    let read = tables.load_candidate_preparation(&hash).await.unwrap().expect("it is stored");
+    assert_eq!(counter.take().app_read_statements, 1);
+    let crate::tables::CandidatePreparationRead::Stored(stored) = read else {
+        panic!("the candidate holds a draft");
+    };
+    assert!(stored.preparation.identification.is_some());
+    assert_eq!(stored.album_pick, crate::AlbumPick::New);
+
+    let counter = db.track_work_for_test().await.unwrap();
+    tables.load_candidate_preparation_with_cards(&hash).await.unwrap().expect("it is stored");
+    assert_eq!(counter.take().app_read_statements, 1);
+
+    let counter = db.track_work_for_test().await.unwrap();
+    tables.load_blank_draft(&hash).await.unwrap().expect("the folder has a blank draft");
+    assert_eq!(counter.take().app_read_statements, 1);
+}
+
+#[tokio::test]
+async fn one_statement_answers_which_files_hold_a_verdict() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    let key = crate::CandidateKey::folder(&candidate.path);
+    let held = crate::CandidateFiles::of(&candidate);
+    let decided_since = crate::CandidateFiles { file_edit_revision: 1, ..held.clone() };
+    let files = [held.clone(), decided_since];
+
+    for stored in [false, true] {
+        if stored {
+            save_verdict(&db, &candidate, "mb-verdict").await;
+        }
+        let counter = db.track_work_for_test().await.unwrap();
+        let found = tables.answered_files(&files).await.unwrap();
+        assert_eq!(counter.take().app_read_statements, 1);
+        assert_eq!(found, stored.then(|| held.clone()).into_iter().collect());
+
+        let counter = db.track_work_for_test().await.unwrap();
+        assert_eq!(tables.automatic_run_owed(&key).await.unwrap(), !stored);
+        assert_eq!(counter.take().app_read_statements, 1);
+    }
+}
+
 /// A file-tag reading is taken from the audio its stamp names, so one that
 /// misses a file of it, or names a cover outside it, is a bug of bae's own:
 /// the save fails with the bug the store reports.

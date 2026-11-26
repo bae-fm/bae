@@ -51,7 +51,6 @@ mod claim_rows;
 mod column_list;
 mod cover_rows;
 pub mod current_owner;
-mod draft_read;
 mod draft_store;
 mod draft_values;
 pub(super) mod failure_rows;
@@ -82,7 +81,6 @@ mod verdict_layout;
 mod verdict_rows;
 
 pub(super) use candidate_rows::{CandidateRows, OneCandidate};
-pub(super) use cards_read::load_verdict_cards_on;
 use cards_read::verdict_cards_of_column;
 pub(super) use claim_rows::{
     claimed_records_of_json, claimed_records_sql, offered_covers_sql, store_claims_of_albums_on,
@@ -115,8 +113,8 @@ pub(crate) use preparation_rows::{
 };
 pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 use rows::current_state_of;
+pub(super) use rows::stored_verdict_view;
 pub use rows::DbImportCandidateState;
-pub(super) use rows::{load_states_on, stored_verdict_view};
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
 pub(super) use signal_rows::file_evidence_of_json;
 use signal_rows::{delete_signals, store_signals};
@@ -182,54 +180,6 @@ impl ImportTables {
                 ))
             })
             .process(|(process, content_hash)| Ok(process()?.remove(&content_hash)))
-            .await
-    }
-
-    /// What a run of the candidate `content_hash` starts from: its state and
-    /// its draft, read together. `None` when it holds no draft: it left the
-    /// scan, or this device imported its files.
-    pub(crate) async fn load_candidate_run_start(
-        &self,
-        content_hash: &str,
-    ) -> Result<Option<(DbImportCandidateState, crate::CandidateDraft)>, DbError> {
-        let content_hash = content_hash.to_string();
-        self.store
-            .read(move |sql| {
-                let stated = sql
-                    .query_row(
-                        "SELECT 1 FROM import_candidate_state WHERE content_hash = ?",
-                        [&content_hash],
-                        |_| Ok(()),
-                    )
-                    .optional()?
-                    .is_some();
-                if !stated
-                    || crate::tables::import_origin::imported_release_on(&sql, &content_hash)?
-                        .is_some()
-                {
-                    return Ok(None);
-                }
-                let (draft, _) =
-                    pane_rows::load_draft_and_cover_on(&sql, OneCandidate::Hash(&content_hash))?;
-                let states = load_states_rows_on(
-                    &sql,
-                    CandidateRows::One(OneCandidate::Hash(&content_hash)),
-                )?;
-                Ok(Some((states, draft, content_hash)))
-            })
-            .process(|read| {
-                let Some((states, draft, content_hash)) = read else {
-                    return Ok(None);
-                };
-                // Found stated in this read.
-                let state = states()?.remove(&content_hash).ok_or_else(|| {
-                    DbError::unreadable(
-                        "the stated candidate's import_candidate_state",
-                        &content_hash,
-                    )
-                })?;
-                Ok(Some((state, draft)))
-            })
             .await
     }
 }
