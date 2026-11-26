@@ -54,9 +54,6 @@ struct MacSearchField: View {
                 }
         }
         .modifier(MacSearchFieldBox(kind: kind, focused: focused.wrappedValue))
-        // The box draws the focus ring, so the system's own ring round the
-        // field stays off.
-        .focusEffectDisabled()
         .opacity(isEnabled ? 1 : ThemeOpacity.off)
     }
 
