@@ -6335,7 +6335,9 @@ and bae-cast connects each device and hands playback the channel or sink.
 
 The schema is one migration, which coven applies as migration 1: each
 domain's part of it, in order, each part running after the parts creating the
-tables its triggers fire on. Every table is `STRICT`. "Syncs" means coven
+tables its triggers fire on. Every table is `STRICT` and has a primary key, so
+coven reruns a read only for a write to a row it reads (§3.2); coven's own
+tables are coven's to key. "Syncs" means coven
 syncs its rows (Appendix B); every other table stays on the device.
 A phone's library holds no import tables: they never sync (§6.1), and a phone
 imports nothing (§1.1). A phone's library holds the catalog image cache's
