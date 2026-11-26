@@ -33,6 +33,9 @@ extension ShotScene {
                 error: error,
                 focusesOnAppear: focused
             )
+            // The preview's field is as wide as its boxes; in a sheet the
+            // field spans the column.
+            .fixedSize()
             .disabled(off)
         }
     }
