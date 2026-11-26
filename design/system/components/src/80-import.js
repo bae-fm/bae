@@ -387,11 +387,11 @@
     return h('span', { className: 'bae-m-reclinks' }, list(props.records).map(function (s) { return h(props.buttons ? 'button' : 'a', props.buttons ? { key: s, type: 'button', className: 'bae-m-reclink bae-m-reclink-button' } : { key: s, href: '#', className: 'bae-m-reclink' }, s, h(Glyph, { set: 'mac', name: 'external', size: 8.3, frame: [12, 12] })); }));
   }
   // Find online's pressings as one table: each album (MacReleaseGroup, the children) and its pressings, on one grid that every row shares, so each column starts at one x on every row. The columns are the year, the label, the catalog number, the country, the format and the details, then one for each identifier kind the band found (`kinds`, comma-separated in the band's order), then the chevron. The kinds' names head their columns once, above the first album; the other columns have no headings. A title search's or a typed search's results have no identifier columns.
-  // The label column is as wide as its widest label, at least 200pt, and the details column takes the spare width, at least 150pt. The chevron's column is its 11pt frame and a section's space before it.
+  // Each column but the details is as wide as its widest cell, and never narrower: the year at least 48pt (MacPressingRow's year cell holds 40pt of it, the row's inset the rest), the label at least 200pt (its cell's least width). The details column takes the spare width, at least 150pt, so a table wider than its box runs past the box's edge. The chevron's column is its 11pt frame and a section's space before it.
   var PressingKinds = React.createContext([]);
   function MacPressingTable(props) {
     var kinds = list(props.kinds);
-    var tracks = ['minmax(48px, max-content)', 'minmax(200px, max-content)', 'max-content', 'max-content', 'max-content', 'minmax(150px, 1fr)'].concat(kinds.map(function () { return 'max-content'; }), ['calc(11px + var(--space-section))']);
+    var tracks = ['max-content', 'max-content', 'max-content', 'max-content', 'max-content', 'minmax(150px, 1fr)'].concat(kinds.map(function () { return 'max-content'; }), ['calc(11px + var(--space-section))']);
     return h(PressingKinds.Provider, { value: kinds }, h('div', { className: 'bae-m-ptable', style: { gridTemplateColumns: tracks.join(' ') } },
       kinds.length ? h('div', { className: 'bae-m-ptable-kinds' }, kinds.map(function (k, i) { return h('span', { key: k, className: 'bae-m-ptable-kind', style: { gridColumn: 7 + i } }, k); })) : null,
       props.children));
@@ -430,7 +430,7 @@
       props.notes ? h('span', { key: 'n', className: 'bae-m-prow-notes' }, sv(props.notes)) : null,
       props.inLibrary ? h('span', { key: 'l', className: 'bae-m-prow-inlib' }, h(StatusGlyph, { tone: 'success', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular' }), 'In library') : null].filter(Boolean);
     return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected', props.inLibrary && 'bae-m-prow-inlibrary') },
-      cell('y', 'bae-strong bae-num', sv(props.year)),
+      cell('y', 'bae-strong bae-num', sv(props.year), 'bae-m-prow-year'),
       cell('l', 'bae-muted', sv(props.label), 'bae-m-prow-label'),
       cell('c', 'bae-m-tertiary', sv(props.catalog)),
       cell('o', 'bae-m-tertiary', sv(props.country)),

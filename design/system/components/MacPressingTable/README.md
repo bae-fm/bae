@@ -4,6 +4,6 @@ Find online's pressings as one table (decision #2562): each album, a `MacRelease
 
 The columns are the year, the label, the catalog number, the country, the format and the details, then one for each identifier kind the band found (`kinds`, comma-separated in the band's order), then the chevron. The identifier columns carry their names once, above the first album, and the other columns have no headings. A run that found its releases by the title search, and a typed search, have no identifier columns.
 
-The label column is as wide as its widest label, at least 200pt, with 8pt more space after it, and the details column takes the spare width. Columns are 16pt apart, and the chevron is 40pt from the last column.
+The label column is as wide as its widest label, at least 200pt, with 8pt more space after it, and the details column takes the spare width, at least 150pt. Every other column is as wide as its widest cell, the year's at least 48pt, and never narrower: a table wider than its box runs past the box's edge. Columns are 16pt apart, and the chevron is 40pt from the last column.
 
 **In the code:** macOS: `ReleaseGroupListView` (`Views/Import/Search/ReleaseGroupListView.swift`).
