@@ -338,7 +338,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_card (
     year_max     INTEGER,
     sources      TEXT NOT NULL CHECK (json_valid(sources)),
     headings     TEXT CHECK (json_valid(headings)),
-    UNIQUE (list, card)
+    PRIMARY KEY (list, card)
 ) STRICT;
 
 -- What each card of a list says, which the layout write stores when it
@@ -353,7 +353,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_card_text (
     kind         TEXT NOT NULL CHECK (kind IN ('title', 'artist', 'label')),
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
     text         TEXT NOT NULL CHECK (text <> ''),
-    UNIQUE (list, card, kind, ordinal)
+    PRIMARY KEY (list, card, kind, ordinal)
 ) STRICT;
 
 -- What a row lists where its records state a fact, as `Pressing::statements`
@@ -377,6 +377,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_row_statement (
     value        TEXT NOT NULL CHECK (value <> ''),
     catalogs     TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(catalogs) AND json_type(catalogs) = 'array'),
-    UNIQUE (list, listing, pressing, fact, line, ordinal),
+    PRIMARY KEY (list, listing, pressing, fact, line, ordinal),
     CHECK (line = 0 OR fact IN ('label_name', 'catalog_number'))
 ) STRICT;
