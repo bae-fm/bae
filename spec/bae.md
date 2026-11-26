@@ -1783,7 +1783,9 @@ neither has a typed search. The label column is as wide as its widest label,
 at least 200pt, with 8pt more space after it, and the details column takes the
 spare width. Columns are 16pt apart, and the chevron is 40pt from the last
 column. The year is strong, the label secondary, and the catalog number,
-country, format and details tertiary. When a row's lead record names a pressing the library already
+country, format and details tertiary. The details cell shows each detail in the
+catalog's own words and casing, such as `Club edition` or `LP`, as separate
+words with no separator between one detail and the next. When a row's lead record names a pressing the library already
 holds, every list that shows that row says *In library*. The label follows
 the library as it gains and loses the release.
 
