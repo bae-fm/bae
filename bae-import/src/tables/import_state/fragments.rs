@@ -84,8 +84,10 @@ sqlive_compose::fragment!(
                pick.album_id AS album_id
         FROM (SELECT 1)
         LEFT JOIN import_candidate_album_pick AS pick
-               ON pick.content_hash = (SELECT scan.content_hash FROM scan_candidate AS scan
-                                       WHERE scan.path = :key)),
+               ON pick.content_hash = (
+                   SELECT scan.content_hash
+                   FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
+                       AS scan)),
     choice(kind, album_id) AS (
         SELECT pick.pick, pick.album_id FROM pick WHERE pick.pick <> 'records'
         UNION ALL
@@ -98,9 +100,10 @@ sqlive_compose::fragment!(
                            'key', claimed.key, 'album', claimed.album)
                            ORDER BY claimed.position)
                 FROM import_candidate_claimed_record AS claimed
-                WHERE claimed.content_hash = (SELECT scan.content_hash
-                                              FROM scan_candidate AS scan
-                                              WHERE scan.path = :key))))) AS named
+                WHERE claimed.content_hash = (
+                    SELECT scan.content_hash
+                    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
+                        AS scan))))) AS named
         JOIN pick ON pick.pick = 'records')
     SELECT :key AS candidate_album_key, COALESCE(choice.kind, 'none') AS candidate_album_kind,
            album.*
