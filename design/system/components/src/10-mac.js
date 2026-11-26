@@ -49,7 +49,7 @@
       var over = Array.prototype.some.call(el.querySelectorAll('button'), function (b) { return b.scrollWidth > b.clientWidth + 0.5; });
       if (over) stackState[1](true);
     });
-    return h('div', { className: 'bae-m-scrim' },
+    return h('div', { className: 'bae-m-scrim bae-m-scrim-alert' },
       h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-face-sheet bae-m-alert' },
         h('div', { className: 'bae-m-alert-title' }, props.title),
         // `warning`: what the choice costs, as a quiet notice between the title and the message ("Unsent changes will be lost").
