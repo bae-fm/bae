@@ -296,26 +296,14 @@ sqlive_compose::fragment!(
     StateRow with owner(content_hash TEXT, identify_run INTEGER) {
         owner_row: String,
         candidate_key: crate::CandidateKey,
-        draft_author: Option<String>,
-        edits_revision: i64,
-        edits_sheet_places: String,
-        edits_sheet_references: String
+        draft_author: Option<String>
     },
     r#"
     SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row,
-        state.content_hash, state.candidate_key, state.metadata_revision, edit.author AS draft_author, state.edit_revision AS edits_revision, COALESCE((
-            SELECT json_group_array(json_object('sheet_id', place.sheet_id, 'place',
-                place.place, 'medium', place.medium, 'side', place.side) ORDER BY
-                place.sheet_id)
-            FROM import_candidate_sheet_place AS place
-            WHERE place.content_hash = state.content_hash
-            ), '[]') AS edits_sheet_places, COALESCE((
-            SELECT json_group_array(json_object('sheet_id', binding.sheet_id, 'file_reference',
-                binding.file_reference, 'file_id', binding.file_id) ORDER BY binding.sheet_id,
-                binding.file_reference)
-            FROM import_candidate_sheet_reference AS binding
-            WHERE binding.content_hash = state.content_hash
-            ), '[]') AS edits_sheet_references
+        state.content_hash, state.candidate_key, state.metadata_revision, edit.author AS draft_author, state.edit_revision,
+        @crate::tables::import_state::file_decision_rows::SheetPlaces(parent: state) AS places,
+        @crate::tables::import_state::file_decision_rows::SheetReferences(parent: state)
+            AS bindings
     FROM owner
     JOIN import_candidate_state AS state ON state.content_hash = owner.content_hash
     LEFT JOIN import_candidate_edit AS edit ON edit.content_hash = state.content_hash

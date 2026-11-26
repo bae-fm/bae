@@ -41,55 +41,89 @@ pub(super) fn insert_file_edits(
     Ok(())
 }
 
-/// A candidate's file decisions as columns of a read that joins its state
-/// row as `state`: the revision they stand at, and the sheet places and the
-/// `FILE` reference bindings riding on it as JSON arrays.
-pub(super) const FILE_EDITS_COLUMNS: &str = "state.edit_revision AS edits_revision, \
-     (SELECT json_group_array(json_object( \
-          'sheet_id', place.sheet_id, 'place', place.place, 'medium', place.medium, \
-          'side', place.side) ORDER BY place.sheet_id) \
-      FROM import_candidate_sheet_place AS place \
-      WHERE place.content_hash = state.content_hash) AS edits_sheet_places, \
-     (SELECT json_group_array(json_object( \
-          'sheet_id', binding.sheet_id, 'file_reference', binding.file_reference, \
-          'file_id', binding.file_id) ORDER BY binding.sheet_id, binding.file_reference) \
-      FROM import_candidate_sheet_reference AS binding \
-      WHERE binding.content_hash = state.content_hash) AS edits_sheet_references";
+// The places the user put a candidate's sheets on, and the `FILE` reference
+// bindings they decided. The pane's state row and `FileEdits` spread these.
+sqlive_compose::fragment!(
+    SheetPlaces on import_candidate_state {
+        struct StoredSheetPlace {
+            sheet_id: String,
+            place: String,
+            medium: Option<i64>,
+            side: Option<i64>
+        }
+        sheet_places: json<Vec<StoredSheetPlace>>
+    },
+    r#"
+    SELECT json_group_array(json_object('sheet_id', place.sheet_id, 'place', place.place,
+               'medium', place.medium, 'side', place.side) ORDER BY place.sheet_id)
+               AS sheet_places
+    FROM import_candidate_sheet_place AS place
+    WHERE place.content_hash = @parent.content_hash
+"#);
 
-/// One candidate's [`FILE_EDITS_COLUMNS`] as SQLite hands them over, its
-/// decisions still JSON.
+sqlive_compose::fragment!(
+    SheetReferences on import_candidate_state {
+        struct StoredSheetReference {
+            sheet_id: String,
+            file_reference: String,
+            file_id: Option<String>
+        }
+        sheet_references: json<Vec<StoredSheetReference>>
+    },
+    r#"
+    SELECT json_group_array(json_object('sheet_id', binding.sheet_id,
+               'file_reference', binding.file_reference, 'file_id', binding.file_id)
+               ORDER BY binding.sheet_id, binding.file_reference) AS sheet_references
+    FROM import_candidate_sheet_reference AS binding
+    WHERE binding.content_hash = @parent.content_hash
+"#);
+
+// The file decisions of each candidate in `keys` that has a state row, with
+// the revision they stand at.
+sqlive_compose::fragment!(
+    FileEdits with keys(content_hash TEXT),
+    r#"
+    SELECT state.content_hash, state.edit_revision,
+        @crate::tables::import_state::file_decision_rows::SheetPlaces(parent: state) AS places,
+        @crate::tables::import_state::file_decision_rows::SheetReferences(parent: state)
+            AS bindings
+    FROM keys
+    JOIN import_candidate_state AS state ON state.content_hash = keys.content_hash
+"#
+);
+
+sqlive_compose::read!(
+    FileEditsOf(content_hashes: String),
+    r#"
+    SELECT decided.*
+    FROM @crate::tables::import_state::file_decision_rows::FileEdits(
+        keys: (SELECT value AS content_hash FROM json_each(:content_hashes))) AS decided
+"#
+);
+
+// The file decisions of every candidate a decision was made for: those that
+// hold one, and those whose revision moved past zero though none stands now.
+sqlive_compose::read!(
+    EveryDecidedFileEdits,
+    r#"
+    SELECT decided.*
+    FROM @crate::tables::import_state::file_decision_rows::FileEdits(keys: (
+        SELECT state.content_hash
+        FROM import_candidate_state AS state
+        WHERE state.edit_revision > 0
+           OR EXISTS (SELECT 1 FROM import_candidate_sheet_place AS placed
+                      WHERE placed.content_hash = state.content_hash)
+           OR EXISTS (SELECT 1 FROM import_candidate_sheet_reference AS bound
+                      WHERE bound.content_hash = state.content_hash))) AS decided
+"#
+);
+
+/// One candidate's file decisions as its rows hold them.
 pub(super) struct StoredFileEdits {
     content_hash: String,
     revision: i64,
-    sheet_places: String,
-    sheet_references: String,
-}
-
-/// The [`FILE_EDITS_COLUMNS`] of `row`, whose state row is `content_hash`.
-pub(super) fn read_file_edits(row: &Row<'_>) -> rusqlite::Result<StoredFileEdits> {
-    Ok(StoredFileEdits {
-        content_hash: row.get("content_hash")?,
-        revision: row.get("edits_revision")?,
-        sheet_places: row.get("edits_sheet_places")?,
-        sheet_references: row.get("edits_sheet_references")?,
-    })
-}
-
-/// One sheet's place as [`FILE_EDITS_COLUMNS`] holds it.
-#[derive(serde::Deserialize)]
-struct StoredSheetPlace {
-    sheet_id: String,
-    place: String,
-    medium: Option<i64>,
-    side: Option<i64>,
-}
-
-/// One `FILE` reference binding as [`FILE_EDITS_COLUMNS`] holds it.
-#[derive(serde::Deserialize)]
-struct StoredSheetReference {
-    sheet_id: String,
-    file_reference: String,
-    file_id: Option<String>,
+    places: SheetPlaces,
+    bindings: SheetReferences,
 }
 
 impl StoredFileEdits {
@@ -98,31 +132,29 @@ impl StoredFileEdits {
     pub(super) fn of(state: &super::state_fragments::StateRow) -> Self {
         Self {
             content_hash: state.content_hash.clone(),
-            revision: state.edits_revision,
-            sheet_places: state.edits_sheet_places.clone(),
-            sheet_references: state.edits_sheet_references.clone(),
+            revision: state.edit_revision,
+            places: state.places.clone(),
+            bindings: state.bindings.clone(),
         }
     }
-}
 
-impl StoredFileEdits {
-    /// The candidate the decisions are of.
-    pub(super) fn content_hash(&self) -> &str {
-        &self.content_hash
+    /// The decisions a row of [`FileEdits`] holds.
+    fn of_row(row: FileEdits) -> Self {
+        Self {
+            content_hash: row.content_hash,
+            revision: row.edit_revision,
+            places: row.places,
+            bindings: row.bindings,
+        }
     }
 
     pub(super) fn edits(self) -> Result<CandidateFileEdits, DbError> {
         let content_hash = &self.content_hash;
-        let unreadable_json = |what: &str, json: &str, error: serde_json::Error| {
-            DbError::unreadable_json(format!("{content_hash}'s stored {what}"), json, error)
-        };
         let mut edits = CandidateFileEdits {
             revision: to_u64(self.revision, &format!("{content_hash}'s file edit revision"))?,
             ..CandidateFileEdits::default()
         };
-        let places: Vec<StoredSheetPlace> = serde_json::from_str(&self.sheet_places)
-            .map_err(|error| unreadable_json("sheet places", &self.sheet_places, error))?;
-        for stored in places {
+        for stored in self.places.sheet_places {
             let place = SheetPlace::from_columns(
                 &format!("the import_candidate_sheet_place row of {}", stored.sheet_id),
                 &stored.place,
@@ -131,9 +163,7 @@ impl StoredFileEdits {
             )?;
             edits.sheet_places.set(stored.sheet_id, place);
         }
-        let references: Vec<StoredSheetReference> = serde_json::from_str(&self.sheet_references)
-            .map_err(|error| unreadable_json("sheet references", &self.sheet_references, error))?;
-        for stored in references {
+        for stored in self.bindings.sheet_references {
             edits.sheet_bindings.set_reference(
                 stored.sheet_id,
                 stored.file_reference,
@@ -142,6 +172,23 @@ impl StoredFileEdits {
         }
         Ok(edits)
     }
+}
+
+/// Each candidate's decisions in `rows`, keyed by its content hash.
+fn edits_by_hash(rows: Vec<FileEdits>) -> Result<HashMap<String, CandidateFileEdits>, DbError> {
+    rows.into_iter()
+        .map(|row| {
+            let stored = StoredFileEdits::of_row(row);
+            Ok((stored.content_hash.clone(), stored.edits()?))
+        })
+        .collect()
+}
+
+/// The request of [`FileEditsOf`] for `content_hashes`.
+fn file_edits_of(content_hashes: &[String]) -> Result<FileEditsOfParams, DbError> {
+    let content_hashes = serde_json::to_string(content_hashes)
+        .map_err(|error| DbError::encode("the content hashes to read decisions of", error))?;
+    Ok(FileEditsOfParams { content_hashes })
 }
 
 /// Replace every file decision held for `content_hash` with `edits`.
@@ -224,23 +271,12 @@ impl ImportTables {
         &self,
         content_hashes: &[String],
     ) -> Result<HashMap<String, CandidateFileEdits>, DbError> {
-        let hashes = serde_json::to_string(content_hashes)
-            .map_err(|error| DbError::encode("the content hashes to read decisions of", error))?;
+        let request = file_edits_of(content_hashes)?;
         self.store
             .read(move |sql| {
-                let rows = sql.query(
-                    &format!(
-                        "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
-                         FROM import_candidate_state AS state \
-                         WHERE state.content_hash IN (SELECT value FROM json_each(?))"
-                    ),
-                    [hashes],
-                    read_file_edits,
-                )?;
+                let rows = statement_rows(&sql, &request)?;
                 Ok(Box::new(move || {
-                    rows.into_iter()
-                        .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
-                        .collect::<Result<HashMap<_, _>, DbError>>()
+                    edits_by_hash(rows.into_iter().map(|row| row.decided).collect())
                 }) as FinishRead<HashMap<String, CandidateFileEdits>>)
             })
             .process(|process| process())
@@ -282,24 +318,9 @@ impl ImportTables {
 pub(crate) fn load_stored_candidate_edits_on(
     sql: &impl coven::SqlRead,
 ) -> Result<FinishRead<crate::folder_scanner::StoredCandidateEdits>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
-             FROM import_candidate_state AS state \
-             WHERE state.edit_revision > 0 \
-                OR EXISTS (SELECT 1 FROM import_candidate_sheet_place AS decided \
-                           WHERE decided.content_hash = state.content_hash) \
-                OR EXISTS (SELECT 1 FROM import_candidate_sheet_reference AS decided \
-                           WHERE decided.content_hash = state.content_hash)"
-        ),
-        [],
-        read_file_edits,
-    )?;
+    let rows = statement_rows(sql, &EveryDecidedFileEditsParams {})?;
     Ok(Box::new(move || {
-        let edits = rows
-            .into_iter()
-            .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
-            .collect::<Result<HashMap<_, _>, DbError>>()?;
+        let edits = edits_by_hash(rows.into_iter().map(|row| row.decided).collect())?;
         Ok(crate::folder_scanner::StoredCandidateEdits::new(edits))
     }))
 }
@@ -312,18 +333,13 @@ pub(crate) fn load_candidate_file_edits_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<FinishRead<CandidateFileEdits>, DbError> {
-    let stored = sql
-        .query_row(
-            &format!(
-                "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
-                 FROM import_candidate_state AS state WHERE state.content_hash = ?"
-            ),
-            [content_hash],
-            read_file_edits,
-        )
-        .optional()?;
+    let request = file_edits_of(&[content_hash.to_string()])?;
+    let stored = statement_optional(sql, &request)?;
     Ok(Box::new(move || {
-        stored.map_or_else(|| Ok(CandidateFileEdits::default()), |stored| stored.edits())
+        stored.map_or_else(
+            || Ok(CandidateFileEdits::default()),
+            |row| StoredFileEdits::of_row(row.decided).edits(),
+        )
     }))
 }
 

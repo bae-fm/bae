@@ -55,7 +55,7 @@ mod draft_read;
 mod draft_store;
 mod draft_values;
 pub(super) mod failure_rows;
-mod file_decision_rows;
+pub mod file_decision_rows;
 pub(crate) mod fragments;
 mod import_commit;
 mod layout;
