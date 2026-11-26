@@ -15,10 +15,12 @@ extension ShotScene {
         ) {
             let size = CGSize(width: 1_200, height: 1_100)
             let uiStore = UiStore()
+            let detailAnswered = AlbumDetailAnswered()
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
                 albumCount: 4,
                 openAlbum: true,
+                detailAnswered: detailAnswered,
                 detail: creditedBoardAlbum()
             )
             let images = coverGalleryImages()
@@ -32,7 +34,11 @@ extension ShotScene {
                 ),
                 images: images
             ) {
+                // The page asks for its large cover once it has the album's
+                // detail, so until the read answers no image is unanswered
+                // for it.
                 (backing.session.albums.list?.positionCount ?? 0) > 0
+                    && detailAnswered.answered
             }
         }
     ]
