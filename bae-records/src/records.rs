@@ -68,6 +68,7 @@ pub(crate) mod identity_merges;
 pub mod name_sort;
 pub mod queued_uploads;
 pub mod release_records;
+pub mod spread_fragments;
 // Only identifying a release, a desktop operation, changes its records.
 #[cfg(desktop)]
 pub use release_records::RecordsChange;

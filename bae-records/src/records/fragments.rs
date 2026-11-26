@@ -8,7 +8,7 @@ use crate::LibraryStatus;
 use bae_store::DbError;
 
 sqlive_compose::fragment!(
-    ReleaseAlbum { release_id: String, album_id: String },
+    ReleaseAlbum,
     r#"
     SELECT release.id AS release_id, release.album_id
     FROM releases AS release
@@ -98,10 +98,19 @@ sqlive_compose::fragment!(
 impl LibraryStatusRows {
     /// Which library albums hold the release.
     pub fn status(self) -> Result<LibraryStatus, DbError> {
-        let albums: Vec<StoredAlbumMatch> = serde_json::from_str(&self.albums)
-            .map_err(|error| DbError::unreadable_json("a library status", &self.albums, error))?;
-        Ok(library_status_from(self.release_id, albums))
+        library_status_of_columns(self.release_id, &self.albums)
     }
+}
+
+/// Which library albums hold the release `release_id`, from the JSON array
+/// of albums that [`LibraryStatusRows`] returns.
+pub fn library_status_of_columns(
+    release_id: String,
+    albums: &str,
+) -> Result<LibraryStatus, DbError> {
+    let albums: Vec<StoredAlbumMatch> = serde_json::from_str(albums)
+        .map_err(|error| DbError::unreadable_json("a library status", albums, error))?;
+    Ok(library_status_from(release_id, albums))
 }
 
 sqlive_compose::fragment!(
@@ -145,5 +154,26 @@ impl AlbumRecordsName {
     /// The library album the records name.
     pub fn into_album_id(self) -> String {
         self.album_id
+    }
+}
+
+sqlive_compose::fragment!(
+    LibraryAlbum,
+    r#"
+    SELECT album.id AS album_id, album.title,
+           @crate::records::fragments::AlbumCredits(parent: album) AS credits
+    FROM albums AS album
+"#
+);
+
+impl LibraryAlbum {
+    /// The album's id, title and credits as the JSON array that
+    /// [`super::read::credit_line_of_json`] reads.
+    pub fn into_parts(self) -> (String, String, String) {
+        (
+            self.album_id,
+            self.title,
+            self.credits.map_or_else(|| "[]".to_owned(), |credits| credits.credits),
+        )
     }
 }
