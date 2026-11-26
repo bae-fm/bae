@@ -52,20 +52,7 @@ extension ShotScene {
     /// The sheet the default row shows.
     private static func cloudHomeSheet() -> some View {
         MacSheet("Set up a cloud home", width: 460) {
-            Text(verbatim: "Content")
-                .foregroundStyle(Theme.textSecondary)
-                .padding(ThemeSpace.group)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay {
-                    RoundedRectangle(cornerRadius: ThemeRadius.card)
-                        .strokeBorder(
-                            Theme.hairlineStrong,
-                            style: StrokeStyle(
-                                lineWidth: 1,
-                                dash: [4, 3]
-                            )
-                        )
-                }
+            PreviewSlot("Content")
         } footer: {
             MacSheetFooter {
                 MacButton("Cancel") {}
