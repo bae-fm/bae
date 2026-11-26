@@ -94,31 +94,31 @@ extension ShotScene {
         part: Bool = false
     ) -> ShotScene {
         component(id, width: 842, height: 76, images: coverStore()) {
-            let row = MacLibraryRow(
-                picture: art.map {
-                    BridgeImageRef(id: $0, version: "1", imageType: .cover)
-                },
-                title: title,
-                subtitle: subtitle,
-                trailing: trailing,
-                hover: hover,
-                selected: selected,
-                loading: loading,
-                bleed: bleed,
-                credit: credit,
-                part: part
-            )
+            let picture = art.map {
+                BridgeImageRef(id: $0, version: "1", imageType: .cover)
+            }
             Group {
                 if credit {
-                    row
+                    MacLibraryRow(
+                        picture: picture,
+                        title: title,
+                        subtitle: subtitle,
+                        trailing: trailing,
+                        credit: true
+                    )
                 }
                 else {
-                    Button {
-                    } label: {
-                        row
-                    }
-                    .buttonStyle(.accentPlain)
-                    .disabled(loading)
+                    MacLibraryRowButton(
+                        picture: picture,
+                        title: title,
+                        subtitle: subtitle,
+                        trailing: trailing,
+                        selected: selected,
+                        loading: loading,
+                        bleed: bleed,
+                        part: part,
+                        showsHover: hover
+                    ) {}
                 }
             }
             .frame(width: 842, alignment: .leading)

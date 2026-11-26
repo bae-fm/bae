@@ -147,6 +147,8 @@ struct MacLibraryRowButton: View {
     var loading = false
     var bleed = false
     var part = false
+    /// Draw the row as if the pointer were on it, which a shot cannot do.
+    var showsHover = false
     let action: () -> Void
 
     @State
@@ -160,7 +162,7 @@ struct MacLibraryRowButton: View {
                 title: title,
                 subtitle: subtitle,
                 trailing: trailing,
-                hover: hovering,
+                hover: hovering || showsHover,
                 selected: selected,
                 dropping: dropping,
                 loading: loading,
@@ -169,6 +171,13 @@ struct MacLibraryRowButton: View {
             )
         }
         .buttonStyle(.accentPlain)
+        // The board boxes the row by its fill, which a bleed row draws 8pt
+        // past its layout on each side, a part's left side excepted.
+        .accessibilityBox(
+            leading: bleed
+                ? (part ? -ThemeSpace.related : ThemeSpace.related) : 0,
+            trailing: bleed ? ThemeSpace.related : 0
+        )
         .disabled(loading)
         .onHover { hovering = $0 }
     }
