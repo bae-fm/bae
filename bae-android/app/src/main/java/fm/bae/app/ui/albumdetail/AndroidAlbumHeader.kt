@@ -45,8 +45,14 @@ import uniffi.bae_bridge.BridgeReleasePlayability
 private val COVER_SIZE = 150.dp
 private val STAR_SIZE = 12.dp
 
-/** How far a rating mark hangs below its line's top: its centre sits 3.17 dp above the baseline. */
-private val MARK_DROP = 0.83.dp
+/**
+ * How far the stars' mark hangs below its line's top. The mark is the number beside one star, 16 dp tall, so the
+ * star's centre sits 3.17 dp above the baseline.
+ */
+private val STARS_MARK_DROP = 0.83.dp
+
+/** How far the heart hangs below its line's top: alone it is 12 dp tall, so it hangs 2 dp below the star. */
+private val HEART_MARK_DROP = STARS_MARK_DROP + 2.dp
 
 /**
  * The album page's head: the cover, then the title, the artist, the year with the person's rating after it, the
@@ -120,6 +126,7 @@ private fun YearAndRating(
     year: String?,
     shownRating: () -> BridgeAlbumRating,
 ) {
+    var markDrop = STARS_MARK_DROP
     val mark: (@Composable () -> Unit)? =
         when (val rating = shownRating()) {
             BridgeAlbumRating.Hidden -> {
@@ -132,6 +139,7 @@ private fun YearAndRating(
             }
 
             is BridgeAlbumRating.Heart -> {
+                markDrop = HEART_MARK_DROP
                 if (rating.hearted) ({ Heart(on = true, size = STAR_SIZE) }) else null
             }
         }
@@ -144,7 +152,7 @@ private fun YearAndRating(
         if (year != null && mark != null) {
             Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
         }
-        mark?.let { Box(modifier = Modifier.padding(top = MARK_DROP)) { it() } }
+        mark?.let { Box(modifier = Modifier.padding(top = markDrop)) { it() } }
     }
 }
 
