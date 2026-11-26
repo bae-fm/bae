@@ -1,6 +1,8 @@
 package fm.bae.app.shots
 
 import androidx.compose.ui.test.onRoot
+import builds.shots.ElementList
+import builds.shots.ReadingOrder
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.removeLibraryParts
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
@@ -9,10 +11,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /** The element list of a screen with a dialog over it. */
-class DialogReadingOrderTest : BoardShot() {
+class DialogReadingOrderTest : BaeBoardShot() {
     @Test
     fun theScreenUnderADialogIsListedInTheOrderItHasWithoutTheDialog() {
-        compose.settle {
+        compose.settleInBaeLook {
             InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
                 removeLibraryParts(sceneLibrary, RemovalLoss.Counted(holdsUnsent = false), {}, {})
             }
@@ -22,6 +24,7 @@ class DialogReadingOrderTest : BoardShot() {
                 .of(
                     "android.test.dialog-over-welcome",
                     compose.onRoot().fetchSemanticsNode(),
+                    embedded = emptyList(),
                     unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(),
                     reading = ReadingOrder.of(compose.onRoot().fetchSemanticsNode().root as android.view.View),
                 ).getJSONArray("elements")

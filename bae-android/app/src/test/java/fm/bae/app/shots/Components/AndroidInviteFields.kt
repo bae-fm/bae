@@ -7,7 +7,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeStorageLocation
 
 /** The component shots of `AndroidInviteFields`, one for each row of its preview. */
-class AndroidInviteFieldsShots : BoardShot() {
+class AndroidInviteFieldsShots : BaeBoardShot() {
     @Test
     fun androidComponentInviteFieldsS3TheirKey() =
         component("android.component.invite-fields.s3-their-key") {

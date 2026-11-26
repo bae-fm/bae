@@ -11,7 +11,7 @@ import fm.bae.app.ui.components.TextFieldKind
 import org.junit.Test
 
 /** The component shots of `AndroidTextField`, one for each row of its preview. */
-class AndroidTextFieldShots : BoardShot() {
+class AndroidTextFieldShots : BaeBoardShot() {
     @Test
     fun androidComponentTextFieldResting() = component("android.component.text-field.resting") { NameField(value = "Home music") }
 

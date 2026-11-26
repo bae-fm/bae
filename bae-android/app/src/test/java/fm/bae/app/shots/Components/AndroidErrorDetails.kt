@@ -7,7 +7,7 @@ import fm.bae.app.ui.components.AndroidErrorDetails
 import org.junit.Test
 
 /** The component shots of `AndroidErrorDetails`, one for each row of its preview. */
-class AndroidErrorDetailsShots : BoardShot() {
+class AndroidErrorDetailsShots : BaeBoardShot() {
     @Test
     fun androidComponentErrorDetailsCauses() =
         component("android.component.error-details.causes") {

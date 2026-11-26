@@ -17,7 +17,7 @@ import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 
 /** The component shots of `AndroidDetailScreen`, one for each row of its preview. */
-class AndroidDetailScreenShots : BoardShot() {
+class AndroidDetailScreenShots : BaeBoardShot() {
     @Test
     fun androidComponentDetailScreenResting() = component("android.component.detail-screen.resting") { Detail {} }
 

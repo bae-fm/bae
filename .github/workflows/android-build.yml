@@ -169,6 +169,9 @@ jobs:
       # bindings, and stages the .so files into the app's jniLibs.
       run: ./bae-bridge/build-android.sh ${{ inputs.profile == 'release' && '--release' || '' }}
 
+    # The unit tests compile builds' shots harness, which Gradle has builds write.
+    - uses: ./.github/actions/install-builds
+
     - name: Run app unit tests
       # Robolectric/JVM tests (no device) over the app's playback and reducer
       # logic — including the audio-focus resume policy. Needs the generated

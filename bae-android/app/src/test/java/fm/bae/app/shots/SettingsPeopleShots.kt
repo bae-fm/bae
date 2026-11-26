@@ -14,7 +14,7 @@ import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeSharingRefusal
 
 /** The shots of the ready android.settings.people*, person*, devices* and add-device* boards: the pages of People and devices. */
-class SettingsPeopleShots : BoardShot() {
+class SettingsPeopleShots : BaeBoardShot() {
     /** People and devices as an admin sees it: Ana's own card, Ben, and Invite. */
     @Test
     fun androidSettingsPeople() =

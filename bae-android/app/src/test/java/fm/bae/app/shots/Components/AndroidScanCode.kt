@@ -4,7 +4,7 @@ import fm.bae.app.ui.components.AndroidScanCode
 import org.junit.Test
 
 /** The component shots of `AndroidScanCode`, one for each row of its preview. */
-class AndroidScanCodeShots : BoardShot() {
+class AndroidScanCodeShots : BaeBoardShot() {
     @Test
     fun androidComponentScanCodeDefault() =
         component("android.component.scan-code.default") {

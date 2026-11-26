@@ -13,7 +13,7 @@ import org.junit.Test
  * The component shots of `AndroidQRScanner`, one for each row of its preview. A shot has no camera, so
  * each row passes a black picture, as the preview draws it.
  */
-class AndroidQRScannerShots : BoardShot() {
+class AndroidQRScannerShots : BaeBoardShot() {
     @Test
     fun androidComponentQrScannerInstructions() =
         component("android.component.qr-scanner.instructions") {

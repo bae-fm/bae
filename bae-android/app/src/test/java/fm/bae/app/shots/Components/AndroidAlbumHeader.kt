@@ -25,7 +25,7 @@ import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeTermLabel
 
 /** The component shots of `AndroidAlbumHeader`, one for each row of its preview. */
-class AndroidAlbumHeaderShots : BoardShot() {
+class AndroidAlbumHeaderShots : BaeBoardShot() {
     @Test
     fun androidComponentAlbumHeaderDefault() = component("android.component.album-header.default") { Header(harborDetail) }
 

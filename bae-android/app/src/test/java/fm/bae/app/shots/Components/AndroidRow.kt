@@ -14,7 +14,7 @@ import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
 /** The component shots of `AndroidRow`, one for each row of its preview. */
-class AndroidRowShots : BoardShot() {
+class AndroidRowShots : BaeBoardShot() {
     @Test
     fun androidComponentRowTitle() = component("android.component.row.title") { RowInCard { AndroidRow(title = "Sync") } }
 

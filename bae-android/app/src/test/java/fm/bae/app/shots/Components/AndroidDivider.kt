@@ -12,7 +12,7 @@ import fm.bae.app.ui.components.AndroidDivider
 import org.junit.Test
 
 /** The component shots of `AndroidDivider`, one for each row of its preview. */
-class AndroidDividerShots : BoardShot() {
+class AndroidDividerShots : BaeBoardShot() {
     @Test
     fun androidComponentDividerDivider() =
         component("android.component.divider.divider") {

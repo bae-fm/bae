@@ -13,7 +13,7 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
 
 /** The shots of the android.storage.pinning.* boards: the Pinning screen with a queue, with a failure, and empty. */
-class PinningBoardShots : BoardShot() {
+class PinningBoardShots : BaeBoardShot() {
     @Test
     fun androidStoragePinning() =
         shot("android.storage.pinning") {

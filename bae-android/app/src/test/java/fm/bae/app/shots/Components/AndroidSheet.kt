@@ -11,7 +11,7 @@ import fm.bae.app.ui.components.AndroidSheetHeading
 import org.junit.Test
 
 /** The component shots of `AndroidSheet`, one for each row of its preview. */
-class AndroidSheetShots : BoardShot() {
+class AndroidSheetShots : BaeBoardShot() {
     /** The preview pins the sheet 60 from the top of its cell and holds a padded slot in it. */
     @Test
     fun androidComponentSheetDefault() = component("android.component.sheet.default") { SheetOverScrim(top = 60.dp) { Slot() } }

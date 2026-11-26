@@ -8,7 +8,7 @@ import uniffi.bae_bridge.BridgeSourceAudioDifference
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 
 /** The component shots of `AndroidAlbumAudio`, one for each row of its preview. */
-class AndroidAlbumAudioShots : BoardShot() {
+class AndroidAlbumAudioShots : BaeBoardShot() {
     @Test
     fun androidComponentAlbumAudioAudioLine() =
         component("android.component.album-audio.audio-line") { AndroidAlbumAudio("FLAC · 44.1 kHz · 16-bit · Stereo") }

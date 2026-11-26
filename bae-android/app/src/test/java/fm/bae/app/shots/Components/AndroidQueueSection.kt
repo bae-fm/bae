@@ -4,7 +4,7 @@ import fm.bae.app.ui.playback.AndroidQueueSection
 import org.junit.Test
 
 /** The component shots of `AndroidQueueSection`, one for each row of its preview. */
-class AndroidQueueSectionShots : BoardShot() {
+class AndroidQueueSectionShots : BaeBoardShot() {
     @Test
     fun androidComponentQueueSectionUpNext() =
         component("android.component.queue-section.up-next") { AndroidQueueSection("Up next", "Clear up next", {}) }

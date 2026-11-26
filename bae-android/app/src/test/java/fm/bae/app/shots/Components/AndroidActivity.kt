@@ -18,7 +18,7 @@ import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTransferBatch
 
 /** The component shots of `AndroidActivity`, one for each row of its preview. */
-class AndroidActivityShots : BoardShot() {
+class AndroidActivityShots : BaeBoardShot() {
     @Test
     fun androidComponentActivityUpToDate() = component("android.component.activity.up-to-date") { Sheet(activity = idleActivity) }
 

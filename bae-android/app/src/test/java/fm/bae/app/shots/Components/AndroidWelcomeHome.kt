@@ -10,7 +10,7 @@ import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import org.junit.Test
 
 /** The component shots of `AndroidWelcomeHome`, one for each row of its preview. */
-class AndroidWelcomeHomeShots : BoardShot() {
+class AndroidWelcomeHomeShots : BaeBoardShot() {
     @Test
     fun androidComponentWelcomeHomeLibraries() =
         shot("android.component.welcome-home.libraries") { ScreenScene { WelcomeLibrariesScene() } }

@@ -7,7 +7,7 @@ import fm.bae.app.ui.albumdetail.AndroidGalleryCaption
 import org.junit.Test
 
 /** The component shots of `AndroidGalleryCaption`, one for each row of its preview. */
-class AndroidGalleryCaptionShots : BoardShot() {
+class AndroidGalleryCaptionShots : BaeBoardShot() {
     @Test
     fun androidComponentGalleryCaptionSeveralImages() =
         component("android.component.gallery-caption.several-images") {

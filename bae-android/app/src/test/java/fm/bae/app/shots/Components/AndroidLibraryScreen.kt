@@ -33,7 +33,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumAppearance
 
 /** The component shots of `AndroidLibraryScreen`, one for each row of its preview. */
-class AndroidLibraryScreenShots : BoardShot() {
+class AndroidLibraryScreenShots : BaeBoardShot() {
     @Test
     fun androidComponentLibraryScreenTop() = component("android.component.library-screen.top") { LibraryScreenPreview() }
 

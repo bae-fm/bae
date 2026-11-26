@@ -8,7 +8,7 @@ import uniffi.bae_bridge.BridgeCreditRow
 import uniffi.bae_bridge.BridgeTermLabel
 
 /** The component shots of `AndroidAlbumCredits`, one for each row of its preview. */
-class AndroidAlbumCreditsShots : BoardShot() {
+class AndroidAlbumCreditsShots : BaeBoardShot() {
     @Test
     fun androidComponentAlbumCreditsCredits() =
         component("android.component.album-credits.credits") {

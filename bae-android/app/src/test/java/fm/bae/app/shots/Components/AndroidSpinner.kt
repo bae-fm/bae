@@ -5,7 +5,7 @@ import fm.bae.app.ui.components.AndroidSpinner
 import org.junit.Test
 
 /** The component shots of `AndroidSpinner`, one for each row of its preview. */
-class AndroidSpinnerShots : BoardShot() {
+class AndroidSpinnerShots : BaeBoardShot() {
     @Test
     fun androidComponentSpinnerAlone() = component("android.component.spinner.alone", enterMillis = SPINNER_ARC_MILLIS) { AndroidSpinner() }
 

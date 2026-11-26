@@ -6,7 +6,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeStorageKind
 
 /** The component shots of `AndroidUsageKey`, one for each row of its preview. */
-class AndroidUsageKeyShots : BoardShot() {
+class AndroidUsageKeyShots : BaeBoardShot() {
     @Test
     fun androidComponentUsageKeyPinned() =
         component("android.component.usage-key.pinned") { AndroidUsageKey(key(BridgeStorageKind.PINNED, "Pinned", "6.1 GB")) }

@@ -22,7 +22,7 @@ import fm.bae.app.ui.library.GroupByArtistItem
 import org.junit.Test
 
 /** The component shots of `AndroidMenuItem`, one for each row of its preview. */
-class AndroidMenuItemShots : BoardShot() {
+class AndroidMenuItemShots : BaeBoardShot() {
     @Test
     fun androidComponentMenuItemDefault() =
         component("android.component.menu-item.default") {

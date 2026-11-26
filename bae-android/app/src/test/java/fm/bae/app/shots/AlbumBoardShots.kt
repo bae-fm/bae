@@ -55,7 +55,7 @@ import uniffi.bae_bridge.BridgeTrackSpan
 import uniffi.bae_bridge.BridgeTrackWork
 
 /** The shots of the album page's boards: the page with its rating, its works and credits, its catalog links and files. */
-class AlbumBoardShots : BoardShot() {
+class AlbumBoardShots : BaeBoardShot() {
     @Test
     fun androidAlbumMenu() =
         shot("android.album.menu") {

@@ -4,7 +4,7 @@ import fm.bae.app.ui.components.AndroidSegmentedControl
 import org.junit.Test
 
 /** The component shots of `AndroidSegmentedControl`, one for each row of its preview. */
-class AndroidSegmentedControlShots : BoardShot() {
+class AndroidSegmentedControlShots : BaeBoardShot() {
     @Test
     fun androidComponentSegmentedControlChoice() =
         component("android.component.segmented-control.choice") {

@@ -23,7 +23,7 @@ import fm.bae.app.ui.components.ButtonTone
 import org.junit.Test
 
 /** The component shots of `AndroidButton`, one for each row of its preview. */
-class AndroidButtonShots : BoardShot() {
+class AndroidButtonShots : BaeBoardShot() {
     @Test
     fun androidComponentButtonFilled() = component("android.component.button.filled") { JoinButton() }
 

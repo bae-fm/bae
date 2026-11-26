@@ -209,24 +209,50 @@ val logoDrawables =
         outputDir.set(layout.buildDirectory.dir("generated/logo/res"))
     }
 
-extensions.configure<ApplicationAndroidComponentsExtension> {
-    onVariants { variant ->
-        variant.sources.res?.addGeneratedSourceDirectory(logoDrawables, LogoDrawables::outputDir)
+// The shots harness, the Kotlin code that takes the shots inside the unit tests, as the
+// builds on PATH writes it. The shots are unit tests, so every compile of those needs it.
+abstract class ShotsHarness : DefaultTask() {
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @get:Inject
+    abstract val processes: ExecOperations
+
+    @TaskAction
+    fun write() {
+        processes.exec {
+            commandLine("builds", "shots", "harness", "--into", outputDir.get().asFile.path, "android")
+        }
     }
 }
 
-// bae-android/shots-capture.sh passes -Pbae.shotsDir=<dir>: the shot tests then write
+val shotsHarness =
+    tasks.register<ShotsHarness>("shotsHarness") {
+        // Gradle sees no input that says which builds is installed, so the task always runs.
+        // builds rewrites no file of a folder that already holds its harness.
+        outputs.upToDateWhen { false }
+    }
+
+extensions.configure<ApplicationAndroidComponentsExtension> {
+    onVariants { variant ->
+        variant.sources.res?.addGeneratedSourceDirectory(logoDrawables, LogoDrawables::outputDir)
+        variant.unitTest?.sources?.java?.addGeneratedSourceDirectory(shotsHarness, ShotsHarness::outputDir)
+    }
+}
+
+// bae-android/shots-capture.sh passes -Pbuilds.shotsDir=<dir>: the shot tests then write
 // <board>@android.png there; without it they skip, so the ordinary unit test run
-// draws nothing. -Pbae.shotsSelect=<prefixes> (comma-separated board names' starts)
-// limits the boards drawn. -Pbae.shotsBoardSizes=<file> names the JSON of each component board's size.
+// draws nothing. -Pbuilds.shotsSelect=<prefixes> (comma-separated board names' starts)
+// limits the boards drawn. -Pbuilds.shotsBoardSizes=<file> names the JSON of each component board's size.
+// The shots harness reads each as the system property of the same name.
 tasks.withType<Test>().configureEach {
     // A failing test's message, not only its exception's name, so a shot that fails says why.
     testLogging { exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
-    providers.gradleProperty("bae.shotsDir").orNull?.let { dir ->
-        systemProperty("bae.shotsDir", dir)
-        systemProperty("roborazzi.test.record", "true")
-        providers.gradleProperty("bae.shotsSelect").orNull?.let { systemProperty("bae.shotsSelect", it) }
-        providers.gradleProperty("bae.shotsBoardSizes").orNull?.let { systemProperty("bae.shotsBoardSizes", it) }
+    providers.gradleProperty("builds.shotsDir").orNull?.let { dir ->
+        systemProperty("builds.shotsDir", dir)
+        listOf("builds.shotsSelect", "builds.shotsBoardSizes").forEach { name ->
+            providers.gradleProperty(name).orNull?.let { systemProperty(name, it) }
+        }
         outputs.upToDateWhen { false }
     }
 }
@@ -286,8 +312,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation("org.robolectric:robolectric:4.15.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")
-    // Draws a shot's real composable to a PNG in a Robolectric test; the shot tests
-    // (src/test/.../shots) read nothing from the plugin, only call captureRoboImage.
+    // Draws a shot's real composable to a PNG in a Robolectric test: the shots harness
+    // calls captureRoboImage and reads nothing from Roborazzi's plugin.
     testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.0")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.0")
 }

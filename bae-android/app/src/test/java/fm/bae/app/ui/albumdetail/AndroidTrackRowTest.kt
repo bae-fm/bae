@@ -14,10 +14,10 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
+import builds.shots.ElementList
+import builds.shots.ReadingOrder
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.shots.ElementList
-import fm.bae.app.shots.ReadingOrder
-import fm.bae.app.shots.settle
+import fm.bae.app.shots.settleInBaeLook
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -51,7 +51,7 @@ class AndroidTrackRowTest {
 
     @Test
     fun currentTrackLeadIsReadAfterTheAlbumTitleAboveTheRow() {
-        compose.settle {
+        compose.settleInBaeLook {
             TestTheme {
                 Column {
                     Text("Album title")
@@ -69,6 +69,7 @@ class AndroidTrackRowTest {
                 .of(
                     "android.test.track-row",
                     root,
+                    embedded = emptyList(),
                     unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(),
                     reading = ReadingOrder.of(root.root as View),
                 ).getJSONArray("elements")

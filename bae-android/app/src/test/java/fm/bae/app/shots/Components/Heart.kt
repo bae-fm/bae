@@ -5,7 +5,7 @@ import fm.bae.app.ui.components.Heart
 import org.junit.Test
 
 /** The component shot of `Heart`, its preview's Android row. */
-class HeartShots : BoardShot() {
+class HeartShots : BaeBoardShot() {
     @Test
     fun androidComponentHeartAndroidHearted() = component("android.component.heart.android-hearted") { Heart(on = true, size = 16.dp) }
 }

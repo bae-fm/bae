@@ -9,7 +9,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeSyncActivity
 
 /** The component shots of `AndroidActivityButton`, one for each row of its preview. */
-class AndroidActivityButtonShots : BoardShot() {
+class AndroidActivityButtonShots : BaeBoardShot() {
     @Test
     fun androidComponentActivityButtonMoving() =
         component("android.component.activity-button.moving") { ActivityButton(PreviewData.syncActivity(needsAttention = false)) }

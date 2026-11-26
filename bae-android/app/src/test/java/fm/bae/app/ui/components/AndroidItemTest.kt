@@ -12,7 +12,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.shots.settle
+import fm.bae.app.shots.settleInBaeLook
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -29,7 +29,7 @@ class AndroidItemTest {
     /** A row's text starts 16 dp after its leading glyph, as Material's list items start it, and the trail 8 dp after the text. */
     @Test
     fun theTextStartsSixteenAfterTheLeadAndTheTrailEightAfterTheText() {
-        compose.settle {
+        compose.settleInBaeLook {
             TestTheme {
                 Box(Modifier.requiredWidth(300.dp)) {
                     AndroidItem(

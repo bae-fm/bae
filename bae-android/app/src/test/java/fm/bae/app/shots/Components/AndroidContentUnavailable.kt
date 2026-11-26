@@ -9,7 +9,7 @@ import fm.bae.app.ui.library.ListPlaceholder
 import org.junit.Test
 
 /** The component shots of `AndroidContentUnavailable`, one for each row of its preview. */
-class AndroidContentUnavailableShots : BoardShot() {
+class AndroidContentUnavailableShots : BaeBoardShot() {
     @Test
     fun androidComponentContentUnavailableDefault() =
         component("android.component.content-unavailable.default") {

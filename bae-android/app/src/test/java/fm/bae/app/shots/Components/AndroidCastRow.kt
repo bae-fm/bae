@@ -13,7 +13,7 @@ import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRendererKind
 
 /** The component shots of `AndroidCastRow`, one for each row of its preview. */
-class AndroidCastRowShots : BoardShot() {
+class AndroidCastRowShots : BaeBoardShot() {
     @Test
     fun androidComponentCastRowReceiver() =
         component("android.component.cast-row.receiver") {

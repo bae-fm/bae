@@ -11,7 +11,7 @@ import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 
 /** The component shots of `AndroidSyncStatus`, one for each row of its preview. */
-class AndroidSyncStatusShots : BoardShot() {
+class AndroidSyncStatusShots : BaeBoardShot() {
     @Test
     fun androidComponentSyncStatusStatus() = component("android.component.sync-status.status") { SignedOutOfS3(BridgeSyncTone.WARNING) }
 

@@ -4,7 +4,7 @@ import fm.bae.app.ui.downloads.AndroidPinsAtOnce
 import org.junit.Test
 
 /** The component shots of `AndroidPinsAtOnce`, one for each row of its preview. */
-class AndroidPinsAtOnceShots : BoardShot() {
+class AndroidPinsAtOnceShots : BaeBoardShot() {
     @Test
     fun androidComponentPinsAtOnceThreeAtOnce() =
         component("android.component.pins-at-once.three-at-once") { AndroidPinsAtOnce(value = 3u, limit = 6u, onSelect = {}) }

@@ -10,7 +10,7 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
 
 /** The component shots of `AndroidPinningRow`, one for each row of its preview. */
-class AndroidPinningRowShots : BoardShot() {
+class AndroidPinningRowShots : BaeBoardShot() {
     @Test
     fun androidComponentPinningRowQueued() =
         component("android.component.pinning-row.queued") {

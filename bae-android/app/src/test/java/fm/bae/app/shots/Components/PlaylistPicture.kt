@@ -14,7 +14,7 @@ import uniffi.bae_bridge.BridgePlaylistCover
  * The component shots of `PlaylistPicture`, one for each row of its preview. A playlist of four or more
  * releases has a grid of four covers; one of fewer has its first release's cover.
  */
-class PlaylistPictureShots : BoardShot() {
+class PlaylistPictureShots : BaeBoardShot() {
     @Test
     fun androidComponentPlaylistPictureFourReleases() =
         component("android.component.playlist-picture.four-releases") {

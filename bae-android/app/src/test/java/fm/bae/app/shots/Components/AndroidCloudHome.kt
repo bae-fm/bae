@@ -11,7 +11,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeMemberAccess
 
 /** The component shots of `AndroidCloudHome`, one for each row of its preview. */
-class AndroidCloudHomeShots : BoardShot() {
+class AndroidCloudHomeShots : BaeBoardShot() {
     @Test
     fun androidComponentCloudHomeResting() = component("android.component.cloud-home.resting") { CloudHome(key = "AKIA4EXAMPLEOLD") }
 

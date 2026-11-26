@@ -11,7 +11,7 @@ import fm.bae.app.ui.components.AndroidRow
 import org.junit.Test
 
 /** The component shots of `AndroidNote`, one for each row of its preview. */
-class AndroidNoteShots : BoardShot() {
+class AndroidNoteShots : BaeBoardShot() {
     @Test
     fun androidComponentNoteDefault() =
         component("android.component.note.default") {

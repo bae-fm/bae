@@ -9,7 +9,7 @@ import fm.bae.app.ui.components.AndroidRow
 import org.junit.Test
 
 /** The component shots of `AndroidCard`, one for each row of its preview. */
-class AndroidCardShots : BoardShot() {
+class AndroidCardShots : BaeBoardShot() {
     @Test
     fun androidComponentCardRows() =
         component("android.component.card.rows") {

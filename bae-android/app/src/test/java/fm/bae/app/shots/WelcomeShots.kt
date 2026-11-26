@@ -59,7 +59,7 @@ import uniffi.bae_bridge.BridgeSyncTone
 
 /** The shots of the ready android.welcome.* boards. */
 @OptIn(ExperimentalMaterial3Api::class)
-class WelcomeShots : BoardShot() {
+class WelcomeShots : BaeBoardShot() {
     /** The welcome of a phone holding no library: the logo over the tagline, Scan code and Enter code at the foot. */
     @Test
     fun androidWelcomeLibrariesNone() = shot("android.welcome.libraries.none") { ScreenScene { AndroidWelcomeHome() } }

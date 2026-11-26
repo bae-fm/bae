@@ -5,7 +5,7 @@ import fm.bae.app.ui.playback.AndroidPlaceholderLine
 import org.junit.Test
 
 /** The component shots of `AndroidPlaceholderLine`, one for each row of its preview. */
-class AndroidPlaceholderLineShots : BoardShot() {
+class AndroidPlaceholderLineShots : BaeBoardShot() {
     @Test
     fun androidComponentPlaceholderLineLine() =
         component("android.component.placeholder-line.line") { AndroidPlaceholderLine(width = 160.dp, height = 12.dp) }

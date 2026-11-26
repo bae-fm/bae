@@ -10,7 +10,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 
 /** The component shots of `AndroidPinControl`, one for each row of its preview. */
-class AndroidPinControlShots : BoardShot() {
+class AndroidPinControlShots : BaeBoardShot() {
     @Test
     fun androidComponentPinControlQueued() =
         component("android.component.pin-control.queued") { Control(BridgeReleaseDownloadStatus.Queued) }

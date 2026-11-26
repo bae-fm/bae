@@ -6,7 +6,7 @@ import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import org.junit.Test
 
 /** The component shots of `AndroidDialog`, one for each row of its preview. */
-class AndroidDialogShots : BoardShot() {
+class AndroidDialogShots : BaeBoardShot() {
     /** The dialog's window isn't drawn in a test: its words and buttons are, on the surface a dialog has. */
     @Test
     fun androidComponentDialogDefault() =

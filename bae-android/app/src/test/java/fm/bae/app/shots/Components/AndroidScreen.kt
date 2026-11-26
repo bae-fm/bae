@@ -19,7 +19,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeHistoryShown
 
 /** The component shots of `AndroidScreen`, one for each row of its preview. */
-class AndroidScreenShots : BoardShot() {
+class AndroidScreenShots : BaeBoardShot() {
     @Test
     fun androidComponentScreenBack() =
         component("android.component.screen.back") {

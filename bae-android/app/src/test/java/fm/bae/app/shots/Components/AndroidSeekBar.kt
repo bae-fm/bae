@@ -5,7 +5,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeTrackSpan
 
 /** The component shots of `AndroidSeekBar`, one for each row of its preview. */
-class AndroidSeekBarShots : BoardShot() {
+class AndroidSeekBarShots : BaeBoardShot() {
     @Test
     fun androidComponentSeekBarPlaying() = component("android.component.seek-bar.playing") { playing.SeekRow() }
 

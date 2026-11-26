@@ -7,7 +7,7 @@ import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeReleaseRecord
 
 /** The component shots of `AndroidRecordLinks`, one for each row of its preview. */
-class AndroidRecordLinksShots : BoardShot() {
+class AndroidRecordLinksShots : BaeBoardShot() {
     @Test
     fun androidComponentRecordLinksOneCatalog() =
         component("android.component.record-links.one-catalog") { Links(BridgeCatalog.MUSIC_BRAINZ) }

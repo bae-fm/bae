@@ -4,7 +4,7 @@ import fm.bae.app.ui.albumdetail.AndroidUploadLine
 import org.junit.Test
 
 /** The component shots of `AndroidUploadLine`, one for each row of its preview. */
-class AndroidUploadLineShots : BoardShot() {
+class AndroidUploadLineShots : BaeBoardShot() {
     @Test
     fun androidComponentUploadLineQueued() =
         component("android.component.upload-line.queued") {

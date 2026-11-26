@@ -10,7 +10,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeHistoryShown
 
 /** The component shots of `AndroidTopBar`, one for each row of its preview. */
-class AndroidTopBarShots : BoardShot() {
+class AndroidTopBarShots : BaeBoardShot() {
     @Test
     fun androidComponentTopBarBack() = component("android.component.top-bar.back") { AndroidTopBar(onBack = {}, title = "Storage") }
 

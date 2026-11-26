@@ -6,7 +6,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeStars
 
 /** The component shots of `Stars`, one for each row of its preview. */
-class StarsShots : BoardShot() {
+class StarsShots : BaeBoardShot() {
     @Test
     fun androidComponentStarsRated() = component("android.component.stars.rated") { Stars(value = 4, size = 16.dp) }
 

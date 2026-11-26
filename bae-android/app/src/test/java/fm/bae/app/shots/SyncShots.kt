@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 
 /** The shots of the android.settings.sync.* boards. */
-class SyncShots : BoardShot() {
+class SyncShots : BaeBoardShot() {
     /** The Sync page while sync waits, over the library's storage. */
     @Test
     fun androidSettingsSyncPending() =

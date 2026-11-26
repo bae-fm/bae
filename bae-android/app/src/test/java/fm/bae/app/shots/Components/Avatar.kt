@@ -12,7 +12,7 @@ import org.junit.Test
  * The component shots of `Avatar`, one for each row of its preview. The initials are the preview's Android row, which
  * keeps CSS's centring as Compose draws it; its Initials row is the Mac's.
  */
-class AvatarShots : BoardShot() {
+class AvatarShots : BaeBoardShot() {
     @Test
     fun androidComponentAvatarAndroidInitials() =
         component("android.component.avatar.android-initials") { Avatar(AvatarFace(initials = "MQ", picture = null), size = 32.dp) }

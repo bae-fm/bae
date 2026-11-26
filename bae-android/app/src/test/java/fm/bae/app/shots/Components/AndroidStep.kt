@@ -9,7 +9,7 @@ import fm.bae.app.ui.components.AndroidTextField
 import org.junit.Test
 
 /** The component shots of `AndroidStep`, one for each row of its preview. */
-class AndroidStepShots : BoardShot() {
+class AndroidStepShots : BaeBoardShot() {
     @Test
     fun androidComponentStepWithAField() =
         component("android.component.step.with-a-field") {

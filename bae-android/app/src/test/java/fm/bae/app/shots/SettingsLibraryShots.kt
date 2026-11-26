@@ -10,7 +10,7 @@ import uniffi.bae_bridge.BridgeRatingSystem
 import uniffi.bae_bridge.BridgeRatingSystems
 
 /** The shots of the ready android.settings.library* boards. */
-class SettingsLibraryShots : BoardShot() {
+class SettingsLibraryShots : BaeBoardShot() {
     /** The Library page as an admin sees it: the name has its edit mark and the Ratings rows open their choices. */
     @Test
     fun androidSettingsLibrary() = shot("android.settings.library") { ScreenScene { Library() } }

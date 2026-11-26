@@ -7,7 +7,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.shots.settle
+import fm.bae.app.shots.settleInBaeLook
 import fm.bae.app.ui.TestTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.shownTexts
@@ -99,7 +99,7 @@ class OnboardingProgressTest {
                 BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true),
                 LatestStream.bootstrapSteps().only,
             )
-        compose.settle {
+        compose.settleInBaeLook {
             TestTheme { OnboardingProgress(connecting, onCancel = {}, onBack = {}) }
         }
 

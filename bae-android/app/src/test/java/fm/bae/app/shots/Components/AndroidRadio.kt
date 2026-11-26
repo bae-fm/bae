@@ -4,7 +4,7 @@ import fm.bae.app.ui.components.AndroidRadio
 import org.junit.Test
 
 /** The component shots of `AndroidRadio`, one for each row of its preview. */
-class AndroidRadioShots : BoardShot() {
+class AndroidRadioShots : BaeBoardShot() {
     @Test
     fun androidComponentRadioChecked() =
         component("android.component.radio.checked") { HuggingContent { AndroidRadio("Only me", checked = true, onClick = {}) } }

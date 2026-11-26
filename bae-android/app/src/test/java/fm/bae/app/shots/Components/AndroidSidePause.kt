@@ -9,7 +9,7 @@ import fm.bae.app.ui.playback.sidePauseParts
 import org.junit.Test
 
 /** The component shots of `AndroidSidePause`, one for each row of its preview. */
-class AndroidSidePauseShots : BoardShot() {
+class AndroidSidePauseShots : BaeBoardShot() {
     @Test
     fun androidComponentSidePauseCountingDown() =
         component(

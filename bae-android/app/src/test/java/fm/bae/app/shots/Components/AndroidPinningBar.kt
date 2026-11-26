@@ -5,7 +5,7 @@ import fm.bae.app.ui.downloads.AndroidPinningBar
 import org.junit.Test
 
 /** The component shots of `AndroidPinningBar`, one for each row of its preview. */
-class AndroidPinningBarShots : BoardShot() {
+class AndroidPinningBarShots : BaeBoardShot() {
     @Test
     fun androidComponentPinningBarPinning() =
         component(

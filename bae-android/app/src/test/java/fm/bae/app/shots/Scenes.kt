@@ -31,8 +31,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import builds.shots.WindowOverScreen
+import builds.shots.windowOverScreen
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.TestImages
@@ -149,22 +150,6 @@ private fun DragHandleBar() {
                 }.size(width = 32.dp, height = 4.dp)
                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), MaterialTheme.shapes.extraLarge),
     )
-}
-
-/**
- * A component on the page colour, at the top left with no margin and at [size], its board's: a preview cell
- * holds it, and the view is proposed the cell's size.
- */
-@Composable
-internal fun ComponentScene(
-    size: DpSize,
-    content: @Composable () -> Unit,
-) {
-    ShotTheme {
-        Surface(color = MaterialTheme.colorScheme.background) {
-            Box(modifier = Modifier.size(size)) { content() }
-        }
-    }
 }
 
 /**
@@ -320,6 +305,13 @@ internal fun DialogSurface(
     }
 }
 
+/**
+ * The extra time a shot of an indeterminate spinner advances, as `enterMillis`. The board draws the arc from 12 to
+ * 3 o'clock. On the stopped clock the spinner's arc starts at 12 o'clock only at 3.46 s (the harness's settle plus
+ * this), and covers about 50 degrees there: the nearest the real animation comes. The spinner turns in the app.
+ */
+internal const val SPINNER_ARC_MILLIS = 3_360L
+
 internal const val TWO_HOURS_SECONDS = 7_200L
 
 /** How long ago the Sync boards say it last synced: two hours, or three days once signed out. */
@@ -427,7 +419,7 @@ internal fun Covers(content: @Composable () -> Unit) =
 
 /** The artwork the board draws for [title]: its picture when the design system has one, else the gradient for it. */
 internal fun boardArtwork(title: String): ByteArray =
-    BoardShot::class.java.getResourceAsStream("/$title.png")?.use { it.readBytes() } ?: fallbackCover(title)
+    BaeBoardShot::class.java.getResourceAsStream("/$title.png")?.use { it.readBytes() } ?: fallbackCover(title)
 
 /**
  * The artwork the board draws for a title it has no picture of: a 135 degree gradient from `hsl(hue 42% 52%)` to

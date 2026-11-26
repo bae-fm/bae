@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 
 /** The shots of the ready android.settings.sync.* boards: the Sync page over each storage and some states. */
-class SettingsSyncShots : BoardShot() {
+class SettingsSyncShots : BaeBoardShot() {
     /** Sync over a Dropbox folder, synced. */
     @Test
     fun androidSettingsSyncDropbox() = shot("android.settings.sync.dropbox") { Sync(synced, folder) }

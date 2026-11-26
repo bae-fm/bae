@@ -15,7 +15,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeSyncActivity
 
 /** The component shots of `AndroidLibraryHeader`, one for each row of its preview. */
-class AndroidLibraryHeaderShots : BoardShot() {
+class AndroidLibraryHeaderShots : BaeBoardShot() {
     @Test
     fun androidComponentLibraryHeaderTop() = component("android.component.library-header.top") { LibraryHeader() }
 

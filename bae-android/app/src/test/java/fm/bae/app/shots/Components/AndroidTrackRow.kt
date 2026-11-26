@@ -10,7 +10,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeTrackWork
 
 /** The component shots of `AndroidTrackRow`, one for each row of its preview. */
-class AndroidTrackRowShots : BoardShot() {
+class AndroidTrackRowShots : BaeBoardShot() {
     @Test
     fun androidComponentTrackRowResting() =
         component("android.component.track-row.resting") {

@@ -11,7 +11,7 @@ import fm.bae.app.ui.settings.AndroidAccentPicker
 import org.junit.Test
 
 /** The component shots of `AndroidAccentPicker`, one for each row of its preview. */
-class AndroidAccentPickerShots : BoardShot() {
+class AndroidAccentPickerShots : BaeBoardShot() {
     @Test
     fun androidComponentAccentPickerResting() =
         component("android.component.accent-picker.resting") {

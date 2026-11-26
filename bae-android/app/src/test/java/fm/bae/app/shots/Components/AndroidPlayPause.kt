@@ -6,7 +6,7 @@ import fm.bae.app.ui.playback.AndroidPlayPause
 import org.junit.Test
 
 /** The component shots of `AndroidPlayPause`, one for each row of its preview. */
-class AndroidPlayPauseShots : BoardShot() {
+class AndroidPlayPauseShots : BaeBoardShot() {
     @Test
     fun androidComponentPlayPausePaused() =
         component("android.component.play-pause.paused") { AndroidPlayPause(false, ThemeIcon.large, false) {} }

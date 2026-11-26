@@ -39,7 +39,7 @@ import uniffi.bae_bridge.BridgeSharing
  * The shots of the person's menu and the ⋮ menu over the library, and of the Playlists and History screens, drawn as
  * the boards draw them.
  */
-class PersonMenuBoardShots : BoardShot() {
+class PersonMenuBoardShots : BaeBoardShot() {
     /** The library with the person's picture at the end of its header, and [menu] open under the header. */
     @Composable
     private fun LibraryWithMenu(

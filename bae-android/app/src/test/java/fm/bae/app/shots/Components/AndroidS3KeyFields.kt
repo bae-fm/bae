@@ -10,7 +10,7 @@ import fm.bae.app.ui.components.focusOnShow
 import org.junit.Test
 
 /** The component shots of `AndroidS3KeyFields`, one for each row of its preview. */
-class AndroidS3KeyFieldsShots : BoardShot() {
+class AndroidS3KeyFieldsShots : BaeBoardShot() {
     @Test
     fun androidComponentS3KeyFieldsEmpty() = component("android.component.s3-key-fields.empty") { KeyFields("", "") }
 

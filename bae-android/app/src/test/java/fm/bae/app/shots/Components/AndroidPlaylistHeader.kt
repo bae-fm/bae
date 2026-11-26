@@ -12,7 +12,7 @@ import uniffi.bae_bridge.BridgePlaylistSummary
 import uniffi.bae_bridge.BridgeSharing
 
 /** The component shots of `AndroidPlaylistHeader`, one for each row of its preview. */
-class AndroidPlaylistHeaderShots : BoardShot() {
+class AndroidPlaylistHeaderShots : BaeBoardShot() {
     @Test
     fun androidComponentPlaylistHeaderPlaylist() =
         component("android.component.playlist-header.playlist") {

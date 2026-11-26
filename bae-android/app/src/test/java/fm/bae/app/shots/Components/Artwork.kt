@@ -10,7 +10,7 @@ import fm.bae.app.ui.components.Artwork
 import org.junit.Test
 
 /** The component shots of `Artwork`, one for each row of its preview but the shadow rows: Android draws no cover shadow. */
-class ArtworkShots : BoardShot() {
+class ArtworkShots : BaeBoardShot() {
     @Test
     fun androidComponentArtworkCover() =
         component("android.component.artwork.cover") {

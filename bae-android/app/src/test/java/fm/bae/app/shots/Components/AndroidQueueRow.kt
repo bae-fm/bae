@@ -5,7 +5,7 @@ import fm.bae.app.ui.playback.AndroidQueueRow
 import org.junit.Test
 
 /** The component shots of `AndroidQueueRow`, one for each row of its preview. */
-class AndroidQueueRowShots : BoardShot() {
+class AndroidQueueRowShots : BaeBoardShot() {
     @Test
     fun androidComponentQueueRowQueued() =
         component("android.component.queue-row.queued") {

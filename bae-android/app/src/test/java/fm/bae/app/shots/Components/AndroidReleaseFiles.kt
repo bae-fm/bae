@@ -5,7 +5,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeFileKind
 
 /** The component shots of `AndroidReleaseFiles`, one for each row of its preview. */
-class AndroidReleaseFilesShots : BoardShot() {
+class AndroidReleaseFilesShots : BaeBoardShot() {
     @Test
     fun androidComponentReleaseFilesThreeFiles() =
         component("android.component.release-files.three-files") {

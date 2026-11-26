@@ -9,8 +9,8 @@ import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.drawToBitmap
+import builds.shots.setTestAnimatorScale
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.setTestAnimatorScale
 import fm.bae.app.setTestBatterySaver
 import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertEquals

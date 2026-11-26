@@ -12,7 +12,7 @@ import fm.bae.app.ui.components.DialogAction
 import org.junit.Test
 
 /** The component shots of `AndroidDialogActions`, one for each row of its preview. */
-class AndroidDialogActionsShots : BoardShot() {
+class AndroidDialogActionsShots : BaeBoardShot() {
     @Test
     fun androidComponentDialogActionsPlain() =
         component("android.component.dialog-actions.plain") {

@@ -8,7 +8,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeDeviceStorage
 
 /** The shots of the ready android.settings.storage.* boards: what the phone keeps, and what a reset left. */
-class SettingsStorageShots : BoardShot() {
+class SettingsStorageShots : BaeBoardShot() {
     /** The Storage page with pinned releases, cache and the library's records. */
     @Test
     fun androidSettingsStorage() = shot("android.settings.storage") { ScreenScene { Storage(BridgeFixtures.deviceStorage()) } }

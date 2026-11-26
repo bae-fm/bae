@@ -8,7 +8,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeHistorySharing
 
 /** The shots of the ready listening-history and your-name boards: what a person sets about themselves. */
-class SettingsYouShots : BoardShot() {
+class SettingsYouShots : BaeBoardShot() {
     /** The choices of who sees what Ana plays. */
     @Test
     fun androidSettingsListeningHistoryChoosing() =

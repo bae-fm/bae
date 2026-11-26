@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Takes the Android shots: the Robolectric tests under
 # bae-android/app/src/test/java/fm/bae/app/shots draw each board's real
-# composable and write <board>@android.png and <board>@android.json.
+# composable with builds' shots harness, which the Gradle build writes, and
+# the harness writes <board>@android.png and <board>@android.json.
 # builds shots runs this script from the repo's top (`.app-build`'s
-# `shots-capture android` line) with BUILDS_SHOTS_OUT and BUILDS_SHOTS_SELECT,
-# which the script passes to Gradle as bae.shotsDir and bae.shotsSelect.
+# `shots-capture android` line) with the BUILDS_SHOTS_* variables, which the
+# script passes to Gradle as the builds.shots* properties.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -18,12 +19,12 @@ if [[ ! -d bae-bridge/kotlin-bindings-full/uniffi ||
     ./bae-bridge/build-android.sh --abi host
 fi
 
-properties=("-Pbae.shotsDir=$BUILDS_SHOTS_OUT")
+properties=("-Pbuilds.shotsDir=$BUILDS_SHOTS_OUT")
 if [[ -n "${BUILDS_SHOTS_SELECT:-}" ]]; then
-    properties+=("-Pbae.shotsSelect=$BUILDS_SHOTS_SELECT")
+    properties+=("-Pbuilds.shotsSelect=$BUILDS_SHOTS_SELECT")
 fi
 if [[ -n "${BUILDS_SHOTS_BOARD_SIZES:-}" ]]; then
-    properties+=("-Pbae.shotsBoardSizes=$BUILDS_SHOTS_BOARD_SIZES")
+    properties+=("-Pbuilds.shotsBoardSizes=$BUILDS_SHOTS_BOARD_SIZES")
 fi
 ./bae-android/gradle.sh --no-daemon :app:testFullDebugUnitTest --tests 'fm.bae.app.shots.*' \
     "${properties[@]}"

@@ -14,7 +14,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /** The component shots of `AndroidFullPlayer`, one for each row of its preview. */
-class AndroidFullPlayerShots : BoardShot() {
+class AndroidFullPlayerShots : BaeBoardShot() {
     @Test
     fun androidComponentFullPlayerPlaying() = shot("android.component.full-player.playing") { FullPlayer(playing) }
 

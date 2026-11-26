@@ -12,7 +12,7 @@ import fm.bae.app.ui.components.AndroidSwitch
 import org.junit.Test
 
 /** The component shots of `AndroidSwitch`, one for each row of its preview. */
-class AndroidSwitchShots : BoardShot() {
+class AndroidSwitchShots : BaeBoardShot() {
     @Test
     fun androidComponentSwitchOn() = component("android.component.switch.on") { RestoreOnLaunch(checked = true) }
 

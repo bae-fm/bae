@@ -10,7 +10,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeStorageKind
 
 /** The component shots of `AndroidStorageUsage`, one for each row of its preview. */
-class AndroidStorageUsageShots : BoardShot() {
+class AndroidStorageUsageShots : BaeBoardShot() {
     @Test
     fun androidComponentStorageUsageUsual() =
         component("android.component.storage-usage.usual") {

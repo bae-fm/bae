@@ -6,7 +6,7 @@ import fm.bae.app.ui.components.AndroidRow
 import org.junit.Test
 
 /** The component shots of `AndroidDisclosure`, one for each row of its preview. */
-class AndroidDisclosureShots : BoardShot() {
+class AndroidDisclosureShots : BaeBoardShot() {
     @Test
     fun androidComponentDisclosureClosed() =
         component("android.component.disclosure.closed") {

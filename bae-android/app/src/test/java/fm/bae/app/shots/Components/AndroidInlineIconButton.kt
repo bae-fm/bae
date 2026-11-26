@@ -10,7 +10,7 @@ import fm.bae.app.ui.components.AndroidInlineIconButton
 import org.junit.Test
 
 /** The component shots of `AndroidInlineIconButton`, one for each row of its preview. */
-class AndroidInlineIconButtonShots : BoardShot() {
+class AndroidInlineIconButtonShots : BaeBoardShot() {
     @Test
     fun androidComponentInlineIconButtonBesideALine() =
         component("android.component.inline-icon-button.beside-a-line") {

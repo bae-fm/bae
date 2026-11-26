@@ -6,7 +6,7 @@ import fm.bae.app.ui.components.IconTone
 import org.junit.Test
 
 /** The component shots of `AndroidIconButton`, one for each row of its preview. */
-class AndroidIconButtonShots : BoardShot() {
+class AndroidIconButtonShots : BaeBoardShot() {
     @Test
     fun androidComponentIconButtonBack() =
         component("android.component.icon-button.back") { AndroidIconButton(SymbolIcons.ArrowBack, "Back", onClick = {}) }

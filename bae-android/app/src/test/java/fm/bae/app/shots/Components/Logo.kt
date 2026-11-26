@@ -8,7 +8,7 @@ import org.junit.Test
  * The component shots of `Logo` on Android, which draws only the pair: the sheep over the word. The other forms
  * are marked as drawn for the design only in `.app-build`.
  */
-class LogoShots : BoardShot() {
+class LogoShots : BaeBoardShot() {
     @Test
     fun androidComponentLogoPair() = component("android.component.logo.pair") { Logo(size = 120.dp, bob = false, glow = false) }
 

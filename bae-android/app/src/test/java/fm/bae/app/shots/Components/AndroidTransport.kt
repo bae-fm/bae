@@ -4,7 +4,7 @@ import fm.bae.app.ui.playback.AndroidTransport
 import org.junit.Test
 
 /** The component shots of `AndroidTransport`, one for each row of its preview. */
-class AndroidTransportShots : BoardShot() {
+class AndroidTransportShots : BaeBoardShot() {
     @Test
     fun androidComponentTransportPaused() = component("android.component.transport.paused") { AndroidTransport(false, false, {}, {}, {}) }
 

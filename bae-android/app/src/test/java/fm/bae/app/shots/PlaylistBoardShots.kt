@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgePlaylistCover
 import uniffi.bae_bridge.BridgeSharing
 
 /** The shots of a playlist's page and the dialogs it opens, drawn as the boards draw them. */
-class PlaylistBoardShots : BoardShot() {
+class PlaylistBoardShots : BaeBoardShot() {
     private val entries =
         lateNightTracks.mapIndexed { index, track ->
             BridgeFixtures

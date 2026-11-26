@@ -11,7 +11,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeActivityLine
 
 /** The component shots of `AndroidTransferLine`, one for each row of its preview. */
-class AndroidTransferLineShots : BoardShot() {
+class AndroidTransferLineShots : BaeBoardShot() {
     @Test
     fun androidComponentTransferLineSyncing() =
         component("android.component.transfer-line.syncing") { AndroidTransferLine("Syncing changes", batch = null) }

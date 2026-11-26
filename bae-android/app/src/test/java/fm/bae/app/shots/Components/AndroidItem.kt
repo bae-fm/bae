@@ -11,7 +11,7 @@ import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
 /** The component shots of `AndroidItem`, one for each row of its preview. */
-class AndroidItemShots : BoardShot() {
+class AndroidItemShots : BaeBoardShot() {
     @Test
     fun androidComponentItemOneLine() =
         component("android.component.item.one-line") {

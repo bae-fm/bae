@@ -11,7 +11,7 @@ import fm.bae.app.ui.library.AndroidAlbumTile
 import org.junit.Test
 
 /** The component shots of `AndroidAlbumTile`, one for each row of its preview. */
-class AndroidAlbumTileShots : BoardShot() {
+class AndroidAlbumTileShots : BaeBoardShot() {
     @Test
     fun androidComponentAlbumTileDefault() = component("android.component.album-tile.default") { Tiles(unplayable = false) }
 

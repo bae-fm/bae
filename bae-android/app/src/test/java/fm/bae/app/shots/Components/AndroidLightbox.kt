@@ -21,7 +21,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGalleryLabel
 
 /** The component shots of `AndroidLightbox`, one for each row of its preview. */
-class AndroidLightboxShots : BoardShot() {
+class AndroidLightboxShots : BaeBoardShot() {
     @Test
     fun androidComponentLightboxImage() = shot("android.component.lightbox.image") { Lightbox(shownImage(), count = 4u) }
 
@@ -68,7 +68,7 @@ private fun shownImage() =
             _,
             _,
             ->
-            requireNotNull(BoardShot::class.java.getResourceAsStream("/Low Tide Hours.png")) { "No board artwork for Low Tide Hours" }
+            requireNotNull(BaeBoardShot::class.java.getResourceAsStream("/Low Tide Hours.png")) { "No board artwork for Low Tide Hours" }
                 .use { it.readBytes() }
         },
         dispatcher = Dispatchers.Unconfined,

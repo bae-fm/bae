@@ -5,7 +5,7 @@ import fm.bae.app.ui.playback.AndroidVolumeSlider
 import org.junit.Test
 
 /** The component shots of `AndroidVolumeSlider`, one for each row of its preview. */
-class AndroidVolumeSliderShots : BoardShot() {
+class AndroidVolumeSliderShots : BaeBoardShot() {
     @Test
     fun androidComponentVolumeSliderMostOfTheWay() = component("android.component.volume-slider.most-of-the-way") { Volume(0.7f) }
 

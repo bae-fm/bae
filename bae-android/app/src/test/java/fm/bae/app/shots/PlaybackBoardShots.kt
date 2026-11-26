@@ -24,7 +24,7 @@ private val removed =
     )
 
 /** The playback boards' shots: the bar and the full player in the states the boards draw. */
-class PlaybackBoardShots : BoardShot() {
+class PlaybackBoardShots : BaeBoardShot() {
     /** The bar while the track playing has been deleted from the library: its title says so, with the plain tile. */
     @Test
     fun androidPlaybackBarTrackRemoved() =

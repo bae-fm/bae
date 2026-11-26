@@ -4,7 +4,7 @@ import fm.bae.app.ui.components.AndroidCheckbox
 import org.junit.Test
 
 /** The component shots of `AndroidCheckbox`, one for each row of its preview. */
-class AndroidCheckboxShots : BoardShot() {
+class AndroidCheckboxShots : BaeBoardShot() {
     @Test
     fun androidComponentCheckboxOn() =
         component("android.component.checkbox.on") {

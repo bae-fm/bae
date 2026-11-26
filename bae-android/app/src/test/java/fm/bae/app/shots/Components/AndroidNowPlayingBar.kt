@@ -9,7 +9,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /** The component shots of `AndroidNowPlayingBar`, one for each row of its preview. */
-class AndroidNowPlayingBarShots : BoardShot() {
+class AndroidNowPlayingBarShots : BaeBoardShot() {
     @Test
     fun androidComponentNowPlayingBarPlaying() = component("android.component.now-playing-bar.playing") { Bar(playing) }
 

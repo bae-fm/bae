@@ -8,7 +8,7 @@ import fm.bae.app.ui.components.TrackOptionsMenu
 import org.junit.Test
 
 /** The component shots of `AndroidListRow`, one for each row of its preview. */
-class AndroidListRowShots : BoardShot() {
+class AndroidListRowShots : BaeBoardShot() {
     @Test
     fun androidComponentListRowResting() = component("android.component.list-row.resting") { Entry() }
 

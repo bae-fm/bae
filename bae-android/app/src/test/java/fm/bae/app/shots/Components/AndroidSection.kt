@@ -9,7 +9,7 @@ import fm.bae.app.ui.components.AndroidSection
 import org.junit.Test
 
 /** The component shots of `AndroidSection`, one for each row of its preview. */
-class AndroidSectionShots : BoardShot() {
+class AndroidSectionShots : BaeBoardShot() {
     @Test
     fun androidComponentSectionDefault() =
         component("android.component.section.default") {

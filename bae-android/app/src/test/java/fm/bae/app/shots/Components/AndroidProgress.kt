@@ -12,7 +12,7 @@ import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeOpenStep
 
 /** The component shots of `AndroidProgress`, one for each row of its preview. */
-class AndroidProgressShots : BoardShot() {
+class AndroidProgressShots : BaeBoardShot() {
     @Test
     fun androidComponentProgressLengthUnknown() = component("android.component.progress.length-unknown") { Progress(fraction = null) }
 

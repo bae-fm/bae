@@ -10,7 +10,7 @@ import fm.bae.app.ui.components.focusOnShow
 import org.junit.Test
 
 /** The component shots of `AndroidPinField`, one for each row of its preview. */
-class AndroidPinFieldShots : BoardShot() {
+class AndroidPinFieldShots : BaeBoardShot() {
     @Test
     fun androidComponentPinFieldEmpty() = component("android.component.pin-field.empty") { InPreviewCell(4) { AndroidPinField(4, "", {}) } }
 

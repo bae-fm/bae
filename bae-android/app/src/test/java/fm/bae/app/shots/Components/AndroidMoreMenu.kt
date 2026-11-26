@@ -15,7 +15,7 @@ import fm.bae.app.ui.components.AndroidMoreMenu
 import org.junit.Test
 
 /** The component shots of `AndroidMoreMenu`, one for each row of its preview. */
-class AndroidMoreMenuShots : BoardShot() {
+class AndroidMoreMenuShots : BaeBoardShot() {
     @Test
     fun androidComponentMoreMenuClosed() =
         component("android.component.more-menu.closed") {

@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 
 /** The shots of the android.settings.playback.receiver* boards: the Play on group of the Playback page. */
-class SettingsPlayOnShots : BoardShot() {
+class SettingsPlayOnShots : BaeBoardShot() {
     /** The receivers found: Living Room playing, two more. */
     @Test
     fun androidSettingsPlaybackReceiversFound() =

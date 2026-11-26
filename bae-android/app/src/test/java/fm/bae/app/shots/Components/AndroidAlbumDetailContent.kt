@@ -5,7 +5,7 @@ import fm.bae.app.ui.albumdetail.block
 import org.junit.Test
 
 /** The component shots of `AndroidAlbumDetailContent`, one for each row of its preview. */
-class AndroidAlbumDetailContentShots : BoardShot() {
+class AndroidAlbumDetailContentShots : BaeBoardShot() {
     @Test
     fun androidComponentAlbumDetailContentResting() =
         component("android.component.album-detail-content.resting") {

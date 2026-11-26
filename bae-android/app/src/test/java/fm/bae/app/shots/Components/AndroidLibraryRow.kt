@@ -5,7 +5,7 @@ import fm.bae.app.ui.components.AndroidLibraryRow
 import org.junit.Test
 
 /** The component shots of `AndroidLibraryRow`, one for each row of its preview. */
-class AndroidLibraryRowShots : BoardShot() {
+class AndroidLibraryRowShots : BaeBoardShot() {
     @Test
     fun androidComponentLibraryRowArtist() =
         component("android.component.library-row.artist") {

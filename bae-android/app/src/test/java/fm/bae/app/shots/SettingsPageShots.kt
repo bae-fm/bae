@@ -16,7 +16,7 @@ import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 
 /** The shots of the ready android.settings.* boards for the Settings list and the pages it opens. */
-class SettingsPageShots : BoardShot() {
+class SettingsPageShots : BaeBoardShot() {
     /** The Settings list over a library that synced. */
     @Test
     fun androidSettingsList() =

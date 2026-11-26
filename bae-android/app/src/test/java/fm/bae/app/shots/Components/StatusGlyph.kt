@@ -11,7 +11,7 @@ import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
 /** The component shots of `StatusGlyph` on Android: its ring rows draw the ring a notice leads with. */
-class StatusGlyphShots : BoardShot() {
+class StatusGlyphShots : BaeBoardShot() {
     @Test
     fun androidComponentStatusGlyphAndroid() =
         component("android.component.status-glyph.android") {

@@ -15,7 +15,7 @@ import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeStorageLocation
 
 /** The shots of the ready android.settings.invite.* boards: inviting a person, from the People and devices page. */
-class SettingsInviteShots : BoardShot() {
+class SettingsInviteShots : BaeBoardShot() {
     /** The invite form for a Dropbox library. */
     @Test
     fun androidSettingsInviteDropbox() =

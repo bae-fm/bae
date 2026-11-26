@@ -7,7 +7,7 @@ import fm.bae.app.ui.playback.AndroidQueueRow
 import org.junit.Test
 
 /** The component shots of `AndroidQueuePlaceholderRow`, one for each row of its preview. */
-class AndroidQueuePlaceholderRowShots : BoardShot() {
+class AndroidQueuePlaceholderRowShots : BaeBoardShot() {
     @Test
     fun androidComponentQueuePlaceholderRowNotLoaded() =
         component("android.component.queue-placeholder-row.not-loaded") { OnTheSheet { AndroidQueuePlaceholderRow() } }

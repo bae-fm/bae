@@ -14,7 +14,7 @@ import fm.bae.app.ui.components.SnackbarLift
 import org.junit.Test
 
 /** The component shots of `AndroidSnackbar`, one for each row of its preview. */
-class AndroidSnackbarShots : BoardShot() {
+class AndroidSnackbarShots : BaeBoardShot() {
     @Test
     fun androidComponentSnackbarDefault() =
         component("android.component.snackbar.default", enterMillis = ENTER_MILLIS) {

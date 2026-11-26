@@ -24,7 +24,7 @@ import uniffi.bae_bridge.BridgeRendererKind
  * or over the library, the picker's notice when the receiver refuses the cast, and the picker while a receiver
  * holds the cast for its owner.
  */
-class CastPinBoardShots : BoardShot() {
+class CastPinBoardShots : BaeBoardShot() {
     private val livingRoom = receiver("Living Room", BridgeRendererKind.CAST)
     private val kitchen = receiver("Kitchen", BridgeRendererKind.AIR_PLAY)
     private val den = receiver("Den receiver", BridgeRendererKind.DLNA)

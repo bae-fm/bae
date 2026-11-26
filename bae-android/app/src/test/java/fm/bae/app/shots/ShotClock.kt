@@ -5,7 +5,7 @@ import java.time.Instant
 
 /**
  * The clock the shots read: a fixed moment, so a countdown or "2 hours ago" draws the same words whenever the shot
- * is taken. [settle] provides it to every shot as `LocalNowMs`, and a shot builds each moment it shows from it.
+ * is taken. [BaeShotLook] provides it to every shot as `LocalNowMs`, and a shot builds each moment it shows from it.
  */
 internal object ShotClock {
     /** The moment every shot is drawn at. */

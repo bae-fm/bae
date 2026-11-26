@@ -5,7 +5,7 @@ import fm.bae.app.ui.albumdetail.AndroidTrackLead
 import org.junit.Test
 
 /** The component shots of `AndroidTrackLead`, one for each row of its preview. */
-class AndroidTrackLeadShots : BoardShot() {
+class AndroidTrackLeadShots : BaeBoardShot() {
     @Test
     fun androidComponentTrackLeadNumber() =
         component("android.component.track-lead.number") {

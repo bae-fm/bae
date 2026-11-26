@@ -4,7 +4,7 @@ import fm.bae.app.ui.library.AndroidArtistOtherNames
 import org.junit.Test
 
 /** The component shots of `AndroidArtistOtherNames`, one for each row of its preview. */
-class AndroidArtistOtherNamesShots : BoardShot() {
+class AndroidArtistOtherNamesShots : BaeBoardShot() {
     @Test
     fun androidComponentArtistOtherNamesOneName() =
         component("android.component.artist-other-names.one-name") {

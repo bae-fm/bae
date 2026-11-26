@@ -12,7 +12,7 @@ import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
 /** The component shots of `AndroidArtistGroupHeading`, one for each row of its preview. */
-class AndroidArtistGroupHeadingShots : BoardShot() {
+class AndroidArtistGroupHeadingShots : BaeBoardShot() {
     @Test
     fun androidComponentArtistGroupHeadingTop() =
         component("android.component.artist-group-heading.top") {

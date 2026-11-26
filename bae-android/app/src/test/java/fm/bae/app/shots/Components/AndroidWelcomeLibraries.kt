@@ -8,7 +8,7 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 
 /** The component shots of `AndroidWelcomeLibraries`, one for each row of its preview. */
-class AndroidWelcomeLibrariesShots : BoardShot() {
+class AndroidWelcomeLibrariesShots : BaeBoardShot() {
     @Test
     fun androidComponentWelcomeLibrariesOpen() =
         component("android.component.welcome-libraries.open") {

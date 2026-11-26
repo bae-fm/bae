@@ -14,7 +14,7 @@ import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
 /** The component shots of `AndroidNotice`, one for each row of its preview. */
-class AndroidNoticeShots : BoardShot() {
+class AndroidNoticeShots : BaeBoardShot() {
     @Test
     fun androidComponentNoticeNeutral() =
         component("android.component.notice.neutral") { Titled("This library has no albums yet.", StatusTone.NEUTRAL) }

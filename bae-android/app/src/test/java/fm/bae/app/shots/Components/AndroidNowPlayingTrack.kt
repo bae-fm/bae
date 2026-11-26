@@ -9,7 +9,7 @@ import fm.bae.app.ui.playback.AndroidNowPlayingTrack
 import org.junit.Test
 
 /** The component shots of `AndroidNowPlayingTrack`, one for each row of its preview. */
-class AndroidNowPlayingTrackShots : BoardShot() {
+class AndroidNowPlayingTrackShots : BaeBoardShot() {
     @Test
     fun androidComponentNowPlayingTrackPlaying() = component("android.component.now-playing-track.playing") { Track(playing) }
 

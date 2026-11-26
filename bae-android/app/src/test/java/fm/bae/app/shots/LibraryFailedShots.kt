@@ -10,7 +10,7 @@ import fm.bae.app.ui.library.LibraryReadFailed
 import org.junit.Test
 
 /** The shots of a library screen that fails as a whole. */
-class LibraryFailedShots : BoardShot() {
+class LibraryFailedShots : BaeBoardShot() {
     /** The albums view when bae cannot read its list: the library's header over the centred notice. */
     @Test
     fun androidLibraryAlbumsFailed() =

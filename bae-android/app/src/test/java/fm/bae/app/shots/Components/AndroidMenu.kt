@@ -24,7 +24,7 @@ import org.junit.Test
  * The component shots of `AndroidMenu`, one for each row of its preview. Layoutlib draws an open menu's popup blank,
  * so the row draws the menu's items on a surface made as the menu makes its own.
  */
-class AndroidMenuShots : BoardShot() {
+class AndroidMenuShots : BaeBoardShot() {
     @Test
     fun androidComponentMenuDefault() =
         component("android.component.menu.default") {

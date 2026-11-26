@@ -5,10 +5,10 @@ import android.view.View
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import builds.shots.ElementList
+import builds.shots.ReadingOrder
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.shots.ElementList
-import fm.bae.app.shots.ReadingOrder
-import fm.bae.app.shots.settle
+import fm.bae.app.shots.settleInBaeLook
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -24,7 +24,7 @@ class AndroidRowReadingOrderTest {
 
     @Test
     fun aRowsTrailingButtonIsReadAfterItsTitleAndTheLineUnderIt() {
-        compose.settle {
+        compose.settleInBaeLook {
             TestTheme {
                 AndroidRow(title = "Role", subtitle = "Member") {
                     AndroidButton(kind = ButtonKind.TEXT, onClick = {}) { Text("Make admin") }
@@ -37,6 +37,7 @@ class AndroidRowReadingOrderTest {
                 .of(
                     "android.test.row-order",
                     root,
+                    embedded = emptyList(),
                     unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(),
                     reading = ReadingOrder.of(root.root as View),
                 ).getJSONArray("elements")

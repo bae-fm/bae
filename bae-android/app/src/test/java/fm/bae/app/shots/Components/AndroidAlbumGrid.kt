@@ -13,7 +13,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumAppearance
 
 /** The component shots of `AndroidAlbumGrid`, one for each row of its preview. */
-class AndroidAlbumGridShots : BoardShot() {
+class AndroidAlbumGridShots : BaeBoardShot() {
     @Test
     fun androidComponentAlbumGridDefault() =
         component("android.component.album-grid.default") {

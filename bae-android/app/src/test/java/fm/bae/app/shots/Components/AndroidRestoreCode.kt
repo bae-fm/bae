@@ -7,7 +7,7 @@ import fm.bae.app.ui.settings.RestoreCodeState
 import org.junit.Test
 
 /** The component shots of `AndroidRestoreCode`, one for each row of its preview. */
-class AndroidRestoreCodeShots : BoardShot() {
+class AndroidRestoreCodeShots : BaeBoardShot() {
     @Test
     fun androidComponentRestoreCodeHidden() =
         component("android.component.restore-code.hidden") { RestoreCode(RestoreCodeState.Masked(RESTORE_CODE), s3 = false) }
