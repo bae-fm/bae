@@ -88,10 +88,9 @@ impl InvalidColumns {
         }))
     }
 
-    /// The columns of a pane's read, which
-    /// [`super::fragments::ScanItem`] names; a row of another kind holds no
-    /// reason, which reads as `None`.
-    pub(crate) fn of(scan: &super::fragments::ScanItem) -> Result<Option<Self>, DbError> {
+    /// The columns of a row of [`super::fragments::ScanItems`]; a row of
+    /// another kind holds no reason, which reads as `None`.
+    pub(crate) fn of(scan: &super::fragments::ScanItems) -> Result<Option<Self>, DbError> {
         let Some(reason) = scan.invalid_reason.clone() else {
             return Ok(None);
         };

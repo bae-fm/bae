@@ -11,7 +11,8 @@ sqlive_compose::read!(
            cards.*
     FROM (SELECT :key AS key) AS pane
     JOIN @crate::tables::import_list::fragments::Listed(key: :key) AS listed ON 1
-    LEFT JOIN @crate::tables::folder_scans::fragments::ScanItem(key: :key) AS scan ON 1
+    LEFT JOIN @crate::tables::folder_scans::fragments::ScanItems(
+        keys: (SELECT :key AS candidate_key)) AS scan ON 1
     LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(key: :key)
         AS grouping ON 1
     LEFT JOIN @crate::tables::folder_scans::fragments::PaneFiles(key: :key) AS files ON 1

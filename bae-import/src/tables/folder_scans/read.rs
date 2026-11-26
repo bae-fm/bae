@@ -81,10 +81,7 @@ fn rows_at_keys<'a>(
         keys: crate::tables::key_hex_list(keys),
         grouping_releases: sources.takes_grouping_releases(),
     };
-    statement_rows(sql, &statement)?
-        .into_iter()
-        .map(|row| CandidateRow::of_items(row.item))
-        .collect()
+    statement_rows(sql, &statement)?.into_iter().map(|row| CandidateRow::of(row.item)).collect()
 }
 
 /// `rows`, still to be decoded.
@@ -116,7 +113,7 @@ pub(super) fn load_items(
     let items = decoding(
         statement_rows(sql, &statement)?
             .into_iter()
-            .map(|row| CandidateRow::of_items(row.item))
+            .map(|row| CandidateRow::of(row.item))
             .collect::<Result<_, _>>()?,
     );
     let root_generation = super::root_generation_on(sql, watched_folder_path)?
@@ -349,38 +346,7 @@ pub(crate) struct CandidateRow {
 
 impl CandidateRow {
     /// The row of a read that spreads [`super::fragments::ScanItems`].
-    fn of_items(item: super::fragments::ScanItems) -> Result<Self, DbError> {
-        Self::of(super::fragments::ScanItem {
-            scan_key: item.path.clone(),
-            watched_folder_path: item.watched_folder_path,
-            path: item.path,
-            generation: item.generation,
-            kind: item.kind,
-            name: item.name,
-            relative_folder: item.relative_folder,
-            folder: item.folder,
-            file_root: item.file_root,
-            scope: item.scope,
-            file_edit_revision: item.file_edit_revision,
-            grouping_key: item.grouping_key,
-            files: item.files,
-            parts: item.parts,
-            skipped_files: item.skipped_files,
-            invalid_folder: item.invalid_folder,
-            invalid_separable: item.invalid_separable,
-            invalid_reason: item.invalid_reason,
-            invalid_shared_name: item.invalid_shared_name,
-            invalid_damaged_audio: item.invalid_damaged_audio,
-            invalid_album_title: item.invalid_album_title,
-            invalid_credits: item.invalid_credits,
-            invalid_cover_path: item.invalid_cover_path,
-            invalid_cover_size: item.invalid_cover_size,
-            invalid_cover_modified: item.invalid_cover_modified,
-        })
-    }
-
-    /// The row of a pane's read, which [`super::fragments::ScanItem`] names.
-    pub(crate) fn of(scan: super::fragments::ScanItem) -> Result<Self, DbError> {
+    pub(crate) fn of(scan: super::fragments::ScanItems) -> Result<Self, DbError> {
         let invalid = InvalidColumns::of(&scan)?;
         Ok(Self {
             watched_folder_path: path_column::decode(scan.watched_folder_path)?,
