@@ -449,7 +449,10 @@ extension ShotScene {
         ) {
             let form = enterCodeForm()
             form.edit(code: String(PreviewData.restoreCode.prefix(25)))
-            return welcomeSheetStage(EnterCodeSheet(form: form, onCancel: {}))
+            return welcomeSheetStage(
+                EnterCodeSheet(form: form, onCancel: {}),
+                isDrawn: caretAfterTypedText
+            )
         },
         ShotScene(
             id: "mac.welcome.add-code.s3-key-needed",
@@ -548,13 +551,35 @@ extension ShotScene {
 
     /// A native sheet over the first-run welcome window. macOS dims the
     /// window behind it, including the window buttons.
-    private static func welcomeSheetStage(_ sheet: some View) -> ShotStage {
+    private static func welcomeSheetStage(
+        _ sheet: some View,
+        isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
+    ) -> ShotStage {
         let welcome = welcomeStage(libraries: [])
         return ShotStage(
             OverWindow.attachedSheet(sheet, over: welcome.view),
-            isReady: welcome.isReady
+            isReady: welcome.isReady,
+            isDrawn: isDrawn
         )
         .awaitingSheet()
+    }
+
+    /// Whether the sheet's field has the keyboard, with the caret after its
+    /// text. A field that takes the keyboard selects its text, where a person
+    /// who just typed it has the caret after it, so this moves the caret
+    /// there.
+    @MainActor
+    private static func caretAfterTypedText(in host: NSView) -> Bool {
+        guard
+            let editor = host.window?.attachedSheet?.firstResponder
+                as? NSTextView,
+            !editor.string.isEmpty
+        else { return false }
+        editor.selectedRange = NSRange(
+            location: editor.string.utf16.count,
+            length: 0
+        )
+        return true
     }
 
     /// The library list with the dialog `laid` over it.
