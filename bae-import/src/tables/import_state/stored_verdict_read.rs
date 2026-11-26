@@ -11,20 +11,13 @@ use bae_store::DbError;
 sqlive_compose::read!(
     StoredVerdict(key: crate::CandidateKey),
     r#"
-    WITH current_owner AS (
-        SELECT scanned.content_hash AS content_hash, NULL AS identify_run
-        FROM scan_candidate AS scanned
-        JOIN import_candidate_state AS state ON state.content_hash = scanned.content_hash
-            AND state.edit_revision = scanned.file_edit_revision
-        WHERE scanned.path = :key
-    )
     SELECT state.*, cards.*
     FROM (SELECT :key AS key) AS stored
     LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(
-        owner: (SELECT * FROM current_owner)) AS state
+        owner: @crate::tables::import_state::current_owner::CurrentOwner(key: :key)) AS state
         ON 1
     LEFT JOIN @crate::tables::import_state::card_fragments::VerdictCards(
-        owner: (SELECT * FROM current_owner)) AS cards
+        owner: @crate::tables::import_state::current_owner::CurrentOwner(key: :key)) AS cards
         ON 1
 "#
 );
