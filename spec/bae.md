@@ -576,6 +576,8 @@ because what the person types stays in the editor, so the editor's read
 of its draft is the one place that applies these rules to credits no
 write has stored: it applies them to each credit of the form, and reads
 again when a write changes an artist the rules can name.
+The editor's read and the import pane's read compute the standing of an artist
+field with one fragment, so a credit shows the same status in both.
 
 **Edge cases.**
 

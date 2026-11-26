@@ -1,0 +1,104 @@
+//! How the artist fields of a release editor's form stand to the library: the
+//! album's artists and each explicit track's own. No table holds the form, so
+//! the read takes its credits as the JSON arrays that `assignment_rows` makes,
+//! asks the credit rule for the artists each credit could be, and spreads the
+//! standing fragment that the import pane spreads for a draft's credits.
+
+use super::*;
+use crate::tables::import_list::artist_field_of_json;
+use std::collections::HashMap;
+
+sqlive_compose::read!(
+    FormArtistFields(album_artists: String, track_artists: String),
+    r#"
+    WITH form_credits(part, json) AS (
+        SELECT 0, :album_artists UNION ALL SELECT 1, :track_artists
+    ),
+    form_raw AS (
+        SELECT credits.part AS part,
+               CASE WHEN credits.part = 1 THEN j.value ->> 'track_id' END AS track_id,
+               CASE WHEN credits.part = 1 THEN j.value ->> 'track_position' ELSE 0 END
+                   AS track_position,
+               j.value ->> 'position' AS position,
+               CASE WHEN library_artist.artist_id IS NOT NULL THEN 'picked' ELSE 'credit' END
+                   AS assignment_kind,
+               library_artist.artist_id AS artist_id,
+               j.value ->> 'name' AS name, j.value ->> 'sort_name' AS sort_name,
+               j.value ->> 'musicbrainz_artist_id' AS musicbrainz_artist_id,
+               j.value ->> 'discogs_artist_id' AS discogs_artist_id,
+               CASE WHEN library_artist.artist_id IS NOT NULL THEN j.value ->> 'credit_key' END
+                   AS credit_key,
+               CASE WHEN library_artist.artist_id IS NULL THEN j.value ->> 'credited_as' END
+                   AS credited_as,
+               j.value ->> 'join_phrase' AS join_phrase
+        FROM form_credits AS credits
+        JOIN json_each(credits.json) AS j
+        LEFT JOIN @bae_records::records::spread_fragments::ArtistRow AS library_artist
+            ON library_artist.artist_id = j.value ->> 'artist_id'
+    )
+    SELECT standing.*
+    FROM @bae_records::records::artist_standing::ArtistFieldStanding(
+        raw: (SELECT * FROM form_raw),
+        credit_answer: (
+            SELECT answer.name_key, answer.musicbrainz_artist_id, answer.discogs_artist_id,
+                   answer.artists
+            FROM @bae_records::records::credit_rule::CreditAnswers(credits: (
+                SELECT DISTINCT bae_artist_name_key(name) AS name_key, musicbrainz_artist_id,
+                       discogs_artist_id
+                FROM form_raw WHERE assignment_kind = 'credit')) AS answer)) AS standing
+"#
+);
+
+/// The standing of each artist field of a form: the album's, and each
+/// explicit track's by its track id, as the JSON `artist_field_of_json` reads.
+pub(super) struct FormArtistStandings {
+    album: Option<String>,
+    tracks: HashMap<String, String>,
+}
+
+impl FormArtistStandings {
+    /// The fields of the form whose album artists and explicit tracks' artists
+    /// are the JSON arrays `album_artists` and `track_artists`.
+    pub(super) fn of_form(
+        sql: &impl coven::SqlRead,
+        album_artists: &str,
+        track_artists: &str,
+    ) -> Result<Self, DbError> {
+        let request = FormArtistFieldsParams {
+            album_artists: album_artists.to_string(),
+            track_artists: track_artists.to_string(),
+        };
+        let mut standings = Self { album: None, tracks: HashMap::new() };
+        for row in sql.query(
+            FormArtistFields::SQL,
+            request.params().as_slice(),
+            FormArtistFieldsRow::read,
+        )? {
+            match row.standing.into_columns() {
+                (0, None, field) => standings.album = Some(field),
+                (1, Some(track_id), field) => {
+                    standings.tracks.insert(track_id, field);
+                }
+                (part, track_id, _) => {
+                    return Err(DbError::unreadable(
+                        "the part and track of a form's artist field",
+                        format!("{part} {track_id:?}"),
+                    ))
+                }
+            }
+        }
+        Ok(standings)
+    }
+
+    /// The album's artists with how each stands to the library; `None` when
+    /// the album has none.
+    pub(super) fn album(&self) -> Result<Option<crate::ArtistField>, DbError> {
+        self.album.as_deref().map(artist_field_of_json).transpose()
+    }
+
+    /// The JSON of the field of the explicit track `track_id`; `None` when the
+    /// track takes its album's artists or has none of its own.
+    pub(super) fn track(&self, track_id: &str) -> Option<String> {
+        self.tracks.get(track_id).cloned()
+    }
+}

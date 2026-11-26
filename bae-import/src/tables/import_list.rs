@@ -24,10 +24,7 @@ mod actions;
 mod artist_standings;
 pub(crate) mod fragments;
 mod pane_read;
-pub(crate) use artist_standings::{
-    album_artist_field_on, artist_field_clauses, artist_field_of_json, track_artist_field_sql,
-    ArtistFieldJson, CreditSource,
-};
+pub(crate) use artist_standings::{artist_field_of_json, ArtistFieldJson};
 mod counts;
 mod folder_images;
 mod follows_candidates;

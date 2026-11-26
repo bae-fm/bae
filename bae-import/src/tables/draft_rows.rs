@@ -12,6 +12,5 @@ mod assignments;
 pub(crate) use album::DraftAlbumRow;
 
 pub(crate) use assignments::{
-    assignment_joins_sql, assignment_kind_column, assignments_json_sql, assignments_of, decoded,
-    StoredAssignment, ASSIGNMENT_JSON,
+    assignment_kind_column, assignments_json_sql, assignments_of, decoded, StoredAssignment,
 };

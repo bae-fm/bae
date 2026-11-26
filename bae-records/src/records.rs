@@ -40,12 +40,13 @@ macro_rules! release_moves {
 
 mod album;
 pub use album::PrimaryReleaseError;
-pub(crate) mod artist_sql;
-pub use artist_sql::credit_artist_clauses;
 pub(crate) mod album_identity;
 mod artist;
 pub mod artist_credit_names;
+pub(crate) mod artist_sql;
+pub mod artist_standing;
 pub(crate) mod catalog_rank;
+pub mod credit_rule;
 #[cfg(desktop)]
 pub(crate) mod lengths_disagree;
 use artist_credit_names::settle_credit_name;

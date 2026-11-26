@@ -78,7 +78,7 @@ pub(super) fn assignment_rows<'a>(
 /// parameter `param` binds, with the columns of a draft's assignment table
 /// and `track_id` and `track_position`. A picked artist the library no
 /// longer holds is a credit of the values the form holds for it.
-pub(crate) fn assignment_rows_sql(param: &str) -> String {
+pub(super) fn assignment_rows_sql(param: &str) -> String {
     format!(
         "(SELECT track_id, track_position, position, \
                  CASE WHEN held THEN 'picked' ELSE 'credit' END AS assignment_kind, \

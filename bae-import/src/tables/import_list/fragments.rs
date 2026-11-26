@@ -85,7 +85,10 @@ sqlive_compose::fragment!(
     },
     r#"
     SELECT :key AS mapping_key, (
-            WITH raw AS (
+            WITH artist_field AS MATERIALIZED (
+            SELECT part, track_id, field
+            FROM @bae_records::records::artist_standing::ArtistFieldStanding(
+                raw: (
             SELECT 0 AS part, NULL AS track_id, 0 AS track_position, a.position AS position,
                 a.assignment_kind, a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id,
                 a.discogs_artist_id, a.credit_key, a.credited_as, a.join_phrase
@@ -106,7 +109,8 @@ sqlive_compose::fragment!(
                 FROM scan_candidate AS scan
                 WHERE scan.path = :key
             ) AND t.artist_assignment_kind = 'explicit'
-            ), credit_answer(name_key, mb, dg, artists) AS (
+                ),
+                credit_answer: (
                 SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id,(
                 SELECT json_group_array(json_object('artist_id', a.artist_id, 'name', a.name,
                     'sort_name', a.sort_name, 'musicbrainz_artist_id', a.musicbrainz_artist_id,
@@ -115,52 +119,7 @@ sqlive_compose::fragment!(
                 WHERE a.resolution = r.id
             )
             FROM import_credit_resolution AS r
-            ), placed_standing AS (
-            SELECT part, track_id, position, credit, kind, CASE WHEN kind = 'ambiguous' THEN
-                artists END AS choices
-                FROM (
-                SELECT assignment.part, assignment.track_id, assignment.position,
-                    json_object('kind', assignment.assignment_kind, 'artist_id',
-                    assignment.artist_id, 'name', CASE assignment.assignment_kind WHEN 'picked'
-                    THEN picked.name WHEN 'credit' THEN assignment.name END, 'sort_name', CASE
-                    assignment.assignment_kind WHEN 'picked' THEN picked.sort_name WHEN 'credit'
-                    THEN assignment.sort_name END, 'musicbrainz_artist_id', CASE
-                    assignment.assignment_kind WHEN 'picked' THEN picked.musicbrainz_artist_id
-                    WHEN 'credit' THEN assignment.musicbrainz_artist_id END,
-                    'discogs_artist_id', CASE assignment.assignment_kind WHEN 'picked' THEN
-                    picked.discogs_artist_id WHEN 'credit' THEN assignment.discogs_artist_id
-                    END, 'credit_key', picked_credit.name_key, 'credit_name',
-                    picked_credit.name, 'credited_as', assignment.credited_as, 'join_phrase',
-                    assignment.join_phrase) AS credit, CASE WHEN assignment.assignment_kind =
-                    'picked' THEN 'library' WHEN answer.name_key IS NULL THEN NULL ELSE CASE
-                    json_array_length(answer.artists) WHEN 0 THEN 'new' WHEN 1 THEN 'library'
-                    ELSE 'ambiguous' END END AS kind, answer.artists AS artists
-                FROM raw AS assignment
-                LEFT JOIN @bae_records::records::spread_fragments::ArtistRow AS picked ON
-                    picked.artist_id = assignment.artist_id
-                LEFT JOIN @bae_records::records::spread_fragments::ArtistCreditName AS
-                    picked_credit ON picked_credit.artist_id = assignment.artist_id AND
-                    picked_credit.name_key = assignment.credit_key
-                LEFT JOIN credit_answer AS answer ON assignment.assignment_kind = 'credit' AND
-                    answer.name_key = bae_artist_name_key(assignment.name) AND answer.mb IS
-                    assignment.musicbrainz_artist_id AND answer.dg IS
-                    assignment.discogs_artist_id
-            )
-            ), field_counts AS (
-            SELECT part, track_id, COUNT(*) AS total, SUM(kind = 'ambiguous') AS to_choose,
-                SUM(kind = 'new') AS new_count, MAX(json_array_length(choices)) AS choice_count,
-                json_group_array(json_object('credit', json(credit), 'kind', kind, 'choices',
-                json(choices)) ORDER BY position) AS credits
-            FROM placed_standing
-            GROUP BY part, track_id
-            ), artist_field AS MATERIALIZED (
-            SELECT part, track_id, json_object('kind', CASE WHEN total = 1 AND to_choose = 1
-                THEN 'choose' WHEN to_choose > 0 THEN 'some_to_choose' WHEN new_count = total
-                THEN 'new' WHEN new_count = 0 THEN 'library' ELSE 'some_new' END, 'count', CASE
-                WHEN total = 1 AND to_choose = 1 THEN choice_count WHEN to_choose > 0 THEN
-                to_choose WHEN new_count = total OR new_count = 0 THEN NULL ELSE new_count END,
-                'credits', json(credits)) AS field
-            FROM field_counts
+                )) AS standing
             ), candidate AS (
             SELECT watched_folder_path, path, content_hash
             FROM scan_candidate
@@ -550,7 +509,10 @@ sqlive_compose::fragment!(
     },
     r#"
     SELECT :key AS artist_field_key, (
-            WITH raw AS (
+            WITH artist_field AS MATERIALIZED (
+            SELECT part, track_id, field
+            FROM @bae_records::records::artist_standing::ArtistFieldStanding(
+                raw: (
             SELECT 0 AS part, NULL AS track_id, 0 AS track_position, a.position AS position,
                 a.assignment_kind, a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id,
                 a.discogs_artist_id, a.credit_key, a.credited_as, a.join_phrase
@@ -571,7 +533,8 @@ sqlive_compose::fragment!(
                 FROM scan_candidate AS scan
                 WHERE scan.path = :key
             ) AND t.artist_assignment_kind = 'explicit'
-            ), credit_answer(name_key, mb, dg, artists) AS (
+                ),
+                credit_answer: (
                 SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id,(
                 SELECT json_group_array(json_object('artist_id', a.artist_id, 'name', a.name,
                     'sort_name', a.sort_name, 'musicbrainz_artist_id', a.musicbrainz_artist_id,
@@ -580,52 +543,7 @@ sqlive_compose::fragment!(
                 WHERE a.resolution = r.id
             )
             FROM import_credit_resolution AS r
-            ), placed_standing AS (
-            SELECT part, track_id, position, credit, kind, CASE WHEN kind = 'ambiguous' THEN
-                artists END AS choices
-                FROM (
-                SELECT assignment.part, assignment.track_id, assignment.position,
-                    json_object('kind', assignment.assignment_kind, 'artist_id',
-                    assignment.artist_id, 'name', CASE assignment.assignment_kind WHEN 'picked'
-                    THEN picked.name WHEN 'credit' THEN assignment.name END, 'sort_name', CASE
-                    assignment.assignment_kind WHEN 'picked' THEN picked.sort_name WHEN 'credit'
-                    THEN assignment.sort_name END, 'musicbrainz_artist_id', CASE
-                    assignment.assignment_kind WHEN 'picked' THEN picked.musicbrainz_artist_id
-                    WHEN 'credit' THEN assignment.musicbrainz_artist_id END,
-                    'discogs_artist_id', CASE assignment.assignment_kind WHEN 'picked' THEN
-                    picked.discogs_artist_id WHEN 'credit' THEN assignment.discogs_artist_id
-                    END, 'credit_key', picked_credit.name_key, 'credit_name',
-                    picked_credit.name, 'credited_as', assignment.credited_as, 'join_phrase',
-                    assignment.join_phrase) AS credit, CASE WHEN assignment.assignment_kind =
-                    'picked' THEN 'library' WHEN answer.name_key IS NULL THEN NULL ELSE CASE
-                    json_array_length(answer.artists) WHEN 0 THEN 'new' WHEN 1 THEN 'library'
-                    ELSE 'ambiguous' END END AS kind, answer.artists AS artists
-                FROM raw AS assignment
-                LEFT JOIN @bae_records::records::spread_fragments::ArtistRow AS picked ON
-                    picked.artist_id = assignment.artist_id
-                LEFT JOIN @bae_records::records::spread_fragments::ArtistCreditName AS
-                    picked_credit ON picked_credit.artist_id = assignment.artist_id AND
-                    picked_credit.name_key = assignment.credit_key
-                LEFT JOIN credit_answer AS answer ON assignment.assignment_kind = 'credit' AND
-                    answer.name_key = bae_artist_name_key(assignment.name) AND answer.mb IS
-                    assignment.musicbrainz_artist_id AND answer.dg IS
-                    assignment.discogs_artist_id
-            )
-            ), field_counts AS (
-            SELECT part, track_id, COUNT(*) AS total, SUM(kind = 'ambiguous') AS to_choose,
-                SUM(kind = 'new') AS new_count, MAX(json_array_length(choices)) AS choice_count,
-                json_group_array(json_object('credit', json(credit), 'kind', kind, 'choices',
-                json(choices)) ORDER BY position) AS credits
-            FROM placed_standing
-            GROUP BY part, track_id
-            ), artist_field AS MATERIALIZED (
-            SELECT part, track_id, json_object('kind', CASE WHEN total = 1 AND to_choose = 1
-                THEN 'choose' WHEN to_choose > 0 THEN 'some_to_choose' WHEN new_count = total
-                THEN 'new' WHEN new_count = 0 THEN 'library' ELSE 'some_new' END, 'count', CASE
-                WHEN total = 1 AND to_choose = 1 THEN choice_count WHEN to_choose > 0 THEN
-                to_choose WHEN new_count = total OR new_count = 0 THEN NULL ELSE new_count END,
-                'credits', json(credits)) AS field
-            FROM field_counts
+                )) AS standing
         ) SELECT field
         FROM artist_field
         WHERE part = 0

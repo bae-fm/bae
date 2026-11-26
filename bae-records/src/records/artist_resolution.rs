@@ -37,7 +37,7 @@
 //!
 //! A read that asks which artists a credit names against the committed
 //! library, with no write around it, applies the rule as SQL
-//! ([`super::credit_artist_clauses`]); the tests check that a write of the
+//! ([`super::credit_rule::CreditAnswers`]); the tests check that a write of the
 //! credit alone decides as that SQL says.
 
 use super::catalog_match::*;
@@ -355,7 +355,18 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
     .ids
 }
 
-/// The library artists [`super::credit_artist_clauses`] names for `credit`,
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::read!(
+    CreditUnderTest(name: String, musicbrainz: Option<String>, discogs: Option<String>),
+    r#"
+    SELECT answer.*
+    FROM @crate::records::credit_rule::CreditAnswers(credits: (
+        SELECT bae_artist_name_key(:name) AS name_key, :musicbrainz AS musicbrainz_artist_id,
+               :discogs AS discogs_artist_id)) AS answer
+"#
+);
+
+/// The library artists [`super::credit_rule::CreditAnswers`] names for `credit`,
 /// in order, after checking that a write committing the credit alone decides
 /// as they say: it links the one artist they name, and makes a new artist
 /// when they name none or several. Tests read the rule's answers through it.
@@ -364,26 +375,21 @@ pub fn credit_artists_checked_on(
     sql: &impl coven::SqlRead,
     credit: &bae_catalogs::credits::ArtistCredit,
 ) -> Result<Vec<crate::ExistingArtist>, DbError> {
-    let named = sql.query(
-        &format!(
-            "WITH credit_under_test (name_key, musicbrainz_artist_id, discogs_artist_id) AS \
-                 (SELECT bae_artist_name_key(?1), ?2, ?3), \
-             {} \
-             SELECT artist_id, name, sort_name, artist_musicbrainz_id, artist_discogs_id \
-             FROM credit_artist ORDER BY position",
-            credit_artist_clauses("credit_under_test")
-        ),
-        params![credit.name, credit.musicbrainz_artist_id, credit.discogs_artist_id],
-        |row| {
-            Ok(crate::ExistingArtist {
-                artist_id: row.get(0)?,
-                name: row.get(1)?,
-                sort_name: row.get(2)?,
-                musicbrainz_artist_id: row.get(3)?,
-                discogs_artist_id: row.get(4)?,
-            })
-        },
-    )?;
+    let request = CreditUnderTestParams {
+        name: credit.name.clone(),
+        musicbrainz: credit.musicbrainz_artist_id.clone(),
+        discogs: credit.discogs_artist_id.clone(),
+    };
+    let answers = sql.query(CreditUnderTest::SQL, request.params().as_slice(), |row| {
+        Ok(CreditUnderTestRow::read(row)?.answer.artists)
+    })?;
+    // The rule answers the one credit it is given.
+    let named: Vec<crate::ExistingArtist> = match answers.first() {
+        Some(json) => serde_json::from_str(json).map_err(|error| {
+            DbError::unreadable_json("the rule's answer for a credit", json, error)
+        })?,
+        None => Vec::new(),
+    };
     let written = DbArtist {
         id: "credit-under-test".to_string(),
         name: credit.name.clone(),

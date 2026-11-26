@@ -8,18 +8,16 @@
 //! reruns after each write that changes what it read: an artist merged in
 //! the library, the album renamed, a cover picked, the release deleted.
 
-use super::import_list::{
-    album_artist_field_on, artist_field_clauses, artist_field_of_json, track_artist_field_sql,
-    CreditSource,
-};
+use super::import_list::artist_field_of_json;
 use super::*;
 use crate::{ReleaseEditDraft, ReleaseEditForm, ReleaseEditLoadError, ReleaseEditSeed};
+use artist_fields::FormArtistStandings;
 pub(crate) use draft::{release_edit_draft_rows_on, ReleaseEditDraftRows};
-pub(crate) use form_assignments::assignment_rows_sql;
 pub use layout::{release_edit_layout_on, store_release_edit_sheet_decisions_on};
 pub use seed::ReleaseEditContext;
 use seed::{release_edit_rows_on, release_edit_seed, ReleaseEditRows};
 
+mod artist_fields;
 mod draft;
 mod form_assignments;
 mod layout;
