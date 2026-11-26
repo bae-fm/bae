@@ -35,6 +35,9 @@ public struct PlainButtonLook: ButtonStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            // The accessibility box is the label's layout box, as the boards
+            // draw it, not the ink of its glyph.
+            .contentShape(.accessibility, Rectangle())
             .opacity(
                 !isEnabled
                     ? ThemeOpacity.off : configuration.isPressed ? 0.5 : 1

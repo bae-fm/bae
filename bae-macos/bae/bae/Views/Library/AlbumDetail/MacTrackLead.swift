@@ -48,8 +48,6 @@ struct MacTrackLead: View {
                         ? "pause.fill" : "play.fill"
                 )
                 .themeIcon(.medium)
-                // The accessibility box is the icon's layout box, not its ink.
-                .contentShape(.accessibility, Rectangle())
             }
             .buttonStyle(.accentPlain)
             .opacity(hover ? 1 : 0)
