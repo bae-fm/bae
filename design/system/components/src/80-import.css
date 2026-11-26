@@ -143,7 +143,7 @@
 /* The import pane's own buttons, drawn with bae-plainbtn: each takes the box its words and glyphs need. */
 .bae-m-igh { width: 100%; box-sizing: border-box; text-align: start; }
 .bae-m-ifl-tab, .bae-m-ifl-reveal { flex: none; display: inline-flex; align-items: center; }
-.bae-m-iartist { align-self: flex-start; box-sizing: border-box; max-width: calc(100% + 6px); min-width: 0; height: 22px; margin: 0 0 0 calc(-1 * var(--space-compact)); padding: 0 var(--space-compact); display: inline-flex; align-items: center; gap: var(--space-compact); border-radius: var(--radius-chip); color: var(--text-primary); font: inherit; text-align: left; }
+.bae-m-iartist { align-self: flex-start; box-sizing: border-box; max-width: calc(100% + 6px); min-width: 0; height: 22px; margin: 0 0 0 calc(-1 * var(--space-compact)); padding: 0 var(--space-compact); display: inline-flex; align-items: center; gap: var(--space-inline); border-radius: var(--radius-chip); color: var(--text-primary); font: inherit; text-align: left; }
 .bae-m-iartist.bae-muted { color: var(--text-secondary); }
 .bae-m-iartist:hover, .bae-m-iartist:focus-visible { background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); }
 .bae-m-iartist-column { align-self: stretch; width: calc(100% + 6px); }
