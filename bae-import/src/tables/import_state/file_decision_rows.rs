@@ -42,7 +42,7 @@ pub(super) fn insert_file_edits(
 }
 
 // The places the user put a candidate's sheets on, and the `FILE` reference
-// bindings they decided. The pane's state row and `FileEdits` spread these.
+// bindings they decided.
 sqlive_compose::fragment!(
     SheetPlaces on import_candidate_state {
         struct StoredSheetPlace {
@@ -118,40 +118,12 @@ sqlive_compose::read!(
 "#
 );
 
-/// One candidate's file decisions as its rows hold them.
-pub(super) struct StoredFileEdits {
-    content_hash: String,
-    revision: i64,
-    places: SheetPlaces,
-    bindings: SheetReferences,
-}
-
-impl StoredFileEdits {
-    /// The decisions a pane's read selects, as
-    /// [`super::state_fragments::StateRow`] names them.
-    pub(super) fn of(state: &super::state_fragments::StateRow) -> Self {
-        Self {
-            content_hash: state.content_hash.clone(),
-            revision: state.edit_revision,
-            places: state.places.clone(),
-            bindings: state.bindings.clone(),
-        }
-    }
-
-    /// The decisions a row of [`FileEdits`] holds.
-    fn of_row(row: FileEdits) -> Self {
-        Self {
-            content_hash: row.content_hash,
-            revision: row.edit_revision,
-            places: row.places,
-            bindings: row.bindings,
-        }
-    }
-
+impl FileEdits {
+    /// The candidate's decisions, as the scan and its state hold them.
     pub(super) fn edits(self) -> Result<CandidateFileEdits, DbError> {
         let content_hash = &self.content_hash;
         let mut edits = CandidateFileEdits {
-            revision: to_u64(self.revision, &format!("{content_hash}'s file edit revision"))?,
+            revision: to_u64(self.edit_revision, &format!("{content_hash}'s file edit revision"))?,
             ..CandidateFileEdits::default()
         };
         for stored in self.places.sheet_places {
@@ -175,13 +147,10 @@ impl StoredFileEdits {
 }
 
 /// Each candidate's decisions in `rows`, keyed by its content hash.
-fn edits_by_hash(rows: Vec<FileEdits>) -> Result<HashMap<String, CandidateFileEdits>, DbError> {
-    rows.into_iter()
-        .map(|row| {
-            let stored = StoredFileEdits::of_row(row);
-            Ok((stored.content_hash.clone(), stored.edits()?))
-        })
-        .collect()
+fn edits_by_hash(
+    rows: impl IntoIterator<Item = FileEdits>,
+) -> Result<HashMap<String, CandidateFileEdits>, DbError> {
+    rows.into_iter().map(|row| Ok((row.content_hash.clone(), row.edits()?))).collect()
 }
 
 /// The request of [`FileEditsOf`] for `content_hashes`.
@@ -275,9 +244,8 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let rows = statement_rows(&sql, &request)?;
-                Ok(Box::new(move || {
-                    edits_by_hash(rows.into_iter().map(|row| row.decided).collect())
-                }) as FinishRead<HashMap<String, CandidateFileEdits>>)
+                Ok(Box::new(move || edits_by_hash(rows.into_iter().map(|row| row.decided)))
+                    as FinishRead<HashMap<String, CandidateFileEdits>>)
             })
             .process(|process| process())
             .await
@@ -320,7 +288,7 @@ pub(crate) fn load_stored_candidate_edits_on(
 ) -> Result<FinishRead<crate::folder_scanner::StoredCandidateEdits>, DbError> {
     let rows = statement_rows(sql, &EveryDecidedFileEditsParams {})?;
     Ok(Box::new(move || {
-        let edits = edits_by_hash(rows.into_iter().map(|row| row.decided).collect())?;
+        let edits = edits_by_hash(rows.into_iter().map(|row| row.decided))?;
         Ok(crate::folder_scanner::StoredCandidateEdits::new(edits))
     }))
 }
@@ -336,10 +304,7 @@ pub(crate) fn load_candidate_file_edits_on(
     let request = file_edits_of(&[content_hash.to_string()])?;
     let stored = statement_optional(sql, &request)?;
     Ok(Box::new(move || {
-        stored.map_or_else(
-            || Ok(CandidateFileEdits::default()),
-            |row| StoredFileEdits::of_row(row.decided).edits(),
-        )
+        stored.map_or_else(|| Ok(CandidateFileEdits::default()), |row| row.decided.edits())
     }))
 }
 

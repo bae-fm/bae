@@ -300,11 +300,12 @@ sqlive_compose::fragment!(
     },
     r#"
     SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row,
-        state.content_hash, state.candidate_key, state.metadata_revision, edit.author AS draft_author, state.edit_revision,
-        @crate::tables::import_state::file_decision_rows::SheetPlaces(parent: state) AS places,
-        @crate::tables::import_state::file_decision_rows::SheetReferences(parent: state)
-            AS bindings
+        state.content_hash, state.candidate_key, state.metadata_revision, edit.author AS draft_author,
+        file_edits.*
     FROM owner
     JOIN import_candidate_state AS state ON state.content_hash = owner.content_hash
+    JOIN @crate::tables::import_state::file_decision_rows::FileEdits(
+        keys: (SELECT content_hash FROM owner)) AS file_edits
+        ON file_edits.content_hash = state.content_hash
     LEFT JOIN import_candidate_edit AS edit ON edit.content_hash = state.content_hash
 "#);
