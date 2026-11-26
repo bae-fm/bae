@@ -141,6 +141,29 @@ extension ShotScene {
             )
         },
         ShotScene(
+            id: "mac.import.identify.searching",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(northbound: .importing, opening: .lowTideHoursSearching),
+                size: CGSize(width: 1_400, height: 900)
+            )
+        },
+        ShotScene(
+            id: "mac.import.identify.lookup-failed",
+            size: CGSize(width: 1_400, height: 900),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(
+                    northbound: .importing,
+                    opening: .lowTideHoursLookupFailed
+                ),
+                size: CGSize(width: 1_400, height: 900)
+            )
+        },
+        ShotScene(
             id: "mac.import.identify.no-discogs-key",
             size: CGSize(width: 1_400, height: 900),
             frame: .window(title: "bae", titleBar: .hidden)

@@ -213,9 +213,11 @@ extension PreviewData {
     /// Low Tide Hours' draft, a release the library already holds: its
     /// pick read from MusicBrainz and Discogs, its artist in the library.
     @MainActor
-    static func lowTideHoursCandidate(cover: BridgeMappingImage)
-        -> ImportPaneFixture
-    {
+    static func lowTideHoursCandidate(
+        cover: BridgeMappingImage,
+        session: CandidatePaneState = CandidatePaneState(),
+        inLibrary: Bool = true
+    ) -> ImportPaneFixture {
         let tracks = lowTideHoursTracks
         let edit = lowTideHoursEdit()
         let records =
@@ -252,17 +254,20 @@ extension PreviewData {
                 untitledTrackCount: 0
             ),
             cover: boardCover(cover),
+            session: session,
             placement: .pending(folderCheck: nil, records: records),
             live: BridgeCandidateLiveState(actions: boardDraftActions),
-            libraryStatus: lowTideHoursInLibrary,
-            album: .named(
-                albumId: "board-0",
-                line: .titleAndArtists(
-                    title: "Low Tide Hours",
-                    artistLine: .named("Mara Quill")
-                )
-            ),
-            albumArtists: boardLibraryArtists("Mara Quill")
+            libraryStatus: inLibrary ? lowTideHoursInLibrary : nil,
+            album: inLibrary
+                ? .named(
+                    albumId: "board-0",
+                    line: .titleAndArtists(
+                        title: "Low Tide Hours",
+                        artistLine: .named("Mara Quill")
+                    )
+                ) : .new,
+            albumArtists: inLibrary
+                ? boardLibraryArtists("Mara Quill") : nil
         )
     }
 
@@ -655,27 +660,55 @@ extension PreviewData {
         _ id: String,
         _ facts: BridgePressingFacts
     ) -> BridgePressing {
+        boardMusicBrainzPressing(
+            boardMusicBrainzRecord(
+                id: id,
+                year: year,
+                facts: facts,
+                groupId: "board-copper-sky"
+            ),
+            label: "Fen Records",
+            catalog: catalog
+        )
+    }
+
+    /// A release only MusicBrainz lists, of the album group `groupId`.
+    static func boardMusicBrainzRecord(
+        id: String,
+        year: Int32,
+        facts: BridgePressingFacts,
+        groupId: String
+    ) -> BridgeMetadataResult {
+        BridgeMetadataResult(
+            source: .musicBrainz,
+            releaseId: id,
+            year: year,
+            facts: facts,
+            barcodes: [],
+            sourceGroupId: groupId
+        )
+    }
+
+    /// A pressing of `record` alone, with one label and its catalog number.
+    static func boardMusicBrainzPressing(
+        _ record: BridgeMetadataResult,
+        label: String,
+        catalog: String,
+        inLibrary: Bool = false
+    ) -> BridgePressing {
         BridgePressing(
-            releases: [
-                BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: id,
-                    year: year,
-                    facts: facts,
-                    barcodes: [],
-                    sourceGroupId: "board-copper-sky"
-                )
-            ],
+            releases: [record],
             labels: [
-                BridgeLabelLine(
-                    names: ["Fen Records"],
-                    catalogNumbers: [catalog]
-                )
+                BridgeLabelLine(names: [label], catalogNumbers: [catalog])
             ],
             pick: BridgePressingLink(
-                record: BridgeLookupRef(catalog: .musicBrainz, key: id),
+                record: BridgeLookupRef(
+                    catalog: .musicBrainz,
+                    key: record.releaseId
+                ),
                 partners: []
-            )
+            ),
+            inLibrary: inLibrary
         )
     }
 

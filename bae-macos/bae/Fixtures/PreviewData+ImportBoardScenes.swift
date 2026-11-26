@@ -46,6 +46,11 @@ extension PreviewData {
         /// Winter Kitchen, which no catalog has, on Find online's
         /// Automatic.
         case winterKitchen
+        /// Low Tide Hours on Find online's Automatic while its run still
+        /// waits on lookups.
+        case lowTideHoursSearching
+        /// Low Tide Hours on Find online's Automatic after a lookup failed.
+        case lowTideHoursLookupFailed
     }
 
     /// The store, lists, selection and streams of one import board: the
@@ -71,6 +76,7 @@ extension PreviewData {
         let items = foundItems(
             northbound: northbound,
             lowTideHoursOpen: pane == .lowTideHours,
+            lowTideHoursLive: pane.flatMap(lowTideHoursLookupLive),
             images: images
         )
         guard let pane else {
@@ -107,6 +113,12 @@ extension PreviewData {
                 image: images.lookup.winterKitchen,
                 session: paneSession(presentation: .findOnline)
             )
+        case .lowTideHoursSearching, .lowTideHoursLookupFailed:
+            fixture = lowTideHoursCandidate(
+                cover: images.lookup.lowTideHours,
+                session: paneSession(presentation: .findOnline),
+                inLibrary: false
+            )
         }
         return (items, selectBoardCandidate(fixture, in: store))
     }
@@ -132,6 +144,18 @@ extension PreviewData {
                 BoardFolder.winterKitchen.key: notFoundRuntime(
                     winterKitchen,
                     providers: [.musicBrainz]
+                )
+            ]
+        case .found(_, .lowTideHoursSearching?):
+            [
+                BoardFolder.lowTideHours.key: lowTideHoursLookupRuntime(
+                    .searching
+                )
+            ]
+        case .found(_, .lowTideHoursLookupFailed?):
+            [
+                BoardFolder.lowTideHours.key: lowTideHoursLookupRuntime(
+                    .failed
                 )
             ]
         case .found, .several, .imported, .skipped:

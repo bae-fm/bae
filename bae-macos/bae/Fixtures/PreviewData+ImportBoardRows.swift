@@ -90,11 +90,13 @@ extension PreviewData {
     static func foundItems(
         northbound: NorthboundStanding,
         lowTideHoursOpen: Bool = false,
+        lowTideHoursLive: BridgeTriageListLiveState? = nil,
         images: FoundBoardImages
     ) -> [BridgeImportListItem] {
         groupItems(cover: images.fieldRecordings.image)
             + lookupItems(
                 lowTideHoursOpen: lowTideHoursOpen,
+                lowTideHoursLive: lowTideHoursLive,
                 images: images.lookup
             )
             + importItems(northbound: northbound, images: images)
@@ -143,13 +145,15 @@ extension PreviewData {
     /// open pane shows, with no badge.
     static func lookupItems(
         lowTideHoursOpen: Bool = false,
+        lowTideHoursLive: BridgeTriageListLiveState? = nil,
         images: LookupBoardImages
     ) -> [BridgeImportListItem] {
         [
             candidateItem(
                 lowTideHoursBoardRow(
                     cover: images.lowTideHours.file,
-                    open: lowTideHoursOpen
+                    open: lowTideHoursOpen,
+                    live: lowTideHoursLive
                 )
             ),
             candidateItem(
@@ -187,7 +191,8 @@ extension PreviewData {
 
     static func lowTideHoursBoardRow(
         cover: BridgeFileVersion,
-        open: Bool = false
+        open: Bool = false,
+        live: BridgeTriageListLiveState? = nil
     ) -> BridgeTriageRow {
         boardRow(
             .lowTideHours,
@@ -197,8 +202,10 @@ extension PreviewData {
             ),
             record: "board-low-tide-hours",
             cover: .local(file: cover),
-            live: open
-                ? triageLive(boardDraftActions) : needsYou(.matches(count: 3))
+            live: live
+                ?? (open
+                    ? triageLive(boardDraftActions)
+                    : needsYou(.matches(count: 3)))
         )
     }
 
