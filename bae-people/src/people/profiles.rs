@@ -3,15 +3,6 @@ use crate::membership::fragments::{EveryMember, Member};
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
 use bae_records::records::name_sort::sort_key_sql;
 
-// A person's profile, which keeps its member id after the member's removal.
-sqlive_compose::fragment!(
-    Profile { id: coven::MemberId },
-    r#"
-    SELECT p.id, p.name
-    FROM people AS p
-"#
-);
-
 /// The columns [`profile_row`] reads of the `people` row `p` and the
 /// `coven_files` row `avatar` of its avatar ([`PROFILES`]): its own, then
 /// the avatar's file and version; [`PROFILE_COLUMN_COUNT`] of them.

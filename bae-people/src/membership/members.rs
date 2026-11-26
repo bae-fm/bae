@@ -95,7 +95,7 @@ fn former_state(state: &str) -> Result<FormerDeviceState, DbError> {
 }
 
 /// A device id from its eight bytes.
-fn device_id(bytes: &[u8]) -> Result<coven::DeviceId, DbError> {
+pub(super) fn device_id(bytes: &[u8]) -> Result<coven::DeviceId, DbError> {
     <[u8; 8]>::try_from(bytes).map(|bytes| coven::DeviceId(u64::from_be_bytes(bytes))).map_err(
         |error| {
             DbError::unreadable(format!("a device id of {} bytes", bytes.len()), error.to_string())

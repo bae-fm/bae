@@ -9,12 +9,13 @@ use time::UtcDateTime;
 
 mod collections;
 pub use collections::{album_ratings_row, album_ratings_sql, own_track_stars_sql};
+pub mod fragments;
 mod history;
 mod initials;
 pub use initials::initials;
 pub(crate) mod joining;
 pub use joining::private_circle_name;
-pub(crate) mod profiles;
+mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
 pub mod rating_systems;
 pub use rating_systems::{

@@ -127,10 +127,12 @@ fn a_former_devices_state_reads_by_coven_s_name() {
 /// Each place's statement returns the changes of its own kinds, and every
 /// place's statement returns a change whose operation coven lists with a kind
 /// no place shows, so that reading that change fails wherever the person
-/// looks. A place with no change reads no row.
+/// looks. A place with no change lists none and says so.
 #[test]
 fn every_place_returns_a_change_of_a_kind_no_place_shows() {
-    use super::admin_operations::{LibraryAdminChanges, PeopleAdminChanges, PersonAdminChanges};
+    use super::admin_operations::{PlaceAdminChanges, PlaceAdminChangesParams};
+    use crate::admin_change::AdminChangePlace;
+    use sqlive_compose::{Returning as _, Statement as _};
     let connection = rusqlite::Connection::open_in_memory().unwrap();
     crate::test_fixtures::TEST_SCHEMA.open_bare_library(&connection);
     connection
@@ -145,18 +147,22 @@ fn every_place_returns_a_change_of_a_kind_no_place_shows() {
     connection
         .execute("UPDATE admin_operations SET member = ?1 WHERE operation = 2", [ana])
         .unwrap();
-    let operations = |sql: &str, params: &[(&str, &dyn rusqlite::ToSql)]| -> Vec<i64> {
-        let mut statement = connection.prepare(sql).unwrap();
-        statement.query_map(params, |row| row.get(0)).unwrap().collect::<Result<_, _>>().unwrap()
+    // The operations the place's read lists, and whether it says the place
+    // has a change.
+    let read = |place: AdminChangePlace| -> (Vec<i64>, bool) {
+        let request = PlaceAdminChangesParams::of(&place);
+        let mut statement = connection.prepare(PlaceAdminChanges::SQL).unwrap();
+        let row = statement
+            .query_row(request.params().as_slice(), PlaceAdminChangesParams::read)
+            .unwrap();
+        let operations = row.listed.changes.iter().map(|change| change.operation).collect();
+        (operations, row.place_has_change)
     };
-    let library = || operations(LibraryAdminChanges::SQL, &[]);
-    let people = || operations(PeopleAdminChanges::SQL, &[]);
-    let person = || operations(PersonAdminChanges::SQL, &[(":member", &ana)]);
-    assert_eq!(library(), [1, 4]);
-    assert_eq!(person(), [2, 4]);
-    assert_eq!(people(), [3, 4]);
+    assert_eq!(read(AdminChangePlace::Library), (vec![1, 4], true));
+    assert_eq!(read(AdminChangePlace::Person(ana)), (vec![2, 4], true));
+    assert_eq!(read(AdminChangePlace::People), (vec![3, 4], true));
     connection.execute_batch("DELETE FROM admin_operations WHERE operation <> 2").unwrap();
-    assert!(library().is_empty(), "no change shows with the library's name");
-    assert!(people().is_empty(), "no change shows on People and devices");
-    assert_eq!(person(), [2]);
+    assert_eq!(read(AdminChangePlace::Library), (vec![], false), "none with the library's name");
+    assert_eq!(read(AdminChangePlace::People), (vec![], false), "none on People and devices");
+    assert_eq!(read(AdminChangePlace::Person(ana)), (vec![2], true));
 }
