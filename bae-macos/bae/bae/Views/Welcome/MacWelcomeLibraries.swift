@@ -198,12 +198,19 @@ private struct LibraryRow: View {
     @State
     private var showsDetails = false
 
+    /// Whether this row can't be used now: another library's removal or open
+    /// runs. The row that runs it keeps its look.
+    private var isOff: Bool {
+        disabled && removalSteps == nil && openSteps == nil
+    }
+
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
             // VoiceOver reads the name and the step under it before what
             // sits at the row's end: the step's line is a native view, which
             // it would otherwise read after the spinner.
             label
+                .opacity(isOff ? ThemeOpacity.off : 1)
                 .accessibilitySortPriority(1)
             if removalSteps != nil || openSteps != nil {
                 MacSpinner()

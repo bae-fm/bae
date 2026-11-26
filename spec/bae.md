@@ -4993,7 +4993,9 @@ fail, saying the laptop left the library and its files are still on it.
   library's background work, leaving the library, then deleting this device's
   files. For an open library, the apps name each step on the waiting screen.
   For a closed library, the row names each step and offers no menu while the
-  removal runs. The row names the steps for opening to count changes, then
+  removal runs. On the Mac, the other libraries' rows draw dimmed while it
+  runs, since none of them can be opened or changed until it ends. The row
+  names the steps for opening to count changes, then
   the steps for removal. For a library that cannot open, the row reports only
   leaving the library and deleting its files.
 - **A library that can't open.** A library whose settings or name can't be read, or
