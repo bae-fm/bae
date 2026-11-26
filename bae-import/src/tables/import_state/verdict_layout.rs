@@ -9,7 +9,7 @@
 use super::layout::{store_list_text, ListLayout, ListOwner, OwnersList, Place};
 use super::match_record::load_owner_matches_on;
 use super::match_rows::{ordinal_column, MatchOwner, Placed, StoredMatches};
-use super::verdict_rows::{outcome_of, verdict_columns, verdict_row_of, Outcome, Owner};
+use super::verdict_rows::{outcome_of, verdict_columns, verdict_row_of, Outcome, Owner, VerdictId};
 use super::*;
 use bae_catalogs::search::MetadataResult;
 use bae_identify::signals::{SourcedValue, TextLine};
@@ -58,11 +58,15 @@ impl VerdictLayout {
         Placed { place: self.places[index], agreements: self.agreements[index] }
     }
 
-    /// Store the text of each card and row as `owner`'s own list.
-    pub(super) fn store_text(&self, sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
+    /// Store the text of each card and row as `verdict`'s own list.
+    pub(super) fn store_text(
+        &self,
+        sql: &CovenWrite<'_>,
+        verdict: VerdictId,
+    ) -> Result<(), DbError> {
         store_list_text(
             sql,
-            ListOwner { owner: MatchOwner::Verdict(owner), list: OwnersList::OwnList },
+            ListOwner { owner: MatchOwner::Verdict(verdict), list: OwnersList::OwnList },
             &self.text,
         )
     }
@@ -128,19 +132,19 @@ pub(super) fn verdict_text_on(
 /// An owner with no verdict, or one that found nothing, holds no layout.
 pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
     let column = owner.column();
-    let row = sql
+    let stored = sql
         .query(
             &format!(
-                "SELECT {verdict} FROM import_candidate_verdict AS verdict \
-                 WHERE verdict.{column} = ?",
-                verdict = verdict_columns().select(),
+                "SELECT verdict.verdict_id AS verdict_id, {columns} \
+                 FROM import_candidate_verdict AS verdict WHERE verdict.{column} = ?",
+                columns = verdict_columns().select(),
             ),
             params![owner],
-            |row| Ok(verdict_row_of(row)),
+            |row| Ok((row.get::<_, VerdictId>("verdict_id")?, verdict_row_of(row))),
         )?
         .into_iter()
         .next();
-    let Some(row) = row else {
+    let Some((verdict, row)) = stored else {
         return Ok(());
     };
     let row = row?;
@@ -156,13 +160,11 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
         let placed = layout.placed(index);
         let agrees = placed.agreements;
         sql.execute(
-            &format!(
-                "UPDATE import_candidate_match \
-                 SET card = ?, record_order = ?, section = ?, row_order = ?, agrees_disc_id = ?, agrees_barcode = ?, \
-                     agrees_catalog = ?, agrees_label = ?, agrees_year = ?, agrees_country = ?, \
-                     agrees_title = ?, agrees_artist = ? \
-                 WHERE {column} = ? AND position = ?"
-            ),
+            "UPDATE import_candidate_match \
+             SET card = ?, record_order = ?, section = ?, row_order = ?, agrees_disc_id = ?, \
+                 agrees_barcode = ?, agrees_catalog = ?, agrees_label = ?, agrees_year = ?, \
+                 agrees_country = ?, agrees_title = ?, agrees_artist = ? \
+             WHERE verdict_id = ? AND position = ?",
             params![
                 placed.place.card,
                 placed.place.record_order,
@@ -176,12 +178,12 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
                 agrees.country,
                 agrees.title,
                 agrees.artist,
-                owner,
+                verdict,
                 ordinal_column(index)?,
             ],
         )?;
     }
-    layout.store_text(sql, owner)
+    layout.store_text(sql, verdict)
 }
 
 #[cfg(test)]

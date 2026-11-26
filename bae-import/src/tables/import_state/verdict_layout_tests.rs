@@ -47,7 +47,8 @@ async fn catalog_agreements(db: &Store, hash: &str) -> Vec<String> {
     db.read(move |sql| {
         Ok(sql.query(
             "SELECT release_id || ' ' || agrees_catalog FROM import_candidate_match \
-             WHERE content_hash = ? ORDER BY position",
+             WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                 WHERE content_hash = ?) ORDER BY position",
             [hash],
             |row| row.get::<_, String>(0),
         )?)
@@ -63,7 +64,9 @@ async fn places(db: &Store, hash: &str) -> Vec<String> {
     db.read(move |sql| {
         Ok(sql.query(
             "SELECT release_id || ' ' || card || ' ' || record_order \
-             FROM import_candidate_match WHERE content_hash = ? ORDER BY position",
+             FROM import_candidate_match \
+             WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                 WHERE content_hash = ?) ORDER BY position",
             [hash],
             |row| row.get::<_, String>(0),
         )?)
@@ -79,7 +82,9 @@ async fn row_statements(db: &Store, hash: &str) -> Vec<String> {
         Ok(sql.query(
             "SELECT listing || ' ' || pressing || ' ' || fact || ' ' || value \
              FROM import_candidate_row_statement \
-             JOIN import_candidate_card_list USING (list) WHERE content_hash = ? \
+             JOIN import_candidate_card_list USING (list) \
+             WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                 WHERE content_hash = ?) \
              ORDER BY listing, pressing, fact, line, ordinal",
             [hash],
             |row| row.get::<_, String>(0),

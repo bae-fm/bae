@@ -16,7 +16,7 @@ use super::column_list::Columns;
 use super::layout::{store_list_text, ListLayout, ListOwner, OwnersList};
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_rows::MatchOwner;
-use super::verdict_rows::Owner;
+use super::verdict_rows::{Owner, VerdictId};
 use super::*;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::search::MetadataResult;
@@ -43,7 +43,7 @@ pub(super) struct StepColumns<'a> {
 
 /// A ledger's clue in a state no settled run records: a settled verdict is
 /// written only once every clue settled.
-fn unsettled(owner: Owner<'_>, what: &str) -> ! {
+fn unsettled(owner: impl std::fmt::Display, what: &str) -> ! {
     panic!("the ledger recorded for {owner} shows {what}, which no settled run records")
 }
 
@@ -116,24 +116,17 @@ pub(super) fn step_columns<'a>(
     }
 }
 
-/// Clear the ledger rows `owner` holds; the lookups and the releases they
+/// Clear the ledger rows `verdict` holds; the lookups and the releases they
 /// found go with their rows, and each cell's list with its cards.
-pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
+pub(super) fn delete_ledger(sql: &CovenWrite<'_>, verdict: VerdictId) -> Result<(), DbError> {
     for table in [
         "import_candidate_lookup_value",
         "import_candidate_lookup_provider",
         "import_candidate_lookup_isrc",
         "import_candidate_lookup_offered_catalog",
     ] {
-        sql.execute(&format!("DELETE FROM {table} WHERE {} = ?", owner.column()), params![owner])?;
+        sql.execute(&format!("DELETE FROM {table} WHERE verdict_id = ?"), params![verdict])?;
     }
-    sql.execute(
-        &format!(
-            "DELETE FROM import_candidate_card_list WHERE {} = ? AND step IS NOT NULL",
-            owner.column()
-        ),
-        params![owner],
-    )?;
     Ok(())
 }
 
@@ -141,33 +134,32 @@ pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<()
 /// and the copy the row holds.
 pub(super) type MatchPositions<'a> = HashMap<(LookupCatalog, &'a str), (usize, &'a MetadataResult)>;
 
-/// Write `ledger`'s rows under `owner`'s verdict row, whose step columns are
-/// written and whose previous ledger rows are gone. Each release a cell lists
-/// is linked to the match row holding it, which must hold the cell's copy of
-/// it: the cell is laid out again from that row. `running`: the ledger is a
-/// run's in flight, whose cells may be queued or looking up.
+/// Write `ledger`'s rows under `verdict`, whose step columns are written and
+/// whose previous ledger rows are gone. Each release a cell lists is linked to
+/// the match row holding it, which must hold the cell's copy of it: the cell
+/// is laid out again from that row. `asked_by`: the run in flight whose
+/// ledger this is, whose cells may be queued or looking up; none for a ledger
+/// that has settled.
 pub(super) fn store_ledger(
     sql: &CovenWrite<'_>,
-    owner: Owner<'_>,
+    verdict: VerdictId,
     ledger: &IdentifyRunView,
     matches: &MatchPositions<'_>,
-    running: bool,
+    asked_by: Option<i64>,
 ) -> Result<(), DbError> {
-    let (content_hash, run) = (owner.content_hash(), owner.run());
     for (position, catalog) in ledger.providers.iter().enumerate() {
         sql.execute(
-            "INSERT INTO import_candidate_lookup_provider \
-                 (content_hash, identify_run, position, catalog) \
-             VALUES (?, ?, ?, ?)",
-            params![content_hash, run, column(position)?, catalog.as_str()],
+            "INSERT INTO import_candidate_lookup_provider (verdict_id, position, catalog) \
+             VALUES (?, ?, ?)",
+            params![verdict, column(position)?, catalog.as_str()],
         )?;
     }
     let row = |step: &str, position: usize, value: Option<&str>, excluded: bool| {
         sql.execute(
             "INSERT INTO import_candidate_lookup_value \
-                 (content_hash, identify_run, step, position, value, excluded) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![content_hash, run, step, column(position)?, value, excluded],
+                 (verdict_id, step, position, value, excluded) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![verdict, step, column(position)?, value, excluded],
         )?;
         Ok::<_, DbError>(())
     };
@@ -178,11 +170,11 @@ pub(super) fn store_ledger(
                 lookup: &LookupView| {
         store_lookup(
             sql,
-            owner,
+            verdict,
             LookupKey { step, position, cell },
             catalog,
             lookup,
-            (matches, running),
+            (matches, asked_by),
         )
     };
     let value_rows = |step: &str, rows: &[SignalValueRow]| {
@@ -207,20 +199,18 @@ pub(super) fn store_ledger(
         value_rows(STEP_CATALOG, rows)?;
         for (position, candidate) in candidates.iter().enumerate() {
             sql.execute(
-                "INSERT INTO import_candidate_lookup_offered_catalog \
-                     (content_hash, identify_run, position, value) \
-                 VALUES (?, ?, ?, ?)",
-                params![content_hash, run, column(position)?, candidate.value],
+                "INSERT INTO import_candidate_lookup_offered_catalog (verdict_id, position, value) \
+                 VALUES (?, ?, ?)",
+                params![verdict, column(position)?, candidate.value],
             )?;
         }
     }
     if let IsrcStepView::Read { isrcs, lookup, .. } = &ledger.isrc {
         for (position, isrc) in isrcs.iter().enumerate() {
             sql.execute(
-                "INSERT INTO import_candidate_lookup_isrc \
-                     (content_hash, identify_run, position, isrc) \
-                 VALUES (?, ?, ?, ?)",
-                params![content_hash, run, column(position)?, isrc],
+                "INSERT INTO import_candidate_lookup_isrc (verdict_id, position, isrc) \
+                 VALUES (?, ?, ?)",
+                params![verdict, column(position)?, isrc],
             )?;
         }
         row(STEP_ISRC, 0, None, false)?;
@@ -250,19 +240,19 @@ struct LookupKey<'a> {
 }
 
 /// One cell, and the releases it found linked to their match rows; queued
-/// or looking up only in a run's ledger in flight (`running`).
+/// or looking up only in a run's ledger in flight (`asked_by` names the run).
 fn store_lookup(
     sql: &CovenWrite<'_>,
-    owner: Owner<'_>,
+    owner: VerdictId,
     key: LookupKey<'_>,
     catalog: Option<Catalog>,
     lookup: &LookupView,
-    (matches, running): (&MatchPositions<'_>, bool),
+    (matches, asked_by): (&MatchPositions<'_>, Option<i64>),
 ) -> Result<(), DbError> {
     let LookupKey { step, position, cell } = key;
     let (answer, reason, failure) = match lookup {
-        LookupView::Queued if running => ("queued", None, None),
-        LookupView::LookingUp if running => ("looking_up", None, None),
+        LookupView::Queued if asked_by.is_some() => ("queued", None, None),
+        LookupView::LookingUp if asked_by.is_some() => ("looking_up", None, None),
         LookupView::Queued => unsettled(owner, "a queued lookup"),
         LookupView::LookingUp => unsettled(owner, "a lookup under way"),
         LookupView::NotAsked { reason } => (
@@ -279,12 +269,11 @@ fn store_lookup(
     let failure = failure_columns(failure);
     sql.execute(
         "INSERT INTO import_candidate_lookup \
-             (content_hash, identify_run, step, position, cell, catalog, answer, \
-              not_asked_reason, failure, failure_status) \
+             (verdict_id, step, position, cell, catalog, answer, \
+              not_asked_reason, failure, failure_status, asked_by) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
-            owner.content_hash(),
-            owner.run(),
+            owner,
             step,
             column(position)?,
             column(cell)?,
@@ -293,6 +282,8 @@ fn store_lookup(
             reason,
             failure.kind,
             failure.status,
+            // A queued cell or one under way names the run asking it.
+            asked_by.filter(|_| matches!(answer, "queued" | "looking_up")),
         ],
     )?;
     let releases = lookup.releases();
@@ -324,12 +315,11 @@ fn store_lookup(
         );
         sql.execute(
             "INSERT INTO import_candidate_lookup_release \
-                 (content_hash, identify_run, step, position, cell, ordinal, match_position, \
+                 (verdict_id, step, position, cell, ordinal, match_position, \
                   pressing, card, record_order, section, row_order) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
-                owner.content_hash(),
-                owner.run(),
+                owner,
                 step,
                 column(position)?,
                 column(cell)?,
@@ -363,7 +353,7 @@ fn column(index: usize) -> Result<i64, DbError> {
 /// that joins its verdict as `verdict`.
 fn ledger_rows_sql() -> String {
     format!(
-    "(SELECT json_group_object(by_step.step, json(by_step.rows)) \
+        "(SELECT json_group_object(by_step.step, json(by_step.rows)) \
       FROM (SELECT ledger_row.step AS step, json_group_array(json_object( \
           'step', ledger_row.step, 'value', ledger_row.value, \
           'excluded', ledger_row.excluded, \
@@ -371,8 +361,7 @@ fn ledger_rows_sql() -> String {
               'catalog', lookup.catalog, \
               'answer', CASE WHEN lookup.answer = 'answered' AND NOT EXISTS ( \
                                    SELECT 1 FROM import_candidate_lookup_release AS found \
-                                   WHERE found.content_hash IS lookup.content_hash \
-                                     AND found.identify_run IS lookup.identify_run \
+                                   WHERE found.verdict_id = lookup.verdict_id \
                                      AND found.step = lookup.step \
                                      AND found.position = lookup.position \
                                      AND found.cell = lookup.cell) \
@@ -381,21 +370,21 @@ fn ledger_rows_sql() -> String {
               'status', lookup.failure_status, \
               'count', (SELECT COUNT(DISTINCT found.pressing) \
                         FROM import_candidate_lookup_release AS found \
-                        WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
+                        WHERE found.verdict_id = lookup.verdict_id \
                           AND found.step = lookup.step \
                           AND found.position = lookup.position \
                           AND found.cell = lookup.cell), \
               'cards', json({cards})) \
               ORDER BY lookup.cell) \
               FROM import_candidate_lookup AS lookup \
-              WHERE lookup.content_hash IS ledger_row.content_hash AND lookup.identify_run IS ledger_row.identify_run \
+              WHERE lookup.verdict_id = ledger_row.verdict_id \
                 AND lookup.step = ledger_row.step \
                 AND lookup.position = ledger_row.position))) \
           ORDER BY ledger_row.position) AS rows \
       FROM import_candidate_lookup_value AS ledger_row \
-      WHERE ledger_row.content_hash IS verdict.content_hash AND ledger_row.identify_run IS verdict.identify_run \
+      WHERE ledger_row.verdict_id = verdict.verdict_id \
         GROUP BY ledger_row.step) AS by_step)",
-    cards = cell_cards_sql("lookup"),
+        cards = cell_cards_sql("lookup", "verdict"),
     )
 }
 
@@ -413,8 +402,7 @@ pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
     let select = |expr: &str, table: &str, tail: &str| {
         format!(
             "(SELECT {expr} FROM {table} AS entry \
-              WHERE entry.content_hash IS verdict.content_hash \
-                AND entry.identify_run IS verdict.identify_run{tail})"
+              WHERE entry.verdict_id = verdict.verdict_id{tail})"
         )
     };
     let list = |value: &str, table: &str, order: &str| {
@@ -431,12 +419,10 @@ pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
         (
             "ledger_stray_unlisted",
             "(SELECT MIN(unlisted.position) FROM import_candidate_match AS unlisted \
-              WHERE unlisted.content_hash IS verdict.content_hash \
-                AND unlisted.identify_run IS verdict.identify_run \
+              WHERE unlisted.verdict_id = verdict.verdict_id \
                 AND unlisted.listing = 'unlisted' \
                 AND NOT EXISTS (SELECT 1 FROM import_candidate_lookup_release AS found \
-                                WHERE found.content_hash IS verdict.content_hash \
-                                  AND found.identify_run IS verdict.identify_run \
+                                WHERE found.verdict_id = verdict.verdict_id \
                                   AND found.match_position = unlisted.position))"
                 .to_string(),
         ),

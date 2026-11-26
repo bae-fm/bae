@@ -330,15 +330,18 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
                             || ' ' || lookup.record_order \
                      FROM import_candidate_lookup_release AS lookup \
                      JOIN import_candidate_match AS found \
-                       ON found.content_hash = lookup.content_hash \
+                       ON found.verdict_id = lookup.verdict_id \
                       AND found.position = lookup.match_position \
-                     WHERE lookup.content_hash = ? ORDER BY lookup.ordinal",
+                     JOIN import_candidate_verdict AS verdict \
+                       ON verdict.verdict_id = lookup.verdict_id \
+                     WHERE verdict.content_hash = ? ORDER BY lookup.ordinal",
                 )?,
                 query(
                     "SELECT card || ' ' || kind || ' ' || ordinal || ' ' || text \
                      FROM import_candidate_card_text \
                      JOIN import_candidate_card_list USING (list) \
-                     WHERE content_hash = ? AND step IS NOT NULL \
+                     WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                         WHERE content_hash = ?) AND step IS NOT NULL \
                      ORDER BY card, kind, ordinal",
                 )?,
                 query(
@@ -346,7 +349,8 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
                             || value || ' ' || catalogs \
                      FROM import_candidate_row_statement \
                      JOIN import_candidate_card_list USING (list) \
-                     WHERE content_hash = ? AND step IS NOT NULL \
+                     WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                         WHERE content_hash = ?) AND step IS NOT NULL \
                      ORDER BY pressing, fact, line, ordinal",
                 )?,
             ))

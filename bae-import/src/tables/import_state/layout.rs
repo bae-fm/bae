@@ -238,7 +238,7 @@ impl ListLayout {
 /// Whose rows a list's text belongs to, and which list of theirs it is.
 #[derive(Clone, Copy)]
 pub(super) struct ListOwner<'a> {
-    pub(super) owner: MatchOwner<'a>,
+    pub(super) owner: MatchOwner,
     pub(super) list: OwnersList<'a>,
 }
 
@@ -270,19 +270,18 @@ pub(super) fn store_list_text(
     owner: ListOwner<'_>,
     layout: &ListLayout,
 ) -> Result<(), DbError> {
-    let (content_hash, identify_run, search_run) =
-        (owner.owner.content_hash(), owner.owner.run(), owner.owner.search());
+    let (verdict, search_run) = (owner.owner.verdict(), owner.owner.search());
     let (step, position, cell) = owner.list.columns();
     sql.execute(
-        "DELETE FROM import_candidate_card_list WHERE content_hash IS ? AND identify_run IS ? \
+        "DELETE FROM import_candidate_card_list WHERE verdict_id IS ? \
          AND search_run IS ? AND step IS ? AND position IS ? AND cell IS ?",
-        params![content_hash, identify_run, search_run, step, position, cell],
+        params![verdict, search_run, step, position, cell],
     )?;
     let list: i64 = sql.query_row(
         "INSERT INTO import_candidate_card_list \
-             (content_hash, identify_run, search_run, step, position, cell) \
-         VALUES (?, ?, ?, ?, ?, ?) RETURNING list",
-        params![content_hash, identify_run, search_run, step, position, cell],
+             (verdict_id, search_run, step, position, cell) \
+         VALUES (?, ?, ?, ?, ?) RETURNING list",
+        params![verdict, search_run, step, position, cell],
         |row| row.get(0),
     )?;
     let card_text = |card: u32, kind: &str, ordinal: usize, text: &str| {

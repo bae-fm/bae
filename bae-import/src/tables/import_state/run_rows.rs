@@ -113,7 +113,7 @@ fn run_column(key: &str) -> String {
                   'cards', json({cards}), \
                   'matches', json((SELECT json_group_array(json({record}) ORDER BY found.position) \
                                    FROM import_candidate_match AS found \
-                                   WHERE found.identify_run = run.identify_run))) \
+                                   WHERE found.verdict_id = verdict.verdict_id))) \
           FROM import_identify_run AS run \
           JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run \
           LEFT JOIN import_candidate_signals AS signals \

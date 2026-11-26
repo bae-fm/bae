@@ -106,13 +106,17 @@ END;
 CREATE TRIGGER IF NOT EXISTS import_list_on_match_added AFTER INSERT ON import_candidate_match
 BEGIN
     INSERT INTO import_list_replace (key)
-    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+    SELECT c.path FROM import_candidate_verdict AS v
+    JOIN scan_candidate AS c ON c.content_hash = v.content_hash
+    WHERE v.verdict_id = NEW.verdict_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_match_removed AFTER DELETE ON import_candidate_match
 BEGIN
     INSERT INTO import_list_replace (key)
-    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+    SELECT c.path FROM import_candidate_verdict AS v
+    JOIN scan_candidate AS c ON c.content_hash = v.content_hash
+    WHERE v.verdict_id = OLD.verdict_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_match_changed
@@ -120,7 +124,9 @@ AFTER UPDATE OF pressing, listing ON import_candidate_match
 WHEN (OLD.pressing, OLD.listing) IS NOT (NEW.pressing, NEW.listing)
 BEGIN
     INSERT INTO import_list_replace (key)
-    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+    SELECT c.path FROM import_candidate_verdict AS v
+    JOIN scan_candidate AS c ON c.content_hash = v.content_hash
+    WHERE v.verdict_id = NEW.verdict_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_failure_added AFTER INSERT ON import_candidate_failure

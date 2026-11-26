@@ -91,7 +91,7 @@ fn states_rows_where(
                     {verdict}, \
                     (SELECT json_group_array({record} ORDER BY found.position) \
                      FROM import_candidate_match AS found \
-                     WHERE found.content_hash = state.content_hash) AS candidate_matches \
+                     WHERE found.verdict_id = verdict.verdict_id) AS candidate_matches \
              FROM import_candidate_state AS state \
              LEFT JOIN import_candidate_edit AS edit \
                  ON edit.content_hash = state.content_hash \

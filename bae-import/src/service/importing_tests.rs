@@ -298,13 +298,30 @@ async fn seed_spent_rows(
 /// How many rows each spent table holds under `content_hash`.
 async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'static str, i64)> {
     let mut counts = Vec::new();
+    // The rows under the verdict name it by its id, so they are counted
+    // through it.
     for table in [
-        "import_candidate_verdict",
         "import_candidate_match",
         "import_candidate_lookup_provider",
         "import_candidate_lookup_value",
         "import_candidate_lookup",
         "import_candidate_lookup_release",
+    ] {
+        let query = format!(
+            "SELECT COUNT(*) FROM {table} AS owned \
+             JOIN import_candidate_verdict AS verdict ON verdict.verdict_id = owned.verdict_id \
+             WHERE verdict.content_hash = ?"
+        );
+        let content_hash = content_hash.to_string();
+        let count = test
+            .db
+            .read(move |sql| Ok(sql.query_row(&query, [content_hash], |row| row.get::<_, i64>(0))?))
+            .await
+            .unwrap();
+        counts.push((table, count));
+    }
+    for table in [
+        "import_candidate_verdict",
         "import_candidate_lookup_choices",
         "import_candidate_chosen_catalog",
         "import_candidate_pane_failure",

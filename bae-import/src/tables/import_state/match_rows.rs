@@ -3,7 +3,7 @@
 //! record said and the rows hanging off it, written and read back.
 //! Its tables are `match_rows.sql`, which every device's library holds.
 
-use super::verdict_rows::Owner;
+use super::verdict_rows::VerdictId;
 use super::*;
 use crate::tables::album_link_rows::{album_links_column, album_links_of, AlbumLinkRow};
 use crate::tables::cover_labels;
@@ -48,34 +48,27 @@ impl rusqlite::ToSql for MatchId {
     }
 }
 
-/// Whose match rows these are: a verdict-shaped owner's — a candidate's
-/// verdict or a run in flight — or a typed search's, whose rows hang off the
-/// catalog part that returned them.
+/// Whose match rows these are: a verdict's, whether a candidate's or a run
+/// in flight's, or a typed search's, whose rows hang off the catalog part that
+/// returned them.
 #[derive(Clone, Copy, Debug)]
-pub(super) enum MatchOwner<'a> {
-    Verdict(Owner<'a>),
+pub(super) enum MatchOwner {
+    Verdict(VerdictId),
     Search(i64),
 }
 
-impl MatchOwner<'_> {
+impl MatchOwner {
     /// The column that names this owner on every row it owns.
     pub(super) fn column(self) -> &'static str {
         match self {
-            Self::Verdict(owner) => owner.column(),
+            Self::Verdict(_) => "verdict_id",
             Self::Search(_) => "search_run",
         }
     }
 
-    pub(super) fn content_hash(self) -> Option<String> {
+    pub(super) fn verdict(self) -> Option<VerdictId> {
         match self {
-            Self::Verdict(owner) => owner.content_hash(),
-            Self::Search(_) => None,
-        }
-    }
-
-    pub(super) fn run(self) -> Option<i64> {
-        match self {
-            Self::Verdict(owner) => owner.run(),
+            Self::Verdict(verdict) => Some(verdict),
             Self::Search(_) => None,
         }
     }
@@ -108,17 +101,12 @@ pub(super) enum Written<'a> {
     Returned,
 }
 
-/// One match at `position`, in place of the one there, with the rows under
-/// it. The rows under the match that stood there are already gone. Only a
-/// search writes a returned release, and only a verdict-shaped owner a listed
-/// or unlisted one.
-/// Delete the rows below every match the verdict `owner` holds, so the
+/// Delete the rows below every match the verdict `verdict` holds, so the
 /// matches a write stores next carry only their own.
 pub(super) fn delete_verdict_match_entries(
     sql: &CovenWrite<'_>,
-    owner: Owner<'_>,
+    verdict: VerdictId,
 ) -> Result<(), DbError> {
-    let column = owner.column();
     for table in [
         "import_candidate_match_cover_copy",
         "import_candidate_match_label",
@@ -130,25 +118,24 @@ pub(super) fn delete_verdict_match_entries(
         sql.execute(
             &format!(
                 "DELETE FROM {table} WHERE match_id IN \
-                 (SELECT match_id FROM import_candidate_match WHERE {column} = ?)"
+                 (SELECT match_id FROM import_candidate_match WHERE verdict_id = ?)"
             ),
-            params![owner],
+            params![verdict],
         )?;
     }
     Ok(())
 }
 
-/// Delete the verdict `owner`'s matches from `position` on: those an earlier
-/// verdict held past the ones a write just stored.
+/// Delete `verdict`'s matches from `position` on: those an earlier verdict
+/// held past the ones a write just stored.
 pub(super) fn delete_verdict_matches_from(
     sql: &CovenWrite<'_>,
-    owner: Owner<'_>,
+    verdict: VerdictId,
     position: usize,
 ) -> Result<(), DbError> {
-    let column = owner.column();
     sql.execute(
-        &format!("DELETE FROM import_candidate_match WHERE {column} = ? AND position >= ?"),
-        params![owner, ordinal_column(position)?],
+        "DELETE FROM import_candidate_match WHERE verdict_id = ? AND position >= ?",
+        params![verdict, ordinal_column(position)?],
     )?;
     Ok(())
 }
@@ -165,13 +152,17 @@ pub(super) fn delete_search_matches_of(
     Ok(())
 }
 
+/// One match at `position`, in place of the one there, with the rows under
+/// it. The rows under the match that stood there are already gone. Only a
+/// search writes a returned release, and only a verdict-shaped owner a listed
+/// or unlisted one.
 pub(super) fn store_match(
     sql: &CovenWrite<'_>,
-    owner: MatchOwner<'_>,
+    owner: MatchOwner,
     position: usize,
     result: &MetadataResult,
     listing: Written<'_>,
-) -> Result<MatchId, DbError> {
+) -> Result<(), DbError> {
     let position = ordinal_column(position)?;
     // `store_match` writes a search's release into its own row and card, and
     // the same write then groups the whole list again before it ends.
@@ -236,12 +227,11 @@ pub(super) fn store_match(
     let facts = bae_records::records::pressing_columns::FactColumns::of(&result.facts());
     let document_failure =
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
-    let (content_hash, run, search, column) =
-        (owner.content_hash(), owner.run(), owner.search(), owner.column());
+    let (verdict, search, column) = (owner.verdict(), owner.search(), owner.column());
     let match_id = MatchId(sql.query_row(
         &format!(
             "INSERT INTO import_candidate_match \
-             (content_hash, identify_run, search_run, search_state, position, pressing, card, \
+             (verdict_id, search_run, search_state, position, pressing, card, \
               record_order, section, row_order, agrees_disc_id, agrees_barcode, agrees_catalog, agrees_label, \
               agrees_year, agrees_country, agrees_title, agrees_artist, \
               source, release_id, title, credits, year, \
@@ -251,7 +241,7 @@ pub(super) fn store_match(
               source_tracks_count, listing, document_failure, document_failure_status, \
               named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT ({column}, position) DO UPDATE SET \
              pressing = excluded.pressing, card = excluded.card, \
              record_order = excluded.record_order, section = excluded.section, \
@@ -278,8 +268,7 @@ pub(super) fn store_match(
          RETURNING match_id"
         ),
         params![
-            content_hash,
-            run,
+            verdict,
             search,
             search_state,
             position,
@@ -377,7 +366,7 @@ pub(super) fn store_match(
         )?;
     }
     store_album_link_rows(sql, match_id, &result.album_links)?;
-    Ok(match_id)
+    Ok(())
 }
 
 /// The album link rows of the match `match_id`, which holds none yet.

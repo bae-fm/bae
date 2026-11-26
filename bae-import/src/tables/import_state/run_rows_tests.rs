@@ -350,7 +350,7 @@ async fn a_run_s_rows_go_with_it() {
         .await
         .unwrap();
     // Each table's rows of run 1: by its own owner column, or through the
-    // header the signals' rows name.
+    // verdict or signals header its rows name.
     let owned = [
         "import_candidate_verdict",
         "import_candidate_match",
@@ -365,17 +365,22 @@ async fn a_run_s_rows_go_with_it() {
     let count = |table: &'static str| {
         let tables = tables.clone();
         async move {
-            let through_header =
-                matches!(table, "import_candidate_signal_value" | "import_candidate_text_line");
-            let query = if through_header {
-                format!(
+            let query = match table {
+                "import_candidate_verdict" | "import_candidate_signals" => {
+                    format!("SELECT COUNT(*) FROM {table} WHERE identify_run = 1")
+                }
+                "import_candidate_signal_value" | "import_candidate_text_line" => format!(
                     "SELECT COUNT(*) FROM {table} AS owned \
-                     JOIN import_candidate_signals AS signals \
-                         ON signals.signals_id = owned.signals_id \
-                     WHERE signals.identify_run = 1"
-                )
-            } else {
-                format!("SELECT COUNT(*) FROM {table} WHERE identify_run = 1")
+                     JOIN import_candidate_signals AS header \
+                         ON header.signals_id = owned.signals_id \
+                     WHERE header.identify_run = 1"
+                ),
+                _ => format!(
+                    "SELECT COUNT(*) FROM {table} AS owned \
+                     JOIN import_candidate_verdict AS header \
+                         ON header.verdict_id = owned.verdict_id \
+                     WHERE header.identify_run = 1"
+                ),
             };
             tables
                 .store

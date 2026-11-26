@@ -367,7 +367,7 @@ FROM (
                    v.error_detail AS verdict_error,
                    -- How many pressings the releases agreement kept make.
                    (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
-                    WHERE m.content_hash = v.content_hash AND m.listing = 'offered') AS pressings,
+                    WHERE m.verdict_id = v.verdict_id AND m.listing = 'offered') AS pressings,
                    -- Why a found verdict picks none of its releases
                    -- unattended, as its write stored it.
                    v.declined,

@@ -427,7 +427,8 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
         .read(move |sql| {
             sql.query(
                 "SELECT release_id || ' ' || listing FROM import_candidate_match \
-                 WHERE content_hash = ? ORDER BY position",
+                 WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                     WHERE content_hash = ?) ORDER BY position",
                 [hash],
                 |row| row.get::<_, String>(0),
             )
@@ -471,7 +472,9 @@ pub(crate) async fn disown_the_draft(db: &Store, content_hash: &str) {
 pub(crate) async fn lose_the_isrc_rows(db: &Store, content_hash: &str) {
     bae_store::test_fixtures::exec(
         db,
-        "DELETE FROM import_candidate_lookup_isrc WHERE content_hash = ?1",
+        "DELETE FROM import_candidate_lookup_isrc \
+         WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                             WHERE content_hash = ?1)",
         &[content_hash],
     )
     .await;
@@ -579,4 +582,26 @@ impl PaneControls {
         let read = self.read(content_hash).await;
         self.preparations.set_track_edit_prepared(&self.root, &self.key, &read, row).await
     }
+}
+
+/// Every identification table has a primary key, so coven reruns a read only
+/// for a write to a row it reads (spec 3.2): a table with none reaches every
+/// read of it for every write.
+#[test]
+fn every_identification_table_has_a_primary_key() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::TEST_SCHEMA.open_bare_library(&conn);
+    let mut statement = conn
+        .prepare(
+            "SELECT m.name FROM sqlite_master AS m
+             WHERE m.type = 'table'
+               AND (m.name LIKE 'import\\_candidate\\_%' ESCAPE '\\'
+                    OR m.name LIKE 'import\\_identify\\_%' ESCAPE '\\')
+               AND NOT EXISTS (SELECT 1 FROM pragma_table_info(m.name) WHERE pk > 0)
+             ORDER BY m.name",
+        )
+        .unwrap();
+    let keyless: Vec<String> =
+        statement.query_map([], |row| row.get(0)).unwrap().collect::<Result<_, _>>().unwrap();
+    assert!(keyless.is_empty(), "tables with no primary key: {keyless:?}");
 }

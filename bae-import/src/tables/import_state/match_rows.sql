@@ -3,14 +3,13 @@
 -- ones agreement set aside, then the ones a lookup of the recorded ledger
 -- found that neither lists. A typed search's releases are its rows too, each
 -- under the catalog part that returned it.
--- This table and the ledger's (import_candidate_lookup_*) hang off their
--- verdict row by its owner: the candidate's files, or a run in flight; a
--- search's hang off its catalog part, by `search_run`.
+-- A verdict's matches name their verdict by `verdict_id`, as the ledger's
+-- rows (import_candidate_lookup_*) do; a search's hang off its catalog part,
+-- by `search_run`.
 CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- The id the rows under the match name it by.
     match_id            INTEGER PRIMARY KEY,
-    content_hash        TEXT,
-    identify_run        INTEGER,
+    verdict_id          INTEGER,
     search_run          INTEGER,
     -- 'done' for a search's release, naming the part that answered with it,
     -- so a part only holds releases while it stands answered; NULL otherwise.
@@ -107,16 +106,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- ranking's notes point went to that row; NULL otherwise, and always for a
     -- release the run does not offer.
     named_note              TEXT CHECK (named_note IS NULL OR named_note <> ''),
-    UNIQUE (content_hash, position),
-    UNIQUE (identify_run, position),
+    UNIQUE (verdict_id, position),
     UNIQUE (search_run, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
     -- belongs to a match of its kind.
     UNIQUE (match_id, media_kind),
     -- Referenced by the cover copies; only a match with a cover has one.
     UNIQUE (match_id, cover_url),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    FOREIGN KEY (verdict_id) REFERENCES import_candidate_verdict (verdict_id) ON DELETE CASCADE,
     FOREIGN KEY (search_run, source, search_state)
         REFERENCES import_candidate_search_source (search_run, catalog, state) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL) AND (cover_url IS NULL) = (cover_standing IS NULL)),
@@ -132,7 +129,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
               + agrees_country + agrees_title + agrees_artist = 0),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider'),
-    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1),
+    CHECK ((verdict_id IS NOT NULL) <> (search_run IS NOT NULL)),
     CHECK ((search_run IS NOT NULL) = (search_state IS NOT NULL)),
     CHECK ((search_run IS NOT NULL) = (listing = 'returned')),
     -- Only a MusicBrainz record's documents state its album on another
@@ -220,35 +217,33 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
 ) STRICT;
 
 -- Each list of releases whose cards the layout write stores: an owner's own
--- list (a candidate's verdict's, a run's or a typed search's), or the list of
--- one cell of a verdict's or a run's ledger, named by the cell's `step`,
--- `position` and `cell`, which are all NULL for the owner's own list. The
+-- list (a verdict's or a typed search's), or the list of one cell of a
+-- verdict's ledger, named by the cell's `step`, `position` and `cell`, which
+-- are all NULL for the owner's own list. The
 -- write that lays a list out replaces its row, and the list's cards, card
 -- text and row statements go with it.
 CREATE TABLE IF NOT EXISTS import_candidate_card_list (
     list         INTEGER PRIMARY KEY,
-    content_hash TEXT,
-    identify_run INTEGER,
+    verdict_id   INTEGER,
     search_run   INTEGER UNIQUE,
     step         TEXT CHECK (step <> ''),
     position     INTEGER CHECK (position >= 0),
     cell         INTEGER CHECK (cell >= 0),
-    UNIQUE (content_hash, step, position, cell),
-    UNIQUE (identify_run, step, position, cell),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    UNIQUE (verdict_id, step, position, cell),
+    FOREIGN KEY (verdict_id) REFERENCES import_candidate_verdict (verdict_id) ON DELETE CASCADE,
+    -- A cell's list goes with the cell.
+    FOREIGN KEY (verdict_id, step, position, cell)
+        REFERENCES import_candidate_lookup (verdict_id, step, position, cell) ON DELETE CASCADE,
     FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
     CHECK ((step IS NULL) = (position IS NULL) AND (step IS NULL) = (cell IS NULL)),
     CHECK (search_run IS NULL OR step IS NULL),
-    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+    CHECK ((verdict_id IS NOT NULL) <> (search_run IS NOT NULL))
 ) STRICT;
 
--- A verdict-shaped owner has one list of its own; the table's UNIQUE
--- constraints keep its cells' lists one each, and a search has only its own.
+-- A verdict has one list of its own; the table's UNIQUE constraints keep its
+-- cells' lists one each, and a search has only its own.
 CREATE UNIQUE INDEX IF NOT EXISTS import_candidate_card_list_own_verdict
-    ON import_candidate_card_list (content_hash) WHERE step IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS import_candidate_card_list_own_run
-    ON import_candidate_card_list (identify_run) WHERE step IS NULL;
+    ON import_candidate_card_list (verdict_id) WHERE step IS NULL;
 
 -- Each card of a list as the layout write placed it by the identify grouping
 -- rules: its place among the list's cards (`card_order`, 0 first), the id

@@ -77,6 +77,30 @@ impl std::fmt::Display for Owner<'_> {
     }
 }
 
+/// The id of an `import_candidate_verdict` row, which every row under the
+/// verdict (its failures, its ledger, its matches and their lists) names it
+/// by.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct VerdictId(i64);
+
+impl rusqlite::ToSql for VerdictId {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        self.0.to_sql()
+    }
+}
+
+impl rusqlite::types::FromSql for VerdictId {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        i64::column_result(value).map(Self)
+    }
+}
+
+impl std::fmt::Display for VerdictId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "verdict {}", self.0)
+    }
+}
+
 /// An outcome as its rows store it: a run's state while its lookups are out,
 /// or the verdict a run ended on.
 #[derive(Clone, Copy)]
@@ -202,7 +226,7 @@ pub(super) fn store_outcome(
     };
     let (unattended_pick, declined) = decision_columns(outcome);
     let column = owner.column();
-    sql.execute(
+    let verdict = sql.query_row(
         &format!(
             "INSERT INTO import_candidate_verdict \
                  (content_hash, identify_run, kind, track_count, error_detail, \
@@ -219,7 +243,8 @@ pub(super) fn store_outcome(
                  search_artist = excluded.search_artist, \
                  medium_conflict = excluded.medium_conflict, \
                  unattended_pick = excluded.unattended_pick, declined = excluded.declined, \
-                 kept_own_draft = excluded.kept_own_draft"
+                 kept_own_draft = excluded.kept_own_draft \
+             RETURNING verdict_id"
         ),
         params![
             owner.content_hash(),
@@ -239,14 +264,15 @@ pub(super) fn store_outcome(
             declined,
             kept_own_draft,
         ],
+        |row| row.get::<_, VerdictId>(0),
     )?;
-    store_failures(sql, owner, failures)?;
+    store_failures(sql, verdict, failures)?;
     // The ledger's rows link the match rows, and the rows under each match
     // name what the match row below may change (its cover's address, its
     // media's kind), so the previous verdict's go first. The import list
     // reads none of them.
-    delete_ledger(sql, owner)?;
-    super::match_rows::delete_verdict_match_entries(sql, owner)?;
+    delete_ledger(sql, verdict)?;
+    super::match_rows::delete_verdict_match_entries(sql, verdict)?;
     // store_outcome checks each row against the text the owner's signals and
     // choices hold now, in this write, so it never stores a row it has not
     // checked.
@@ -257,9 +283,9 @@ pub(super) fn store_outcome(
         }
         _ => VerdictLayout::empty(),
     };
-    let written = store_matches(sql, owner, outcome, &layout)?;
-    super::match_rows::delete_verdict_matches_from(sql, owner, written.len())?;
-    layout.store_text(sql, owner)?;
+    let written = store_matches(sql, verdict, outcome, &layout)?;
+    super::match_rows::delete_verdict_matches_from(sql, verdict, written.len())?;
+    layout.store_text(sql, verdict)?;
     if let Some(ledger) = outcome.ledger() {
         let positions: MatchPositions<'_> = written
             .iter()
@@ -268,7 +294,11 @@ pub(super) fn store_outcome(
                 ((result.source, result.release_id.as_str()), (position, *result))
             })
             .collect();
-        store_ledger(sql, owner, ledger, &positions, outcome.running())?;
+        // Only a run in flight stores a cell as queued or under way.
+        let asked_by = outcome
+            .running()
+            .then(|| owner.run().expect("an outcome that is still running is a run's"));
+        store_ledger(sql, verdict, ledger, &positions, asked_by)?;
     }
     Ok(())
 }
@@ -336,7 +366,7 @@ pub(super) fn declined_of(
 /// Answers the releases written, in position order.
 fn store_matches<'a>(
     sql: &CovenWrite<'_>,
-    owner: Owner<'_>,
+    verdict: VerdictId,
     outcome: Outcome<'a>,
     layout: &VerdictLayout,
 ) -> Result<Vec<&'a MetadataResult>, DbError> {
@@ -372,7 +402,7 @@ fn store_matches<'a>(
         })
     }) {
         panic!(
-            "a verdict for {owner} names a note of {} {}, which it does not offer",
+            "{verdict} names a note of {} {}, which it does not offer",
             stray.release.catalog.as_str(),
             stray.release.key
         );
@@ -381,7 +411,7 @@ fn store_matches<'a>(
     let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
         assert!(
             results.len() == rows.len(),
-            "a verdict for {owner} carries {} {what} and {} pressing entries; they are \
+            "{verdict} carries {} {what} and {} pressing entries; they are \
              index-aligned",
             results.len(),
             rows.len()
@@ -411,7 +441,7 @@ fn store_matches<'a>(
         }
     }
     for (position, (result, listing)) in written.iter().enumerate() {
-        store_match(sql, MatchOwner::Verdict(owner), position, result, *listing)?;
+        store_match(sql, MatchOwner::Verdict(verdict), position, result, *listing)?;
     }
     Ok(written.into_iter().map(|(result, _)| result).collect())
 }

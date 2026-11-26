@@ -5,6 +5,10 @@
 -- it reached while that is written. A run's rows go with its
 -- import_identify_run row.
 CREATE TABLE IF NOT EXISTS import_candidate_verdict (
+    -- The id every row under the verdict (its failures, its ledger, its
+    -- matches and their lists) names it by, whichever of the two owners it
+    -- has.
+    verdict_id    INTEGER PRIMARY KEY,
     content_hash  TEXT UNIQUE,
     identify_run  INTEGER UNIQUE,
     kind          TEXT NOT NULL
@@ -81,7 +85,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
            AND (disc_id_step IS NULL) = (search_step IS NULL)),
     CHECK (kind <> 'error' OR disc_id_step IS NULL),
     CHECK ((search_step IS 'searched' OR search_step IS 'waiting') = (search_album IS NOT NULL)),
-    CHECK ((search_album IS NULL) = (search_artist IS NULL))
+    CHECK ((search_album IS NULL) = (search_artist IS NULL)),
+    -- Referenced by the cells a run in flight has queued or under way.
+    UNIQUE (verdict_id, identify_run)
 ) STRICT;
 
 -- The lookups a failed verdict's run could not get answered, in the order the
@@ -92,19 +98,15 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
 -- or the ISRCs, which MusicBrainz alone answers; `failure` and
 -- `failure_status` are how it failed, as a ledger lookup stores it.
 CREATE TABLE IF NOT EXISTS import_candidate_verdict_failure (
-    content_hash   TEXT,
-    identify_run   INTEGER,
+    verdict_id     INTEGER NOT NULL
+        REFERENCES import_candidate_verdict (verdict_id) ON DELETE CASCADE,
     position       INTEGER NOT NULL CHECK (position >= 0),
     lookup         TEXT NOT NULL
         CHECK (lookup IN ('disc_id', 'barcode', 'catalog', 'search', 'isrc', 'pressing', 'cover')),
     catalog        TEXT CHECK (catalog IN ('musicbrainz', 'discogs')),
     failure        TEXT NOT NULL CHECK (failure IN ('network', 'provider', 'timeout')),
     failure_status INTEGER,
-    UNIQUE (content_hash, position),
-    UNIQUE (identify_run, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    PRIMARY KEY (verdict_id, position),
     CHECK ((lookup IN ('disc_id', 'isrc')) = (catalog IS NULL)),
-    CHECK (failure_status IS NULL OR failure = 'provider'),
-    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
+    CHECK (failure_status IS NULL OR failure = 'provider')
 ) STRICT;

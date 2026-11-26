@@ -329,22 +329,18 @@ pub(super) fn load_owner_matches_on(
     owner: Owner<'_>,
 ) -> Result<StoredMatches, DbError> {
     let column = owner.column();
+    let name = owner.to_string();
     let rows = sql.query(
         &format!(
-            "SELECT COALESCE(found.content_hash, 'run ' || found.identify_run) AS content_hash, \
-                    {record} AS record \
+            "SELECT {record} AS record \
              FROM import_candidate_match AS found \
-             WHERE found.{column} = ? \
+             JOIN import_candidate_verdict AS verdict ON verdict.verdict_id = found.verdict_id \
+             WHERE verdict.{column} = ? \
              ORDER BY found.position",
             record = match_record_sql("found"),
         ),
         params![owner],
-        |row| {
-            Ok(match_row_of(
-                &row.get::<_, String>("content_hash")?,
-                &row.get::<_, String>("record")?,
-            ))
-        },
+        |row| Ok(match_row_of(&name, &row.get::<_, String>("record")?)),
     )?;
     Ok(StoredMatches { rows: rows.into_iter().collect::<Result<_, _>>()? })
 }

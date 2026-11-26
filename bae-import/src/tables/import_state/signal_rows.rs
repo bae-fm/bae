@@ -140,12 +140,12 @@ pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result
 
 /// The signals as one header row and its list values, over whatever signals
 /// `owner` held: the header in place, its values anew. Only a run in flight
-/// stores a pass still scanning. Answers the header's id.
+/// stores a pass still scanning.
 pub(super) fn store_signals(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     signals: &Signals,
-) -> Result<SignalsId, DbError> {
+) -> Result<(), DbError> {
     // A verdict is written once extraction stopped scanning.
     let scanning_refused = || -> ! { panic!("signals of {owner} still scanning at verdict write") };
     let running = matches!(owner, Owner::Run(_));
@@ -267,7 +267,7 @@ pub(super) fn store_signals(
     // The text changed, so check and group the verdict's rows again against
     // it.
     super::verdict_layout::lay_out_matches_on(sql, owner)?;
-    Ok(signals_id)
+    Ok(())
 }
 
 fn free_text(text: &TextSignal) -> &[String] {

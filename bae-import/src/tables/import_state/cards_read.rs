@@ -179,16 +179,16 @@ fn choice_columns_sql(found: &str, files: &str, pick: Option<&str>) -> String {
     )
 }
 
-/// The SQL of the content hash of the folder candidate that the match row
-/// `found` belongs to. A stored verdict's row carries the hash itself. A row
-/// of a run that is still going gets it from the standing that names the run.
-/// The SQL is NULL for a library release's run.
-fn run_files_sql(found: &str) -> String {
+/// The SQL of the content hash of the folder candidate that the verdict
+/// joined as `verdict` belongs to. A stored verdict's row carries the hash
+/// itself. The verdict of a run that is still going gets it from the standing
+/// that names the run. The SQL is NULL for a library release's run.
+fn run_files_sql(verdict: &str) -> String {
     format!(
-        "COALESCE({found}.content_hash, \
+        "COALESCE({verdict}.content_hash, \
                   (SELECT run_standing.content_hash \
                    FROM import_candidate_standing AS run_standing \
-                   WHERE run_standing.identify_run = {found}.identify_run))"
+                   WHERE run_standing.identify_run = {verdict}.identify_run))"
     )
 }
 
@@ -230,22 +230,32 @@ pub(super) fn search_cards_sql(search_run: &str) -> String {
 }
 
 /// The SQL of a scalar subquery reading the cards of the ledger cell the
-/// lookup row `lookup` names, a column of a read over the ledger's lookups.
-pub(super) fn cell_cards_sql(lookup: &str) -> String {
-    let owner = format!(
-        "{{table}}.content_hash IS {lookup}.content_hash \
-         AND {{table}}.identify_run IS {lookup}.identify_run \
-         AND {{table}}.step = {lookup}.step AND {{table}}.position = {lookup}.position \
-         AND {{table}}.cell = {lookup}.cell"
+/// lookup row `lookup` names, a column of a read over the ledger's lookups of
+/// the verdict joined as `verdict`.
+pub(super) fn cell_cards_sql(lookup: &str, verdict: &str) -> String {
+    let cell = |table: &str, verdict_id: &str| {
+        format!(
+            "{table}.verdict_id = {verdict_id} \
+             AND {table}.step = {lookup}.step AND {table}.position = {lookup}.position \
+             AND {table}.cell = {lookup}.cell"
+        )
+    };
+    // With a plain `found.verdict_id = lookup.verdict_id`, sqlive's read
+    // report says the pane's statement reads every row of
+    // `import_candidate_lookup_release`, because this read sits in subqueries
+    // of the FROM clause nested in the cell's lookup. Looking the verdict up
+    // by its id makes the report say it reads that verdict's rows.
+    let verdict_id = format!(
+        "(SELECT of_verdict.verdict_id FROM import_candidate_verdict AS of_verdict \
+          WHERE of_verdict.verdict_id = {lookup}.verdict_id)"
     );
     let from = format!(
         "FROM import_candidate_lookup_release AS found \
          JOIN import_candidate_match AS matched \
-           ON matched.content_hash IS found.content_hash \
-          AND matched.identify_run IS found.identify_run \
+           ON matched.verdict_id = found.verdict_id \
           AND matched.position = found.match_position \
          WHERE {found}",
-        found = owner.replace("{table}", "found"),
+        found = cell("found", &verdict_id),
     );
     cards_sql(
         &format!(
@@ -255,7 +265,7 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
                     0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS a_year, \
                     0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS named_note, {choice} \
              {from}",
-            choice = choice_columns_sql("matched", &run_files_sql("matched"), None),
+            choice = choice_columns_sql("matched", &run_files_sql(verdict), None),
         ),
         &format!(
             "SELECT found.ordinal AS ord, {record} AS record {from}",
@@ -263,7 +273,7 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
         ),
         &format!(
             "(SELECT l.list FROM import_candidate_card_list AS l WHERE {})",
-            owner.replace("{table}", "l")
+            cell("l", &format!("{lookup}.verdict_id"))
         ),
     )
 }
@@ -277,10 +287,7 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
 /// none), and the failures no cell of its ledger shows. [`verdict_cards_of`]
 /// reads the JSON object the subquery returns.
 pub(super) fn verdict_cards_sql(verdict: &str) -> String {
-    let owner = format!(
-        "{{table}}.content_hash IS {verdict}.content_hash \
-         AND {{table}}.identify_run IS {verdict}.identify_run"
-    );
+    let owner = format!("{{table}}.verdict_id = {verdict}.verdict_id");
     let found = owner.replace("{table}", "found");
     let listed = format!("{found} AND found.listing IN ('offered', 'narrowed_out')");
     let from = format!("FROM import_candidate_match AS found WHERE {listed}");
@@ -297,7 +304,7 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
              {from}",
             choice = choice_columns_sql(
                 "found",
-                &run_files_sql("found"),
+                &run_files_sql(verdict),
                 Some(&format!("{verdict}.unattended_pick")),
             ),
         ),

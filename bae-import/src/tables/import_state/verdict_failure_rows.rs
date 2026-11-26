@@ -4,20 +4,20 @@
 //! show each of them on its own line.
 
 use super::lookup_failure_columns::{failure_columns, failure_of};
-use super::verdict_rows::Owner;
+use super::verdict_rows::VerdictId;
 use super::*;
 use bae_catalogs::search::SourceFailure;
 use bae_identify::IdentifyFailure;
 
-/// Write `failures` as `owner`'s, over the failures it stored before.
+/// Write `failures` as `verdict`'s, over the failures it stored before.
 pub(super) fn store_failures(
     sql: &CovenWrite<'_>,
-    owner: Owner<'_>,
+    verdict: VerdictId,
     failures: &[IdentifyFailure],
 ) -> Result<(), DbError> {
     sql.execute(
-        &format!("DELETE FROM import_candidate_verdict_failure WHERE {} = ?", owner.column()),
-        params![owner],
+        "DELETE FROM import_candidate_verdict_failure WHERE verdict_id = ?",
+        params![verdict],
     )?;
     for (position, failure) in failures.iter().enumerate() {
         let (lookup, catalog, failed) = match failure {
@@ -32,11 +32,10 @@ pub(super) fn store_failures(
         let columns = failure_columns(Some(failed));
         sql.execute(
             "INSERT INTO import_candidate_verdict_failure \
-                 (content_hash, identify_run, position, lookup, catalog, failure, failure_status) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+                 (verdict_id, position, lookup, catalog, failure, failure_status) \
+             VALUES (?, ?, ?, ?, ?, ?)",
             params![
-                owner.content_hash(),
-                owner.run(),
+                verdict,
                 to_i64(position, "a verdict's failure position")?,
                 lookup,
                 catalog.map(|catalog| catalog.as_str()),
@@ -59,8 +58,7 @@ fn failures_json_sql(verdict: &str, keep: &str) -> String {
                                               'status', failure.failure_status) \
                                   ORDER BY failure.position) \
           FROM import_candidate_verdict_failure AS failure \
-          WHERE failure.content_hash IS {verdict}.content_hash \
-            AND failure.identify_run IS {verdict}.identify_run AND ({keep}))"
+          WHERE failure.verdict_id = {verdict}.verdict_id AND ({keep}))"
     )
 }
 
@@ -76,8 +74,7 @@ pub(super) fn verdict_failures_sql(verdict: &str) -> String {
 /// offered row's pressing or of the picked release's cover, so it keeps
 /// their failures always.
 const NO_CELL_SHOWS: &str = "NOT EXISTS (SELECT 1 FROM import_candidate_lookup AS cell \
-     WHERE cell.content_hash IS failure.content_hash \
-       AND cell.identify_run IS failure.identify_run \
+     WHERE cell.verdict_id = failure.verdict_id \
        AND cell.step = failure.lookup AND cell.catalog IS failure.catalog \
        AND cell.answer = 'failed' AND cell.failure = failure.failure \
        AND cell.failure_status IS failure.failure_status)";
@@ -94,8 +91,7 @@ const NO_CELL_SHOWS: &str = "NOT EXISTS (SELECT 1 FROM import_candidate_lookup A
 pub(super) fn failure_lines_sql(verdict: &str) -> String {
     format!(
         "json(CASE WHEN EXISTS (SELECT 1 FROM import_candidate_verdict_failure AS failure \
-                               WHERE failure.content_hash IS {verdict}.content_hash \
-                                 AND failure.identify_run IS {verdict}.identify_run \
+                               WHERE failure.verdict_id = {verdict}.verdict_id \
                                  AND {NO_CELL_SHOWS}) \
          THEN json_object('all', json({all}), \
                      'pick_failures', json(NULLIF({pick}, '[]')), \
@@ -106,8 +102,7 @@ pub(super) fn failure_lines_sql(verdict: &str) -> String {
                                   COALESCE(failure.catalog, 'musicbrainz') AS catalog, \
                                   MIN(failure.position) AS first \
                            FROM import_candidate_verdict_failure AS failure \
-                           WHERE failure.content_hash IS {verdict}.content_hash \
-                             AND failure.identify_run IS {verdict}.identify_run \
+                           WHERE failure.verdict_id = {verdict}.verdict_id \
                              AND {NO_CELL_SHOWS} AND failure.lookup <> 'cover' \
                            GROUP BY failure.lookup, COALESCE(failure.catalog, 'musicbrainz')) \
                           AS missing))) END)",
