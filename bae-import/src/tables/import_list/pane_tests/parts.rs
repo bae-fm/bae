@@ -663,3 +663,96 @@ async fn another_folder_s_scan_and_link_leave_the_picker_s_read_unmarked() {
     tables.replace_candidate_covers(&shown_hash, link, Some(Vec::new())).await.unwrap();
     assert!(live.is_marked_for_rerun(), "a fetch of the candidate's covers changes what it reads");
 }
+
+/// The pane reads only its candidate's rows, so coven reruns its read for no
+/// write of another folder: the scan that finds it, the draft and the pressing
+/// its pick stores, the failures of its import and of its pane's command, the
+/// person's skip, and the release this device imports from it.
+#[tokio::test]
+async fn another_folder_s_draft_link_failures_and_skip_leave_the_pane_s_read_unmarked() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let shown = linked(&db, &root).await;
+    save_verdict(&db, &shown, "shown-release").await;
+    // A library release nothing of the pane names, for the other folder's
+    // import to record.
+    let elsewhere = ReleaseRecord::new(
+        &MetadataRef::new(Catalog::MusicBrainz, "mb-elsewhere"),
+        Some("mb-elsewhere-group".to_string()),
+    );
+    library_album(&db, "Elsewhere", "2026-01-01T00:00:00Z", elsewhere).await;
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    let mut live = tables.subscribe_import_candidate(Some(shown.key()));
+    live.next_inline().await.expect("the query stays open").result.unwrap().expect("listed");
+
+    let other = crate::CandidateKey::folder(&folder_below(&root, "Other"));
+    let other = key_candidate(&root, &other);
+    let hash = other.files.content_hash();
+    assert_ne!(hash, shown.files.content_hash(), "the folders hold different files");
+    tables.save_folder_scan_item(&root, generation, &ScanItem::Valid(other.clone())).await.unwrap();
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of another folder's scan");
+
+    let record = LookupRef::new(LookupCatalog::MusicBrainz, "mb-linked");
+    let draft = tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft.release_edit();
+    tables
+        .replace_metadata(
+            &hash,
+            &other.key(),
+            &draft,
+            Some(&MetadataProvenance::ExternalRelease { record: record.clone() }),
+            &[],
+        )
+        .await
+        .unwrap();
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of another folder's draft");
+
+    tables
+        .replace_link(
+            &hash,
+            Some(&crate::ReleaseLink::Pressing(bae_identify::PressingLink {
+                record,
+                partners: vec![],
+            })),
+            &[],
+        )
+        .await
+        .unwrap();
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of another folder's link");
+
+    tables
+        .save_import_candidate_failure(
+            &hash,
+            0,
+            &ImportFailure {
+                reason: crate::ImportFailureReason { detail: "the import failed".to_string() },
+                failed_at: fixed_now(),
+            },
+        )
+        .await
+        .unwrap();
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of another folder's import failure");
+
+    tables
+        .save_import_pane_failure(
+            &hash,
+            Some(crate::PaneFailure {
+                command: crate::PaneCommand::Import,
+                error: bae_diagnostics::UiError::import("the command failed"),
+            }),
+        )
+        .await
+        .unwrap();
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of another folder's pane failure");
+
+    tables.set_import_candidate_skipped(&other.key().test_folder(), true).await.unwrap();
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of another folder's skip");
+
+    let imported = bae_util::test_ids::test_uuid("Elsewhere release");
+    db.write(move |sql| {
+        crate::tables::import_origin::record_on(&sql, &imported, &hash)?;
+        Ok::<_, bae_store::DbError>(())
+    })
+    .await
+    .unwrap();
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of another folder's import");
+}
