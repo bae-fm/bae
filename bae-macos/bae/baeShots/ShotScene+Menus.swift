@@ -67,11 +67,8 @@ extension ShotScene {
 
     /// A format's edit sheet attached to the Settings window on Save as, with
     /// the Format pop-up open over its row. The open menu is a window of its
-    /// own in the app, which the shot cannot raise over a sheet, so the scene
-    /// draws it in the sheet's own window: the menu's left edge is 363 points
-    /// in from the sheet's, and its top edge 22 above the sheet's top. The
-    /// sheet window grows by that much above and below, empty, so the menu
-    /// is inside it and the sheet stays centred.
+    /// own over the sheet's: its left edge is 363 points in from the sheet's,
+    /// and its top edge 22 above the sheet's top.
     private static var formatPicker: ShotScene {
         ShotScene(
             id: "mac.settings.save-as.format-picker",
@@ -93,24 +90,34 @@ extension ShotScene {
                 rename: { _ in .saved }
             )
             .environment(UiStore())
-            .overlay(alignment: .topLeading) {
-                MacMenuInPlace(
-                    {
-                        MacMenu(
-                            SavePresetEditor.formatOptions,
-                            selection: PreviewData.savePresets[1].codec.format,
-                            select: { _ in }
-                        )
-                        .entries
-                    },
-                    highlighted: 4,
-                    isPopUp: true
-                )
-                .offset(x: 363, y: -22)
-            }
-            .padding(.vertical, 22)
-            return ShotStage(OverWindow.attachedSheet(sheet, over: window))
-                .awaitingSheet(atRest: true)
+            let menu = MacMenuInPlace(
+                {
+                    MacMenu(
+                        SavePresetEditor.formatOptions,
+                        selection: PreviewData.savePresets[1].codec.format,
+                        select: { _ in }
+                    )
+                    .entries
+                },
+                highlighted: 4,
+                isPopUp: true
+            )
+            return ShotStage(
+                OverWindow.attachedSheet(
+                    OverWindow.menu(
+                        menu,
+                        at: CGPoint(x: 363, y: -22),
+                        size: CGSize(width: 85, height: 155),
+                        overSheet: sheet
+                    ),
+                    over: window
+                ),
+                // The menu's window opens after the sheet's content is up.
+                isDrawn: { host in
+                    host.window?.attachedSheet?.childWindows?.isEmpty == false
+                }
+            )
+            .awaitingSheet(atRest: true)
         }
     }
 }

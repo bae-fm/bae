@@ -64,6 +64,44 @@ enum OverWindow {
         ])
     }
 
+    /// An open menu over `sheet`, a sheet's content, as the app shows one:
+    /// a window of its own over the sheet's window, which can reach past the
+    /// sheet's edges. The menu's top-left is `origin` points from the
+    /// content's top-left, and takes no room in the content. The window is a
+    /// layer over an area that reaches `shadowRoom` past each side of
+    /// `size`, the menu's own size.
+    @MainActor
+    static func menu(
+        _ menu: some View,
+        at origin: CGPoint,
+        size: CGSize,
+        overSheet sheet: some View
+    ) -> some View {
+        let shadowRoom: CGFloat = 40
+        return sheet.overlay(alignment: .topLeading) {
+            Color.clear
+                .frame(
+                    width: size.width + 2 * shadowRoom,
+                    height: size.height + 2 * shadowRoom
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+                .macLayers([
+                    MacLayer(id: "open menu", cover: .presentingView) {
+                        menu
+                            .padding([.leading, .top], shadowRoom)
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: .infinity,
+                                alignment: .topLeading
+                            )
+                            .background(MenuWindowMark())
+                    }
+                ])
+                .offset(x: origin.x - shadowRoom, y: origin.y - shadowRoom)
+        }
+    }
+
     /// A popover, its top edge `top` points below the window's top and its
     /// right edge `trailing` points in from the window's right, with the
     /// arrow on its top edge pointing at what opened it.
