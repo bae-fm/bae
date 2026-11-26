@@ -49,7 +49,8 @@ extension ShotScene {
                         narrowedOutCount: 0
                     ),
                     signals: PreviewData.settledSignals
-                )
+                ),
+                atContentHeight: true
             )
         },
         component(
@@ -70,7 +71,8 @@ extension ShotScene {
                         offersSharedAlbum: false
                     ),
                     signals: PreviewData.settledSignals
-                )
+                ),
+                atContentHeight: true
             )
         },
         component(
