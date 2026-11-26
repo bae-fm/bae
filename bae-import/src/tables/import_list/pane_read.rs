@@ -38,7 +38,8 @@ sqlive_compose::read!(
     LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
         AS imported ON 1
     LEFT JOIN @crate::tables::import_state::fragments::DraftRows(
-        candidate: (SELECT scan.content_hash FROM scan_candidate AS scan WHERE scan.path = :key))
+        candidate: (SELECT scan.content_hash
+                    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan))
         AS draft ON imported.imported_key IS NULL
     LEFT JOIN @crate::tables::import_state::fragments::DraftFlags(key: :key) AS flags
         ON imported.imported_key IS NULL

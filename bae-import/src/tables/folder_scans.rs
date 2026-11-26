@@ -25,6 +25,7 @@ mod invalid;
 mod progress;
 pub(super) mod read;
 mod reading;
+pub mod row_fragments;
 mod sidecar;
 pub(super) mod tag_snapshot;
 mod units;

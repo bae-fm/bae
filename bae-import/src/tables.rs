@@ -12,7 +12,7 @@ pub(crate) mod credit_resolutions;
 mod downscaled_copies;
 mod draft_layout;
 mod draft_rows;
-mod folder_scans;
+pub mod folder_scans;
 pub(crate) mod import_list;
 mod import_origin;
 pub mod import_state;

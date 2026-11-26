@@ -6,11 +6,10 @@
 sqlive_compose::fragment!(
     CurrentOwner(key: crate::CandidateKey) { content_hash: Option<String>, identify_run: Option<i64> },
     r#"
-    SELECT scanned.content_hash AS content_hash, NULL AS identify_run
-    FROM scan_candidate AS scanned
+    SELECT state.content_hash AS content_hash, NULL AS identify_run
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scanned
     JOIN import_candidate_state AS state ON state.content_hash = scanned.content_hash
         AND state.edit_revision = scanned.file_edit_revision
-    WHERE scanned.path = :key
 "#);
 
 sqlive_compose::read!(
