@@ -68,6 +68,7 @@ mod pane_failure_rows;
 pub(super) mod pane_rows;
 mod preparation_rows;
 mod release_link_rows;
+pub mod row_fragments;
 mod rows;
 mod run_rows;
 mod search_rows;

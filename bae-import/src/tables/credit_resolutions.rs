@@ -21,16 +21,16 @@ sqlive_compose::read!(
     DueCredit { held: bool },
     r#"
     SELECT DISTINCT due.name_key, due.musicbrainz_artist_id, due.discogs_artist_id,
-           (EXISTS (SELECT 1 FROM import_candidate_album_artist_assignment AS held
-                    WHERE held.assignment_kind = 'credit'
-                      AND bae_artist_name_key(held.name) = due.name_key
-                      AND held.musicbrainz_artist_id IS due.musicbrainz_artist_id
-                      AND held.discogs_artist_id IS due.discogs_artist_id)
-            OR EXISTS (SELECT 1 FROM import_candidate_track_artist_assignment AS held
-                       WHERE held.assignment_kind = 'credit'
-                         AND bae_artist_name_key(held.name) = due.name_key
-                         AND held.musicbrainz_artist_id IS due.musicbrainz_artist_id
-                         AND held.discogs_artist_id IS due.discogs_artist_id)) AS held
+           (EXISTS (SELECT 1
+                   FROM @crate::tables::import_state::row_fragments::AlbumCreditNames AS held
+                   WHERE held.name_key = due.name_key
+                     AND held.musicbrainz_artist_id IS due.musicbrainz_artist_id
+                     AND held.discogs_artist_id IS due.discogs_artist_id)
+            OR EXISTS (SELECT 1
+                   FROM @crate::tables::import_state::row_fragments::TrackCreditNames AS held
+                   WHERE held.name_key = due.name_key
+                     AND held.musicbrainz_artist_id IS due.musicbrainz_artist_id
+                     AND held.discogs_artist_id IS due.discogs_artist_id)) AS held
     FROM import_credit_resolution_due AS due
 "#
 );
