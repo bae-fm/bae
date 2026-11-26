@@ -4,48 +4,9 @@
 
 use super::*;
 
-/// The parsed sheet of the candidate file joined as `file`, as a JSON object
-/// holding its tracks in order, each with its indexes in order; NULL for a
-/// file that is no track sheet.
-pub(super) const SHEET_JSON: &str = "(SELECT json_object( \
-         'title', sheet.title, 'performer', sheet.performer, 'catalog', sheet.catalog, \
-         'date', sheet.date, 'ripper', sheet.ripper, \
-         'tracks', json((SELECT json_group_array(json_object( \
-             'number', track.number, 'mode', track.mode, 'mode_other', track.mode_other, \
-             'title', track.title, 'performer', track.performer, \
-             'file_reference', track.file_reference, \
-             'start_cue_frames', track.start_cue_frames, \
-             'end_cue_frames', track.end_cue_frames, \
-             'generated_pregap_frames', track.generated_pregap_frames, \
-             'indexes', json((SELECT json_group_array(json_object( \
-                 'number', cue_index.number, 'frames', cue_index.frames, \
-                 'file_reference', cue_index.file_reference) ORDER BY cue_index.position) \
-                 FROM scan_cue_index AS cue_index \
-                 WHERE cue_index.watched_folder_path = track.watched_folder_path \
-                   AND cue_index.candidate_path = track.candidate_path \
-                   AND cue_index.sheet_relative_path = track.sheet_relative_path \
-                   AND cue_index.track_position = track.position))) \
-             ORDER BY track.position) \
-             FROM scan_cue_track AS track \
-             WHERE track.watched_folder_path = sheet.watched_folder_path \
-               AND track.candidate_path = sheet.candidate_path \
-               AND track.sheet_relative_path = sheet.sheet_relative_path))) \
-     FROM scan_cue_sheet AS sheet \
-     WHERE sheet.watched_folder_path = file.watched_folder_path \
-       AND sheet.candidate_path = file.candidate_path \
-       AND sheet.sheet_relative_path = file.relative_path)";
-
-/// The audio the sheet `file` describes, as a JSON array in the sheet's
-/// reference order.
-pub(super) const SHEET_AUDIO_JSON: &str = "(SELECT json_group_array(json_object( \
-         'file_reference', described.file_reference, \
-         'file_id', described.audio_relative_path) ORDER BY described.position) \
-     FROM scan_sheet_audio_file AS described \
-     WHERE described.watched_folder_path = file.watched_folder_path \
-       AND described.candidate_path = file.candidate_path \
-       AND described.sheet_relative_path = file.relative_path)";
-
-/// One parsed sheet as [`SHEET_JSON`] holds it.
+/// One parsed sheet as [`ScanItems`](crate::tables::folder_scans::fragments::ScanItems)
+/// holds it: its header with its tracks in order, each with its indexes in
+/// order.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredSheet {
     title: Option<String>,
@@ -77,7 +38,9 @@ struct StoredCueIndex {
     file_reference: String,
 }
 
-/// One audio file a sheet describes as [`SHEET_AUDIO_JSON`] holds it.
+/// One audio file a sheet describes as
+/// [`ScanItems`](crate::tables::folder_scans::fragments::ScanItems) holds it,
+/// in the sheet's reference order.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredSheetAudio {
     file_reference: String,

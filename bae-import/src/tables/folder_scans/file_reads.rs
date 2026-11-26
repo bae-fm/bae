@@ -58,12 +58,10 @@ impl ImportTables {
         let wanted: Vec<_> = items.iter().map(|item| ReadingsWanted::of(item, moved)).collect();
         self.store
             .read(move |sql| {
-                let keys: Vec<(&Path, &CandidateKey)> = wanted
+                let keys: Vec<&CandidateKey> = wanted
                     .iter()
                     .filter_map(|wanted| match &wanted.candidate {
-                        Some(candidate) if candidate.may_be_unchanged => {
-                            Some((candidate.watched_folder_path.as_path(), &candidate.key))
-                        }
+                        Some(candidate) if candidate.may_be_unchanged => Some(&candidate.key),
                         _ => None,
                     })
                     .collect();

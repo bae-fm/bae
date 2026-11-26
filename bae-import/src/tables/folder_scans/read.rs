@@ -1,7 +1,8 @@
 //! Reading scan items back out of the rows [`super::write`] laid down.
 //!
-//! One query for every entry a read takes in: each entry's row carries what
-//! hangs off it — its files with their sheets, its parts, and a failed
+//! One query for every entry a read takes in:
+//! [`super::fragments::ScanItems`] over their keys, whose row carries what
+//! hangs off an entry — its files with their sheets, its parts, and a failed
 //! release's skipped files and tags — as JSON beside its own columns. Owned
 //! finishing callbacks let reads defer decoding them until the connection is
 //! released, while write decisions finish it inside their transaction. The
@@ -23,7 +24,7 @@ use bae_types::audio_format::AudioFormat;
 use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
 use std::collections::HashMap;
-use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
+use track_sheets::{StoredSheet, StoredSheetAudio};
 
 mod track_sheets;
 
@@ -36,64 +37,59 @@ pub(crate) enum RowSources {
 }
 
 impl RowSources {
-    /// The condition keeping these rows of `scan_candidate`, aliased
-    /// `candidate`.
-    fn clause(self) -> &'static str {
+    /// Whether these rows take in the releases groupings built.
+    fn takes_grouping_releases(self) -> bool {
         match self {
-            Self::Scanned => "candidate.source_kind = 'folder'",
-            Self::Any => "1",
+            Self::Scanned => false,
+            Self::Any => true,
         }
     }
 }
 
-/// Whose rows a read takes in: every entry's under a root, the one entry's
-/// at a key, which each table's primary key reaches directly, or the entries
-/// at several keys, each under its root.
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum EntryRows<'a> {
-    Root(&'a Path),
-    Entry { root: &'a Path, key: &'a CandidateKey },
-    Keys(&'a [(&'a Path, &'a CandidateKey)]),
+sqlive_compose::read!(
+    ItemsUnderRoot(root: Vec<u8>, grouping_releases: bool),
+    r#"
+    SELECT item.*
+    FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (
+        SELECT candidate.path AS candidate_key
+        FROM scan_candidate AS candidate
+        WHERE candidate.watched_folder_path = :root)) AS item
+    WHERE item.watched_folder_path = :root
+        AND (:grouping_releases OR item.source_kind = 'folder')
+    ORDER BY item.path
+"#
+);
+
+sqlive_compose::read!(
+    ItemsAtKeys(keys: String, grouping_releases: bool),
+    r#"
+    SELECT item.*
+    FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (
+        SELECT unhex(wanted.value) AS candidate_key FROM json_each(:keys) AS wanted)) AS item
+    WHERE :grouping_releases OR item.source_kind = 'folder'
+    ORDER BY item.path
+"#
+);
+
+/// The rows of the entries at `keys`, in key order.
+fn rows_at_keys<'a>(
+    sql: &impl coven::SqlRead,
+    keys: impl Iterator<Item = &'a CandidateKey>,
+    sources: RowSources,
+) -> Result<Vec<CandidateRow>, DbError> {
+    let statement = ItemsAtKeysParams {
+        keys: crate::tables::key_hex_list(keys),
+        grouping_releases: sources.takes_grouping_releases(),
+    };
+    statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| CandidateRow::of_items(row.item))
+        .collect()
 }
 
-impl EntryRows<'_> {
-    /// The condition keeping these entries of `scan_candidate`, aliased
-    /// `candidate`, binding the root as `?1` and the key as `?2`, or the
-    /// roots and keys as one JSON array in `?1`.
-    fn condition(self) -> &'static str {
-        match self {
-            Self::Root(_) => "candidate.watched_folder_path = ?1",
-            Self::Entry { .. } => "candidate.watched_folder_path = ?1 AND candidate.path = ?2",
-            Self::Keys(_) => {
-                "(candidate.watched_folder_path, candidate.path) IN \
-                 (SELECT unhex(value ->> 0), unhex(value ->> 1) FROM json_each(?1))"
-            }
-        }
-    }
-
-    /// What [`Self::condition`] binds.
-    fn params(self) -> rusqlite::ParamsFromIter<Vec<rusqlite::types::Value>> {
-        use rusqlite::types::Value;
-        rusqlite::params_from_iter(match self {
-            Self::Root(root) => vec![Value::Blob(coven::path_bytes(root))],
-            Self::Entry { root, key } => {
-                vec![Value::Blob(coven::path_bytes(root)), Value::Blob(key.as_bytes().to_vec())]
-            }
-            Self::Keys(keys) => vec![Value::Text(
-                serde_json::Value::Array(
-                    keys.iter()
-                        .map(|(root, key)| {
-                            serde_json::json!([
-                                hex::encode(coven::path_bytes(root)),
-                                hex::encode(key.as_bytes())
-                            ])
-                        })
-                        .collect(),
-                )
-                .to_string(),
-            )],
-        })
-    }
+/// `rows`, still to be decoded.
+fn decoding(rows: Vec<CandidateRow>) -> FinishRead<Vec<StoredScanItem>> {
+    Box::new(move || rows.into_iter().map(CandidateRow::item).collect())
 }
 
 /// One stored entry: the key it is addressed by, the scan generation that
@@ -113,7 +109,16 @@ pub(super) fn load_items(
     watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
-    let items = load_candidate_items_rows(sql, EntryRows::Root(watched_folder_path), sources)?;
+    let statement = ItemsUnderRootParams {
+        root: coven::path_bytes(watched_folder_path),
+        grouping_releases: sources.takes_grouping_releases(),
+    };
+    let items = decoding(
+        statement_rows(sql, &statement)?
+            .into_iter()
+            .map(|row| CandidateRow::of_items(row.item))
+            .collect::<Result<_, _>>()?,
+    );
     let root_generation = super::root_generation_on(sql, watched_folder_path)?
         .map(|generation| to_u64(generation, "a folder scan root's generation"))
         .transpose()?;
@@ -143,17 +148,17 @@ pub(crate) fn load_item_by_key(
     load_item_by_key_rows(sql, entry_key, sources)?.map(|process| process()).transpose()
 }
 
-/// The entries at `keys`, each under the root it is paired with, in one
-/// statement, by key. An entry no row stores is absent.
+/// The entries at `keys`, in one statement, by key. An entry no row stores
+/// is absent.
 pub(crate) fn load_items_by_keys(
     sql: &impl coven::SqlRead,
-    keys: &[(&Path, &CandidateKey)],
+    keys: &[&CandidateKey],
     sources: RowSources,
 ) -> Result<HashMap<CandidateKey, StoredScanItem>, DbError> {
     if keys.is_empty() {
         return Ok(HashMap::new());
     }
-    Ok(load_candidate_items_rows(sql, EntryRows::Keys(keys), sources)?()?
+    Ok(decoding(rows_at_keys(sql, keys.iter().copied(), sources)?)()?
         .into_iter()
         .map(|item| (item.key.clone(), item))
         .collect())
@@ -164,46 +169,19 @@ pub(crate) fn load_item_by_key_rows(
     entry_key: &CandidateKey,
     sources: RowSources,
 ) -> Result<Option<FinishRead<(PathBuf, StoredScanItem)>>, DbError> {
-    let roots = sql.query(
-        &format!(
-            "SELECT candidate.watched_folder_path FROM scan_candidate AS candidate \
-             WHERE candidate.path = ? AND {}",
-            sources.clause()
-        ),
-        [entry_key],
-        |row| path_column::get(row, 0),
-    )?;
-    if roots.len() > 1 {
+    let mut rows = rows_at_keys(sql, std::iter::once(entry_key), sources)?;
+    if rows.len() > 1 {
         return Err(DbError::unreadable(
             format!("the watched folders scan_candidate stores {entry_key} under"),
-            roots.iter().map(|root| coven::path_text(root)).collect::<Vec<_>>(),
+            rows.iter().map(|row| coven::path_text(row.root())).collect::<Vec<_>>(),
         ));
     }
-    if let Some(root) = roots.into_iter().next() {
-        #[expect(
-            clippy::read_keyed_statement,
-            reason = "kept finding: reads the candidate's items keyed by the root the first statement returned"
-        )]
-        let items = load_candidate_items_rows(
-            sql,
-            EntryRows::Entry { root: &root, key: entry_key },
-            sources,
-        )?;
-        let entry_key = entry_key.clone();
-        return Ok(Some(Box::new(move || {
-            let mut items = items()?;
-            match items.pop() {
-                Some(item) => Ok((root, item)),
-                // Both reads are of one snapshot, which lists the
-                // candidate under its root.
-                None => Err(DbError::unreadable(
-                    format!("the scan_candidate rows of {entry_key} under its root"),
-                    0,
-                )),
-            }
-        })));
-    }
-    Ok(None)
+    Ok(rows.pop().map(|row| -> FinishRead<(PathBuf, StoredScanItem)> {
+        Box::new(move || {
+            let root = row.root().to_path_buf();
+            Ok((root, row.item()?))
+        })
+    }))
 }
 
 /// Whether a valid or invalid entry, rather than a tentative one or none, is
@@ -348,58 +326,6 @@ pub(crate) fn require_current_candidate(
     }
 }
 
-/// The files of the entry joined as `candidate`, as a JSON array in their
-/// order: each with its sheet and the audio that sheet describes.
-fn files_json_sql() -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-             'relative_path', file.relative_path, 'absolute_path', hex(file.absolute_path), \
-             'size', file.size, 'modified_at_ns', file.modified_at_ns, \
-             'audio_content_type', file.audio_content_type, \
-             'audio_container', file.audio_container, \
-             'audio_duration_ms', file.audio_duration_ms, \
-             'audio_sample_rate_hz', file.audio_sample_rate_hz, \
-             'audio_bits_per_sample', file.audio_bits_per_sample, \
-             'audio_bitrate_kbps', file.audio_bitrate_kbps, \
-             'audio_channels', file.audio_channels, 'file_name', file.file_name, \
-             'role', file.role, \
-             'document_kind', file.document_kind, \
-             'sheet_binding', file.sheet_binding, \
-             'sheet_binding_codec', file.sheet_binding_codec, \
-             'sheet_place', file.sheet_place, 'sheet_medium', file.sheet_medium, \
-             'sheet_side', file.sheet_side, \
-             'sheet', json({SHEET_JSON}), 'sheet_audio', json({SHEET_AUDIO_JSON})) \
-             ORDER BY file.position) \
-         FROM scan_candidate_file AS file \
-         WHERE file.watched_folder_path = candidate.watched_folder_path \
-           AND file.candidate_path = candidate.path)"
-    )
-}
-
-/// The parts the entry joined as `candidate` is read from, as a JSON array
-/// in play order.
-const PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
-         'folder', hex(part.folder), 'prefix', part.prefix) ORDER BY part.position) \
-     FROM scan_candidate_part AS part \
-     WHERE part.watched_folder_path = candidate.watched_folder_path \
-       AND part.candidate_path = candidate.path)";
-
-/// The files of the release joined as `candidate` that failed validation, as
-/// a JSON array in name order.
-fn skipped_files_json(candidate: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-         'relative_path', skipped.relative_path, \
-         'absolute_path', hex(skipped.absolute_path), \
-         'size', skipped.size, 'modified_at_ns', skipped.modified_at_ns, \
-         'role', skipped.role, 'audio_damage', skipped.audio_damage, \
-         'document_kind', skipped.document_kind) ORDER BY skipped.position) \
-     FROM scan_skipped_file AS skipped \
-     WHERE skipped.watched_folder_path = {candidate}.watched_folder_path \
-       AND skipped.candidate_path = {candidate}.path)"
-    )
-}
-
 #[derive(Clone, PartialEq)]
 pub(crate) struct CandidateRow {
     watched_folder_path: PathBuf,
@@ -421,54 +347,35 @@ pub(crate) struct CandidateRow {
     invalid: Option<InvalidColumns>,
 }
 
-/// The entries `entries` names, each read with what hangs off it.
-pub(crate) fn load_candidate_items_rows(
-    sql: &impl coven::SqlRead,
-    entries: EntryRows<'_>,
-    sources: RowSources,
-) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
-    let (invalid_columns, invalid_joins) = invalid_columns_sql("candidate");
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate.watched_folder_path, candidate.path, candidate.generation, candidate.kind, candidate.name, \
-                    candidate.relative_folder, candidate.folder, candidate.file_root, \
-                    candidate.scope, candidate.file_edit_revision, candidate.grouping_key, \
-                    {files} AS files, {PARTS_JSON} AS parts, \
-                    {skipped_files} AS skipped_files, {invalid_columns} \
-             FROM scan_candidate AS candidate {invalid_joins} \
-             WHERE {} AND {} \
-             ORDER BY candidate.path",
-            entries.condition(),
-            sources.clause(),
-            files = files_json_sql(),
-            skipped_files = skipped_files_json("candidate"),
-        ),
-        entries.params(),
-        CandidateRow::read,
-    )?;
-    Ok(Box::new(move || rows.into_iter().map(CandidateRow::item).collect()))
-}
-
 impl CandidateRow {
-    /// The row of a statement that selects the columns of `scan_candidate`
-    /// the fields name, and [`invalid_columns_sql`]'s.
-    pub(crate) fn read(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            watched_folder_path: path_column::get(row, "watched_folder_path")?,
-            path: row.get("path")?,
-            generation: row.get("generation")?,
-            kind: row.get("kind")?,
-            name: row.get("name")?,
-            relative_folder: row.get("relative_folder")?,
-            folder: path_column::get(row, "folder")?,
-            file_root: path_column::get(row, "file_root")?,
-            scope: row.get("scope")?,
-            file_edit_revision: row.get("file_edit_revision")?,
-            grouping_key: row.get("grouping_key")?,
-            files: row.get("files")?,
-            parts: row.get("parts")?,
-            skipped_files: row.get("skipped_files")?,
-            invalid: InvalidColumns::read(row)?,
+    /// The row of a read that spreads [`super::fragments::ScanItems`].
+    fn of_items(item: super::fragments::ScanItems) -> Result<Self, DbError> {
+        Self::of(super::fragments::ScanItem {
+            scan_key: item.path.clone(),
+            watched_folder_path: item.watched_folder_path,
+            path: item.path,
+            generation: item.generation,
+            kind: item.kind,
+            name: item.name,
+            relative_folder: item.relative_folder,
+            folder: item.folder,
+            file_root: item.file_root,
+            scope: item.scope,
+            file_edit_revision: item.file_edit_revision,
+            grouping_key: item.grouping_key,
+            files: item.files,
+            parts: item.parts,
+            skipped_files: item.skipped_files,
+            invalid_folder: item.invalid_folder,
+            invalid_separable: item.invalid_separable,
+            invalid_reason: item.invalid_reason,
+            invalid_shared_name: item.invalid_shared_name,
+            invalid_damaged_audio: item.invalid_damaged_audio,
+            invalid_album_title: item.invalid_album_title,
+            invalid_credits: item.invalid_credits,
+            invalid_cover_path: item.invalid_cover_path,
+            invalid_cover_size: item.invalid_cover_size,
+            invalid_cover_modified: item.invalid_cover_modified,
         })
     }
 
@@ -563,7 +470,7 @@ fn listed<T: serde::de::DeserializeOwned>(
     })
 }
 
-/// One `scan_candidate_file` row as [`files_json_sql`] holds it.
+/// One `scan_candidate_file` row as [`super::fragments::ScanItems`] holds it.
 #[derive(serde::Deserialize)]
 struct FileRow {
     relative_path: String,
@@ -744,7 +651,7 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
     }
 }
 
-/// One `scan_skipped_file` row as [`skipped_files_json`] holds it.
+/// One `scan_skipped_file` row as [`super::fragments::ScanItems`] holds it.
 #[derive(serde::Deserialize)]
 struct SkippedFileRow {
     relative_path: String,
@@ -782,7 +689,7 @@ fn skipped_files_of(
         .collect()
 }
 
-/// One `scan_candidate_part` row as [`PARTS_JSON`] holds it.
+/// One `scan_candidate_part` row as [`super::fragments::ScanItems`] holds it.
 #[derive(serde::Deserialize)]
 struct PartRow {
     #[serde(deserialize_with = "path_column::from_hex")]

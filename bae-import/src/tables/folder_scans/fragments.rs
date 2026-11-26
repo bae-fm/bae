@@ -1,4 +1,5 @@
-//! What the folder scans offer the candidate pane: the scanned folder and its files.
+//! What the folder scans offer other reads: the candidate pane's scanned folder
+//! and its files, and the entries at a set of keys.
 
 sqlive_compose::fragment!(
     ScanItem(key: crate::CandidateKey) {
@@ -123,6 +124,126 @@ sqlive_compose::fragment!(
     )
     SELECT :key AS scan_key, watched_folder_path, path, generation, kind, name, relative_folder, folder, file_root, scope, file_edit_revision, grouping_key, files, parts, skipped_files, invalid_folder, invalid_separable, invalid_reason, invalid_shared_name, invalid_damaged_audio, invalid_album_title, invalid_credits, invalid_cover_path, invalid_cover_size, invalid_cover_modified
     FROM statement
+"#);
+
+sqlive_compose::fragment!(
+    ScanItems with keys(candidate_key BLOB) {
+        watched_folder_path: Vec<u8>,
+        path: crate::CandidateKey,
+        generation: i64,
+        kind: String,
+        source_kind: String,
+        name: String,
+        relative_folder: crate::RelativeFolder,
+        folder: Vec<u8>,
+        file_root: Vec<u8>,
+        scope: String,
+        file_edit_revision: i64,
+        grouping_key: Option<crate::CandidateKey>,
+        files: String,
+        parts: String,
+        skipped_files: String,
+        invalid_folder: Vec<u8>,
+        invalid_separable: bool,
+        invalid_reason: Option<String>,
+        invalid_shared_name: Option<String>,
+        invalid_damaged_audio: Option<i64>,
+        invalid_album_title: Option<String>,
+        invalid_credits: Option<String>,
+        invalid_cover_path: Option<Vec<u8>>,
+        invalid_cover_size: Option<i64>,
+        invalid_cover_modified: Option<i64>
+    },
+    r#"
+    SELECT candidate.watched_folder_path, candidate.path, candidate.generation,
+        candidate.kind, candidate.source_kind, candidate.name, candidate.relative_folder,
+        candidate.folder, candidate.file_root, candidate.scope, candidate.file_edit_revision,
+        candidate.grouping_key,(
+            SELECT json_group_array(json_object('relative_path', file.relative_path,
+                'absolute_path', hex(file.absolute_path), 'size', file.size,
+                'modified_at_ns', file.modified_at_ns, 'audio_content_type',
+                file.audio_content_type, 'audio_container', file.audio_container,
+                'audio_duration_ms', file.audio_duration_ms, 'audio_sample_rate_hz',
+                file.audio_sample_rate_hz, 'audio_bits_per_sample',
+                file.audio_bits_per_sample, 'audio_bitrate_kbps', file.audio_bitrate_kbps,
+                'audio_channels', file.audio_channels, 'file_name', file.file_name, 'role',
+                file.role, 'document_kind', file.document_kind, 'sheet_binding',
+                file.sheet_binding, 'sheet_binding_codec', file.sheet_binding_codec,
+                'sheet_place', file.sheet_place, 'sheet_medium', file.sheet_medium,
+                'sheet_side', file.sheet_side, 'sheet', json((
+                SELECT json_object('title', sheet.title, 'performer', sheet.performer,
+                    'catalog', sheet.catalog, 'date', sheet.date, 'ripper', sheet.ripper,
+                    'tracks', json((
+                    SELECT json_group_array(json_object('number', track.number, 'mode',
+                        track.mode, 'mode_other', track.mode_other, 'title', track.title,
+                        'performer', track.performer, 'file_reference',
+                        track.file_reference, 'start_cue_frames', track.start_cue_frames,
+                        'end_cue_frames', track.end_cue_frames, 'generated_pregap_frames',
+                        track.generated_pregap_frames, 'indexes', json((
+                    SELECT json_group_array(json_object('number', cue_index.number,
+                        'frames', cue_index.frames, 'file_reference',
+                        cue_index.file_reference) ORDER BY cue_index.position)
+                    FROM scan_cue_index AS cue_index
+                    WHERE cue_index.watched_folder_path = track.watched_folder_path AND
+                        cue_index.candidate_path = track.candidate_path AND
+                        cue_index.sheet_relative_path = track.sheet_relative_path AND
+                        cue_index.track_position = track.position
+                ))) ORDER BY track.position)
+                FROM scan_cue_track AS track
+                WHERE track.watched_folder_path = sheet.watched_folder_path AND
+                    track.candidate_path = sheet.candidate_path AND
+                    track.sheet_relative_path = sheet.sheet_relative_path
+            )))
+            FROM scan_cue_sheet AS sheet
+            WHERE sheet.watched_folder_path = file.watched_folder_path AND
+                sheet.candidate_path = file.candidate_path AND sheet.sheet_relative_path =
+                file.relative_path
+            )), 'sheet_audio', json((
+            SELECT json_group_array(json_object('file_reference', described.file_reference,
+                'file_id', described.audio_relative_path) ORDER BY described.position)
+            FROM scan_sheet_audio_file AS described
+            WHERE described.watched_folder_path = file.watched_folder_path AND
+                described.candidate_path = file.candidate_path AND
+                described.sheet_relative_path = file.relative_path
+        ))) ORDER BY file.position)
+        FROM scan_candidate_file AS file
+        WHERE file.watched_folder_path = candidate.watched_folder_path AND
+            file.candidate_path = candidate.path
+        ) AS files,(
+        SELECT json_group_array(json_object('folder', hex(part.folder), 'prefix',
+            part.prefix) ORDER BY part.position)
+        FROM scan_candidate_part AS part
+        WHERE part.watched_folder_path = candidate.watched_folder_path AND
+            part.candidate_path = candidate.path
+        ) AS parts,(
+        SELECT json_group_array(json_object('relative_path', skipped.relative_path,
+            'absolute_path', hex(skipped.absolute_path), 'size', skipped.size,
+            'modified_at_ns', skipped.modified_at_ns, 'role', skipped.role, 'audio_damage',
+            skipped.audio_damage, 'document_kind', skipped.document_kind) ORDER BY
+            skipped.position)
+        FROM scan_skipped_file AS skipped
+        WHERE skipped.watched_folder_path = candidate.watched_folder_path AND
+            skipped.candidate_path = candidate.path
+    ) AS skipped_files, candidate.folder AS invalid_folder, candidate.grouping_key IS NOT
+        NULL AS invalid_separable, candidate.invalid_reason AS invalid_reason,
+        candidate.invalid_shared_name AS invalid_shared_name,
+        candidate.invalid_damaged_audio AS invalid_damaged_audio, invalid_tags.album_title
+        AS invalid_album_title, invalid_tags.credits AS invalid_credits,
+        invalid_cover.absolute_path AS invalid_cover_path, invalid_cover.size AS
+        invalid_cover_size, invalid_cover.modified_at_ns AS invalid_cover_modified
+    FROM keys
+    JOIN scan_candidate AS candidate ON candidate.path = keys.candidate_key
+    LEFT JOIN scan_skipped_tags AS invalid_tags ON invalid_tags.watched_folder_path =
+        candidate.watched_folder_path AND invalid_tags.candidate_path = candidate.path
+        LEFT JOIN scan_skipped_file AS invalid_cover ON candidate.kind = 'invalid' AND
+            invalid_cover.watched_folder_path = candidate.watched_folder_path AND
+            invalid_cover.candidate_path = candidate.path AND invalid_cover.position =(
+        SELECT MIN(image.position)
+        FROM scan_skipped_file AS image
+        WHERE image.watched_folder_path = candidate.watched_folder_path AND
+            image.candidate_path = candidate.path AND image.role = 'artwork' AND
+            image.relative_path = candidate.blank_cover_file
+    )
 "#);
 
 sqlive_compose::fragment!(
