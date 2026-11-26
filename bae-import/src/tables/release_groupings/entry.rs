@@ -210,6 +210,16 @@ impl ImportTables {
         self.store.read(move |sql| load_scanned_entry_on(&sql, &key)).await
     }
 
+    /// The release at `key` that may be worked on; see
+    /// [`require_workable_on`].
+    pub(crate) async fn require_workable(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<CandidateEntry, ImportError> {
+        let key = key.clone();
+        self.store.read(move |sql| Ok(require_workable_on(&sql, &key))).await?
+    }
+
     /// The release stored at `key` and where it stands; see
     /// [`load_candidate_entry_on`].
     pub(crate) async fn load_candidate_entry(

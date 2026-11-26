@@ -13,18 +13,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<crate::tables::CandidateEntry, crate::ImportError> {
-        let entry = self
-            .services
-            .tables
-            .load_candidate_entry(key)
-            .await?
-            .map(crate::tables::CandidateEntry::workable)
-            .transpose()
-            .map_err(|reason| crate::ImportError::GroupingBlocked { reason })?
-            .flatten()
-            .ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{key} is not a scanned candidate"),
-            })?;
+        let entry = self.services.tables.require_workable(key).await?;
         entry.standing().editable()?;
         Ok(entry)
     }
