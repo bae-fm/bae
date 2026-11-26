@@ -65,22 +65,8 @@ impl StandingColumns {
     }
 
     /// The columns of a pane's read, which
-    /// [`super::fragments::Standing`] names; a candidate with no standing row
-    /// holds none of them.
-    pub(crate) fn of(standing: Option<super::fragments::Standing>) -> Self {
-        let Some(standing) = standing else {
-            return Self {
-                identification: None,
-                content_hash: None,
-                file_edit_revision: None,
-                admission: None,
-                identify_run: None,
-                import_asked: None,
-                save_failure_error: None,
-                import_step: None,
-                import_id: None,
-            };
-        };
+    /// [`super::fragments::Standing`] names.
+    fn of(standing: super::fragments::Standing) -> Self {
         Self {
             identification: standing.identification,
             content_hash: standing.standing_content_hash,
@@ -162,6 +148,18 @@ impl StandingColumns {
             }
         };
         Ok(StoredStanding { identification, import })
+    }
+}
+
+/// The standing that a pane's read selects for `key`: what is running for the
+/// candidate, or nothing when it has no standing row.
+pub(crate) fn standing_of(
+    standing: Option<super::fragments::Standing>,
+    key: &CandidateKey,
+) -> Result<StoredStanding, DbError> {
+    match standing {
+        None => Ok(StoredStanding { identification: None, import: None }),
+        Some(standing) => StandingColumns::of(standing).standing(key),
     }
 }
 

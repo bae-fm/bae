@@ -10,7 +10,7 @@ use crate::candidate_detail::ImportCandidateDetailProjection;
 use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::import_state::fragments::PickedLibraryStatus;
-use crate::tables::import_state::{file_evidence_of_json, stored_verdict_view, StandingColumns};
+use crate::tables::import_state::{file_evidence_of_json, stored_verdict_view};
 use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
 use bae_store::{Bound, ReadStatement};
@@ -124,7 +124,7 @@ impl HeadRows {
             cards: import_state::verdict_cards_of_column(
                 cards.and_then(|cards| cards.verdict_cards).as_deref(),
             )?,
-            standing: StandingColumns::of(standing).standing(&key)?.facts(),
+            standing: import_state::standing_of(standing, &key)?.facts(),
             listed: listed_columns,
             imported: imported.map(|imported| {
                 let (release_id, album_id) = imported.release.into_ids();

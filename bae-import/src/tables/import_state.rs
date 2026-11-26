@@ -113,10 +113,10 @@ pub(super) use rows::{load_current_state_on, load_states_on, stored_verdict_view
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
 pub(super) use signal_rows::file_evidence_of_json;
 use signal_rows::{delete_signals, store_signals};
+pub(crate) use standing_rows::standing_of;
 pub(crate) use standing_rows::ImportClaim;
 #[cfg(test)]
 pub(crate) use standing_rows::StandingColumn;
-pub(crate) use standing_rows::StandingColumns;
 pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, VerdictPick};
 // The source releases' tests store a run's releases as a release run does.
 #[cfg(test)]
