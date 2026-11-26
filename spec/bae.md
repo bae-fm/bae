@@ -1313,8 +1313,9 @@ cleared and its group opened, the list's other folds kept. The list then
 scrolls to it; a candidate the view no longer shows is scrolled to nowhere.
 
 The pane reads its one candidate's rows by the candidate's
-key, and so does every read of one candidate's state, draft or preparation, so
-how long one takes does not grow with how many candidates the queue holds.
+key, and every read of one candidate's state, draft or preparation finds the
+candidate by its key or its content hash, so how long one takes does not grow
+with how many candidates the queue holds.
 The pane reads each of its two concerns with one composed statement: the
 candidate as the scan, the list and its state hold it, and what an import files
 under, which is the draft the candidate holds or the release this device

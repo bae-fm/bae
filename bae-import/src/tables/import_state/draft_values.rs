@@ -416,14 +416,14 @@ pub(crate) struct StoredWorkCredit {
     qualifiers: String,
 }
 
-/// One stored part as [`work_parts_json_sql`] holds it.
+/// One stored part as the draft's stored work parts hold it.
 #[derive(serde::Deserialize)]
 pub(crate) struct StoredPart {
     parent: String,
     child: String,
 }
 
-/// The work graph the draft's stored works and [`work_parts_json_sql`] hold.
+/// The work graph the draft's stored works and stored work parts hold.
 pub(crate) fn works_of(
     works: Vec<StoredWork>,
     parts: Vec<StoredPart>,

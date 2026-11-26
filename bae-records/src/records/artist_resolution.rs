@@ -384,12 +384,11 @@ pub fn credit_artists_checked_on(
         Ok(CreditUnderTestRow::read(row)?.answer.artists)
     })?;
     // The rule answers the one credit it is given.
-    let named: Vec<crate::ExistingArtist> = match answers.first() {
-        Some(json) => serde_json::from_str(json).map_err(|error| {
-            DbError::unreadable_json("the rule's answer for a credit", json, error)
-        })?,
-        None => Vec::new(),
-    };
+    let json = answers
+        .first()
+        .ok_or_else(|| DbError::unreadable("the rule's answer for a credit", None::<String>))?;
+    let named: Vec<crate::ExistingArtist> = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json("the rule's answer for a credit", json, error))?;
     let written = DbArtist {
         id: "credit-under-test".to_string(),
         name: credit.name.clone(),
