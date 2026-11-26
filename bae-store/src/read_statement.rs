@@ -10,9 +10,11 @@ use sqlive_compose::Read;
 pub type RowsOfBoth<A, B> =
     (Vec<<A as sqlive_compose::Returning>::Row>, Vec<<B as sqlive_compose::Returning>::Row>);
 
-/// Every row `statement` returns on `sql`.
-pub fn statement_rows<Q: Read>(sql: &impl SqlRead, statement: &Q) -> Result<Vec<Q::Row>, DbError> {
-    Ok(sql.query(Q::SQL, statement.params().as_slice(), Q::read)?)
+/// Every row `statement` returns on `sql`. It fails with SQLite's own error,
+/// which a caller that answers coven and one that answers the store both
+/// take.
+pub fn statement_rows<Q: Read>(sql: &impl SqlRead, statement: &Q) -> rusqlite::Result<Vec<Q::Row>> {
+    sql.query(Q::SQL, statement.params().as_slice(), Q::read)
 }
 
 /// The row `statement` returns on `sql`, for a statement that returns at most

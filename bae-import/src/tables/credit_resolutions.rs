@@ -14,8 +14,8 @@
 //! the person types is view state, so its draft's read applies the same
 //! rule to the form's credits.
 
+use bae_store::statement_rows;
 use rusqlite::{params, OptionalExtension};
-use sqlive_compose::{Returning, Statement};
 
 sqlive_compose::read!(
     DueCredit { held: bool },
@@ -62,9 +62,7 @@ sqlive_compose::read!(
 /// list: each one a draft still holds gets the rule's answer, written where
 /// it differs from the stored one, and each one none holds loses its answer.
 pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> {
-    let due = sql.query(DueCredit::SQL, DueCreditParams {}.params().as_slice(), |row| {
-        DueCreditParams::read(row)
-    })?;
+    let due = statement_rows(sql, &DueCreditParams {})?;
     if due.is_empty() {
         return Ok(());
     }
@@ -86,9 +84,8 @@ pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven
         }
     }
     let request = ChangedCreditAnswerParams { credits: serde_json::Value::Array(held).to_string() };
-    let changed = sql.query(ChangedCreditAnswer::SQL, request.params().as_slice(), |row| {
-        Ok(ChangedCreditAnswerParams::read(row)?.fresh.into_columns())
-    })?;
+    let changed: Vec<_> =
+        statement_rows(sql, &request)?.into_iter().map(|row| row.fresh.into_columns()).collect();
     for (name_key, musicbrainz, discogs, artists) in &changed {
         let key = params![name_key, musicbrainz, discogs];
         let resolution_of = || {

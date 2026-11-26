@@ -1,4 +1,4 @@
-use crate::{statement_optional, statement_row, statement_rows, DbError, Schema, SchemaPart};
+use crate::{statement_optional, statement_row, DbError, Schema, SchemaPart};
 use bae_util::test_channels::HANG_GUARD;
 use sqlive_compose::{Read, Returning, Statement};
 
@@ -179,7 +179,7 @@ async fn at_most_one_row_takes_none_and_refuses_two() {
 #[tokio::test]
 async fn a_statement_that_fails_to_read_a_row_fails_the_read() {
     let (store, _tmp) = notes_store().await;
-    let result = store.read(|sql| statement_rows(&sql, &Failing)).await;
+    let result = store.read_rows(Failing).await;
     assert!(matches!(result, Err(DbError::Sqlite(_))));
 }
 

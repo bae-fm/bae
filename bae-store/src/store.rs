@@ -140,7 +140,7 @@ impl Store {
         Q: sqlive_compose::Read + Send + 'static,
         Q::Row: Send + 'static,
     {
-        self.read(move |sql| statement_rows(&sql, &statement)).await
+        self.read(move |sql| Ok(statement_rows(&sql, &statement)?)).await
     }
 
     /// The one row of the generated statement `statement`, read once.
@@ -259,8 +259,9 @@ impl Store {
         E: From<DbError> + From<coven::DbError> + CarriesBug + Send + 'static,
     {
         self.inner.handle.subscribe_reconfigurable(initial_request, |request, read| {
-            let rows = statement_rows(&read, &A::from(request)).map_err(E::from)?;
-            Ok((rows, statement_rows(&read, &B::from(request)).map_err(E::from)?))
+            let failed = |error| E::from(DbError::from(error));
+            let rows = statement_rows(&read, &A::from(request)).map_err(failed)?;
+            Ok((rows, statement_rows(&read, &B::from(request)).map_err(failed)?))
         })
     }
 
