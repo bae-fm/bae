@@ -510,38 +510,10 @@ sqlive_compose::fragment!(
             WITH artist_field AS MATERIALIZED (
             SELECT part, track_id, field
             FROM @bae_records::records::artist_standing::ArtistFieldStanding(
-                raw: (
-            SELECT 0 AS part, NULL AS track_id, a.position AS position,
-                a.assignment_kind, a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id,
-                a.discogs_artist_id, a.credit_key, a.credited_as, a.join_phrase
-            FROM import_candidate_album_artist_assignment AS a
-                WHERE a.content_hash =(
-                SELECT scan.content_hash
-                FROM scan_candidate AS scan
-                WHERE scan.path = :key
-            )
-            UNION ALL SELECT 1, t.track_id, a.position, a.assignment_kind,
-                a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id, a.discogs_artist_id,
-                a.credit_key, a.credited_as, a.join_phrase
-            FROM import_candidate_track_artist_assignment AS a
-            JOIN import_candidate_track AS t ON t.content_hash = a.content_hash AND t.track_id =
-                a.track_id
-                WHERE a.content_hash =(
-                SELECT scan.content_hash
-                FROM scan_candidate AS scan
-                WHERE scan.path = :key
-            ) AND t.artist_assignment_kind = 'explicit'
-                ),
-                credit_answer: (
-                SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id,(
-                SELECT json_group_array(json_object('artist_id', a.artist_id, 'name', a.name,
-                    'sort_name', a.sort_name, 'musicbrainz_artist_id', a.musicbrainz_artist_id,
-                    'discogs_artist_id', a.discogs_artist_id) ORDER BY a.position)
-                FROM import_credit_resolution_artist AS a
-                WHERE a.resolution = r.id
-            )
-            FROM import_credit_resolution AS r
-                )) AS standing
+                raw: @crate::tables::import_state::row_fragments::DraftCreditRows(key: :key),
+                credit_answer:
+                    @crate::tables::credit_resolutions::row_fragments::StoredCreditAnswers
+                ) AS standing
         ) SELECT field
         FROM artist_field
         WHERE part = 0

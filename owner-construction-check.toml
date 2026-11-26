@@ -1386,6 +1386,7 @@ owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/credit_resolutions.rs",
     "bae-import/src/tables/credit_resolutions.sql",
+    "bae-import/src/tables/credit_resolutions/",
 ]
 tables = [
     "import_credit_resolution",

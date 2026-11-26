@@ -8,7 +8,7 @@ mod album_link_rows;
 mod catalog_apply_steps;
 mod cover_gallery;
 mod cover_labels;
-pub(crate) mod credit_resolutions;
+pub mod credit_resolutions;
 mod downscaled_copies;
 mod draft_layout;
 mod draft_rows;

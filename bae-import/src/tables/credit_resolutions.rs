@@ -17,6 +17,8 @@
 use bae_store::statement_rows;
 use rusqlite::{params, OptionalExtension};
 
+pub mod row_fragments;
+
 sqlive_compose::read!(
     DueCredit { held: bool },
     r#"
