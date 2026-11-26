@@ -12,7 +12,9 @@ use crate::extraction::candidate_text::{Source, SourcedLine};
 use crate::extraction::fast_pass::ArtworkImage;
 use crate::extraction::release::read_library_image;
 use bae_catalogs::InternalFailure;
-use bae_identify::signals::{ArtworkScan, BarcodeSignal, Signals, SourcedValue, TextSignal};
+use bae_identify::signals::{
+    ArtworkScan, BarcodeSignal, PaneSignals, Signals, SourcedValue, TextSignal,
+};
 use coven::task::CompletingTask;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -290,16 +292,18 @@ pub(super) async fn stream_extraction(
     };
     let settled = SignalsSnapshot {
         signals: Signals {
-            origin: gathered.origin,
-            disc_id: gathered.disc_id,
-            barcode,
-            text: TextSignal::Settled {
-                catalogs: classification.catalogs,
-                free_text: classification.free_text,
+            pane: PaneSignals {
+                origin: gathered.origin,
+                disc_id: gathered.disc_id,
+                barcode,
+                text: TextSignal::Settled {
+                    catalogs: classification.catalogs,
+                    free_text: classification.free_text,
+                },
+                isrcs: gathered.isrcs,
+                track_titles: gathered.track_titles,
             },
             text_pool: gathered.pool.text_lines(),
-            isrcs: gathered.isrcs,
-            track_titles: gathered.track_titles,
         },
         audio: gathered.audio,
         artwork: finished,
@@ -324,17 +328,19 @@ fn emit_failed_ocr_signals(
         extraction,
         SignalsSnapshot {
             signals: Signals {
-                origin: gathered.origin,
-                disc_id: gathered.disc_id,
-                barcode,
-                text: TextSignal::Failed {
-                    failure,
-                    catalogs: classification.catalogs,
-                    free_text: classification.free_text,
+                pane: PaneSignals {
+                    origin: gathered.origin,
+                    disc_id: gathered.disc_id,
+                    barcode,
+                    text: TextSignal::Failed {
+                        failure,
+                        catalogs: classification.catalogs,
+                        free_text: classification.free_text,
+                    },
+                    isrcs: gathered.isrcs,
+                    track_titles: gathered.track_titles,
                 },
                 text_pool: gathered.pool.text_lines(),
-                isrcs: gathered.isrcs,
-                track_titles: gathered.track_titles,
             },
             audio: gathered.audio,
             artwork,
@@ -346,13 +352,15 @@ fn emit_failed_ocr_signals(
 fn scanning_signals(gathered: &Gathered, catalogs: Vec<String>, free_text: Vec<String>) -> Signals {
     let text_pool = gathered.pool.text_lines();
     Signals {
-        origin: gathered.origin.clone(),
-        disc_id: gathered.disc_id.clone(),
-        barcode: BarcodeSignal::Scanning { codes: gathered.barcodes.clone() },
-        text: TextSignal::Scanning { catalogs, free_text },
+        pane: PaneSignals {
+            origin: gathered.origin.clone(),
+            disc_id: gathered.disc_id.clone(),
+            barcode: BarcodeSignal::Scanning { codes: gathered.barcodes.clone() },
+            text: TextSignal::Scanning { catalogs, free_text },
+            isrcs: gathered.isrcs.clone(),
+            track_titles: gathered.track_titles.clone(),
+        },
         text_pool,
-        isrcs: gathered.isrcs.clone(),
-        track_titles: gathered.track_titles.clone(),
     }
 }
 

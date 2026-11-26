@@ -12,7 +12,7 @@ use crate::{
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::search::MetadataResult;
-use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+use bae_identify::signals::{BarcodeSignal, DiscIdSignal, PaneSignals, Signals, TextSignal};
 use bae_identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
@@ -126,16 +126,18 @@ pub(crate) fn sample_findings() -> Findings {
 /// Settled signals with nothing found.
 pub(crate) fn sample_signals() -> bae_identify::signals::Signals {
     bae_identify::signals::Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: bae_identify::signals::DiscIdSignal::Absent,
-        barcode: bae_identify::signals::BarcodeSignal::Absent,
-        text: bae_identify::signals::TextSignal::Settled {
-            catalogs: Vec::new(),
-            free_text: Vec::new(),
+        pane: bae_identify::signals::PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: bae_identify::signals::DiscIdSignal::Absent,
+            barcode: bae_identify::signals::BarcodeSignal::Absent,
+            text: bae_identify::signals::TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
         },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     }
 }
 
@@ -233,13 +235,15 @@ pub(crate) fn pane_candidate_key() -> crate::CandidateKey {
 
 pub(crate) fn settled_signals() -> Signals {
     Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: DiscIdSignal::Absent,
-        barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+        pane: PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: DiscIdSignal::Absent,
+            barcode: BarcodeSignal::Absent,
+            text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
+        },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     }
 }
 

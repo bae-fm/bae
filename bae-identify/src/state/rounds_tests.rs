@@ -458,17 +458,10 @@ const FOLDER_TITLES: [&str; 5] = ["Song One", "Song Two", "Song Three", "Song Fo
 /// A run like `reading_documents`, over a folder whose tracks carry
 /// `FOLDER_TITLES`.
 fn reading_titled_documents(results: Vec<MetadataResult>) -> (IdentifyState, Vec<LookupRef>) {
-    let (state, _) = update(
-        started_with(vec![DG]),
-        Signals {
-            track_titles: FOLDER_TITLES.iter().map(|title| title.to_string()).collect(),
-            ..signals(
-                DiscIdSignal::Absent,
-                BarcodeSignal::Settled { codes: artwork_codes(&["A"]) },
-                &[],
-            )
-        },
-    );
+    let mut titled =
+        signals(DiscIdSignal::Absent, BarcodeSignal::Settled { codes: artwork_codes(&["A"]) }, &[]);
+    titled.track_titles = FOLDER_TITLES.iter().map(|title| title.to_string()).collect();
+    let (state, _) = update(started_with(vec![DG]), titled);
     let (state, effects) = crate::state::step(state, barcode_matched(DG, "A", results));
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the run reads its offered records' documents, got {effects:?}");

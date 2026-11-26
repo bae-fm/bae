@@ -8,7 +8,7 @@ use crate::tables::NewImportCandidateVerdict;
 use crate::IdentifyRunId;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
-use bae_identify::signals::{DiscIdSignal, Signals};
+use bae_identify::signals::DiscIdSignal;
 use bae_identify::TerminalVerdict;
 use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
@@ -117,14 +117,15 @@ impl Fixture {
                     candidate_key: crate::CandidateKey::folder(dir),
                     verdict,
                     // A disc ID naming its log, for the evidence chip.
-                    signals: Signals {
-                        disc_id: DiscIdSignal::Computed {
+                    signals: {
+                        let mut signals = settled_signals();
+                        signals.disc_id = DiscIdSignal::Computed {
                             discs: vec![bae_identify::signals::ComputedDiscId {
                                 disc_id: SEEDED_DISC_ID.to_string(),
                                 source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
                             }],
-                        },
-                        ..settled_signals()
+                        };
+                        signals
                     },
                     pick: matches!(settled_draft, SettledDraft::Picked).then(|| {
                         let record = bae_catalogs::records::LookupRef::new(

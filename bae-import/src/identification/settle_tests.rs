@@ -817,16 +817,18 @@ async fn a_cancelled_candidate_writes_no_row() {
             &candidate,
             &verdict,
             bae_identify::signals::Signals {
-                origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: bae_identify::signals::DiscIdSignal::Absent,
-                barcode: bae_identify::signals::BarcodeSignal::Absent,
-                text: bae_identify::signals::TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
+                pane: bae_identify::signals::PaneSignals {
+                    origin: bae_catalogs::AudioOrigin::default(),
+                    disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                    barcode: bae_identify::signals::BarcodeSignal::Absent,
+                    text: bae_identify::signals::TextSignal::Settled {
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new()
                 },
-                text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
+                text_pool: Vec::new()
             },
             None,
             Vec::new(),

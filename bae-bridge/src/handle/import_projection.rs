@@ -158,7 +158,7 @@ impl crate::types::BridgeCandidateInFlight {
         let signals = match runtime.identification_in_flight() {
             Some(bae_import::IdentificationInFlight::Run(published)) => published
                 .signals
-                .map(|signals| crate::types::BridgeSignals::from_core(signals.text)),
+                .map(|signals| crate::types::BridgeSignals::from_core(signals.pane.text)),
             Some(bae_import::IdentificationInFlight::Queued) | None => None,
         };
         // The pane reads what identification is doing from the shown

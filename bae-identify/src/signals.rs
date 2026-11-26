@@ -20,18 +20,26 @@ pub use text::{TextLine, TextSignal};
 use bae_catalogs::{AudioOrigin, InternalFailure};
 
 /// The signals extracted from one candidate's files, streamed as snapshots
-/// while the artwork is read.
+/// while the artwork is read: what a pane shows of them, and the text lines
+/// that results are ranked against.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signals {
+    pub pane: PaneSignals,
+    /// Every line of the candidate's own text, in reading order, which
+    /// results are ranked against.
+    pub text_pool: Vec<TextLine>,
+}
+
+/// The signals as a pane shows them: [`Signals`] without the pooled text
+/// lines, which only a ranking of results reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PaneSignals {
     /// What the files say about where the audio came from; it decides
     /// whether a sheet is hashed and sets aside rows it contradicts.
     pub origin: AudioOrigin,
     pub disc_id: DiscIdSignal,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,
-    /// Every line of the candidate's own text, in reading order, which
-    /// results are ranked against.
-    pub text_pool: Vec<TextLine>,
     /// Each audio file's ISRC, as [`bae_catalogs::isrc::code`] reads its tag, in the
     /// files' order; a file whose tags carry none adds nothing. They are
     /// looked up on MusicBrainz, and say where the recordings were registered
@@ -44,25 +52,21 @@ pub struct Signals {
     pub track_titles: Vec<String>,
 }
 
-/// The signals as a pane shows them: [`Signals`] without the pooled text
-/// lines, which only a ranking of results reads.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PaneSignals {
-    pub origin: AudioOrigin,
-    pub disc_id: DiscIdSignal,
-    pub barcode: BarcodeSignal,
-    pub text: TextSignal,
-    pub isrcs: Vec<String>,
-    pub track_titles: Vec<String>,
+impl std::ops::Deref for Signals {
+    type Target = PaneSignals;
+
+    fn deref(&self) -> &PaneSignals {
+        &self.pane
+    }
+}
+
+impl std::ops::DerefMut for Signals {
+    fn deref_mut(&mut self) -> &mut PaneSignals {
+        &mut self.pane
+    }
 }
 
 impl Signals {
-    /// The signals a pane shows, with the text lines a ranking reads.
-    pub fn of(pane: PaneSignals, text_pool: Vec<TextLine>) -> Self {
-        let PaneSignals { origin, disc_id, barcode, text, isrcs, track_titles } = pane;
-        Self { origin, disc_id, barcode, text, text_pool, isrcs, track_titles }
-    }
-
     /// How bae broke reading the folder's files, when it did: the disc ID's
     /// derivation first, then the artwork's reading, which fails the barcode
     /// and text signals together.

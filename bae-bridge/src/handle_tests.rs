@@ -385,16 +385,18 @@ fn enqueue_export_missing_release_does_not_panic() {
 #[test]
 fn a_run_s_signals_cross_with_its_runtime() {
     let signals = bae_identify::signals::Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: bae_identify::signals::DiscIdSignal::Absent,
-        barcode: bae_identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
-        text: bae_identify::signals::TextSignal::Settled {
-            catalogs: vec!["CAT-1".to_string()],
-            free_text: vec!["Album Title".to_string()],
+        pane: bae_identify::signals::PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: bae_identify::signals::DiscIdSignal::Absent,
+            barcode: bae_identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
+            text: bae_identify::signals::TextSignal::Settled {
+                catalogs: vec!["CAT-1".to_string()],
+                free_text: vec!["Album Title".to_string()],
+            },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
         },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     };
     let running = |signals: Option<bae_identify::signals::Signals>| {
         let run = bae_identify::PublishedRun {

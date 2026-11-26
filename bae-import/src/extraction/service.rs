@@ -19,7 +19,8 @@ use crate::IdentifyRunId;
 use crate::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use bae_catalogs::{AudioOrigin, InternalFailure};
 use bae_identify::signals::{
-    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
+    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, PaneSignals, Signals, SourcedValue,
+    TextSignal,
 };
 use bae_util::session_cache::SessionCache;
 use std::sync::{Arc, Mutex};
@@ -495,17 +496,19 @@ fn emit_aborted_signals(
         extraction,
         SignalsSnapshot {
             signals: Signals {
-                origin: AudioOrigin::default(),
-                disc_id,
-                barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: Vec::new() },
-                text: TextSignal::Failed {
-                    failure: failure.clone(),
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
+                pane: PaneSignals {
+                    origin: AudioOrigin::default(),
+                    disc_id,
+                    barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: Vec::new() },
+                    text: TextSignal::Failed {
+                        failure: failure.clone(),
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
             },
             audio: AudioFacts::default(),
             artwork: ArtworkScan::Failed { failure, read: 0, total: 0 },

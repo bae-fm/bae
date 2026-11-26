@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::documents::{ReleaseDocument, ReleaseReading};
-use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use crate::signals::{BarcodeSignal, DiscIdSignal, PaneSignals, Signals, SourcedValue, TextSignal};
 use crate::state::PressingKey;
 use crate::LookupChoices;
 use bae_catalogs::album_links::AlbumLinks;
@@ -251,13 +251,15 @@ pub(super) fn signals_with_catalogs(
     catalogs: Vec<String>,
 ) -> Signals {
     Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id,
-        barcode,
-        text: TextSignal::Settled { catalogs, free_text: vec![] },
+        pane: PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id,
+            barcode,
+            text: TextSignal::Settled { catalogs, free_text: vec![] },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
+        },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     }
 }
 
@@ -315,13 +317,15 @@ fn no_disc_no_barcode_is_manual_only() {
 #[test]
 fn nothing_to_run_waits_for_the_settled_text() {
     let scanning = Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: DiscIdSignal::Absent,
-        barcode: BarcodeSignal::Absent,
-        text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
+        pane: PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: DiscIdSignal::Absent,
+            barcode: BarcodeSignal::Absent,
+            text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
+        },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     };
     let (state, effects) = update(started(), scanning);
     assert!(effects.is_empty());
@@ -346,13 +350,19 @@ fn an_aborted_extraction_ends_the_run_as_an_error() {
         detail: "fast-pass spawn_blocking failed: task panicked".to_string(),
     };
     let aborted = Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: DiscIdSignal::Failed { failure: failure.clone() },
-        barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: vec![] },
-        text: TextSignal::Failed { failure: failure.clone(), catalogs: vec![], free_text: vec![] },
+        pane: PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: DiscIdSignal::Failed { failure: failure.clone() },
+            barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: vec![] },
+            text: TextSignal::Failed {
+                failure: failure.clone(),
+                catalogs: vec![],
+                free_text: vec![],
+            },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
+        },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     };
     let (state, effects) = update(started(), aborted);
     assert!(effects.is_empty(), "nothing is asked, got {effects:?}");
@@ -803,10 +813,9 @@ pub(super) fn one_code(code: &str) -> Signals {
 
 /// A folder whose tags carry `isrcs`, and nothing else to look up.
 pub(super) fn tagged(isrcs: &[&str]) -> Signals {
-    Signals {
-        isrcs: isrcs.iter().map(|code| code.to_string()).collect(),
-        ..signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[])
-    }
+    let mut folder = signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[]);
+    folder.isrcs = isrcs.iter().map(|code| code.to_string()).collect();
+    folder
 }
 
 pub(super) fn lookup_isrcs(isrcs: &[&str]) -> Effect {

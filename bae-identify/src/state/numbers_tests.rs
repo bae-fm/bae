@@ -2,7 +2,7 @@
 //! stops.
 
 use crate::documents::ReleaseDocument;
-use crate::signals::DiscIdSignal;
+use crate::signals::{DiscIdSignal, PaneSignals};
 use crate::state::tests::step;
 use crate::state::tests::*;
 use crate::state::*;
@@ -604,16 +604,18 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
-                origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: DiscIdSignal::Absent,
-                barcode: BarcodeSignal::Scanning { codes: Vec::new() },
-                text: crate::signals::TextSignal::Scanning {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
+                pane: PaneSignals {
+                    origin: bae_catalogs::AudioOrigin::default(),
+                    disc_id: DiscIdSignal::Absent,
+                    barcode: BarcodeSignal::Scanning { codes: Vec::new() },
+                    text: crate::signals::TextSignal::Scanning {
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
             },
             audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,

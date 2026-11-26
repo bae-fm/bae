@@ -168,7 +168,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
 #[tokio::test]
 async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     use bae_catalogs::LookupFailure;
-    use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+    use bae_identify::signals::{BarcodeSignal, DiscIdSignal, PaneSignals, Signals, TextSignal};
     use bae_identify::state::step as identify_step;
     use bae_identify::{IdentifyEvent, IdentifyState};
 
@@ -190,18 +190,20 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
-                origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: DiscIdSignal::Computed {
-                    discs: vec![bae_identify::signals::ComputedDiscId {
-                        disc_id: "disc-hash".to_string(),
-                        source_file: None,
-                    }],
+                pane: PaneSignals {
+                    origin: bae_catalogs::AudioOrigin::default(),
+                    disc_id: DiscIdSignal::Computed {
+                        discs: vec![bae_identify::signals::ComputedDiscId {
+                            disc_id: "disc-hash".to_string(),
+                            source_file: None,
+                        }],
+                    },
+                    barcode: BarcodeSignal::Absent,
+                    text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new(),
                 },
-                barcode: BarcodeSignal::Absent,
-                text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
                 text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
             },
             audio: bae_identify::signals::AudioFacts::default(),
             artwork: bae_identify::signals::ArtworkScan::Absent,

@@ -328,16 +328,18 @@ async fn the_shown_identify_state_is_the_run_s_while_one_runs_else_the_verdict_s
             candidate_key: key.clone(),
             verdict: bae_identify::TerminalVerdict::ManualOnly { track_count: 9, ledger: None },
             signals: bae_identify::signals::Signals {
-                origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: bae_identify::signals::DiscIdSignal::Absent,
-                barcode: bae_identify::signals::BarcodeSignal::Absent,
-                text: bae_identify::signals::TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
+                pane: bae_identify::signals::PaneSignals {
+                    origin: bae_catalogs::AudioOrigin::default(),
+                    disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                    barcode: bae_identify::signals::BarcodeSignal::Absent,
+                    text: bae_identify::signals::TextSignal::Settled {
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new()
                 },
-                text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
+                text_pool: Vec::new()
             },
             pick: None,
             releases: Vec::new(),

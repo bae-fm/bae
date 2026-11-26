@@ -172,16 +172,18 @@ async fn scanned_with_a_ruled_out_verdict(
             candidate_key: candidate.key(),
             verdict: stored.clone(),
             signals: bae_identify::signals::Signals {
-                origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
-                disc_id: bae_identify::signals::DiscIdSignal::Absent,
-                barcode: bae_identify::signals::BarcodeSignal::Absent,
-                text: bae_identify::signals::TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
+                pane: bae_identify::signals::PaneSignals {
+                    origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
+                    disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                    barcode: bae_identify::signals::BarcodeSignal::Absent,
+                    text: bae_identify::signals::TextSignal::Settled {
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new()
                 },
-                text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
+                text_pool: Vec::new()
             },
             pick: None,
             releases: Vec::new(),
@@ -253,30 +255,38 @@ async fn the_detail_reads_only_the_evidence_that_names_a_file() {
             candidate_key: candidate.key(),
             verdict: verdict("mb-verdict", None),
             signals: bae_identify::signals::Signals {
-                origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: DiscIdSignal::Computed {
-                    discs: vec![
-                        ComputedDiscId { disc_id: "no-file".to_string(), source_file: None },
-                        ComputedDiscId {
-                            disc_id: "from-log".to_string(),
-                            source_file: Some("Disc 1/Album.log".to_string()),
-                        },
-                    ],
+                pane: bae_identify::signals::PaneSignals {
+                    origin: bae_catalogs::AudioOrigin::default(),
+                    disc_id: DiscIdSignal::Computed {
+                        discs: vec![
+                            ComputedDiscId { disc_id: "no-file".to_string(), source_file: None },
+                            ComputedDiscId {
+                                disc_id: "from-log".to_string(),
+                                source_file: Some("Disc 1/Album.log".to_string()),
+                            },
+                        ],
+                    },
+                    barcode: BarcodeSignal::Settled {
+                        codes: vec![
+                            SourcedValue::in_file(
+                                "5099969394522".to_string(),
+                                "Back.jpg".to_string()
+                            ),
+                            SourcedValue::new("0602527336459".to_string()),
+                            SourcedValue::in_file(
+                                "5099969394539".to_string(),
+                                "Inlay.jpg".to_string()
+                            ),
+                        ],
+                    },
+                    text: bae_identify::signals::TextSignal::Settled {
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new()
                 },
-                barcode: BarcodeSignal::Settled {
-                    codes: vec![
-                        SourcedValue::in_file("5099969394522".to_string(), "Back.jpg".to_string()),
-                        SourcedValue::new("0602527336459".to_string()),
-                        SourcedValue::in_file("5099969394539".to_string(), "Inlay.jpg".to_string()),
-                    ],
-                },
-                text: bae_identify::signals::TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
-                },
-                text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
+                text_pool: Vec::new()
             },
             pick: None,
             releases: Vec::new(),
@@ -669,26 +679,28 @@ async fn a_verdict_stored_for_another_folder_leaves_the_pane_s_read_unmarked() {
     let mut row = new_candidate_row(&other.files.content_hash(), &other.path, &verdict);
     row.candidate_key = other.key();
     row.signals = bae_identify::signals::Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: bae_identify::signals::DiscIdSignal::Computed {
-            discs: vec![bae_identify::signals::ComputedDiscId {
-                disc_id: "disc-1".to_string(),
-                source_file: Some("rip.log".to_string()),
-            }],
-        },
-        barcode: bae_identify::signals::BarcodeSignal::Settled {
-            codes: vec![bae_identify::signals::SourcedValue {
-                value: "0123456789012".to_string(),
-                origin_path: Some("back.jpg".to_string()),
-            }],
-        },
-        text: bae_identify::signals::TextSignal::Settled {
-            catalogs: vec!["CAT-1".to_string()],
-            free_text: vec!["Some Words".to_string()],
+        pane: bae_identify::signals::PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: bae_identify::signals::DiscIdSignal::Computed {
+                discs: vec![bae_identify::signals::ComputedDiscId {
+                    disc_id: "disc-1".to_string(),
+                    source_file: Some("rip.log".to_string()),
+                }],
+            },
+            barcode: bae_identify::signals::BarcodeSignal::Settled {
+                codes: vec![bae_identify::signals::SourcedValue {
+                    value: "0123456789012".to_string(),
+                    origin_path: Some("back.jpg".to_string()),
+                }],
+            },
+            text: bae_identify::signals::TextSignal::Settled {
+                catalogs: vec!["CAT-1".to_string()],
+                free_text: vec!["Some Words".to_string()],
+            },
+            isrcs: vec!["USAAA0000001".to_string()],
+            track_titles: vec!["Track One".to_string()],
         },
         text_pool: Vec::new(),
-        isrcs: vec!["USAAA0000001".to_string()],
-        track_titles: vec!["Track One".to_string()],
     };
     row.signals.text_pool = vec![bae_identify::signals::TextLine {
         text: "Label One Records".to_string(),
@@ -955,17 +967,15 @@ async fn the_pane_s_read_holds_no_text_line_of_its_candidate() {
     let hash = candidate.files.content_hash();
     let mut row = new_candidate_row(&hash, &candidate.path, &verdict("shown-release", None));
     row.candidate_key = candidate.key();
-    row.signals = bae_identify::signals::Signals {
-        text: bae_identify::signals::TextSignal::Settled {
-            catalogs: vec!["CAT-1".to_string()],
-            free_text: Vec::new(),
-        },
-        text_pool: vec![bae_identify::signals::TextLine {
-            text: "Label One Records".to_string(),
-            origin: bae_identify::signals::TextOrigin::Artwork,
-        }],
-        ..crate::tables::import_state::tests::sample_signals()
+    row.signals = crate::tables::import_state::tests::sample_signals();
+    row.signals.text = bae_identify::signals::TextSignal::Settled {
+        catalogs: vec!["CAT-1".to_string()],
+        free_text: Vec::new(),
     };
+    row.signals.text_pool = vec![bae_identify::signals::TextLine {
+        text: "Label One Records".to_string(),
+        origin: bae_identify::signals::TextOrigin::Artwork,
+    }];
     assert!(tables.store_verdict(&row).await.unwrap());
     let mut live = tables.subscribe_import_candidate(Some(key));
     let detail =

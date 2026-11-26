@@ -5,7 +5,9 @@ use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::tables::NewImportCandidateVerdict;
 use bae_catalogs::InternalFailure;
-use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use bae_identify::signals::{
+    BarcodeSignal, DiscIdSignal, PaneSignals, Signals, SourcedValue, TextSignal,
+};
 use bae_store::test_fixtures::empty_db;
 
 /// Every settled shape of every signal comes back as it went in, including
@@ -120,13 +122,15 @@ async fn every_settled_signal_shape_round_trips() {
         let tables = crate::tables::ImportTables::new(db.clone());
         let (_, hash) = stored_pane_candidate(&db).await;
         let signals = Signals {
-            origin,
-            disc_id,
-            barcode,
-            text,
+            pane: PaneSignals {
+                origin,
+                disc_id,
+                barcode,
+                text,
+                isrcs: isrcs[at % isrcs.len()].iter().map(|code| code.to_string()).collect(),
+                track_titles: Vec::new(),
+            },
             text_pool: Vec::new(),
-            isrcs: isrcs[at % isrcs.len()].iter().map(|code| code.to_string()).collect(),
-            track_titles: Vec::new(),
         };
 
         assert!(store_verdict_with_signals(&db, &hash, signals.clone()).await, "{what}");
@@ -149,22 +153,26 @@ async fn every_settled_signal_shape_round_trips() {
 async fn a_verdict_with_a_scanning_signal_is_a_bug() {
     for scanning in [
         Signals {
-            origin: bae_catalogs::AudioOrigin::default(),
-            disc_id: DiscIdSignal::Absent,
-            barcode: BarcodeSignal::Scanning { codes: Vec::new() },
-            text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+            pane: PaneSignals {
+                origin: bae_catalogs::AudioOrigin::default(),
+                disc_id: DiscIdSignal::Absent,
+                barcode: BarcodeSignal::Scanning { codes: Vec::new() },
+                text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+                isrcs: Vec::new(),
+                track_titles: Vec::new(),
+            },
             text_pool: Vec::new(),
-            isrcs: Vec::new(),
-            track_titles: Vec::new(),
         },
         Signals {
-            origin: bae_catalogs::AudioOrigin::default(),
-            disc_id: DiscIdSignal::Absent,
-            barcode: BarcodeSignal::Absent,
-            text: TextSignal::Scanning { catalogs: Vec::new(), free_text: Vec::new() },
+            pane: PaneSignals {
+                origin: bae_catalogs::AudioOrigin::default(),
+                disc_id: DiscIdSignal::Absent,
+                barcode: BarcodeSignal::Absent,
+                text: TextSignal::Scanning { catalogs: Vec::new(), free_text: Vec::new() },
+                isrcs: Vec::new(),
+                track_titles: Vec::new(),
+            },
             text_pool: Vec::new(),
-            isrcs: Vec::new(),
-            track_titles: Vec::new(),
         },
     ] {
         let (db, _tmp, heard) =

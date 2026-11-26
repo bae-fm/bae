@@ -78,16 +78,18 @@ async fn pure_reads_use_the_read_connection() {
             ),
             verdict: bae_identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_identify::signals::Signals {
-                origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: bae_identify::signals::DiscIdSignal::Absent,
-                barcode: bae_identify::signals::BarcodeSignal::Absent,
-                text: bae_identify::signals::TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
+                pane: bae_identify::signals::PaneSignals {
+                    origin: bae_catalogs::AudioOrigin::default(),
+                    disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                    barcode: bae_identify::signals::BarcodeSignal::Absent,
+                    text: bae_identify::signals::TextSignal::Settled {
+                        catalogs: Vec::new(),
+                        free_text: Vec::new(),
+                    },
+                    isrcs: Vec::new(),
+                    track_titles: Vec::new()
                 },
-                text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
+                text_pool: Vec::new()
             },
             pick: Some(bae_import::tables::VerdictPick {
                 link: bae_identify::PressingLink {

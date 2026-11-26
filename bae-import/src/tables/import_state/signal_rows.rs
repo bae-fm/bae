@@ -502,7 +502,7 @@ impl StoredSignals {
                 })
             })
             .collect::<Result<_, DbError>>()?;
-        Ok(Signals::of(pane.signals()?, text_pool))
+        Ok(Signals { pane: pane.signals()?, text_pool })
     }
 }
 

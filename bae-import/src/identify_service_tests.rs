@@ -9,7 +9,7 @@ use bae_catalogs::records::LookupRef;
 use bae_catalogs::test_releases::{
     discogs_release_json, discogs_search_json, mb_barcode_search_json, mb_release_json,
 };
-use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+use bae_identify::signals::{BarcodeSignal, DiscIdSignal, PaneSignals, Signals, TextSignal};
 use bae_identify::IdentifyState;
 use bae_identify::TerminalVerdict;
 use bae_store::Store;
@@ -81,13 +81,15 @@ async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
 /// without touching MB or Discogs.
 fn absent_signals() -> Signals {
     Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: DiscIdSignal::Absent,
-        barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
+        pane: PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: DiscIdSignal::Absent,
+            barcode: BarcodeSignal::Absent,
+            text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
+        },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     }
 }
 
@@ -147,12 +149,11 @@ fn settled_snapshot() -> SignalsSnapshot {
 /// What extraction says while its artwork pass is still going: nothing a
 /// run can settle on.
 fn scanning_snapshot() -> SignalsSnapshot {
+    let mut signals = absent_signals();
+    signals.barcode = BarcodeSignal::Scanning { codes: vec![] };
+    signals.text = TextSignal::Scanning { catalogs: vec![], free_text: vec![] };
     SignalsSnapshot {
-        signals: Signals {
-            barcode: BarcodeSignal::Scanning { codes: vec![] },
-            text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
-            ..absent_signals()
-        },
+        signals,
         audio: bae_identify::signals::AudioFacts::default(),
         artwork: bae_identify::signals::ArtworkScan::Reading {
             current: None,

@@ -2,7 +2,9 @@
 //! which are only offered, and what striking one out does to the ranking.
 
 use super::*;
-use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextLine, TextOrigin, TextSignal};
+use crate::signals::{
+    BarcodeSignal, DiscIdSignal, PaneSignals, Signals, TextLine, TextOrigin, TextSignal,
+};
 use crate::view::tests::*;
 use crate::view::JudgedFindings;
 use crate::{Findings, LookupChoices};
@@ -16,13 +18,15 @@ fn folder(lines: &[&str], struck_out: &[&str]) -> (Signals, LookupChoices) {
         .map(|text| TextLine { text: (*text).to_string(), origin: TextOrigin::FolderName })
         .collect();
     let signals = Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: DiscIdSignal::Absent,
-        barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+        pane: PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: DiscIdSignal::Absent,
+            barcode: BarcodeSignal::Absent,
+            text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
+        },
         text_pool: pool,
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     };
     let choices = LookupChoices {
         discounted_catalogs: struck_out.iter().map(|value| (*value).to_string()).collect(),

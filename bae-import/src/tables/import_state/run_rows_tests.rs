@@ -229,24 +229,26 @@ fn search_waiting() -> bae_identify::IdentifyState {
 /// with one barcode and one line of text so far.
 fn scanning_signals() -> bae_identify::signals::Signals {
     bae_identify::signals::Signals {
-        origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
-        disc_id: bae_identify::signals::DiscIdSignal::Absent,
-        barcode: bae_identify::signals::BarcodeSignal::Scanning {
-            codes: vec![bae_identify::signals::SourcedValue::in_file(
-                "0123456789012".to_string(),
-                "back.jpg".to_string(),
-            )],
-        },
-        text: bae_identify::signals::TextSignal::Scanning {
-            catalogs: vec!["CK 40579".to_string()],
-            free_text: Vec::new(),
+        pane: bae_identify::signals::PaneSignals {
+            origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
+            disc_id: bae_identify::signals::DiscIdSignal::Absent,
+            barcode: bae_identify::signals::BarcodeSignal::Scanning {
+                codes: vec![bae_identify::signals::SourcedValue::in_file(
+                    "0123456789012".to_string(),
+                    "back.jpg".to_string(),
+                )],
+            },
+            text: bae_identify::signals::TextSignal::Scanning {
+                catalogs: vec!["CK 40579".to_string()],
+                free_text: Vec::new(),
+            },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
         },
         text_pool: vec![bae_identify::signals::TextLine {
             text: "Kind of Blue CK 40579".to_string(),
             origin: bae_identify::signals::TextOrigin::Artwork,
         }],
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     }
 }
 

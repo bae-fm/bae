@@ -9,7 +9,7 @@ use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::tables::{DbCandidateIdentifyResult, DbImportCandidateState};
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::test_releases::mb_release_json;
-use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+use bae_identify::signals::{BarcodeSignal, DiscIdSignal, PaneSignals, Signals, TextSignal};
 use bae_identify::FolderCheck;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
@@ -46,13 +46,15 @@ pub(crate) fn copy_fixture(folder: &TestFolder, source: &Path, target: &Path) {
 /// Settled signals that found nothing.
 pub(crate) fn settled_signals() -> Signals {
     Signals {
-        origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: DiscIdSignal::Absent,
-        barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+        pane: PaneSignals {
+            origin: bae_catalogs::AudioOrigin::default(),
+            disc_id: DiscIdSignal::Absent,
+            barcode: BarcodeSignal::Absent,
+            text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+            isrcs: Vec::new(),
+            track_titles: Vec::new(),
+        },
         text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
     }
 }
 
