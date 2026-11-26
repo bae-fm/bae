@@ -104,7 +104,7 @@ extension PreviewData {
     /// lookup failed.
     private static func lowTideHoursLookupGroup(
         _ lookup: LowTideHoursLookup
-    ) -> BridgeReleaseGroup {
+    ) throws -> BridgeReleaseGroup {
         let cd = pressingFacts(country: "US", media: media(.cd))
         var pressings = [
             lowTideHoursRunPressing(
@@ -140,7 +140,13 @@ extension PreviewData {
             id: lowTideHoursRunGroupId,
             titles: ["Low Tide Hours"],
             artists: [.named("Mara Quill")],
-            coverArt: nil,
+            // The catalog serves the cover as a file the scene's image store
+            // reads, so the card draws it as the board does.
+            coverArt: BridgeRemoteCover(
+                coverChoice: try catalogCover(named: "Low Tide Hours"),
+                sourceName: "Cover Art Archive",
+                label: .lead(releaseGroup: true)
+            ),
             sources: [
                 BridgeReleaseGroupSource(
                     source: .musicBrainz,
@@ -162,9 +168,9 @@ extension PreviewData {
     /// What identification has for Low Tide Hours in flight.
     static func lowTideHoursLookupRuntime(
         _ lookup: LowTideHoursLookup
-    ) -> BridgeCandidateRuntimeSnapshot {
+    ) throws -> BridgeCandidateRuntimeSnapshot {
         let run = lowTideHoursLookupRun(lookup)
-        let group = lowTideHoursLookupGroup(lookup)
+        let group = try lowTideHoursLookupGroup(lookup)
         let state: BridgeIdentifyState =
             switch lookup {
             case .searching:

@@ -148,13 +148,13 @@ extension PreviewData {
             ]
         case .found(_, .lowTideHoursSearching?):
             [
-                BoardFolder.lowTideHours.key: lowTideHoursLookupRuntime(
+                BoardFolder.lowTideHours.key: try lowTideHoursLookupRuntime(
                     .searching
                 )
             ]
         case .found(_, .lowTideHoursLookupFailed?):
             [
-                BoardFolder.lowTideHours.key: lowTideHoursLookupRuntime(
+                BoardFolder.lowTideHours.key: try lowTideHoursLookupRuntime(
                     .failed
                 )
             ]
