@@ -28,6 +28,8 @@ import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.SymbolIcons
@@ -355,7 +357,8 @@ private fun Subtitle(
             text = text.breakableAfterHyphens(),
             style = ThemeText.body.style,
             color = color,
-            modifier = Modifier.alignBy(FirstBaseline),
+            // The break points are for drawing alone: a screen reader reads the words as they were given.
+            modifier = Modifier.alignBy(FirstBaseline).semantics { this.text = AnnotatedString(text) },
         )
     }
 }
