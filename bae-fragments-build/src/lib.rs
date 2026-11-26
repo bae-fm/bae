@@ -8,13 +8,11 @@
 //! readable objects, as a library's migration makes it. A crate that a
 //! phone's library holds is checked against the phone's schema too.
 
-mod calls;
 mod coven_objects;
 mod domains;
-mod sql_tables;
 
 use bae_schema_manifest::{members, migration, ManifestError, Migration};
-use sqlive_compose::compiler::{compile_crate, Function, Input, Output, Setup};
+use sqlive_compose::compiler::{compile_crate, CallKind, CompiledCall, Function, Input, Setup};
 use std::path::{Path, PathBuf};
 
 /// The build script of a crate that writes fragments, or only reads them
@@ -117,7 +115,7 @@ fn run() -> Result<(), String> {
     }
     let output = output.ok_or("the crate compiled for no schema")?;
 
-    let foreign = foreign_reads(&crate_name, &crate_dir, &owners, &output)?;
+    let foreign = foreign_reads(&crate_name, &owners, &output.calls);
     if !foreign.is_empty() {
         return Err(foreign.join("\n"));
     }
@@ -156,41 +154,27 @@ fn setup_of(coven: &coven_objects::CovenObjects, migration: &Migration) -> Setup
     Setup { sql, functions, collations: migration.collations.clone() }
 }
 
-/// Each call of the crate's sources that reads a table another crate owns,
-/// as a line of text.
+/// Each call of the crate that reads a table another crate owns, as a line of
+/// text.
 fn foreign_reads(
     crate_name: &str,
-    crate_dir: &Path,
     owners: &domains::TableOwners,
-    output: &Output,
-) -> Result<Vec<String>, String> {
+    calls: &[CompiledCall],
+) -> Vec<String> {
     let mut lines = Vec::new();
-    for path in &output.read {
-        let text = read_file(&crate_dir.join(path)).map_err(|error| error.to_string())?;
-        lines.extend(foreign_reads_in(crate_name, owners, path, &text)?);
-    }
-    Ok(lines)
-}
-
-/// Each call of the source `text` of the file `path` that reads a table
-/// another crate than `crate_name` owns, as a line of text.
-fn foreign_reads_in(
-    crate_name: &str,
-    owners: &domains::TableOwners,
-    path: &str,
-    text: &str,
-) -> Result<Vec<String>, String> {
-    let mut lines = Vec::new();
-    for call in calls::calls_of(text).map_err(|error| format!("{path}: {error}"))? {
-        let tables = sql_tables::tables_read(&call.sql);
-        for read in owners.foreign_reads(crate_name, tables) {
+    for call in calls {
+        let macro_name = match call.kind {
+            CallKind::Fragment => "fragment",
+            CallKind::Read => "read",
+        };
+        for read in owners.foreign_reads(crate_name, call.reads.iter().cloned()) {
             lines.push(format!(
-                "{crate_name}/{path}:{}: {}! {} reads {}, a table of {} ({}); read it through a fragment of {}",
-                call.line, call.macro_name, call.name, read.table, read.domain, read.owner, read.owner
+                "{crate_name}/{}:{}: {macro_name}! {} reads {}, a table of {} ({}); read it through a fragment of {}",
+                call.location.file, call.location.line, call.name, read.table, read.domain, read.owner, read.owner
             ));
         }
     }
-    Ok(lines)
+    lines
 }
 
 #[cfg(test)]

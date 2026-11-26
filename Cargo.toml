@@ -200,9 +200,6 @@ tokio-rustls = "0.26"
 tokio-stream = "0.1"
 tokio-util = { version = "0.7", features = ["rt"] }
 toml = "1.1.8"
-# The source files whose fragment calls the build scripts read.
-syn = { version = "3.0.3", features = ["full", "visit"] }
-proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 tower = "0.5"
 tracing-android = "0.2"
 tracing-etw = "0.2"

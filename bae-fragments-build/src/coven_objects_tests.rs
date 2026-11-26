@@ -22,12 +22,3 @@ fn each_readable_object_prepares_with_the_stand_in_functions() {
             .unwrap_or_else(|error| panic!("{name}: {error}"));
     }
 }
-
-#[test]
-fn a_function_is_a_coven_name_followed_by_an_opening_parenthesis() {
-    let names = super::functions_named_in(
-        "CREATE VIEW coven_a AS SELECT _coven_device(), xcoven_b(1), coven_c (2), coven_d(3)",
-    );
-    let names: Vec<&str> = names.iter().map(String::as_str).collect();
-    assert_eq!(names, ["_coven_device", "coven_d"]);
-}

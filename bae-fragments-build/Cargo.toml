@@ -20,9 +20,6 @@ sqlive-reads = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 # The compiler that checks and composes each crate's fragments.
 sqlive-compose = { workspace = true, features = ["compiler"] }
-# The macro calls' SQL, read from each source file the compiler read.
-syn = { workspace = true }
-proc-macro2 = { workspace = true }
 toml = { workspace = true }
 
 [lints]

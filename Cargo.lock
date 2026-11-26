@@ -1039,11 +1039,9 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-schema-manifest",
  "coven-schema",
- "proc-macro2",
  "serde",
  "sqlive-compose",
  "sqlive-reads",
- "syn 3.0.3",
  "toml",
 ]
 
