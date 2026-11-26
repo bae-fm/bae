@@ -148,6 +148,10 @@ CANCELLABLE_GROUPS="bae-bridge/swift-cancellable.toml"
 CANCELLABLE_TOOL="bae-bridge/swift-cancellable.py"
 INSTALL_BINDINGS="bae-bridge/install-swift-bindings.sh"
 XCFRAMEWORK_TOOL="bae-bridge/xcframework.py"
+# The tools need tomllib (Python 3.11), and Xcode puts its own 3.9 python3 first
+# on PATH. A failure prints which Pythons exist.
+FIND_PYTHON="bae-bridge/find-python.sh"
+PYTHON="$("./$FIND_PYTHON")"
 EXPECTED_STAMP="$CARGO_PROFILE|$BAE_BRIDGE_FEATURES"
 NEEDS_GENERATION=0
 
@@ -163,11 +167,12 @@ else
        [[ "$CANCELLABLE_TOOL" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$INSTALL_BINDINGS" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$XCFRAMEWORK_TOOL" -nt "$COMPLETION_STAMP" ]] ||
+       [[ "$FIND_PYTHON" -nt "$COMPLETION_STAMP" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridge.swift" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.modulemap" ]] ||
        [[ ! -f "$INSTALLED_BINDINGS" ]] ||
-       ! python3 "$XCFRAMEWORK_TOOL" has macos "$XCFRAMEWORK"; then
+       ! "$PYTHON" "$XCFRAMEWORK_TOOL" has macos "$XCFRAMEWORK"; then
         NEEDS_GENERATION=1
     fi
 fi
@@ -181,7 +186,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     GENERATED_BINDINGS="$GENERATION_TMP/swift-bindings"
     mkdir -p "$GENERATED_BINDINGS"
     CANCELLABLE_CONFIG="$GENERATION_TMP/swift-cancellable.toml"
-    python3 "$CANCELLABLE_TOOL" desktop "$BAE_BRIDGE_FEATURES" "$CANCELLABLE_CONFIG"
+    "$PYTHON" "$CANCELLABLE_TOOL" desktop "$BAE_BRIDGE_FEATURES" "$CANCELLABLE_CONFIG"
 
     # Without --no-format the generator runs `swift format <file>`, which
     # prints the formatted file to stdout and leaves the file on disk as it
@@ -204,7 +209,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     ./bae-bridge/install-swift-bindings.sh macos
 
     # The iOS slices build-ios.sh wrote stay in the xcframework.
-    python3 "$XCFRAMEWORK_TOOL" write macos "$XCFRAMEWORK" \
+    "$PYTHON" "$XCFRAMEWORK_TOOL" write macos "$XCFRAMEWORK" \
         -library "$STATIC_LIB" \
         -headers "$SWIFT_BINDINGS_DIR/headers"
 

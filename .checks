@@ -87,3 +87,4 @@ test loc-words-test scripts/loc-words.py,scripts/tests/loc-words-test.py python3
 test bundled-libraries-test scripts/check-bundled-libraries.py,scripts/tests/check-bundled-libraries-test.py python3 scripts/tests/check-bundled-libraries-test.py
 test xcresult-tests-ran-test scripts/xcresult-tests-ran.py,scripts/tests/xcresult-tests-ran-test.py python3 scripts/tests/xcresult-tests-ran-test.py
 test xcframework-test bae-bridge/xcframework.py,scripts/tests/xcframework-test.py python3 scripts/tests/xcframework-test.py
+test find-python-test bae-bridge/find-python.sh,scripts/tests/find-python-test.py python3 scripts/tests/find-python-test.py
