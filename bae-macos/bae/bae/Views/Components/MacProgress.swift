@@ -125,7 +125,10 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         case .note:
             label.font = ThemeText.detail.nsFont
             label.textColor = NSColor(Theme.textSecondary)
-            noteLine = ThemeText.detail.macOSLine ?? 0
+            guard let line = ThemeText.detail.macOSLine else {
+                preconditionFailure("the detail text role has no line height")
+            }
+            noteLine = line
         }
         label.lineBreakMode = .byTruncatingTail
         stack.orientation = .vertical
