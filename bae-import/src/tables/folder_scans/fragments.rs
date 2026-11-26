@@ -131,8 +131,7 @@ sqlive_compose::fragment!(
         pane_files: String
     },
     r#"
-    SELECT :key AS pane_files_key, (
-            WITH candidate AS (
+    WITH candidate AS (
             SELECT watched_folder_path, path
             FROM scan_candidate
             WHERE path = :key
@@ -168,7 +167,7 @@ sqlive_compose::fragment!(
                 f.role = 'track_sheet' THEN COALESCE(sheet_tracks.count, 0) END) AS json
             FROM f
             LEFT JOIN sheet_tracks ON sheet_tracks.relative_path = f.relative_path
-            ) SELECT json_object('files', json((
+            ) SELECT :key AS pane_files_key, json_object('files', json((
             SELECT json_group_array(json(json) ORDER BY position)
             FROM entries
             )), 'cover_files', json((
@@ -271,8 +270,7 @@ sqlive_compose::fragment!(
                 )
                 HAVING COUNT(*) >= 2
             ))) END
-        )))
-    ) AS pane_files
+        ))) AS pane_files
 "#);
 
 sqlive_compose::fragment!(

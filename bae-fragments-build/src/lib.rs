@@ -1,5 +1,5 @@
 //! The build step of a crate that writes fragments (`sqlive-compose`): it
-//! checks the crate's `fragment!` and `read!` calls against the library's
+//! checks the crate's `fragment!`, `read!` and `write!` calls against the library's
 //! schema, writes the Rust they include, hands the crate's fragments to the
 //! crates that spread them, and refuses a call that reads a table another
 //! crate owns.
@@ -185,6 +185,7 @@ fn foreign_reads(
         let macro_name = match call.kind {
             CallKind::Fragment => "fragment",
             CallKind::Read => "read",
+            CallKind::Write => "write",
         };
         for read in owners.foreign_reads(crate_name, call.reads.iter().cloned()) {
             lines.push(format!(
