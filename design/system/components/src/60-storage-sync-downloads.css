@@ -130,8 +130,8 @@
 .bae-m-filename-label { font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); }
 .bae-m-filename-add { display: flex; gap: var(--space-compact); flex-wrap: wrap; align-items: center; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-filename-preview { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
-/* The name sits in the preview's line, as the app sets both in one Text: on the line's baseline, its mono line would make the line 16pt, not the detail line's 15pt. */
-.bae-m-filename-name { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); vertical-align: top; }
+/* The name sits in the preview's line, as the app sets both in one Text: at the line's top and on the detail line, so its taller mono line does not make the line taller than the detail line. */
+.bae-m-filename-name { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-detail-line-height) var(--font-mono); vertical-align: top; }
 /* The dashed edge is drawn inside the value, as the app strokes an overlay, so it adds nothing to its width. */
 .bae-m-tokenadd { padding: var(--space-hairline) var(--space-compact); border-radius: var(--radius-chip); outline: 1px dashed var(--hairline-strong); outline-offset: -1px; color: var(--text-primary); }
 /* Settings → Storage's usage: the total, one bar in kinds, a legend. Each kind keeps one of the accents' selection steps (Pinned blue, Cache lime, Library orchid, From before the reset mint, anything else neutral), the same in both themes, checked for colour-blind separation and 3:1 on the surface in that order. A 2px gap parts the segments. */
