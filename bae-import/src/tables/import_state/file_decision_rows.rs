@@ -41,52 +41,36 @@ pub(super) fn insert_file_edits(
     Ok(())
 }
 
-// The places the user put a candidate's sheets on, and the `FILE` reference
-// bindings they decided.
+// The file decisions of each candidate in `keys` that has a state row, with
+// the revision they stand at: the places the user put its sheets on, and the
+// `FILE` reference bindings they decided.
 sqlive_compose::fragment!(
-    SheetPlaces on import_candidate_state {
+    FileEdits with keys(content_hash TEXT) {
         struct StoredSheetPlace {
             sheet_id: String,
             place: String,
             medium: Option<i64>,
             side: Option<i64>
         }
-        sheet_places: json<Vec<StoredSheetPlace>>
-    },
-    r#"
-    SELECT json_group_array(json_object('sheet_id', place.sheet_id, 'place', place.place,
-               'medium', place.medium, 'side', place.side) ORDER BY place.sheet_id)
-               AS sheet_places
-    FROM import_candidate_sheet_place AS place
-    WHERE place.content_hash = @parent.content_hash
-"#);
-
-sqlive_compose::fragment!(
-    SheetReferences on import_candidate_state {
         struct StoredSheetReference {
             sheet_id: String,
             file_reference: String,
             file_id: Option<String>
         }
-        sheet_references: json<Vec<StoredSheetReference>>
+        places: json<Vec<StoredSheetPlace>>,
+        bindings: json<Vec<StoredSheetReference>>
     },
     r#"
-    SELECT json_group_array(json_object('sheet_id', binding.sheet_id,
-               'file_reference', binding.file_reference, 'file_id', binding.file_id)
-               ORDER BY binding.sheet_id, binding.file_reference) AS sheet_references
-    FROM import_candidate_sheet_reference AS binding
-    WHERE binding.content_hash = @parent.content_hash
-"#);
-
-// The file decisions of each candidate in `keys` that has a state row, with
-// the revision they stand at.
-sqlive_compose::fragment!(
-    FileEdits with keys(content_hash TEXT),
-    r#"
     SELECT state.content_hash, state.edit_revision,
-        @crate::tables::import_state::file_decision_rows::SheetPlaces(parent: state) AS places,
-        @crate::tables::import_state::file_decision_rows::SheetReferences(parent: state)
-            AS bindings
+        (SELECT json_group_array(json_object('sheet_id', place.sheet_id, 'place', place.place,
+                    'medium', place.medium, 'side', place.side) ORDER BY place.sheet_id)
+         FROM import_candidate_sheet_place AS place
+         WHERE place.content_hash = state.content_hash) AS places,
+        (SELECT json_group_array(json_object('sheet_id', binding.sheet_id,
+                    'file_reference', binding.file_reference, 'file_id', binding.file_id)
+                    ORDER BY binding.sheet_id, binding.file_reference)
+         FROM import_candidate_sheet_reference AS binding
+         WHERE binding.content_hash = state.content_hash) AS bindings
     FROM keys
     JOIN import_candidate_state AS state ON state.content_hash = keys.content_hash
 "#
@@ -126,7 +110,7 @@ impl FileEdits {
             revision: to_u64(self.edit_revision, &format!("{content_hash}'s file edit revision"))?,
             ..CandidateFileEdits::default()
         };
-        for stored in self.places.sheet_places {
+        for stored in self.places {
             let place = SheetPlace::from_columns(
                 &format!("the import_candidate_sheet_place row of {}", stored.sheet_id),
                 &stored.place,
@@ -135,7 +119,7 @@ impl FileEdits {
             )?;
             edits.sheet_places.set(stored.sheet_id, place);
         }
-        for stored in self.bindings.sheet_references {
+        for stored in self.bindings {
             edits.sheet_bindings.set_reference(
                 stored.sheet_id,
                 stored.file_reference,
