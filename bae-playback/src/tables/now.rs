@@ -10,7 +10,7 @@ use super::track_display::{
 };
 use super::*;
 use crate::renderer::picker::kind_column;
-use crate::renderer::CastReceiver;
+use crate::renderer::{CastReceiver, RendererKind};
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::{
     LoadingTrack, NowPlayingDisplay, NowPlayingTrack, NowPlayingValues, PlaybackChange,
@@ -99,19 +99,16 @@ impl Casting {
     /// The receiver playback is cast to. The table's CHECKs give a row that
     /// casts every column of its receiver but the model.
     pub(crate) fn into_receiver(self) -> Result<CastReceiver, DbError> {
-        let missing = |column: &str| {
-            DbError::unreadable(format!("playback_now.{column} while casting"), None::<String>)
-        };
-        Ok(CastReceiver {
-            id: self.cast_receiver_id.ok_or_else(|| missing("cast_receiver_id"))?,
-            name: self.cast_receiver_name.ok_or_else(|| missing("cast_receiver_name"))?,
-            kind: self.cast_receiver_kind.ok_or_else(|| missing("cast_receiver_kind"))?,
+        StoredReceiver {
+            id: self.cast_receiver_id,
+            name: self.cast_receiver_name,
+            kind: self.cast_receiver_kind,
             model: self.cast_receiver_model,
-            address: self.cast_receiver_address.ok_or_else(|| missing("cast_receiver_address"))?,
-            takes_volume: self
-                .cast_receiver_takes_volume
-                .ok_or_else(|| missing("cast_receiver_takes_volume"))?,
-        })
+            address: self.cast_receiver_address,
+            takes_volume: self.cast_receiver_takes_volume,
+        }
+        .receiver(&CAST_RECEIVER)
+        .map_err(|column| DbError::unreadable(format!("playback_now.{column}"), None::<String>))
     }
 }
 
@@ -536,16 +533,43 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
     })
 }
 
+/// A receiver as the columns that name one hold it.
+struct StoredReceiver {
+    id: Option<String>,
+    name: Option<String>,
+    kind: Option<RendererKind>,
+    model: Option<String>,
+    address: Option<String>,
+    takes_volume: Option<bool>,
+}
+
+impl StoredReceiver {
+    /// The receiver these values name; every one but the model is present.
+    /// A missing one is returned as the name of its column in `columns`.
+    fn receiver(self, columns: &ReceiverColumns) -> Result<CastReceiver, &'static str> {
+        Ok(CastReceiver {
+            id: self.id.ok_or(columns.id)?,
+            name: self.name.ok_or(columns.name)?,
+            kind: self.kind.ok_or(columns.kind)?,
+            model: self.model,
+            address: self.address.ok_or(columns.address)?,
+            takes_volume: self.takes_volume.ok_or(columns.takes_volume)?,
+        })
+    }
+}
+
 /// The receiver a row names in `columns`.
 fn receiver_from_row(row: &Row<'_>, columns: &ReceiverColumns) -> rusqlite::Result<CastReceiver> {
-    Ok(CastReceiver {
+    StoredReceiver {
         id: row.get(columns.id)?,
         name: row.get(columns.name)?,
         kind: row.get(columns.kind)?,
         model: row.get(columns.model)?,
         address: row.get(columns.address)?,
         takes_volume: row.get(columns.takes_volume)?,
-    })
+    }
+    .receiver(columns)
+    .map_err(|column| unknown(row, column, "NULL"))
 }
 
 fn remote_from_row(row: &Row<'_>) -> rusqlite::Result<RemotePlayback> {
