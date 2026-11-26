@@ -141,17 +141,15 @@ public struct MacRestoreCode<Header: View>: View {
         return spaced
     }
 
+    /// The notes under the code. The form that draws them as its footer sets
+    /// their text style once, over both.
     private var caption: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line * 2) {
             Text(
                 "Print this code or save it in a password manager. It gets you back into your library if you lose all your devices."
             )
-            .themeText(.detail)
-            .foregroundStyle(Theme.textSecondary)
             if needsS3Key {
                 Text("You will also need your S3 access key and secret.")
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.textSecondary)
             }
         }
     }
