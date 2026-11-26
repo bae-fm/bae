@@ -35,10 +35,6 @@ struct MacCoverGallery: View {
 
     @FocusState
     private var previewFocused: Bool
-    /// Whether the grid's preview takes the focus once its focus has gone,
-    /// in the update after the one that let it go.
-    @State
-    private var refocusesPreview = false
 
     private var gallery: some View {
         VStack(spacing: 0) {
@@ -169,25 +165,12 @@ struct MacCoverGallery: View {
             }
             // The grid's preview gets keyboard focus whenever it appears: when
             // the sheet opens on the grid, its covers arrive, or the lightbox
-            // closes back to it. The lightbox is a window of its own, so this
-            // window's focus stays where it was while the lightbox is open,
-            // on the tile that a double click opened it from. The preview
-            // takes the focus in a second update, since a request for the
-            // focus it already holds moves nothing.
+            // closes back to it. The lightbox is a window of its own with
+            // its own focus, so this window's focus stays where it was while
+            // the lightbox is open, such as on the tile that a double click
+            // opened it from.
             .onChange(of: gridPreviewShown, initial: true) { _, shown in
-                refocusesPreview = shown && previewFocused
-                if !shown { return }
-                if previewFocused {
-                    previewFocused = false
-                }
-                else {
-                    previewFocused = true
-                }
-            }
-            .onChange(of: previewFocused) { _, focused in
-                guard !focused, refocusesPreview else { return }
-                refocusesPreview = false
-                previewFocused = true
+                if shown { previewFocused = true }
             }
             .onKeyPress(.leftArrow) {
                 guard browser.layout == .grid else { return .ignored }
