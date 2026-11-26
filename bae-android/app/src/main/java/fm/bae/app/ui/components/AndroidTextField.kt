@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -60,42 +61,48 @@ internal fun AndroidTextField(
     // outline alone, which the shots' element list reads. The helper is a text of its own under it, so TalkBack gets it
     // through the field.
     Column {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            placeholder =
-                placeholder?.let { text -> { Text(text = text, modifier = Modifier.clearAndSetSemantics {}) } },
-            isError = error,
-            enabled = enabled,
-            modifier =
-                (if (code) modifier.fillMaxWidth().heightIn(min = CODE_FIELD_MIN_HEIGHT) else modifier.fillMaxWidth())
-                    .semantics { helperSemantics(helper, error) },
-            textStyle = if (code) ThemeText.mono.style else MaterialTheme.typography.bodyLarge,
-            visualTransformation =
-                when (kind) {
-                    TextFieldKind.PLAIN -> VisualTransformation.None
-                    TextFieldKind.CODE -> CodeGroupTransformation
-                    TextFieldKind.SECRET -> PasswordVisualTransformation()
-                },
-            keyboardOptions =
-                when (kind) {
-                    TextFieldKind.PLAIN -> {
-                        keyboardOptions
-                    }
+        RaisedLabelOnItsLinesTop {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                label = { Text(label) },
+                placeholder =
+                    placeholder?.let { text ->
+                        { Text(text = text, modifier = Modifier.clearAndSetSemantics {}) }
+                    },
+                isError = error,
+                enabled = enabled,
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .then(if (code) Modifier.heightIn(min = CODE_FIELD_MIN_HEIGHT) else Modifier)
+                        .semantics { helperSemantics(helper, error) },
+                textStyle = if (code) ThemeText.mono.style else MaterialTheme.typography.bodyLarge,
+                visualTransformation =
+                    when (kind) {
+                        TextFieldKind.PLAIN -> VisualTransformation.None
+                        TextFieldKind.CODE -> CodeGroupTransformation
+                        TextFieldKind.SECRET -> PasswordVisualTransformation()
+                    },
+                keyboardOptions =
+                    when (kind) {
+                        TextFieldKind.PLAIN -> {
+                            keyboardOptions
+                        }
 
-                    TextFieldKind.CODE -> {
-                        KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false)
-                    }
+                        TextFieldKind.CODE -> {
+                            KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false)
+                        }
 
-                    TextFieldKind.SECRET -> {
-                        KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
-                    }
-                },
-            keyboardActions = keyboardActions,
-            singleLine = !code,
-            maxLines = if (code) CODE_FIELD_MAX_LINES else 1,
-        )
+                        TextFieldKind.SECRET -> {
+                            KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
+                        }
+                    },
+                keyboardActions = keyboardActions,
+                singleLine = !code,
+                maxLines = if (code) CODE_FIELD_MAX_LINES else 1,
+            )
+        }
         helper?.let { line ->
             Text(
                 text = line,
@@ -105,6 +112,19 @@ internal fun AndroidTextField(
             )
         }
     }
+}
+
+/**
+ * [content] with Material's small body style, which its field sets a raised label in, set at the top of its line: the
+ * board's raised label sits in a 14 point line at the top of the 16 point space Material gives it, so its baseline
+ * is a point above where a centred 16 point line puts it.
+ */
+@Composable
+private fun RaisedLabelOnItsLinesTop(content: @Composable () -> Unit) {
+    val typography = MaterialTheme.typography
+    val atTop = LineHeightStyle(LineHeightStyle.Alignment.Top, LineHeightStyle.Trim.None)
+    val raised = ThemeText.detail.style.copy(lineHeightStyle = atTop)
+    MaterialTheme(typography = typography.copy(bodySmall = raised), content = content)
 }
 
 /**
