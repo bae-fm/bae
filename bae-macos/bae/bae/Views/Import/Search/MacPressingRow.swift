@@ -226,8 +226,17 @@ struct MacPressingRow: View {
     /// pressing by in italics, then "In library".
     private var detailsCell: some View {
         HStack(spacing: ThemeSpace.compact) {
-            if !pressing.detailsText.isEmpty {
-                Text(pressing.detailsText)
+            // Each detail is a word of its own, a related space from the
+            // next.
+            if !pressing.details.isEmpty {
+                HStack(spacing: ThemeSpace.related) {
+                    ForEach(
+                        Array(pressing.details.enumerated()),
+                        id: \.offset
+                    ) { _, detail in
+                        Text(detail)
+                    }
+                }
             }
             if let notes = agreements?.notes, !notes.isEmpty {
                 MacSourcedValue(notes.map(\.stated))

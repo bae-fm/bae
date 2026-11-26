@@ -22,9 +22,9 @@ struct Pressing: Equatable, Identifiable {
     let documentFailure: BridgeLookupFailure?
     /// What picking this row claims, as core settled it.
     let link: BridgePressingLink
-    /// What sets it apart beyond that, as its lead record states it:
-    /// "Promo · Reissue".
-    let detailsText: String
+    /// What sets it apart beyond that, as its lead record states it, each
+    /// detail worded alone: "Promo", "Reissue".
+    let details: [String]
     /// Whether the row holds the release core linked the candidate to, or,
     /// before core links it, the release that identification picked on its
     /// own while core reads that release. The list draws this row selected.
@@ -53,7 +53,7 @@ struct Pressing: Equatable, Identifiable {
         media = bridge.media.map(\.stated)
         documentFailure = bridge.documentFailure
         link = bridge.pick
-        detailsText = PressingText.line(bridge.details)
+        details = bridge.details.map(\.text)
         chosen = bridge.chosen
         pickBeingRead = bridge.pickBeingRead
         inLibrary = bridge.inLibrary
