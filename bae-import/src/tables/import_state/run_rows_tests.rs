@@ -486,3 +486,32 @@ async fn every_key_read_together_holds_what_it_holds_alone() {
         "loading a key with nothing running returns an empty runtime"
     );
 }
+
+/// A cell a run in flight has queued or under way names that run, so the
+/// database holds it only while the verdict stands for the run.
+#[tokio::test]
+async fn a_run_s_cell_under_way_names_the_run_that_asks_it() {
+    let (tables, _tmp) = library().await;
+    let release = &CandidateKey::reidentify("release-1");
+    tables
+        .publish_release_run(release, run(4), &barcode_half_answered(), Some(&scanning_signals()))
+        .await
+        .unwrap();
+
+    let asking: Vec<(String, i64, i64)> = tables
+        .store
+        .read(|sql| {
+            Ok(sql.query(
+                "SELECT cell.answer, cell.asked_by, verdict.identify_run \
+                 FROM import_candidate_lookup AS cell \
+                 JOIN import_candidate_verdict AS verdict \
+                     ON verdict.verdict_id = cell.verdict_id \
+                 WHERE cell.answer IN ('queued', 'looking_up')",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(asking, [("looking_up".to_string(), 4, 4)]);
+}

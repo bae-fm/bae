@@ -415,3 +415,51 @@ async fn a_read_isrc_step_with_no_isrc_rows_is_damaged() {
 
     assert!(failed.to_string().contains("which read ISRCs"), "{failed}");
 }
+
+/// A recorded verdict holds no queued or looking-up cell: only a run in
+/// flight asks. SQLite refuses a cell that says it waits for a run the
+/// verdict does not stand for, and one that waits for none.
+#[tokio::test]
+async fn a_recorded_verdict_holds_no_queued_cell() {
+    use bae_identify::{BarcodeStepView, NotAskedReason};
+    let mut verdict = paired_cell_verdict();
+    let TerminalVerdict::Found { ledger: Some(ledger), .. } = &mut verdict else {
+        panic!("the paired-cell verdict is found, with its ledger");
+    };
+    let BarcodeStepView::Rows { rows, .. } = &mut ledger.barcode else {
+        panic!("the paired-cell verdict's barcode step lists a row");
+    };
+    rows[0].cells[0].lookup = LookupView::NotAsked { reason: NotAskedReason::NoCatalog };
+    let (db, hash, _tmp) = stored_verdict(&verdict).await;
+    // Sets the one not-asked cell to `answer`, which a failed write refuses
+    // whole.
+    let set = |answer: &'static str, reason: Option<&'static str>, asked_by: Option<i64>| {
+        let (db, hash) = (db.clone(), hash.clone());
+        async move {
+            db.call(move |sql| {
+                Ok(sql.execute(
+                    "UPDATE import_candidate_lookup \
+                     SET answer = ?1, not_asked_reason = ?2, asked_by = ?3 \
+                     WHERE answer = 'not_asked' \
+                       AND verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                         WHERE content_hash = ?4)",
+                    params![answer, reason, asked_by, hash],
+                )?)
+            })
+            .await
+        }
+    };
+    for (answer, asked_by) in
+        [("queued", Some(1)), ("looking_up", Some(1)), ("queued", None), ("looking_up", None)]
+    {
+        assert!(
+            set(answer, None, asked_by).await.is_err(),
+            "a recorded verdict took a {answer} cell asked by {asked_by:?}"
+        );
+    }
+    assert_eq!(
+        set("not_asked", Some("left_out"), None).await.unwrap(),
+        1,
+        "the same write settles the cell as not asked"
+    );
+}
