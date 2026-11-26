@@ -46,7 +46,7 @@ struct CoverPickerTests {
                 onSelect: { await recorder.select($0) },
                 onDone: {}
             )
-            .environment(images)
+            .layerEnvironment { $0.environment(images) }
             .environment(
                 Importer(coverGallery: { .fixed(gallery(of: release)) })
             )

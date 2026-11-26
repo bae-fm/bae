@@ -58,7 +58,7 @@ enum ShotRenderer {
         // so the capture never holds a frame partway through.
         let rootView = scene.frame.applyTitleBar(to: stage.view)
             .appAppearance()
-            .defaultAppStorage(defaults)
+            .layerEnvironment { $0.defaultAppStorage(defaults) }
             .transaction {
                 $0.animation = nil
                 $0.disablesAnimations = true

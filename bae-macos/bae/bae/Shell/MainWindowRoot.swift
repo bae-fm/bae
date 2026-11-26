@@ -16,21 +16,20 @@ struct MainWindowRoot: View {
     var body: some View {
         Group {
             if let appService = appDelegate.appService {
-                appService.installEnvironment(
-                    libraryModals(
-                        MainWindowChrome {
-                            detailContent
-                        }
-                        .environment(
-                            \.launchProblems,
-                            appDelegate.launchProblems
-                        )
-                        .environment(
-                            \.libraryLoadError,
-                            appDelegate.loadError
-                        )
+                libraryModals(
+                    MainWindowChrome {
+                        detailContent
+                    }
+                    .environment(
+                        \.launchProblems,
+                        appDelegate.launchProblems
+                    )
+                    .environment(
+                        \.libraryLoadError,
+                        appDelegate.loadError
                     )
                 )
+                .layerEnvironment { appService.installEnvironment($0) }
             }
             else {
                 MacWelcomeWindow(size: bootstrapWindowSize) {
@@ -43,15 +42,17 @@ struct MainWindowRoot: View {
         }
         .errorAlert(appDelegate.uiStore, in: .main)
         .appAppearance()
-        .mainWindowEnvironment(
-            openSettingsWindow: OpenSettingsWindowAction {
-                appDelegate.showSettingsWindow(nil)
-            },
-            openStorageManager: OpenStorageManagerAction {
-                appDelegate.showStorageManager(nil)
-            },
-            searchFocusRequests: searchFocusRequests
-        )
+        .layerEnvironment { [appDelegate, searchFocusRequests] content in
+            content.mainWindowEnvironment(
+                openSettingsWindow: OpenSettingsWindowAction {
+                    appDelegate.showSettingsWindow(nil)
+                },
+                openStorageManager: OpenStorageManagerAction {
+                    appDelegate.showStorageManager(nil)
+                },
+                searchFocusRequests: searchFocusRequests
+            )
+        }
     }
 
     /// The welcome flow in the mode a menu item asked for, showing

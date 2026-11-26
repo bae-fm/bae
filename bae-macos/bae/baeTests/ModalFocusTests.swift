@@ -48,7 +48,7 @@ struct ModalFocusTests {
                     [MacAlertButton(Text(verbatim: "OK"))]
                 )
             }
-            .environment(images)
+            .layerEnvironment { $0.environment(images) }
         }
     }
 

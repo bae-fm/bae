@@ -122,12 +122,14 @@ extension ModalFocusTests {
             Color.clear
                 .frame(width: 400, height: 300)
                 .macLayers(presented.layers)
-                .environment(uiStore)
+                .layerEnvironment { $0.environment(uiStore) }
                 .environment(\.colorScheme, .dark)
         }
     }
 
-    @Test("A layer reads the presenting view's stores and appearance")
+    @Test(
+        "A layer reads the stores its window's host installs and the window's scheme"
+    )
     func layerReadsTheEnvironment() async throws {
         let uiStore = UiStore()
         uiStore.presentDocument(name: "rip.log", text: "Log")
@@ -148,7 +150,7 @@ extension ModalFocusTests {
                 tree.nodes.contains {
                     Self.words(of: $0).contains("rip.log dark")
                 },
-                "the layer reads the presenting view's store and scheme: \(tree.nodes.map { Self.words(of: $0) })"
+                "the layer reads the store its host installs and the window's scheme: \(tree.nodes.map { Self.words(of: $0) })"
             )
             presented.layers = []
             try await LayerPanels.closed()

@@ -48,7 +48,7 @@ struct CoverLightboxTests {
                     onDone: { dismissed = true }
                 )
             }
-            .environment(images)
+            .layerEnvironment { $0.environment(images) }
             .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
@@ -141,7 +141,7 @@ struct CoverLightboxTests {
                     onDone: {}
                 )
             }
-            .environment(images)
+            .layerEnvironment { $0.environment(images) }
             .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
@@ -225,7 +225,7 @@ struct CoverLightboxTests {
                 onSelect: { _ in },
                 onDismiss: {}
             )
-            .environment(images)
+            .layerEnvironment { $0.environment(images) }
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, _ in

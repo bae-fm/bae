@@ -34,13 +34,48 @@
         }
     }
 
+    /// The values that a layer's content draws with, which whoever hosts the
+    /// window installs: the app's stores, or a test's or shot's own. A
+    /// layer's panel is a window of its own, so its content inherits nothing
+    /// from the view that presents it.
+    struct LayerEnvironment {
+        /// Each host's installation, the outermost host's first.
+        fileprivate var installations: [@MainActor (AnyView) -> AnyView] = []
+
+        /// `content` with every host's values, the nearest host's winning.
+        @MainActor
+        func install(on content: AnyView) -> AnyView {
+            installations.reversed().reduce(content) { $1($0) }
+        }
+    }
+
+    extension EnvironmentValues {
+        @Entry
+        var layerEnvironment = LayerEnvironment()
+    }
+
     extension View {
         /// Shows `layers` over this view, the first of the ones that are new
         /// first, each over the one before. A layer is withdrawn when it
-        /// leaves `layers` or this view disappears. Each draws in this view's
-        /// environment, which follows this view's while the layer is up.
+        /// leaves `layers` or this view disappears. Each draws with the values
+        /// the window's host installs (`layerEnvironment(_:)`), in this view's
+        /// tone, accent and colour scheme, which it follows while it is up.
         public func macLayers(_ layers: [MacLayer]) -> some View {
             background(LayerAnchor(layers: layers))
+        }
+
+        /// This view with what `install` sets, which every layer that this
+        /// view's content presents draws with too.
+        public func layerEnvironment<Installed: View>(
+            _ install: @escaping @MainActor (AnyView) -> Installed
+        ) -> some View {
+            install(
+                AnyView(
+                    transformEnvironment(\.layerEnvironment) {
+                        $0.installations.append { AnyView(install($0)) }
+                    }
+                )
+            )
         }
     }
 
@@ -64,8 +99,16 @@
         }
 
         weak var view: NSView?
-        private var latest:
-            (layers: [MacLayer], environment: EnvironmentValues)?
+        /// What the presenting view asked for last: its layers, the values
+        /// they draw with and the look of the window they sit on.
+        private struct Wanted {
+            let layers: [MacLayer]
+            let environment: LayerEnvironment
+            let appearance: HostedAppearance
+            let scheme: ColorScheme
+        }
+
+        private var latest: Wanted?
         private var live: [AnyHashable: Live] = [:]
         private var order: [AnyHashable] = []
         private var scheduled = false
@@ -73,9 +116,16 @@
 
         func update(
             layers: [MacLayer],
-            environment: EnvironmentValues
+            environment: LayerEnvironment,
+            appearance: HostedAppearance,
+            scheme: ColorScheme
         ) {
-            latest = (layers, environment)
+            latest = Wanted(
+                layers: layers,
+                environment: environment,
+                appearance: appearance,
+                scheme: scheme
+            )
             schedule()
         }
 
@@ -109,12 +159,18 @@
                 if let shown = live[layer.id], modals.isShowing(id: shown.id) {
                     shown.model.content = layer.content
                     shown.model.environment = latest.environment
+                    shown.model.look.appearance = latest.appearance
+                    shown.model.look.scheme = latest.scheme
                     modals.refreshLayer(id: shown.id, placement: placement)
                     continue
                 }
                 let model = LayerModel(
                     content: layer.content,
                     environment: latest.environment,
+                    look: PanelLook(
+                        appearance: latest.appearance,
+                        scheme: latest.scheme
+                    ),
                     fades: layer.fades,
                     shown: !(layer.fades && modals.fades)
                 )
@@ -144,6 +200,14 @@
 
     private struct LayerAnchor: NSViewRepresentable {
         let layers: [MacLayer]
+        @Environment(\.layerEnvironment)
+        private var environment
+        @Environment(\.surfaceTone)
+        private var tone
+        @Environment(\.accentChoice)
+        private var accent
+        @Environment(\.colorScheme)
+        private var scheme
 
         func makeCoordinator() -> LayerCoordinator { LayerCoordinator() }
 
@@ -161,7 +225,9 @@
             context.coordinator.view = view
             context.coordinator.update(
                 layers: layers,
-                environment: context.environment
+                environment: environment,
+                appearance: HostedAppearance(tone: tone, accent: accent),
+                scheme: scheme
             )
         }
 

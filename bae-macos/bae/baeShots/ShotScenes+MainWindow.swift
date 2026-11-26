@@ -40,59 +40,66 @@ extension ShotScenes {
         let slot =
             importListSlot
             ?? importScene.slot(uiStore: uiStore, selection: importSelection)
+        // The window's layers draw with the same stores.
         return
             window
-            .environment(backing.library)
-            .environment(backing.session)
-            .environment(
-                projections
-                    ?? LibraryProjectionStore(library: backing.library)
-            )
-            .environment(uiStore)
-            .importSectionEnvironment(
-                store: importScene.store,
-                slot: slot,
-                runtimes: candidateRuntimes
-            )
-            .environment(SettingsNavigation())
-            .environment(PreviewAudio.stub())
-            .environment(Cast.stub())
-            .environment(CastStart.stub())
-            .environment(castStore)
-            .environment(SyncActivityStore())
-            .environment(SubsonicStore())
-            .environment(\.libraryLoadError, nil)
-            .environment(playbackStore)
-            // The boards draw the Cast button, which the app shows once
-            // casting is on. Set before the album preview's own default,
-            // since the environment nearest the content wins.
-            .environment(
-                configStore
-                    ?? PreviewData.makeConfigStore(
-                        libraryFullWidth: false,
-                        castEnabled: true
+            .layerEnvironment { content in
+                content
+                    .environment(backing.library)
+                    .environment(backing.session)
+                    .environment(
+                        projections
+                            ?? LibraryProjectionStore(library: backing.library)
                     )
-            )
-            .environment(
-                history
-                    ?? HistoryStore(library: backing.library, onError: { _ in })
-            )
-            // Ana, an admin, whose picture ends the title bar.
-            .environment(
-                MembershipStore.stub(
-                    people: PreviewData.members(
-                        reaching: PreviewData.previewDropboxStorage
-                    ),
-                    selfIsAdmin: true
-                )
-            )
-            .environment(syncStatus)
-            .environmentIfGiven(images)
-            .environmentIfGiven(releaseEditor)
-            .environmentIfGiven(outbox)
-            .environment(\.importPercents, importPercents)
-            .albumDetailPreviewEnvironment()
-            .mainWindowPreviewEnvironment()
+                    .environment(uiStore)
+                    .importSectionEnvironment(
+                        store: importScene.store,
+                        slot: slot,
+                        runtimes: candidateRuntimes
+                    )
+                    .environment(SettingsNavigation())
+                    .environment(PreviewAudio.stub())
+                    .environment(Cast.stub())
+                    .environment(CastStart.stub())
+                    .environment(castStore)
+                    .environment(SyncActivityStore())
+                    .environment(SubsonicStore())
+                    .environment(\.libraryLoadError, nil)
+                    .environment(playbackStore)
+                    // The boards draw the Cast button, which the app shows once
+                    // casting is on. Set before the album preview's own default,
+                    // since the environment nearest the content wins.
+                    .environment(
+                        configStore
+                            ?? PreviewData.makeConfigStore(
+                                libraryFullWidth: false,
+                                castEnabled: true
+                            )
+                    )
+                    .environment(
+                        history
+                            ?? HistoryStore(
+                                library: backing.library,
+                                onError: { _ in }
+                            )
+                    )
+                    // Ana, an admin, whose picture ends the title bar.
+                    .environment(
+                        MembershipStore.stub(
+                            people: PreviewData.members(
+                                reaching: PreviewData.previewDropboxStorage
+                            ),
+                            selfIsAdmin: true
+                        )
+                    )
+                    .environment(syncStatus)
+                    .environmentIfGiven(images)
+                    .environmentIfGiven(releaseEditor)
+                    .environmentIfGiven(outbox)
+                    .environment(\.importPercents, importPercents)
+                    .albumDetailPreviewEnvironment()
+                    .mainWindowPreviewEnvironment()
+            }
             .frame(width: size.width, height: size.height)
             .windowBackground()
     }

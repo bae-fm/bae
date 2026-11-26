@@ -136,7 +136,7 @@ extension LibraryArtworkBrowserTests {
                     onSelect: calls.onSelect,
                     onDone: calls.onDone
                 )
-                .environment(images)
+                .layerEnvironment { $0.environment(images) }
                 .environment(
                     Importer(coverGallery: {
                         .fixed(gallery, delivered: delivered)

@@ -48,14 +48,16 @@
         }
     }
 
-    /// What a layer's panel draws: the layer's content in the environment of
-    /// the view that presents it, which the presenting view updates while the
+    /// What a layer's panel draws: the layer's content with the values that
+    /// the window's host installs (`layerEnvironment`), in the look of the
+    /// window the layer sits on. The presenting view updates both while the
     /// layer is up.
     @MainActor
     @Observable
     final class LayerModel {
         var content: () -> AnyView
-        var environment: EnvironmentValues
+        var environment: LayerEnvironment
+        let look: PanelLook
         /// Whether the layer fades in and out.
         let fades: Bool
         /// Whether the layer is faded in; a layer that fades starts false.
@@ -63,12 +65,14 @@
 
         init(
             content: @escaping () -> AnyView,
-            environment: EnvironmentValues,
+            environment: LayerEnvironment,
+            look: PanelLook,
             fades: Bool,
             shown: Bool
         ) {
             self.content = content
             self.environment = environment
+            self.look = look
             self.fades = fades
             self.shown = shown
         }
@@ -78,9 +82,12 @@
         let model: LayerModel
 
         var body: some View {
-            model.content()
-                .transformEnvironment(\.self) { $0 = model.environment }
-                .environment(\.colorScheme, model.environment.colorScheme)
+            model.environment.install(on: model.content())
+                // A layer that this layer's content presents takes the same
+                // values.
+                .environment(\.layerEnvironment, model.environment)
+                .hostedAppearance(model.look.appearance)
+                .environment(\.colorScheme, model.look.scheme)
                 .opacity(model.shown ? 1 : 0)
         }
     }

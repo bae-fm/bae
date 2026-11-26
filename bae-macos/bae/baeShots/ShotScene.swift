@@ -67,7 +67,9 @@ struct ShotStage {
         isReady: @escaping @MainActor () -> Bool = { true },
         isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
     ) {
-        self.view = AnyView(view.environment(\.clockNow, ShotClock.now))
+        self.view = AnyView(
+            view.layerEnvironment { $0.environment(\.clockNow, ShotClock.now) }
+        )
         self.isReady = isReady
         self.isDrawn = isDrawn
     }

@@ -53,7 +53,7 @@ struct CoverPickerEmptyStateTests {
                 onSelect: { _ in },
                 onDone: {}
             )
-            .environment(ImageStore.stub())
+            .layerEnvironment { $0.environment(ImageStore.stub()) }
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in

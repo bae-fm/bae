@@ -66,7 +66,7 @@ extension CoverLightboxTests {
                     onDone: {}
                 )
             }
-            .environment(images)
+            .layerEnvironment { $0.environment(images) }
             .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
