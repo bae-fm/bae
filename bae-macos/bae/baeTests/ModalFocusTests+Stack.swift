@@ -155,6 +155,36 @@ extension ModalFocusTests {
         }
     }
 
+    /// A text in a font of its own and a button turned off.
+    private struct StyledLayer: View {
+        var body: some View {
+            VStack {
+                Text(verbatim: "Styled words")
+                    .font(.system(size: 20, weight: .bold))
+                Button("Turned off") {}.disabled(true)
+            }
+            .frame(width: 300, height: 200)
+        }
+    }
+
+    @Test("A layer's tree gives each element the font and state its view sets")
+    func layerTreeHoldsWhatTheViewSets() async throws {
+        try await withHost { _, _, presented in
+            presented.layers = [MacLayer(id: "styled") { StyledLayer() }]
+            let panel = try await LayerPanels.top()
+            try await SnapshotTestSupport.settle(
+                try LayerPanels.content(of: panel)
+            )
+            let tree = try AccessibilityTree.read(of: panel, subject: "styled")
+            let words = tree.nodes.first {
+                Self.words(of: $0).contains("Styled words")
+            }
+            #expect(words?.style?.size == 20, "the words keep their font")
+            let button = tree.nodes.first { $0.controlName == "Turned off" }
+            #expect(button?.enabled == false, "the button reads as off")
+        }
+    }
+
     // MARK: - Paste
 
     private struct PasteLayer: View {
