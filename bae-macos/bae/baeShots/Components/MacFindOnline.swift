@@ -34,6 +34,46 @@ extension ShotScene {
             )
         },
         component(
+            "mac.component.find-online.working",
+            width: 842,
+            height: 289,
+            images: PreviewData.artImageStore()
+        ) {
+            findOnline(
+                height: 289,
+                state: PreviewData.searchState(
+                    identifyState: .triangulating(
+                        run: PreviewData.identifyRunNothingFound,
+                        groups: [],
+                        agreements: [:],
+                        narrowedOutCount: 0
+                    ),
+                    signals: PreviewData.settledSignals
+                )
+            )
+        },
+        component(
+            "mac.component.find-online.failed",
+            width: 842,
+            height: 289,
+            images: PreviewData.artImageStore()
+        ) {
+            findOnline(
+                height: 289,
+                state: PreviewData.searchState(
+                    identifyState: .failed(
+                        run: PreviewData.identifyRunNothingFound,
+                        failureLines: nil,
+                        groups: [],
+                        agreements: [:],
+                        narrowedOutCount: 0,
+                        offersSharedAlbum: false
+                    ),
+                    signals: PreviewData.settledSignals
+                )
+            )
+        },
+        component(
             "mac.component.find-online.sentence",
             width: 842,
             height: 381,
