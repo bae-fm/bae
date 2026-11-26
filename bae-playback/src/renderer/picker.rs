@@ -79,11 +79,12 @@ sqlive_compose::fragment!(
 );
 
 // What the picker lists: the found receivers, and the one playback is cast to
-// while it casts.
+// while it casts, with whether it lists no receiver at all.
 sqlive_compose::read!(
-    PickerList,
+    PickerList { is_empty: bool },
     r#"
-    SELECT listed.*, casting.*
+    SELECT listed.*, casting.*,
+           casting.remote IS NULL AND json_array_length(listed.found) = 0 AS is_empty
     FROM @crate::renderer::picker::FoundReceivers AS listed
     LEFT JOIN @crate::tables::now::Casting AS casting ON 1
 "#
@@ -113,8 +114,7 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
         .into_iter()
         .map(FoundReceiverDocument::into_receiver)
         .collect::<Result<Vec<_>, _>>()?;
-    let is_empty = casting.is_none() && found.is_empty();
-    Ok(CastReceiverList { casting, found, is_empty })
+    Ok(CastReceiverList { casting, found, is_empty: row.is_empty })
 }
 
 /// The picker's list in the library's store: the receivers discovery last
