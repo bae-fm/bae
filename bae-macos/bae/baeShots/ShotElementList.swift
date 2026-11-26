@@ -89,19 +89,31 @@ struct ShotElementList: Encodable {
         size: CGSize,
         scale: Int
     ) throws -> Self {
-        // A row scrolled out of its pane, or clipped by the window, is not on
-        // the screen, so the list leaves it out.
         var tree = try AccessibilityTree.read(of: window, subject: board)
-            .leavingOutWhatIsNotVisible(windowSize: size)
-        // An alert is a separate window over this one, so this list adds the
-        // alert's elements where the alert draws them over this window.
-        for panel in ModalWindows.shared.panels {
+        // An alert or a layer is a separate window over this one, so this list
+        // adds its elements where it draws them over this window. A board
+        // reads a layer before the player, which is the last element the
+        // window's own content holds, and an alert after everything. The
+        // window under a layer that another layer covers is out of reach, as
+        // a board lists it.
+        let layers = ModalWindows.shared.layerPanels
+        let modals = ModalWindows.shared
+        let windowRoot = tree.nodes.lastIndex { $0.parent == nil }
+        for panel in modals.panels
+        where !layers.contains(where: {
+            modals.parent(of: $0) === panel && modals.coversPartOfWindow($0)
+        }) {
+            let player = Self.playerStart(in: tree, root: windowRoot)
             tree = tree.adding(
                 try AccessibilityTree.read(of: panel, subject: board),
                 atX: panel.frame.minX - window.frame.minX,
-                y: window.frame.maxY - panel.frame.maxY
+                y: window.frame.maxY - panel.frame.maxY,
+                before: layers.contains(panel) ? player : nil
             )
         }
+        // A row scrolled out of its pane, or clipped by the window, is not on
+        // the screen, so the list leaves it out.
+        tree = tree.leavingOutWhatIsNotVisible(windowSize: size)
         // The window's own buttons are the platform's frame, not the view:
         // a board draws them and hides them from its reading order. A scroll
         // view's scroll bar, with the buttons it holds, is the platform's
@@ -119,6 +131,30 @@ struct ShotElementList: Encodable {
             scale: scale,
             elements: tree.nodes.map(Element.init(node:))
         )
+    }
+
+    /// The index of the first element of the player, which the window's
+    /// content holds after everything but an open menu: the part of the window
+    /// that holds the button naming what plays, or else its last part.
+    private static func playerStart(
+        in tree: AccessibilityTree,
+        root: Int?
+    ) -> Int? {
+        let nodes = tree.nodes
+        guard let root else { return nil }
+        let parts = nodes.indices.filter { nodes[$0].parent == root }
+        func part(of index: Int) -> Int? {
+            var current = index
+            while let parent = nodes[current].parent, parent != root {
+                current = parent
+            }
+            return nodes[current].parent == root ? current : nil
+        }
+        let playing = nodes.indices.first {
+            nodes[$0].role == NSAccessibility.Role.button.rawValue
+                && nodes[$0].controlName?.hasPrefix("Now playing") == true
+        }
+        return playing.flatMap(part(of:)) ?? parts.last
     }
 
     /// The subroles of a stepper's two arrow buttons.
