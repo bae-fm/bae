@@ -388,7 +388,7 @@
                 queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    self?.withdraw(id: id, returningKey: false)
+                    _ = self?.withdraw(id: id, returningKey: false)
                 }
             }
         }
