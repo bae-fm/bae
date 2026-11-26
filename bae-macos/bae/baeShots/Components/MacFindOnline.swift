@@ -8,18 +8,18 @@ extension ShotScene {
         component(
             "mac.component.find-online.default",
             width: 842,
-            height: 373,
+            height: 340,
             images: PreviewData.artImageStore()
         ) {
-            findOnline(height: 373)
+            findOnline(height: 340)
         },
         component(
             "mac.component.find-online.no-discogs-bar",
             width: 842,
-            height: 273,
+            height: 240,
             images: PreviewData.artImageStore()
         ) {
-            findOnline(height: 273, showsDiscogsBar: false)
+            findOnline(height: 240, showsDiscogsBar: false)
         },
         component(
             "mac.component.find-online.not-started",
@@ -36,11 +36,11 @@ extension ShotScene {
         component(
             "mac.component.find-online.sentence",
             width: 842,
-            height: 414,
+            height: 381,
             images: PreviewData.artImageStore()
         ) {
             findOnline(
-                height: 414,
+                height: 381,
                 state: PreviewData.searchStateNotFoundNeedsYou,
                 keepsOwnDraft: false
             )
@@ -48,11 +48,11 @@ extension ShotScene {
         component(
             "mac.component.find-online.nothing-found-an-answer",
             width: 842,
-            height: 464,
+            height: 431,
             images: PreviewData.artImageStore()
         ) {
             findOnline(
-                height: 464,
+                height: 431,
                 state: PreviewData.searchStateNotFoundNeedsYou
             )
         },
