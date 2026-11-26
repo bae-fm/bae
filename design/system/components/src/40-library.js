@@ -338,11 +338,11 @@
   }
 
   // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), with the catalogs' popover when catalogs describe the release (`records`, `recordsHover` as `releaseFactsLine` draws them, and `recordsOpen`, which draws the popover open after the header; the panel sets `recordsAnchor` instead, so the header marks its button open and the panel draws the popover), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
-  // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it). `set`: the heart's, 'mac' on macOS.
+  // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it). `set`: the heart's and the number's, 'mac' on macOS.
   function albumMark(rating, system, size, className, set) {
     var n = Number(rating || 0);
     if (system === 'none' || !n || (system === 'heart' && n < 3)) return null;
-    var mark = system === 'heart' ? h(Heart, { set: set, on: true, size: size }) : h(Stars, { value: n, size: size, number: true });
+    var mark = system === 'heart' ? h(Heart, { set: set, on: true, size: size }) : h(Stars, { set: set, value: n, size: size, number: true });
     return className ? h('span', { className: className }, mark) : mark;
   }
 

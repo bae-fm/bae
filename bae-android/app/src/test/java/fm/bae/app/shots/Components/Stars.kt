@@ -14,6 +14,6 @@ class StarsShots : BoardShot() {
     fun androidComponentStarsNotRated() = component("android.component.stars.not-rated") { Stars(value = 0, size = 16.dp) }
 
     @Test
-    fun androidComponentStarsNumberAndOneStar() =
-        component("android.component.stars.number-and-one-star") { Stars(rating = BridgeStars.FOUR, size = 16.dp) }
+    fun androidComponentStarsAndroidNumberAndOneStar() =
+        component("android.component.stars.android-number-and-one-star") { Stars(rating = BridgeStars.FOUR, size = 16.dp) }
 }
