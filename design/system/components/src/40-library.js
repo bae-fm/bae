@@ -23,12 +23,12 @@
     return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.dimmed && 'bae-art-dimmed', props.className), style: style, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true }, props.children);
   }
 
-  // A person's picture, round: their image when they have one, or the initials of their name on a tint. `image` stands for the picked image (the board draws it as artwork seeded by it). `android`: the initials centred as Compose centres them, on CSS's line. On the Mac they sit on SwiftUI's line, which the board draws exactly (`macInitials`).
+  // A person's picture, round: their image when they have one, or the initials of their name on a tint. `image` stands for the picked image (the board draws it as artwork seeded by it). `android`: the initials in Roboto SemiBold, as Avatar.kt sets them, centred as Compose centres them, on CSS's line. On the Mac they sit on SwiftUI's line, which the board draws exactly (`macInitials`).
   function Avatar(props) {
     var s = Number(props.size || 32), name = String(props.name || '?');
     var ini = name.split(/\s+/).map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase();
     if (props.image) return h(Artwork, { title: props.image, size: s, round: true });
-    return h('span', { className: 'bae-avatar', 'aria-hidden': true, style: { width: s, height: s, fontSize: s * 0.4 } }, props.android ? ini : macInitials(ini, s));
+    return h('span', { className: cx('bae-avatar', props.android && 'bae-a-avatar'), 'aria-hidden': true, style: { width: s, height: s, fontSize: s * 0.4 } }, props.android ? ini : macInitials(ini, s));
   }
   // SwiftUI sets a line of SF Pro with its baseline at the font's ascent (0.9668 of the size) rounded to a whole point, in a box that adds the descent (0.2109) rounded up, and the avatar centres that box. The board places the baseline there, where CSS's own line would round the font's metrics another way.
   function macInitials(ini, s) {
