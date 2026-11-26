@@ -9,15 +9,6 @@ pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 /// network row says.
 pub const UNMETERED_ONLY: &str = "SELECT unmetered_only FROM coven_network";
 
-/// The location recorded on this device with its account and folder labels,
-/// as coven's sync status row holds it, none while no storage is set up; then
-/// this person's access as the library records it, their member row's
-/// `account` and `access_key_id`. The location reads as
-/// `Option<coven::StorageConfig>`, and the two columns after it as
-/// `coven::MemberAccess::from_columns` reads them.
-pub const RECORDED_STORAGE: &str = "SELECT s.location, m.account, m.access_key_id \
-     FROM coven_sync_status AS s LEFT JOIN coven_members AS m ON m.is_self = 1";
-
 /// What this device holds that the store's storage, `storage`, lacks, from
 /// `queued`, the writes and files coven's queues hold: all of them while
 /// storage is set up. A store with no storage set up has nowhere it uploads

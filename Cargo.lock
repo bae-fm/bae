@@ -1271,6 +1271,7 @@ dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-schema-manifest",
  "bae-store",
  "bae-util",
@@ -1279,6 +1280,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "tokio",
 ]

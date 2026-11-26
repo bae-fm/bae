@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 mod coven_capabilities;
 pub use coven_capabilities::{
-    unsent_to_storage, StorageSetupSteps, RECORDED_STORAGE, UNMETERED_ONLY, UPLOADS_PAUSED,
+    unsent_to_storage, StorageSetupSteps, UNMETERED_ONLY, UPLOADS_PAUSED,
 };
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;

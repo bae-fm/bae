@@ -3,7 +3,9 @@
 //! write at a time by the setters, and carried into the copy a restore over
 //! this device's copy puts in its place.
 //!
-//! Its tables are `row.sql`.
+//! Its tables are `row.sql`. The fragments here are what a composed read
+//! spreads to read them, beside the storage coven's views record, which the
+//! settings show.
 
 use super::{
     CastTranscodeFormat, Config, DiscogsValidation, IdentificationPreferences, ImportDestination,
@@ -11,15 +13,157 @@ use super::{
     ReplayGainMode, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameValue, SaveFolderValue,
     SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
 };
-use bae_store::{DbError, Store};
+use bae_store::{statement_row, DbError, Store};
 use coven::{CovenWrite, SqlRead};
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::{params, Row};
-use std::num::NonZeroU32;
 use std::path::PathBuf;
+
+// The `preferences` row.
+sqlive_compose::fragment!(
+    StoredPreferences {
+        discogs_key: Option<crate::DiscogsValidation>,
+        replay_gain_mode: crate::ReplayGainMode,
+        save_embed_cover: bool,
+        save_cover_file: bool,
+        save_loudness_tags: bool,
+        pause_between_sides: bool,
+        side_pause_countdown_seconds: Option<crate::SidePauseCountdown>,
+        max_concurrent_uploads: std::num::NonZeroU32,
+        max_concurrent_downloads: std::num::NonZeroU32,
+        show_remaining_time: bool,
+        library_full_width: bool,
+        ask_before_unpinning: bool,
+        import_destination: crate::ImportDestination,
+        identify_automatically: bool,
+        import_when_identified: bool,
+        ask_musicbrainz: bool,
+        ask_discogs: bool,
+        cast_enabled: bool,
+        cast_transcode_format: crate::CastTranscodeFormat,
+        mcp_enabled: bool,
+        mcp_port: u16,
+        subsonic_enabled: bool,
+        subsonic_port: u32
+    },
+    r#"
+    SELECT stored.discogs_key, stored.replay_gain_mode, stored.last_save_preset,
+        stored.save_embed_cover, stored.save_cover_file, stored.save_loudness_tags,
+        stored.pause_between_sides, stored.side_pause_countdown_seconds,
+        stored.max_concurrent_uploads, stored.max_concurrent_downloads,
+        stored.show_remaining_time, stored.library_full_width, stored.ask_before_unpinning,
+        stored.import_destination, stored.identify_automatically,
+        stored.import_when_identified, stored.ask_musicbrainz, stored.ask_discogs,
+        stored.cast_enabled, stored.cast_transcode_format, stored.mcp_enabled, stored.mcp_port,
+        stored.subsonic_enabled, stored.subsonic_port, stored.subsonic_username,
+        stored.subsonic_network, stored.subsonic_network_interface
+    FROM preferences AS stored
+"#
+);
+
+// Every save preset, in the order the settings list them: one row, whatever
+// the number of presets.
+sqlive_compose::fragment!(
+    StoredSavePresets {
+        struct SavePresetColumns {
+            id: String,
+            name: String,
+            codec: String,
+            bit_depth: Option<String>,
+            bitrate_kbps: Option<u32>
+        }
+        save_presets: json<Vec<SavePresetColumns>>
+    },
+    r#"
+    SELECT json_group_array(json_object(
+               'id', preset.id, 'name', preset.name, 'codec', preset.codec,
+               'bit_depth', preset.bit_depth, 'bitrate_kbps', preset.bitrate_kbps)
+               ORDER BY preset.position) AS save_presets
+    FROM save_preset AS preset
+"#
+);
+
+// The file name pattern's pieces in order: one row, whatever their number.
+sqlive_compose::fragment!(
+    StoredFilenameTokens {
+        struct FilenameTokenColumns { value: Option<String>, text: Option<String> }
+        filename_tokens: json<Vec<FilenameTokenColumns>>
+    },
+    r#"
+    SELECT json_group_array(json_object('value', token.value, 'text', token.text)
+               ORDER BY token.position) AS filename_tokens
+    FROM save_filename_token AS token
+"#
+);
+
+// The folder name pattern's pieces in order: one row, whatever their number.
+sqlive_compose::fragment!(
+    StoredFolderTokens {
+        struct FolderTokenColumns { value: Option<String>, text: Option<String> }
+        folder_tokens: json<Vec<FolderTokenColumns>>
+    },
+    r#"
+    SELECT json_group_array(json_object('value', token.value, 'text', token.text)
+               ORDER BY token.position) AS folder_tokens
+    FROM save_folder_token AS token
+"#
+);
+
+// The location recorded on this device with its account and folder labels, as
+// coven's sync status row holds it, none while no storage is set up; then this
+// person's access as the library records it, their member row's `account` and
+// `access_key_id`.
+sqlive_compose::fragment!(
+    RecordedStorage {
+        location: Option<coven::StorageConfig>,
+        account: Option<String>,
+        access_key_id: Option<String>
+    },
+    r#"
+    SELECT status.location, member.account, member.access_key_id
+    FROM coven_sync_status AS status
+    LEFT JOIN coven_members AS member ON member.is_self = 1
+"#
+);
+
+sqlive_compose::read!(
+    PreferenceColumnsRead,
+    r#"
+    SELECT stored.* FROM @crate::row::StoredPreferences AS stored
+"#
+);
+
+sqlive_compose::read!(
+    SavePresetsRead,
+    r#"
+    SELECT presets.* FROM @crate::row::StoredSavePresets AS presets
+"#
+);
+
+sqlive_compose::read!(
+    FilenameTokensRead,
+    r#"
+    SELECT tokens.* FROM @crate::row::StoredFilenameTokens AS tokens
+"#
+);
+
+sqlive_compose::read!(
+    FolderTokensRead,
+    r#"
+    SELECT tokens.* FROM @crate::row::StoredFolderTokens AS tokens
+"#
+);
+
+sqlive_compose::read!(
+    RecordedStorageRead,
+    r#"
+    SELECT recorded.* FROM @crate::row::RecordedStorage AS recorded
+"#
+);
 
 /// This device's preferences for the library.
 pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
-    store.read(|sql| Ok(preferences_on(&sql)?)).await
+    store.read(|sql| preferences_on(&sql)).await
 }
 
 /// This device's preferences for the library `store` holds, kept in
@@ -27,7 +171,7 @@ pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
 /// screens read them.
 pub async fn config(store: &Store, library_path: PathBuf) -> Result<Config, DbError> {
     let store_id = store.store_id();
-    store.read(move |sql| Ok(config_on(&sql, store_id, library_path)?)).await
+    store.read(move |sql| config_on(&sql, store_id, library_path)).await
 }
 
 /// Follow [`config`]: the first value at once, then one after each write
@@ -37,30 +181,29 @@ pub fn subscribe_config(
     library_path: PathBuf,
 ) -> coven::LiveQuery<Config, bae_store::DbError> {
     let store_id = store.store_id();
-    store.subscribe(move |sql| Ok(config_on(&sql, store_id, library_path.clone())?))
+    store.subscribe(move |sql| config_on(&sql, store_id, library_path.clone()))
 }
 
 fn config_on(
     sql: &impl SqlRead,
     store_id: coven::StoreId,
     library_path: PathBuf,
-) -> rusqlite::Result<Config> {
-    let (storage, storage_access) = sql.query_row(bae_store::RECORDED_STORAGE, [], |row| {
-        let access = coven::MemberAccess::from_columns(row.get(1)?, row.get(2)?)
-            .map_err(|error| bae_store::read::column_conversion_error(row, 1, error))?;
-        Ok((row.get(0)?, access))
-    })?;
+) -> Result<Config, DbError> {
+    let recorded = statement_row(sql, &RecordedStorageReadParams {})?.recorded;
+    let storage_access =
+        coven::MemberAccess::from_columns(recorded.account, recorded.access_key_id)
+            .map_err(|error| DbError::unreadable("this person's access to storage", error))?;
     Ok(Config {
         store_id,
         library_path,
         prefs: preferences_on(sql)?,
-        last_save_preset: sql.query_row(
+        last_save_preset: save_preset_of(sql.query_row(
             "SELECT s.* FROM preferences AS p \
              JOIN save_preset AS s ON s.id = p.last_save_preset",
             [],
-            save_preset_row,
-        )?,
-        storage,
+            save_preset_columns,
+        )?)?,
+        storage: recorded.location,
         storage_access,
     })
 }
@@ -68,7 +211,7 @@ fn config_on(
 /// Follow this device's preferences: the first value at once, then one
 /// after each write that changes them.
 pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences, bae_store::DbError> {
-    store.subscribe(|sql| Ok(preferences_on(&sql)?))
+    store.subscribe(|sql| preferences_on(&sql))
 }
 
 /// Follow the save preset `id`: the first value at once, then one after each
@@ -78,9 +221,10 @@ pub fn subscribe_save_preset(
     id: String,
 ) -> coven::LiveQuery<Option<SavePreset>, bae_store::DbError> {
     store.subscribe(move |sql| {
-        Ok(sql
-            .query("SELECT * FROM save_preset WHERE id = ?1", [id.as_str()], save_preset_row)?
-            .pop())
+        let stored = sql
+            .query("SELECT * FROM save_preset WHERE id = ?1", [id.as_str()], save_preset_columns)?
+            .pop();
+        stored.map(save_preset_of).transpose()
     })
 }
 
@@ -103,14 +247,18 @@ pub fn subscribe_save_choice(
     selected: String,
 ) -> coven::ReconfigurableLiveQuery<String, Vec<SaveChoiceRow>, bae_store::DbError> {
     store.subscribe_reconfigurable(selected, |selected, sql| {
-        Ok(sql.query(
+        let stored = sql.query(
             "SELECT s.*, s.id = COALESCE( \
                  (SELECT id FROM save_preset WHERE id = ?1), \
                  (SELECT last_save_preset FROM preferences)) AS chosen \
              FROM save_preset AS s ORDER BY s.position",
             [selected.as_str()],
-            |row| Ok(SaveChoiceRow { preset: save_preset_row(row)?, chosen: row.get("chosen")? }),
-        )?)
+            |row| Ok((save_preset_columns(row)?, row.get("chosen")?)),
+        )?;
+        stored
+            .into_iter()
+            .map(|(columns, chosen)| Ok(SaveChoiceRow { preset: save_preset_of(columns)?, chosen }))
+            .collect()
     })
 }
 
@@ -147,113 +295,98 @@ impl PreferencesRow {
     }
 }
 
-fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
-    let save_presets = save_presets_on(sql)?;
-    let save_filename_pattern = pattern_on(sql)?;
-    let save_folder_pattern = pattern_on(sql)?;
-    sql.query_row("SELECT * FROM preferences", [], |row| {
-        let flag = |column: &str| row.get::<_, bool>(column);
-        let concurrency = |column: &str| {
-            let value: u32 = row.get(column)?;
-            NonZeroU32::new(value).ok_or_else(|| invalid(row, column, value))
+fn preferences_on(sql: &impl SqlRead) -> Result<Preferences, DbError> {
+    let save_presets = statement_row(sql, &SavePresetsReadParams {})?
+        .presets
+        .save_presets
+        .into_iter()
+        .map(save_preset_of)
+        .collect::<Result<_, _>>()?;
+    let save_filename_pattern = pattern_of(
+        statement_row(sql, &FilenameTokensReadParams {})?
+            .tokens
+            .filename_tokens
+            .into_iter()
+            .map(|token| (token.value, token.text)),
+    )?;
+    let save_folder_pattern = pattern_of(
+        statement_row(sql, &FolderTokensReadParams {})?
+            .tokens
+            .folder_tokens
+            .into_iter()
+            .map(|token| (token.value, token.text)),
+    )?;
+    let stored = statement_row(sql, &PreferenceColumnsReadParams {})?.stored;
+    let subsonic_network =
+        match (stored.subsonic_network.as_str(), stored.subsonic_network_interface) {
+            ("this_machine", None) => SubsonicNetwork::ThisMachine,
+            ("every", None) => SubsonicNetwork::Every,
+            ("interface", Some(interface)) => SubsonicNetwork::Interface(interface),
+            (other, _) => return Err(invalid("subsonic_network", other)),
         };
-        Ok(Preferences {
-            discogs: row
-                .get::<_, Option<String>>("discogs_key")?
-                .map(|state| match state.as_str() {
-                    "unvalidated" => Ok(DiscogsValidation::Unvalidated),
-                    "valid" => Ok(DiscogsValidation::Valid),
-                    "rejected" => Ok(DiscogsValidation::Rejected),
-                    _ => Err(invalid(row, "discogs_key", state)),
-                })
-                .transpose()?,
-            replay_gain_mode: match row.get::<_, String>("replay_gain_mode")?.as_str() {
-                "off" => ReplayGainMode::Off,
-                "track" => ReplayGainMode::Track,
-                "album" => ReplayGainMode::Album,
-                other => return Err(invalid(row, "replay_gain_mode", other)),
+    Ok(Preferences {
+        discogs: stored.discogs_key,
+        replay_gain_mode: stored.replay_gain_mode,
+        save_presets,
+        save_filename_pattern,
+        save_folder_pattern,
+        last_save_preset: stored.last_save_preset,
+        save_extras: SaveExtras {
+            embed_cover: stored.save_embed_cover,
+            cover_file: stored.save_cover_file,
+            loudness_tags: stored.save_loudness_tags,
+        },
+        pause_between_sides: stored.pause_between_sides,
+        side_pause_countdown: stored
+            .side_pause_countdown_seconds
+            .unwrap_or(SidePauseCountdown::Off),
+        max_concurrent_uploads: stored.max_concurrent_uploads,
+        max_concurrent_downloads: stored.max_concurrent_downloads,
+        show_remaining_time: stored.show_remaining_time,
+        library_full_width: stored.library_full_width,
+        ask_before_unpinning: stored.ask_before_unpinning,
+        import_destination: stored.import_destination,
+        identification: IdentificationPreferences {
+            automatic: stored.identify_automatically,
+            import_when_identified: stored.import_when_identified,
+            catalogs: LookupCatalogPreferences {
+                musicbrainz: stored.ask_musicbrainz,
+                discogs: stored.ask_discogs,
             },
-            save_presets,
-            save_filename_pattern,
-            save_folder_pattern,
-            last_save_preset: row.get("last_save_preset")?,
-            save_extras: SaveExtras {
-                embed_cover: flag("save_embed_cover")?,
-                cover_file: flag("save_cover_file")?,
-                loudness_tags: flag("save_loudness_tags")?,
-            },
-            pause_between_sides: flag("pause_between_sides")?,
-            side_pause_countdown: match row.get::<_, Option<u32>>("side_pause_countdown_seconds")? {
-                None => SidePauseCountdown::Off,
-                Some(5) => SidePauseCountdown::Seconds5,
-                Some(15) => SidePauseCountdown::Seconds15,
-                Some(30) => SidePauseCountdown::Seconds30,
-                Some(45) => SidePauseCountdown::Seconds45,
-                Some(60) => SidePauseCountdown::Seconds60,
-                Some(other) => return Err(invalid(row, "side_pause_countdown_seconds", other)),
-            },
-            max_concurrent_uploads: concurrency("max_concurrent_uploads")?,
-            max_concurrent_downloads: concurrency("max_concurrent_downloads")?,
-            show_remaining_time: flag("show_remaining_time")?,
-            library_full_width: flag("library_full_width")?,
-            ask_before_unpinning: flag("ask_before_unpinning")?,
-            import_destination: match row.get::<_, String>("import_destination")?.as_str() {
-                "this_device" => ImportDestination::ThisDevice,
-                "cloud" => ImportDestination::Cloud,
-                other => return Err(invalid(row, "import_destination", other)),
-            },
-            identification: IdentificationPreferences {
-                automatic: flag("identify_automatically")?,
-                import_when_identified: flag("import_when_identified")?,
-                catalogs: LookupCatalogPreferences {
-                    musicbrainz: flag("ask_musicbrainz")?,
-                    discogs: flag("ask_discogs")?,
-                },
-            },
-            cast_enabled: flag("cast_enabled")?,
-            cast_transcode_format: match row.get::<_, String>("cast_transcode_format")?.as_str() {
-                "mp3" => CastTranscodeFormat::Mp3,
-                "wav" => CastTranscodeFormat::Wav,
-                other => return Err(invalid(row, "cast_transcode_format", other)),
-            },
-            mcp: McpConfig { enabled: flag("mcp_enabled")?, port: row.get("mcp_port")? },
-            subsonic: SubsonicConfig {
-                enabled: flag("subsonic_enabled")?,
-                port: row.get("subsonic_port")?,
-                username: row.get("subsonic_username")?,
-                network: match (
-                    row.get::<_, String>("subsonic_network")?.as_str(),
-                    row.get::<_, Option<String>>("subsonic_network_interface")?,
-                ) {
-                    ("this_machine", None) => SubsonicNetwork::ThisMachine,
-                    ("every", None) => SubsonicNetwork::Every,
-                    ("interface", Some(interface)) => SubsonicNetwork::Interface(interface),
-                    (other, _) => return Err(invalid(row, "subsonic_network", other)),
-                },
-            },
-        })
+        },
+        cast_enabled: stored.cast_enabled,
+        cast_transcode_format: stored.cast_transcode_format,
+        mcp: McpConfig { enabled: stored.mcp_enabled, port: stored.mcp_port },
+        subsonic: SubsonicConfig {
+            enabled: stored.subsonic_enabled,
+            port: stored.subsonic_port,
+            username: stored.subsonic_username,
+            network: subsonic_network,
+        },
     })
 }
 
-fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
-    sql.query("SELECT * FROM save_preset ORDER BY position", [], save_preset_row)
+/// The columns of the `save_preset` row `row`.
+fn save_preset_columns(row: &Row<'_>) -> rusqlite::Result<SavePresetColumns> {
+    Ok(SavePresetColumns {
+        id: row.get("id")?,
+        name: row.get("name")?,
+        codec: row.get("codec")?,
+        bit_depth: row.get("bit_depth")?,
+        bitrate_kbps: row.get("bitrate_kbps")?,
+    })
 }
 
-/// One preset as a row of `save_preset` holds it.
-fn save_preset_row(row: &Row<'_>) -> rusqlite::Result<SavePreset> {
-    let id: String = row.get("id")?;
-    let codec: String = row.get("codec")?;
-    let bit_depth = || -> rusqlite::Result<SaveBitDepth> {
-        let stored: String = row.get("bit_depth")?;
-        match stored.as_str() {
-            "same_as_source" => Ok(SaveBitDepth::SameAsSource),
-            "bits_16" => Ok(SaveBitDepth::Bits16),
-            _ => Err(invalid(row, "bit_depth", stored)),
-        }
+/// One preset as the columns of its `save_preset` row hold it.
+fn save_preset_of(columns: SavePresetColumns) -> Result<SavePreset, DbError> {
+    let SavePresetColumns { id, name, codec, bit_depth, bitrate_kbps } = columns;
+    let bit_depth = || match bit_depth.as_deref() {
+        Some("same_as_source") => Ok(SaveBitDepth::SameAsSource),
+        Some("bits_16") => Ok(SaveBitDepth::Bits16),
+        other => Err(invalid("bit_depth", other)),
     };
-    let bitrate_kbps = || row.get::<_, u32>("bitrate_kbps");
+    let bitrate_kbps = || bitrate_kbps.ok_or_else(|| invalid("bitrate_kbps", bitrate_kbps));
     Ok(SavePreset {
-        name: row.get("name")?,
         codec: match codec.as_str() {
             "flac" => SaveCodec::Flac { bit_depth: bit_depth()? },
             "wav" => SaveCodec::Wav { bit_depth: bit_depth()? },
@@ -261,9 +394,10 @@ fn save_preset_row(row: &Row<'_>) -> rusqlite::Result<SavePreset> {
             "mp3" => SaveCodec::Mp3 { bitrate_kbps: bitrate_kbps()? },
             "aac" => SaveCodec::Aac { bitrate_kbps: bitrate_kbps()? },
             "opus_ogg" => SaveCodec::OpusOgg { bitrate_kbps: bitrate_kbps()? },
-            _ => return Err(invalid(row, "codec", codec)),
+            _ => return Err(invalid("codec", codec)),
         },
         id,
+        name,
     })
 }
 
@@ -464,25 +598,20 @@ impl PatternValue for SaveFolderValue {
     }
 }
 
-/// The stored pattern of `Value`'s table, its pieces in order.
-fn pattern_on<Value: PatternValue>(sql: &impl SqlRead) -> rusqlite::Result<NamePattern<Value>> {
-    let pieces = sql.query(
-        &format!("SELECT value, text FROM {} ORDER BY position", Value::TABLE),
-        [],
-        |row| {
-            let value: Option<String> = row.get("value")?;
-            let text: Option<String> = row.get("text")?;
-            match (value, text) {
-                (Some(value), None) => Value::from_column(&value)
-                    .map(NamePiece::Value)
-                    .ok_or_else(|| invalid(row, "value", value)),
-                (None, Some(text)) => Ok(NamePiece::Text(text)),
-                (value, text) => {
-                    Err(invalid(row, "value", format!("{value:?} with text {text:?}")))
-                }
-            }
-        },
-    )?;
+/// The pattern whose stored pieces, in order, are `pieces`, each the `value`
+/// and `text` columns of a row of `Value`'s table.
+fn pattern_of<Value: PatternValue>(
+    pieces: impl Iterator<Item = (Option<String>, Option<String>)>,
+) -> Result<NamePattern<Value>, DbError> {
+    let pieces = pieces
+        .map(|piece| match piece {
+            (Some(value), None) => Value::from_column(&value)
+                .map(NamePiece::Value)
+                .ok_or_else(|| invalid("value", value)),
+            (None, Some(text)) => Ok(NamePiece::Text(text)),
+            (value, text) => Err(invalid("value", (value, text))),
+        })
+        .collect::<Result<_, _>>()?;
     Ok(NamePattern::new(pieces))
 }
 
@@ -507,12 +636,70 @@ fn write_pattern<Value: PatternValue>(
 }
 
 /// A stored value the schema's checks should have refused.
-fn invalid(row: &Row<'_>, column: &str, value: impl std::fmt::Display) -> rusqlite::Error {
-    bae_store::read::column_conversion_error(
-        row,
-        column,
-        format!("preferences hold {value} in {column}"),
-    )
+fn invalid(column: &str, value: impl std::fmt::Debug) -> DbError {
+    DbError::unreadable(format!("the preferences' {column}"), value)
+}
+
+/// A column's value that the schema's checks should have refused.
+fn invalid_column(value: impl std::fmt::Debug) -> FromSqlError {
+    FromSqlError::Other(format!("preferences hold {value:?}").into())
+}
+
+impl FromSql for DiscogsValidation {
+    fn column_result(column: ValueRef<'_>) -> FromSqlResult<Self> {
+        match column.as_str()? {
+            "unvalidated" => Ok(Self::Unvalidated),
+            "valid" => Ok(Self::Valid),
+            "rejected" => Ok(Self::Rejected),
+            other => Err(invalid_column(other)),
+        }
+    }
+}
+
+impl FromSql for ReplayGainMode {
+    fn column_result(column: ValueRef<'_>) -> FromSqlResult<Self> {
+        match column.as_str()? {
+            "off" => Ok(Self::Off),
+            "track" => Ok(Self::Track),
+            "album" => Ok(Self::Album),
+            other => Err(invalid_column(other)),
+        }
+    }
+}
+
+/// A stored countdown is its seconds; the column holds NULL for
+/// [`SidePauseCountdown::Off`].
+impl FromSql for SidePauseCountdown {
+    fn column_result(column: ValueRef<'_>) -> FromSqlResult<Self> {
+        match column.as_i64()? {
+            5 => Ok(Self::Seconds5),
+            15 => Ok(Self::Seconds15),
+            30 => Ok(Self::Seconds30),
+            45 => Ok(Self::Seconds45),
+            60 => Ok(Self::Seconds60),
+            other => Err(invalid_column(other)),
+        }
+    }
+}
+
+impl FromSql for ImportDestination {
+    fn column_result(column: ValueRef<'_>) -> FromSqlResult<Self> {
+        match column.as_str()? {
+            "this_device" => Ok(Self::ThisDevice),
+            "cloud" => Ok(Self::Cloud),
+            other => Err(invalid_column(other)),
+        }
+    }
+}
+
+impl FromSql for CastTranscodeFormat {
+    fn column_result(column: ValueRef<'_>) -> FromSqlResult<Self> {
+        match column.as_str()? {
+            "mp3" => Ok(Self::Mp3),
+            "wav" => Ok(Self::Wav),
+            other => Err(invalid_column(other)),
+        }
+    }
 }
 
 /// Plant damage for a test: the `preferences` row of the library stored
