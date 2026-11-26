@@ -14,6 +14,7 @@ pub use coven_capabilities::{
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 
+use crate::read_statement::ReadStatement;
 use crate::store_read::StoreRead;
 use crate::DbError;
 
@@ -197,6 +198,21 @@ impl Store {
         self.inner.handle.subscribe(query)
     }
 
+    /// A live query of one statement: coven reruns `statement` for each write
+    /// that touches what it read, with the parameters `request` binds. It
+    /// answers every row the statement returns.
+    pub fn subscribe_statement<P, R>(
+        &self,
+        statement: &'static ReadStatement<P, R>,
+        request: P,
+    ) -> coven::LiveQuery<Vec<R>, DbError>
+    where
+        P: Send + Sync + 'static,
+        R: Send + 'static,
+    {
+        self.inner.handle.subscribe(move |read| statement.run(&read, &request))
+    }
+
     /// `query`'s results for async code to take, reporting a panic around a
     /// run to the store's bug sink.
     pub fn results<L: crate::live_results::CovenLiveQuery>(
@@ -221,6 +237,23 @@ impl Store {
         E: From<coven::DbError> + CarriesBug + Send + 'static,
     {
         self.inner.handle.subscribe_reconfigurable(initial_request, query)
+    }
+
+    /// A live query of one statement whose request can be replaced without a
+    /// new subscription: each request binds the parameters `statement` runs
+    /// with.
+    pub fn subscribe_reconfigurable_statement<P, R>(
+        &self,
+        initial_request: P,
+        statement: &'static ReadStatement<P, R>,
+    ) -> coven::ReconfigurableLiveQuery<P, Vec<R>, DbError>
+    where
+        P: Clone + PartialEq + Send + Sync + 'static,
+        R: Send + 'static,
+    {
+        self.inner.handle.subscribe_reconfigurable(initial_request, move |request, read| {
+            statement.run(&read, request)
+        })
     }
 
     /// Now, by the clock the store's writes stamp their rows with.

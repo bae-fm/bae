@@ -26,6 +26,8 @@ pub mod live_results;
 pub mod path_column;
 pub mod query;
 pub mod read;
+mod read_statement;
+pub use read_statement::{Bound, ReadStatement};
 pub mod schema;
 pub use schema::{
     configure_store, Schema, SchemaCollation, SchemaFunction, SchemaPart, SqlArguments,
