@@ -26,7 +26,8 @@ pub fn run_trigger_first(schema: Schema, name: &str) -> Schema {
 /// `schema`, noting the tables of `tables` that writes insert rows into, in
 /// the order they do, for [`first_insert`] to read.
 pub fn watch_first_insert(schema: Schema, tables: &[&str]) -> Schema {
-    let mut sql = "CREATE TABLE watched_insert (step TEXT NOT NULL);\n".to_string();
+    let mut sql =
+        "CREATE TABLE watched_insert (id INTEGER PRIMARY KEY, step TEXT NOT NULL);\n".to_string();
     for table in tables {
         sql.push_str(&format!(
             "CREATE TRIGGER watched_insert_{table} AFTER INSERT ON {table}
@@ -45,7 +46,7 @@ pub async fn first_insert(store: &Store) -> Option<String> {
     store
         .call(|sql| {
             let first = sql
-                .query("SELECT step FROM watched_insert ORDER BY rowid LIMIT 1", [], |row| {
+                .query("SELECT step FROM watched_insert ORDER BY id LIMIT 1", [], |row| {
                     row.get::<_, String>(0)
                 })?
                 .into_iter()
@@ -62,7 +63,7 @@ pub async fn first_insert(store: &Store) -> Option<String> {
 /// for [`RefreshCount`] to read.
 pub fn count_refreshes(schema: Schema, view: &str, key: &str) -> Schema {
     schema.followed_by(format!(
-        "CREATE TABLE {view}_counted (key TEXT NOT NULL);
+        "CREATE TABLE {view}_counted (id INTEGER PRIMARY KEY, key TEXT NOT NULL);
          CREATE TRIGGER {view}_counted INSTEAD OF INSERT ON {view}
          BEGIN
              INSERT INTO {view}_counted (key) VALUES (NEW.{key});
