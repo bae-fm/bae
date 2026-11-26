@@ -123,7 +123,7 @@ extension ShotRenderer {
                 // as active under it: the buttons of an alert whose panel is
                 // not key draw as inactive.
                 let keyed =
-                    AlertWindows.shared.panels.last ?? window.attachedSheet
+                    ModalWindows.shared.panels.last ?? window.attachedSheet
                     ?? window
                 if keyed.isKeyWindow { return true }
                 keyed.makeKeyAndOrderFront(nil)
@@ -147,14 +147,14 @@ extension ShotRenderer {
         // An alert is a panel, which hides while its app is not active, as
         // this app never is, so each is kept up.
         try await Wait.until {
-            let panels = AlertWindows.shared.panels
+            let panels = ModalWindows.shared.panels
             for panel in panels {
                 panel.hidesOnDeactivate = false
                 if !panel.isVisible { panel.orderFront(nil) }
             }
             return panels.allSatisfy { $0.isVisible }
         }
-        return AlertWindows.shared.panels.map { CGWindowID($0.windowNumber) }
+        return ModalWindows.shared.panels.map { CGWindowID($0.windowNumber) }
     }
 
     /// Wait for the window server to show each of `windows` on the screen,
@@ -194,7 +194,7 @@ extension ShotRenderer {
         on display: ShotDisplay,
         scene: ShotScene
     ) async throws -> Data {
-        let shown = [window] + sheets + AlertWindows.shared.panels
+        let shown = [window] + sheets + ModalWindows.shared.panels
         do {
             try await shownOnScreen(shown, scene: scene)
             return try await windowPNG(

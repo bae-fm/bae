@@ -95,7 +95,7 @@ struct ShotElementList: Encodable {
             .leavingOutWhatIsNotVisible(windowSize: size)
         // An alert is a separate window over this one, so this list adds the
         // alert's elements where the alert draws them over this window.
-        for panel in AlertWindows.shared.panels {
+        for panel in ModalWindows.shared.panels {
             tree = tree.adding(
                 try AccessibilityTree.read(of: panel, subject: board),
                 atX: panel.frame.minX - window.frame.minX,

@@ -36,8 +36,8 @@ struct ErrorAlertWindowTests {
                 uiStore.showError("Could not reach the cloud.")
                 defer { uiStore.clearError() }
                 try await SnapshotTestSupport.untilWindows {
-                    AlertWindows.shared.panels.contains {
-                        AlertWindows.shared.parent(of: $0) === front
+                    ModalWindows.shared.panels.contains {
+                        ModalWindows.shared.parent(of: $0) === front
                     }
                 }
                 try await Wait.nextIdle(
@@ -48,7 +48,7 @@ struct ErrorAlertWindowTests {
                     line: #line
                 )
                 #expect(
-                    autoreleasepool { AlertWindows.shared.panels.count } == 1
+                    autoreleasepool { ModalWindows.shared.panels.count } == 1
                 )
                 #expect(autoreleasepool { back.childWindows?.isEmpty } ?? true)
 
@@ -57,15 +57,15 @@ struct ErrorAlertWindowTests {
                     in: .settings
                 )
                 try await SnapshotTestSupport.untilWindows {
-                    AlertWindows.shared.panels.contains {
-                        AlertWindows.shared.parent(of: $0) === back
+                    ModalWindows.shared.panels.contains {
+                        ModalWindows.shared.parent(of: $0) === back
                     }
                 }
-                #expect(AlertWindows.shared.panels.count == 1)
+                #expect(ModalWindows.shared.panels.count == 1)
                 #expect(autoreleasepool { front.childWindows?.isEmpty } ?? true)
                 uiStore.clearError()
                 try await SnapshotTestSupport.untilWindows {
-                    AlertWindows.shared.panels.isEmpty
+                    ModalWindows.shared.panels.isEmpty
                 }
             }
         }

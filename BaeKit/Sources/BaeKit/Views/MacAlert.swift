@@ -336,16 +336,16 @@
 
     /// Shows alerts. An alert is a clear panel holding bae's face, a child of
     /// the window of the view that raised it, or of the alert or sheet that is
-    /// over that window. AlertWindows places the panel at the top centre of
+    /// over that window. ModalWindows places the panel at the top centre of
     /// its parent. A scrim window between them dims the whole parent, title
     /// bar included, and takes the pointer,
-    /// AlertWindows makes the panel key again whenever something makes its
+    /// ModalWindows makes the panel key again whenever something makes its
     /// parent key, and the panel is the only modal element of the
     /// accessibility tree, so the person cannot reach the window below with
     /// the pointer, the keyboard or VoiceOver while the alert is up.
     @MainActor
-    public final class AlertWindows {
-        public static let shared = AlertWindows()
+    public final class ModalWindows {
+        public static let shared = ModalWindows()
 
         private struct Shown {
             let id: UUID
@@ -655,7 +655,7 @@
                     }
                     else {
                         anchor.arrived = nil
-                        AlertWindows.shared.withdraw(id: id)
+                        ModalWindows.shared.withdraw(id: id)
                     }
                 }
                 .onChange(of: hostedAppearance) { _, appearance in
@@ -663,11 +663,11 @@
                 }
                 .onChange(of: scheme) { _, scheme in
                     look?.scheme = scheme
-                    AlertWindows.shared.matchParentAppearance(id: id)
+                    ModalWindows.shared.matchParentAppearance(id: id)
                 }
                 .onDisappear {
                     anchor.arrived = nil
-                    AlertWindows.shared.withdraw(id: id)
+                    ModalWindows.shared.withdraw(id: id)
                 }
         }
 
@@ -691,7 +691,7 @@
                 look: look
             )
             let show: @MainActor () -> Void = {
-                AlertWindows.shared.present(
+                ModalWindows.shared.present(
                     id: id,
                     over: anchor.view?.window,
                     replacementGroup: replacementGroup,
@@ -703,7 +703,7 @@
                     anchor.view?.window != nil
                 }
                 else {
-                    AlertWindows.shared.canPresent(over: anchor.view?.window)
+                    ModalWindows.shared.canPresent(over: anchor.view?.window)
                 }
             if canPresent {
                 show()

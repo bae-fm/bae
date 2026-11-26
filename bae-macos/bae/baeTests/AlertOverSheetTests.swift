@@ -120,18 +120,18 @@ struct AlertOverSheetTests {
                 )
             )
             #expect(
-                await holds { !AlertWindows.shared.panels.isEmpty },
+                await holds { !ModalWindows.shared.panels.isEmpty },
                 "the alert is raised"
             )
 
-            let alert = try #require(AlertWindows.shared.panels.last)
-            let shield = try #require(AlertWindows.shared.shields.last)
+            let alert = try #require(ModalWindows.shared.panels.last)
+            let shield = try #require(ModalWindows.shared.shields.last)
             #expect(alert.isVisible)
             #expect(alert.canBecomeKey)
             // The alert is the top of the chain: it sits over the sheet
             // that sits over the window, so the window and the sheet are the
             // ones blocked.
-            #expect(AlertWindows.shared.parent(of: alert) === sheet)
+            #expect(ModalWindows.shared.parent(of: alert) === sheet)
             #expect(autoreleasepool { sheet.sheetParent } === window)
             #expect(
                 autoreleasepool { sheet.childWindows?.contains(alert) } == true
@@ -152,10 +152,10 @@ struct AlertOverSheetTests {
 
             uiStore.clearError()
             #expect(
-                await holds { AlertWindows.shared.panels.isEmpty },
+                await holds { ModalWindows.shared.panels.isEmpty },
                 "the alert is withdrawn"
             )
-            #expect(AlertWindows.shared.shields.isEmpty)
+            #expect(ModalWindows.shared.shields.isEmpty)
             #expect(autoreleasepool { sheet.childWindows?.isEmpty } ?? true)
             // The keyboard returns to the sheet the alert was over.
             #expect(
@@ -188,11 +188,11 @@ struct AlertOverSheetTests {
             size: NSSize(width: 600, height: 400)
         ) { window, _ in
             #expect(
-                await holds { AlertWindows.shared.panels.count == 1 },
+                await holds { ModalWindows.shared.panels.count == 1 },
                 "the alert is raised"
             )
-            let alert = try #require(AlertWindows.shared.panels.first)
-            #expect(AlertWindows.shared.parent(of: alert) === window)
+            let alert = try #require(ModalWindows.shared.panels.first)
+            #expect(ModalWindows.shared.parent(of: alert) === window)
         }
     }
 }
