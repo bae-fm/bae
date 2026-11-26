@@ -203,6 +203,17 @@ targets:
     sources:
       - baeTests
       - baeTestSupport
+      # What the tests share with the shots harness: its waits and its reader
+      # of the accessibility tree, which baeTestSupport extends. `builds shots
+      # harness mac` writes the folder (bae-macos/test.sh, and CI), and a
+      # build of the app alone needs none of it, so the folder is optional.
+      - path: shots-harness
+        optional: true
+        includes:
+          - AccessibilityTree.swift
+          - HangGuard.swift
+          - ShotLog.swift
+          - Wait.swift
       - Fixtures
       - path: "../../design/system/assets/Artwork"
         type: folder
@@ -232,9 +243,13 @@ targets:
     platform: macOS
     sources:
       - baeUITests
-      # The one limit of every test wait, shared with the bundles that take
-      # all of baeTestSupport.
-      - path: baeTestSupport/HangGuard.swift
+      # The one limit of every test wait, the shots harness's, shared with
+      # the bundles that take all of baeTestSupport.
+      - path: shots-harness
+        optional: true
+        includes:
+          - HangGuard.swift
+      - path: baeTestSupport/HangGuard+Seconds.swift
     dependencies:
       - target: bae
     settings:
@@ -257,6 +272,11 @@ targets:
       Release: Features.xcconfig
     sources:
       - baeShots
+      # The shots harness, which draws the scenes and writes the shots, as
+      # `builds shots harness mac` writes it (bae-macos/shots-capture.sh and
+      # test.sh). A build of the app alone needs none of it.
+      - path: shots-harness
+        optional: true
       - baeTestSupport
       - Fixtures
       - path: "../../design/system/assets/Artwork"

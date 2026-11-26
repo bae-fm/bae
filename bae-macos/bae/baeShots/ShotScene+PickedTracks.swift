@@ -52,7 +52,7 @@ extension ShotScene {
                             window: window,
                             // The menu is the window's own tree: no alert or
                             // layer is up while the scene stages its picks.
-                            modals: ModalWindows(),
+                            overlays: [],
                             size: size,
                             scale: ShotRenderer.scale
                         )

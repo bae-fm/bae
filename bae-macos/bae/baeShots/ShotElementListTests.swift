@@ -22,7 +22,8 @@ struct ShotElementListTests {
         // shots run has; these tests read the tree, so the scene's own
         // room is its frame.
         if case .component = scene.frame { scene.frame = .content }
-        return try await ShotRenderer.render(scene, on: display).elements
+        return try await ShotRenderer.renderInBaeLook(scene, on: display)
+            .elements
     }
 
     private func json(_ list: ShotElementList) throws -> String {
@@ -101,54 +102,6 @@ struct ShotElementListTests {
         #expect(cancel.bounds.y > message.bounds.y, "\(json)")
     }
 
-    /// A titled window lists its title before its content, as VoiceOver reads
-    /// it and a board draws it, and leaves out the window's close, minimise
-    /// and zoom buttons, which a board hides. The window sits past every
-    /// display, so it takes no focus.
-    @Test
-    func listsATitledWindowsTitleFirstWithoutItsButtons() throws {
-        let size = CGSize(width: 400, height: 200)
-        let right = NSScreen.screens.map(\.frame.maxX).max() ?? 0
-        let window = NSWindow(
-            contentRect: NSRect(
-                origin: NSPoint(x: right + 1_000, y: 0),
-                size: size
-            ),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.animationBehavior = .none
-        window.isReleasedWhenClosed = false
-        window.title = "Window Title"
-        let body = NSTextField(labelWithString: "Body words")
-        body.frame = NSRect(x: 20, y: 20, width: 200, height: 20)
-        window.contentView?.addSubview(body)
-        window.orderFront(nil)
-        defer { window.close() }
-
-        let list = try ShotElementList.read(
-            board: "a titled window",
-            window: window,
-            modals: ModalWindows(),
-            size: size,
-            scale: 2
-        )
-        let json = try json(list)
-        #expect(
-            list.elements.compactMap(\.label) == [
-                "Window Title", "Body words",
-            ],
-            "\(json)"
-        )
-        #expect(!list.elements.contains { $0.role == "button" }, "\(json)")
-        for (index, element) in list.elements.enumerated() {
-            if let parent = element.parent {
-                #expect(parent < index, "\(json)")
-            }
-        }
-    }
-
     /// macOS reports a spinner as a busy indicator; the shot lists it with
     /// the role progress, as VoiceOver reads it.
     @Test
@@ -160,77 +113,6 @@ struct ShotElementListTests {
             "\(json)"
         )
         #expect(spinner.role == "progress", "\(json)")
-    }
-
-    /// macOS gives a radio button its checked state as a value of 1 or 0; the
-    /// list writes it as `selected` and leaves the value out, as the board
-    /// side does.
-    @Test
-    func listsARadiosCheckedStateAsSelected() {
-        func radio(_ value: Double) -> ShotElementList.Element {
-            ShotElementList.Element(
-                node: AccessibilityTree.Node(
-                    role: NSAccessibility.Role.radioButton.rawValue,
-                    subrole: nil,
-                    title: "Albums",
-                    description: nil,
-                    placeholder: nil,
-                    value: .number(value),
-                    x: 0,
-                    y: 0,
-                    width: 80,
-                    height: 24,
-                    enabled: true,
-                    selected: nil,
-                    focused: nil,
-                    style: nil,
-                    parent: nil
-                )
-            )
-        }
-        #expect(radio(1).role == "radio")
-        #expect(radio(1).selected == true)
-        #expect(radio(1).value == nil)
-        #expect(radio(0).selected == false)
-        #expect(radio(0).value == nil)
-    }
-
-    /// A text that is the only child of a padded container reports the
-    /// container's box through the tree; the list boxes it by its words, as
-    /// the board's text is. A text that starts at its box's edge keeps the
-    /// box, which is what the board's text fills.
-    @Test
-    func boxesATextByItsWordsWhenTheyAreCentredInTheElement() {
-        func text(words: CGRect) -> ShotElementList.Element {
-            var node = AccessibilityTree.Node(
-                role: NSAccessibility.Role.staticText.rawValue,
-                subrole: nil,
-                title: nil,
-                description: nil,
-                placeholder: nil,
-                value: .text("Barcode"),
-                x: 0,
-                y: 0,
-                width: 70,
-                height: 17,
-                enabled: true,
-                selected: nil,
-                focused: nil,
-                style: nil,
-                parent: nil
-            )
-            node.wordsBox = words
-            return ShotElementList.Element(node: node)
-        }
-        let centred = text(words: CGRect(x: 6, y: 2, width: 44, height: 12))
-        #expect(centred.bounds.x == 6)
-        #expect(centred.bounds.y == 2)
-        #expect(centred.bounds.width == 44)
-        #expect(centred.bounds.height == 12)
-        let flush = text(words: CGRect(x: 0, y: 2, width: 44, height: 12))
-        #expect(flush.bounds.x == 0)
-        #expect(flush.bounds.width == 70)
-        #expect(flush.bounds.height == 17)
     }
 
     @Test

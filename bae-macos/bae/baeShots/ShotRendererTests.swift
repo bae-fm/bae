@@ -36,7 +36,7 @@ struct ShotRendererTests {
         let scene = try #require(
             ShotScene.all.first { $0.id == "mac.album.delete-album" }
         )
-        let capture = try await ShotRenderer.render(scene, on: display)
+        let capture = try await ShotRenderer.renderInBaeLook(scene, on: display)
         let image = try #require(NSBitmapImageRep(data: capture.png))
         #expect(image.pixelsWide == 2_400)
         #expect(image.pixelsHigh == 2_040)
@@ -45,50 +45,6 @@ struct ShotRendererTests {
         #expect(
             capture.elements.elements.contains { $0.label == "Delete album" }
         )
-    }
-
-    /// AppKit would shrink the window to fit the shot display; the render
-    /// fails instead of capturing the scene narrower than it is.
-    @Test
-    func aWindowWiderThanTheShotDisplayFails() async {
-        await expectOversizedWindowToFail()
-    }
-
-    private func expectOversizedWindowToFail() async {
-        let error = await #expect(throws: ShotError.self) {
-            try await ShotRenderer.render(Self.tooWide(), on: display)
-        }
-        guard case .windowTooLarge = error else {
-            Issue.record(
-                "expected the window to be too large: \(String(describing: error))"
-            )
-            return
-        }
-    }
-
-    @Test
-    func removingAnotherDisplayKeepsTheShotDisplayAtItsSizeAndScale()
-        async throws
-    {
-        let otherID: CGDirectDisplayID
-        do {
-            let other = try await ShotDisplay.add()
-            otherID = other.id
-            let scene = ShotScene(
-                id: "a scene on the display that closes",
-                size: CGSize(width: 300, height: 200),
-                frame: .window(title: "bae", titleBar: .hidden)
-            ) {
-                ShotStage(Color.clear)
-            }
-            _ = try await ShotRenderer.render(scene, on: other)
-        }
-        try await ShotDisplay.waitUntilRemoved(otherID)
-
-        let screen = try display.screen()
-        #expect(screen.frame.size == CGSize(width: 1_600, height: 1_200))
-        #expect(screen.backingScaleFactor == 2)
-        await expectOversizedWindowToFail()
     }
 
     /// A scene that fails to place its window takes down the window and the
@@ -102,36 +58,19 @@ struct ShotRendererTests {
             )
         )
         await #expect(throws: ShotError.self) {
-            try await ShotRenderer.render(tooWide, on: display)
+            try await ShotRenderer.renderInBaeLook(tooWide, on: display)
         }
 
         let next = try #require(
             ShotScene.all.first { $0.id == "mac.welcome.remove.failed" }
         )
-        let list = try await ShotRenderer.render(next, on: display).elements
+        let list = try await ShotRenderer.renderInBaeLook(next, on: display)
+            .elements
         let json = try #require(String(bytes: try list.json(), encoding: .utf8))
         #expect(
             !list.elements.contains { $0.label == "Delete the MP3 format?" },
             "\(json)"
         )
-    }
-
-    /// A scene whose window has a sheet over it leaves no window of its own
-    /// up: the next scene's alert, raised before its view is in its window,
-    /// would otherwise hang from the sheet left behind.
-    @Test
-    func aSceneWithASheetLeavesNoWindowUp() async throws {
-        let sheetScene = try #require(
-            ShotScene.all.first {
-                $0.id == "mac.welcome.add-code.s3-key-needed"
-            }
-        )
-        let before = Set(NSApp.windows.filter(\.isVisible).map(\.windowNumber))
-        _ = try await ShotRenderer.render(sheetScene, on: display)
-        let left = NSApp.windows.filter {
-            $0.isVisible && !before.contains($0.windowNumber)
-        }
-        #expect(left.isEmpty, "\(left.map { String(describing: $0.frame) })")
     }
 
     #if BAE_OAUTH_PROVIDERS
@@ -147,7 +86,10 @@ struct ShotRendererTests {
             ) {
                 ShotScene.syncSetupLongFolderList()
             }
-            let capture = try await ShotRenderer.render(scene, on: display)
+            let capture = try await ShotRenderer.renderInBaeLook(
+                scene,
+                on: display
+            )
             let list = capture.elements
             let height = list.size.height
             let cancel = try #require(

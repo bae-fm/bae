@@ -75,7 +75,9 @@ source scripts/xcode-trees.sh
 
 # The project lists the test files that existed when it was last generated, so
 # generate it from project.yml now: a test file added since would not be built
-# and would never run.
+# and would never run. The test bundles compile builds' shots harness, so write
+# it first.
+builds shots harness mac --into bae-macos/bae/shots-harness
 (cd bae-macos/bae && xcodegen)
 
 # The scheme's pre-action rebuilds the bridge with these features; unset, it

@@ -5,11 +5,12 @@ runs:
   using: 'composite'
   steps:
     # The agent-instructions commit builds comes from. It has the shots
-    # checker inside it (`builds shots`).
+    # checker inside it (`builds shots`), with the shots harness the macOS
+    # test bundles compile.
     - name: Name the agent-instructions commit
       id: pin
       shell: bash
-      run: echo "rev=405e9ae26a1a0111092bde923c79089b01f93369" >> "$GITHUB_OUTPUT"
+      run: echo "rev=d4dfd1b69334962d1ff0379887a96634fc89856f" >> "$GITHUB_OUTPUT"
     # builds compiles on Linux too, since `builds host setup` builds it on
     # Linux hosts. It goes in a folder of its own outside ~/.local/bin, so
     # scripts/cargo.sh still runs cargo itself on CI.

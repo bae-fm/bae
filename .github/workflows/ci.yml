@@ -33,11 +33,16 @@ jobs:
     - name: Install periphery
       uses: ./.github/actions/install-periphery
 
+    - uses: ./.github/actions/install-builds
+
     - name: Build macOS app
       id: build_macos
+      # The test bundles compile builds' shots harness, which the project
+      # lists only when xcodegen finds it.
       run: |
         brew install xcodegen
         ./bae-bridge/build-macos.sh
+        builds shots harness mac --into bae-macos/bae/shots-harness
         source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
