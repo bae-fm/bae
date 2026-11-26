@@ -46,9 +46,6 @@ struct MacSearchField: View {
                 .themeText(.body)
                 .foregroundStyle(textColor)
                 .focused(focused)
-                // The box draws the focus ring, so the system's own ring
-                // around the field's edge stays off.
-                .focusEffectDisabled()
                 .accessibilityLabel(prompt)
                 .accessibilityAddTraits(.isSearchField)
                 .onKeyPress(.escape) {
@@ -57,6 +54,9 @@ struct MacSearchField: View {
                 }
         }
         .modifier(MacSearchFieldBox(kind: kind, focused: focused.wrappedValue))
+        // The box draws the focus ring, so the system's own ring round the
+        // field stays off.
+        .focusEffectDisabled()
         .opacity(isEnabled ? 1 : ThemeOpacity.off)
     }
 
