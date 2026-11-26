@@ -200,7 +200,8 @@ extension PreviewData {
                 title: "Low Tide Hours",
                 artistLine: .named("Mara Quill")
             ),
-            record: "board-low-tide-hours",
+            // A lookup still out or failed has named no record for the folder.
+            record: live == nil ? "board-low-tide-hours" : nil,
             cover: .local(file: cover),
             live: live
                 ?? (open
