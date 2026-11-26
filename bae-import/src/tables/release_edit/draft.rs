@@ -7,7 +7,7 @@
 //! picked artists as the library holds them.
 
 use super::super::layout_bindings::{json, mediums_json, moves_json, places_json};
-use super::artist_fields::FORM_ARTIST_FIELDS;
+use super::artist_fields::{FORM_ARTIST_FIELDS, TRACK_PART};
 use super::form_assignments::{assignment_rows, assignment_rows_sql};
 use super::*;
 use crate::tables::draft_rows::{
@@ -345,6 +345,7 @@ fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<D
         (":form_tracks", &form.form_tracks as &dyn rusqlite::ToSql),
         (":album_artists", &form.album_artists as &dyn rusqlite::ToSql),
         (":track_artists", &form.track_artists as &dyn rusqlite::ToSql),
+        (":part", &TRACK_PART as &dyn rusqlite::ToSql),
     ];
     params.extend(layout.named());
     Ok(sql.query(
@@ -354,7 +355,7 @@ fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<D
                     standing.field AS artists \
              FROM ({tracks}) AS library \
              LEFT JOIN ({FORM_ARTIST_FIELDS}) AS standing \
-                 ON standing.part = 1 AND standing.track_id = library.row_id \
+                 ON standing.track_id = library.row_id \
              ORDER BY library.placed_medium, library.placed_position",
             track = form_track_json_sql(),
             tracks = bae_records::records::release_edit_tracks_sql(

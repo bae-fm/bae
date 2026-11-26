@@ -8,7 +8,7 @@ use super::*;
 use crate::tables::import_list::artist_field_of_json;
 
 sqlive_compose::read!(
-    FormArtistFields(album_artists: String, track_artists: String),
+    FormArtistFields(album_artists: String, track_artists: String, part: i64),
     r#"
     WITH form_credits(part, json) AS (
         SELECT 0, :album_artists UNION ALL SELECT 1, :track_artists
@@ -45,13 +45,19 @@ sqlive_compose::read!(
                 SELECT DISTINCT bae_artist_name_key(name) AS name_key, musicbrainz_artist_id,
                        discogs_artist_id
                 FROM form_raw WHERE assignment_kind = 'credit')) AS answer)) AS standing
+    WHERE standing.part = :part
 "#
 );
 
-/// The JSON of the album's artist field of the form whose album artists and
-/// explicit tracks' artists are the JSON arrays `album_artists` and
-/// `track_artists`, as `artist_field_of_json` reads it; `None` when the album
-/// has none.
+/// The part of a form's artist fields that `:part` binds in
+/// [`FORM_ARTIST_FIELDS`]: the album's artists.
+pub(super) const ALBUM_PART: i64 = 0;
+/// The part of an explicit track's own artists.
+pub(super) const TRACK_PART: i64 = 1;
+
+/// The album's artist field of the form whose album artists and explicit
+/// tracks' artists are the JSON arrays `album_artists` and `track_artists`,
+/// with how it stands to the library; `None` when the album has none.
 pub(super) fn album_artist_field_on(
     sql: &impl coven::SqlRead,
     album_artists: &str,
@@ -60,19 +66,18 @@ pub(super) fn album_artist_field_on(
     let request = FormArtistFieldsParams {
         album_artists: album_artists.to_string(),
         track_artists: track_artists.to_string(),
+        part: ALBUM_PART,
     };
-    let mut album = None;
-    for row in
-        sql.query(FormArtistFields::SQL, request.params().as_slice(), FormArtistFieldsRow::read)?
-    {
-        if let (0, None, field) = row.standing.into_columns() {
-            album = Some(field);
-        }
-    }
-    album.as_deref().map(artist_field_of_json).transpose()
+    let rows =
+        sql.query(FormArtistFields::SQL, request.params().as_slice(), FormArtistFieldsRow::read)?;
+    // The album has at most one artist field.
+    rows.into_iter()
+        .next()
+        .map(|row| artist_field_of_json(&row.standing.into_columns().2))
+        .transpose()
 }
 
-/// The standing of every explicit track's own artists, as a table with
+/// The standing of the artist fields of one part of a form, as a table with
 /// `part`, `track_id` and `field` for a statement to join, which binds
-/// `:album_artists` and `:track_artists`.
+/// `:album_artists`, `:track_artists` and `:part`.
 pub(super) const FORM_ARTIST_FIELDS: &str = FormArtistFields::SQL;
