@@ -93,7 +93,8 @@
     // The part of the outline the painted box shows: the symbol's own frame, whose centre sits `off` left of and above the outline's (12, 12), since SwiftUI draws the symbol that far right of and below the frame's centre. The box itself sits where `shift` puts the frame, so the outline moves with it.
     var shows = props.text ? drawn : [12 - symbolFrame(0) / k / 2 - off(0), 12 - symbolFrame(1) / k / 2 - off(1), 12 + symbolFrame(0) / k / 2 - off(0), 12 + symbolFrame(1) / k / 2 - off(1)];
     var view = [shows[0], shows[1], shows[2] - shows[0], shows[3] - shows[1]].map(thousandths).join(' ');
-    var path = h('path', { d: sf.d });
+    // A tertiary layer (SF's `tertiary`) draws under the outline at a quarter of the colour, as SwiftUI draws it.
+    var path = sf.tertiary ? [h('path', { key: 'tertiary', d: sf.tertiary, fillOpacity: 0.25 }), h('path', { key: 'outline', d: sf.d })] : h('path', { d: sf.d });
     // SwiftUI turns the symbol about its frame's centre, the painted box's; in a run of text, about the outline's (12, 12).
     var pivot = props.text ? [(12 - shows[0]) * k, (12 - shows[1]) * k] : [(drawn[2] - drawn[0]) * k / 2, (drawn[3] - drawn[1]) * k / 2];
     var turn = props.turn == null ? null : { transform: 'rotate(' + props.turn + 'deg)', transformOrigin: thousandths(pivot[0]) + 'px ' + thousandths(pivot[1]) + 'px' };
