@@ -40,15 +40,16 @@ pub(crate) use folder_scans::{
     ScanItemToWrite, ScanWriteError,
 };
 pub use import_list::{FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot};
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+pub use import_state::DbCandidatePaneRows;
 pub(crate) use import_state::{
     CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     CommittingCandidate, ImportClaim, ImportCommitGuard, ImportRows, NewAlbum, NewArtistImages,
     RunVerdictSaved, ScannedCandidateKey,
 };
 pub use import_state::{
-    CandidateStateRefusal, DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState,
-    ImportCommitError, ImportCommitRefusal, NewImportCandidateVerdict, PreparationRefusal,
-    VerdictPick,
+    CandidateStateRefusal, DbCandidateIdentifyResult, DbImportCandidateState, ImportCommitError,
+    ImportCommitRefusal, NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
 };
 pub use release_edit::{
     release_edit_form_on, release_edit_layout_on, release_edit_still_as_opened_on,

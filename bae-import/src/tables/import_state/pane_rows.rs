@@ -542,6 +542,7 @@ pub(super) fn insert_file_tags_draft(
 /// cover and the mapping table from them at once. Kept off
 /// [`DbImportCandidateState`] because that one is read for the whole queue and
 /// none of these are.
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbCandidatePaneRows {
     /// The cover the user chose. `None` leaves the picked release's default

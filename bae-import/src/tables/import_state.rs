@@ -101,6 +101,7 @@ pub use import_commit::{ImportCommitError, ImportCommitRefusal};
 use pane_failure_rows::load_pane_failure_on;
 pub(crate) use pane_failure_rows::pane_failure_of;
 pub(crate) use pane_rows::draft_of;
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub use pane_rows::DbCandidatePaneRows;
 pub(super) use pane_rows::StoredTrack;
 pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
