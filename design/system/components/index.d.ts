@@ -6,6 +6,10 @@ import type * as React from 'react';
 export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Storage' | 'Import' | 'Save as' | 'Subsonic' | 'Automation' | 'About'; title: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success'; width?: number; height?: number; front?: boolean; children?: React.ReactNode }
 export declare function MacSettingsWindow(props: MacSettingsWindowProps): React.ReactElement;
 
+/** A window as AppKit draws one whose content reaches under its title bar: the rounded window, the traffic lights at AppKit's place, and the content. A MacSheet with overlay inside is attached to it. */
+export interface MacWindowProps { width?: number; height?: number; children?: React.ReactNode }
+export declare function MacWindow(props: MacWindowProps): React.ReactElement;
+
 /** A plain macOS window with traffic lights and no sidebar (the welcome window). A MacAlert inside covers it. */
 export interface MacWelcomeWindowProps { width?: number; height?: number; children?: React.ReactNode }
 export declare function MacWelcomeWindow(props: MacWelcomeWindowProps): React.ReactElement;

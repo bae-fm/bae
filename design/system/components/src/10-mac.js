@@ -7,9 +7,15 @@
   // `inactive`: the window is not the key window, so macOS draws all three lights grey.
   function macLights(inset, inactive) { return h('div', { className: cx('bae-m-lights', inset && 'bae-m-lights-inset', inactive && 'bae-m-lights-inactive'), 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)); }
 
+  // A window as AppKit draws one whose content reaches under its title bar, with no chrome of the app's: the rounded window, the traffic lights where AppKit places them, and the content. As wide as its place unless `width` is given.
+  function MacWindow(props) {
+    return h('div', { className: 'bae-m-window bae-m-window-column', style: { width: props.width ? Number(props.width) : null, height: Number(props.height || 240) } },
+      macLights(), props.children);
+  }
+
   // The welcome window: the rounded window, 690 by 600 unless given, its traffic lights at the top left, its screens stacked inside.
   function MacWelcomeWindow(props) {
-    return h('div', { className: 'bae-m-window bae-m-window-column', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
+    return h('div', { className: 'bae-m-window bae-m-window-column bae-m-welcomewin', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
       macLights(), props.children);
   }
 

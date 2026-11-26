@@ -46,12 +46,13 @@
       },
       {
         "name": "The title bar",
-        "about": "The pieces of the Mac's title bar, the welcome window, and the split a browsing page sits in.",
+        "about": "The pieces of the Mac's title bar, a window with no title bar of its own, the welcome window, and the split a browsing page sits in.",
         "components": [
           "MacTitleBar",
           "MacSectionTabs",
           "MacActivityButton",
           "MacAvatarButton",
+          "MacWindow",
           "MacWelcomeWindow",
           "MacBrowseSplit"
         ]
