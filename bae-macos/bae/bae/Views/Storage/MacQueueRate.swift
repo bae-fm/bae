@@ -19,18 +19,21 @@ struct MacQueueRate<Progress: View>: View {
             glyph
                 .themeIcon(.small)
                 .frame(width: 11, height: 11)
+            // The text role pads a text line's baseline, so only the texts
+            // take it; the glyphs and the button centre on the line.
             if let hold {
                 Text(hold)
+                    .themeText(.body)
             }
             else {
                 progress()
                     .monospacedDigit()
+                    .themeText(.body)
             }
             QueuePauseButton(queue: queue, paused: paused, placement: .footer)
         }
         .lineLimit(1)
         .foregroundStyle(Theme.textSecondary)
-        .themeText(.body)
         // A narrow table keeps each queue's rate whole on one line; the
         // release count and total give way instead.
         .fixedSize()
