@@ -63,6 +63,7 @@ pub use label_resolution::{PressingParts, PressingWrite};
 use artist_resolution::relink;
 pub mod files;
 pub use files::{ImageWriteError, ImageWriteRefusal};
+pub mod fragments;
 pub(crate) mod identity_merges;
 pub mod name_sort;
 pub mod queued_uploads;

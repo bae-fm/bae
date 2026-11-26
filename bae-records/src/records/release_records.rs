@@ -494,8 +494,17 @@ pub fn pressing_held_sql(catalog: &str, key: &str) -> String {
 /// The library status one row of [`library_status_sql`] holds.
 pub fn library_status_of(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryStatus> {
     let albums: Vec<StoredAlbumMatch> = bae_store::read::json_column(row, "albums")?;
-    Ok(LibraryStatus {
-        release_id: row.get("release_id")?,
+    Ok(library_status_from(row.get("release_id")?, albums))
+}
+
+/// The library status of `release_id` whose `albums` the check's statement
+/// wrote as its JSON array.
+pub(super) fn library_status_from(
+    release_id: String,
+    albums: Vec<StoredAlbumMatch>,
+) -> LibraryStatus {
+    LibraryStatus {
+        release_id,
         albums: albums
             .into_iter()
             .map(|album| crate::LibraryAlbumMatch {
@@ -504,14 +513,14 @@ pub fn library_status_of(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibrarySta
                 holds_release: album.holds_release != 0,
             })
             .collect(),
-    })
+    }
 }
 
 /// One album match as the library check's statement writes it into its
 /// `albums` array: `holds_release` is 1 for an album that holds the release
 /// itself and 0 for one that holds only another release of its album.
 #[derive(serde::Deserialize)]
-struct StoredAlbumMatch {
+pub(super) struct StoredAlbumMatch {
     album_id: String,
     album_title: String,
     holds_release: i64,
