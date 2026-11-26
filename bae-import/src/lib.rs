@@ -93,6 +93,8 @@ pub use bae_pictures::Priority as PicturePriority;
 #[cfg(desktop)]
 pub use pictures::PictureError;
 #[cfg(desktop)]
+pub mod cards;
+#[cfg(desktop)]
 pub mod preparations;
 #[cfg(desktop)]
 pub mod probe;
@@ -113,7 +115,6 @@ pub mod service;
 pub mod session;
 #[cfg(desktop)]
 pub(crate) mod shared_album;
-#[cfg(desktop)]
 pub mod tables;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_fixtures;
