@@ -295,8 +295,8 @@
       var title = h(React.Fragment, null,
         h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true, android: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
         props.subtitle ? h('div', { className: 'bae-notice-centered-sub' }, props.subtitle) : null);
-      // The app keeps the buttons' row when it holds none, so the gap above the row stays and the words sit half that gap above the centre.
-      return NoticeBox(tone, props.icon, h('div', { className: 'bae-a-notice' }, title, h('div', { className: 'bae-notice-centered-row' }, secondary, primary)), { platform: 'bae-a-notice-box', quiet: props.quiet, centered: true, stage: props.stage });
+      // With no button there is no row, so no gap lifts the words off the centre.
+      return NoticeBox(tone, props.icon, h('div', { className: 'bae-a-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-a-notice-box', quiet: props.quiet, centered: true, stage: props.stage });
     }
     // As on Mac: the buttons sit on the text's line at the right; `buttons: 'below'` puts them under the text.
     var below = props.buttons === 'below';
