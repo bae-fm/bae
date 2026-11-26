@@ -80,35 +80,50 @@ struct FindOnlineSectionHeader: View {
     }
 
     var body: some View {
-        // The open section's header is not a control: clicking it changes
-        // nothing, and it stays fully drawn rather than dimming as disabled.
-        Button(action: { if !isOpen { onOpen() } }) {
-            HStack(spacing: ThemeSpace.compact) {
-                Image(systemName: isOpen ? "chevron.down" : "chevron.forward")
+        // The status glyph lies over the header's end as an element of its
+        // own, since a button's label would hide it from VoiceOver. It takes
+        // no clicks, which reach the button under it.
+        ZStack(alignment: .trailing) {
+            // The open section's header is not a control: clicking it changes
+            // nothing, and it stays fully drawn rather than dimming as
+            // disabled.
+            Button(action: { if !isOpen { onOpen() } }) {
+                HStack(spacing: ThemeSpace.compact) {
+                    Image(
+                        systemName: isOpen ? "chevron.down" : "chevron.forward"
+                    )
                     .themeIcon(.small)
                     .foregroundStyle(
                         dimmed ? Theme.textTertiary : Theme.textSecondary
                     )
                     .frame(width: ThemeIcon.small.size)
-                MacEyebrow(section == .automatic ? "Automatic" : "Search")
-                    .opacity(dimmed ? 0.55 : 1)
-                Spacer(minLength: ThemeSpace.related)
-                FindOnlineSectionGlyphView(glyph: glyph)
+                    MacEyebrow(section == .automatic ? "Automatic" : "Search")
+                        .opacity(dimmed ? 0.55 : 1)
+                    Spacer(minLength: ThemeSpace.related)
+                }
+                .padding(.horizontal, ThemeSpace.group)
+                .frame(height: 32)
+                .background(
+                    isHovered && !isOpen ? Theme.hover : Color.clear
+                )
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, ThemeSpace.group)
-            .frame(height: 32)
-            .background(
-                isHovered && !isOpen ? Theme.hover : Color.clear
+            .buttonStyle(.accentPlain)
+            .onHover { isHovered = $0 }
+            .accessibilityLabel(
+                section == .automatic
+                    ? Text("Automatic") : Text("Search")
             )
-            .contentShape(Rectangle())
+            .accessibilityAddTraits(isOpen ? [.isSelected] : [])
+            // The header is read before its glyph, as the board lists them.
+            .accessibilitySortPriority(1)
+            FindOnlineSectionGlyphView(glyph: glyph)
+                .padding(.trailing, ThemeSpace.group)
+                .allowsHitTesting(false)
         }
-        .buttonStyle(.accentPlain)
-        .onHover { isHovered = $0 }
-        .accessibilityLabel(
-            section == .automatic
-                ? Text("Automatic") : Text("Search")
-        )
-        .accessibilityAddTraits(isOpen ? [.isSelected] : [])
+        // The sort priority orders the header and its glyph among
+        // themselves only.
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -127,9 +142,11 @@ struct FindOnlineSectionGlyphView: View {
                     .themeIcon(.small)
                     .foregroundStyle(Theme.textSecondary)
             case .working:
-                MacSpinner()
+                MacSpinner.glyph
             case .empty:
+                // The count is no element of its own, as the board draws it.
                 StatusChip(verbatim: 0.formatted())
+                    .accessibilityHidden(true)
             case .failed:
                 StatusGlyph(.warning, name: Text("Failed"))
                     .themeIcon(.small)
