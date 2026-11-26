@@ -23,6 +23,7 @@ use bae_identify::release_group::{
     StatedLabelLine, Statement, Statements,
 };
 use bae_identify::{Agreements, AlbumLink, RowAgreements, SharedAlbum, VerdictCards};
+use bae_store::statement_row;
 use bae_types::pressing::{MediaCount, ReleaseArea};
 use std::str::FromStr;
 
@@ -43,13 +44,7 @@ pub(crate) fn load_verdict_cards_on(
     content_hash: &str,
 ) -> Result<VerdictCards, DbError> {
     let request = CardsOfCandidateParams { candidate: content_hash.to_string() };
-    let row = sql
-        .query(CardsOfCandidate::SQL, request.params().as_slice(), CardsOfCandidateRow::read)?
-        .into_iter()
-        .next()
-        .ok_or_else(|| {
-            DbError::unreadable(format!("the cards of candidate {content_hash}"), None::<String>)
-        })?;
+    let row = statement_row(sql, &request)?;
     verdict_cards_of_column(row.cards.verdict_cards.as_deref())
 }
 

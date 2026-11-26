@@ -13,11 +13,9 @@ use crate::tables::import_state::fragments::PickedLibraryStatus;
 use crate::tables::import_state::{file_evidence_of_json, stored_verdict_view};
 use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
-use bae_store::{Bound, ReadStatement};
+use bae_store::statement_rows;
 
-use super::pane_read::{
-    PaneDraft, PaneDraftParams, PaneDraftRow, PaneHead, PaneHeadParams, PaneHeadRow,
-};
+use super::pane_read::{PaneDraftParams, PaneDraftRow, PaneHeadParams, PaneHeadRow};
 
 /// The candidate the pane is set to, as the scan, the list and the candidate's
 /// state hold it: everything the pane shows of it but what it files under.
@@ -215,22 +213,6 @@ impl From<&Option<crate::CandidateKey>> for PaneDraftParams {
     }
 }
 
-fn head_params(request: &PaneHeadParams) -> Bound<'_> {
-    request.params()
-}
-
-fn draft_params(request: &PaneDraftParams) -> Bound<'_> {
-    request.params()
-}
-
-/// The pane's head read, for the candidate its request names or none.
-static HEAD: ReadStatement<PaneHeadParams, PaneHeadRow> =
-    ReadStatement::new(PaneHead::SQL, head_params, PaneHeadRow::read);
-
-/// The pane's draft read, for the same request.
-static DRAFT: ReadStatement<PaneDraftParams, PaneDraftRow> =
-    ReadStatement::new(PaneDraft::SQL, draft_params, PaneDraftRow::read);
-
 /// What the two reads answered, as one candidate's rows; `None` when the key
 /// names no release the list lists.
 fn detail_rows(
@@ -357,7 +339,7 @@ impl ImportTables {
         crate::ImportError,
     > {
         self.store
-            .subscribe_reconfigurable_statements(initial, &HEAD, &DRAFT)
+            .subscribe_reconfigurable_statements::<_, PaneHeadParams, PaneDraftParams, _>(initial)
             .process(|rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
     }
 
@@ -370,13 +352,7 @@ impl ImportTables {
     ) -> Result<(super::mapping_rows::MappingRows, Option<crate::ArtistField>), crate::ImportError>
     {
         let request = PaneDraftParams::from(&Some(key.clone()));
-        let row = self
-            .store
-            .read(move |sql| DRAFT.run(&sql, &request))
-            .await?
-            .into_iter()
-            .next()
-            .ok_or_else(|| DbError::unreadable("the pane's draft read", None::<String>))?;
+        let row = self.store.read_row(request).await?;
         let draft = DraftRows::of(row)?;
         Ok((draft.mapping, draft.album_artists))
     }
@@ -409,8 +385,8 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 Ok((
-                    HEAD.run(&sql, &PaneHeadParams::from(&key))?,
-                    DRAFT.run(&sql, &PaneDraftParams::from(&key))?,
+                    statement_rows(&sql, &PaneHeadParams::from(&key))?,
+                    statement_rows(&sql, &PaneDraftParams::from(&key))?,
                 ))
             })
             .process(|rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())

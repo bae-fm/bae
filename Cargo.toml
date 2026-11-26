@@ -79,15 +79,15 @@ allow_attributes_without_reason = "deny"
 # most, the features it needs and whether it is optional.
 
 # Every consumer, including tests, uses coven's application facade.
-coven = { git = "https://github.com/bae-fm/coven", rev = "670c5a0d96035ac789941f6b0dfda74de6fdd318" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "64b47d2ff41724fd67fcc23e09958208c171958d" }
 # The macros bae's read fragments are written with, and the compiler its build
 # scripts run. coven's application facade re-exports neither (coven's spec,
 # sqlive-compose).
-sqlive-compose = { git = "https://github.com/bae-fm/coven", rev = "670c5a0d96035ac789941f6b0dfda74de6fdd318" }
+sqlive-compose = { git = "https://github.com/bae-fm/coven", rev = "64b47d2ff41724fd67fcc23e09958208c171958d" }
 # coven's schema SQL, and what sqlive reads of a SELECT: the crates a build
 # script takes without coven's runtime.
-coven-schema = { git = "https://github.com/bae-fm/coven", rev = "670c5a0d96035ac789941f6b0dfda74de6fdd318" }
-sqlive-reads = { git = "https://github.com/bae-fm/coven", rev = "670c5a0d96035ac789941f6b0dfda74de6fdd318" }
+coven-schema = { git = "https://github.com/bae-fm/coven", rev = "64b47d2ff41724fd67fcc23e09958208c171958d" }
+sqlive-reads = { git = "https://github.com/bae-fm/coven", rev = "64b47d2ff41724fd67fcc23e09958208c171958d" }
 # OptionalExtension, dynamic parameters and SQLite callback errors are not
 # re-exported by coven. This is the version coven's SQL contexts use.
 rusqlite = { version = "0.42.0", features = ["functions", "fallible_uint"] }

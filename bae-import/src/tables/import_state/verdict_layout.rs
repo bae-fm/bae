@@ -145,11 +145,7 @@ sqlive_compose::read!(
 /// An owner with no verdict, or one that found nothing, holds no layout.
 pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
     let request = VerdictOfParams { content_hash: owner.content_hash(), run: owner.run() };
-    let stored = sql
-        .query(VerdictOf::SQL, request.params().as_slice(), VerdictOfRow::read)?
-        .into_iter()
-        .next();
-    let Some(stored) = stored else {
+    let Some(stored) = statement_optional(sql, &request)? else {
         return Ok(());
     };
     let verdict = stored.verdict_id;

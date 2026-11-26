@@ -380,14 +380,9 @@ pub fn credit_artists_checked_on(
         musicbrainz: credit.musicbrainz_artist_id.clone(),
         discogs: credit.discogs_artist_id.clone(),
     };
-    let answers = sql.query(CreditUnderTest::SQL, request.params().as_slice(), |row| {
-        Ok(CreditUnderTestRow::read(row)?.answer.artists)
-    })?;
     // The rule answers the one credit it is given.
-    let json = answers
-        .first()
-        .ok_or_else(|| DbError::unreadable("the rule's answer for a credit", None::<String>))?;
-    let named: Vec<crate::ExistingArtist> = serde_json::from_str(json)
+    let json = bae_store::statement_row(sql, &request)?.answer.artists;
+    let named: Vec<crate::ExistingArtist> = serde_json::from_str(&json)
         .map_err(|error| DbError::unreadable_json("the rule's answer for a credit", json, error))?;
     let written = DbArtist {
         id: "credit-under-test".to_string(),

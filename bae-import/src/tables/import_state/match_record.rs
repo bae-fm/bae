@@ -324,7 +324,7 @@ pub(super) fn load_search_run_matches_on(
 ) -> Result<Vec<MatchRow>, DbError> {
     let name = format!("search {run}");
     let request = SearchRunMatchesParams { run };
-    sql.query(SearchRunMatches::SQL, request.params().as_slice(), SearchRunMatchesRow::read)?
+    statement_rows(sql, &request)?
         .into_iter()
         .map(|row| match_row_of(&name, &record_json(row.record, &name)?))
         .collect()

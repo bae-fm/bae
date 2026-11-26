@@ -194,24 +194,12 @@ pub(crate) fn load_stored_runtime_on(
     key: &CandidateKey,
 ) -> Result<StoredRuntime, DbError> {
     let request = RuntimeOfParams { key: key.clone() };
-    // The statement reads one row for the one key it is given.
-    let row = sql
-        .query(RuntimeOf::SQL, request.params().as_slice(), RuntimeOfRow::read)?
-        .into_iter()
-        .next()
-        .ok_or_else(|| DbError::unreadable(format!("the runtime of {key}"), None::<String>))?;
-    runtime_of(row.runtime).map(|(_, runtime)| runtime)
+    runtime_in(statement_row(sql, &request)?)
 }
 
-/// Every key something is running for: where it stands, what the run its
-/// runtime shows last published, and its typed search.
-fn load_stored_runtimes_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
-    sql.query(EveryRuntime::SQL, EveryRuntimeParams {}.params().as_slice(), EveryRuntimeRow::read)?
-        .into_iter()
-        .map(|row| runtime_of(row.runtime))
-        .collect()
+/// The runtime of the one key the row of a [`RuntimeOf`] read holds.
+fn runtime_in(row: RuntimeOfRow) -> Result<StoredRuntime, DbError> {
+    runtime_of(row.runtime).map(|(_, runtime)| runtime)
 }
 
 /// Delete every run's published state: nothing a run published outlives
@@ -310,8 +298,7 @@ impl ImportTables {
         &self,
         key: &CandidateKey,
     ) -> Result<StoredRuntime, DbError> {
-        let key = key.clone();
-        self.store.read(move |sql| load_stored_runtime_on(&sql, &key)).await
+        runtime_in(self.store.read_row(RuntimeOfParams { key: key.clone() }).await?)
     }
 
     /// Every key something is running for, as [`Self::load_candidate_runtime`]
@@ -319,7 +306,12 @@ impl ImportTables {
     pub(crate) async fn load_candidate_runtimes(
         &self,
     ) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
-        self.store.read(|sql| load_stored_runtimes_on(&sql)).await
+        self.store
+            .read_rows(EveryRuntimeParams {})
+            .await?
+            .into_iter()
+            .map(|row| runtime_of(row.runtime))
+            .collect()
     }
 
     /// The signals `run` of `key` last read, as its rows hold them; `None`
@@ -334,10 +326,7 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let request = RunSignalsParams { key, run };
-                let row = sql
-                    .query(RunSignals::SQL, request.params().as_slice(), RunSignalsRow::read)?
-                    .into_iter()
-                    .next();
+                let row = statement_optional(&sql, &request)?;
                 row.map(|row| {
                     let lines = row.lines.map(|lines| lines.signals_text_pool);
                     StoredPaneSignals::of(Some(&row.signals))

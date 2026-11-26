@@ -6,7 +6,7 @@ use super::card_fragments::VerdictCards;
 use super::state_fragments::CurrentState;
 use super::DbImportCandidateState;
 use bae_identify::signals::PaneSignals;
-use bae_store::DbError;
+use bae_store::{statement_row, DbError};
 
 sqlive_compose::read!(
     StoredVerdict(key: crate::CandidateKey),
@@ -30,14 +30,7 @@ pub(crate) fn load_current_state_and_cards_on(
     key: &crate::CandidateKey,
 ) -> Result<(Option<DbImportCandidateState<PaneSignals>>, bae_identify::VerdictCards), DbError> {
     let request = StoredVerdictParams { key: key.clone() };
-    // The statement's anchor is one row.
-    let row = sql
-        .query(StoredVerdict::SQL, request.params().as_slice(), StoredVerdictRow::read)?
-        .into_iter()
-        .next()
-        .ok_or_else(|| {
-            DbError::unreadable(format!("the stored verdict of {key}"), None::<String>)
-        })?;
+    let row = statement_row(sql, &request)?;
     current_state_and_cards_of(row.state, row.cards)
 }
 

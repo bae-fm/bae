@@ -80,17 +80,13 @@ pub(crate) fn load_states_rows_on(
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let rows: Vec<(CurrentState, Option<SignalTextPool>)> = match only {
         #[cfg(any(test, feature = "test-utils"))]
-        CandidateRows::All => sql
-            .query(EveryState::SQL, EveryStateParams {}.params().as_slice(), EveryStateRow::read)?
+        CandidateRows::All => statement_rows(sql, &EveryStateParams {})?
             .into_iter()
             .map(|row| (row.state, row.lines))
             .collect(),
         CandidateRows::One(OneCandidate::Hash(hash)) => {
             let request = StatesOfParams { candidate: hash.to_string() };
-            sql.query(StatesOf::SQL, request.params().as_slice(), StatesOfRow::read)?
-                .into_iter()
-                .map(|row| (row.state, row.lines))
-                .collect()
+            statement_rows(sql, &request)?.into_iter().map(|row| (row.state, row.lines)).collect()
         }
     };
     Ok(Box::new(move || {

@@ -22,6 +22,8 @@ bae-util = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.
 coven = { workspace = true }
 rusqlite = { workspace = true }
+# The traits of a generated read, by which the store runs one.
+sqlive-compose = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

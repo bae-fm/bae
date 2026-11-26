@@ -66,11 +66,8 @@ pub(super) fn album_artist_field_on(
         track_artists: track_artists.to_string(),
         part: ALBUM_PART,
     };
-    let rows =
-        sql.query(FormArtistFields::SQL, request.params().as_slice(), FormArtistFieldsRow::read)?;
     // The album has at most one artist field.
-    rows.into_iter()
-        .next()
+    statement_optional(sql, &request)?
         .map(|row| artist_field_of_json(&row.standing.into_columns().2))
         .transpose()
 }

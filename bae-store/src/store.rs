@@ -14,7 +14,7 @@ pub use coven_capabilities::{
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 
-use crate::read_statement::ReadStatement;
+use crate::read_statement::{statement_row, statement_rows, RowsOfBoth};
 use crate::store_read::StoreRead;
 use crate::DbError;
 
@@ -134,6 +134,24 @@ impl Store {
         StoreRead::new(self.inner.handle.read(f), self.inner.bugs.as_ref())
     }
 
+    /// Every row of the generated statement `statement`, read once.
+    pub async fn read_rows<Q>(&self, statement: Q) -> Result<Vec<Q::Row>, DbError>
+    where
+        Q: sqlive_compose::Read + Send + 'static,
+        Q::Row: Send + 'static,
+    {
+        self.read(move |sql| statement_rows(&sql, &statement)).await
+    }
+
+    /// The one row of the generated statement `statement`, read once.
+    pub async fn read_row<Q>(&self, statement: Q) -> Result<Q::Row, DbError>
+    where
+        Q: sqlive_compose::Read + Send + 'static,
+        Q::Row: Send + 'static,
+    {
+        self.read(move |sql| statement_row(&sql, &statement)).await
+    }
+
     /// How many reads have been asked of this store since it was made.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn reads_asked(&self) -> u64 {
@@ -225,26 +243,24 @@ impl Store {
     }
 
     /// A live query of two statements that read one snapshot: each request
-    /// becomes the parameters of each statement, and the result holds every
-    /// row each returned. A read that is too large for SQLite to prepare as
-    /// one statement is two, one for each concern of the screen.
-    pub fn subscribe_reconfigurable_statements<P, PA, PB, A, B, E>(
+    /// becomes each statement, and the result holds every row each returned.
+    /// A read that is too large for SQLite to prepare as one statement is two,
+    /// one for each concern of the screen.
+    pub fn subscribe_reconfigurable_statements<P, A, B, E>(
         &self,
         initial_request: P,
-        first: &'static ReadStatement<PA, A>,
-        second: &'static ReadStatement<PB, B>,
-    ) -> coven::ReconfigurableLiveQuery<P, (Vec<A>, Vec<B>), E>
+    ) -> coven::ReconfigurableLiveQuery<P, RowsOfBoth<A, B>, E>
     where
         P: Clone + PartialEq + Send + Sync + 'static,
-        PA: for<'request> From<&'request P> + 'static,
-        PB: for<'request> From<&'request P> + 'static,
-        A: Send + 'static,
-        B: Send + 'static,
+        A: sqlive_compose::Read + for<'request> From<&'request P> + 'static,
+        B: sqlive_compose::Read + for<'request> From<&'request P> + 'static,
+        A::Row: Send + 'static,
+        B::Row: Send + 'static,
         E: From<DbError> + From<coven::DbError> + CarriesBug + Send + 'static,
     {
-        self.inner.handle.subscribe_reconfigurable(initial_request, move |request, read| {
-            let rows = first.run(&read, &PA::from(request)).map_err(E::from)?;
-            Ok((rows, second.run(&read, &PB::from(request)).map_err(E::from)?))
+        self.inner.handle.subscribe_reconfigurable(initial_request, |request, read| {
+            let rows = statement_rows(&read, &A::from(request)).map_err(E::from)?;
+            Ok((rows, statement_rows(&read, &B::from(request)).map_err(E::from)?))
         })
     }
 
