@@ -46,14 +46,6 @@ sqlive_compose::fragment!(
         '[]') AS credits
 "#);
 
-impl AlbumCredits {
-    /// The credits as the JSON array that
-    /// [`super::read::credit_line_of_json`] reads.
-    pub fn json(&self) -> &str {
-        &self.credits
-    }
-}
-
 sqlive_compose::fragment!(
     LibraryStatusRows with checks(position INTEGER, release_id TEXT, catalog TEXT, group_id TEXT)
         { release_id: String, albums: String },
@@ -94,13 +86,6 @@ sqlive_compose::fragment!(
     FROM checks
     ORDER BY checks.position
 "#);
-
-impl LibraryStatusRows {
-    /// Which library albums hold the release.
-    pub fn status(self) -> Result<LibraryStatus, DbError> {
-        library_status_of_columns(self.release_id, &self.albums)
-    }
-}
 
 /// Which library albums hold the release `release_id`, from the JSON array
 /// of albums that [`LibraryStatusRows`] returns.
@@ -149,13 +134,6 @@ sqlive_compose::fragment!(
     ORDER BY named.position, named.match_rank, a.id IS named.own DESC, a.created_at, a.id
     LIMIT 1
 "#);
-
-impl AlbumRecordsName {
-    /// The library album the records name.
-    pub fn into_album_id(self) -> String {
-        self.album_id
-    }
-}
 
 sqlive_compose::fragment!(
     LibraryAlbum,
