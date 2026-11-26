@@ -1321,6 +1321,8 @@ the two statements read one snapshot. Each statement binds only the selected key
 candidate's scan row, and the content hash the scan stored, by that key, never
 by a value another statement returned. Each domain writes the fragment that
 reads its own rows, and no read names a table another crate owns.
+The candidate's runtime reads its stored verdict, which is the current state and
+the verdict's cards, from the same two fragments the pane spreads.
 A scan that stores other folders writes none of the rows the pane reads, so
 coven reruns none of the pane's statements for it.
 The parts are the folder's files, with the track count and the audio summary

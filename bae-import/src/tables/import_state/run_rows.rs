@@ -65,8 +65,7 @@ fn load_stored_verdict_on(
     sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<Option<StoredVerdict>, DbError> {
-    let current = super::load_current_state_on(sql, key)?;
-    let cards = super::load_candidate_verdict_cards_on(sql, key)?;
+    let (current, cards) = super::load_current_state_and_cards_on(sql, key)?;
     let not_cd_rate = current
         .as_ref()
         .and_then(|state| state.signals.as_ref())

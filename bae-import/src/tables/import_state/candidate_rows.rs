@@ -87,30 +87,15 @@ enum CandidateBinds {
     #[cfg(any(test, feature = "test-utils"))]
     None,
     One(String),
-    /// The key of the scanned release whose content hash and file-edit
-    /// revision the state's content hash and edit revision must equal.
-    AtScan(crate::CandidateKey),
 }
 
 impl CandidateFilter {
-    /// Keeps the scan's row of the release `key`, for a statement that reads
-    /// the state through [`current_state_from_sql`]: that join keeps the
-    /// state row of the content hash the scan holds only when its edit
-    /// revision equals the file-edit revision the scan holds.
-    pub(crate) fn current_at_scan(key: &crate::CandidateKey) -> Self {
-        Self {
-            clause: format!("WHERE {CURRENT_AT_KEY}"),
-            binds: CandidateBinds::AtScan(key.clone()),
-        }
-    }
-
     /// What the clause binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match &self.binds {
             #[cfg(any(test, feature = "test-utils"))]
             CandidateBinds::None => Vec::new(),
             CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
-            CandidateBinds::AtScan(key) => vec![(":key", key as &dyn rusqlite::ToSql)],
         }
     }
 }

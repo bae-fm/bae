@@ -112,6 +112,7 @@ impl HeadRows {
         })?;
         let files = files
             .ok_or_else(|| DbError::unreadable(format!("the files of {key}"), None::<String>))?;
+        let (current, cards) = import_state::current_state_and_cards_of(state, cards)?;
         Ok(Self {
             candidate: stored.candidate,
             files: pane_files::pane_files_of_json(&files.pane_files)?,
@@ -119,7 +120,7 @@ impl HeadRows {
             source_error: stored.error,
             actionable: stored.actionable,
             skipped,
-            current: state.map(import_state::current_state_of).transpose()?,
+            current,
             file_evidence: file_evidence_of_json(
                 &evidence
                     .ok_or_else(|| {
@@ -130,9 +131,7 @@ impl HeadRows {
                     })?
                     .file_evidence,
             )?,
-            cards: import_state::verdict_cards_of_column(
-                cards.and_then(|cards| cards.verdict_cards).as_deref(),
-            )?,
+            cards,
             standing: import_state::standing_of(standing, &key)?.facts(),
             listed: listed_columns,
         })

@@ -3,7 +3,7 @@
 //! file decisions, signals, draft provenance, release link and lookup
 //! choices.
 
-use super::candidate_rows::{current_state_from_sql, CandidateFilter};
+use super::candidate_rows::CandidateFilter;
 use super::file_decision_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
 use super::match_record::{match_record_sql, match_rows_of};
@@ -31,19 +31,17 @@ struct StoredCandidate<Signals> {
     matches: String,
 }
 
-/// The candidate one row of [`load_states_rows_on`]'s read holds, its
-/// signals as `read_signals` reads them.
-fn read_candidate<Signals>(
+/// The candidate one row of [`load_states_rows_on`]'s read holds.
+fn read_candidate(
     row: &Row<'_>,
-    read_signals: fn(&Row<'_>) -> rusqlite::Result<Option<Signals>>,
-) -> Result<StoredCandidate<Signals>, DbError> {
+) -> Result<StoredCandidate<super::signal_rows::StoredSignals>, DbError> {
     Ok(StoredCandidate {
         content_hash: row.get("content_hash")?,
         candidate_key: row.get("candidate_key")?,
         metadata_revision: row.get("metadata_revision")?,
         author: row.get("draft_author")?,
         file_edits: read_file_edits(row)?,
-        signals: read_signals(row)?,
+        signals: super::signal_rows::read_signals(row)?,
         provenance: read_provenance(row)?,
         link: read_release_link(row)?,
         lookup_choices: super::lookup_choice_rows::read_lookup_choices(row)?,
@@ -69,47 +67,7 @@ pub(crate) fn load_states_rows_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
-    states_rows_where(
-        sql,
-        "import_candidate_state AS state",
-        only.filter("state.content_hash"),
-        SignalsRead {
-            columns: super::signal_rows::signals_read_columns(),
-            read: |row| super::signal_rows::read_signals(row),
-            signals: super::signal_rows::StoredSignals::signals,
-        },
-    )
-}
-
-/// The state of the release the scan stores at `key` when its edit revision
-/// equals the file-edit revision the scan holds, in the same read; `None`
-/// when another revision wrote it. Its signals are what a pane shows of
-/// them, without their text lines.
-pub(crate) fn load_current_state_on(
-    sql: &impl coven::SqlRead,
-    key: &crate::CandidateKey,
-) -> Result<Option<DbImportCandidateState<PaneSignals>>, DbError> {
-    // The clause keeps at most the one state row of the scan's content hash.
-    Ok(states_rows_where(
-        sql,
-        &current_state_from_sql("state"),
-        CandidateFilter::current_at_scan(key),
-        SignalsRead {
-            columns: super::signal_rows::pane_signals_read_columns(),
-            read: |row| super::signal_rows::read_pane_signals(row),
-            signals: super::signal_rows::StoredPaneSignals::signals,
-        },
-    )?()?
-    .into_values()
-    .next())
-}
-
-/// How a read takes the candidate's signals: the columns it selects, the
-/// stored signals it reads off a row, and the signals those make.
-struct SignalsRead<Stored, Signals> {
-    columns: super::column_list::ColumnList,
-    read: fn(&Row<'_>) -> rusqlite::Result<Option<Stored>>,
-    signals: fn(Stored) -> Result<Signals, DbError>,
+    states_rows_where(sql, only.filter("state.content_hash"))
 }
 
 /// The current state a pane's read selects, as
@@ -134,17 +92,10 @@ pub(crate) fn current_state_of(
 }
 
 /// The states `filter` keeps, each with the rows that share its content hash.
-fn states_rows_where<Stored, Signals>(
+fn states_rows_where(
     sql: &impl coven::SqlRead,
-    from: &str,
     filter: CandidateFilter,
-    signals: SignalsRead<Stored, Signals>,
-) -> Result<FinishRead<HashMap<String, DbImportCandidateState<Signals>>>, DbError>
-where
-    Stored: Send + 'static,
-    Signals: Send + 'static,
-{
-    let SignalsRead { columns, read, signals: to_signals } = signals;
+) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let rows = sql.query(
         &format!(
             "SELECT state.content_hash, state.candidate_key, state.metadata_revision, \
@@ -154,7 +105,7 @@ where
                     (SELECT json_group_array({record} ORDER BY found.position) \
                      FROM import_candidate_match AS found \
                      WHERE found.verdict_id = verdict.verdict_id) AS candidate_matches \
-             FROM {from} \
+             FROM import_candidate_state AS state \
              LEFT JOIN import_candidate_edit AS edit \
                  ON edit.content_hash = state.content_hash \
              LEFT JOIN import_candidate_signals AS signals \
@@ -168,19 +119,22 @@ where
              LEFT JOIN import_candidate_verdict AS verdict \
                  ON verdict.content_hash = state.content_hash \
              {clause}",
-            signals = columns.select(),
+            signals = super::signal_rows::signals_read_columns().select(),
             verdict = verdict_columns().select(),
             record = match_record_sql("found"),
             clause = filter.clause,
         ),
         filter.params().as_slice(),
-        |row| Ok(read_candidate(row, read)),
+        |row| Ok(read_candidate(row)),
     )?;
     Ok(Box::new(move || {
         rows.into_iter()
             .map(|candidate| {
                 let candidate = candidate?;
-                Ok((candidate.content_hash.clone(), candidate.state(to_signals)?))
+                Ok((
+                    candidate.content_hash.clone(),
+                    candidate.state(super::signal_rows::StoredSignals::signals)?,
+                ))
             })
             .collect()
     }))

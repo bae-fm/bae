@@ -72,6 +72,7 @@ mod seed_rows;
 mod signal_rows;
 mod standing_rows;
 pub(crate) mod state_fragments;
+mod stored_verdict_read;
 mod verdict_failure_rows;
 mod verdict_layout;
 mod verdict_rows;
@@ -79,8 +80,8 @@ mod verdict_rows;
 pub(super) use candidate_rows::{
     current_state_from_sql, CandidateRows, OneCandidate, CURRENT_AT_KEY,
 };
-pub(crate) use cards_read::verdict_cards_of_column;
-pub(super) use cards_read::{load_candidate_verdict_cards_on, load_verdict_cards_on};
+pub(super) use cards_read::load_verdict_cards_on;
+use cards_read::verdict_cards_of_column;
 pub(super) use claim_rows::{
     claimed_records_of_json, claimed_records_sql, offered_covers_sql, store_claims_of_albums_on,
     store_claims_of_releases_on,
@@ -111,9 +112,9 @@ pub(crate) use preparation_rows::{
     RunVerdictSaved, ScannedCandidateKey,
 };
 pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
-pub(crate) use rows::current_state_of;
+use rows::current_state_of;
 pub use rows::DbImportCandidateState;
-pub(super) use rows::{load_current_state_on, load_states_on, stored_verdict_view};
+pub(super) use rows::{load_states_on, stored_verdict_view};
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
 pub(super) use signal_rows::file_evidence_of_json;
 use signal_rows::{delete_signals, store_signals};
@@ -121,6 +122,7 @@ pub(crate) use standing_rows::standing_of;
 pub(crate) use standing_rows::ImportClaim;
 #[cfg(test)]
 pub(crate) use standing_rows::StandingColumn;
+pub(crate) use stored_verdict_read::{current_state_and_cards_of, load_current_state_and_cards_on};
 pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, VerdictPick};
 // The source releases' tests store a run's releases as a release run does.
 #[cfg(test)]

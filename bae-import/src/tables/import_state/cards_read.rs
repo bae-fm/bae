@@ -375,32 +375,6 @@ pub(crate) fn load_verdict_cards_on(
     json.map_or_else(|| Ok(VerdictCards::default()), |json| verdict_cards_of(&json))
 }
 
-/// Returns the cards of the verdict of the current state of the release the
-/// scan stores at `key`, in one statement that binds only the key. Returns no
-/// cards unless that verdict holds findings.
-pub(crate) fn load_candidate_verdict_cards_on(
-    sql: &impl coven::SqlRead,
-    key: &crate::CandidateKey,
-) -> Result<VerdictCards, DbError> {
-    let json: Option<String> = sql
-        .query_row(
-            &format!(
-                "SELECT {cards} FROM {current} \
-                 JOIN import_candidate_verdict AS verdict \
-                     ON verdict.content_hash = state.content_hash \
-                 WHERE {at_key} AND {holds_findings}",
-                cards = verdict_cards_sql("verdict"),
-                current = super::current_state_from_sql("state"),
-                at_key = super::CURRENT_AT_KEY,
-                holds_findings = super::verdict_rows::holds_findings_sql("verdict"),
-            ),
-            named_params! { ":key": key },
-            |row| row.get(0),
-        )
-        .optional()?;
-    json.map_or_else(|| Ok(VerdictCards::default()), |json| verdict_cards_of(&json))
-}
-
 /// The cards the JSON document `json` holds, which a pane's read selects;
 /// none for a candidate whose verdict holds no findings.
 pub(crate) fn verdict_cards_of_column(json: Option<&str>) -> Result<VerdictCards, DbError> {
