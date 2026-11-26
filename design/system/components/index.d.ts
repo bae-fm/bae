@@ -393,7 +393,7 @@ export declare function MacReleaseCard(props: { title: string; artist?: string }
 /** A found album with its pressings, in a MacPressingTable. */
 export declare function MacReleaseGroup(props: { title: string; artist?: string; children?: React.ReactNode }): React.ReactElement;
 /** A found pressing, a row of the table: year, label, catalog number, country, format and details, a dot for each identifier kind that names it, and the chevron. */
-export declare function MacPressingRow(props: { year?: string; label?: string; catalog?: string; country?: string; format?: string; details?: string; /** The notes of the pressing's records, in italics after the details. */ notes?: string; matches?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
+export declare function MacPressingRow(props: { year?: string; label?: string; catalog?: string; country?: string; format?: string; /** The lead record's details, comma-separated, each drawn as its own word. */ details?: string; /** The notes of the pressing's records, in italics after the details. */ notes?: string; matches?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
 export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
 export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;

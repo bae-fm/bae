@@ -420,13 +420,14 @@
   function sourcedParts(text) {
     return String(text).split('|').map(function (v) { var at = v.lastIndexOf(':'); return { value: v.slice(0, at), catalog: v.slice(at + 1) }; });
   }
-  // A found pressing, a row of MacPressingTable: `year` in strong text, `label` in secondary text, then `catalog`, `country`, `format` and `details` in tertiary text, each in its column and cut at its edge. Each is a MacSourcedValue, so a fact the records state differently shows every record's value with its catalog. `notes`: the records' notes, a release's disambiguation, in italics after the details. Then a dot in each identifier column whose kind names the pressing (`matches`, comma-separated), and the chevron. `inLibrary`: one the library has, dimmed whole, with In library after the details. `selected`: the row picked.
+  // A found pressing, a row of MacPressingTable: `year` in strong text, `label` in secondary text, then `catalog`, `country`, `format` and `details` in tertiary text, each in its column and cut at its edge. Each but the details is a MacSourcedValue, so a fact the records state differently shows every record's value with its catalog. `details` are the lead record's words, comma-separated, each its own word a related space from the next, with no separator. `notes`: the records' notes, a release's disambiguation, in italics after the details. Then a dot in each identifier column whose kind names the pressing (`matches`, comma-separated), and the chevron. `inLibrary`: one the library has, dimmed whole, with In library after the details. `selected`: the row picked.
   // In library's check is the success status glyph in the detail text's font, regular.
   function MacPressingRow(props) {
     var kinds = React.useContext(PressingKinds), matches = list(props.matches);
     var sv = function (v) { return v ? h(MacSourcedValue, { value: v }) : null; };
     var cell = function (key, className, value, extra) { return h('span', { key: key, className: cx('bae-m-prow-cell', extra) }, value ? h('span', { className: className }, value) : null); };
-    var details = [props.details ? h(React.Fragment, { key: 'd' }, sv(props.details)) : null,
+    var words = list(props.details);
+    var details = [words.length ? h('span', { key: 'd', className: 'bae-m-prow-words' }, words.map(function (w, i) { return h('span', { key: i }, w); })) : null,
       props.notes ? h('span', { key: 'n', className: 'bae-m-prow-notes' }, sv(props.notes)) : null,
       props.inLibrary ? h('span', { key: 'l', className: 'bae-m-prow-inlib' }, h(StatusGlyph, { tone: 'success', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular' }), 'In library') : null].filter(Boolean);
     return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected', props.inLibrary && 'bae-m-prow-inlibrary') },

@@ -1785,7 +1785,7 @@ spare width. Columns are 16pt apart, and the chevron is 40pt from the last
 column. The year is strong, the label secondary, and the catalog number,
 country, format and details tertiary. The details cell shows each detail in the
 catalog's own words and casing, such as `Club edition` or `LP`, as separate
-words with no separator between one detail and the next. When a row's lead record names a pressing the library already
+words 8pt apart, with no separator between one detail and the next. When a row's lead record names a pressing the library already
 holds, every list that shows that row says *In library*. The label follows
 the library as it gains and loses the release.
 
