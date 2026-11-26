@@ -1,12 +1,12 @@
-//! The verdict cards of a candidate, as the candidate pane reads them.
+//! The cards of a verdict, as the candidate pane and the runtime read them.
 
 sqlive_compose::fragment!(
-    VerdictCards(key: crate::CandidateKey) {
-        cards_key: crate::CandidateKey,
+    VerdictCards with owner(content_hash TEXT, identify_run INTEGER) {
+        owner_row: String,
         verdict_cards: Option<String>
     },
     r#"
-    SELECT :key AS cards_key, (
+    SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row, (
             SELECT (
                 WITH listed_cards AS MATERIALIZED (
                     SELECT (
@@ -408,10 +408,9 @@ sqlive_compose::fragment!(
             ))) END)
             FROM listed_cards
         )
-        FROM scan_candidate AS scanned
-        JOIN import_candidate_state AS state ON state.content_hash = scanned.content_hash AND
-            state.edit_revision = scanned.file_edit_revision
-        JOIN import_candidate_verdict AS verdict ON verdict.content_hash = state.content_hash
-            WHERE scanned.path = :key AND verdict.kind IN ('found', 'failed')
+        FROM import_candidate_verdict AS verdict
+            WHERE verdict.content_hash IS owner.content_hash AND verdict.identify_run IS
+                owner.identify_run AND verdict.kind IN ('running', 'found', 'failed')
     ) AS verdict_cards
+    FROM owner
 "#);

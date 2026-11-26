@@ -10,55 +10,14 @@
 use super::*;
 use bae_identify::{LookupChoices, SearchWords};
 
-/// A candidate's lookup choices as columns of a read that joins its header
-/// row as `choices`, its lists riding on it as JSON arrays: the chosen
-/// catalog numbers in their order, the struck-out ones and the left-out
-/// barcodes by value. A candidate with no header row reads `choices_row` as
-/// NULL.
-pub(super) const LOOKUP_CHOICES_COLUMNS: &str = "choices.content_hash AS choices_row, \
-     choices.disc_id_excluded AS choices_disc_id_excluded, \
-     choices.search_album AS choices_search_album, \
-     choices.search_artist AS choices_search_artist, \
-     (SELECT json_group_array(chosen.value ORDER BY chosen.position) \
-      FROM import_candidate_chosen_catalog AS chosen \
-      WHERE chosen.content_hash = choices.content_hash) AS choices_chosen_catalogs, \
-     (SELECT json_group_array(struck.value ORDER BY struck.value) \
-      FROM import_candidate_discounted_catalog AS struck \
-      WHERE struck.content_hash = choices.content_hash) AS choices_discounted_catalogs, \
-     (SELECT json_group_array(left_out.value ORDER BY left_out.value) \
-      FROM import_candidate_excluded_barcode AS left_out \
-      WHERE left_out.content_hash = choices.content_hash) AS choices_excluded_barcodes";
-
-/// One candidate's [`LOOKUP_CHOICES_COLUMNS`] as SQLite hands them over,
-/// its lists still JSON.
+/// What a candidate decided its identification asks about, as the state's
+/// columns hold it, its lists still JSON.
 pub(super) struct StoredLookupChoices {
     disc_id_excluded: bool,
     search_words: Option<SearchWords>,
     chosen_catalogs: String,
     discounted_catalogs: String,
     excluded_barcodes: String,
-}
-
-/// The [`LOOKUP_CHOICES_COLUMNS`] of `row`; none for a candidate that has
-/// decided nothing.
-pub(super) fn read_lookup_choices(row: &Row<'_>) -> rusqlite::Result<Option<StoredLookupChoices>> {
-    if row.get::<_, Option<String>>("choices_row")?.is_none() {
-        return Ok(None);
-    }
-    let search_words = match (
-        row.get::<_, Option<String>>("choices_search_album")?,
-        row.get::<_, Option<String>>("choices_search_artist")?,
-    ) {
-        (Some(album), Some(artist)) => Some(SearchWords { album, artist }),
-        _ => None,
-    };
-    Ok(Some(StoredLookupChoices {
-        disc_id_excluded: row.get("choices_disc_id_excluded")?,
-        search_words,
-        chosen_catalogs: row.get("choices_chosen_catalogs")?,
-        discounted_catalogs: row.get("choices_discounted_catalogs")?,
-        excluded_barcodes: row.get("choices_excluded_barcodes")?,
-    }))
 }
 
 impl StoredLookupChoices {

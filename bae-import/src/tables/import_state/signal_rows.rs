@@ -508,6 +508,11 @@ impl StoredPaneSignals {
 }
 
 impl StoredSignals {
+    /// The signals of a pane's columns with the text lines' JSON.
+    pub(super) fn of(pane: StoredPaneSignals, text_pool: String) -> Self {
+        Self { pane, text_pool }
+    }
+
     pub(super) fn signals(self) -> Result<Signals, DbError> {
         let Self { pane, text_pool } = self;
         let text_pool = list_of::<StoredTextLine>(&text_pool, "text lines")?

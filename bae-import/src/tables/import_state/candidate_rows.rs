@@ -20,18 +20,6 @@ pub(crate) enum OneCandidate<'a> {
     Hash(&'a str),
 }
 
-impl<'a> CandidateRows<'a> {
-    /// The clause keeping these candidates' rows by `column`, and what it
-    /// binds; no clause for every candidate.
-    pub(crate) fn filter(self, column: &str) -> CandidateFilter {
-        match self {
-            #[cfg(any(test, feature = "test-utils"))]
-            Self::All => CandidateFilter { clause: String::new(), binds: CandidateBinds::None },
-            Self::One(one) => one.filter(column),
-        }
-    }
-}
-
 impl OneCandidate<'_> {
     /// The clause keeping this candidate's rows by `column`, and what it
     /// binds.
@@ -84,8 +72,6 @@ pub(crate) struct CandidateFilter {
 }
 
 enum CandidateBinds {
-    #[cfg(any(test, feature = "test-utils"))]
-    None,
     One(String),
 }
 
@@ -93,8 +79,6 @@ impl CandidateFilter {
     /// What the clause binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match &self.binds {
-            #[cfg(any(test, feature = "test-utils"))]
-            CandidateBinds::None => Vec::new(),
             CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
         }
     }

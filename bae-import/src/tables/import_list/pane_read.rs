@@ -7,6 +7,13 @@
 sqlive_compose::read!(
     PaneHead(key: Option<crate::CandidateKey>),
     r#"
+    WITH current_owner AS (
+        SELECT scanned.content_hash AS content_hash, NULL AS identify_run
+        FROM scan_candidate AS scanned
+        JOIN import_candidate_state AS state ON state.content_hash = scanned.content_hash
+            AND state.edit_revision = scanned.file_edit_revision
+        WHERE scanned.path = :key
+    )
     SELECT listed.*, scan.*, grouping.*, files.*, standing.*, imported.*, state.*, evidence.*,
            cards.*
     FROM (SELECT :key AS key) AS pane
@@ -18,10 +25,12 @@ sqlive_compose::read!(
     LEFT JOIN @crate::tables::import_state::fragments::Standing(key: :key) AS standing ON 1
     LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
         AS imported ON 1
-    LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(key: :key)
+    LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(
+        owner: (SELECT * FROM current_owner))
         AS state ON 1
     LEFT JOIN @crate::tables::import_state::fragments::FileEvidence(key: :key) AS evidence ON 1
-    LEFT JOIN @crate::tables::import_state::card_fragments::VerdictCards(key: :key)
+    LEFT JOIN @crate::tables::import_state::card_fragments::VerdictCards(
+        owner: (SELECT * FROM current_owner))
         AS cards ON 1
 "#
 );

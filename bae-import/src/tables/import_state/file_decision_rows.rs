@@ -95,13 +95,13 @@ struct StoredSheetReference {
 impl StoredFileEdits {
     /// The decisions a pane's read selects, as
     /// [`super::state_fragments::CurrentState`] names them.
-    pub(super) fn of(state: &super::state_fragments::CurrentState) -> Self {
-        Self {
-            content_hash: state.content_hash.clone(),
-            revision: state.edits_revision,
+    pub(super) fn of(state: &super::state_fragments::CurrentState) -> Result<Self, DbError> {
+        Ok(Self {
+            content_hash: super::required(state.content_hash.clone(), "content_hash")?,
+            revision: super::required(state.edits_revision, "edit_revision")?,
             sheet_places: state.edits_sheet_places.clone(),
             sheet_references: state.edits_sheet_references.clone(),
-        }
+        })
     }
 }
 

@@ -1,13 +1,13 @@
-//! The current state of a candidate, as the candidate pane reads it.
+//! The current state of a candidate or of one identify run, as the candidate pane and the runtime read it.
 
 sqlive_compose::fragment!(
-    CurrentState(key: crate::CandidateKey) {
-        state_key: crate::CandidateKey,
-        content_hash: String,
-        candidate_key: crate::CandidateKey,
-        metadata_revision: i64,
+    CurrentState with owner(content_hash TEXT, identify_run INTEGER) {
+        owner_row: String,
+        content_hash: Option<String>,
+        candidate_key: Option<crate::CandidateKey>,
+        metadata_revision: Option<i64>,
         draft_author: Option<String>,
-        edits_revision: i64,
+        edits_revision: Option<i64>,
         edits_sheet_places: String,
         edits_sheet_references: String,
         signals_row: Option<String>,
@@ -70,8 +70,9 @@ sqlive_compose::fragment!(
         candidate_matches: String
     },
     r#"
-    WITH statement(content_hash, candidate_key, metadata_revision, draft_author, edits_revision, edits_sheet_places, edits_sheet_references, signals_row, signals_audio_source, signals_cd_rip_proof, signals_download_proof, signals_audio_source_file, signals_not_cd_rate, signals_disc_id_state, signals_disc_id_failure, signals_barcode_state, signals_barcode_failure, signals_text_state, signals_text_failure, signals_discs, signals_barcodes, signals_catalogs, signals_free_text, signals_isrcs, signals_track_titles, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, choices_row, choices_disc_id_excluded, choices_search_album, choices_search_artist, choices_chosen_catalogs, choices_discounted_catalogs, choices_excluded_barcodes, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches) AS (
-            SELECT state.content_hash, state.candidate_key, state.metadata_revision, edit.author
+    WITH statement(owner_row, content_hash, candidate_key, metadata_revision, draft_author, edits_revision, edits_sheet_places, edits_sheet_references, signals_row, signals_audio_source, signals_cd_rip_proof, signals_download_proof, signals_audio_source_file, signals_not_cd_rate, signals_disc_id_state, signals_disc_id_failure, signals_barcode_state, signals_barcode_failure, signals_text_state, signals_text_failure, signals_discs, signals_barcodes, signals_catalogs, signals_free_text, signals_isrcs, signals_track_titles, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, choices_row, choices_disc_id_excluded, choices_search_album, choices_search_artist, choices_chosen_catalogs, choices_discounted_catalogs, choices_excluded_barcodes, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches) AS (
+            SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row,
+                state.content_hash, state.candidate_key, state.metadata_revision, edit.author
                 AS draft_author, state.edit_revision AS edits_revision,(
             SELECT json_group_array(json_object('sheet_id', place.sheet_id, 'place',
                 place.place, 'medium', place.medium, 'side', place.side) ORDER BY
@@ -598,22 +599,37 @@ sqlive_compose::fragment!(
             FROM import_candidate_match AS found
             WHERE found.verdict_id = verdict.verdict_id
         ) AS candidate_matches
-        FROM scan_candidate AS scanned
-        JOIN import_candidate_state AS state ON state.content_hash = scanned.content_hash AND
-            state.edit_revision = scanned.file_edit_revision
+        FROM owner
+        LEFT JOIN import_candidate_state AS state ON state.content_hash = owner.content_hash
         LEFT JOIN import_candidate_edit AS edit ON edit.content_hash = state.content_hash
-        LEFT JOIN import_candidate_signals AS signals ON signals.content_hash =
-            state.content_hash
+        LEFT JOIN import_candidate_signals AS signals ON signals.content_hash IS
+            owner.content_hash AND signals.identify_run IS owner.identify_run
         LEFT JOIN import_candidate_draft_provenance AS provenance ON provenance.content_hash =
             state.content_hash
         LEFT JOIN import_candidate_release_link AS link ON link.content_hash =
             state.content_hash
         LEFT JOIN import_candidate_lookup_choices AS choices ON choices.content_hash =
             state.content_hash
-        LEFT JOIN import_candidate_verdict AS verdict ON verdict.content_hash =
-            state.content_hash
-            WHERE scanned.path = :key
+        LEFT JOIN import_candidate_verdict AS verdict ON verdict.content_hash IS
+            owner.content_hash AND verdict.identify_run IS owner.identify_run
     )
-    SELECT :key AS state_key, content_hash, candidate_key, metadata_revision, draft_author, edits_revision, edits_sheet_places, edits_sheet_references, signals_row, signals_audio_source, signals_cd_rip_proof, signals_download_proof, signals_audio_source_file, signals_not_cd_rate, signals_disc_id_state, signals_disc_id_failure, signals_barcode_state, signals_barcode_failure, signals_text_state, signals_text_failure, signals_discs, signals_barcodes, signals_catalogs, signals_free_text, signals_isrcs, signals_track_titles, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, choices_row, choices_disc_id_excluded, choices_search_album, choices_search_artist, choices_chosen_catalogs, choices_discounted_catalogs, choices_excluded_barcodes, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches
+    SELECT owner_row, content_hash, candidate_key, metadata_revision, draft_author, edits_revision, edits_sheet_places, edits_sheet_references, signals_row, signals_audio_source, signals_cd_rip_proof, signals_download_proof, signals_audio_source_file, signals_not_cd_rate, signals_disc_id_state, signals_disc_id_failure, signals_barcode_state, signals_barcode_failure, signals_text_state, signals_text_failure, signals_discs, signals_barcodes, signals_catalogs, signals_free_text, signals_isrcs, signals_track_titles, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, choices_row, choices_disc_id_excluded, choices_search_album, choices_search_artist, choices_chosen_catalogs, choices_discounted_catalogs, choices_excluded_barcodes, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches
     FROM statement
+"#);
+
+sqlive_compose::fragment!(
+    SignalTextPool with owner(content_hash TEXT, identify_run INTEGER) {
+        owner_row: String,
+        signals_text_pool: String
+    },
+    r#"
+    SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row, COALESCE((
+            SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) ORDER BY
+                line.position)
+            FROM import_candidate_signals AS signals
+            JOIN import_candidate_text_line AS line ON line.signals_id = signals.signals_id
+            WHERE signals.content_hash IS owner.content_hash AND signals.identify_run IS
+                owner.identify_run
+        ), '[]') AS signals_text_pool
+    FROM owner
 "#);

@@ -3,13 +3,11 @@
 //! file decisions, signals, draft provenance, release link and lookup
 //! choices.
 
-use super::candidate_rows::CandidateFilter;
-use super::file_decision_rows::{read_file_edits, FILE_EDITS_COLUMNS};
-use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
-use super::match_record::{match_record_sql, match_rows_of};
-use super::pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
-use super::release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
-use super::verdict_rows::{identification_of, read_verdict_row, verdict_columns, VerdictRow};
+use super::match_record::match_rows_of;
+use super::pane_rows::StoredProvenance;
+use super::release_link_rows::StoredReleaseLink;
+use super::state_fragments::{CurrentState, SignalTextPool};
+use super::verdict_rows::{identification_of, VerdictRow};
 use super::*;
 use crate::tables::FinishRead;
 use bae_identify::signals::PaneSignals;
@@ -31,24 +29,37 @@ struct StoredCandidate<Signals> {
     matches: String,
 }
 
-/// The candidate one row of [`load_states_rows_on`]'s read holds.
-fn read_candidate(
-    row: &Row<'_>,
-) -> Result<StoredCandidate<super::signal_rows::StoredSignals>, DbError> {
-    Ok(StoredCandidate {
-        content_hash: row.get("content_hash")?,
-        candidate_key: row.get("candidate_key")?,
-        metadata_revision: row.get("metadata_revision")?,
-        author: row.get("draft_author")?,
-        file_edits: read_file_edits(row)?,
-        signals: super::signal_rows::read_signals(row)?,
-        provenance: read_provenance(row)?,
-        link: read_release_link(row)?,
-        lookup_choices: super::lookup_choice_rows::read_lookup_choices(row)?,
-        verdict: read_verdict_row(row)?,
-        matches: row.get("candidate_matches")?,
-    })
-}
+sqlive_compose::read!(
+    StatesOf(candidate: String),
+    r#"
+    WITH owners AS (
+        SELECT stored.content_hash AS content_hash, NULL AS identify_run
+        FROM import_candidate_state AS stored
+        WHERE stored.content_hash = :candidate
+    )
+    SELECT state.*, lines.*
+    FROM @crate::tables::import_state::state_fragments::CurrentState(
+        owner: (SELECT * FROM owners)) AS state
+    LEFT JOIN @crate::tables::import_state::state_fragments::SignalTextPool(
+        owner: (SELECT * FROM owners)) AS lines ON lines.owner_row = state.owner_row
+"#
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::read!(
+    EveryState,
+    r#"
+    WITH owners AS (
+        SELECT stored.content_hash AS content_hash, NULL AS identify_run
+        FROM import_candidate_state AS stored
+    )
+    SELECT state.*, lines.*
+    FROM @crate::tables::import_state::state_fragments::CurrentState(
+        owner: (SELECT * FROM owners)) AS state
+    LEFT JOIN @crate::tables::import_state::state_fragments::SignalTextPool(
+        owner: (SELECT * FROM owners)) AS lines ON lines.owner_row = state.owner_row
+"#
+);
 
 /// Every stored candidate row, or the one `only` names, assembled with the
 /// verdict, signals, provenance, and file-decision rows that share its
@@ -67,77 +78,77 @@ pub(crate) fn load_states_rows_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
-    states_rows_where(sql, only.filter("state.content_hash"))
+    let rows: Vec<(CurrentState, Option<SignalTextPool>)> = match only {
+        #[cfg(any(test, feature = "test-utils"))]
+        CandidateRows::All => sql
+            .query(EveryState::SQL, EveryStateParams {}.params().as_slice(), EveryStateRow::read)?
+            .into_iter()
+            .map(|row| (row.state, row.lines))
+            .collect(),
+        CandidateRows::One(OneCandidate::Hash(hash)) => {
+            let request = StatesOfParams { candidate: hash.to_string() };
+            sql.query(StatesOf::SQL, request.params().as_slice(), StatesOfRow::read)?
+                .into_iter()
+                .map(|row| (row.state, row.lines))
+                .collect()
+        }
+    };
+    Ok(Box::new(move || {
+        rows.into_iter()
+            .map(|(state, lines)| {
+                let state = full_state_of(state, lines)?;
+                Ok((state.content_hash.clone(), state))
+            })
+            .collect()
+    }))
 }
 
-/// The current state a pane's read selects, as
-/// [`super::state_fragments::CurrentState`] names it.
-pub(crate) fn current_state_of(
-    state: super::state_fragments::CurrentState,
-) -> Result<DbImportCandidateState<PaneSignals>, DbError> {
-    StoredCandidate {
-        content_hash: state.content_hash.clone(),
-        candidate_key: state.candidate_key.clone(),
-        metadata_revision: state.metadata_revision,
+/// The candidate a read of [`CurrentState`] returned, as stored: its own
+/// columns, the rows joined onto it and its matches.
+fn stored_candidate_of<Signals>(
+    state: CurrentState,
+    signals: Option<Signals>,
+) -> Result<StoredCandidate<Signals>, DbError> {
+    Ok(StoredCandidate {
+        content_hash: super::required(state.content_hash.clone(), "content_hash")?,
+        candidate_key: super::required(state.candidate_key.clone(), "candidate_key")?,
+        metadata_revision: super::required(state.metadata_revision, "metadata_revision")?,
         author: state.draft_author.clone(),
-        file_edits: super::file_decision_rows::StoredFileEdits::of(&state),
-        signals: super::signal_rows::StoredPaneSignals::of(&state)?,
+        file_edits: super::file_decision_rows::StoredFileEdits::of(&state)?,
+        signals,
         provenance: StoredProvenance::of(&state)?,
         link: StoredReleaseLink::of(&state)?,
         lookup_choices: super::lookup_choice_rows::StoredLookupChoices::of(&state)?,
         verdict: super::verdict_rows::verdict_row_of_state(&state)?,
         matches: state.candidate_matches,
-    }
-    .state(super::signal_rows::StoredPaneSignals::signals)
+    })
 }
 
-/// The states `filter` keeps, each with the rows that share its content hash.
-fn states_rows_where(
-    sql: &impl coven::SqlRead,
-    filter: CandidateFilter,
-) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT state.content_hash, state.candidate_key, state.metadata_revision, \
-                    edit.author AS draft_author, {FILE_EDITS_COLUMNS}, {signals}, \
-                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {LOOKUP_CHOICES_COLUMNS}, \
-                    {verdict}, \
-                    (SELECT json_group_array({record} ORDER BY found.position) \
-                     FROM import_candidate_match AS found \
-                     WHERE found.verdict_id = verdict.verdict_id) AS candidate_matches \
-             FROM import_candidate_state AS state \
-             LEFT JOIN import_candidate_edit AS edit \
-                 ON edit.content_hash = state.content_hash \
-             LEFT JOIN import_candidate_signals AS signals \
-                 ON signals.content_hash = state.content_hash \
-             LEFT JOIN import_candidate_draft_provenance AS provenance \
-                 ON provenance.content_hash = state.content_hash \
-             LEFT JOIN import_candidate_release_link AS link \
-                 ON link.content_hash = state.content_hash \
-             LEFT JOIN import_candidate_lookup_choices AS choices \
-                 ON choices.content_hash = state.content_hash \
-             LEFT JOIN import_candidate_verdict AS verdict \
-                 ON verdict.content_hash = state.content_hash \
-             {clause}",
-            signals = super::signal_rows::signals_read_columns().select(),
-            verdict = verdict_columns().select(),
-            record = match_record_sql("found"),
-            clause = filter.clause,
-        ),
-        filter.params().as_slice(),
-        |row| Ok(read_candidate(row)),
-    )?;
-    Ok(Box::new(move || {
-        rows.into_iter()
-            .map(|candidate| {
-                let candidate = candidate?;
-                Ok((
-                    candidate.content_hash.clone(),
-                    candidate.state(super::signal_rows::StoredSignals::signals)?,
-                ))
-            })
-            .collect()
-    }))
+/// The current state a pane's read selects, as
+/// [`super::state_fragments::CurrentState`] names it.
+pub(crate) fn current_state_of(
+    state: CurrentState,
+) -> Result<DbImportCandidateState<PaneSignals>, DbError> {
+    let signals = super::signal_rows::StoredPaneSignals::of(&state)?;
+    stored_candidate_of(state, signals)?.state(super::signal_rows::StoredPaneSignals::signals)
+}
+
+/// The state of a candidate with the signals' text lines, which `lines`
+/// holds, as the runs of the candidate start from them.
+fn full_state_of(
+    state: CurrentState,
+    lines: Option<SignalTextPool>,
+) -> Result<DbImportCandidateState, DbError> {
+    let text_pool = lines.map(|lines| lines.signals_text_pool);
+    let signals = super::signal_rows::StoredPaneSignals::of(&state)?
+        .map(|pane| {
+            Ok::<_, DbError>(super::signal_rows::StoredSignals::of(
+                pane,
+                super::required(text_pool, "the signals' text lines")?,
+            ))
+        })
+        .transpose()?;
+    stored_candidate_of(state, signals)?.state(super::signal_rows::StoredSignals::signals)
 }
 
 impl<Stored> StoredCandidate<Stored> {
