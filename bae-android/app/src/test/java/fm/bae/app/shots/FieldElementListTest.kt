@@ -16,7 +16,7 @@ import org.junit.Test
 class FieldElementListTest : BaeBoardShot() {
     @Test
     fun listsAFieldsLabelAsATextBeforeTheFieldAndTheFieldAsItsOutline() {
-        compose.setContent { AndroidTextField(value = "Home music", onValueChange = {}, label = "Name") }
+        compose.settleInBaeLook { AndroidTextField(value = "Home music", onValueChange = {}, label = "Name") }
         val elements = elementsOf("android.test.field")
 
         val label = elements.single { it.getString("role") == "text" }
