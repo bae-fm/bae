@@ -152,25 +152,50 @@
   };
   // Each module is 360/105 pt, the side a phone's camera was measured to need, inside the standard's quiet zone of four modules, and the whole square, quiet zone and all, is the QR code.
   var QR_MODULE = 360 / 105, QR_QUIET = 4;
+  // The code as Android's QRCodeImage holds it: a bitmap of one pixel per module, the quiet zone included, as a PNG.
+  var qrBitmaps = {};
+  function qrBitmap(rows) {
+    var key = rows.join('/');
+    if (!qrBitmaps[key]) {
+      var whole = rows.length + 2 * QR_QUIET, canvas = document.createElement('canvas'), context = canvas.getContext('2d');
+      canvas.width = canvas.height = whole;
+      context.fillStyle = '#FFFFFF';
+      context.fillRect(0, 0, whole, whole);
+      context.fillStyle = '#000000';
+      for (var y = 0; y < rows.length; y++) for (var x = 0; x < rows.length; x++) if (rows[y].charAt(x) === '1') context.fillRect(x + QR_QUIET, y + QR_QUIET, 1, 1);
+      qrBitmaps[key] = canvas.toDataURL('image/png');
+    }
+    return qrBitmaps[key];
+  }
+  // The code's dark modules as rects on a grid of one unit per module, each a little wider so no seam shows between neighbours.
+  function qrCells(rows) {
+    var cells = [];
+    for (var y = 0; y < rows.length; y++) for (var x = 0; x < rows.length; x++) if (rows[y].charAt(x) === '1') cells.push(h('rect', { key: x + '-' + y, x: x, y: y, width: 1.02, height: 1.02 }));
+    return cells;
+  }
   function QrPicture(props) {
-    var rows = props.rows, n = rows.length, cells = [];
-    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (rows[y].charAt(x) === '1') cells.push(h('rect', { key: x + '-' + y, x: x, y: y, width: 1.02, height: 1.02 }));
+    var rows = props.rows, n = rows.length;
     if (props.module) {
-      // Both apps' frames land the code's side on a whole pixel, two to the point: the side its modules need, rounded to the half point, shared out among them.
-      var whole = n + 2 * QR_QUIET, m = Math.round(whole * props.module * 2) / 2 / whole;
+      // Both apps' frames land the code's side on a whole pixel, two to the point: the side its modules need, rounded to the half point.
+      var whole = n + 2 * QR_QUIET, side = Math.round(whole * props.module * 2) / 2;
+      // Android scales its bitmap to that side with no filtering, so each device pixel takes the module under its centre.
+      if (props.bitmap) return h('div', { className: 'bae-scan-qr bae-scan-qr-bitmap', role: 'img', 'aria-label': 'QR code' },
+        h('img', { src: qrBitmap(rows), width: side, height: side, alt: '', style: { display: 'block', imageRendering: 'pixelated' } }));
+      // The Mac shares the side out among the modules.
+      var m = side / whole;
       return h('div', { className: 'bae-scan-qr bae-scan-qr-modules', role: 'img', 'aria-label': 'QR code', style: { padding: QR_QUIET * m } },
-        h('svg', { width: n * m, height: n * m, viewBox: '0 0 ' + n + ' ' + n, 'aria-hidden': true, shapeRendering: 'crispEdges' }, cells));
+        h('svg', { width: n * m, height: n * m, viewBox: '0 0 ' + n + ' ' + n, 'aria-hidden': true, shapeRendering: 'crispEdges' }, qrCells(rows)));
     }
     var size = Number(props.size || 200);
     return h('div', { className: 'bae-scan-qr' },
-      h('svg', { width: size, height: size, viewBox: '0 0 ' + n + ' ' + n, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, cells));
+      h('svg', { width: size, height: size, viewBox: '0 0 ' + n + ' ' + n, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, qrCells(rows)));
   }
   // Without `size`, a code is as wide as its modules need, as the apps draw it. `code` is the text the QR code holds, one of MAC_QR's on the Mac and one of ANDROID_QR's on Android. On Android, `size` is the side of the whole code, quiet zone included, as QRCodeImage draws it; on the Mac, it sets the picture's side on a printed page.
   function ScanCode(prefix) {
     return function (props) {
       var rows = prefix === 'bae-a' ? ANDROID_QR[props.code || 'CVI1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'] : MAC_QR[props.code || 'bae-pairing-4F7K-2M9Q'];
-      var qr = props.size == null ? { rows: rows, module: QR_MODULE }
-        : prefix === 'bae-a' ? { rows: rows, module: Number(props.size) / (rows.length + 2 * QR_QUIET) }
+      var qr = props.size == null ? { rows: rows, module: QR_MODULE, bitmap: prefix === 'bae-a' }
+        : prefix === 'bae-a' ? { rows: rows, module: Number(props.size) / (rows.length + 2 * QR_QUIET), bitmap: true }
         : { rows: rows, size: props.size };
       return h('div', { className: 'bae-scan ' + prefix + '-scan' },
         props.instruction ? h('div', { className: 'bae-scan-text' }, props.instruction) : null,
