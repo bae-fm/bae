@@ -76,8 +76,14 @@ struct ModalFocusTests {
             Host(presented: presented, images: try images()),
             size: size
         ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-            try await body(window, host, presented)
+            // A failed test closes what it opened too, since the next test
+            // reads the stack that every window shares.
+            var failure: (any Error)?
+            do {
+                try await SnapshotTestSupport.settle(host)
+                try await body(window, host, presented)
+            }
+            catch { failure = error }
             presented.layers = []
             presented.systemSheet = false
             try await SnapshotTestSupport.untilSheet(
@@ -86,6 +92,7 @@ struct ModalFocusTests {
             )
             presented.alert = false
             try await LayerPanels.closed()
+            if let failure { throw failure }
         }
     }
 
