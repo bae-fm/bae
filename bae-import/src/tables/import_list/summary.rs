@@ -28,6 +28,7 @@ fn counted(test: &str) -> String {
 }
 
 /// Every tab's count: what the tab bar shows, whatever a list is narrowed by.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
     tab_counts(sql.query_row(TAB_COUNTS, [], |row| {
         Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?))
@@ -341,6 +342,7 @@ pub(super) fn first_identifying(
 
 impl ImportTables {
     /// How many entries each tab holds now.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_tab_counts(&self) -> Result<TriageTabCounts, DbError> {
         self.store.read(move |sql| tab_counts_on(&sql)).await
     }

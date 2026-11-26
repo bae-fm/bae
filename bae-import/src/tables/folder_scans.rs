@@ -468,6 +468,7 @@ impl ImportTables {
     }
 
     /// Every stored entry under one watched root.
+    #[cfg(test)]
     pub async fn load_folder_scan_items(
         &self,
         watched_folder_path: &Path,
@@ -799,6 +800,7 @@ pub(super) fn write_entry(
     })
 }
 
+#[cfg(test)]
 pub(super) fn load_folder_scan_items_on(
     sql: &SqlReadContext<'_>,
     watched_folder_path: &Path,
