@@ -26,6 +26,11 @@ final class StreamLabelNSView: NSTextField {
 
     init() {
         super.init(frame: .zero)
+        // The text sits `StreamLabel.inset` in from each side, where the
+        // label's size leaves room for it.
+        let inset = InsetTextFieldCell(textCell: "")
+        inset.insets = NSSize(width: StreamLabel.inset, height: 0)
+        cell = inset
         isEditable = false
         isSelectable = false
         isBordered = false
@@ -113,6 +118,9 @@ struct StreamLabel: NSViewRepresentable {
         }
     }
 
+    /// The space between the label's edge and its text, on each side.
+    static let inset: CGFloat = 2
+
     let stream: Stream
 
     func makeNSView(context _: Context) -> StreamLabelNSView {
@@ -143,8 +151,11 @@ struct StreamLabel: NSViewRepresentable {
             }
         let font = view.font ?? .systemFont(ofSize: NSFont.systemFontSize)
         let size = (widest as NSString).size(withAttributes: [.font: font])
-        // The text's own width, as the board's is, plus the 2 points the cell
-        // insets its text on each side.
-        return CGSize(width: size.width + 4, height: ceil(size.height))
+        // The text's own width, as the board's is, plus the inset on each
+        // side, which `InsetCell` leaves.
+        return CGSize(
+            width: size.width + 2 * Self.inset,
+            height: ceil(size.height)
+        )
     }
 }
