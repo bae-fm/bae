@@ -44,5 +44,8 @@ private struct ReleaseRecordLink: View {
         .themeText(.chip)
         .foregroundStyle(Theme.textSecondary)
         .fixedSize()
+        // The accessibility box is the layout box, which includes the arrow's
+        // 12 pt square, not the ink of the name and the arrow.
+        .contentShape(.accessibility, Rectangle())
     }
 }
