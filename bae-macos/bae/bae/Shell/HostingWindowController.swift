@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// A window showing one SwiftUI view. Closing it tells its owner, which lets
@@ -11,9 +12,10 @@ class HostingWindowController: NSWindowController, NSWindowDelegate {
 
     /// `content` in a titled window of `contentSize`, or of the content's own
     /// size where that is nil, sized within the limits `sizing` names, with
-    /// the window parts `bridging` names managed by the view.
+    /// the window parts `bridging` names managed by the view. The content
+    /// carries the stack its alerts and layers sit on.
     init<Content: View>(
-        content: Content,
+        content: ModalHosted<Content>,
         contentSize: CGSize?,
         sizing: NSHostingSizingOptions,
         bridging: NSHostingSceneBridgingOptions,

@@ -61,12 +61,24 @@
         var modalWindows: ModalWindows?
     }
 
+    /// A view with the stack that every alert and layer it presents sits on.
+    /// A window's host type takes one (`HostingWindowController`), so no
+    /// window of the app lacks a stack.
+    public struct ModalHosted<Content: View>: View {
+        let stack: ModalWindows
+        let content: Content
+
+        public var body: some View {
+            content.environment(\.modalWindows, stack)
+        }
+    }
+
     extension View {
         /// This view with `stack` as the stack that every alert and layer it
         /// presents sits on. Whoever hosts a window makes the stack and gives
         /// it here; a stack serves every window of one host.
-        public func modalWindows(_ stack: ModalWindows) -> some View {
-            environment(\.modalWindows, stack)
+        public func modalWindows(_ stack: ModalWindows) -> ModalHosted<Self> {
+            ModalHosted(stack: stack, content: self)
         }
 
         /// Shows `layers` over this view, the first of the ones that are new

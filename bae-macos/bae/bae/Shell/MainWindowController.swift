@@ -36,7 +36,8 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
                 content: MainWindowRoot(
                     appDelegate: appDelegate,
                     searchFocusRequests: searchFocusRequests
-                ),
+                )
+                .modalWindows(appDelegate.modalWindows),
                 contentSize: MainWindow.sizeOnMainScreen,
                 // The content sets the window's size limits: fixed while
                 // bootstrap shows, the library's minimum once it opens.

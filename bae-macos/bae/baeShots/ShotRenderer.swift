@@ -154,7 +154,7 @@ enum ShotRenderer {
     /// scene shown in its window, the whole frame, title bar and toolbar
     /// included, the way the app's window controller hosts it.
     private static func hostWindow(
-        _ rootView: some View,
+        _ rootView: ModalHosted<some View>,
         for scene: ShotScene,
         size: CGSize,
         windowScene: WindowScene?
