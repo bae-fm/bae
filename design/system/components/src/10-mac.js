@@ -233,11 +233,12 @@
     var lw = auto ? null : props.labelWidth != null ? Number(props.labelWidth) : 90;
     var isError = state === 'error';
     var line = isError ? props.error : props.note;
-    // A code field is a textbox drawn by hand: its placeholder is drawing only, named to readers as aria-placeholder, so the field's value is what's typed.
+    // A code field is a textbox drawn by hand: its placeholder is drawing only, named to readers as aria-placeholder, so the field's value is what's typed. Focused with nothing typed, it draws the insertion point before the placeholder.
     var codeHint = props.placeholder || (hidden ? props.label : null);
     var input = props.code ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label, 'aria-placeholder': codeHint || null,
       className: cx('bae-m-input', 'bae-m-codetext', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error') },
-      props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder', 'aria-hidden': true }, codeHint)) : h('input', {
+      props.value ? groupCode(props.value) : [state === 'focused' ? h('span', { key: 'caret', className: 'bae-m-caret', 'aria-hidden': true }) : null,
+        h('span', { key: 'hint', className: 'bae-m-codetext-placeholder', 'aria-hidden': true }, codeHint)]) : h('input', {
       className: cx('bae-m-input', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error'),
       id: props.inputId, type: props.secret ? 'password' : 'text',
       defaultValue: props.value || '',

@@ -2,7 +2,7 @@
 
 A macOS text field in its box, with an optional label, placeholder and note.
 
-`code` is the field for a restore code or an invite, typed or pasted: several lines tall and monospaced, showing the code in groups of four with a space between, as Settings shows a restore code, whether it was typed in groups or run together.
+`code` is the field for a restore code or an invite, typed or pasted: several lines tall and monospaced, showing the code in groups of four with a space between, as Settings shows a restore code, whether it was typed in groups or run together. Its placeholder is in the same mono type, and a focused code field with nothing typed shows the insertion point before it.
 
 **In the code:** macOS: `MacTextField` in a `FieldColumn` (`Views/Components/FieldColumn.swift`) for the label beside the field and the note under it; the box is `FieldChrome` `.boxed` (`Views/Components/MetadataForm/FieldChrome.swift`, applied by `.boxedTextField()`); `CommittedTextField` where an edit is kept on Return.
 
