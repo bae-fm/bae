@@ -9,6 +9,7 @@ use std::num::NonZeroU32;
 use std::path::PathBuf;
 
 mod catalog_availability;
+pub mod fragments;
 mod identification;
 mod import_destination;
 mod name_pattern;

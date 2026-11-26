@@ -1,6 +1,8 @@
 //! Import: watched folders and their scans, the candidates they hold and
 //! the drafts a person shapes, identification against the catalogs, and the
 //! import that writes a candidate's release into the library's store.
+#[cfg(desktop)]
+pub mod fragments;
 
 // Import is desktop-only: a phone browses, plays and casts, and neither imports
 // nor edits a release's metadata, so no crate a phone builds depends on this

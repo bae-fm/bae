@@ -5,6 +5,7 @@
 
 mod download_entry;
 mod download_snapshot;
+pub mod fragments;
 mod output_snapshot;
 mod queued_releases;
 mod release_queue;

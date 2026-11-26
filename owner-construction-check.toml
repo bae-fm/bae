@@ -27,6 +27,7 @@ test_support_features = ["test-utils"]
 crate_order = [
     "bae-desktop-cfg",
     "bae-schema-manifest",
+    "bae-fragments-build",
     "bae-loc",
     "bae-mirror",
     "bae-theme",
@@ -1036,8 +1037,9 @@ runs = [
     "bae_bridge::handle::AppHandle::run_exported",
 ]
 
-# The library's tables by the domain that writes them. SQL anywhere may read
-# a table; only its domain's homes write it, in a statement or a trigger's
+# The library's tables by the domain that writes them. A read fragment reads
+# only its own crate's tables (bae-fragments-build checks it while the crate
+# builds); only a table's domain's homes write it, in a statement or a trigger's
 # body, create it and its indexes, and hold the tests that write it. Each
 # domain names the owner that does its work, and every table a crate's `.sql`
 # file creates is in one domain.

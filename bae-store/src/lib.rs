@@ -6,6 +6,7 @@
 //! surface pulls values from, and the names a person enters.
 
 mod builder;
+pub mod fragments;
 pub use builder::store_builder;
 mod device_state;
 pub use device_state::FormerDeviceState;

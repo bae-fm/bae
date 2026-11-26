@@ -15,6 +15,7 @@ members = [
     "bae-store",
     "bae-desktop",
     "bae-desktop-cfg",
+    "bae-fragments-build",
     "bae-schema-manifest",
     "bae-diagnostics",
     "bae-identify",
@@ -79,6 +80,14 @@ allow_attributes_without_reason = "deny"
 
 # Every consumer, including tests, uses coven's application facade.
 coven = { git = "https://github.com/bae-fm/coven", rev = "77417a84ff98575454128948a8e770d447a57b8d" }
+# The macros bae's read fragments are written with, and the compiler its build
+# scripts run. coven's application facade re-exports neither (coven's spec,
+# sqlive-compose).
+sqlive-compose = { git = "https://github.com/bae-fm/coven", rev = "77417a84ff98575454128948a8e770d447a57b8d" }
+# coven's schema SQL, and what sqlive reads of a SELECT: the crates a build
+# script takes without coven's runtime.
+coven-schema = { git = "https://github.com/bae-fm/coven", rev = "77417a84ff98575454128948a8e770d447a57b8d" }
+sqlive-reads = { git = "https://github.com/bae-fm/coven", rev = "77417a84ff98575454128948a8e770d447a57b8d" }
 # OptionalExtension, dynamic parameters and SQLite callback errors are not
 # re-exported by coven. This is the version coven's SQL contexts use.
 rusqlite = { version = "0.42.0", features = ["functions", "fallible_uint"] }
@@ -104,6 +113,7 @@ bae-records = { path = "bae-records" }
 bae-store = { path = "bae-store" }
 bae-desktop = { path = "bae-desktop" }
 bae-desktop-cfg = { path = "bae-desktop-cfg" }
+bae-fragments-build = { path = "bae-fragments-build" }
 bae-schema-manifest = { path = "bae-schema-manifest" }
 bae-diagnostics = { path = "bae-diagnostics" }
 bae-identify = { path = "bae-identify" }
@@ -190,6 +200,9 @@ tokio-rustls = "0.26"
 tokio-stream = "0.1"
 tokio-util = { version = "0.7", features = ["rt"] }
 toml = "1.1.8"
+# The source files whose fragment calls the build scripts read.
+syn = { version = "3.0.3", features = ["full", "visit"] }
+proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 tower = "0.5"
 tracing-android = "0.2"
 tracing-etw = "0.2"

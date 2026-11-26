@@ -12,6 +12,9 @@
 
 use serde::Deserialize;
 
+mod migration;
+pub use migration::{members, migration, DeclaredFunction, Members, Migration, Reader};
+
 /// Why a `schema.toml` produced no Rust.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ManifestError(String);
@@ -23,6 +26,13 @@ impl std::fmt::Display for ManifestError {
 }
 
 impl std::error::Error for ManifestError {}
+
+impl ManifestError {
+    /// The failure to read `file`, whose reading said `cause`.
+    pub fn unreadable(file: &std::path::Path, cause: &dyn std::fmt::Display) -> Self {
+        Self(format!("read {}: {cause}", file.display()))
+    }
+}
 
 /// One crate's `schema.toml`.
 #[derive(Deserialize)]

@@ -1034,6 +1034,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-fragments-build"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-schema-manifest",
+ "coven-schema",
+ "proc-macro2",
+ "serde",
+ "sqlive-compose",
+ "sqlive-reads",
+ "syn 3.0.3",
+ "toml",
+]
+
+[[package]]
 name = "bae-identify"
 version = "0.0.0-dev"
 dependencies = [
@@ -1056,6 +1070,7 @@ dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-identify",
  "bae-pictures",
  "bae-preferences",
@@ -1081,6 +1096,7 @@ dependencies = [
  "serde_json",
  "sha1 0.10.6",
  "sha2 0.10.9",
+ "sqlive-compose",
  "strsim",
  "thiserror 2.0.21",
  "time",
@@ -1176,6 +1192,7 @@ name = "bae-people"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-records",
  "bae-schema-manifest",
  "bae-store",
@@ -1185,6 +1202,7 @@ dependencies = [
  "regex",
  "rusqlite",
  "serde",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "time",
  "tokio",
@@ -1219,6 +1237,7 @@ dependencies = [
  "bae-audio",
  "bae-desktop-cfg",
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-people",
  "bae-preferences",
  "bae-records",
@@ -1238,6 +1257,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "time",
  "tokio",
@@ -1253,6 +1273,7 @@ dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-schema-manifest",
  "bae-store",
  "bae-util",
@@ -1261,6 +1282,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "tokio",
 ]
@@ -1271,6 +1293,7 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
+ "bae-fragments-build",
  "bae-schema-manifest",
  "bae-store",
  "bae-types",
@@ -1281,6 +1304,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "time",
  "tokio",
@@ -1302,6 +1326,7 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-app-dir",
  "bae-desktop-cfg",
+ "bae-fragments-build",
  "bae-schema-manifest",
  "bae-util",
  "coven",
@@ -1311,6 +1336,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "time",
  "tokio",
@@ -1356,6 +1382,7 @@ name = "bae-sync-status"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-people",
  "bae-records",
  "bae-schema-manifest",
@@ -1364,6 +1391,7 @@ dependencies = [
  "bae-util",
  "coven",
  "rusqlite",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "tokio",
  "url",
@@ -1400,6 +1428,7 @@ name = "bae-transfers"
 version = "0.0.0-dev"
 dependencies = [
  "bae-desktop-cfg",
+ "bae-fragments-build",
  "bae-preferences",
  "bae-records",
  "bae-schema-manifest",
@@ -1409,6 +1438,7 @@ dependencies = [
  "coven",
  "rusqlite",
  "serde_json",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
@@ -1472,6 +1502,7 @@ dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-import",
  "bae-people",
  "bae-playback",
@@ -1486,6 +1517,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sqlive-compose",
  "time",
  "tokio",
  "tokio-util",
@@ -4779,9 +4811,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.106"
+version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
+checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
 ]
@@ -4879,9 +4911,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.45"
+version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41f2619966050689382d2b44f664f4bc593e129785a36d6ee376ddf37259b924"
+checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
 ]
@@ -5842,6 +5874,32 @@ dependencies = [
  "tokio",
  "tracing",
  "windows-reserved-names",
+]
+
+[[package]]
+name = "sqlive-compose"
+version = "0.1.0"
+source = "git+https://github.com/bae-fm/coven?rev=77417a84ff98575454128948a8e770d447a57b8d#77417a84ff98575454128948a8e770d447a57b8d"
+dependencies = [
+ "hex",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "sqlive-compose-macros",
+ "sqlive-reads",
+ "syn 3.0.3",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "sqlive-compose-macros"
+version = "0.1.0"
+source = "git+https://github.com/bae-fm/coven?rev=77417a84ff98575454128948a8e770d447a57b8d#77417a84ff98575454128948a8e770d447a57b8d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]
