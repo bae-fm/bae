@@ -53,16 +53,9 @@ enum ShotRenderer {
         // A layer that fades in would be captured partway.
         ModalWindows.shared.fades = false
         let stage = try scene.stage()
-        // A view that opens or moves after the window shows, such as an album
-        // grid's detail opening on its place's first answer, lands at once,
-        // so the capture never holds a frame partway through.
         let rootView = scene.frame.applyTitleBar(to: stage.view)
             .appAppearance()
-            .layerEnvironment { $0.defaultAppStorage(defaults) }
-            .transaction {
-                $0.animation = nil
-                $0.disablesAnimations = true
-            }
+            .shotSettings(defaults)
         let (window, captured) = try hostWindow(
             rootView,
             for: scene,
@@ -481,4 +474,22 @@ private final class ShotPanel: NSPanel {
         _ frameRect: NSRect,
         to screen: NSScreen?
     ) -> NSRect { frameRect }
+}
+
+extension View {
+    /// This view, and each layer over it, reading the shot's preferences from
+    /// `defaults`, and with animations off: a view that opens or moves after
+    /// the window shows, such as an album grid's detail opening on its
+    /// place's first answer, lands at once, so the capture never holds a
+    /// frame partway through.
+    fileprivate func shotSettings(_ defaults: UserDefaults) -> some View {
+        layerEnvironment { content in
+            content
+                .defaultAppStorage(defaults)
+                .transaction {
+                    $0.animation = nil
+                    $0.disablesAnimations = true
+                }
+        }
+    }
 }
