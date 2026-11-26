@@ -446,7 +446,7 @@
     var grp = function (eyebrow, rows) { return h('div', { className: 'bae-m-bulkgrp' }, eyebrow ? h('div', { className: 'bae-m-eyebrowtxt', style: { padding: 'var(--space-related) var(--space-group) var(--space-line)' } }, eyebrow) : null, rows); };
     var n = Number(props.count || 5);
     return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, boxSizing: 'border-box', padding: 'var(--space-section)', display: 'flex', flexDirection: 'column', gap: 'var(--space-group)' } },
-      h('div', { style: { font: 'var(--type-title-weight) var(--type-title-size) var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
+      h('div', { style: { font: 'var(--type-title-weight) var(--type-title-size)/var(--type-title-line-height) var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
       h('div', { className: 'bae-m-bulklist' },
         grp('Import', [row('Import', props.ready || 3, true, props.cloud ? props.to : null), row('Cancel import of selected', 0), row('Combine as one release', 0, true), row('Keep as separate releases', 0)]),
         grp('Metadata', [row('Identify selected', n), row('Stop identifying selected', 0), row('Retry failed identification', 1), row('Reset to file metadata', n), row('Clear metadata', n)]),

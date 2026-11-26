@@ -2,15 +2,15 @@
 
 /* macOS 26 rounds a window's corners in a continuous curve, which the shots measure as a superellipse of exponent 3 (superellipse(1.585)) 23.5pt across; it lights the top edge with a 1pt line, and its other edges draw no ring. */
 .bae-m-window, .bae-m-mainwin, .bae-m-storewin { border-radius: var(--radius-window); corner-shape: superellipse(1.585); }
-.bae-m-window { position: relative; display: flex; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 1px 0 var(--hairline-strong); }
+.bae-m-window { position: relative; display: flex; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); box-shadow: inset 0 1px 0 var(--hairline-strong); }
 .bae-m-window-column { flex-direction: column; }
 .bae-m-window-front { box-shadow: inset 0 1px 0 var(--hairline-strong), 0 20px 60px var(--shadow); }
 /* Text in the detail role, in the lines SwiftUI lays it out in: the app sets each detail line 15pt tall, where CSS's normal line is 13. */
 .bae-m-detail { font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); }
 /* The one face of every Mac sheet: what opens over a window for a task or a decision (MacSheet, MacModal, MacAlert, MacSidePause). The raised colour, the panel's corners and a shadow, with no edge. */
-.bae-m-face-sheet { background: var(--elevated); border-radius: var(--radius-panel); box-shadow: 0 10px 30px var(--shadow); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-face-sheet { background: var(--elevated); border-radius: var(--radius-panel); box-shadow: 0 10px 30px var(--shadow); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-alert { box-sizing: border-box; width: 260px; margin-top: 36px; padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
-.bae-m-alert-title { font-size: var(--type-strong-size); font-weight: var(--type-strong-weight); line-height: normal; }
+.bae-m-alert-title { font-size: var(--type-strong-size); font-weight: var(--type-strong-weight); line-height: var(--type-strong-line-height); }
 /* The message keeps its line breaks, as a SwiftUI Text does: an error's fault sits a blank line under core's line. */
 .bae-m-alert-message { font-size: var(--type-alert-message-size); font-weight: var(--type-alert-message-weight); line-height: var(--type-alert-message-line-height); color: var(--text-secondary); white-space: pre-line; }
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: var(--space-related); margin-top: var(--space-compact); }
@@ -30,7 +30,7 @@
 :root, [data-theme="dark"] { --bae-m-light-inactive: linear-gradient(#B3B3B3 0.25px, #747479 0.75px, #3F3F47 1.25px, #3F3F46 3.25px, #3E3E45 4.25px, #3D3D45 5.25px, #3B3B43 6.25px, #3A3A42 7.25px, #37373F 8.25px, #35353E 9.25px, #34343D 10.25px, #34343D 12.25px, #35353E 12.75px, #69696E 13.25px, #ACACAC 13.75px); --bae-m-light-inactive-rim: none; }
 [data-theme="light"] { --bae-m-light-inactive: #D6D6D6; --bae-m-light-inactive-rim: inset 0 0 0 0.5px #C4C4C4; }
 .bae-m-lights-inactive span, .bae-m-lights-inactive span + span, .bae-m-lights-inactive span + span + span { background: var(--bae-m-light-inactive); box-shadow: var(--bae-m-light-inactive-rim); }
-.bae-m-pane { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); padding: calc(var(--space-inline) + var(--space-hairline)) calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); cursor: pointer; }
+.bae-m-pane { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); padding: calc(var(--space-inline) + var(--space-hairline)) calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); cursor: pointer; }
 .bae-m-pane-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
 .bae-m-main { flex: 1; min-width: 0; padding: calc(var(--space-edge) + var(--space-line)) calc(var(--space-edge) + var(--space-inline)); box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
@@ -41,9 +41,9 @@
 
 .bae-m-section { display: flex; flex-direction: column; gap: var(--space-compact); margin-top: calc(var(--space-group) + var(--space-line)); }
 .bae-m-heading + .bae-m-section, .bae-m-heading + .sc-host-x > .bae-m-section { margin-top: 0; }
-.bae-m-section-title { margin: 0 var(--space-inline); font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); color: var(--text-secondary); }
+.bae-m-section-title { margin: 0 var(--space-inline); font: var(--type-strong-weight) var(--type-strong-size)/var(--type-strong-line-height) var(--font-sans); color: var(--text-secondary); }
 
-.bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); overflow: hidden; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); overflow: hidden; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-box > .bae-divider, .bae-m-box > .sc-host-x > .bae-divider { margin: 0 var(--space-group); opacity: 0.6; }
 /* MacItem: the row piece. The leading column is size-lead wide and as tall as the first line, so its icon centres on that line. */
 .bae-m-item { display: flex; align-items: flex-start; gap: var(--space-related); }
@@ -55,7 +55,7 @@
 .bae-m-item-wide { gap: calc(var(--space-group) - var(--space-line)); }
 .bae-m-box-empty { min-height: 108px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
 
-.bae-m-row { display: flex; align-items: center; gap: var(--space-group); min-height: var(--size-row); padding: calc(var(--space-related) + var(--space-line)) var(--space-group); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-row { display: flex; align-items: center; gap: var(--space-group); min-height: var(--size-row); padding: calc(var(--space-related) + var(--space-line)) var(--space-group); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 /* selected: the one choice in a picker (a folder in the set-up sheet), solid as the Settings sidebar's chosen pane. A list you browse marks its selected row with the tint instead. */
 .bae-m-row-selected { background: var(--accent-selection); color: var(--on-fill); --text-primary: var(--on-fill); --text-secondary: var(--on-fill-secondary); --text-tertiary: var(--on-fill-secondary); }
 .bae-m-fieldrow { align-items: flex-start; padding-top: var(--space-compact); padding-bottom: var(--space-compact); }
@@ -69,16 +69,16 @@
 .bae-m-row-destructive .bae-m-row-label { color: var(--danger); }
 .bae-m-row-lead { display: flex; flex: none; }
 .bae-m-row-label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
-.bae-m-row-strong { font-size: var(--type-strong-size); font-weight: var(--type-strong-weight); line-height: normal; }
+.bae-m-row-strong { font-size: var(--type-strong-size); font-weight: var(--type-strong-weight); line-height: var(--type-strong-line-height); }
 .bae-m-row-title { display: flex; align-items: center; gap: var(--space-compact); }
 .bae-m-row-note { font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); color: var(--text-secondary); }
 .bae-m-row-note[class*="bae-tone-"] { color: var(--bae-tone); }
 /* Five digits wide, as MacPortField.swift sizes it: the width of 00000 in the body type, the field's inset on each side, and 4pt more. */
-.bae-m-portfield { flex: none; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); width: calc(5ch + 2 * var(--space-field-inset) + 4px); }
+.bae-m-portfield { flex: none; font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); width: calc(5ch + 2 * var(--space-field-inset) + 4px); }
 .bae-m-portfield .bae-m-input { font-variant-numeric: tabular-nums; }
 .bae-m-pin { display: flex; flex-direction: column; gap: var(--space-inline); }
 .bae-m-pin-cells { display: flex; gap: var(--space-related); }
-.bae-m-pin-cell { box-sizing: border-box; width: 40px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-field); background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: var(--type-figure-weight) var(--type-figure-size) var(--font-sans); font-variant-numeric: tabular-nums; }
+.bae-m-pin-cell { box-sizing: border-box; width: 40px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-field); background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: var(--type-figure-weight) var(--type-figure-size)/var(--type-figure-line-height) var(--font-sans); font-variant-numeric: tabular-nums; }
 .bae-m-pin-cell-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--field-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-pin-cell-error { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
 .bae-m-copytext { display: inline-flex; align-items: center; gap: var(--space-inline); color: var(--text-secondary); vertical-align: top; }
@@ -116,13 +116,13 @@
 .bae-m-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-btn:disabled { opacity: var(--opacity-off); cursor: default; }
 
-.bae-m-field { display: flex; flex-direction: column; gap: var(--space-inline); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); min-width: 0; }
+.bae-m-field { display: flex; flex-direction: column; gap: var(--space-inline); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); min-width: 0; }
 .bae-m-field-line { display: flex; align-items: center; gap: var(--space-group); }
 .bae-m-field-label { flex: none; text-align: end; }
 .bae-m-field-auto { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-group); row-gap: var(--space-inline); align-items: center; }
 .bae-m-field-auto .bae-m-field-line { display: contents; }
 .bae-m-field-auto .bae-m-field-note { grid-column: 2; }
-.bae-m-input { flex: 1; min-width: 0; box-sizing: border-box; height: var(--size-field); padding: 0 var(--space-field-inset); border: 0; outline: none; border-radius: var(--radius-field); background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-input { flex: 1; min-width: 0; box-sizing: border-box; height: var(--size-field); padding: 0 var(--space-field-inset); border: 0; outline: none; border-radius: var(--radius-field); background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-input:hover:not(:disabled) { background: var(--field-hover); }
 .bae-m-input::placeholder { color: var(--text-tertiary); }
 .bae-m-input:focus, .bae-m-input-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--field-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
@@ -135,12 +135,12 @@
 .bae-m-radio-dot-on { border: 0; background: var(--accent-fill); position: relative; }
 .bae-m-radio-dot-on::after { content: ''; position: absolute; left: 4.5px; top: 4.5px; width: 5px; height: 5px; border-radius: 999px; background: var(--on-accent-fill); }
 
-.bae-m-popupbutton { height: 24px; padding: 0; border: 0; background: none; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-related); box-sizing: border-box; cursor: pointer; }
+.bae-m-popupbutton { height: 24px; padding: 0; border: 0; background: none; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-related); box-sizing: border-box; cursor: pointer; }
 .bae-m-popupbutton-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bae-m-popupbutton-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--control); color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; }
 .bae-m-popupbutton-native { padding: 0 var(--space-related) 0 var(--space-group); border-radius: var(--radius-control); background: var(--tile); justify-content: space-between; }
 .bae-m-segmented { display: inline-flex; height: 28px; box-sizing: border-box; padding: calc(var(--space-line) + var(--space-hairline)); border-radius: 999px; background: var(--tile); }
-.bae-m-segment { display: flex; align-items: center; padding: 0 calc(var(--space-group) + var(--space-line)); border-radius: 999px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); cursor: pointer; }
+.bae-m-segment { display: flex; align-items: center; padding: 0 calc(var(--space-group) + var(--space-line)); border-radius: 999px; font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); cursor: pointer; }
 .bae-m-segment-on { background: var(--hover); box-shadow: inset 0 0 0 100px var(--hairline-strong); }
 /* The system stepper: an up and a down arrow in a small rounded box. */
 .bae-m-stepper { flex: none; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 16px; height: 22px; border-radius: var(--radius-chip); background: var(--control); box-shadow: 0 0 0 0.5px var(--control-edge); fill: var(--text-secondary); }
@@ -161,24 +161,24 @@
 :root, [data-theme="dark"] { --bae-m-sheet-dimming: #1414149C; }
 [data-theme="light"] { --bae-m-sheet-dimming: #AAAAAA99; }
 .bae-m-scrim-sheet { background: var(--bae-m-sheet-dimming); }
-.bae-m-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-section); padding: calc(var(--space-page) + var(--space-section)) var(--space-page) var(--space-page); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-section); padding: calc(var(--space-page) + var(--space-section)) var(--space-page) var(--space-page); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); }
 .bae-m-step-head { display: flex; flex-direction: column; align-items: center; gap: var(--space-compact); max-width: 440px; text-align: center; }
-.bae-m-step-title { margin: 0; font: var(--type-title-weight) var(--type-title-size) var(--font-sans); color: var(--text-primary); text-wrap: balance; }
-.bae-m-step-text { margin: 0; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
+.bae-m-step-title { margin: 0; font: var(--type-title-weight) var(--type-title-size)/var(--type-title-line-height) var(--font-sans); color: var(--text-primary); text-wrap: balance; }
+.bae-m-step-text { margin: 0; font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
 .bae-m-step-actions { display: flex; justify-content: center; gap: var(--space-related); }
 .bae-m-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
-.bae-m-code-digits { font: var(--type-figure-weight) var(--type-figure-size) var(--font-sans); letter-spacing: 3px; color: var(--text-primary); }
+.bae-m-code-digits { font: var(--type-figure-weight) var(--type-figure-size)/var(--type-figure-line-height) var(--font-sans); letter-spacing: 3px; color: var(--text-primary); }
 .bae-m-sheet { margin-top: calc(var(--space-page) + var(--space-inline)); display: flex; flex-direction: column; }
 .bae-m-scrim-centred { align-items: center; }
 .bae-m-scrim-sheet > .bae-m-sheet { margin-top: 0; }
-.bae-m-sheet-title { padding: calc(var(--space-edge) + var(--space-line)) var(--space-edge) 0; font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); }
+.bae-m-sheet-title { padding: calc(var(--space-edge) + var(--space-line)) var(--space-edge) 0; font: var(--type-strong-weight) var(--type-strong-size)/var(--type-strong-line-height) var(--font-sans); }
 .bae-m-sheet-body { padding: var(--space-group) var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); }
-.bae-m-sheet-message { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
+.bae-m-sheet-message { font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
 .bae-m-sheet-footer { margin-top: var(--space-inline); display: flex; gap: var(--space-related); justify-content: flex-end; }
 .bae-m-sheet-footer-lead { margin-right: auto; display: flex; gap: var(--space-related); }
 
 .bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
-.bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-progress .bae-progress-track { height: 4px; }
 .bae-m-note { padding: var(--space-line) var(--space-group) 0; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 /* A note sits 8pt under the box it explains: a section's 6pt gap and its own 2pt, or, under a pane's bare box, the same 6pt as its margin. */
@@ -200,12 +200,12 @@
 .bae-m-formfield { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-inline); }
 .bae-m-formfield > :not(.bae-m-formfield-label):not(.bae-m-formfield-note), .bae-m-formfield > .sc-host-x > * { align-self: flex-start; }
 .bae-m-formfield > .bae-m-field, .bae-m-formfield > .sc-host-x > .bae-m-field { align-self: stretch; }
-.bae-m-formfield-label { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-formfield-label { font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); }
 .bae-m-formfield-note { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-menu-heading { display: flex; align-items: center; height: 22px; padding-left: var(--space-related); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-menu-trail { margin-left: auto; padding-left: var(--space-edge); display: inline-flex; align-items: center; gap: var(--space-compact); }
 .bae-m-menu-accessory { display: inline-flex; color: var(--text-secondary); }
 .bae-m-menu-accessory-problem { color: var(--danger); }
 .bae-m-menu-item-on .bae-m-menu-accessory { color: var(--on-fill); }
-.bae-m-qrscan { height: 300px; box-sizing: border-box; padding: var(--space-edge); border-radius: var(--radius-card); background: var(--well); display: flex; align-items: center; justify-content: center; text-align: center; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
+.bae-m-qrscan { height: 300px; box-sizing: border-box; padding: var(--space-edge); border-radius: var(--radius-card); background: var(--well); display: flex; align-items: center; justify-content: center; text-align: center; font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-qrscan-camera { background: var(--backdrop); }

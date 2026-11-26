@@ -1,7 +1,8 @@
 /* ---- previews ---- */
 
-.bae-preview { margin: 0; padding: var(--space-edge); background: var(--elevated); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); display: flex; flex-direction: column; gap: var(--space-group); }
-.bae-preview-android { font-family: var(--font-android); background: var(--background); }
+.bae-preview { margin: 0; padding: var(--space-edge); background: var(--elevated); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); display: flex; flex-direction: column; gap: var(--space-group); }
+/* An Android preview's own text keeps Chrome's line: each Android component sets its own, and the Mac body line above is not Android's. */
+.bae-preview-android { font-family: var(--font-android); line-height: normal; background: var(--background); }
 .bae-preview-row { display: flex; align-items: center; gap: var(--space-edge); }
 /* Each row and its cell start on a whole point, as the app's shot starts its view: a row's length along the page's flow rounds up to the next whole point, and the cell sits at the row's top, so no centring moves it off the point. */
 .bae-preview-row { flex-basis: calc-size(max-content, round(up, size, 1px)); }
@@ -29,7 +30,7 @@
 .bae-a-accents { display: flex; justify-content: space-between; }
 .bae-a-accents .bae-swatch { width: 36px; height: 36px; }
 .bae-a-accents .bae-swatch-on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text-primary); }
-.bae-m-menu { display: flex; flex-direction: column; white-space: nowrap; padding: var(--space-compact); border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 8px 24px var(--shadow); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-menu { display: flex; flex-direction: column; white-space: nowrap; padding: var(--space-compact); border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 8px 24px var(--shadow); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); }
 .bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: calc(var(--space-line) + var(--space-hairline)) var(--space-related); border-radius: var(--radius-artwork); }
 .bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-menu-item-off { color: var(--text-tertiary); }
@@ -43,7 +44,7 @@
 .bae-scan-qr svg { fill: #000000; display: block; }
 .bae-scan-qr-modules { border-radius: 0; }
 .bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
-.bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); }
 .bae-a-scan .bae-scan-text { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-scan .bae-scan-text { color: var(--text-primary); }
 
@@ -62,7 +63,7 @@
 .bae-m-box .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group) var(--space-group); }
 .bae-m-nested .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group); }
 .bae-m-row .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0; }
-.bae-m-nested p { margin: 0; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); text-wrap: pretty; }
+.bae-m-nested p { margin: 0; font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); text-wrap: pretty; }
 /* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
 .bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
 /* The card finds the pair itself, whether a row is the card's child or sits in a tile of its own: the tile above a nested row loses its bottom corners, the nested row's tile its top corners and the gap. */

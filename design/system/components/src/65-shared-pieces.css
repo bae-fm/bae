@@ -24,7 +24,7 @@
 .bae-a-welcome-tagline { position: relative; font-size: var(--type-android-body-large-size); font-weight: var(--type-android-body-large-weight); line-height: var(--type-android-body-large-line-height); color: var(--text-secondary); }
 .bae-a-welcome-tagline-centred { padding: calc(var(--space-group) + var(--space-line)) var(--space-page) var(--space-edge); text-align: center; }
 
-.bae-m-restore { width: 100%; display: flex; flex-direction: column; gap: var(--space-line); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; color: var(--text-primary); font-family: var(--font-sans); }
+.bae-m-restore { width: 100%; display: flex; flex-direction: column; gap: var(--space-line); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: var(--type-body-line-height); color: var(--text-primary); font-family: var(--font-sans); }
 .bae-m-restore-code { display: flex; align-items: center; gap: var(--space-related); background: var(--surface); border-radius: var(--radius-card); padding: calc(var(--space-related) + var(--space-line)) var(--space-group); font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-m-restore-text { flex: 1; min-width: 0; word-spacing: 4px; color: var(--text-primary); user-select: text; -webkit-user-select: text; }
 .bae-m-restore-masked { flex: 1; display: flex; gap: var(--space-inline); min-width: 0; white-space: nowrap; user-select: none; -webkit-user-select: none; color: var(--text-secondary); }
@@ -34,28 +34,28 @@
 .bae-a-restore-code { padding: var(--space-edge); font: var(--type-android-mono-weight) var(--type-android-mono-size)/var(--type-android-mono-line-height) var(--font-mono); word-spacing: 4px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .bae-a-restore-actions { display: flex; flex-wrap: wrap; gap: var(--space-related); padding: var(--space-group) var(--space-edge) 0; }
 
-.bae-m-cloudhome { width: 100%; display: flex; flex-direction: column; gap: var(--space-related); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-cloudhome { width: 100%; display: flex; flex-direction: column; gap: var(--space-related); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-a-cloudhome { width: 100%; display: flex; flex-direction: column; font-family: var(--font-android); }
 .bae-a-cloudhome-notice { padding: var(--space-related) var(--space-edge) 0; }
 
-.bae-m-s3key { width: 100%; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-s3key { width: 100%; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-a-s3key { width: 100%; display: flex; flex-direction: column; gap: var(--space-group); font-family: var(--font-android); }
-.bae-m-s3form { width: 100%; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-s3form { width: 100%; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 
-.bae-m-folderpicker { width: 100%; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
-.bae-m-folderpicker-heading { color: var(--text-secondary); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; }
+.bae-m-folderpicker { width: 100%; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
+.bae-m-folderpicker-heading { color: var(--text-secondary); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: var(--type-body-line-height); }
 .bae-m-folderpicker-path { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
 .bae-m-folderpicker-trail { color: var(--text-secondary); }
 .bae-m-folderpicker-here { color: var(--text-primary); }
 
-.bae-m-invitefields { width: 100%; display: flex; flex-direction: column; gap: var(--space-field-inset); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-invitefields { width: 100%; display: flex; flex-direction: column; gap: var(--space-field-inset); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-a-invitefields { width: 100%; display: flex; flex-direction: column; gap: var(--space-section); font-family: var(--font-android); }
 .bae-a-invitefields-mine { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); color: var(--text-secondary); }
 .bae-a-invitefields-switch { margin-top: calc(-1 * var(--space-related)); display: flex; flex-direction: column; }
 
 /* The status line, when its explanation follows it: the label and the status on one text baseline, close above the explanation. */
 /* The Status line centres its label and value on one line, as the app's MacRow does: a baseline would set the value by its dot's bottom, 1.5 points low. */
-.bae-m-syncstatus-line { display: flex; align-items: center; gap: var(--space-group); padding: calc(var(--space-related) + var(--space-line)) var(--space-group) var(--space-related); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-syncstatus-line { display: flex; align-items: center; gap: var(--space-group); padding: calc(var(--space-related) + var(--space-line)) var(--space-group) var(--space-related); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-syncstatus-label { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: baseline; gap: var(--space-inline); }
 .bae-m-syncstatus-title { display: flex; align-items: center; gap: var(--space-compact); }
 .bae-m-syncstatus-value { color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: var(--space-compact); }
@@ -78,4 +78,4 @@
 /* The accessory view as MacSavePanelFormat.swift lays it out, 250 by 34 pt: the label's 50 pt text field, which sets its words 2 pt in, then the 190 by 24 pt pop-up 54 pt from the view's left. */
 .bae-m-savepanel-format { display: flex; justify-content: center; }
 .bae-m-savepanel-format-line { width: 250px; height: 34px; display: flex; align-items: center; gap: var(--space-inline); }
-.bae-m-savepanel-format-label { flex: none; width: 50px; padding-left: var(--space-line); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); text-align: start; white-space: nowrap; }
+.bae-m-savepanel-format-label { flex: none; width: 50px; padding-left: var(--space-line); box-sizing: border-box; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); text-align: start; white-space: nowrap; }

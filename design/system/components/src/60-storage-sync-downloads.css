@@ -8,18 +8,18 @@
 .bae-m-iconbtn-on { color: var(--accent); }
 
 /* Storage Manager */
-.bae-m-storewin { position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
+.bae-m-storewin { position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
 .bae-m-storewin-bar { flex: none; position: relative; height: 52px; background: var(--background); display: flex; align-items: center; padding: 0 var(--space-inline) 0 108px; }
 .bae-m-storewin > .bae-m-lights { top: 19px; left: 19px; z-index: 1; }
 .bae-m-storewin-centre { position: absolute; inset: 0; width: fit-content; height: fit-content; margin: auto; }
 .bae-m-storewin-item { width: 36px; align-self: stretch; display: flex; align-items: center; justify-content: center; }
-.bae-m-storewin-title { font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); }
+.bae-m-storewin-title { font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); }
 .bae-m-storewin-body { flex: 1; min-height: 0; display: flex; }
 .bae-m-storewin-list { flex: 1; min-width: 440px; display: flex; flex-direction: column; overflow: hidden; }
 .bae-m-storewin-table { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; overflow-x: auto; margin: 0 calc(var(--space-related) + var(--space-line)); }
 .bae-m-storewin-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .bae-m-storewin-inspector { width: 440px; flex: none; display: flex; flex-direction: column; border-left: 1px solid var(--hairline); background: var(--background); overflow: hidden; }
-.bae-m-table { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-table { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-table-head, .bae-m-table-row { display: grid; grid-template-columns: var(--bae-cols); align-items: center; }
 .bae-m-table-head { height: 28px; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); box-shadow: inset 0 -1px var(--hairline); }
 .bae-m-table-th { align-self: stretch; padding: 0 var(--space-compact); display: flex; align-items: center; gap: var(--space-inline); border: 0; border-left: 1px solid var(--hairline); background: none; font: inherit; color: inherit; text-align: left; cursor: default; }
@@ -39,7 +39,7 @@
 .bae-m-progchip { position: relative; display: inline-flex; overflow: hidden; padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); color: var(--text-primary); background: var(--accent-tint); }
 .bae-m-progchip-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent-tint-strong); }
 .bae-m-progchip-label { position: relative; }
-.bae-m-storefoot { flex: none; display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-edge); border-top: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
+.bae-m-storefoot { flex: none; display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-edge); border-top: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-storefoot-q { display: inline-flex; align-items: center; gap: var(--space-compact); color: var(--text-secondary); }
 /* The rate is a native label as wide as its widest text, with the label's 2pt inset each side; the hidden first line sets that width, and the rate draws over it from the left. */
 .bae-m-storefoot-rate { display: inline-grid; padding: 0 var(--space-line); }
@@ -52,7 +52,7 @@
 .bae-m-readout { display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); }
 .bae-m-readout-line { display: flex; justify-content: space-between; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-readout-bar .bae-progress-track { height: 4px; }
-.bae-m-filerow { padding: var(--space-related) var(--space-edge); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-filerow { padding: var(--space-related) var(--space-edge); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-filerow-name { position: relative; display: flex; white-space: pre; }
 .bae-m-filerow-name > span { min-width: 0; overflow: hidden; }
 .bae-m-filerow-full-name { position: absolute; inset: 0; opacity: 0; }
@@ -63,7 +63,7 @@
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: calc(var(--space-group) + var(--space-line)) var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: var(--space-group); border-top: 1px solid var(--hairline); }
 .bae-m-filedet-head { display: flex; justify-content: space-between; gap: var(--space-related); font: var(--type-heading-weight) var(--type-heading-size)/var(--type-heading-line-height) var(--font-sans); }
 .bae-m-filedet-grid { display: grid; grid-template-columns: 84px 1fr; gap: var(--space-compact) var(--space-group); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-.bae-m-filedet-grid-wide { grid-template-columns: 140px 1fr; gap: var(--space-inline) var(--space-group); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; }
+.bae-m-filedet-grid-wide { grid-template-columns: 140px 1fr; gap: var(--space-inline) var(--space-group); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: var(--type-body-line-height); }
 .bae-errdis-copy { color: var(--text-secondary); }
 /* An error's Retry: the box's top-right corner, level with the line; the open Details run the full width under it. */
 
@@ -75,7 +75,7 @@
 .bae-m-popover-arrow { position: absolute; top: -7px; right: 40px; width: 14px; height: 14px; background: var(--elevated); transform: rotate(45deg); }
 .bae-m-popover-arrow-below { top: auto; bottom: -7px; }
 .bae-m-actlist { display: flex; flex-direction: column; }
-.bae-m-actrow { padding: 0 var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-actrow { padding: 0 var(--space-group); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }
 .bae-m-actline { padding: calc(var(--space-related) + var(--space-line)) 0; }
 .bae-m-actxfer { display: flex; justify-content: space-between; align-items: center; gap: var(--space-related); }
 /* A transfer line carries words and a bar, so it gets a group's room above and below, more than a one-line row. */
@@ -123,11 +123,11 @@
 /* A multi-line field's chrome: 8pt above and below its line, 10pt at its sides, as the app's boxed multi-line field pads it. */
 .bae-m-tokenfield { min-height: 17px; padding: var(--space-related) var(--space-field-inset); border-radius: var(--radius-control); background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); display: flex; row-gap: var(--space-compact); flex-wrap: wrap; align-items: center; }
 /* A value is macOS's own token (NSTokenField's): the system's blue, its words in the field's font, small corners, no ×. Typed text sits between the tokens as typed, its spaces kept: they are the spacing, so a token keeps only a hair of margin of its own. */
-.bae-m-token { margin: 0 var(--space-line); padding: 0 var(--space-related); border-radius: var(--radius-chip); background: var(--accent-tint); color: var(--accent); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); white-space: nowrap; }
+.bae-m-token { margin: 0 var(--space-line); padding: 0 var(--space-related); border-radius: var(--radius-chip); background: var(--accent-tint); color: var(--accent); font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); white-space: nowrap; }
 .bae-m-tokenfield-error { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
-.bae-m-tokentext { white-space: pre; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-tokentext { white-space: pre; font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); }
 .bae-m-filename { padding: calc(var(--space-related) + var(--space-line)) var(--space-group); display: flex; flex-direction: column; gap: var(--space-related); }
-.bae-m-filename-label { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-filename-label { font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); color: var(--text-primary); }
 .bae-m-filename-add { display: flex; gap: var(--space-compact); flex-wrap: wrap; align-items: center; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-filename-preview { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 /* The name sits in the preview's line, as the app sets both in one Text: on the line's baseline, its mono line would make the line 16pt, not the detail line's 15pt. */
@@ -158,6 +158,6 @@
 .bae-usage-key-a .bae-usage-size { font-variant-numeric: normal; }
 /* On a Mac the usage fills a settings form's row, so it keeps a row's insets. */
 .bae-usage-m { padding: calc(var(--space-related) + var(--space-line)) var(--space-group); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-.bae-usage-m .bae-usage-num { font-size: var(--type-figure-size); font-weight: var(--type-figure-weight); line-height: normal; }
+.bae-usage-m .bae-usage-num { font-size: var(--type-figure-size); font-weight: var(--type-figure-weight); line-height: var(--type-figure-line-height); }
 .bae-usage-a { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
 .bae-usage-a .bae-usage-num { font-size: var(--type-android-figure-size); font-weight: var(--type-android-figure-weight); line-height: var(--type-android-figure-line-height); }
