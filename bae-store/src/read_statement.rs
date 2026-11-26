@@ -29,7 +29,7 @@ impl<P, R> ReadStatement<P, R> {
     }
 
     /// Run the statement for `request` on `read`: every row it returns.
-    pub(crate) fn run(&self, read: &SqlReadContext<'_>, request: &P) -> Result<Vec<R>, DbError> {
+    pub fn run(&self, read: &SqlReadContext<'_>, request: &P) -> Result<Vec<R>, DbError> {
         let bound = (self.parameters)(request);
         Ok(read.query(self.sql, bound.as_slice(), self.row)?)
     }
