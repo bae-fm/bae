@@ -398,8 +398,9 @@ extension AccessibilityTree {
                 "the accessibility API lists no window of this process for "
                     + "\(subject); it lists none while the screen is locked"
             case .windowNotListed(let subject, let wanted, let listed):
-                "the accessibility tree has no window where \(subject)'s is, "
-                    + "at \(wanted); it lists \(listed)"
+                "the accessibility tree lists no window with the identifier "
+                    + "of \(subject)'s window, at \(wanted); it lists windows "
+                    + "at \(listed)"
             case .attributeFailed(
                 let subject,
                 let element,
@@ -663,22 +664,14 @@ extension AccessibilityTree {
         guard !list.isEmpty else {
             throw ReadError.listsNoWindow(subject)
         }
-        // A window that only takes clicks over another has the same frame
-        // and holds nothing: the one that holds elements is the window.
-        // Windows of one frame, such as a layer's panel over its window, are
-        // told apart by an identifier that this read gives `window` alone.
+        // Windows of one frame, such as a window, the window that shields it
+        // under an alert and a layer's panel over it, are told apart by an
+        // identifier that this read gives `window` alone.
         let token = UUID().uuidString
         let previous = window.accessibilityIdentifier()
         window.setAccessibilityIdentifier(token)
         defer { window.setAccessibilityIdentifier(previous) }
-        let same = list.filter {
-            guard let frame = Reader.frame(of: $0) else { return false }
-            return abs(frame.minX - origin.x) <= 1
-                && abs(frame.minY - origin.y) <= 1
-                && abs(frame.width - size.width) <= 1
-                && abs(frame.height - size.height) <= 1
-        }
-        let named = same.filter {
+        let named = list.first {
             var identifier: CFTypeRef?
             AXUIElementCopyAttributeValue(
                 $0,
@@ -687,11 +680,7 @@ extension AccessibilityTree {
             )
             return (identifier as? String) == token
         }
-        let there = named.isEmpty ? same : named
-        let holding = try there.first {
-            try !Reader.children(of: $0, subject: subject).isEmpty
-        }
-        guard let element = holding ?? there.first else {
+        guard let element = named else {
             throw ReadError.windowNotListed(
                 subject,
                 wanted: CGRect(origin: origin, size: size),
