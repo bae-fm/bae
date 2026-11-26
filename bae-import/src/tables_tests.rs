@@ -3,8 +3,9 @@
 use crate::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScannedFile,
 };
+use crate::tables::ImportTables;
 use bae_store::test_fixtures::empty_db;
-use bae_store::Store;
+use bae_store::{DbError, Store};
 use std::path::PathBuf;
 
 /// The folder at `name`, a `/`-separated path below `root`, spelled the way
@@ -168,4 +169,16 @@ pub(crate) fn scan_candidate(
     name: &str,
 ) -> crate::folder_scanner::ScanItem {
     crate::folder_scanner::ScanItem::Valid(candidate(root, name))
+}
+
+impl ImportTables {
+    /// The stored release `release` names, as import surfaces read it, or
+    /// `None` when no row names it, through
+    /// [`ImportTables::load_source_releases`].
+    pub(crate) async fn source_release(
+        &self,
+        release: &bae_catalogs::records::LookupRef,
+    ) -> Result<Option<bae_catalogs::source_release::SourceRelease>, DbError> {
+        Ok(self.load_source_releases(&[release]).await?.pop().expect("one release has one entry"))
+    }
 }

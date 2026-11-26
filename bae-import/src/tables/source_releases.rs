@@ -651,17 +651,8 @@ pub(crate) fn store_named_releases_on(
 }
 
 impl ImportTables {
-    /// The stored release `release` names, as import surfaces read it, or
-    /// `None` when no row names it.
-    pub async fn load_source_release(
-        &self,
-        release: &bae_catalogs::records::LookupRef,
-    ) -> Result<Option<SourceRelease>, DbError> {
-        Ok(self.load_source_releases(&[release]).await?.pop().flatten())
-    }
-
     /// [`load_source_releases_on`] as its own read.
-    pub(crate) async fn load_source_releases(
+    pub async fn load_source_releases(
         &self,
         releases: &[&bae_catalogs::records::LookupRef],
     ) -> Result<Vec<Option<SourceRelease>>, DbError> {
@@ -679,7 +670,11 @@ impl ImportTables {
     ) -> Result<Option<PreparedRelease>, DbError> {
         let release = release.clone();
         self.store
-            .read(move |sql| Ok(load_prepared_releases_on(&sql, &[&release])?.pop().flatten()))
+            .read(move |sql| {
+                Ok(load_prepared_releases_on(&sql, &[&release])?
+                    .pop()
+                    .expect("one release has one entry"))
+            })
             .await
     }
 

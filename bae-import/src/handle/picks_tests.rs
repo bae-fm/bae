@@ -126,7 +126,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     );
 
     assert!(
-        tables.load_source_release(&partner).await.unwrap().is_some(),
+        tables.source_release(&partner).await.unwrap().is_some(),
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
@@ -300,7 +300,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let picked = handle
         .services
         .tables
-        .load_source_release(&release)
+        .source_release(&release)
         .await
         .unwrap()
         .expect("the pick stores its release");
@@ -384,7 +384,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     let records = handle
         .services
         .tables
-        .load_source_release(&picked)
+        .source_release(&picked)
         .await
         .unwrap()
         .expect("the pick stores its release")

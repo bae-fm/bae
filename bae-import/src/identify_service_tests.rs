@@ -427,7 +427,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     drivers_ended(&inner).await;
     let stored = inner
         .tables
-        .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242"))
+        .source_release(&LookupRef::new(LookupCatalog::Discogs, "4242"))
         .await
         .unwrap()
         .expect("the release was stored");

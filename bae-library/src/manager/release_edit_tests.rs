@@ -22,9 +22,11 @@ async fn stored_for(
     release_id: &str,
 ) -> Option<bae_catalogs::source_release::SourceRelease> {
     bae_import::tables::ImportTables::new(manager.store.clone())
-        .load_source_release(&bae_catalogs::records::LookupRef::new(catalog, release_id))
+        .load_source_releases(&[&bae_catalogs::records::LookupRef::new(catalog, release_id)])
         .await
         .unwrap()
+        .pop()
+        .expect("one release has one entry")
 }
 
 /// Apply `link` to a form of its own on `release_id` and save it as

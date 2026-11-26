@@ -464,7 +464,7 @@ impl Fixture {
     ) -> Option<bae_catalogs::source_release::SourceRelease> {
         let tables = self.context.tables.clone();
         tables
-            .load_source_release(&bae_catalogs::records::LookupRef::new(
+            .source_release(&bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 release_id,
             ))
@@ -577,7 +577,7 @@ impl Fixture {
     ) -> Option<bae_catalogs::source_release::SourceRelease> {
         let tables = self.context.tables.clone();
         tables
-            .load_source_release(&bae_catalogs::records::LookupRef::new(
+            .source_release(&bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 release_id,
             ))

@@ -248,7 +248,7 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     for extracted in [musicbrainz, discogs] {
         tables.save_source_release(&extracted).await.unwrap();
         let stored = tables
-            .load_source_release(extracted.release())
+            .source_release(extracted.release())
             .await
             .unwrap()
             .expect("the saved release reads back");
@@ -287,7 +287,7 @@ async fn a_stored_release_reads_back_its_album_links() {
         };
         *album_links = stated;
         tables.save_source_release(&release).await.unwrap();
-        assert_eq!(tables.load_source_release(release.release()).await.unwrap(), Some(release));
+        assert_eq!(tables.source_release(release.release()).await.unwrap(), Some(release));
     }
 }
 
@@ -316,7 +316,7 @@ async fn saving_a_release_again_replaces_its_rows() {
     .unwrap();
     tables.save_source_release(&later).await.unwrap();
 
-    assert_eq!(tables.load_source_release(later.release()).await.unwrap(), Some(later));
+    assert_eq!(tables.source_release(later.release()).await.unwrap(), Some(later));
 }
 
 /// A release's album year and media counts read back from what the store
@@ -399,7 +399,7 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
         let extracted = payloads.extract().unwrap();
         tables.save_source_release(&extracted).await.unwrap();
         let stored = tables
-            .load_source_release(extracted.release())
+            .source_release(extracted.release())
             .await
             .unwrap()
             .expect("the saved release reads back");
@@ -437,7 +437,7 @@ async fn an_unfetched_release_reads_as_nothing() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     assert_eq!(
-        tables.load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242")).await.unwrap(),
+        tables.source_release(&LookupRef::new(LookupCatalog::Discogs, "4242")).await.unwrap(),
         None
     );
 }
@@ -474,7 +474,7 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.save_source_release(&discogs).await.unwrap();
     tables.replace_group_album_links(statements()).await.unwrap();
-    let before = tables.load_source_release(discogs.release()).await.unwrap();
+    let before = tables.source_release(discogs.release()).await.unwrap();
     assert_eq!(before.as_ref(), Some(&expected));
 
     // The statement read first, then stored.
@@ -482,13 +482,13 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
     let tables_after = crate::tables::ImportTables::new(db_after);
     tables_after.replace_group_album_links(statements()).await.unwrap();
     tables_after.save_source_release(&discogs).await.unwrap();
-    assert_eq!(tables_after.load_source_release(discogs.release()).await.unwrap(), before);
+    assert_eq!(tables_after.source_release(discogs.release()).await.unwrap(), before);
 
     tables
         .replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())])
         .await
         .unwrap();
-    assert_eq!(tables.load_source_release(discogs.release()).await.unwrap(), Some(discogs));
+    assert_eq!(tables.source_release(discogs.release()).await.unwrap(), Some(discogs));
 }
 
 /// A Discogs release stored with its master and the release group the
@@ -512,7 +512,7 @@ async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
     .extract()
     .unwrap();
     tables.save_source_release(&fetched).await.unwrap();
-    assert_eq!(tables.load_source_release(fetched.release()).await.unwrap(), Some(fetched));
+    assert_eq!(tables.source_release(fetched.release()).await.unwrap(), Some(fetched));
 }
 
 /// What Wikidata's item added when the release was fetched is stored with
@@ -540,7 +540,7 @@ async fn an_items_records_are_stored_with_the_release() {
     tables.save_source_release(&fetched).await.unwrap();
 
     let stored = tables
-        .load_source_release(fetched.release())
+        .source_release(fetched.release())
         .await
         .expect("the stored release reads back")
         .expect("the release is stored");
@@ -575,7 +575,7 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
     );
     tables.save_source_release(&with_alias.extract().unwrap()).await.unwrap();
     assert!(tables
-        .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
+        .source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
         .await
         .unwrap()
         .unwrap()
@@ -589,7 +589,7 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
     );
     tables.save_source_release(&without_alias.extract().unwrap()).await.unwrap();
     assert!(!tables
-        .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
+        .source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
         .await
         .unwrap()
         .unwrap()
@@ -618,7 +618,7 @@ async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetc
     .extract()
     .unwrap();
     tables.save_source_release(&later).await.unwrap();
-    assert_eq!(tables.load_source_release(later.release()).await.unwrap(), Some(later));
+    assert_eq!(tables.source_release(later.release()).await.unwrap(), Some(later));
 }
 
 /// `key` of `catalog` as a fetch hands it over, printed with `barcode`: one
@@ -824,7 +824,7 @@ async fn stored_releases_with_their_joined_albums_are_one_statement() {
     let unstored = LookupRef::new(LookupCatalog::MusicBrainz, "rel-unstored");
 
     let counter = db.track_work_for_test().await.unwrap();
-    let one = tables.load_source_release(grouped.release()).await.unwrap().unwrap();
+    let one = tables.source_release(grouped.release()).await.unwrap().unwrap();
     assert_eq!(counter.take().app_read_statements, 1);
     assert!(
         one.other_records.contains(&bae_catalogs::records::ReleaseRecord::album(&master)),
@@ -875,16 +875,16 @@ async fn a_verdict_stores_only_the_releases_its_rows_name() {
     let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
     let unnamed = LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed");
     assert_eq!(
-        tables.load_source_release(&named).await.unwrap(),
+        tables.source_release(&named).await.unwrap(),
         Some(release("rel-1")),
         "the verdict's match names it"
     );
-    assert_eq!(tables.load_source_release(&unnamed).await.unwrap(), None);
+    assert_eq!(tables.source_release(&unnamed).await.unwrap(), None);
 
     row.verdict = TerminalVerdict::NotFoundAnywhere { ledger: None };
     row.releases = Vec::new();
     assert!(preparations.store_verdict(&row).await.unwrap());
-    assert_eq!(tables.load_source_release(&named).await.unwrap(), None);
+    assert_eq!(tables.source_release(&named).await.unwrap(), None);
 }
 
 /// Store `releases` as what `run` of the library release `key` read, its
@@ -920,10 +920,10 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
     let run = IdentifyRunId::for_test(1);
     store_release_run(&db, &key, run, vec![release("rel-1"), release("rel-unnamed")]).await;
     let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
-    assert!(tables.load_source_release(&named).await.unwrap().is_some());
+    assert!(tables.source_release(&named).await.unwrap().is_some());
     assert_eq!(
         tables
-            .load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed"))
+            .source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed"))
             .await
             .unwrap(),
         None,
@@ -931,7 +931,7 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
     );
 
     tables.publish_release_run(&key, run, &bae_identify::IdentifyState::Idle, None).await.unwrap();
-    assert_eq!(tables.load_source_release(&named).await.unwrap(), None);
+    assert_eq!(tables.source_release(&named).await.unwrap(), None);
 }
 
 /// A write stores its copy of a release over the stored one only where its
@@ -956,7 +956,7 @@ async fn a_stored_release_is_replaced_only_by_a_copy_that_read_more() {
         async move {
             store_release_run(&db, &key, run, vec![copy]).await;
             tables
-                .load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
+                .source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
                 .await
                 .unwrap()
                 .expect("the run's match names it")
