@@ -44,8 +44,26 @@ struct MacLibraryRow: View {
                     .opacity(dropping ? 1 : 0)
             }
             .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
-            .padding(.horizontal, bleed ? -ThemeSpace.related : 0)
-            .padding(.leading, part ? ThemeSpace.edge : 0)
+            .padding(.leading, -reach.leading)
+            .padding(.trailing, -reach.trailing)
+    }
+
+    private var reach: (leading: CGFloat, trailing: CGFloat) {
+        Self.fillReach(bleed: bleed, part: part)
+    }
+
+    /// How far the fill reaches past the row's layout on each side (negative:
+    /// short of it): a bleed row reaches `related` on both, and a part starts
+    /// `edge` in from the left. The accessibility box of the row's button
+    /// follows the same numbers.
+    static func fillReach(bleed: Bool, part: Bool) -> (
+        leading: CGFloat, trailing: CGFloat
+    ) {
+        (
+            leading: (bleed ? ThemeSpace.related : 0)
+                - (part ? ThemeSpace.edge : 0),
+            trailing: bleed ? ThemeSpace.related : 0
+        )
     }
 
     @ViewBuilder
@@ -155,6 +173,7 @@ struct MacLibraryRowButton: View {
     private var hovering = false
 
     var body: some View {
+        let reach = MacLibraryRow.fillReach(bleed: bleed, part: part)
         Button(action: action) {
             MacLibraryRow(
                 picture: picture,
@@ -173,11 +192,7 @@ struct MacLibraryRowButton: View {
         .buttonStyle(.accentPlain)
         // The board boxes the row by its fill, which a bleed row draws 8pt
         // past its layout on each side, a part's left side excepted.
-        .accessibilityBox(
-            leading: bleed
-                ? (part ? -ThemeSpace.related : ThemeSpace.related) : 0,
-            trailing: bleed ? ThemeSpace.related : 0
-        )
+        .accessibilityBox(leading: reach.leading, trailing: reach.trailing)
         .disabled(loading)
         .onHover { hovering = $0 }
     }
