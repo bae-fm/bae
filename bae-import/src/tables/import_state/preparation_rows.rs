@@ -257,7 +257,7 @@ pub(super) fn save_preparation_on(
     if stored.signals != prep.signals {
         match &prep.signals {
             Some(signals) => {
-                store_signals(sql, super::verdict_rows::Owner::Candidate(content_hash), signals)?
+                store_signals(sql, super::verdict_rows::Owner::Candidate(content_hash), signals)?;
             }
             // The values hang off the header, so this clears them too.
             None => delete_signals(sql, content_hash)?,

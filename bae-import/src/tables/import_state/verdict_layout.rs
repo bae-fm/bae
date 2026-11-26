@@ -81,8 +81,9 @@ pub(super) fn verdict_text_on(
     let pool: Vec<TextLine> = sql
         .query(
             &format!(
-                "SELECT text, origin FROM import_candidate_text_line \
-                 WHERE {column} = ? ORDER BY position"
+                "SELECT line.text, line.origin FROM import_candidate_signals AS signals \
+                 JOIN import_candidate_text_line AS line ON line.signals_id = signals.signals_id \
+                 WHERE signals.{column} = ? ORDER BY line.position"
             ),
             params![owner],
             |row| Ok((row.get::<_, String>("text")?, row.get::<_, String>("origin")?)),
@@ -99,8 +100,9 @@ pub(super) fn verdict_text_on(
         .collect::<Result<_, DbError>>()?;
     let barcodes: Vec<SourcedValue> = sql.query(
         &format!(
-            "SELECT value, origin_path FROM import_candidate_signal_value \
-             WHERE {column} = ? AND list = 'barcode' ORDER BY position"
+            "SELECT listed.value, listed.origin_path FROM import_candidate_signals AS signals \
+             JOIN import_candidate_signal_value AS listed ON listed.signals_id = signals.signals_id \
+             WHERE signals.{column} = ? AND listed.list = 'barcode' ORDER BY listed.position"
         ),
         params![owner],
         |row| Ok(SourcedValue { value: row.get("value")?, origin_path: row.get("origin_path")? }),

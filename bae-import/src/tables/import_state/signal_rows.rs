@@ -24,9 +24,20 @@ const SIGNALS_COLUMNS: &str =
 /// stored as its own key.
 const DELIVERY_SET: &str = "delivery_set";
 
-const SIGNAL_VALUE_COLUMNS: &str = "content_hash, identify_run, list, position, value, origin_path";
+const SIGNAL_VALUE_COLUMNS: &str = "signals_id, list, position, value, origin_path";
 
-const TEXT_LINE_COLUMNS: &str = "content_hash, identify_run, position, text, origin";
+const TEXT_LINE_COLUMNS: &str = "signals_id, position, text, origin";
+
+/// The id of an `import_candidate_signals` header row, which every value and
+/// text line under it names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct SignalsId(i64);
+
+impl rusqlite::ToSql for SignalsId {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        self.0.to_sql()
+    }
+}
 
 /// One list's values under the header joined as `signals`, as a JSON array
 /// in their order, each value as `value` gives it.
@@ -34,8 +45,7 @@ fn signal_list_sql(list: &str, value: &str) -> String {
     format!(
         "(SELECT json_group_array({value} ORDER BY listed.position) \
           FROM import_candidate_signal_value AS listed \
-          WHERE listed.content_hash IS signals.content_hash \
-            AND listed.identify_run IS signals.identify_run AND listed.list = '{list}')"
+          WHERE listed.signals_id = signals.signals_id AND listed.list = '{list}')"
     )
 }
 
@@ -72,8 +82,7 @@ pub(super) fn signals_read_columns() -> ColumnList {
             "(SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) \
                                       ORDER BY line.position) \
               FROM import_candidate_text_line AS line \
-              WHERE line.content_hash IS signals.content_hash \
-                AND line.identify_run IS signals.identify_run)"
+              WHERE line.signals_id = signals.signals_id)"
                 .to_string(),
         ),
     ])
@@ -92,8 +101,10 @@ pub(crate) fn load_file_evidence_on(
         &format!(
             "SELECT listed.list, listed.value, listed.origin_path \
              FROM import_candidate_state AS state \
+             JOIN import_candidate_signals AS signals \
+                 ON signals.content_hash = state.content_hash \
              JOIN import_candidate_signal_value AS listed \
-                 ON listed.content_hash = state.content_hash \
+                 ON listed.signals_id = signals.signals_id \
              WHERE {current} \
                AND listed.list IN ('disc_id', 'barcode') \
                AND listed.origin_path IS NOT NULL \
@@ -129,12 +140,12 @@ pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result
 
 /// The signals as one header row and its list values, over whatever signals
 /// `owner` held: the header in place, its values anew. Only a run in flight
-/// stores a pass still scanning.
+/// stores a pass still scanning. Answers the header's id.
 pub(super) fn store_signals(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     signals: &Signals,
-) -> Result<(), DbError> {
+) -> Result<SignalsId, DbError> {
     // A verdict is written once extraction stopped scanning.
     let scanning_refused = || -> ! { panic!("signals of {owner} still scanning at verdict write") };
     let running = matches!(owner, Owner::Run(_));
@@ -172,7 +183,7 @@ pub(super) fn store_signals(
     };
     let detail = |failure: Option<&InternalFailure>| failure.map(|failure| failure.detail.clone());
 
-    sql.execute(
+    let signals_id = SignalsId(sql.query_row(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
@@ -184,7 +195,8 @@ pub(super) fn store_signals(
                  disc_id_failure = excluded.disc_id_failure, \
                  barcode_state = excluded.barcode_state, \
                  barcode_failure = excluded.barcode_failure, text_state = excluded.text_state, \
-                 text_failure = excluded.text_failure",
+                 text_failure = excluded.text_failure \
+             RETURNING signals_id",
             column = owner.column(),
         ),
         params![
@@ -202,10 +214,11 @@ pub(super) fn store_signals(
             text_state,
             detail(text_failure),
         ],
-    )?;
+        |row| row.get(0),
+    )?);
 
     for table in ["import_candidate_signal_value", "import_candidate_text_line"] {
-        sql.execute(&format!("DELETE FROM {table} WHERE {} = ?", owner.column()), params![owner])?;
+        sql.execute(&format!("DELETE FROM {table} WHERE signals_id = ?"), params![signals_id])?;
     }
     let unsourced = |values: &[String]| -> Vec<(String, Option<String>)> {
         values.iter().map(|value| (value.clone(), None)).collect()
@@ -234,16 +247,9 @@ pub(super) fn store_signals(
             sql.execute(
                 &format!(
                     "INSERT INTO import_candidate_signal_value ({SIGNAL_VALUE_COLUMNS}) \
-                     VALUES (?, ?, ?, ?, ?, ?)"
+                     VALUES (?, ?, ?, ?, ?)"
                 ),
-                params![
-                    owner.content_hash(),
-                    owner.run(),
-                    list,
-                    position as i64,
-                    value,
-                    origin_path
-                ],
+                params![signals_id, list, position as i64, value, origin_path],
             )?;
         }
     }
@@ -253,20 +259,15 @@ pub(super) fn store_signals(
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_text_line ({TEXT_LINE_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?)"
             ),
-            params![
-                owner.content_hash(),
-                owner.run(),
-                position as i64,
-                line.text,
-                line.origin.as_str()
-            ],
+            params![signals_id, position as i64, line.text, line.origin.as_str()],
         )?;
     }
     // The text changed, so check and group the verdict's rows again against
     // it.
-    super::verdict_layout::lay_out_matches_on(sql, owner)
+    super::verdict_layout::lay_out_matches_on(sql, owner)?;
+    Ok(signals_id)
 }
 
 fn free_text(text: &TextSignal) -> &[String] {

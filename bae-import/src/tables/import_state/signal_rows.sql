@@ -4,6 +4,9 @@
 -- verdict was reached on, or by an identify run in flight (`identify_run`),
 -- as the run last read it, its passes possibly still scanning.
 CREATE TABLE IF NOT EXISTS import_candidate_signals (
+    -- The id the rows under the header name it by, whichever of the two owners
+    -- it has.
+    signals_id             INTEGER PRIMARY KEY,
     content_hash           TEXT UNIQUE,
     identify_run           INTEGER UNIQUE,
     -- Where a file proves the audio came from: a CD rip or a download, or NULL
@@ -49,8 +52,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
 -- The disc IDs, barcodes, catalog numbers and free-text candidates read off a
 -- candidate, in reading order.
 CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
-    content_hash TEXT,
-    identify_run INTEGER,
+    signals_id   INTEGER NOT NULL
+        REFERENCES import_candidate_signals (signals_id) ON DELETE CASCADE,
     list         TEXT NOT NULL CHECK (list IN ('disc_id', 'barcode', 'catalog', 'free_text', 'isrc', 'track_title')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
@@ -58,26 +61,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     -- LOG or CUE a disc ID was hashed from, so a surface can mark that file's
     -- row; NULL for a library release's stored files.
     origin_path  TEXT CHECK (origin_path IS NULL OR list IN ('disc_id', 'barcode')),
-    UNIQUE (content_hash, list, position),
-    UNIQUE (identify_run, list, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_signals (identify_run) ON DELETE CASCADE,
-    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
+    PRIMARY KEY (signals_id, list, position)
 ) STRICT;
 
 -- Every line of text read off a candidate, from which ranking reads the
 -- folder's own claims.
 CREATE TABLE IF NOT EXISTS import_candidate_text_line (
-    content_hash  TEXT,
-    identify_run  INTEGER,
+    signals_id    INTEGER NOT NULL
+        REFERENCES import_candidate_signals (signals_id) ON DELETE CASCADE,
     position      INTEGER NOT NULL CHECK (position >= 0),
     text          TEXT NOT NULL,
     origin        TEXT NOT NULL
         CHECK (origin IN ('cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file',
                           'file_tag')),
-    UNIQUE (content_hash, position),
-    UNIQUE (identify_run, position),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_signals (identify_run) ON DELETE CASCADE,
-    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
+    PRIMARY KEY (signals_id, position)
 ) STRICT;

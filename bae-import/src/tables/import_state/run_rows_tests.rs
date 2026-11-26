@@ -349,6 +349,8 @@ async fn a_run_s_rows_go_with_it() {
         .publish_release_run(release, run(1), &barcode_half_answered(), Some(&scanning_signals()))
         .await
         .unwrap();
+    // Each table's rows of run 1: by its own owner column, or through the
+    // header the signals' rows name.
     let owned = [
         "import_candidate_verdict",
         "import_candidate_match",
@@ -360,19 +362,34 @@ async fn a_run_s_rows_go_with_it() {
         "import_candidate_signal_value",
         "import_candidate_text_line",
     ];
+    let count = |table: &'static str| {
+        let tables = tables.clone();
+        async move {
+            let through_header =
+                matches!(table, "import_candidate_signal_value" | "import_candidate_text_line");
+            let query = if through_header {
+                format!(
+                    "SELECT COUNT(*) FROM {table} AS owned \
+                     JOIN import_candidate_signals AS signals \
+                         ON signals.signals_id = owned.signals_id \
+                     WHERE signals.identify_run = 1"
+                )
+            } else {
+                format!("SELECT COUNT(*) FROM {table} WHERE identify_run = 1")
+            };
+            tables
+                .store
+                .read(move |sql| Ok(sql.query_row(&query, [], |row| row.get::<_, i64>(0))?))
+                .await
+                .unwrap()
+        }
+    };
     for table in owned {
-        assert!(
-            tables.count_rows_for_test(table, "identify_run", "1").await.unwrap() > 0,
-            "the run holds rows of {table}"
-        );
+        assert!(count(table).await > 0, "the run holds rows of {table}");
     }
     tables.publish_release_run(release, run(1), &IdentifyState::Idle, None).await.unwrap();
     for table in owned {
-        assert_eq!(
-            tables.count_rows_for_test(table, "identify_run", "1").await.unwrap(),
-            0,
-            "{table} keeps rows of a run that ended"
-        );
+        assert_eq!(count(table).await, 0, "{table} keeps rows of a run that ended");
     }
 }
 
