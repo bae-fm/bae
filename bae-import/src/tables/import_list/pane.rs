@@ -37,8 +37,6 @@ struct HeadRows {
     cards: bae_identify::VerdictCards,
     standing: crate::TriageRuntimeFacts,
     listed: ListedColumns,
-    /// The release this device imported from the candidate's files.
-    imported: Option<ImportedRelease>,
 }
 
 /// A candidate's draft and the rows its pane draws beside it.
@@ -61,9 +59,14 @@ struct DraftRows {
 /// One candidate, whole, with its standing and where the list places it.
 struct CandidateDetailRows {
     head: HeadRows,
-    /// What the pane reads past the candidate's folder when no release was
-    /// imported from it.
-    draft: Option<DraftRows>,
+    stage: StageRows,
+}
+
+/// What the candidate is past its folder: the release this device imported
+/// from its files, or the draft it holds.
+enum StageRows {
+    Imported(ImportedRelease),
+    Drafting(Box<DraftRows>),
 }
 
 impl HeadRows {
@@ -75,7 +78,7 @@ impl HeadRows {
             grouping,
             files,
             standing,
-            imported,
+            imported: _,
             state,
             evidence,
             cards,
@@ -117,19 +120,21 @@ impl HeadRows {
             actionable: stored.actionable,
             skipped,
             current: state.map(import_state::current_state_of).transpose()?,
-            file_evidence: evidence
-                .map(|evidence| file_evidence_of_json(&evidence.file_evidence))
-                .transpose()?
-                .unwrap_or_default(),
+            file_evidence: file_evidence_of_json(
+                &evidence
+                    .ok_or_else(|| {
+                        DbError::unreadable(
+                            format!("the evidence in the files of {key}"),
+                            None::<String>,
+                        )
+                    })?
+                    .file_evidence,
+            )?,
             cards: import_state::verdict_cards_of_column(
                 cards.and_then(|cards| cards.verdict_cards).as_deref(),
             )?,
             standing: import_state::standing_of(standing, &key)?.facts(),
             listed: listed_columns,
-            imported: imported.map(|imported| {
-                let (release_id, album_id) = imported.release.into_ids();
-                ImportedRelease { release_id, album_id }
-            }),
         })
     }
 }
@@ -232,24 +237,33 @@ static DRAFT: ReadStatement<PaneDraftParams, PaneDraftRow> =
 fn detail_rows(
     (head, draft): (Vec<PaneHeadRow>, Vec<PaneDraftRow>),
 ) -> Result<Option<CandidateDetailRows>, crate::ImportError> {
-    let Some(head) = head.into_iter().next() else {
+    let Some(mut head) = head.into_iter().next() else {
         return Ok(None);
     };
-    let head = HeadRows::of(head)?;
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
-    let draft = match head.imported {
-        Some(_) => None,
-        None => Some(DraftRows::of(draft.into_iter().next().ok_or_else(|| {
-            DbError::unreadable("the draft rows of a candidate not imported here", None::<String>)
-        })?)?),
+    let imported = head.imported.take();
+    let head = HeadRows::of(head)?;
+    let stage = match imported {
+        Some(imported) => {
+            let (release_id, album_id) = imported.release.into_ids();
+            StageRows::Imported(ImportedRelease { release_id, album_id })
+        }
+        None => StageRows::Drafting(Box::new(DraftRows::of(
+            draft.into_iter().next().ok_or_else(|| {
+                DbError::unreadable(
+                    "the draft rows of a candidate not imported here",
+                    None::<String>,
+                )
+            })?,
+        )?)),
     };
-    Ok(Some(CandidateDetailRows { head, draft }))
+    Ok(Some(CandidateDetailRows { head, stage }))
 }
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, crate::ImportError> {
-        let Self { head, draft } = self;
+        let Self { head, stage } = self;
         let HeadRows {
             candidate,
             files,
@@ -262,7 +276,6 @@ impl CandidateDetailRows {
             cards,
             standing,
             listed,
-            imported,
         } = head;
         let listed = listed.listed(&candidate.key())?;
         let signals = current.as_ref().and_then(|state| state.signals.clone());
@@ -273,15 +286,9 @@ impl CandidateDetailRows {
         // candidate's own text, so the rows are already in their new order
         // after the person discounts a catalog number.
         let stored_verdict = stored_verdict_view(current.as_ref(), cards);
-        let stage = match (imported, draft) {
-            (Some(release), _) => ProjectedStage::Imported { release },
-            (None, None) => {
-                return Err(crate::ImportError::Internal {
-                    detail: "the pane read no draft for a candidate nothing was imported from"
-                        .to_string(),
-                })
-            }
-            (None, Some(draft)) => {
+        let stage = match stage {
+            StageRows::Imported(release) => ProjectedStage::Imported { release },
+            StageRows::Drafting(draft) => {
                 let DraftRows {
                     draft,
                     draft_blank,
@@ -294,7 +301,7 @@ impl CandidateDetailRows {
                     picked_library_status,
                     album,
                     cover,
-                } = draft;
+                } = *draft;
                 let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
                     mapping.read(album_artists.is_some())?;
                 ProjectedStage::Drafting(Box::new(DraftProjection {
