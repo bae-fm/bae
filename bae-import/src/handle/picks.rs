@@ -60,7 +60,7 @@ impl ImportServiceHandle {
                 ),
             });
         }
-        self.release_reads.applied_release(release, stored, steps).await
+        self.release_reads.applied_release_over(stored, release, steps).await
     }
 
     /// Whether `release` is the one this candidate's stored verdict settled on:

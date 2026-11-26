@@ -50,11 +50,22 @@ impl ReleaseReads {
 
     /// The release an apply of `release_ref` reads, read whole as
     /// `Self::release` reads it for a person waiting on it, with a fetch
-    /// told to `steps`. `stored` is what [`Self::stored`] returned for it.
-    pub(crate) async fn applied_release(
+    /// told to `steps`.
+    pub async fn applied_release(
         &self,
         release_ref: &LookupRef,
+        steps: &CatalogApplySteps,
+    ) -> Result<PreparedRelease, ImportError> {
+        let stored = self.stored(release_ref).await?;
+        self.applied_release_over(stored, release_ref, steps).await
+    }
+
+    /// [`Self::applied_release`] for a caller that has read `stored`, what
+    /// [`Self::stored`] returns for `release_ref`.
+    pub(crate) async fn applied_release_over(
+        &self,
         stored: Option<PreparedRelease>,
+        release_ref: &LookupRef,
         steps: &CatalogApplySteps,
     ) -> Result<PreparedRelease, ImportError> {
         let depth = ReadDepth::Complete;
