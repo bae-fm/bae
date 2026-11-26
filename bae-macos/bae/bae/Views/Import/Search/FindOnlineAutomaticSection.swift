@@ -161,6 +161,9 @@ struct FindOnlineAutomaticSection: View {
             if !state.identifiedGroups.isEmpty {
                 identifiedList { narrowedOut }
             }
+            else {
+                sectionEnd
+            }
         case .groups:
             identifiedList {
                 // The run picked a release and could not apply it: why, with
@@ -207,11 +210,20 @@ struct FindOnlineAutomaticSection: View {
                     onRetry: onRetryFailed
                 )
             }
+            else {
+                sectionEnd
+            }
         case .awaitingCatalog:
             FindOnlineEmptyZone { keepOwnDraft }
         case .notStarted, .queued, .noSignals, .error, .unread:
             EmptyView()
         }
+    }
+
+    /// The section's own space under the band's rule, which a section with
+    /// nothing below the band still has, as the board's section body does.
+    private var sectionEnd: some View {
+        Color.clear.frame(height: ThemeSpace.group)
     }
 
     /// The way to answer a folder waiting on the person with its own draft,
