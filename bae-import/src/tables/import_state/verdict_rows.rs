@@ -11,13 +11,9 @@
 //! the releases its answers so far combine to, then the answer it reached.
 //! Its table is `verdict_rows.sql`, which every device's library holds.
 
-use super::column_list::{ColumnList, Columns};
-use super::ledger_rows::{
-    delete_ledger, ledger_columns, read_ledger, step_columns, store_ledger, MatchPositions,
-    StoredLedger,
-};
+use super::ledger_rows::{delete_ledger, step_columns, store_ledger, MatchPositions, StoredLedger};
 use super::match_rows::{store_match, Listing, MatchOwner, StoredMatches, Written};
-use super::verdict_failure_rows::{failures_of, store_failures, verdict_failures_sql};
+use super::verdict_failure_rows::{failures_of, store_failures};
 use super::verdict_layout::{verdict_text_on, VerdictLayout};
 use super::*;
 use bae_catalogs::search::MetadataResult;
@@ -81,7 +77,7 @@ impl std::fmt::Display for Owner<'_> {
 /// verdict (its failures, its ledger, its matches and their lists) names it
 /// by.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct VerdictId(i64);
+pub(crate) struct VerdictId(i64);
 
 impl rusqlite::ToSql for VerdictId {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
@@ -174,14 +170,6 @@ pub(super) fn store_verdict(
 }
 
 /// Write `outcome` as `owner`'s, over whatever it stored before, as
-/// Whether the verdict joined as `verdict` holds findings: the kinds that
-/// [`store_outcome`] writes for the verdicts whose
-/// [`TerminalVerdict::findings`] holds some, a found or a failed one. Every
-/// read of a verdict's cards uses this condition.
-pub(super) fn holds_findings_sql(verdict: &str) -> String {
-    format!("{verdict}.kind IN ('found', 'failed')")
-}
-
 /// [`store_verdict`] writes a verdict. Only a run in flight stores a ledger
 /// that has not settled.
 pub(super) fn store_outcome(
@@ -460,41 +448,6 @@ pub(super) struct VerdictRow {
     pub(super) kept_own_draft: bool,
 }
 
-/// A candidate's verdict as columns of a read that joins its row as
-/// `verdict`, its ledger's beside them. A candidate with none reads
-/// `verdict_row` as NULL.
-pub(super) fn verdict_columns() -> ColumnList {
-    let mut columns = vec![
-        (
-            "verdict_row",
-            "COALESCE(verdict.content_hash, 'run ' || verdict.identify_run)".to_string(),
-        ),
-        ("verdict_kind", "verdict.kind".to_string()),
-        ("verdict_track_count", "verdict.track_count".to_string()),
-        ("verdict_failures", verdict_failures_sql("verdict")),
-        ("verdict_error_detail", "verdict.error_detail".to_string()),
-        ("verdict_medium_conflict", "verdict.medium_conflict".to_string()),
-        ("verdict_kept_own_draft", "verdict.kept_own_draft".to_string()),
-    ];
-    columns.extend(ledger_columns());
-    ColumnList(columns)
-}
-
-/// The [`verdict_columns`] of a row read from `import_candidate_verdict`
-/// itself, where every row holds a verdict.
-pub(super) fn verdict_row_of(row: &impl Columns) -> Result<VerdictRow, DbError> {
-    Ok(VerdictRow {
-        content_hash: row.get("verdict_row")?,
-        kind: row.get("verdict_kind")?,
-        track_count: row.get("verdict_track_count")?,
-        failures: row.get("verdict_failures")?,
-        error_detail: row.get("verdict_error_detail")?,
-        ledger: read_ledger(row)?,
-        medium_conflict: medium_conflict_of(row.get("verdict_medium_conflict")?)?,
-        kept_own_draft: row.get("verdict_kept_own_draft")?,
-    })
-}
-
 /// The verdict a pane's read selects, as
 /// [`super::state_fragments::CurrentState`] names it; none for a candidate
 /// with no verdict.
@@ -606,12 +559,6 @@ pub(super) fn outcome_of(
         }
         findings
     };
-    #[expect(
-        clippy::read_pick,
-        clippy::read_filter,
-        clippy::read_aggregate,
-        reason = "refuses a verdict whose stored matches list a release it found none of: checks what one statement returned for damage, and no screen shows it"
-    )]
     let no_findings = |found: &StoredMatches| {
         if found.rows.iter().all(|row| matches!(row.listing, Listing::Unlisted)) {
             return Ok(());

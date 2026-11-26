@@ -7,9 +7,9 @@
 //! groups the rows again.
 
 use super::layout::{store_list_text, ListLayout, ListOwner, OwnersList, Place};
-use super::match_record::load_owner_matches_on;
+use super::match_record::match_rows_of;
 use super::match_rows::{ordinal_column, MatchOwner, Placed, StoredMatches};
-use super::verdict_rows::{outcome_of, verdict_columns, verdict_row_of, Outcome, Owner, VerdictId};
+use super::verdict_rows::{outcome_of, verdict_row_of_state, Outcome, Owner, VerdictId};
 use super::*;
 use bae_catalogs::search::MetadataResult;
 use bae_identify::signals::{SourcedValue, TextLine};
@@ -127,28 +127,38 @@ pub(super) fn verdict_text_on(
     Ok(CandidateText::of(&pool, &struck_out, &barcodes))
 }
 
+sqlive_compose::read!(
+    VerdictOf(content_hash: Option<String>, run: Option<i64>)
+        { verdict_id: Option<crate::tables::import_state::verdict_rows::VerdictId> },
+    r#"
+    SELECT verdict.verdict_id AS verdict_id, state.*
+    FROM import_candidate_verdict AS verdict
+    JOIN @crate::tables::import_state::state_fragments::CurrentState(
+        owner: (SELECT :content_hash AS content_hash, :run AS identify_run)) AS state
+        ON state.owner_row = COALESCE(verdict.content_hash, 'run ' || verdict.identify_run)
+    WHERE verdict.content_hash IS :content_hash AND verdict.identify_run IS :run
+"#
+);
+
 /// Lay out `owner`'s stored releases again, at the end of a write that
 /// changes their signals' text or the discounted catalog numbers.
 /// An owner with no verdict, or one that found nothing, holds no layout.
 pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
-    let column = owner.column();
+    let request = VerdictOfParams { content_hash: owner.content_hash(), run: owner.run() };
     let stored = sql
-        .query(
-            &format!(
-                "SELECT verdict.verdict_id AS verdict_id, {columns} \
-                 FROM import_candidate_verdict AS verdict WHERE verdict.{column} = ?",
-                columns = verdict_columns().select(),
-            ),
-            params![owner],
-            |row| Ok((row.get::<_, VerdictId>("verdict_id")?, verdict_row_of(row))),
-        )?
+        .query(VerdictOf::SQL, request.params().as_slice(), VerdictOfRow::read)?
         .into_iter()
         .next();
-    let Some((verdict, row)) = stored else {
+    let Some(stored) = stored else {
         return Ok(());
     };
-    let row = row?;
-    let found: StoredMatches = load_owner_matches_on(sql, owner)?;
+    let verdict = stored.verdict_id.ok_or_else(|| {
+        DbError::unreadable(format!("the verdict row of {owner}"), None::<String>)
+    })?;
+    let row = verdict_row_of_state(&stored.state)?.ok_or_else(|| {
+        DbError::unreadable(format!("the verdict row of {owner}"), None::<String>)
+    })?;
+    let found: StoredMatches = match_rows_of(&owner.to_string(), &stored.state.candidate_matches)?;
     let (outcome, _) = outcome_of(row, found)?;
     let outcome = Outcome::of(&outcome);
     let (Some(findings), Some(track_count)) = (outcome.findings(), outcome.track_count()) else {

@@ -1,25 +1,8 @@
-//! `ColumnList` names a read's columns once. A statement selects them as
-//! plain columns or as one JSON object, and one reader reads them back from
-//! either. A statement that nests a run's verdict or signals in a JSON list
-//! selects the object; the reader that decodes it is the one that decodes the
-//! plain columns.
+//! Named columns read from a statement's row or from one JSON object, so that
+//! one reader decodes a typed search either way.
 
 use rusqlite::types::{FromSql, Value, ValueRef};
 use serde_json::Value as Json;
-
-/// Named SQL expressions: a read's columns.
-pub(super) struct ColumnList(pub(super) Vec<(&'static str, String)>);
-
-impl ColumnList {
-    /// The expressions as selected columns, each `AS` its name.
-    pub(super) fn select(&self) -> String {
-        self.0
-            .iter()
-            .map(|(name, expression)| format!("{expression} AS {name}"))
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-}
 
 /// Where a reader takes its named columns from: a statement's row, or one
 /// JSON object holding them.
@@ -33,8 +16,8 @@ impl Columns for rusqlite::Row<'_> {
     }
 }
 
-/// The columns of one JSON object a [`ColumnList::object`] selected. `get`
-/// returns a list inside the object as its JSON text, as a row's column does.
+/// The columns of one JSON object that a statement selected. `get` returns a
+/// list inside the object as its JSON text, as a row's column does.
 #[derive(serde::Deserialize)]
 #[serde(transparent)]
 pub(super) struct JsonColumns(serde_json::Map<String, Json>);

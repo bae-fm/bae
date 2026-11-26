@@ -87,61 +87,7 @@ sqlive_compose::fragment!(
                 FROM recs AS r
                     JOIN (
                         SELECT ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1 AS
-                            ord, json_object('position', found.position, 'pressing',
-                            found.pressing, 'listing', found.listing, 'media_kind',
-                            found.media_kind, 'album_links', found.album_links, 'source',
-                            found.source, 'release_id', found.release_id, 'title', found.title,
-                            'credits', found.credits, 'year', found.year, 'country',
-                            found.country, 'region', found.region, 'status', found.status,
-                            'packaging', found.packaging, 'source_group_id',
-                            found.source_group_id, 'named_note', found.named_note,
-                            'discogs_details', json(found.discogs_details), 'cover', CASE WHEN
-                            found.cover_url IS NOT NULL THEN json_object('url', found.cover_url,
-                            'label', found.cover_label, 'source', found.cover_source,
-                            'standing', found.cover_standing) END, 'source_tracks', CASE WHEN
-                            found.source_tracks_kind = 'listed' THEN json_object('kind',
-                            'listed', 'count', found.source_tracks_count) WHEN
-                            found.source_tracks_kind IS NOT NULL THEN json_object('kind',
-                            found.source_tracks_kind) END, 'document_failure', CASE WHEN
-                            found.document_failure IS NOT NULL THEN json_object('kind',
-                            found.document_failure, 'status', found.document_failure_status)
-                            END, 'album_first_year',(
-                        SELECT fetched.album_first_year
-                        FROM source_release AS fetched
-                        WHERE fetched.catalog = found.source AND fetched.release_id =
-                            found.release_id
-                        ), 'labels', json((
-                        SELECT json_group_array(json_object('name', entry.name,
-                            'catalog_number', entry.catalog_number, 'musicbrainz_label_id',
-                            entry.musicbrainz_label_id, 'discogs_label_id',
-                            entry.discogs_label_id) ORDER BY entry.ordinal)
-                        FROM import_candidate_match_label AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'barcodes', json((
-                        SELECT json_group_array(entry.barcode ORDER BY entry.ordinal)
-                        FROM import_candidate_match_barcode AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'cover_copies', json((
-                        SELECT json_group_array(json_object('url', copy.url, 'max_edge',
-                            copy.max_edge) ORDER BY copy.max_edge)
-                        FROM import_candidate_match_cover_copy AS copy
-                        WHERE copy.match_id = found.match_id
-                        )), 'media', json((
-                        SELECT json_group_array(json_object('kind', entry.media_kind, 'medium',
-                            entry.medium, 'quantity', entry.quantity) ORDER BY entry.ordinal)
-                        FROM import_candidate_match_medium AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'links', json((
-                        SELECT json_group_array(json_array(entry.catalog, entry.key) ORDER BY
-                            entry.ordinal)
-                        FROM import_candidate_match_link AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'album_link_rows', json((
-                        SELECT json_group_array(json_object('catalog', entry.catalog, 'key',
-                            entry.key) ORDER BY entry.ordinal)
-                        FROM import_candidate_match_album_link AS entry
-                        WHERE entry.match_id = found.match_id
-                    ))) AS record
+                            ord, json(@crate::tables::import_state::match_record::MatchRecord(parent: found)) AS record
                     FROM import_candidate_match AS found
                     JOIN import_candidate_search_source AS part ON part.search_run =
                         found.search_run AND part.catalog = found.source
@@ -229,61 +175,7 @@ sqlive_compose::fragment!(
                 SELECT json(rc.record)
                     FROM (
                         SELECT ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1 AS
-                            ord, json_object('position', found.position, 'pressing',
-                            found.pressing, 'listing', found.listing, 'media_kind',
-                            found.media_kind, 'album_links', found.album_links, 'source',
-                            found.source, 'release_id', found.release_id, 'title', found.title,
-                            'credits', found.credits, 'year', found.year, 'country',
-                            found.country, 'region', found.region, 'status', found.status,
-                            'packaging', found.packaging, 'source_group_id',
-                            found.source_group_id, 'named_note', found.named_note,
-                            'discogs_details', json(found.discogs_details), 'cover', CASE WHEN
-                            found.cover_url IS NOT NULL THEN json_object('url', found.cover_url,
-                            'label', found.cover_label, 'source', found.cover_source,
-                            'standing', found.cover_standing) END, 'source_tracks', CASE WHEN
-                            found.source_tracks_kind = 'listed' THEN json_object('kind',
-                            'listed', 'count', found.source_tracks_count) WHEN
-                            found.source_tracks_kind IS NOT NULL THEN json_object('kind',
-                            found.source_tracks_kind) END, 'document_failure', CASE WHEN
-                            found.document_failure IS NOT NULL THEN json_object('kind',
-                            found.document_failure, 'status', found.document_failure_status)
-                            END, 'album_first_year',(
-                        SELECT fetched.album_first_year
-                        FROM source_release AS fetched
-                        WHERE fetched.catalog = found.source AND fetched.release_id =
-                            found.release_id
-                        ), 'labels', json((
-                        SELECT json_group_array(json_object('name', entry.name,
-                            'catalog_number', entry.catalog_number, 'musicbrainz_label_id',
-                            entry.musicbrainz_label_id, 'discogs_label_id',
-                            entry.discogs_label_id) ORDER BY entry.ordinal)
-                        FROM import_candidate_match_label AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'barcodes', json((
-                        SELECT json_group_array(entry.barcode ORDER BY entry.ordinal)
-                        FROM import_candidate_match_barcode AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'cover_copies', json((
-                        SELECT json_group_array(json_object('url', copy.url, 'max_edge',
-                            copy.max_edge) ORDER BY copy.max_edge)
-                        FROM import_candidate_match_cover_copy AS copy
-                        WHERE copy.match_id = found.match_id
-                        )), 'media', json((
-                        SELECT json_group_array(json_object('kind', entry.media_kind, 'medium',
-                            entry.medium, 'quantity', entry.quantity) ORDER BY entry.ordinal)
-                        FROM import_candidate_match_medium AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'links', json((
-                        SELECT json_group_array(json_array(entry.catalog, entry.key) ORDER BY
-                            entry.ordinal)
-                        FROM import_candidate_match_link AS entry
-                        WHERE entry.match_id = found.match_id
-                        )), 'album_link_rows', json((
-                        SELECT json_group_array(json_object('catalog', entry.catalog, 'key',
-                            entry.key) ORDER BY entry.ordinal)
-                        FROM import_candidate_match_album_link AS entry
-                        WHERE entry.match_id = found.match_id
-                    ))) AS record
+                            ord, json(@crate::tables::import_state::match_record::MatchRecord(parent: found)) AS record
                     FROM import_candidate_match AS found
                     JOIN import_candidate_search_source AS part ON part.search_run =
                         found.search_run AND part.catalog = found.source

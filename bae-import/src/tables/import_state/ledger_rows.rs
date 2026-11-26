@@ -11,8 +11,7 @@
 //! storing one fails. A run in flight stores its ledger as it stands.
 //! Its tables are `ledger_rows.sql`, which every device's library holds.
 
-use super::cards_read::{cell_cards_sql, groups_from, StoredCard};
-use super::column_list::Columns;
+use super::cards_read::{groups_from, StoredCard};
 use super::layout::{store_list_text, ListLayout, ListOwner, OwnersList};
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_rows::MatchOwner;
@@ -348,115 +347,6 @@ fn column(index: usize) -> Result<i64, DbError> {
     to_i64(index, "a ledger row's place in its list")
 }
 
-/// The ledger's rows as one JSON object holding a list of rows under each
-/// step that has any, each row with its lookups in cell order, for a read
-/// that joins its verdict as `verdict`.
-fn ledger_rows_sql() -> String {
-    format!(
-        "(SELECT json_group_object(by_step.step, json(by_step.rows)) \
-      FROM (SELECT ledger_row.step AS step, json_group_array(json_object( \
-          'step', ledger_row.step, 'value', ledger_row.value, \
-          'excluded', ledger_row.excluded, \
-          'cells', json((SELECT json_group_array(json_object( \
-              'catalog', lookup.catalog, \
-              'answer', CASE WHEN lookup.answer = 'answered' AND NOT EXISTS ( \
-                                   SELECT 1 FROM import_candidate_lookup_release AS found \
-                                   WHERE found.verdict_id = lookup.verdict_id \
-                                     AND found.step = lookup.step \
-                                     AND found.position = lookup.position \
-                                     AND found.cell = lookup.cell) \
-                             THEN 'no_match' ELSE lookup.answer END, \
-              'reason', lookup.not_asked_reason, 'failure', lookup.failure, \
-              'status', lookup.failure_status, \
-              'count', (SELECT COUNT(DISTINCT found.pressing) \
-                        FROM import_candidate_lookup_release AS found \
-                        WHERE found.verdict_id = lookup.verdict_id \
-                          AND found.step = lookup.step \
-                          AND found.position = lookup.position \
-                          AND found.cell = lookup.cell), \
-              'cards', json({cards})) \
-              ORDER BY lookup.cell) \
-              FROM import_candidate_lookup AS lookup \
-              WHERE lookup.verdict_id = ledger_row.verdict_id \
-                AND lookup.step = ledger_row.step \
-                AND lookup.position = ledger_row.position))) \
-          ORDER BY ledger_row.position) AS rows \
-      FROM import_candidate_lookup_value AS ledger_row \
-      WHERE ledger_row.verdict_id = verdict.verdict_id \
-        GROUP BY ledger_row.step) AS by_step)",
-        cards = cell_cards_sql("lookup", "verdict"),
-    )
-}
-
-/// A verdict's ledger as columns of a read that joins its row as `verdict`:
-/// the step columns, and the ledger's lists as JSON array columns beside
-/// them — the providers, the ISRCs and the offered catalog numbers in order,
-/// and the rows in order, each with its lookups in cell order and each lookup
-/// with how many pressings the releases it found are and the cards they make
-/// (each card holding its releases), its answer 'no_match' where it answered
-/// with none. The read also returns the position of an unlisted match that no
-/// lookup found, in a column of its own.
-pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
-    // One select over a ledger table's rows for the verdict: the lists, the
-    // shown ISRC and the counts all read the same rows.
-    let select = |expr: &str, table: &str, tail: &str| {
-        format!(
-            "(SELECT {expr} FROM {table} AS entry \
-              WHERE entry.verdict_id = verdict.verdict_id{tail})"
-        )
-    };
-    let list = |value: &str, table: &str, order: &str| {
-        select(&format!("json_group_array({value} ORDER BY {order})"), table, "")
-    };
-    vec![
-        ("ledger_disc_id_step", "verdict.disc_id_step".to_string()),
-        ("ledger_barcode_step", "verdict.barcode_step".to_string()),
-        ("ledger_catalog_step", "verdict.catalog_step".to_string()),
-        ("ledger_isrc_step", "verdict.isrc_step".to_string()),
-        ("ledger_search_step", "verdict.search_step".to_string()),
-        ("ledger_search_album", "verdict.search_album".to_string()),
-        ("ledger_search_artist", "verdict.search_artist".to_string()),
-        (
-            "ledger_stray_unlisted",
-            "(SELECT MIN(unlisted.position) FROM import_candidate_match AS unlisted \
-              WHERE unlisted.verdict_id = verdict.verdict_id \
-                AND unlisted.listing = 'unlisted' \
-                AND NOT EXISTS (SELECT 1 FROM import_candidate_lookup_release AS found \
-                                WHERE found.verdict_id = verdict.verdict_id \
-                                  AND found.match_position = unlisted.position))"
-                .to_string(),
-        ),
-        (
-            "ledger_providers",
-            list("entry.catalog", "import_candidate_lookup_provider", "entry.position"),
-        ),
-        ("ledger_isrcs", list("entry.isrc", "import_candidate_lookup_isrc", "entry.position")),
-        // The code a surface shows, and how many codes it leaves behind its
-        // +N button, from the same rows.
-        (
-            "ledger_isrc_shown",
-            select(
-                "entry.isrc",
-                "import_candidate_lookup_isrc",
-                " ORDER BY entry.position LIMIT 1",
-            ),
-        ),
-        (
-            "ledger_isrc_more_count",
-            select("MAX(COUNT(*) - 1, 0)", "import_candidate_lookup_isrc", ""),
-        ),
-        (
-            "ledger_offered_catalogs",
-            list("entry.value", "import_candidate_lookup_offered_catalog", "entry.position"),
-        ),
-        (
-            "ledger_offered_catalog_count",
-            select("COUNT(*)", "import_candidate_lookup_offered_catalog", ""),
-        ),
-        ("ledger_rows", ledger_rows_sql()),
-    ]
-}
-
 /// One verdict's [`ledger_columns`] as SQLite hands them over, its lists
 /// still JSON.
 pub(super) struct StoredLedger {
@@ -476,26 +366,6 @@ pub(super) struct StoredLedger {
     offered_catalogs: String,
     offered_catalog_count: u32,
     rows: String,
-}
-
-pub(super) fn read_ledger(row: &impl Columns) -> rusqlite::Result<StoredLedger> {
-    Ok(StoredLedger {
-        disc_id: row.get("ledger_disc_id_step")?,
-        barcode: row.get("ledger_barcode_step")?,
-        catalog: row.get("ledger_catalog_step")?,
-        isrc: row.get("ledger_isrc_step")?,
-        search: row.get("ledger_search_step")?,
-        search_album: row.get("ledger_search_album")?,
-        search_artist: row.get("ledger_search_artist")?,
-        stray_unlisted: row.get("ledger_stray_unlisted")?,
-        providers: row.get("ledger_providers")?,
-        isrcs: row.get("ledger_isrcs")?,
-        isrc_shown: row.get("ledger_isrc_shown")?,
-        isrc_more_count: row.get("ledger_isrc_more_count")?,
-        offered_catalogs: row.get("ledger_offered_catalogs")?,
-        offered_catalog_count: row.get("ledger_offered_catalog_count")?,
-        rows: row.get("ledger_rows")?,
-    })
 }
 
 /// The rows of each ledger step, as [`ledger_columns`] holds them: a list under

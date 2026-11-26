@@ -7,7 +7,6 @@ use super::match_rows::{
     catalog_of, match_of, source_of, standing_of, MatchColumns, MatchEntries, MatchRow,
     StoredMatches, StoredMedium,
 };
-use super::verdict_rows::Owner;
 use super::*;
 use crate::tables::album_link_rows::AlbumLinkRow;
 use crate::tables::cover_labels;
@@ -17,90 +16,64 @@ use bae_catalogs::remote_image::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_types::pressing::{Medium, StatedMedia};
 
-/// A match joined as `found` as one JSON object: its own columns, its album's
-/// first year from the stored catalog release it names, and the rows that
-/// name it, each list in its stored order: its labels, barcodes, cover
-/// copies, media, links and album links. [`match_row_of`] reads it back.
-pub(super) fn match_record_sql(found: &str) -> String {
-    let child = |table: &str, value: &str, order: &str| {
-        format!(
-            "json((SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
-                   WHERE entry.match_id = {found}.match_id))"
-        )
-    };
-    let columns = [
-        "position",
-        "pressing",
-        "listing",
-        "media_kind",
-        "album_links",
-        "source",
-        "release_id",
-        "title",
-        "credits",
-        "year",
-        "country",
-        "region",
-        "status",
-        "packaging",
-        "source_group_id",
-        "named_note",
-    ]
-    .map(|column| format!("'{column}', {found}.{column}"))
-    .join(", ");
-    let copies = format!(
-        "json({})",
-        crate::tables::downscaled_copies::copies_json_sql(
-            "import_candidate_match_cover_copy",
-            &format!("copy.match_id = {found}.match_id"),
-        )
-    );
-    format!(
-        "json_object({columns}, \
-             'discogs_details', json({found}.discogs_details), \
-             'cover', CASE WHEN {found}.cover_url IS NOT NULL THEN json_object( \
-                 'url', {found}.cover_url, 'label', {found}.cover_label, \
-                 'source', {found}.cover_source, 'standing', {found}.cover_standing) END, \
-             'source_tracks', CASE \
-                 WHEN {found}.source_tracks_kind = 'listed' THEN json_object( \
-                     'kind', 'listed', 'count', {found}.source_tracks_count) \
-                 WHEN {found}.source_tracks_kind IS NOT NULL THEN json_object( \
-                     'kind', {found}.source_tracks_kind) END, \
-             'document_failure', CASE WHEN {found}.document_failure IS NOT NULL THEN json_object( \
-                 'kind', {found}.document_failure, \
-                 'status', {found}.document_failure_status) END, \
-             'album_first_year', (SELECT fetched.album_first_year FROM source_release AS fetched \
-                                  WHERE fetched.catalog = {found}.source \
-                                    AND fetched.release_id = {found}.release_id), \
-             'labels', {labels}, 'barcodes', {barcodes}, 'cover_copies', {copies}, \
-             'media', {media}, 'links', {links}, 'album_link_rows', {album_links})",
-        labels = child(
-            "import_candidate_match_label",
-            "json_object('name', entry.name, 'catalog_number', entry.catalog_number, \
-                 'musicbrainz_label_id', entry.musicbrainz_label_id, \
-                 'discogs_label_id', entry.discogs_label_id)",
-            "entry.ordinal"
-        ),
-        barcodes = child("import_candidate_match_barcode", "entry.barcode", "entry.ordinal"),
-        copies = copies,
-        media = child(
-            "import_candidate_match_medium",
-            "json_object('kind', entry.media_kind, 'medium', entry.medium, \
-                         'quantity', entry.quantity)",
-            "entry.ordinal",
-        ),
-        links = child(
-            "import_candidate_match_link",
-            "json_array(entry.catalog, entry.key)",
-            "entry.ordinal",
-        ),
-        album_links = child(
-            "import_candidate_match_album_link",
-            "json_object('catalog', entry.catalog, 'key', entry.key)",
-            "entry.ordinal",
-        ),
-    )
-}
+sqlive_compose::fragment!(
+    MatchRecord on import_candidate_match {
+        record: String
+    },
+    r#"
+    SELECT (
+            json_object('position', @parent.position, 'pressing', @parent.pressing, 'listing',
+                @parent.listing, 'media_kind', @parent.media_kind, 'album_links',
+                @parent.album_links, 'source', @parent.source, 'release_id', @parent.release_id,
+                'title', @parent.title, 'credits', @parent.credits, 'year', @parent.year,
+                'country', @parent.country, 'region', @parent.region, 'status', @parent.status,
+                'packaging', @parent.packaging, 'source_group_id', @parent.source_group_id,
+                'named_note', @parent.named_note, 'discogs_details',
+                json(@parent.discogs_details), 'cover', CASE WHEN @parent.cover_url IS NOT NULL
+                THEN json_object('url', @parent.cover_url, 'label', @parent.cover_label,
+                'source', @parent.cover_source, 'standing', @parent.cover_standing) END,
+                'source_tracks', CASE WHEN @parent.source_tracks_kind = 'listed' THEN
+                json_object('kind', 'listed', 'count', @parent.source_tracks_count) WHEN
+                @parent.source_tracks_kind IS NOT NULL THEN json_object('kind',
+                @parent.source_tracks_kind) END, 'document_failure', CASE WHEN
+                @parent.document_failure IS NOT NULL THEN json_object('kind',
+                @parent.document_failure, 'status', @parent.document_failure_status) END,
+                'album_first_year',(
+            SELECT fetched.album_first_year
+            FROM source_release AS fetched
+            WHERE fetched.catalog = @parent.source AND fetched.release_id = @parent.release_id
+            ), 'labels', json((
+            SELECT json_group_array(json_object('name', entry.name, 'catalog_number',
+                entry.catalog_number, 'musicbrainz_label_id', entry.musicbrainz_label_id,
+                'discogs_label_id', entry.discogs_label_id) ORDER BY entry.ordinal)
+            FROM import_candidate_match_label AS entry
+            WHERE entry.match_id = @parent.match_id
+            )), 'barcodes', json((
+            SELECT json_group_array(entry.barcode ORDER BY entry.ordinal)
+            FROM import_candidate_match_barcode AS entry
+            WHERE entry.match_id = @parent.match_id
+            )), 'cover_copies', json((
+            SELECT json_group_array(json_object('url', copy.url, 'max_edge', copy.max_edge)
+                ORDER BY copy.max_edge)
+            FROM import_candidate_match_cover_copy AS copy
+            WHERE copy.match_id = @parent.match_id
+            )), 'media', json((
+            SELECT json_group_array(json_object('kind', entry.media_kind, 'medium',
+                entry.medium, 'quantity', entry.quantity) ORDER BY entry.ordinal)
+            FROM import_candidate_match_medium AS entry
+            WHERE entry.match_id = @parent.match_id
+            )), 'links', json((
+            SELECT json_group_array(json_array(entry.catalog, entry.key) ORDER BY entry.ordinal)
+            FROM import_candidate_match_link AS entry
+            WHERE entry.match_id = @parent.match_id
+            )), 'album_link_rows', json((
+            SELECT json_group_array(json_object('catalog', entry.catalog, 'key', entry.key)
+                ORDER BY entry.ordinal)
+            FROM import_candidate_match_album_link AS entry
+            WHERE entry.match_id = @parent.match_id
+        )))
+    ) AS record
+"#);
 
 /// One medium of a match as [`match_record_sql`] holds it.
 #[derive(serde::Deserialize)]
@@ -322,28 +295,26 @@ pub(super) fn match_rows_of(content_hash: &str, json: &str) -> Result<StoredMatc
     })
 }
 
-/// The releases of the candidate's verdict or the run that `owner` names, in
-/// position order.
-pub(super) fn load_owner_matches_on(
-    sql: &impl coven::SqlRead,
-    owner: Owner<'_>,
-) -> Result<StoredMatches, DbError> {
-    let column = owner.column();
-    let name = owner.to_string();
-    let rows = sql.query(
-        &format!(
-            "SELECT {record} AS record \
-             FROM import_candidate_match AS found \
-             JOIN import_candidate_verdict AS verdict ON verdict.verdict_id = found.verdict_id \
-             WHERE verdict.{column} = ? \
-             ORDER BY found.position",
-            record = match_record_sql("found"),
-        ),
-        params![owner],
-        |row| Ok(match_row_of(&name, &row.get::<_, String>("record")?)),
-    )?;
-    Ok(StoredMatches { rows: rows.into_iter().collect::<Result<_, _>>()? })
+/// The JSON of the match a read of [`MatchRecord`] returned for a row of
+/// `owner`, which every match row has.
+fn record_json(record: Option<MatchRecord>, owner: &str) -> Result<String, DbError> {
+    record
+        .map(|record| record.record)
+        .ok_or_else(|| DbError::unreadable(format!("a stored match of {owner}"), None::<String>))
 }
+
+sqlive_compose::read!(
+    SearchRunMatches(run: i64),
+    r#"
+    SELECT part.position, found.position AS found_position,
+        @crate::tables::import_state::match_record::MatchRecord(parent: found) AS record
+    FROM import_candidate_match AS found
+    JOIN import_candidate_search_source AS part
+        ON part.search_run = found.search_run AND part.catalog = found.source
+    WHERE found.search_run = :run
+    ORDER BY part.position, found.position
+"#
+);
 
 /// The releases of the search `run`, under its catalog parts in their order,
 /// each part's in the order it returned them.
@@ -351,24 +322,10 @@ pub(super) fn load_search_run_matches_on(
     sql: &impl coven::SqlRead,
     run: i64,
 ) -> Result<Vec<MatchRow>, DbError> {
-    sql.query(
-        &format!(
-            "SELECT 'search ' || found.search_run AS content_hash, {record} AS record \
-             FROM import_candidate_match AS found \
-             JOIN import_candidate_search_source AS part \
-                 ON part.search_run = found.search_run AND part.catalog = found.source \
-             WHERE found.search_run = ? \
-             ORDER BY part.position, found.position",
-            record = match_record_sql("found"),
-        ),
-        [run],
-        |row| {
-            Ok(match_row_of(
-                &row.get::<_, String>("content_hash")?,
-                &row.get::<_, String>("record")?,
-            ))
-        },
-    )?
-    .into_iter()
-    .collect()
+    let name = format!("search {run}");
+    let request = SearchRunMatchesParams { run };
+    sql.query(SearchRunMatches::SQL, request.params().as_slice(), SearchRunMatchesRow::read)?
+        .into_iter()
+        .map(|row| match_row_of(&name, &record_json(row.record, &name)?))
+        .collect()
 }
