@@ -36,8 +36,8 @@ sqlive_compose::fragment!(
                     ORDER BY credit.position)
          FROM album_artists AS credit
          JOIN artists AS credited
-           ON credited.id = (SELECT shown.shown_artist_id FROM @crate::records::spread_fragments::ShownAs AS shown
-                             WHERE shown.artist_id = credit.artist_id)
+           ON credited.id = (SELECT shown_artist_id FROM artist_shown_as
+                             WHERE artist_id = credit.artist_id)
          LEFT JOIN artist_credits AS credit_name
                 ON credit_name.artist_id = credit.artist_id
                AND credit_name.name_key = credit.credit_key

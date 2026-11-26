@@ -26,19 +26,3 @@ sqlive_compose::fragment!(
     WHERE held.kind = 'pressing'
 "#
 );
-
-sqlive_compose::fragment!(
-    ShownAs,
-    r#"
-    SELECT shown_as.artist_id, shown_as.shown_artist_id
-    FROM artist_shown_as AS shown_as
-"#
-);
-
-sqlive_compose::read!(
-    ShownAsRows,
-    r#"
-    SELECT shown.*
-    FROM @crate::records::spread_fragments::ShownAs AS shown
-"#
-);
