@@ -31,15 +31,15 @@ public struct ShadowedFace: View {
         2 * blur + offset
     }
 
-    /// A CSS blur of B is a Gaussian of deviation B / 2, which is SwiftUI's
-    /// shadow radius of B.
+    /// A CSS blur of B is a Gaussian of deviation B / 2. SwiftUI's shadow
+    /// radius is the Gaussian's deviation itself, so the radius is B / 2.
     public var body: some View {
         let shadowRoom = Self.shadowRoom(blur: blur, offset: offset)
         RoundedRectangle(cornerRadius: cornerRadius)
             .fill(fill)
             .shadow(
                 color: Theme.shadow,
-                radius: blur,
+                radius: blur / 2,
                 y: offset
             )
             .padding(shadowRoom)
