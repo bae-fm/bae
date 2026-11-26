@@ -281,10 +281,8 @@ sqlive_compose::fragment!(
         SELECT failure.error AS failure_error, failure.failed_at
         FROM import_candidate_failure failure
             WHERE failure.content_hash =(
-            SELECT scan.content_hash
-            FROM scan_candidate AS scan
-            WHERE scan.path = :key
-        )
+                SELECT scan.content_hash
+                FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
     )
     SELECT :key AS failure_key, failure_error, failed_at
     FROM statement
