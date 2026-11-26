@@ -32,9 +32,8 @@ pub(super) async fn stored_move_files(
         .unwrap()
 }
 
-/// Cancelling every move needs no original: nothing was switched, so every
-/// release stays on this device only, and one whose original went shows it
-/// missing.
+/// Cancelling a move needs no original: nothing was switched, so the release
+/// stays on this device only, and one whose original went shows it missing.
 #[tokio::test]
 async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
@@ -47,7 +46,8 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     )
     .await;
     temp.remove("second/b.flac");
-    manager.library.manager().cancel_all_release_uploads().await.unwrap();
+    manager.library.manager().cancel_release_upload(&first.id).await.unwrap();
+    manager.library.manager().cancel_release_upload(&second.id).await.unwrap();
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
     for release in [&first, &second] {
         for file in release_files(manager.library.manager(), &release.id).await {
@@ -75,14 +75,14 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
 }
 
 #[tokio::test]
-async fn cancelling_every_upload_beside_a_new_cover_preserves_completed_audio_and_its_download() {
+async fn cancelling_an_upload_beside_a_new_cover_preserves_completed_audio_and_its_download() {
     let (manager, _temp, release, _) = queued_upload_fixture("completed").await;
     manager.library.manager().drain_uploads_expecting_work().await.unwrap();
     manager.library.manager().set_downloads_paused(true).await.unwrap();
     manager.library.manager().enqueue_pins(vec![release.id.clone()]).await.unwrap();
     store_test_cover(manager.library.manager(), &release.id, b"cover").await;
     assert_eq!(download_queue_now(manager.library.manager()).await.rows.len(), 1);
-    manager.library.manager().cancel_all_release_uploads().await.unwrap();
+    manager.library.manager().cancel_release_upload(&release.id).await.unwrap();
     assert_eq!(download_queue_now(manager.library.manager()).await.rows.len(), 1);
     assert!(release_files(manager.library.manager(), &release.id)
         .await
@@ -545,54 +545,6 @@ async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
     );
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.library.store().pending().await.unwrap().is_empty());
-}
-
-#[tokio::test]
-async fn cancelling_all_release_uploads_restores_their_originals() {
-    let (manager, temp, first, _) = queued_upload_fixture("first").await;
-    let second = insert_release_with_queued_uploads(
-        manager.library.manager(),
-        &temp,
-        "second",
-        "Album",
-        &[("b.flac", b"audio")],
-    )
-    .await;
-    manager.library.manager().cancel_all_release_uploads().await.unwrap();
-    // Cancelling retires each move, so its uploads leave the queue.
-    assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.library.store().pending().await.unwrap().is_empty());
-    for release in [first, second] {
-        for file in release_files(manager.library.manager(), &release.id).await {
-            assert!(!file.stored);
-            assert!(
-                manager.library.manager().records.external_file(&file.id).await.unwrap().is_some(),
-                "the original plays again"
-            );
-            assert_eq!(
-                manager
-                    .library
-                    .manager()
-                    .records
-                    .read_release_file(&file.id, &bae_util::test_files::lease())
-                    .await
-                    .unwrap()
-                    .len(),
-                temp.metadata(
-                    manager
-                        .library
-                        .manager()
-                        .records
-                        .external_file(&file.id)
-                        .await
-                        .unwrap()
-                        .unwrap()
-                        .path
-                )
-                .len() as usize
-            );
-        }
-    }
 }
 
 /// Deleting the release of a file still uploading deletes the file with its
