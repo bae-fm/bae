@@ -150,6 +150,7 @@ impl LibraryManager {
         self.cancel_release_uploads(vec![release_id.to_string()]).await
     }
 
+    #[cfg(test)]
     pub async fn cancel_all_release_uploads(&self) -> Result<(), LibraryError> {
         let releases = self.records.uploading_releases().await?;
         self.cancel_release_uploads(releases).await
