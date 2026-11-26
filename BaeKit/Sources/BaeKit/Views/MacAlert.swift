@@ -467,8 +467,9 @@
         /// the view is in one.
         private func raise() {
             guard let modals else {
-                reportMissingModalStack(presenting: "an alert")
-                return
+                preconditionFailure(
+                    "An alert is presented in a window whose host gave no modal stack (modalWindows(_:))"
+                )
             }
             let anchor = anchor
             let id = id
