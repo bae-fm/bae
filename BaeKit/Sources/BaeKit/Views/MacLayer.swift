@@ -1,5 +1,6 @@
 #if canImport(AppKit)
     import AppKit
+    import OSLog
     import SwiftUI
 
     /// A modal presentation that bae draws itself over a view: a sheet, the
@@ -59,6 +60,22 @@
         /// every alert and layer presented from the window sits on.
         @Entry
         var modalWindows: ModalWindows?
+    }
+
+    private let modalStackLogger = Logger.bae("ModalWindows")
+
+    /// Reports that a window's host gave no modal stack, so what it presents
+    /// does not show: a bug of the host, which the app survives.
+    @MainActor
+    func reportMissingModalStack(presenting what: String) {
+        let detail =
+            "A window presents \(what) but its host gave no modal stack (modalWindows(_:))"
+        modalStackLogger.error(detail)
+        CoreBugReporter()
+            .report(
+                operation: "present a modal over a window",
+                detail: detail
+            )
     }
 
     extension View {
@@ -167,9 +184,8 @@
                 return
             }
             guard let modals else {
-                preconditionFailure(
-                    "A layer is presented in a window whose host gave no modal stack (modalWindows(_:))"
-                )
+                reportMissingModalStack(presenting: "a layer")
+                return
             }
             let wanted = Set(latest.layers.map(\.id))
             for key in order.reversed() where !wanted.contains(key) {
