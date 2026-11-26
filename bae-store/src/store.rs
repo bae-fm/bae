@@ -225,24 +225,26 @@ impl Store {
     }
 
     /// A live query of two statements that read one snapshot: each request
-    /// binds the parameters both statements run with, and the result holds
-    /// every row each returned. A read that is too large for SQLite to prepare
-    /// as one statement is two, one for each concern of the screen.
-    pub fn subscribe_reconfigurable_statements<P, A, B, E>(
+    /// becomes the parameters of each statement, and the result holds every
+    /// row each returned. A read that is too large for SQLite to prepare as
+    /// one statement is two, one for each concern of the screen.
+    pub fn subscribe_reconfigurable_statements<P, PA, PB, A, B, E>(
         &self,
         initial_request: P,
-        first: &'static ReadStatement<P, A>,
-        second: &'static ReadStatement<P, B>,
+        first: &'static ReadStatement<PA, A>,
+        second: &'static ReadStatement<PB, B>,
     ) -> coven::ReconfigurableLiveQuery<P, (Vec<A>, Vec<B>), E>
     where
         P: Clone + PartialEq + Send + Sync + 'static,
+        PA: for<'request> From<&'request P> + 'static,
+        PB: for<'request> From<&'request P> + 'static,
         A: Send + 'static,
         B: Send + 'static,
         E: From<DbError> + From<coven::DbError> + CarriesBug + Send + 'static,
     {
         self.inner.handle.subscribe_reconfigurable(initial_request, move |request, read| {
-            let rows = first.run(&read, request).map_err(E::from)?;
-            Ok((rows, second.run(&read, request).map_err(E::from)?))
+            let rows = first.run(&read, &PA::from(request)).map_err(E::from)?;
+            Ok((rows, second.run(&read, &PB::from(request)).map_err(E::from)?))
         })
     }
 

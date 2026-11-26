@@ -13,6 +13,12 @@ struct Topic {
     topic: String,
 }
 
+impl From<&Topic> for Topic {
+    fn from(request: &Topic) -> Self {
+        request.clone()
+    }
+}
+
 fn bind_topic(request: &Topic) -> Bound<'_> {
     vec![(":topic", &request.topic)]
 }
