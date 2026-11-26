@@ -29,26 +29,24 @@ sqlive_compose::fragment!(
         file_evidence: String
     },
     r#"
-    SELECT scan.path AS file_evidence_key,
+    SELECT :key AS file_evidence_key,
            COALESCE(
                (SELECT json_group_array(json_object(
                            'list', listed.list, 'value', listed.value,
                            'origin_path', listed.origin_path)
                            ORDER BY listed.list = 'barcode', listed.position)
-                FROM scan_candidate AS scanned
-                JOIN import_candidate_state AS state
-                  ON state.content_hash = scanned.content_hash
-                 AND state.edit_revision = scanned.file_edit_revision
-                JOIN import_candidate_signals AS signals
-                  ON signals.content_hash = state.content_hash
-                JOIN import_candidate_signal_value AS listed
-                  ON listed.signals_id = signals.signals_id
-                WHERE scanned.path = :key
+                FROM import_candidate_signal_value AS listed
+                WHERE listed.signals_id = (
+                          SELECT signals.signals_id
+                          FROM import_candidate_signals AS signals
+                          WHERE signals.content_hash = (
+                              SELECT owner.content_hash
+                              FROM @crate::tables::import_state::current_owner::CurrentOwner(
+                                  key: :key) AS owner))
                   AND listed.list IN ('disc_id', 'barcode')
                   AND listed.origin_path IS NOT NULL),
                '[]') AS file_evidence
-    FROM scan_candidate AS scan
-    WHERE scan.path = :key
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
 "#);
 
 sqlive_compose::fragment!(
