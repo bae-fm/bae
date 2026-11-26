@@ -32,7 +32,7 @@ extension ShotScene {
             size: CGSize(width: 690, height: 600),
             frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            s3Setup(.containerNotFound)
+            s3Setup(.containerNotFound, atRest: true)
         },
         ShotScene(
             id: "mac.settings.sync-setup.s3-bucket-not-empty",
@@ -487,7 +487,8 @@ extension ShotScene {
     @MainActor
     private static func sheet(
         _ staging: SyncSetupWizardStaging,
-        connected: BridgeStorageLocation? = nil
+        connected: BridgeStorageLocation? = nil,
+        atRest: Bool = false
     ) -> ShotStage {
         let fixture = LibrarySettingsTabPreviewFixture(
             storage: connected,
@@ -507,7 +508,7 @@ extension ShotScene {
                 over: connected.map { syncPageWindow($0) } ?? libraryWindow()
             )
         )
-        .awaitingSheet()
+        .awaitingSheet(atRest: atRest)
     }
 
     @MainActor
@@ -587,7 +588,8 @@ extension ShotScene {
     @MainActor
     private static func s3Setup(
         _ failure: BridgeStorageFailure?,
-        rejection: S3SetupFields.KeyRejection? = nil
+        rejection: S3SetupFields.KeyRejection? = nil,
+        atRest: Bool = false
     ) -> ShotStage {
         sheet(
             SyncSetupWizardStaging(
@@ -602,7 +604,8 @@ extension ShotScene {
                         )
                     )
                 )
-            )
+            ),
+            atRest: atRest
         )
     }
 

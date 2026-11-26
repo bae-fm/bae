@@ -93,6 +93,7 @@ extension ShotScene {
                 rename: { _ in .saved }
             )
             .environment(UiStore())
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.panel))
             .overlay(alignment: .topLeading) {
                 MacMenuInPlace(
                     {
@@ -110,7 +111,7 @@ extension ShotScene {
             }
             .padding(.vertical, 22)
             return ShotStage(OverWindow.attachedSheet(sheet, over: window))
-                .awaitingSheet()
+                .awaitingSheet(atRest: true, clearBackdrop: true)
         }
     }
 }
