@@ -18,7 +18,7 @@ struct MacBulkActionRow: View {
             // make the whole row read as a pop-up.
             HStack(spacing: ImportBulkActionRowMetrics.spacing) {
                 Button(action: action) {
-                    name
+                    name(takesRowWidth: false)
                 }
                 .buttonStyle(.accentPlain)
                 .modifier(
@@ -27,6 +27,9 @@ struct MacBulkActionRow: View {
                         destination: importDestination.wrappedValue.title
                     )
                 )
+                // The board's button holds only the name, and a spacer of its own
+                // pushes the destination menu and the count to the right.
+                Spacer(minLength: 0)
                 MacImportDestination(destination: importDestination)
                 count
             }
@@ -35,7 +38,7 @@ struct MacBulkActionRow: View {
         else {
             Button(action: action) {
                 HStack(spacing: ImportBulkActionRowMetrics.spacing) {
-                    name
+                    name(takesRowWidth: true)
                     count
                 }
             }
@@ -46,14 +49,18 @@ struct MacBulkActionRow: View {
         }
     }
 
-    /// The action's name, the part that takes the row's width.
-    private var name: some View {
+    /// The action's name. In a row that is one button, the name takes the
+    /// row's width.
+    private func name(takesRowWidth: Bool) -> some View {
         Text(verbatim: offer.action.label)
             .themeText(isConstructive ? .strong : .body)
             .foregroundStyle(
                 isConstructive ? Theme.textPrimary : Theme.textSecondary
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(
+                maxWidth: takesRowWidth ? .infinity : nil,
+                alignment: .leading
+            )
     }
 
     private var count: some View {
