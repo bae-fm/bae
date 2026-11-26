@@ -37,6 +37,7 @@ struct MacActivity: View {
                     ForEach(problems.shown, id: \.self) { id in
                         problem(id)
                             .settingsRowInset(0)
+                            .settingsRowAsTallAsContent()
                     }
                 }
                 .padding(.top, Self.sectionGap)

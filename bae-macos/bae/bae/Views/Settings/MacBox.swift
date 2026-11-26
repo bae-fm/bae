@@ -29,6 +29,11 @@ extension ContainerValues {
     @Entry
     var rowVerticalInset: CGFloat = RowMetrics.padding
 
+    /// The least height of the row: the design system's `size-row`, or none
+    /// for a row that is a notice with a height of its own.
+    @Entry
+    var rowMinHeight: CGFloat = RowMetrics.height
+
     /// Whether a section's footer is a block as wide as the box, with the
     /// section's gap above it, and not a note inset to the row labels: a
     /// row of buttons such as Invite… (set by `MacSheetFooter`) or a notice
@@ -54,6 +59,12 @@ extension View {
     /// a field.
     func settingsRowInset(_ inset: CGFloat) -> some View {
         containerValue(\.rowVerticalInset, inset)
+    }
+
+    /// Lets this row be as short as its content: a notice has its own padding
+    /// and is not taller than its words, as the board's is.
+    func settingsRowAsTallAsContent() -> some View {
+        containerValue(\.rowMinHeight, 0)
     }
 }
 
@@ -185,7 +196,7 @@ struct MacBoxRows: View {
                             bottom: bottom,
                             trailing: RowMetrics.inset
                         ),
-                        minHeight: RowMetrics.height
+                        minHeight: row.containerValues.rowMinHeight
                     )
                     row.placedInRow(
                         joins ? placement.joiningRowAbove() : placement
