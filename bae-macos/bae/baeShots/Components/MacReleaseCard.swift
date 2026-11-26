@@ -4,15 +4,11 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacReleaseCard`: both catalogs, none yet, and two titles in one line.
+    /// `MacReleaseCard`: one title, and two titles in one line.
     static let macReleaseCardScenes: [ShotScene] = [
         releaseCardScene(
-            "mac.component.release-card.two-catalogs",
+            "mac.component.release-card.default",
             lowTideHoursGroup()
-        ),
-        releaseCardScene(
-            "mac.component.release-card.no-catalog-yet",
-            lowTideHoursGroup(sources: [])
         ),
         releaseCardScene(
             "mac.component.release-card.long-title",

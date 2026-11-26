@@ -377,15 +377,27 @@
   function MacRecordLinks(props) {
     return h('span', { className: 'bae-m-reclinks' }, list(props.records).map(function (s) { return h(props.buttons ? 'button' : 'a', props.buttons ? { key: s, type: 'button', className: 'bae-m-reclink bae-m-reclink-button' } : { key: s, href: '#', className: 'bae-m-reclink' }, s, h(Glyph, { set: 'mac', name: 'external', size: 8.3, frame: [12, 12] })); }));
   }
-  // A found album: cover, title, artist · label, a button per catalog that has answered (`sources`) that opens the album on that catalog.
-  function MacReleaseCard(props) {
-    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 'size-row-artwork', radius: 'radius-artwork' }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', lineHeight: 'var(--type-heading-line-height)' } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
+  // Find online's pressings as one table: each album (MacReleaseGroup, the children) and its pressings, on one grid that every row shares, so each column starts at one x on every row. The columns are the year, the label, the catalog number, the country, the format and the details, then one for each identifier kind the band found (`kinds`, comma-separated in the band's order), then the chevron. The kinds' names head their columns once, above the first album; the other columns have no headings. A title search's or a typed search's results have no identifier columns.
+  // The label column is as wide as its widest label, at least 200pt, and the details column takes the spare width, at least 150pt. The chevron's column is its 11pt frame and a section's space before it.
+  var PressingKinds = React.createContext([]);
+  function MacPressingTable(props) {
+    var kinds = list(props.kinds);
+    var tracks = ['minmax(48px, max-content)', 'minmax(200px, max-content)', 'max-content', 'max-content', 'max-content', 'minmax(150px, 1fr)'].concat(kinds.map(function () { return 'max-content'; }), ['calc(11px + var(--space-section))']);
+    return h(PressingKinds.Provider, { value: kinds }, h('div', { className: 'bae-m-ptable', style: { gridTemplateColumns: tracks.join(' ') } },
+      kinds.length ? h('div', { className: 'bae-m-ptable-kinds' }, kinds.map(function (k, i) { return h('span', { key: k, className: 'bae-m-ptable-kind', style: { gridColumn: 7 + i } }, k); })) : null,
+      props.children));
   }
-  // A found album with its pressings: the MacReleaseCard (`title`, `artist`, `label`, `sources`), then its pressings, the children, on a rule under it.
-  function MacReleaseGroup(props) {
+  // A found album's header on the table's grid: its cover at 40pt, as wide as the year's column at its least, then its title over its artist, starting where the label does, on a rule.
+  function MacReleaseCard(props) {
     return h('div', { className: 'bae-m-rcard' },
-      h(MacReleaseCard, { title: props.title, artist: props.artist, label: props.label, sources: props.sources }),
-      h('div', { className: 'bae-m-rcard-rows' }, props.children));
+      h('div', { className: 'bae-m-rcard-head' },
+        h('span', { className: 'bae-m-rcard-cover' }, h(Artwork, { title: props.title, size: 40, radius: 'radius-artwork' })),
+        h('div', { className: 'bae-m-rcard-text' }, h('span', { className: 'bae-strong bae-ellipsis' }, props.title), props.artist ? h('span', { className: 'bae-muted bae-ellipsis' }, props.artist) : null)),
+      h('div', { className: 'bae-m-rcard-rule' }));
+  }
+  // A found album in MacPressingTable: its header (MacReleaseCard: `title`, `artist`), then its pressings, the children (MacPressingRows).
+  function MacReleaseGroup(props) {
+    return h('div', { className: 'bae-m-rgroup' }, h(MacReleaseCard, { title: props.title, artist: props.artist }), props.children);
   }
   // A fact about a pressing. A fact the pressing's records state differently is every record's value, each followed by its catalog's name: "1992 MusicBrainz / 1993 Discogs", written `value` "1992:MusicBrainz|1993:Discogs". A fact one record states alone is shown as stated. It draws in the type of the text around it.
   function MacSourcedValue(props) {
@@ -399,22 +411,24 @@
   function sourcedParts(text) {
     return String(text).split('|').map(function (v) { var at = v.lastIndexOf(':'); return { value: v.slice(0, at), catalog: v.slice(at + 1) }; });
   }
-  // A found pressing: its edition line (`edition`: " · "-separated facts, the year, country, each label and its catalog number), then its copy line (`copy`: " · "-separated facts, the media and details) with the barcode and badges after it, then `notes` (the records' notes, a release's disambiguation, with the Notes badge), each fact a MacSourcedValue; In library, dimmed whole, for one the library has; `sources`, the catalogs whose records it holds, only those that have answered; the chevron.
+  // A found pressing, a row of MacPressingTable: `year` in strong text, `label` in secondary text, then `catalog`, `country`, `format` and `details` in tertiary text, each in its column and cut at its edge. Each is a MacSourcedValue, so a fact the records state differently shows every record's value with its catalog. `notes`: the records' notes, a release's disambiguation, in italics after the details. Then a dot in each identifier column whose kind names the pressing (`matches`, comma-separated), and the chevron. `inLibrary`: one the library has, dimmed whole, with In library after the details. `selected`: the row picked.
   // In library's check is the success status glyph in the detail text's font, regular.
   function MacPressingRow(props) {
-    var sv = function (v) { return h(MacSourcedValue, { value: v }); };
-    var line = function (text) { return text ? String(text).split(' · ').map(function (part, i) { return h(React.Fragment, { key: i }, i ? ' · ' : null, sv(part)); }) : null; };
-    var edition = line(props.edition), copy = line(props.copy);
-    return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected'), style: props.inLibrary ? { opacity: 0.55 } : null },
-      h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-line)' } },
-        edition ? h('div', { className: 'bae-num', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, edition) : null,
-        h('div', { style: { display: 'flex', gap: 'var(--space-compact)', alignItems: 'center', flexWrap: 'wrap' } }, copy ? h('span', { className: 'bae-m-tertiary bae-m-detail' }, copy) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
-        // `notes`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ. The Notes badge and this line come from the same records, so they show together.
-        props.notes ? h('div', { className: 'bae-m-tertiary bae-m-detail', style: { fontStyle: 'italic' } }, sv(props.notes)) : null),
-      props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-inline)' }, className: 'bae-m-tertiary bae-m-detail' }, h(StatusGlyph, { tone: 'success', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular' }), h('span', { className: 'bae-m-prow-trail' }, 'In library')) : null,
-      // `sources`: the catalogs whose records the pressing holds, only those that have answered.
-      props.sources ? h('span', { className: 'bae-m-tertiary bae-m-detail bae-m-prow-trail' }, props.sources) : null,
-      h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', frame: [11, null], className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
+    var kinds = React.useContext(PressingKinds), matches = list(props.matches);
+    var sv = function (v) { return v ? h(MacSourcedValue, { value: v }) : null; };
+    var cell = function (key, className, value, extra) { return h('span', { key: key, className: cx('bae-m-prow-cell', extra) }, value ? h('span', { className: className }, value) : null); };
+    var details = [props.details ? h(React.Fragment, { key: 'd' }, sv(props.details)) : null,
+      props.notes ? h('span', { key: 'n', className: 'bae-m-prow-notes' }, sv(props.notes)) : null,
+      props.inLibrary ? h('span', { key: 'l', className: 'bae-m-prow-inlib' }, h(StatusGlyph, { tone: 'success', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular' }), 'In library') : null].filter(Boolean);
+    return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected', props.inLibrary && 'bae-m-prow-inlibrary') },
+      cell('y', 'bae-strong bae-num', sv(props.year)),
+      cell('l', 'bae-muted', sv(props.label), 'bae-m-prow-label'),
+      cell('c', 'bae-m-tertiary', sv(props.catalog)),
+      cell('o', 'bae-m-tertiary', sv(props.country)),
+      cell('f', 'bae-m-tertiary', sv(props.format)),
+      cell('d', 'bae-m-tertiary bae-m-prow-details-line', details.length ? details : null, 'bae-m-prow-details'),
+      kinds.map(function (k) { return h('span', { key: 'k' + k, className: 'bae-m-prow-mark' }, matches.indexOf(k) >= 0 ? h('span', { className: 'bae-m-prow-dot', role: 'img', 'aria-label': k }) : null); }),
+      h('span', { className: 'bae-m-prow-chevron' }, h(Glyph, { set: 'mac', name: 'down', point: 'forward', size: 'small', frame: [11, null], className: props.selected ? 'bae-accent' : 'bae-m-tertiary' })));
   }
   // One bulk action: its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the name in the strong type and the count in the accent, for Import and Combine. `to`: where the import goes, Import's destination pop-up, before the count; the row's button then holds only the name, so the pop-up is a control of its own.
   function MacBulkActionRow(props) {

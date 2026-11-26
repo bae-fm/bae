@@ -99,13 +99,31 @@
 .bae-m-idchip-more-open { anchor-name: --bae-idchip-more; }
 .bae-m-idchip-pop { position: absolute; position-anchor: --bae-idchip-more; left: anchor(center); top: anchor(bottom); }
 .bae-m-idchip-codes { padding: var(--space-group); display: flex; flex-direction: column; gap: var(--space-line); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-.bae-m-rcard { display: flex; flex-direction: column; gap: var(--space-compact); }
-.bae-m-rcard-head { display: flex; align-items: center; gap: var(--space-group); }
-.bae-m-rcard-rows { margin-left: var(--space-edge); padding-left: var(--space-related); border-left: 1px solid var(--hairline); display: flex; flex-direction: column; gap: var(--space-compact); }
-.bae-m-prow { display: flex; align-items: center; gap: var(--space-related); padding: var(--space-compact) var(--space-related); border-radius: var(--radius-control); }
-/* SwiftUI lays a line of text out in its width rounded up to a pixel, half a point on the Mac's screens. The marks before In library and the sources start from that width, where CSS would start them from the exact one. */
-.bae-m-prow-trail { width: calc-size(max-content, round(up, size, 0.5px)); }
+/* Find online's pressings: one grid that every album and row shares, each on the grid's columns (subgrid). */
+.bae-m-ptable { display: grid; column-gap: var(--space-edge); row-gap: var(--space-line); }
+.bae-m-ptable-kinds, .bae-m-rgroup, .bae-m-rcard, .bae-m-rcard-head, .bae-m-prow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+.bae-m-ptable-kinds { padding: 0 var(--space-related); }
+.bae-m-ptable-kind { justify-self: center; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
+.bae-m-rgroup { row-gap: var(--space-line); }
+.bae-m-rgroup + .bae-m-rgroup { margin-top: var(--space-section); }
+.bae-m-rcard-head { align-items: center; padding: 0 var(--space-related) var(--space-related); }
+.bae-m-rcard-cover { grid-column: 1; display: flex; }
+.bae-m-rcard-text { grid-column: 2 / -1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.bae-m-rcard-text > span { max-width: 100%; }
+.bae-m-rcard-rule { grid-column: 1 / -1; height: 1px; background: var(--hairline); margin: 0 var(--space-related) var(--space-line); }
+.bae-m-prow { column-gap: var(--space-edge); align-items: center; padding: var(--space-compact) var(--space-related); border-radius: var(--radius-control); }
 .bae-m-prow-selected { background: var(--accent-tint); box-shadow: inset 0 0 0 1px var(--accent-tint-strong); }
+.bae-m-prow-inlibrary { opacity: 0.55; }
+.bae-m-prow-cell { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The label takes a related space more after it, and the details a group's before the identifier columns. */
+.bae-m-prow-label { padding-right: var(--space-related); }
+.bae-m-prow-details { padding-right: var(--space-group); }
+.bae-m-prow-details-line { display: inline-flex; align-items: center; gap: var(--space-compact); }
+.bae-m-prow-notes { font-style: italic; }
+.bae-m-prow-inlib { display: inline-flex; align-items: center; gap: var(--space-inline); }
+.bae-m-prow-mark { justify-self: center; }
+.bae-m-prow-dot { display: block; width: 6px; height: 6px; border-radius: 999px; background: var(--text-secondary); }
+.bae-m-prow-chevron { grid-column: -2; justify-self: end; display: inline-flex; }
 .bae-m-bulk { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-group); }
 .bae-m-bulklist { border-radius: var(--radius-card); background: var(--hover); box-shadow: inset 0 0 0 1px var(--hairline); overflow: hidden; }
 .bae-m-bulkgrp + .bae-m-bulkgrp { border-top: 1px solid var(--hairline); }

@@ -7,7 +7,7 @@ extension ShotScene {
     static let macPressingRowScenes: [ShotScene] = [
         pressingRowScene("mac.component.pressing-row.plain", cdPressing()),
         pressingRowScene(
-            "mac.component.pressing-row.badges",
+            "mac.component.pressing-row.matches",
             cdPressing(),
             agreements: agreements()
         ),

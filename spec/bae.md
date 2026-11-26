@@ -194,9 +194,8 @@ line, so its summary shows the audio line alone. The release editor, in the
 import pane and in the Edit release sheet, shows only the audio line with the
 album's title, artists and year, because its fields define the edition and the
 copy (*The audio line* in §3.8). The Edit release sheet names the release by
-its title. Each pressing row
-of Identify and a typed search shows an edition line (the year, the labels and
-the catalog number, then the country) and a copy line (the media and details).
+its title. Identify and a typed search list these facts of each pressing in
+columns of their own instead (§3.5).
 
 The person picks which of an album's releases its page shows. The page shows
 the picked release while the album holds it, and the primary release otherwise.
@@ -1768,12 +1767,24 @@ value. The row lists the notes of its records the folder's text names it by,
 each followed by its catalog where they differ, and the barcodes it states.
 What the row lists is what look-alike rows are compared by, so two pressings
 that differ only in what a second record states are two rows. Picking the
-row still applies its lead record alone. An album's card lists every title,
-every artist and every label its records state, each once, `Low Tide Hours /
-Low Tide Hours (Remastered)`: titles, artists and labels that differ only in
-case, accents or punctuation are one. A pressing row shows the release lines
-(§2.1): the edition line `1992 · Harbor Records · HR-1042 · US`, then the copy
-line `CD`. When a row's lead record names a pressing the library already
+row still applies its lead record alone. An album's header lists every title
+and every artist its records state, each once, `Low Tide Hours / Low Tide Hours
+(Remastered)`: titles and artists that differ only in case, accents or
+punctuation are one.
+
+The pane lists the found albums as one table. Each album has a header with its
+cover, its title and its artist, and its pressings below it. Every pressing row
+shares one grid: the year, the label, the catalog number, the country, the
+format, the details, one column for each identifier kind the band found, and
+the chevron. The identifier columns carry their names once, above the first
+album, and the other columns have no headings. A pressing that an identifier
+kind names shows a dot in that column, and the cell is empty otherwise. A run
+that found its releases by the title search has no identifier columns, and
+neither has a typed search. The label column is as wide as its widest label,
+at least 200pt, with 8pt more space after it, and the details column takes the
+spare width. Columns are 16pt apart, and the chevron is 40pt from the last
+column. The year is strong, the label secondary, and the catalog number,
+country, format and details tertiary. When a row's lead record names a pressing the library already
 holds, every list that shows that row says *In library*. The label follows
 the library as it gains and loses the release.
 

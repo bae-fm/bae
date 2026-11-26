@@ -746,8 +746,9 @@
       },
       {
         "name": "Releases and pressings",
-        "about": "A found album with its pressings.",
+        "about": "The table of found albums and their pressings.",
         "components": [
+          "MacPressingTable",
           "MacReleaseGroup",
           "MacReleaseCard",
           "MacPressingRow"

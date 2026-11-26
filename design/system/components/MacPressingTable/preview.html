@@ -1,0 +1,24 @@
+<!-- @dsCard group="Import" height=560 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacPressingTable</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w } }, c); }
+  function table(kinds) {
+    return box(900, h(B.MacPressingTable, { kinds: kinds },
+      h(B.MacReleaseGroup, { title: 'Low Tide Hours', artist: 'Mara Quill' },
+        h(B.MacPressingRow, { year: '1992', label: 'Harbor Records', catalog: 'HR-1042', country: 'US', format: 'CD', matches: kinds, selected: true }),
+        h(B.MacPressingRow, { year: '1993', label: 'Harbor Records under license to Tidewater Music', catalog: 'HRCD-1042', country: 'Japan', format: 'CD', details: 'Limited Edition Numbered', matches: 'Barcode' })),
+      h(B.MacReleaseGroup, { title: 'Low Tide Hours (Remastered)', artist: 'Mara Quill' },
+        h(B.MacPressingRow, { year: '2014', label: 'Tidewater Music', catalog: 'TWLP-0412', country: 'Europe', format: 'Vinyl', details: 'LP Reissue Remastered' }))));
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Identifier columns', table('Disc ID,Barcode')),
+    W('No identifier columns', table(''))));
+</script>
+</body>
+</html>

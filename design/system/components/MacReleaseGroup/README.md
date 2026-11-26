@@ -1,5 +1,5 @@
 # MacReleaseGroup
 
-A found album with its pressings, as Identify and Search list them: the album's `MacReleaseCard` (`title`, `artist`, `label`, `sources`), then its pressings, the children (`MacPressingRow`s), on a rule under it, 16pt in from the card's edge.
+A found album with its pressings, in a `MacPressingTable`: the album's `MacReleaseCard` (`title`, `artist`), then its pressings, the children (`MacPressingRow`s). Each album after the first starts a section's space below the one before it.
 
 **In the code:** macOS: `MacReleaseGroup` (`Views/Import/Search/ReleaseGroupListView.swift`).

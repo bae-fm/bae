@@ -382,10 +382,14 @@ export declare function MacImportTrackRow(props: { file?: string; start?: string
 export declare function MacImportSheetCaption(props: { disc?: string; sheet?: string; bound?: string; unbound?: boolean }): React.ReactElement;
 export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; automatic?: 'not-started' | 'working' | 'failed' | 'nothing-found' | 'found'; sentence?: string; chips?: string; titleSearch?: string; offered?: string; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacIdentifierBand(props: { chips: string; titleSearch?: string; offered?: string; candidates?: 'folded' | 'shown'; open?: string }): React.ReactElement;
-export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string }): React.ReactElement;
-/** A found album with its pressings on a rule under it. */
-export declare function MacReleaseGroup(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;
-export declare function MacPressingRow(props: { edition?: string; copy?: string; barcode?: string; badges?: string; /** The notes of the pressing's records: the line under the copy line and the Notes badge, with the same notes shown on the badge's hover. */ notes?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
+/** Find online's pressings as one table: the albums (MacReleaseGroup) on one grid, with a column for each identifier kind the band found. */
+export declare function MacPressingTable(props: { kinds?: string; children?: React.ReactNode }): React.ReactElement;
+/** A found album's header in the table: its cover, title and artist, on a rule. */
+export declare function MacReleaseCard(props: { title: string; artist?: string }): React.ReactElement;
+/** A found album with its pressings, in a MacPressingTable. */
+export declare function MacReleaseGroup(props: { title: string; artist?: string; children?: React.ReactNode }): React.ReactElement;
+/** A found pressing, a row of the table: year, label, catalog number, country, format and details, a dot for each identifier kind that names it, and the chevron. */
+export declare function MacPressingRow(props: { year?: string; label?: string; catalog?: string; country?: string; format?: string; details?: string; /** The notes of the pressing's records, in italics after the details. */ notes?: string; matches?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
 export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
 export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
