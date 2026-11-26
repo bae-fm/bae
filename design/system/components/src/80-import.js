@@ -133,11 +133,11 @@
   }
   // A ruled heading over a part of a form: Release, Images, Files, Credits.
   function MacFormHeading(props) { return h('div', { className: 'bae-m-formhead' }, props.children); }
-  // The release editor's top row: Identify with Automatic, Search and the Metadata menu (⋯), then the action row: for `actions` `import`, where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither (`blank`); for `save`, Cancel once something changed (`changed`) and Save.
+  // The release editor's top row: Identify with Automatic, Search and the Metadata menu, whose label is the ellipsis symbol in the button's body text, regular, framed to the button's height, then the action row: for `actions` `import`, where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither (`blank`); for `save`, Cancel once something changed (`changed`) and Save.
   function MacIdentifyBar(props) {
     var save = props.actions === 'save';
     return h('div', { className: 'bae-m-idraft-actions' },
-      h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, { off: !!props.reading }, 'Automatic'), h(MacButton, { off: !!props.reading }, 'Search'), h(MacButton, { menu: true, label: 'Metadata', off: !!props.reading }, '⋯'),
+      h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, { off: !!props.reading }, 'Automatic'), h(MacButton, { off: !!props.reading }, 'Search'), h(MacButton, { menu: true, label: 'Metadata', off: !!props.reading }, h(Glyph, { set: 'mac', name: 'ellipsis', weight: 'regular', size: tokenPoints('type-body-size'), frame: [null, tokenPoints('size-control')] })),
       h('span', { className: 'bae-m-idraft-trail' },
       props.cloud && !save ? h(MacImportDestination, { to: props.to, off: !!props.reading }) : null,
       // `reading`: the line a save or an import shows while it reads a file on this device before it writes (the audio file a CUE sheet is newly bound to), before the buttons, which are off until the read ends, as the Metadata menu is.
