@@ -978,7 +978,6 @@ dependencies = [
  "axum",
  "bae-desktop-cfg",
  "bae-diagnostics",
- "bae-fragments-build",
  "bae-schema-manifest",
  "bae-store",
  "bae-types",
@@ -1191,7 +1190,6 @@ name = "bae-people"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
- "bae-fragments-build",
  "bae-records",
  "bae-schema-manifest",
  "bae-store",
@@ -1212,7 +1210,6 @@ name = "bae-pictures"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
- "bae-fragments-build",
  "bae-schema-manifest",
  "bae-store",
  "bae-types",
@@ -1236,7 +1233,6 @@ dependencies = [
  "bae-audio",
  "bae-desktop-cfg",
  "bae-diagnostics",
- "bae-fragments-build",
  "bae-people",
  "bae-preferences",
  "bae-records",
@@ -1271,7 +1267,6 @@ dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
  "bae-diagnostics",
- "bae-fragments-build",
  "bae-schema-manifest",
  "bae-store",
  "bae-util",
@@ -1323,7 +1318,6 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-app-dir",
  "bae-desktop-cfg",
- "bae-fragments-build",
  "bae-schema-manifest",
  "bae-util",
  "coven",
@@ -1378,7 +1372,6 @@ name = "bae-sync-status"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
- "bae-fragments-build",
  "bae-people",
  "bae-records",
  "bae-schema-manifest",
@@ -1423,7 +1416,6 @@ name = "bae-transfers"
 version = "0.0.0-dev"
 dependencies = [
  "bae-desktop-cfg",
- "bae-fragments-build",
  "bae-preferences",
  "bae-records",
  "bae-schema-manifest",
@@ -1496,7 +1488,6 @@ dependencies = [
  "bae-catalogs",
  "bae-desktop-cfg",
  "bae-diagnostics",
- "bae-fragments-build",
  "bae-import",
  "bae-people",
  "bae-playback",

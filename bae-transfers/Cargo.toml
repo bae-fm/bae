@@ -5,16 +5,12 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# The crates that depend on this one receive its fragments through this key.
-links = "bae_transfers_sql"
 
 [lib]
 name = "bae_transfers"
 path = "src/lib.rs"
 
 [build-dependencies]
-# Checks the crate's read fragments against the schema and writes the Rust they include.
-bae-fragments-build = { workspace = true }
 # Sets the `desktop` cfg for the crate's desktop-only code.
 bae-desktop-cfg = { workspace = true }
 # Writes the schema this crate declares from its `schema.toml`.

@@ -6296,7 +6296,7 @@ the desktop's secret service.
 | bae-loc | the string catalog: checks it and writes each platform's resources |
 | bae-theme | the shared theme, written as Swift and Kotlin |
 | bae-schema-manifest | the build step that writes each crate's schema parts from its `schema.toml` |
-| bae-fragments-build | the build step that each crate holding a part of the library's schema runs: it checks the crate's `fragment!` and `read!` calls against the library's schema on coven's readable objects (a phone's schema too, for a crate a phone holds), writes the Rust they include, hands the crate's fragments to the crates that spread them, and fails the build when a call reads a table that another crate's domain owns |
+| bae-fragments-build | the build step that each crate holding a `fragment!` or a `read!` runs: it checks the crate's `fragment!` and `read!` calls against the library's schema on coven's readable objects (a phone's schema too, for a crate a phone holds), writes the Rust they include, hands the crate's fragments to the crates that spread them, and fails the build when a call reads a table that another crate's domain owns |
 | bae-uniffi-bindgen | the bindings generator |
 
 bae-cast stands between bae-playback, which holds the renderer session, and
