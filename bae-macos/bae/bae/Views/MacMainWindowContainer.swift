@@ -70,14 +70,13 @@ struct MacMainWindowContainer: View {
     /// viewer, over the modal it may have been opened from.
     private var layers: [MacLayer] {
         var layers: [MacLayer] = []
-        if let lightbox = uiStore.lightbox, let place = lightbox.place {
+        if let lightbox = uiStore.lightbox {
             layers.append(
                 MacLayer(id: "lightbox", fades: true) {
-                    MacLightbox(
-                        place: place,
+                    FolderLightboxLayer(
+                        lightbox: lightbox,
                         load: lightboxLoad,
-                        onSelect: { lightbox.focus($0) },
-                        onDismiss: { uiStore.closeLightbox() },
+                        onDismiss: { uiStore.closeLightbox() }
                     )
                 }
             )
@@ -260,6 +259,25 @@ struct MacMainWindowContainer: View {
 
     private var importFolderEntry: ImportFolderEntry {
         ImportFolderEntry(importer: importer, uiStore: uiStore)
+    }
+}
+
+/// The folder lightbox once core's read says where it stands. It reads that
+/// itself, so a step through the images redraws only the lightbox's layer.
+private struct FolderLightboxLayer: View {
+    let lightbox: FolderImagesLightbox
+    let load: LightboxImageLoad
+    let onDismiss: () -> Void
+
+    var body: some View {
+        if let place = lightbox.place {
+            MacLightbox(
+                place: place,
+                load: load,
+                onSelect: { lightbox.focus($0) },
+                onDismiss: onDismiss
+            )
+        }
     }
 }
 
