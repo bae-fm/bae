@@ -136,9 +136,8 @@ pub fn read_media(row: &Row, column: &str) -> rusqlite::Result<Vec<MediaCount>> 
     json_column(row, column)
 }
 
-/// Read every fact but the media, for a table that keeps a record's media in
-/// rows of their own.
-pub fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
+/// Read every fact but the media, which each reader takes from elsewhere.
+fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
     let column = |name: &str| format!("{prefix}{name}");
     let country: Option<String> = row.get(column("country").as_str())?;
     let region: Option<String> = row.get(column("region").as_str())?;

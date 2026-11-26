@@ -15,6 +15,7 @@
 
 use super::*;
 use bae_catalogs::album_links::AlbumLinks;
+use bae_catalogs::album_links::GroupAlbum;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
 use bae_catalogs::release_metadata::{AlbumMetadata, ReleaseMetadata};
@@ -24,9 +25,13 @@ use bae_catalogs::source_release::{
     PreparedRelease, ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork,
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
+use bae_store::statement_rows;
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
-use tracklist::{insert_entry, insert_release_role, load_mediums, load_release_roles, Numbering};
+use reads::ReleasesWithKeptAlbumsParams;
+use tracklist::{insert_entry, insert_release_role, mediums_of, release_roles_of, Numbering};
 
+mod fragments;
+mod reads;
 pub mod row_fragments;
 mod tracklist;
 
@@ -330,70 +335,13 @@ pub(super) fn replace_source_release_on(
     Ok(())
 }
 
-fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<bae_catalogs::credits::ArtistCredit> {
-    Ok(bae_catalogs::credits::ArtistCredit {
-        name: row.get(first)?,
-        sort_name: row.get(first + 1)?,
-        musicbrainz_artist_id: row.get(first + 2)?,
-        discogs_artist_id: row.get(first + 3)?,
-        credited_as: None,
-    })
-}
-
-/// The stored release `release` names as its rows hold it — what its own
-/// documents state, which is what a write that names it stores — or `None`
-/// when no row names it.
-fn load_source_release_rows_on<S: coven::SqlRead>(
-    sql: &S,
+/// The release `release` names as the columns `stored` read hold it: what its
+/// own documents state, which is what a write that names it stores.
+fn stored_release_of(
     release: &bae_catalogs::records::LookupRef,
-) -> Result<Option<SourceRelease>, DbError> {
-    let catalog = release.catalog.as_str();
-    let key = release.key.as_str();
-    let head = sql
-        .query_row(
-            "SELECT source_group_id, album_title, year, \
-                    archive_release_id, archive_group_id, country, region, \
-                    status, packaging, discogs_details, album_first_year, notes, album_links \
-             FROM source_release WHERE catalog = ? AND release_id = ?",
-            params![catalog, key],
-            |row| {
-                Ok((
-                    row.get::<_, Option<String>>(0)?,
-                    row.get::<_, String>(1)?,
-                    // The media counts are the mediums' and formats', read
-                    // below.
-                    Pressing {
-                        year: row.get(2)?,
-                        // Read from their rows below.
-                        labels: Vec::new(),
-                        barcodes: Vec::new(),
-                        facts: bae_records::records::pressing_columns::read_facts_without_media(
-                            row, "",
-                        )?,
-                    },
-                    row.get::<_, Option<String>>(3)?,
-                    row.get::<_, Option<String>>(4)?,
-                    row.get::<_, Option<i32>>("album_first_year")?,
-                    row.get::<_, String>("notes")?,
-                    row.get::<_, Option<String>>("album_links")?,
-                ))
-            },
-        )
-        .optional()?;
-    let Some((
-        source_group_id,
-        album_title,
-        mut pressing,
-        archive_release,
-        archive_group,
-        album_first_year,
-        notes,
-        album_links,
-    )) = head
-    else {
-        return Ok(None);
-    };
-    let archive_release = match (archive_release, archive_group) {
+    stored: fragments::StoredRelease,
+) -> Result<SourceRelease, DbError> {
+    let archive_release = match (stored.archive_release_id, stored.archive_group_id) {
         (Some(release_id), group_id) => Some(ArchiveRelease { release_id, group_id }),
         (None, None) => None,
         (None, Some(group)) => {
@@ -403,107 +351,74 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
             ))
         }
     };
-    let notes: Vec<String> = serde_json::from_str(&notes)
-        .map_err(|error| DbError::unreadable("source_release.notes", (&notes, error)))?;
-    pressing.labels = sql
-        .query(
-            "SELECT name, catalog_number, musicbrainz_label_id, discogs_label_id \
-             FROM source_release_label \
-             WHERE catalog = ? AND release_id = ? ORDER BY position",
-            params![catalog, key],
-            |row| {
-                Ok((
-                    row.get::<_, Option<String>>(0)?,
-                    row.get::<_, Option<String>>(1)?,
-                    row.get::<_, Option<String>>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                ))
-            },
-        )?
+    let facts = bae_records::records::pressing_columns::facts_without_media_of(
+        stored.country,
+        stored.region,
+        stored.status.as_deref(),
+        stored.packaging.as_deref(),
+        stored.discogs_details,
+    )
+    .map_err(|detail| DbError::unreadable("a source release's pressing facts", detail))?;
+    let labels = stored
+        .labels
+        .labels
         .into_iter()
-        .map(|(name, catalog_number, musicbrainz, discogs)| {
-            ReleaseLabel::new(name.clone(), catalog_number.clone())
-                .map(|label| label.with_ids(musicbrainz, discogs))
+        .map(|label| {
+            ReleaseLabel::new(label.name.clone(), label.catalog_number.clone())
+                .map(|read| read.with_ids(label.musicbrainz_label_id, label.discogs_label_id))
                 .ok_or_else(|| {
-                    DbError::unreadable("source_release_cover.label", (name, catalog_number))
+                    DbError::unreadable("source_release_label", (label.name, label.catalog_number))
                 })
         })
         .collect::<Result<_, DbError>>()?;
-    pressing.barcodes = sql.query(
-        "SELECT barcode FROM source_release_barcode \
-         WHERE catalog = ? AND release_id = ? ORDER BY position",
-        params![catalog, key],
-        |row| row.get(0),
-    )?;
-    let album_artists = sql.query(
-        "SELECT name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as, \
-                join_phrase \
-         FROM source_release_album_artist WHERE catalog = ? AND release_id = ? \
-         ORDER BY position",
-        params![catalog, key],
-        |row| {
-            Ok(bae_catalogs::credits::SourceCredit {
-                credit: bae_catalogs::credits::ArtistCredit {
-                    credited_as: row.get(4)?,
-                    ..artist_at(row, 0)?
-                },
-                join: row.get(5)?,
-            })
-        },
-    )?;
+    // The media counts are the mediums' and formats', counted below.
+    let mut pressing =
+        Pressing { year: stored.year, labels, barcodes: stored.barcodes.barcodes, facts };
+    let album_artists = stored
+        .album_artists
+        .album_artists
+        .into_iter()
+        .map(|credit| bae_catalogs::credits::SourceCredit {
+            credit: credit.artist.artist(),
+            join: credit.join_phrase,
+        })
+        .collect();
     let catalog_facts = match release.catalog {
         LookupCatalog::MusicBrainz => CatalogFacts::MusicBrainz {
-            links: sql
-                .query(
-                    "SELECT link_catalog, link_key FROM source_release_link \
-                     WHERE catalog = ? AND release_id = ? ORDER BY position",
-                    params![catalog, key],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-                )?
+            links: stored
+                .links
+                .links
                 .into_iter()
-                .map(|(link_catalog, link_key)| {
-                    Ok(MetadataRef::new(catalog_column(&link_catalog)?, link_key))
-                })
+                .map(|link| Ok(MetadataRef::new(catalog_column(&link.catalog)?, link.key)))
                 .collect::<Result<_, DbError>>()?,
             album_links: {
-                let owner = format!("source release {catalog} {key}");
-                let Some(stored) = album_links else {
+                let owner = format!("source release {} {}", release.catalog.as_str(), release.key);
+                let Some(column) = stored.album_links else {
                     return Err(DbError::unreadable(
                         format!("the album links of {owner}"),
                         None::<String>,
                     ));
                 };
-                let rows = sql.query(
-                    "SELECT album_catalog, album_key FROM source_release_album_link \
-                     WHERE catalog = ? AND release_id = ? ORDER BY ordinal",
-                    params![catalog, key],
-                    |row| {
-                        Ok(super::album_link_rows::AlbumLinkRow {
-                            catalog: row.get(0)?,
-                            key: row.get(1)?,
-                        })
-                    },
-                )?;
-                super::album_link_rows::album_links_of(&owner, &stored, rows)?
+                super::album_link_rows::album_links_of(
+                    &owner,
+                    &column,
+                    stored.album_link_rows.album_link_rows,
+                )?
             },
         },
         LookupCatalog::Discogs => CatalogFacts::Discogs {
             media: {
-                let formats: Vec<StatedFormat> = sql.query(
-                    "SELECT medium, quantity FROM source_release_format \
-                     WHERE catalog = ? AND release_id = ? ORDER BY position",
-                    params![catalog, key],
-                    |row| {
+                let formats: Vec<StatedFormat> = stored
+                    .formats
+                    .formats
+                    .into_iter()
+                    .map(|format| {
                         Ok(StatedFormat {
-                            medium: bae_records::records::pressing_columns::keyed(
-                                row,
-                                "medium",
-                                Medium::from_key,
-                            )?,
-                            quantity: row.get(1)?,
+                            medium: medium_of("source_release_format.medium", format.medium)?,
+                            quantity: format.quantity,
                         })
-                    },
-                )?;
+                    })
+                    .collect::<Result<_, DbError>>()?;
                 if formats.is_empty() {
                     StatedMedia::Undescribed
                 } else {
@@ -512,78 +427,52 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
             },
         },
     };
-    // The record rows keep no order: they read in the order surfaces list
-    // catalogs.
-    let own = own_records_of_on(sql, &[release])?.pop().expect("one release has one entry");
-    let other_records = with_joined_records(own, &[]);
+    let other_records = stored
+        .records
+        .records
+        .into_iter()
+        .map(|record| {
+            let reference = MetadataRef::new(catalog_column(&record.catalog)?, record.key);
+            match record.kind.as_str() {
+                "pressing" => Ok(ReleaseRecord::new(&reference, record.album_key)),
+                "album" => Ok(ReleaseRecord::album(&reference)),
+                other => Err(DbError::unreadable("source_release_record.kind", other)),
+            }
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
     let mut covers = ReleaseCovers { release: Vec::new(), album: Vec::new() };
-    let copies = super::downscaled_copies::copies_json_sql(
-        "source_release_cover_copy",
-        "copy.catalog = cover.catalog AND copy.release_id = cover.release_id \
-         AND copy.scope = cover.scope AND copy.position = cover.position",
-    );
-    for (scope, url, label, source, standing, copies_json) in sql.query(
-        &format!(
-            "SELECT cover.scope, cover.url, cover.label, cover.source, cover.standing, {copies} \
-             FROM source_release_cover AS cover \
-             WHERE cover.catalog = ? AND cover.release_id = ? \
-             ORDER BY cover.scope, cover.position"
-        ),
-        params![catalog, key],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
-                row.get::<_, String>(5)?,
-            ))
-        },
-    )? {
+    for stored_cover in stored.covers.covers {
         let cover = RemoteCover {
-            image: RemoteImageSet::stored(url, super::downscaled_copies::copies_of(&copies_json)?),
-            label: super::cover_labels::label_of(&label)?,
-            source: catalog_column(&source)?,
-            standing: CoverStanding::from_column(&standing)
-                .ok_or_else(|| DbError::unreadable("source_release_cover.standing", &standing))?,
+            image: RemoteImageSet::stored(stored_cover.url, stored_cover.copies),
+            label: super::cover_labels::label_of(&stored_cover.label)?,
+            source: catalog_column(&stored_cover.source)?,
+            standing: CoverStanding::from_column(&stored_cover.standing).ok_or_else(|| {
+                DbError::unreadable("source_release_cover.standing", &stored_cover.standing)
+            })?,
         };
-        match scope.as_str() {
+        match stored_cover.scope.as_str() {
             "release" => covers.release.push(cover),
             "album" => covers.album.push(cover),
             other => return Err(DbError::unreadable("source_release_cover.scope", other)),
         }
     }
-    let archive_groups: Vec<String> = sql.query(
-        "SELECT group_id FROM source_release_archive_group \
-         WHERE catalog = ? AND release_id = ? ORDER BY position",
-        params![catalog, key],
-        |row| row.get(0),
-    )?;
-    let mediums = load_mediums(sql, catalog, key)?;
+    let mediums = mediums_of(stored.mediums.mediums, stored.entries.entries, stored.works.works)?;
     pressing.facts.media = catalog_facts.stated_media(&mediums).counts();
-    let unfetched = sql
-        .query(
-            "SELECT document, key, reason FROM source_release_unfetched \
-             WHERE catalog = ? AND release_id = ? ORDER BY document, key",
-            params![catalog, key],
-            |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-            },
-        )?
+    let unfetched = stored
+        .unfetched
+        .unfetched
         .into_iter()
-        .map(|(document, document_key, reason)| {
+        .map(|missing| {
             Ok(UnfetchedDocument {
-                document: bae_catalogs::records::PayloadSource::from_str(&document).map_err(
-                    |error| {
+                document: bae_catalogs::records::PayloadSource::from_str(&missing.document)
+                    .map_err(|error| {
                         DbError::unreadable(
                             format!("source_release_unfetched.document ({error})"),
-                            &document,
+                            &missing.document,
                         )
-                    },
-                )?,
-                key: document_key,
-                reason: match reason.as_str() {
+                    })?,
+                key: missing.key,
+                reason: match missing.reason.as_str() {
                     "failed" => UnfetchedReason::Failed,
                     "not_asked" => UnfetchedReason::NotAsked,
                     "stopped_short" => UnfetchedReason::StoppedShort,
@@ -594,63 +483,33 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
             })
         })
         .collect::<Result<_, DbError>>()?;
-    Ok(Some(SourceRelease {
+    Ok(SourceRelease {
         release: release.clone(),
-        source_group_id,
+        source_group_id: stored.source_group_id,
         metadata: ReleaseMetadata {
             album: AlbumMetadata {
-                title: album_title,
+                title: stored.album_title,
                 artists: album_artists,
-                year: derived_album_year(album_first_year, pressing.year),
-                first_year: album_first_year,
+                year: derived_album_year(stored.album_first_year, pressing.year),
+                first_year: stored.album_first_year,
             },
             pressing,
         },
         other_records,
         covers,
         archive_release,
-        archive_groups,
+        archive_groups: stored.archive_groups.archive_groups,
         mediums,
-        release_roles: load_release_roles(sql, catalog, key)?,
+        release_roles: release_roles_of(stored.release_roles.release_roles)?,
         catalog: catalog_facts,
-        notes,
+        notes: stored.notes,
         unfetched,
-    }))
+    })
 }
 
-/// What the other catalogs say each of the stored `releases`, or its album,
-/// is, as their rows hold it, in their order, in one statement: empty for a
-/// release whose rows name no other catalog, or that nothing stored.
-fn own_records_of_on<S: coven::SqlRead>(
-    sql: &S,
-    releases: &[&bae_catalogs::records::LookupRef],
-) -> Result<Vec<Vec<ReleaseRecord>>, DbError> {
-    let rows = sql.query(
-        "SELECT w.key, r.record_catalog, r.kind, r.key, r.album_key \
-         FROM json_each(?1) AS w \
-         JOIN source_release_record AS r \
-             ON r.catalog = w.value ->> 0 AND r.release_id = w.value ->> 1",
-        [releases_json(releases)],
-        |row| {
-            Ok((
-                row.get::<_, usize>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
-            ))
-        },
-    )?;
-    let mut own: Vec<Vec<ReleaseRecord>> = vec![Vec::new(); releases.len()];
-    for (at, record_catalog, kind, record_key, album_key) in rows {
-        let reference = MetadataRef::new(catalog_column(&record_catalog)?, record_key);
-        own[at].push(match kind.as_str() {
-            "pressing" => ReleaseRecord::new(&reference, album_key),
-            "album" => ReleaseRecord::album(&reference),
-            other => return Err(DbError::unreadable("source_release_record.kind", other)),
-        });
-    }
-    Ok(own)
+/// The carrier the column `what` keys, `None` where it holds none.
+fn medium_of(what: &str, key: Option<String>) -> Result<Option<Medium>, DbError> {
+    key.map(|key| Medium::from_key(&key).ok_or_else(|| DbError::unreadable(what, &key))).transpose()
 }
 
 /// `releases` as a JSON array of `[catalog, key]` pairs, in their order, for
@@ -672,8 +531,9 @@ fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> V
     own
 }
 
-/// `release` as import surfaces read it: with every album a kept statement
-/// joins to one of the release's own — one its documents never reach.
+/// `stored` beside how import surfaces read it: with every album that `kept`,
+/// the group albums kept for its own albums, joins to one of them — one its
+/// documents never reach.
 ///
 /// The joined album is derived on every read, from the statement and the
 /// release together: its record, and for a MusicBrainz release group the
@@ -683,20 +543,8 @@ fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> V
 /// later reading stops stating it. The album's own text — its title, credits
 /// and year — lives in documents a statement does not carry, so a joined
 /// album contributes none; the release's own album documents state those.
-fn with_joined_albums_on<S: coven::SqlRead>(
-    sql: &S,
-    stored: &SourceRelease,
-) -> Result<SourceRelease, DbError> {
-    let joined = super::album_link_rows::joined_albums_of_on(
-        sql,
-        &[super::album_link_rows::ReleaseAlbums {
-            catalog: stored.release.catalog.catalog(),
-            source_group_id: stored.source_group_id.as_deref(),
-            records: &stored.other_records,
-        }],
-    )?
-    .pop()
-    .expect("one release has one entry");
+fn prepared(stored: SourceRelease, kept: Vec<GroupAlbum>) -> PreparedRelease {
+    let joined = super::album_link_rows::joined_albums(&stored, &kept);
     let mut release = stored.clone();
     release.other_records = with_joined_records(release.other_records, &joined);
     // A joined release group's images, addressed by its id as the extraction
@@ -710,22 +558,41 @@ fn with_joined_albums_on<S: coven::SqlRead>(
             release.archive_groups.push(group.key.clone());
         }
     }
-    Ok(release)
+    PreparedRelease { stored, release }
 }
 
-/// The stored release `release` names, as import surfaces read it, or
-/// `None` when no row names it.
-#[expect(
-    clippy::read_keyed_statement,
-    reason = "kept finding: reads the release's joined albums keyed by the release rows the first statement returned"
-)]
-pub(crate) fn load_source_release_on<S: coven::SqlRead>(
+/// The stored release each of `releases` names, as its rows hold it beside
+/// how import surfaces read it, in their order and in one statement; `None`
+/// for one no row names.
+fn load_prepared_releases_on<S: coven::SqlRead>(
     sql: &S,
-    release: &bae_catalogs::records::LookupRef,
-) -> Result<Option<SourceRelease>, DbError> {
-    load_source_release_rows_on(sql, release)?
-        .map(|stored| with_joined_albums_on(sql, &stored))
-        .transpose()
+    releases: &[&bae_catalogs::records::LookupRef],
+) -> Result<Vec<Option<PreparedRelease>>, DbError> {
+    let request = ReleasesWithKeptAlbumsParams { releases: releases_json(releases) };
+    let mut read = vec![None; releases.len()];
+    for row in statement_rows(sql, &request)? {
+        let (at, release) = row
+            .at
+            .and_then(|at| usize::try_from(at).ok())
+            .and_then(|at| releases.get(at).map(|release| (at, *release)))
+            .ok_or_else(|| DbError::unreadable("a stored release's place", row.at))?;
+        let stored = stored_release_of(release, row.release)?;
+        let kept = super::album_link_rows::group_albums_of(row.kept)?;
+        read[at] = Some(prepared(stored, kept));
+    }
+    Ok(read)
+}
+
+/// The stored release each of `releases` names, as import surfaces read it,
+/// in their order and in one statement; `None` for one no row names.
+pub(crate) fn load_source_releases_on<S: coven::SqlRead>(
+    sql: &S,
+    releases: &[&bae_catalogs::records::LookupRef],
+) -> Result<Vec<Option<SourceRelease>>, DbError> {
+    Ok(load_prepared_releases_on(sql, releases)?
+        .into_iter()
+        .map(|read| read.map(|read| read.release))
+        .collect())
 }
 
 /// Store each of `releases` that a row names, in the write that wrote the
@@ -792,32 +659,29 @@ impl ImportTables {
         &self,
         release: &bae_catalogs::records::LookupRef,
     ) -> Result<Option<SourceRelease>, DbError> {
-        let release = release.clone();
-        self.store.read(move |sql| load_source_release_on(&sql, &release)).await
+        Ok(self.load_source_releases(&[release]).await?.pop().flatten())
+    }
+
+    /// [`load_source_releases_on`] as its own read.
+    pub(crate) async fn load_source_releases(
+        &self,
+        releases: &[&bae_catalogs::records::LookupRef],
+    ) -> Result<Vec<Option<SourceRelease>>, DbError> {
+        let releases: Vec<_> = releases.iter().copied().cloned().collect();
+        self.store
+            .read(move |sql| load_source_releases_on(&sql, &releases.iter().collect::<Vec<_>>()))
+            .await
     }
 
     /// The stored release `release` names, as its rows hold it beside how
     /// import surfaces read it, or `None` when no row names it.
-    #[expect(
-        clippy::read_keyed_statement,
-        reason = "kept finding: reads the release's joined albums keyed by the release rows the first statement returned"
-    )]
     pub(crate) async fn load_prepared_release(
         &self,
         release: &bae_catalogs::records::LookupRef,
     ) -> Result<Option<PreparedRelease>, DbError> {
         let release = release.clone();
         self.store
-            .read(move |sql| {
-                load_source_release_rows_on(&sql, &release)?
-                    .map(|stored| {
-                        Ok(PreparedRelease {
-                            release: with_joined_albums_on(&sql, &stored)?,
-                            stored,
-                        })
-                    })
-                    .transpose()
-            })
+            .read(move |sql| Ok(load_prepared_releases_on(&sql, &[&release])?.pop().flatten()))
             .await
     }
 
@@ -826,9 +690,11 @@ impl ImportTables {
         &self,
         stored: SourceRelease,
     ) -> Result<PreparedRelease, DbError> {
+        let albums = super::album_link_rows::own_albums(&stored);
         self.store
             .read(move |sql| {
-                Ok(PreparedRelease { release: with_joined_albums_on(&sql, &stored)?, stored })
+                let kept = super::album_link_rows::kept_group_albums_on(&sql, &albums)?;
+                Ok(prepared(stored, kept))
             })
             .await
     }

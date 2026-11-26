@@ -1,6 +1,7 @@
 //! A stored release's tracklist: its mediums' entries in order, with each
-//! entry's credits, roles and the works it performs — written and read back
-//! as one tree.
+//! entry's credits, roles and the works it performs — written as rows, and
+//! built back into one tree from the rows
+//! [`super::fragments::StoredRelease`] reads.
 //!
 //! Their tables are `tracklist.sql`.
 
@@ -201,9 +202,9 @@ struct EntryRow {
     value: TracklistEntry,
 }
 
-/// A stored artist as a tracklist's JSON lists hold it.
-#[derive(serde::Deserialize)]
-struct StoredArtist {
+/// A stored artist as a release's JSON lists hold it.
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+pub(crate) struct StoredArtist {
     name: String,
     sort_name: Option<String>,
     musicbrainz_artist_id: Option<String>,
@@ -214,7 +215,7 @@ struct StoredArtist {
 }
 
 impl StoredArtist {
-    fn artist(self) -> bae_catalogs::credits::ArtistCredit {
+    pub(super) fn artist(self) -> bae_catalogs::credits::ArtistCredit {
         bae_catalogs::credits::ArtistCredit {
             name: self.name,
             sort_name: self.sort_name,
@@ -225,9 +226,9 @@ impl StoredArtist {
     }
 }
 
-/// One entry credit as the entry's `credits` column holds it.
-#[derive(serde::Deserialize)]
-struct StoredCredit {
+/// One entry credit as the entry's `credits` list holds it.
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+pub(crate) struct StoredCredit {
     position: i32,
     credited_name: String,
     /// Absent where the catalog printed a name with no artist behind it.
@@ -235,9 +236,10 @@ struct StoredCredit {
     join_phrase: Option<String>,
 }
 
-/// One entry role as the entry's `roles` column holds it.
-#[derive(serde::Deserialize)]
-struct StoredRole {
+/// One credit in a role, as an entry's `roles` list and the release's own
+/// hold it.
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+pub(crate) struct StoredRole {
     position: i32,
     artist: StoredArtist,
     role: String,
@@ -285,138 +287,43 @@ pub(super) fn insert_release_role(
     Ok(())
 }
 
-/// The credits the release states for itself, in their order.
-pub(super) fn load_release_roles<S: coven::SqlRead>(
-    sql: &S,
-    catalog: &str,
-    key: &str,
-) -> Result<Vec<RoleCredit>, DbError> {
-    sql.query(
-        "SELECT position, name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as, \
-                role, role_words, qualifiers \
-         FROM source_release_role WHERE catalog = ? AND release_id = ? \
-         ORDER BY position",
-        params![catalog, key],
-        |row| {
-            Ok((
-                row.get::<_, i32>(0)?,
-                bae_catalogs::credits::ArtistCredit {
-                    credited_as: row.get(5)?,
-                    ..super::artist_at(row, 1)?
-                },
-                row.get::<_, String>(6)?,
-                row.get::<_, Option<String>>(7)?,
-                row.get::<_, String>(8)?,
-            ))
-        },
-    )?
-    .into_iter()
-    .map(|(position, artist, role, role_words, qualifiers)| {
-        Ok(RoleCredit { position, artist, role: credited_as(&role, role_words, &qualifiers)? })
+/// The credits `roles` hold, in their order.
+pub(super) fn release_roles_of(roles: Vec<StoredRole>) -> Result<Vec<RoleCredit>, DbError> {
+    roles.into_iter().map(role_of).collect()
+}
+
+/// The credit in a role `stored` holds.
+fn role_of(stored: StoredRole) -> Result<RoleCredit, DbError> {
+    Ok(RoleCredit {
+        position: stored.position,
+        artist: stored.artist.artist(),
+        role: credited_as(&stored.role, stored.role_words, &stored.qualifiers)?,
     })
-    .collect()
 }
 
-/// A stored artist's columns under `alias`, as a JSON object.
-fn artist_json(alias: &str) -> String {
-    format!(
-        "json_object('name', {alias}.name, 'sort_name', {alias}.sort_name, \
-                     'musicbrainz_artist_id', {alias}.musicbrainz_artist_id, \
-                     'discogs_artist_id', {alias}.discogs_artist_id)"
-    )
-}
-
-/// A stored role's or composer's artist under `alias`, with the name its
-/// catalog printed.
-fn printed_artist_json(alias: &str) -> String {
-    format!(
-        "json_object('name', {alias}.name, 'sort_name', {alias}.sort_name, \
-                     'musicbrainz_artist_id', {alias}.musicbrainz_artist_id, \
-                     'discogs_artist_id', {alias}.discogs_artist_id, \
-                     'credited_as', {alias}.credited_as)"
-    )
-}
-
-fn stored_list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
-    serde_json::from_str(json)
-        .map_err(|error| DbError::unreadable(what, format!("{json:?}: {error}")))
-}
-
-pub(super) fn load_mediums<S: coven::SqlRead>(
-    sql: &S,
-    catalog: &str,
-    key: &str,
+/// The mediums that the rows of `mediums`, `entries` and `works` make, each
+/// medium's rows in their stored order.
+pub(super) fn mediums_of(
+    mediums: Vec<super::fragments::StoredReleaseMedium>,
+    rows: Vec<super::fragments::StoredEntry>,
+    works: Vec<super::fragments::StoredWork>,
 ) -> Result<Vec<SourceMedium>, DbError> {
-    let mut mediums: Vec<SourceMedium> = sql
-        .query(
-            "SELECT medium.medium, \
-                    (SELECT json_group_array(disc.disc_id ORDER BY disc.disc) \
-                     FROM source_release_medium_disc AS disc \
-                     WHERE disc.catalog = medium.catalog AND disc.release_id = medium.release_id \
-                       AND disc.position = medium.position) AS disc_ids \
-             FROM source_release_medium AS medium \
-             WHERE medium.catalog = ? AND medium.release_id = ? ORDER BY medium.position",
-            params![catalog, key],
-            |row| {
-                Ok((
-                    bae_records::records::pressing_columns::keyed(row, "medium", Medium::from_key)?,
-                    row.get::<_, String>("disc_ids")?,
-                ))
-            },
-        )?
+    let mut mediums: Vec<SourceMedium> = mediums
         .into_iter()
-        .map(|(medium, disc_ids)| {
+        .map(|stored| {
             Ok(SourceMedium {
-                medium,
-                disc_ids: stored_list(&disc_ids, "medium Disc IDs")?,
+                medium: super::medium_of("source_release_medium.medium", stored.medium)?,
+                disc_ids: stored.disc_ids,
                 entries: Vec::new(),
             })
         })
         .collect::<Result<_, DbError>>()?;
-    let rows = sql.query(
-        &format!(
-            "SELECT entry.entry, entry.medium, entry.parent, entry.kind, entry.position, \
-                    entry.title, entry.duration_ms, \
-                    (SELECT json_group_array(json_object( \
-                         'position', credit.position, 'credited_name', credit.credited_name, \
-                         'artist', CASE WHEN credit.name IS NOT NULL \
-                                       THEN json({credited}) END, \
-                         'join_phrase', credit.join_phrase) ORDER BY credit.position) \
-                     FROM source_release_entry_credit AS credit \
-                     WHERE credit.catalog = entry.catalog AND credit.release_id = entry.release_id \
-                       AND credit.entry = entry.entry) AS credits, \
-                    (SELECT json_group_array(json_object( \
-                         'position', role.position, 'artist', json({role_artist}), \
-                         'role', role.role, 'role_words', role.role_words, \
-                         'qualifiers', role.qualifiers) ORDER BY role.position) \
-                     FROM source_release_entry_role AS role \
-                     WHERE role.catalog = entry.catalog AND role.release_id = entry.release_id \
-                       AND role.entry = entry.entry) AS roles \
-             FROM source_release_entry AS entry \
-             WHERE entry.catalog = ? AND entry.release_id = ? ORDER BY entry.entry",
-            credited = artist_json("credit"),
-            role_artist = printed_artist_json("role"),
-        ),
-        params![catalog, key],
-        |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, Option<i64>>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<String>>(5)?,
-                row.get::<_, Option<i64>>(6)?,
-                row.get::<_, String>(7)?,
-                row.get::<_, String>(8)?,
-            ))
-        },
-    )?;
     let mut entries: Vec<EntryRow> = Vec::with_capacity(rows.len());
     let mut index_of: HashMap<i64, usize> = HashMap::with_capacity(rows.len());
-    for (entry, medium, parent, kind, position, title, duration_ms, credits, roles) in rows {
-        index_of.insert(entry, entries.len());
-        let credits = stored_list::<StoredCredit>(&credits, "entry credits")?
+    for stored in rows {
+        index_of.insert(stored.entry, entries.len());
+        let credits = stored
+            .credits
             .into_iter()
             .map(|credit| DisplayCredit {
                 position: credit.position,
@@ -435,25 +342,18 @@ pub(super) fn load_mediums<S: coven::SqlRead>(
                 join: credit.join_phrase,
             })
             .collect();
-        let roles = stored_list::<StoredRole>(&roles, "entry roles")?
-            .into_iter()
-            .map(|role| {
-                Ok(RoleCredit {
-                    position: role.position,
-                    artist: role.artist.artist(),
-                    role: credited_as(&role.role, role.role_words, &role.qualifiers)?,
-                })
-            })
-            .collect::<Result<_, DbError>>()?;
+        let roles = stored.roles.into_iter().map(role_of).collect::<Result<_, DbError>>()?;
         entries.push(EntryRow {
-            medium,
-            parent,
+            medium: stored.medium,
+            parent: stored.parent,
             value: TracklistEntry {
-                kind: EntryKind::parse(&kind)
-                    .ok_or_else(|| DbError::unreadable("source_release_entry.kind", &kind))?,
-                position,
-                title,
-                duration_ms: duration_ms
+                kind: EntryKind::parse(&stored.kind).ok_or_else(|| {
+                    DbError::unreadable("source_release_entry.kind", &stored.kind)
+                })?,
+                position: stored.position,
+                title: stored.title,
+                duration_ms: stored
+                    .duration_ms
                     .map(|duration| to_u64(duration, "track duration"))
                     .transpose()?,
                 credits,
@@ -468,7 +368,7 @@ pub(super) fn load_mediums<S: coven::SqlRead>(
             DbError::unreadable("a source release tracklist's reference to a missing entry", entry)
         })
     };
-    for (entry, performed) in load_works(sql, catalog, key)? {
+    for (entry, performed) in works_of(works)? {
         let index = entry_at(entry)?;
         entries[index].value.works.push(performed);
     }
@@ -516,7 +416,7 @@ pub(super) fn load_mediums<S: coven::SqlRead>(
     Ok(mediums)
 }
 
-/// One stored work node, its events still the JSON its row holds.
+/// One stored work node, its events not yet built into its work.
 struct WorkRow {
     node: i64,
     entry: Option<i64>,
@@ -527,77 +427,30 @@ struct WorkRow {
     events: Vec<StoredEvent>,
 }
 
-/// One credit of a work as its node's `events` column holds it.
-#[derive(serde::Deserialize)]
-struct StoredWorkCredit {
+/// One credit of a work as its node's `events` list holds it.
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+pub(crate) struct StoredWorkCredit {
     artist: StoredArtist,
     role: String,
     role_words: Option<String>,
     qualifiers: String,
 }
 
-/// One relation of a work as its node's `events` column holds it, in the
+/// One relation of a work as its node's `events` list holds it, in the
 /// order of their positions: a credit, or the node of a part.
-#[derive(serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum StoredEvent {
+pub(crate) enum StoredEvent {
     Credit(StoredWorkCredit),
     Part(i64),
 }
 
 /// Every work the release's tracks perform, each with its sub-graph, paired
 /// with the entry that performs it.
-fn load_works<S: coven::SqlRead>(
-    sql: &S,
-    catalog: &str,
-    key: &str,
-) -> Result<Vec<(i64, PerformedWork)>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT work.node, work.entry, work.parent, work.position, work.direction, \
-                    work.musicbrainz_work_id, work.title, work.disambiguation, work.work_type, \
-                    (SELECT json_group_array(json(event.value) ORDER BY event.position) \
-                     FROM (SELECT credit.position AS position, \
-                                  json_object('credit', json_object( \
-                                      'artist', json({credit_artist}), 'role', credit.role, \
-                                      'role_words', credit.role_words, \
-                                      'qualifiers', credit.qualifiers)) AS value \
-                           FROM source_release_work_credit AS credit \
-                           WHERE credit.catalog = work.catalog \
-                             AND credit.release_id = work.release_id \
-                             AND credit.node = work.node \
-                           UNION ALL \
-                           SELECT part.position, json_object('part', part.node) \
-                           FROM source_release_work AS part \
-                           WHERE part.catalog = work.catalog \
-                             AND part.release_id = work.release_id \
-                             AND part.parent = work.node) AS event) AS events \
-             FROM source_release_work AS work \
-             WHERE work.catalog = ? AND work.release_id = ? ORDER BY work.node",
-            credit_artist = printed_artist_json("credit"),
-        ),
-        params![catalog, key],
-        |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, Option<i64>>(1)?,
-                row.get::<_, Option<i64>>(2)?,
-                row.get::<_, i32>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                SourceWork {
-                    musicbrainz_work_id: row.get(5)?,
-                    title: row.get(6)?,
-                    disambiguation: row.get(7)?,
-                    work_type: row.get(8)?,
-                    events: Vec::new(),
-                },
-                row.get::<_, String>(9)?,
-            ))
-        },
-    )?;
+fn works_of(rows: Vec<super::fragments::StoredWork>) -> Result<Vec<(i64, PerformedWork)>, DbError> {
     let mut nodes: Vec<WorkRow> = Vec::with_capacity(rows.len());
-    for (node, entry, parent, position, direction, work, events) in rows {
-        let direction = match direction.as_deref() {
+    for stored in rows {
+        let direction = match stored.direction.as_deref() {
             None => None,
             Some("forward") => Some(PartDirection::Forward),
             Some("backward") => Some(PartDirection::Backward),
@@ -609,13 +462,19 @@ fn load_works<S: coven::SqlRead>(
             }
         };
         nodes.push(WorkRow {
-            node,
-            entry,
-            parent,
-            position,
+            node: stored.node,
+            entry: stored.entry,
+            parent: stored.parent,
+            position: stored.position,
             direction,
-            work,
-            events: stored_list(&events, "work relations")?,
+            work: SourceWork {
+                musicbrainz_work_id: stored.musicbrainz_work_id,
+                title: stored.title,
+                disambiguation: stored.disambiguation,
+                work_type: stored.work_type,
+                events: Vec::new(),
+            },
+            events: stored.events,
         });
     }
     let index_of: HashMap<i64, usize> =

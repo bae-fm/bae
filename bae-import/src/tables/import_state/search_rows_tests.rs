@@ -538,10 +538,7 @@ pub(crate) async fn kept_for(
     let group = MetadataRef::new(Catalog::MusicBrainz, group);
     tables
         .store
-        .read(move |sql| {
-            crate::tables::album_link_rows::group_albums_of_on(&sql, &[vec![group]])
-                .map(|mut kept| kept.pop().expect("one album has one entry"))
-        })
+        .read(move |sql| crate::tables::album_link_rows::kept_group_albums_on(&sql, &[group]))
         .await
         .unwrap()
 }

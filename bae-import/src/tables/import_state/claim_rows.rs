@@ -18,6 +18,7 @@ use super::*;
 use crate::ReleaseLink;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
 use bae_catalogs::source_release::{claimed_records, pick_covers, SourceRelease};
+use bae_store::statement_rows;
 
 /// Work out what the link of the candidate `content_hash` claims, over the
 /// claimed releases as this write has stored them, and store it in place of
@@ -45,22 +46,23 @@ pub(super) fn store_claims_on(sql: &CovenWrite<'_>, content_hash: &str) -> Resul
     let (records, covers) = match link.link()? {
         ReleaseLink::Album(album) => (album.records(), Vec::new()),
         ReleaseLink::Pressing(pressing) => {
-            let load = |release: &bae_catalogs::records::LookupRef| {
-                crate::tables::source_releases::load_source_release_on(sql, release)?.ok_or_else(
-                    || {
+            let claimed: Vec<_> = pressing.claimed().collect();
+            let releases = crate::tables::source_releases::load_source_releases_on(sql, &claimed)?
+                .into_iter()
+                .zip(claimed)
+                .map(|(read, release)| {
+                    read.ok_or_else(|| {
                         DbError::unreadable(
                             format!("the release {content_hash}'s link claims"),
                             release,
                         )
-                    },
-                )
-            };
-            let primary = load(&pressing.record)?;
-            let partners =
-                pressing.partners.iter().map(load).collect::<Result<Vec<_>, DbError>>()?;
-            let claimed: Vec<_> =
-                std::iter::once(&primary).chain(&partners).map(SourceRelease::records).collect();
-            (claimed_records(&claimed), pick_covers(&primary, &partners))
+                    })
+                })
+                .collect::<Result<Vec<_>, DbError>>()?;
+            let (primary, partners) =
+                releases.split_first().expect("a pick claims at least its primary");
+            let records: Vec<_> = releases.iter().map(SourceRelease::records).collect();
+            (claimed_records(&records), pick_covers(primary, partners))
         }
     };
     for (position, record) in records.iter().enumerate() {
@@ -131,6 +133,36 @@ pub(crate) fn store_claims_of_releases_on(
     Ok(())
 }
 
+// The candidates whose link claims a release that has one of `albums` among
+// its own albums.
+sqlive_compose::read!(
+    LinksClaimingAlbums(albums: String) { content_hash: String },
+    r#"
+    WITH changed (catalog, key) AS (
+        SELECT changed_album.value ->> 0, changed_album.value ->> 1
+        FROM json_each(:albums) AS changed_album),
+    claimed (content_hash, catalog, release_id) AS (
+        SELECT link.content_hash, link.source, link.release_id
+        FROM import_candidate_release_link AS link
+        WHERE link.kind = 'pressing'
+        UNION ALL
+        SELECT partner.content_hash, partner.source, partner.release_id
+        FROM import_candidate_release_link_partner AS partner)
+    SELECT DISTINCT claimed.content_hash AS content_hash
+    FROM claimed
+    JOIN @crate::tables::source_releases::row_fragments::OwnAlbums(
+        listed: (SELECT 0 AS at, link.source AS catalog, link.release_id
+                 FROM import_candidate_release_link AS link
+                 WHERE link.kind = 'pressing'
+                 UNION
+                 SELECT 0 AS at, partner.source AS catalog, partner.release_id
+                 FROM import_candidate_release_link_partner AS partner)) AS own
+        ON own.catalog = claimed.catalog AND own.release_id = claimed.release_id
+    JOIN changed
+        ON changed.catalog = own.album_catalog AND changed.key = own.album_key
+"#
+);
+
 /// Store again what every link claims whose claimed release has one of
 /// `albums` among its own albums (its group, or an album one of its records
 /// names), inside the write that changed the albums kept for them.
@@ -144,30 +176,10 @@ pub(crate) fn store_claims_of_albums_on(
     let albums = serde_json::Value::Array(
         albums.iter().map(|album| serde_json::json!([album.catalog.as_str(), album.key])).collect(),
     );
-    let claiming = sql.query(
-        "WITH changed (catalog, key) AS ( \
-             SELECT value ->> 0, value ->> 1 FROM json_each(?)), \
-         claimed (content_hash, catalog, release_id) AS ( \
-             SELECT content_hash, source, release_id FROM import_candidate_release_link \
-             WHERE kind = 'pressing' \
-             UNION ALL \
-             SELECT content_hash, source, release_id FROM import_candidate_release_link_partner), \
-         albums (catalog, release_id, album_catalog, album_key) AS ( \
-             SELECT catalog, release_id, catalog, source_group_id FROM source_release \
-             WHERE source_group_id IS NOT NULL \
-             UNION ALL \
-             SELECT catalog, release_id, record_catalog, \
-                    CASE kind WHEN 'album' THEN key ELSE album_key END \
-             FROM source_release_record) \
-         SELECT DISTINCT claimed.content_hash FROM claimed \
-         JOIN albums USING (catalog, release_id) \
-         JOIN changed \
-             ON (changed.catalog, changed.key) = (albums.album_catalog, albums.album_key)",
-        [albums.to_string()],
-        |row| row.get::<_, String>(0),
-    )?;
-    for content_hash in claiming {
-        store_claims_on(sql, &content_hash)?;
+    let request = LinksClaimingAlbumsParams { albums: albums.to_string() };
+    let claiming = statement_rows(sql, &request)?;
+    for row in claiming {
+        store_claims_on(sql, &row.content_hash)?;
     }
     Ok(())
 }

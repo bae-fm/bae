@@ -803,6 +803,55 @@ async fn a_release_two_candidates_name_stays_until_both_drop_it() {
     assert_eq!(stored(&lib.db, &rel_1).await, (false, 0), "nothing names it");
 }
 
+/// One stored release is one statement with its tracklist and the albums
+/// joined to it, and so are several, each at its place among those asked.
+#[tokio::test]
+async fn stored_releases_with_their_joined_albums_are_one_statement() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let musicbrainz = musicbrainz_documents().extract().unwrap();
+    let discogs = discogs_documents().extract().unwrap();
+    tables.save_source_release(&musicbrainz).await.unwrap();
+    tables.save_source_release(&discogs).await.unwrap();
+    let grouped =
+        SourceRelease { source_group_id: Some("mb-group".to_string()), ..release("rel-grouped") };
+    tables.save_source_release(&grouped).await.unwrap();
+    let master = MetadataRef::new(Catalog::Discogs, "7700");
+    tables
+        .replace_group_album_links(vec![("mb-group".to_string(), vec![master.clone()])])
+        .await
+        .unwrap();
+    let unstored = LookupRef::new(LookupCatalog::MusicBrainz, "rel-unstored");
+
+    let counter = db.track_work_for_test().await.unwrap();
+    let one = tables.load_source_release(grouped.release()).await.unwrap().unwrap();
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert!(
+        one.other_records.contains(&bae_catalogs::records::ReleaseRecord::album(&master)),
+        "the kept statement joins the master: {:?}",
+        one.other_records
+    );
+
+    let counter = db.track_work_for_test().await.unwrap();
+    let several = tables
+        .load_source_releases(&[
+            discogs.release(),
+            &unstored,
+            musicbrainz.release(),
+            grouped.release(),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(counter.take().app_read_statements, 1);
+    let keys: Vec<_> =
+        several.iter().map(|read| read.as_ref().map(SourceRelease::release)).collect();
+    assert_eq!(
+        keys,
+        [Some(discogs.release()), None, Some(musicbrainz.release()), Some(grouped.release())]
+    );
+    assert_eq!(several[3], Some(one));
+}
+
 /// `release` as a fetch hands it over, unstored.
 fn release(key: &str) -> SourceRelease {
     SourceRelease::for_test(LookupRef::new(LookupCatalog::MusicBrainz, key))

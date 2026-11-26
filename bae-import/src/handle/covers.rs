@@ -85,20 +85,24 @@ impl ImportServiceHandle {
             }
             Some(crate::ReleaseLink::Pressing(pressing)) => pressing,
         };
-        let mut claimed_releases = Vec::new();
-        for claimed in link.claimed() {
-            claimed_releases.push(
-                self.services.tables.load_source_release(claimed).await?.ok_or_else(|| {
-                    crate::ImportError::Internal {
-                        detail: format!(
-                            "{key} names {} release {} that is not stored",
-                            claimed.catalog.as_str(),
-                            claimed.key
-                        ),
-                    }
-                })?,
-            );
-        }
+        let claimed: Vec<_> = link.claimed().collect();
+        let claimed_releases = self
+            .services
+            .tables
+            .load_source_releases(&claimed)
+            .await?
+            .into_iter()
+            .zip(claimed)
+            .map(|(read, claimed)| {
+                read.ok_or_else(|| crate::ImportError::Internal {
+                    detail: format!(
+                        "{key} names {} release {} that is not stored",
+                        claimed.catalog.as_str(),
+                        claimed.key
+                    ),
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let (primary, partners) =
             claimed_releases.split_first().expect("a pick claims at least its primary");
         Ok(Some(self.services.catalogs.musicbrainz().pick_gallery_covers(primary, partners).await?))

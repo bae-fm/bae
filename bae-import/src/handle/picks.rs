@@ -49,18 +49,18 @@ impl ImportServiceHandle {
         release: &bae_catalogs::records::LookupRef,
         steps: &crate::CatalogApplySteps,
     ) -> Result<bae_catalogs::source_release::PreparedRelease, crate::ImportError> {
-        if self.is_settled_lead(candidate_key, release).await? {
-            self.services.tables.load_source_release(release).await?.ok_or_else(|| {
-                crate::ImportError::Internal {
-                    detail: format!(
-                        "{candidate_key} settled on {} release {} but nothing stored it",
-                        release.catalog.as_str(),
-                        release.key
-                    ),
-                }
-            })?;
+        let settled = self.is_settled_lead(candidate_key, release).await?;
+        let stored = self.release_reads.stored(release).await?;
+        if settled && stored.is_none() {
+            return Err(crate::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key} settled on {} release {} but nothing stored it",
+                    release.catalog.as_str(),
+                    release.key
+                ),
+            });
         }
-        self.release_reads.applied_release(release, steps).await
+        self.release_reads.applied_release(release, stored, steps).await
     }
 
     /// Whether `release` is the one this candidate's stored verdict settled on:

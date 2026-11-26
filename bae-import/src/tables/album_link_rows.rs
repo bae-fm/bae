@@ -14,6 +14,8 @@
 use super::*;
 use bae_catalogs::album_links::{AlbumLinks, GroupAlbum};
 use bae_catalogs::records::MetadataRef;
+use bae_catalogs::source_release::SourceRelease;
+use bae_store::statement_row;
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored)
@@ -21,7 +23,7 @@ fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
 }
 
 /// One stored album link row's columns, as read.
-#[derive(serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
 pub(crate) struct AlbumLinkRow {
     pub(super) catalog: String,
     pub(super) key: String,
@@ -73,142 +75,124 @@ pub(super) fn album_links_of(
 
 const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key";
 
-/// For each of `wanted`, every album kept for any of its albums: one a
-/// MusicBrainz release group among them was found to be, or one of the
-/// other catalogs' albums among them some group was found to be. Each is
-/// listed once, album by album in their order: a group's albums by catalog
-/// and key, an album's groups by id. One statement whatever `wanted` holds,
-/// none when it names no album.
-pub(super) fn group_albums_of_on<S: coven::SqlRead>(
+// For each of `wanted`, every album kept for any of the albums `asked` gives
+// it: one a MusicBrainz release group among them was found to be, or one of
+// the other catalogs' albums among them some group was found to be. They are
+// listed album by album in the order of `ord`: a group's albums by catalog
+// and key, an album's groups by id.
+sqlive_compose::fragment!(
+    KeptGroupAlbums with wanted(at INTEGER),
+        asked(at INTEGER, ord INTEGER, catalog TEXT, key TEXT)
+    {
+        struct StoredGroupAlbum { release_group: String, catalog: String, key: String }
+        at: i64,
+        albums: json<Vec<StoredGroupAlbum>>
+    },
+    r#"
+    SELECT wanted.at,
+           (SELECT json_group_array(json_object('release_group', matched.release_group,
+                       'catalog', matched.catalog, 'key', matched.key)
+                       ORDER BY matched.ord, matched.catalog, matched.key,
+                           matched.release_group)
+            FROM (SELECT asked.at, asked.ord, link.release_group, link.catalog, link.key
+                  FROM asked
+                  JOIN release_group_album_link AS link
+                      ON asked.catalog = 'musicbrainz' AND link.release_group = asked.key
+                  UNION ALL
+                  SELECT asked.at, asked.ord, link.release_group, link.catalog, link.key
+                  FROM asked
+                  JOIN release_group_album_link AS link
+                      ON asked.catalog <> 'musicbrainz' AND link.catalog = asked.catalog
+                     AND link.key = asked.key) AS matched
+            WHERE matched.at = wanted.at) AS albums
+    FROM wanted
+"#
+);
+
+sqlive_compose::read!(
+    KeptForAlbums(albums: String),
+    r#"
+    SELECT kept.*
+    FROM @crate::tables::album_link_rows::KeptGroupAlbums(
+        wanted: (SELECT 0 AS at),
+        asked: (SELECT 0 AS at, listed.key AS ord, listed.value ->> 0 AS catalog,
+                       listed.value ->> 1 AS key
+                FROM json_each(:albums) AS listed)) AS kept
+"#
+);
+
+/// The group albums `kept` holds, in its order.
+pub(super) fn group_albums_of(kept: KeptGroupAlbums) -> Result<Vec<GroupAlbum>, DbError> {
+    kept.albums
+        .into_iter()
+        .map(|stored| {
+            Ok(GroupAlbum {
+                group: stored.release_group,
+                album: MetadataRef::new(catalog_of(&stored.catalog)?, stored.key),
+            })
+        })
+        .collect()
+}
+
+/// Every album kept for any of `albums`, as [`KeptGroupAlbums`] lists them,
+/// in one statement.
+pub(super) fn kept_group_albums_on<S: coven::SqlRead>(
     sql: &S,
-    wanted: &[Vec<MetadataRef>],
-) -> Result<Vec<Vec<GroupAlbum>>, DbError> {
-    // Each album is asked once, at its place among the albums asked.
-    let mut albums: Vec<&MetadataRef> = Vec::new();
-    let mut asked_at: std::collections::HashMap<&MetadataRef, usize> =
-        std::collections::HashMap::new();
-    for album in wanted.iter().flatten() {
-        asked_at.entry(album).or_insert_with(|| {
-            albums.push(album);
-            albums.len() - 1
-        });
-    }
-    #[expect(
-        clippy::read_aggregate,
-        reason = "kept finding: counts the wanted releases to give each an empty group when none names an album"
-    )]
-    if albums.is_empty() {
-        return Ok(vec![Vec::new(); wanted.len()]);
-    }
-    let asked = serde_json::Value::Array(
+    albums: &[MetadataRef],
+) -> Result<Vec<GroupAlbum>, DbError> {
+    let albums = serde_json::Value::Array(
         albums.iter().map(|album| serde_json::json!([album.catalog.as_str(), album.key])).collect(),
     );
-    const LINK_COLUMNS: &str = "link.release_group, link.catalog, link.key";
-    let rows = sql.query(
-        &format!(
-            "WITH asked (at, catalog, key) AS ( \
-                 SELECT key, value ->> 0, value ->> 1 FROM json_each(?1)) \
-             SELECT asked.at, {LINK_COLUMNS} FROM asked \
-             JOIN release_group_album_link AS link \
-                 ON asked.catalog = ?2 AND link.release_group = asked.key \
-             UNION ALL \
-             SELECT asked.at, {LINK_COLUMNS} FROM asked \
-             JOIN release_group_album_link AS link \
-                 ON asked.catalog <> ?2 AND link.catalog = asked.catalog AND link.key = asked.key \
-             ORDER BY 1, 3, 4, 2"
-        ),
-        params![asked.to_string(), Catalog::MusicBrainz.as_str()],
-        |row| Ok((row.get::<_, usize>(0)?, read_group_link(row, 1)?)),
-    )?;
-    let mut kept_for: Vec<Vec<GroupAlbum>> = vec![Vec::new(); albums.len()];
-    for (at, (group, catalog, key)) in rows {
-        kept_for[at]
-            .push(GroupAlbum { group, album: MetadataRef::new(catalog_of(&catalog)?, key) });
-    }
-    Ok(wanted
-        .iter()
-        .map(|albums_of| {
-            let mut kept: Vec<GroupAlbum> = Vec::new();
-            for album in albums_of {
-                for group_album in &kept_for[asked_at[album]] {
-                    if !kept.contains(group_album) {
-                        kept.push(group_album.clone());
-                    }
-                }
-            }
-            kept
-        })
-        .collect())
+    let request = KeptForAlbumsParams { albums: albums.to_string() };
+    group_albums_of(statement_row(sql, &request)?.kept)
 }
 
-fn read_group_link(row: &Row<'_>, first: usize) -> rusqlite::Result<(String, String, String)> {
-    Ok((row.get(first)?, row.get(first + 1)?, row.get(first + 2)?))
+/// `release`'s own albums: the one its catalog files it under, and those its
+/// records name.
+#[expect(
+    clippy::read_filter,
+    reason = "kept finding: keeps the release records that name an album"
+)]
+pub(super) fn own_albums(release: &SourceRelease) -> Vec<MetadataRef> {
+    release
+        .source_group_id
+        .as_deref()
+        .map(|group| MetadataRef::new(release.release.catalog.catalog(), group))
+        .into_iter()
+        .chain(
+            release
+                .other_records
+                .iter()
+                .filter_map(bae_catalogs::records::ReleaseRecord::album_ref),
+        )
+        .collect()
 }
 
-/// A stored release as far as which albums join it: its catalog, the group
-/// its catalog files it under, and its records.
-pub(super) struct ReleaseAlbums<'a> {
-    pub(super) catalog: Catalog,
-    pub(super) source_group_id: Option<&'a str>,
-    pub(super) records: &'a [bae_catalogs::records::ReleaseRecord],
-}
-
-impl ReleaseAlbums<'_> {
-    /// The release's own albums: its group, and the albums its records name.
-    #[expect(
-        clippy::read_filter,
-        reason = "kept finding: keeps the release records that name an album"
-    )]
-    fn albums(&self) -> Vec<MetadataRef> {
-        self.source_group_id
-            .map(|group| MetadataRef::new(self.catalog, group))
-            .into_iter()
-            .chain(self.records.iter().filter_map(bae_catalogs::records::ReleaseRecord::album_ref))
-            .collect()
-    }
-
-    /// The albums `kept`, the group albums kept for its own albums, join to
-    /// them on a catalog none of its records reaches.
-    fn joined(&self, albums: &[MetadataRef], kept: &[GroupAlbum]) -> Vec<MetadataRef> {
-        let mut joined: Vec<MetadataRef> = Vec::new();
-        for group_album in kept {
-            for album in albums {
-                let Some(other) = group_album.other_than(album) else {
-                    continue;
-                };
-                #[expect(
-                    clippy::read_pick,
-                    reason = "kept finding: tests whether one of the release's records or an album it already joined reaches the other album's catalog"
-                )]
-                let reached = other.catalog == self.catalog
-                    || self.records.iter().any(|record| record.catalog() == other.catalog)
-                    || joined.iter().any(|named| named.catalog == other.catalog);
-                if !reached {
-                    joined.push(other);
-                }
+/// The albums `kept`, the group albums kept for `release`'s own albums, join
+/// to them on a catalog none of its records reaches. The release's own
+/// catalog is never one: its album is its group.
+pub(super) fn joined_albums(release: &SourceRelease, kept: &[GroupAlbum]) -> Vec<MetadataRef> {
+    let catalog = release.release.catalog.catalog();
+    let albums = own_albums(release);
+    let mut joined: Vec<MetadataRef> = Vec::new();
+    for group_album in kept {
+        for album in &albums {
+            let Some(other) = group_album.other_than(album) else {
+                continue;
+            };
+            #[expect(
+                clippy::read_pick,
+                reason = "kept finding: tests whether one of the release's records or an album it already joined reaches the other album's catalog"
+            )]
+            let reached = other.catalog == catalog
+                || release.other_records.iter().any(|record| record.catalog() == other.catalog)
+                || joined.iter().any(|named| named.catalog == other.catalog);
+            if !reached {
+                joined.push(other);
             }
         }
-        joined
     }
-}
-
-/// For each of `releases`, the albums the kept group albums join to the
-/// stored release's own albums — its group, and the albums its records name
-/// — on a catalog none of its records reaches. The release's own catalog is
-/// never one: its album is its group. One statement whatever `releases`
-/// holds.
-pub(super) fn joined_albums_of_on<S: coven::SqlRead>(
-    sql: &S,
-    releases: &[ReleaseAlbums<'_>],
-) -> Result<Vec<Vec<MetadataRef>>, DbError> {
-    let albums: Vec<Vec<MetadataRef>> = releases.iter().map(ReleaseAlbums::albums).collect();
-    let kept = group_albums_of_on(sql, &albums)?;
-    Ok(releases
-        .iter()
-        .zip(&albums)
-        .zip(&kept)
-        .map(|((release, albums), kept)| release.joined(albums, kept))
-        .collect())
+    joined
 }
 
 impl ImportTables {

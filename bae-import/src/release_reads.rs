@@ -50,15 +50,25 @@ impl ReleaseReads {
 
     /// The release an apply of `release_ref` reads, read whole as
     /// `Self::release` reads it for a person waiting on it, with a fetch
-    /// told to `steps`.
-    pub async fn applied_release(
+    /// told to `steps`. `stored` is what [`Self::stored`] returned for it.
+    pub(crate) async fn applied_release(
         &self,
         release_ref: &LookupRef,
+        stored: Option<PreparedRelease>,
         steps: &CatalogApplySteps,
     ) -> Result<PreparedRelease, ImportError> {
         let depth = ReadDepth::Complete;
-        self.prepare(release_ref, depth, self.fetch(release_ref, depth, CallClass::AWAITED), steps)
-            .await
+        let read = self.fetch(release_ref, depth, CallClass::AWAITED);
+        self.stored_or_fetched(stored, release_ref, depth, read, steps).await
+    }
+
+    /// The release `release_ref` names as the library stores it, or `None`
+    /// when no row names it.
+    pub(crate) async fn stored(
+        &self,
+        release_ref: &LookupRef,
+    ) -> Result<Option<PreparedRelease>, ImportError> {
+        Ok(self.tables.load_prepared_release(release_ref).await?)
     }
 
     /// The release a Disc ID lookup returned, read as far as an identify run
@@ -138,9 +148,8 @@ impl ReleaseReads {
         })
     }
 
-    /// `release_ref` from storage, unless reading it again at `depth` could
-    /// add what its stored read missed; otherwise what `read` extracts, told
-    /// to `steps` while it reads.
+    /// [`Self::stored_or_fetched`] over `release_ref` as the library stores
+    /// it now.
     async fn prepare(
         &self,
         release_ref: &LookupRef,
@@ -148,7 +157,22 @@ impl ReleaseReads {
         read: CatalogRead<'_>,
         steps: &CatalogApplySteps,
     ) -> Result<PreparedRelease, ImportError> {
-        if let Some(stored) = self.tables.load_prepared_release(release_ref).await? {
+        let stored = self.stored(release_ref).await?;
+        self.stored_or_fetched(stored, release_ref, depth, read, steps).await
+    }
+
+    /// `stored`, the release `release_ref` names as the library stores it,
+    /// unless reading it again at `depth` could add what its stored read
+    /// missed; otherwise what `read` extracts, told to `steps` while it reads.
+    async fn stored_or_fetched(
+        &self,
+        stored: Option<PreparedRelease>,
+        release_ref: &LookupRef,
+        depth: ReadDepth,
+        read: CatalogRead<'_>,
+        steps: &CatalogApplySteps,
+    ) -> Result<PreparedRelease, ImportError> {
+        if let Some(stored) = stored {
             let session = self.catalogs.session().await?;
             if !stored.stored.fetch_could_add(depth, session.asked()) {
                 return Ok(stored);
