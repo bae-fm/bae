@@ -59,7 +59,7 @@ extension ShotScene {
                 StatusGlyph(.info).themeIcon(.medium)
                     .accessibilityHidden(true)
             } content: {
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text("3 uploading")
                     Text("96 MB of 221 MB")
                         .foregroundStyle(Theme.textSecondary)
