@@ -4751,7 +4751,9 @@
   "row-play-pin-mac",
   "code-casting-pin",
   "code-unplayable-tiles",
-  "code-long-catalog"
+  "code-long-catalog",
+  "code-identify",
+  "code-identify-records-differ"
  ],
  "notes": {
   "canvas-key-library": {
@@ -6071,7 +6073,7 @@
    "w": 420,
    "x": 5936,
    "y": 4700,
-   "text": "What the code needs for this board:\n- Each catalog number the folder offers that no release confirms is an off Catalog # chip: an outline, with its name and value in tertiary text (decision #2561).\n- Today CatalogCandidateChip (bae-macos/bae/bae/Views/Import/Search/CatalogCandidateChip.swift:7) draws it with MacIdentifierChip's outlined style, its value in mono and in primary text."
+   "text": "What the code needs for this board:\n- Each catalog number the folder offers that no release confirms is an off Catalog # chip: an outline, with its name and value in tertiary text (decision #2561). Today CatalogCandidateChip (bae-macos/bae/bae/Views/Import/Search/CatalogCandidateChip.swift:7) draws it with MacIdentifierChip's outlined style, its value in mono and in primary text.\n- The band's chips draw in the looks off, on and found, with no catalog capsules or counts (decision #2561). Today MacIdentifierChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierChip.swift:9) draws filled, outlined and struck, and ProviderCapsule (MacIdentifierChip.swift:200) draws each catalog's count.\n- The title search is one chip that reads Artist, its field, Title, its field. Today TitleSearchChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierBand.swift:331) draws Title search and the words as a button.\n- The pressings are one table on one grid, with a dotted column for each identifier kind the band found (decision #2562). Today ReleaseGroupListView (bae-macos/bae/bae/Views/Import/Search/ReleaseGroupListView.swift:6) draws each album's MacReleaseCard, with its label and catalog links (MacReleaseCard.swift:7), over MacPressingRows that show the edition and copy lines and the agreement badges (MacPressingRow.swift:180)."
   },
   "code-album-catalog-popover": {
    "page": "home",
@@ -6080,6 +6082,22 @@
    "w": 460,
    "x": 7480,
    "y": 1636
+  },
+  "code-identify-records-differ": {
+   "page": "import",
+   "size": 24,
+   "w": 1400,
+   "x": 0,
+   "y": 5640,
+   "text": "What the code needs for this board:\n- The band's chips draw in the looks off, on and found, with no catalog capsules or counts (decision #2561). Today MacIdentifierChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierChip.swift:9) draws filled, outlined and struck, and ProviderCapsule (MacIdentifierChip.swift:200) draws each catalog's count.\n- The title search is one chip that reads Artist, its field, Title, its field. Today TitleSearchChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierBand.swift:331) draws Title search and the words as a button.\n- The pressings are one table on one grid, with a dotted column for each identifier kind the band found (decision #2562). Today ReleaseGroupListView (bae-macos/bae/bae/Views/Import/Search/ReleaseGroupListView.swift:6) draws each album's MacReleaseCard, with its label and catalog links (MacReleaseCard.swift:7), over MacPressingRows that show the edition and copy lines and the agreement badges (MacPressingRow.swift:180).\n- A fact the records state differently shows every record's value in its own column, and the notes follow the details in italics. Today MacPressingRow puts them in the edition and copy lines, with a Notes badge (MacPressingRow.swift:194)."
+  },
+  "code-identify": {
+   "page": "import",
+   "size": 24,
+   "w": 640,
+   "x": 7940,
+   "y": 1620,
+   "text": "What the code needs for the three Identify boards in this row (Automatic found several, no Discogs key, Search):\n- The band's chips draw in the looks off, on and found, with no catalog capsules or counts (decision #2561). Today MacIdentifierChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierChip.swift:9) draws filled, outlined and struck, and ProviderCapsule (MacIdentifierChip.swift:200) draws each catalog's count.\n- The title search is one chip that reads Artist, its field, Title, its field. Today TitleSearchChip (bae-macos/bae/bae/Views/Import/Search/MacIdentifierBand.swift:331) draws Title search and the words as a button.\n- The pressings are one table on one grid, with a dotted column for each identifier kind the band found (decision #2562). Today ReleaseGroupListView (bae-macos/bae/bae/Views/Import/Search/ReleaseGroupListView.swift:6) draws each album's MacReleaseCard, with its label and catalog links (MacReleaseCard.swift:7), over MacPressingRows that show the edition and copy lines and the agreement badges (MacPressingRow.swift:180).\n- On the Search board, a typed search's table has no identifier columns, and its rows show no catalog names."
   }
  },
  "order": [
