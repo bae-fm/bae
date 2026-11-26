@@ -73,3 +73,98 @@ sqlive_compose::fragment!(
     ) AND tags.candidate_path = :key
 "#
 );
+
+sqlive_compose::fragment!(
+    CandidateUnits(key: crate::CandidateKey),
+    r#"
+    SELECT unit.position, unit.file_kind, unit.file_id, unit.sheet_id, unit.slice_index,
+        unit.cue_track_position, unit.duration_ms, unit.start_sample, unit.end_sample
+    FROM scan_candidate_unit AS unit
+    WHERE unit.watched_folder_path = (
+        SELECT candidate.watched_folder_path
+        FROM scan_candidate AS candidate
+        WHERE candidate.path = :key
+        LIMIT 1
+    ) AND unit.candidate_path = :key
+"#
+);
+
+sqlive_compose::fragment!(
+    CandidateCueTracks(key: crate::CandidateKey),
+    r#"
+    SELECT track.sheet_relative_path, track.position, track.start_cue_frames
+    FROM scan_cue_track AS track
+    WHERE track.watched_folder_path = (
+        SELECT candidate.watched_folder_path
+        FROM scan_candidate AS candidate
+        WHERE candidate.path = :key
+        LIMIT 1
+    ) AND track.candidate_path = :key
+"#
+);
+
+sqlive_compose::fragment!(
+    CandidateSheetAudio(key: crate::CandidateKey),
+    r#"
+    SELECT bound.sheet_relative_path, bound.file_reference, bound.audio_relative_path
+    FROM scan_sheet_audio_file AS bound
+    WHERE bound.watched_folder_path = (
+        SELECT candidate.watched_folder_path
+        FROM scan_candidate AS candidate
+        WHERE candidate.path = :key
+        LIMIT 1
+    ) AND bound.candidate_path = :key
+"#
+);
+
+sqlive_compose::fragment!(
+    CandidateSheetOffers(key: crate::CandidateKey),
+    r#"
+    SELECT offered.sheet_relative_path, offered.file_reference, offered.audio_relative_path,
+        offered.offer, offered.codec
+    FROM scan_candidate_sheet_offer AS offered
+    WHERE offered.watched_folder_path = (
+        SELECT candidate.watched_folder_path
+        FROM scan_candidate AS candidate
+        WHERE candidate.path = :key
+        LIMIT 1
+    ) AND offered.candidate_path = :key
+"#
+);
+
+sqlive_compose::fragment!(
+    CandidateSheetReferences(key: crate::CandidateKey) {
+        sheet: String,
+        file_reference: String,
+        seq: i64
+    },
+    r#"
+    SELECT sheet, file_reference, MIN(seq) AS seq
+    FROM (
+        SELECT sheet, file_reference, ROW_NUMBER() OVER (PARTITION BY sheet ORDER BY
+            track_position, part, index_position) AS seq
+        FROM (
+            SELECT ct.sheet_relative_path AS sheet, ci.file_reference, ct.position AS
+                track_position, 0 AS part, ci.position AS index_position
+            FROM scan_cue_track AS ct
+            JOIN scan_cue_index AS ci ON (ci.watched_folder_path, ci.candidate_path,
+                ci.sheet_relative_path, ci.track_position) = (ct.watched_folder_path,
+                ct.candidate_path, ct.sheet_relative_path, ct.position)
+            WHERE ct.watched_folder_path = (
+                SELECT candidate.watched_folder_path
+                FROM scan_candidate AS candidate
+                WHERE candidate.path = :key
+                LIMIT 1
+            ) AND ct.candidate_path = :key AND ct.mode = 'audio'
+            UNION ALL SELECT ct.sheet_relative_path, ct.file_reference, ct.position, 1, 0
+            FROM scan_cue_track AS ct
+            WHERE ct.watched_folder_path = (
+                SELECT candidate.watched_folder_path
+                FROM scan_candidate AS candidate
+                WHERE candidate.path = :key
+                LIMIT 1
+            ) AND ct.candidate_path = :key AND ct.mode = 'audio'
+        )
+    )
+    GROUP BY sheet, file_reference
+"#);

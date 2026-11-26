@@ -61,3 +61,81 @@ sqlive_compose::fragment!(
         FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
     ) AND t.artist_assignment_kind = 'explicit'
 "#);
+
+sqlive_compose::fragment!(
+    DraftTrackRecord on import_candidate_track {
+        record: String
+    },
+    r#"
+    SELECT json_object('track_id', @parent.track_id, 'title',
+                    @parent.title, 'assignment_kind', @parent.artist_assignment_kind, 'medium',
+                    @parent.medium, 'side', @parent.side, 'track_number', @parent.track_number,
+                    'stated_length_ms', @parent.stated_length_ms, 'file_kind', @parent.file_kind,
+                    'file_id', @parent.file_id, 'sheet_id', @parent.sheet_id, 'slice_index',
+                    @parent.slice_index, 'assignments', json((
+                SELECT json_group_array(json_object('kind', assignment.assignment_kind,
+                    'artist_id', assignment.artist_id, 'name', CASE assignment.assignment_kind
+                    WHEN 'picked' THEN picked.name WHEN 'credit' THEN assignment.name END,
+                    'sort_name', CASE assignment.assignment_kind WHEN 'picked' THEN
+                    picked.sort_name WHEN 'credit' THEN assignment.sort_name END,
+                    'musicbrainz_artist_id', CASE assignment.assignment_kind WHEN 'picked' THEN
+                    picked.musicbrainz_artist_id WHEN 'credit' THEN
+                    assignment.musicbrainz_artist_id END, 'discogs_artist_id', CASE
+                    assignment.assignment_kind WHEN 'picked' THEN picked.discogs_artist_id WHEN
+                    'credit' THEN assignment.discogs_artist_id END, 'credit_key',
+                    picked_credit.name_key, 'credit_name', picked_credit.name, 'credited_as',
+                    assignment.credited_as, 'join_phrase', assignment.join_phrase) ORDER BY
+                    assignment.position)
+                FROM import_candidate_track_artist_assignment AS assignment
+                LEFT JOIN @bae_records::records::spread_fragments::ArtistRow AS picked ON
+                    picked.artist_id = assignment.artist_id
+                LEFT JOIN @bae_records::records::spread_fragments::ArtistCreditName AS
+                    picked_credit ON picked_credit.artist_id = assignment.artist_id AND
+                    picked_credit.name_key = assignment.credit_key
+                WHERE assignment.content_hash = @parent.content_hash AND assignment.track_id =
+                    @parent.track_id
+                )), 'roles', json((
+                SELECT json_group_array(json_object('name', role.name, 'sort_name',
+                    role.sort_name, 'musicbrainz_artist_id', role.musicbrainz_artist_id,
+                    'discogs_artist_id', role.discogs_artist_id, 'credited_as',
+                    role.credited_as, 'source', role.source, 'role', role.role, 'role_words',
+                    role.role_words, 'qualifiers', role.qualifiers) ORDER BY role.position)
+                FROM import_candidate_track_role AS role
+                WHERE role.content_hash = @parent.content_hash AND role.track_id = @parent.track_id
+                )), 'works', json((
+                SELECT json_group_array(performed.musicbrainz_work_id ORDER BY
+                    performed.position)
+                FROM import_candidate_track_work AS performed
+                WHERE performed.content_hash = @parent.content_hash AND performed.track_id =
+                    @parent.track_id
+            ))) AS record
+"#);
+
+sqlive_compose::fragment!(
+    DraftTrackRows(key: crate::CandidateKey),
+    r#"
+    SELECT track.content_hash, track.track_id, track.position, track.title, track.medium,
+        track.side, track.track_number, track.stated_length_ms, track.file_kind, track.file_id,
+        track.sheet_id, track.slice_index,
+        @crate::tables::import_state::row_fragments::DraftTrackRecord(parent: track) AS track_json
+    FROM import_candidate_track AS track
+    WHERE track.content_hash = (
+        SELECT scan.content_hash
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        LIMIT 1
+    )
+"#
+);
+
+sqlive_compose::fragment!(
+    DraftMediumRows(key: crate::CandidateKey),
+    r#"
+    SELECT medium.position, medium.content_hash, medium.medium, medium.side_count
+    FROM import_candidate_medium AS medium
+    WHERE medium.content_hash = (
+        SELECT scan.content_hash
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        LIMIT 1
+    )
+"#
+);

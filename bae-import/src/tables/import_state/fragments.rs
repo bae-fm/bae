@@ -174,48 +174,10 @@ sqlive_compose::fragment!(
             FROM import_candidate_medium AS medium
             WHERE medium.content_hash = edit.content_hash
             ) AS mediums,(
-                SELECT json_group_array(json_object('track_id', track.track_id, 'title',
-                    track.title, 'assignment_kind', track.artist_assignment_kind, 'medium',
-                    track.medium, 'side', track.side, 'track_number', track.track_number,
-                    'stated_length_ms', track.stated_length_ms, 'file_kind', track.file_kind,
-                    'file_id', track.file_id, 'sheet_id', track.sheet_id, 'slice_index',
-                    track.slice_index, 'assignments', json((
-                SELECT json_group_array(json_object('kind', assignment.assignment_kind,
-                    'artist_id', assignment.artist_id, 'name', CASE assignment.assignment_kind
-                    WHEN 'picked' THEN picked.name WHEN 'credit' THEN assignment.name END,
-                    'sort_name', CASE assignment.assignment_kind WHEN 'picked' THEN
-                    picked.sort_name WHEN 'credit' THEN assignment.sort_name END,
-                    'musicbrainz_artist_id', CASE assignment.assignment_kind WHEN 'picked' THEN
-                    picked.musicbrainz_artist_id WHEN 'credit' THEN
-                    assignment.musicbrainz_artist_id END, 'discogs_artist_id', CASE
-                    assignment.assignment_kind WHEN 'picked' THEN picked.discogs_artist_id WHEN
-                    'credit' THEN assignment.discogs_artist_id END, 'credit_key',
-                    picked_credit.name_key, 'credit_name', picked_credit.name, 'credited_as',
-                    assignment.credited_as, 'join_phrase', assignment.join_phrase) ORDER BY
-                    assignment.position)
-                FROM import_candidate_track_artist_assignment AS assignment
-                LEFT JOIN @bae_records::records::spread_fragments::ArtistRow AS picked ON
-                    picked.artist_id = assignment.artist_id
-                LEFT JOIN @bae_records::records::spread_fragments::ArtistCreditName AS
-                    picked_credit ON picked_credit.artist_id = assignment.artist_id AND
-                    picked_credit.name_key = assignment.credit_key
-                WHERE assignment.content_hash = track.content_hash AND assignment.track_id =
-                    track.track_id
-                )), 'roles', json((
-                SELECT json_group_array(json_object('name', role.name, 'sort_name',
-                    role.sort_name, 'musicbrainz_artist_id', role.musicbrainz_artist_id,
-                    'discogs_artist_id', role.discogs_artist_id, 'credited_as',
-                    role.credited_as, 'source', role.source, 'role', role.role, 'role_words',
-                    role.role_words, 'qualifiers', role.qualifiers) ORDER BY role.position)
-                FROM import_candidate_track_role AS role
-                WHERE role.content_hash = track.content_hash AND role.track_id = track.track_id
-                )), 'works', json((
-                SELECT json_group_array(performed.musicbrainz_work_id ORDER BY
-                    performed.position)
-                FROM import_candidate_track_work AS performed
-                WHERE performed.content_hash = track.content_hash AND performed.track_id =
-                    track.track_id
-            ))) ORDER BY track.position)
+                SELECT json_group_array(
+                    json(@crate::tables::import_state::row_fragments::DraftTrackRecord(
+                        parent: track))
+                    ORDER BY track.position)
             FROM import_candidate_track AS track
             WHERE track.content_hash = edit.content_hash
             ) AS tracks,(
