@@ -47,7 +47,7 @@ sqlive_compose::fragment!(
                   ON p.col = 'dg' AND named.discogs_artist_id = p.cid
               UNION SELECT p.col, p.cid, named.id
               FROM rule_probe_id AS p JOIN artists AS named ON named.id = p.derived) AS p
-        JOIN artists AS a ON a.id = (SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = named_id)
+        JOIN artists AS a ON a.id = (SELECT shown.shown_artist_id FROM @crate::records::spread_fragments::ShownAs AS shown WHERE shown.artist_id = named_id)
     ),
     rule_held AS MATERIALIZED (
         SELECT col, cid, MIN(id) AS id,
@@ -127,11 +127,11 @@ sqlive_compose::fragment!(
                CASE WHEN r.id IS NOT NULL THEN r.artist_dg ELSE a.discogs_artist_id END
         FROM rule_settled AS r
         LEFT JOIN (SELECT name_key, id AS artist_id FROM artists
-                   UNION SELECT credit_name.name_key, (SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = credit_name.artist_id)
+                   UNION SELECT credit_name.name_key, (SELECT shown.shown_artist_id FROM @crate::records::spread_fragments::ShownAs AS shown WHERE shown.artist_id = credit_name.artist_id)
                    FROM artist_credits AS credit_name) AS named
             ON r.id IS NULL AND r.name_key <> '' AND named.name_key = r.name_key
         LEFT JOIN artists AS a
-            ON a.id = named.artist_id AND EXISTS (SELECT 1 FROM artist_shown_as shown_as WHERE shown_as.artist_id = a.id AND shown_as.shown_artist_id = a.id)
+            ON a.id = named.artist_id AND EXISTS (SELECT 1 FROM @crate::records::spread_fragments::ShownAs AS shown WHERE shown.artist_id = a.id AND shown.shown_artist_id = a.id)
            AND (a.musicbrainz_artist_id IS NULL OR r.name_mb IS NULL
                 OR a.musicbrainz_artist_id = r.name_mb)
            AND (a.discogs_artist_id IS NULL OR r.name_dg IS NULL OR a.discogs_artist_id = r.name_dg)

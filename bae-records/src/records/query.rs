@@ -13,7 +13,10 @@ pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
 /// The id of the artist `artist_id` (an SQL expression) shows as: the survivor
 /// of its merges, or itself (`artist_shown_as`).
 pub fn shown_artist_id(artist_id: &str) -> String {
-    format!("(SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = {artist_id})")
+    format!(
+        "(SELECT shown.shown_artist_id FROM ({}) AS shown WHERE shown.artist_id = {artist_id})",
+        super::spread_fragments::ShownAsRows::SQL
+    )
 }
 
 /// The names of the artists credited on the work `work_id` (an SQL
@@ -40,8 +43,9 @@ pub fn work_composer_names_sql(work_id: &str) -> String {
 /// merged into another artist — so listings include it.
 pub fn artist_is_shown(alias: &str) -> String {
     format!(
-        "EXISTS (SELECT 1 FROM artist_shown_as shown_as \
-         WHERE shown_as.artist_id = {alias}.id AND shown_as.shown_artist_id = {alias}.id)"
+        "EXISTS (SELECT 1 FROM ({}) AS shown_as \
+         WHERE shown_as.artist_id = {alias}.id AND shown_as.shown_artist_id = {alias}.id)",
+        super::spread_fragments::ShownAsRows::SQL
     )
 }
 
