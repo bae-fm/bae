@@ -56,34 +56,37 @@ struct MacSyncStatus: View {
                     )
                 }
                 // The cause and the fix sit 6 under the status row and 8
-                // apart, as the board's cause has 8 under it.
-                VStack(
-                    alignment: .leading,
-                    spacing: ThemeSpace.related + ThemeSpace.line
-                ) {
-                    if let cause = shown.causeLine {
-                        VStack(
-                            alignment: .leading,
-                            spacing: ThemeSpace.inline
-                        ) {
-                            SyncCauseText(text: cause)
-                            if let countdown = shown.causeCountdown {
-                                CountdownTimeline(countdown) { line in
-                                    SyncCauseText(text: line)
-                                        .monospacedDigit()
-                                        .accessibilityAddTraits(
-                                            .updatesFrequently
-                                        )
+                // apart, as the board's cause has 8 under it. With neither,
+                // nothing sits under the row, not even the 6.
+                if shown.causeLine != nil || shown.fix != nil {
+                    VStack(
+                        alignment: .leading,
+                        spacing: ThemeSpace.related + ThemeSpace.line
+                    ) {
+                        if let cause = shown.causeLine {
+                            VStack(
+                                alignment: .leading,
+                                spacing: ThemeSpace.inline
+                            ) {
+                                SyncCauseText(text: cause)
+                                if let countdown = shown.causeCountdown {
+                                    CountdownTimeline(countdown) { line in
+                                        SyncCauseText(text: line)
+                                            .monospacedDigit()
+                                            .accessibilityAddTraits(
+                                                .updatesFrequently
+                                            )
+                                    }
                                 }
                             }
                         }
-                    }
-                    if let fix = shown.fix {
-                        SyncFixButton(
-                            fix: fix,
-                            location: location,
-                            actions: actions
-                        )
+                        if let fix = shown.fix {
+                            SyncFixButton(
+                                fix: fix,
+                                location: location,
+                                actions: actions
+                            )
+                        }
                     }
                 }
             }
