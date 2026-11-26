@@ -226,14 +226,14 @@ sqlive_compose::fragment!(
         signals_text_pool: String
     },
     r#"
-    SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row, COALESCE((
+    SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row, (
             SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) ORDER BY
                 line.position)
             FROM import_candidate_signals AS signals
             JOIN import_candidate_text_line AS line ON line.signals_id = signals.signals_id
             WHERE signals.content_hash IS owner.content_hash AND signals.identify_run IS
                 owner.identify_run
-        ), '[]') AS signals_text_pool
+        ) AS signals_text_pool
     FROM owner
 "#);
 
