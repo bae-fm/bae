@@ -224,13 +224,17 @@ extension ModalFocusTests {
             pasteboard.setString("pasted words", forType: .string)
 
             // The Edit menu's Paste sends `paste:` down the key window's
-            // responder chain.
-            let field = try #require(
-                SnapshotTestSupport.descendants(
-                    of: try LayerPanels.content(of: panel)
-                )
-                .compactMap { $0 as? NSTextField }.first
-            )
+            // responder chain. SwiftUI builds the field after the panel
+            // shows.
+            let content = try LayerPanels.content(of: panel)
+            var found: NSTextField?
+            try await SnapshotTestSupport.untilWindows {
+                found =
+                    SnapshotTestSupport.descendants(of: content)
+                    .compactMap { $0 as? NSTextField }.first
+                return found != nil
+            }
+            let field = try #require(found)
             HostedInput.focus(field, in: panel)
             let sent = autoreleasepool {
                 NSApp.sendAction(
