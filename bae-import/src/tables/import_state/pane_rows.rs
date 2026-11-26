@@ -17,14 +17,12 @@ mod provenance;
 mod values;
 
 use super::draft_values::{
-    barcodes_json_sql, form_row_values, insert_album_artist_assignments, insert_barcode_rows,
-    insert_draft_values, insert_label_rows, insert_medium_rows, insert_track_artist_assignments,
-    insert_track_values, labels_json_sql, mediums_json_sql, mediums_of, read_label_rows,
-    release_roles_json_sql, roles_of, track_roles_json_sql, track_works_json_sql,
-    work_parts_json_sql, works_json_sql, works_of, StoredRole, FORM_COLUMNS,
+    form_row_values, insert_album_artist_assignments, insert_barcode_rows, insert_draft_values,
+    insert_label_rows, insert_medium_rows, insert_track_artist_assignments, insert_track_values,
+    mediums_of, roles_of, works_of, StoredRole, FORM_COLUMNS,
 };
 use crate::tables::draft_rows::{
-    assignment_kind_column, assignments_json_sql, assignments_of, decoded, StoredAssignment,
+    assignment_kind_column, assignments_of, decoded, StoredAssignment,
 };
 
 pub(crate) use provenance::{
@@ -287,83 +285,16 @@ pub(super) fn load_draft_and_cover_on(
     sql: &impl coven::SqlRead,
     candidate: OneCandidate<'_>,
 ) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
-    // One candidate's read returns at most its one draft.
-    let draft = load_drafts_on(sql, CandidateRows::One(candidate))?
-        .into_values()
-        .next()
-        .ok_or_else(|| {
-            DbError::unreadable("import_candidate_edit of a candidate not imported here", candidate)
-        })?;
+    let OneCandidate::Hash(content_hash) = candidate;
+    let draft = super::draft_read::load_draft_on(sql, content_hash)?.ok_or_else(|| {
+        DbError::unreadable("import_candidate_edit of a candidate not imported here", candidate)
+    })?;
     Ok((draft, super::cover_rows::load_cover_on(sql, candidate)?))
 }
 
-/// Every candidate's complete stored draft, or the one `only` names: one row
-/// per draft, its lists riding on it as JSON arrays in their stored order.
-pub(crate) fn load_drafts_on(
-    sql: &impl coven::SqlRead,
-    only: CandidateRows<'_>,
-) -> Result<HashMap<String, CandidateDraft>, DbError> {
-    let filter = only.filter("edit.content_hash");
-    let clause = &filter.clause;
-    let album_assignments = assignments_json_sql(
-        "import_candidate_album_artist_assignment",
-        "assignment.content_hash = edit.content_hash",
-    );
-    let rows = sql.query(
-        &format!(
-            "SELECT content_hash, {FORM_COLUMNS}, {labels} AS labels, {barcodes} AS barcodes, \
-                    {album_assignments} AS album_assignments, {mediums} AS mediums, \
-                    (SELECT json_group_array({track} ORDER BY track.position) \
-                     FROM import_candidate_track AS track \
-                     WHERE track.content_hash = edit.content_hash) AS tracks, \
-                    {release_roles} AS release_roles, {works} AS works, {parts} AS parts \
-             FROM import_candidate_edit AS edit {clause}",
-            labels = labels_json_sql("edit.content_hash"),
-            barcodes = barcodes_json_sql("edit.content_hash"),
-            mediums = mediums_json_sql("edit.content_hash"),
-            track = track_json_sql(),
-            release_roles = release_roles_json_sql("edit.content_hash"),
-            works = works_json_sql("edit.content_hash"),
-            parts = work_parts_json_sql("edit.content_hash"),
-        ),
-        filter.params().as_slice(),
-        StoredDraftRow::read,
-    )?;
-    let mut out = HashMap::with_capacity(rows.len());
-    for row in rows {
-        let draft = row.draft()?;
-        out.insert(row.content_hash, draft);
-    }
-    Ok(out)
-}
-
-/// A JSON object of the row `track` of `import_candidate_track`, with its
-/// artist assignments, roles and works, which [`StoredTrack`] reads.
-pub(crate) fn track_json_sql() -> String {
-    format!(
-        "json_object( \
-             'track_id', track.track_id, 'title', track.title, \
-             'assignment_kind', track.artist_assignment_kind, \
-             'medium', track.medium, 'side', track.side, \
-             'track_number', track.track_number, \
-             'stated_length_ms', track.stated_length_ms, \
-             'file_kind', track.file_kind, 'file_id', track.file_id, \
-             'sheet_id', track.sheet_id, 'slice_index', track.slice_index, \
-             'assignments', json({assignments}), \
-             'roles', json({roles}), 'works', json({works}))",
-        assignments = assignments_json_sql(
-            "import_candidate_track_artist_assignment",
-            "assignment.content_hash = track.content_hash AND assignment.track_id = track.track_id",
-        ),
-        roles = track_roles_json_sql("track.content_hash", "track.track_id"),
-        works = track_works_json_sql("track.content_hash", "track.track_id"),
-    )
-}
-
 /// One `import_candidate_edit` row as SQLite hands it over, its lists still
-/// the JSON arrays [`load_drafts_on`] reads them as.
+/// the JSON arrays the draft read returns.
 struct StoredDraftRow {
-    content_hash: String,
     album_title: String,
     album_year: String,
     year: String,
@@ -379,25 +310,6 @@ struct StoredDraftRow {
 }
 
 impl StoredDraftRow {
-    /// The row a statement returns.
-    fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            content_hash: row.get("content_hash")?,
-            album_title: row.get("album_title")?,
-            album_year: row.get("album_year")?,
-            year: row.get("year")?,
-            labels: read_label_rows(row)?,
-            barcodes: bae_records::records::pressing_columns::read_barcodes(row, "barcodes")?,
-            facts: bae_records::records::pressing_columns::read_facts(row, "")?,
-            album_assignments: row.get("album_assignments")?,
-            mediums: row.get("mediums")?,
-            tracks: row.get("tracks")?,
-            release_roles: row.get("release_roles")?,
-            works: row.get("works")?,
-            parts: row.get("parts")?,
-        })
-    }
-
     /// The row a pane's read selects, whose lists are the JSON arrays
     /// [`super::fragments::DraftRows`] returns.
     fn of(draft: &super::fragments::DraftRows) -> Result<Self, DbError> {
@@ -411,7 +323,6 @@ impl StoredDraftRow {
         .map_err(|detail| DbError::unreadable("the facts of a stored draft", detail))?;
         facts.media = decoded(&draft.media, "media")?;
         Ok(Self {
-            content_hash: draft.draft_content_hash.clone(),
             album_title: draft.album_title.clone(),
             album_year: draft.album_year.clone(),
             year: draft.year.clone(),
@@ -589,10 +500,8 @@ impl ImportTables {
         let (content_hash, draft) = (content_hash.to_string(), draft.clone());
         self.store
             .write(move |sql| {
-                let stored =
-                    load_drafts_on(&sql, CandidateRows::One(OneCandidate::Hash(&content_hash)))?
-                        .remove(&content_hash)
-                        .expect("the state holds the draft the scan seeded");
+                let stored = super::draft_read::load_draft_on(&sql, &content_hash)?
+                    .expect("the state holds the draft the scan seeded");
                 super::draft_store::store_draft(
                     &sql,
                     &content_hash,

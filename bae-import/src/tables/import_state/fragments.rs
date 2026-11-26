@@ -114,9 +114,7 @@ sqlive_compose::fragment!(
 "#);
 
 sqlive_compose::fragment!(
-    DraftRows(key: crate::CandidateKey) {
-        draft_key: crate::CandidateKey,
-        draft_content_hash: String,
+    DraftRows with candidate(content_hash TEXT) {
         album_title: String,
         album_year: String,
         year: String,
@@ -136,8 +134,8 @@ sqlive_compose::fragment!(
         draft_parts: String
     },
     r#"
-    WITH statement(draft_content_hash, album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts) AS (
-            SELECT content_hash, album_title, album_year, year, country, region, media, status,
+    WITH statement(album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts) AS (
+            SELECT album_title, album_year, year, country, region, media, status,
                 packaging, discogs_details,(
             SELECT json_group_array(json_object('name', label.name, 'catalog_number',
                 label.catalog_number, 'musicbrainz_label_id', label.musicbrainz_label_id,
@@ -248,13 +246,12 @@ sqlive_compose::fragment!(
             WHERE part.content_hash = edit.content_hash
         ) AS parts
         FROM import_candidate_edit AS edit
-            WHERE edit.content_hash =(
-            SELECT scan.content_hash
-            FROM scan_candidate AS scan
-            WHERE scan.path = :key
+            WHERE edit.content_hash IN (
+            SELECT content_hash
+            FROM candidate
         )
     )
-    SELECT :key AS draft_key, draft_content_hash, album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts
+    SELECT album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts
     FROM statement
 "#);
 

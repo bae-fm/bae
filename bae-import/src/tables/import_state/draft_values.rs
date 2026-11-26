@@ -369,51 +369,14 @@ pub(crate) fn insert_track_values(
     Ok(())
 }
 
-/// The label rows of the candidate `candidate` (an SQL expression for its key), as
-/// a JSON array in their order, which [`read_label_rows`] reads.
-pub(crate) fn labels_json_sql(candidate: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-             'name', label.name, 'catalog_number', label.catalog_number, \
-             'musicbrainz_label_id', label.musicbrainz_label_id, \
-             'discogs_label_id', label.discogs_label_id) \
-             ORDER BY label.position) \
-         FROM import_candidate_edit_label AS label WHERE label.content_hash = {candidate})",
-    )
-}
-
-/// The barcode rows of the candidate `candidate`, as a JSON array in their order.
-pub(crate) fn barcodes_json_sql(candidate: &str) -> String {
-    format!(
-        "(SELECT json_group_array(barcode.barcode ORDER BY barcode.position) \
-         FROM import_candidate_edit_barcode AS barcode WHERE barcode.content_hash = {candidate})",
-    )
-}
-
-/// The mediums of the candidate `candidate`, as a JSON array in their order, which
-/// [`mediums_of`] reads.
-pub(crate) fn mediums_json_sql(candidate: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-             'carrier', medium.medium, 'sides', medium.side_count) ORDER BY medium.position) \
-         FROM import_candidate_medium AS medium WHERE medium.content_hash = {candidate})",
-    )
-}
-
-/// The draft's label rows as the person typed them, as the read's `labels`
-/// array holds them.
-pub(crate) fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
-    bae_store::read::json_column(row, "labels")
-}
-
-/// One medium as [`mediums_json_sql`] holds it.
+/// One medium as the draft's stored mediums hold it.
 #[derive(serde::Deserialize)]
 struct StoredMedium {
     carrier: Option<String>,
     sides: std::num::NonZeroU8,
 }
 
-/// The mediums a JSON array of [`mediums_json_sql`] holds, in order.
+/// The mediums a JSON array of the draft's stored mediums holds, in order.
 pub(crate) fn mediums_of(json: &str) -> Result<Vec<bae_types::mediums::ReleaseMedium>, DbError> {
     decoded::<Vec<StoredMedium>>(json, "mediums")?
         .into_iter()
@@ -430,78 +393,7 @@ pub(crate) fn mediums_of(json: &str) -> Result<Vec<bae_types::mediums::ReleaseMe
         .collect()
 }
 
-/// The works of the candidate `candidate` (an SQL expression for its key), each with
-/// its credits, as a JSON array in the draft's order, which [`works_of`]
-/// decodes.
-pub(crate) fn works_json_sql(candidate: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-             'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
-             'disambiguation', work.disambiguation, 'work_type', work.work_type, \
-             'credits', json((SELECT json_group_array(json_object( \
-                     'name', credit.name, 'sort_name', credit.sort_name, \
-                     'musicbrainz_artist_id', credit.musicbrainz_artist_id, \
-                     'discogs_artist_id', credit.discogs_artist_id, \
-                     'credited_as', credit.credited_as, 'role', credit.role, \
-                     'role_words', credit.role_words, 'qualifiers', credit.qualifiers) \
-                     ORDER BY credit.position) \
-                 FROM import_candidate_work_credit AS credit \
-                 WHERE credit.content_hash = work.content_hash \
-                   AND credit.musicbrainz_work_id = work.musicbrainz_work_id))) \
-             ORDER BY work.position) \
-         FROM import_candidate_work AS work WHERE work.content_hash = {candidate})",
-    )
-}
-
-/// Which of the candidate `candidate`'s works is part of which, as a JSON array in
-/// the order the source relates them.
-pub(crate) fn work_parts_json_sql(candidate: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-             'parent', part.parent_work_id, 'child', part.child_work_id) ORDER BY part.position) \
-         FROM import_candidate_work_part AS part WHERE part.content_hash = {candidate})",
-    )
-}
-
-/// The columns of one role as a JSON object, which [`StoredRole`] reads.
-const ROLE_JSON: &str = "json_object( \
-     'name', role.name, 'sort_name', role.sort_name, \
-     'musicbrainz_artist_id', role.musicbrainz_artist_id, \
-     'discogs_artist_id', role.discogs_artist_id, \
-     'credited_as', role.credited_as, 'source', role.source, \
-     'role', role.role, 'role_words', role.role_words, \
-     'qualifiers', role.qualifiers)";
-
-/// The roles the source credits on the candidate `candidate`'s release, as a JSON
-/// array in its order, which [`roles_of`] decodes.
-pub(crate) fn release_roles_json_sql(candidate: &str) -> String {
-    format!(
-        "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
-         FROM import_candidate_release_role AS role WHERE role.content_hash = {candidate})",
-    )
-}
-
-/// The roles the source credits on the candidate `candidate`'s track `track` (SQL
-/// expressions for their keys), as a JSON array in its order, which
-/// [`roles_of`] decodes.
-pub(crate) fn track_roles_json_sql(candidate: &str, track: &str) -> String {
-    format!(
-        "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
-         FROM import_candidate_track_role AS role WHERE role.content_hash = {candidate} AND role.track_id = {track})",
-    )
-}
-
-/// The works the candidate `candidate`'s track `track` performs, as a JSON array of
-/// their ids in its order.
-pub(crate) fn track_works_json_sql(candidate: &str, track: &str) -> String {
-    format!(
-        "(SELECT json_group_array(performed.musicbrainz_work_id ORDER BY performed.position) \
-         FROM import_candidate_track_work AS performed \
-         WHERE performed.content_hash = {candidate} AND performed.track_id = {track})",
-    )
-}
-
-/// One stored work as [`works_json_sql`] holds it.
+/// One stored work as the draft's stored works holds it.
 #[derive(serde::Deserialize)]
 pub(crate) struct StoredWork {
     musicbrainz_work_id: String,
@@ -511,7 +403,7 @@ pub(crate) struct StoredWork {
     credits: Vec<StoredWorkCredit>,
 }
 
-/// One stored work credit as [`works_json_sql`] holds it.
+/// One stored work credit as the draft's stored works holds it.
 #[derive(serde::Deserialize)]
 pub(crate) struct StoredWorkCredit {
     name: String,
@@ -531,7 +423,7 @@ pub(crate) struct StoredPart {
     child: String,
 }
 
-/// The work graph [`works_json_sql`] and [`work_parts_json_sql`] hold.
+/// The work graph the draft's stored works and [`work_parts_json_sql`] hold.
 pub(crate) fn works_of(
     works: Vec<StoredWork>,
     parts: Vec<StoredPart>,
