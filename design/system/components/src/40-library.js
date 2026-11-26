@@ -47,7 +47,7 @@
       covers.slice(0, 4).map(function (t, i) { return h(Artwork, { key: i, title: t, radius: 0 }); }));
   }
 
-  // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon, or the weight its own entry is traced in. It takes the room of the frame SwiftUI lays the image out in at that size (SF's `frames`), the symbol centred in it, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
+  // A Mac glyph (`set: 'mac'`) is the SF Symbol `name` (SF) at `size`, an icon role or a number of points, in `weight` where the app draws it in a weight the table names after a colon, or the weight its own entry is traced in. It takes the room of the frame SwiftUI lays the image out in at that size (SF's `frames`), the symbol where SwiftUI draws it in that frame, and its own box is the symbol's ink, as VoiceOver and the shots measure an image.
   // `frame` ([width, height] in points, null for the symbol's own), or `square` (the size both ways): the frame the app sets around the symbol, which is then its room, the symbol's own frame centred in it with its corner on a device pixel, as SwiftUI places it. `text`: the symbol sits in a run of text, as Text(Image) sets it, and takes its ink's room alone.
   // `point: 'forward'` or `point: 'backward'` turns the `down` chevron to point that way (chevron.forward, chevron.backward). `button`: the glyph is a plain button by that name, whose box is the glyph's room, the symbol's frame at its size or the frame the caller sets, as a control's box is its layout box; `className` then styles the button. `label`: the glyph's name for a screen reader, as an image; without one, a screen reader skips it. `turn`: the degrees the glyph turns about its frame's centre, as SwiftUI's rotationEffect turns an image, with its room and box left as they are. Any other set draws the Material symbol (MSymbol).
   function Glyph(props) {
@@ -57,14 +57,16 @@
     var base = turned ? props.point : props.name, key = base + (props.weight ? ':' + props.weight : '');
     var sf = SF[key] || (props.weight && SF[base] && SF[base].weight === props.weight ? SF[base] : null);
     if (!sf) throw new Error('SF has no symbol `' + key + '`');
-    // Boxes as left, top, right, bottom, in points at 24 around the frame's centre (12, 12); k turns them into points at the glyph's size.
+    // Boxes as left, top, right, bottom, in points at 24 around the room's centre (12, 12); k turns them into points at the glyph's size.
     var points = iconPoints(props.size), k = points / 24;
-    // Along axis 0 (width) or 1 (height), in points: the frame SwiftUI lays the symbol out in at this size, and the frame the caller sets, if any.
-    var symbolFrame = function (axis) {
+    // SF's entry for this size: the frame SwiftUI lays the symbol out in, and how far off its centre it draws the symbol.
+    var laid = function () {
       var at = sf.frames[Math.round(points * 100) / 100];
-      if (!at) throw new Error('SF has no frame for `' + key + '` at ' + points + ' points: add the frame SwiftUI lays it out in at that size');
-      return at[axis];
+      if (!at) throw new Error('SF has no frame for `' + key + '` at ' + points + ' points: add the frame SwiftUI lays it out in at that size, and how far off its centre SwiftUI draws the symbol');
+      return at;
     };
+    // Along axis 0 (width) or 1 (height), in points: the frame SwiftUI lays the symbol out in at this size, and the frame the caller sets, if any.
+    var symbolFrame = function (axis) { return laid()[axis]; };
     var callerFrame = function (axis) { return props.square ? points : props.frame && props.frame[axis] != null ? props.frame[axis] : null; };
     // The frame's side, in points at 24.
     var side = function (axis) { var set = callerFrame(axis); return (set != null ? set : symbolFrame(axis)) / k; };
@@ -75,7 +77,10 @@
       var offset = (set - symbolFrame(axis)) / 2;
       return (Math.round(offset * 2) / 2 - offset) / k;
     };
-    var ink = props.text ? sf.ink : [sf.ink[0] + shift(0), sf.ink[1] + shift(1), sf.ink[2] + shift(0), sf.ink[3] + shift(1)];
+    // How far right (axis 0) or down (axis 1) of its own frame's centre SwiftUI draws the symbol, which moves with the frame; in points at 24.
+    var off = function (axis) { return laid()[2 + axis] / k; };
+    var moved = function (axis) { return shift(axis) + off(axis); };
+    var ink = props.text ? sf.ink : [sf.ink[0] + moved(0), sf.ink[1] + moved(1), sf.ink[2] + moved(0), sf.ink[3] + moved(1)];
     var room = props.text ? ink : [12 - side(0) / 2, 12 - side(1) / 2, 12 + side(0) / 2, 12 + side(1) / 2];
     var own = props.button ? room : ink;
     // The own box's edges in points from the room's top left corner, each on Chrome's layout grid, so its margins and size add up to the room exactly and a row of glyphs keeps the app's pitch.
@@ -85,10 +90,13 @@
     var size = { width: at.right - at.left, height: at.bottom - at.top, overflow: 'visible' };
     // What the symbol paints in: in a run of text its ink, elsewhere the symbol's own frame, which SwiftUI sets on a device pixel. Chrome sets each box it paints on a device pixel too, so a box at the ink's fractional corner would move the ink up to a quarter point; inside the frame's box, the ink keeps its fractional place, as SwiftUI draws it.
     var drawn = props.text ? own : [12 - symbolFrame(0) / k / 2 + shift(0), 12 - symbolFrame(1) / k / 2 + shift(1), 12 + symbolFrame(0) / k / 2 + shift(0), 12 + symbolFrame(1) / k / 2 + shift(1)];
-    var view = [drawn[0], drawn[1], drawn[2] - drawn[0], drawn[3] - drawn[1]].map(thousandths).join(' ');
+    // The part of the outline the painted box shows: the symbol's own frame, whose centre sits `off` left of and above the outline's (12, 12), since SwiftUI draws the symbol that far right of and below the frame's centre. The box itself sits where `shift` puts the frame, so the outline moves with it.
+    var shows = props.text ? drawn : [12 - symbolFrame(0) / k / 2 - off(0), 12 - symbolFrame(1) / k / 2 - off(1), 12 + symbolFrame(0) / k / 2 - off(0), 12 + symbolFrame(1) / k / 2 - off(1)];
+    var view = [shows[0], shows[1], shows[2] - shows[0], shows[3] - shows[1]].map(thousandths).join(' ');
     var path = h('path', { d: sf.d });
-    // The frame's centre is (12, 12), which sits (12 - drawn left, 12 - drawn top) into the painted box.
-    var turn = props.turn == null ? null : { transform: 'rotate(' + props.turn + 'deg)', transformOrigin: thousandths((12 - drawn[0]) * k) + 'px ' + thousandths((12 - drawn[1]) * k) + 'px' };
+    // SwiftUI turns the symbol about its frame's centre, the painted box's; in a run of text, about the outline's (12, 12).
+    var pivot = props.text ? [(12 - shows[0]) * k, (12 - shows[1]) * k] : [(drawn[2] - drawn[0]) * k / 2, (drawn[3] - drawn[1]) * k / 2];
+    var turn = props.turn == null ? null : { transform: 'rotate(' + props.turn + 'deg)', transformOrigin: thousandths(pivot[0]) + 'px ' + thousandths(pivot[1]) + 'px' };
     // The painted box, placed from the glyph's own box: none apart in a run of text.
     var paint = props.text ? null : { position: 'absolute', left: edge(drawn[0], room[0]) - at.left, top: edge(drawn[1], room[1]) - at.top, width: onLayoutGrid((drawn[2] - drawn[0]) * k), height: onLayoutGrid((drawn[3] - drawn[1]) * k), overflow: 'visible' };
     var svg = function (attrs) { return h('svg', Object.assign({ viewBox: view, fill: 'currentColor', 'aria-hidden': true }, attrs), path); };
