@@ -1,6 +1,6 @@
 //! How long the import pane takes to show the first candidate the person
 //! selects in a fresh library, then a second one: the read of the candidate,
-//! and the statements and steps it ran. The library holds 10,000 albums of 10
+//! and the statements, steps and scope plans it ran. The library holds 10,000 albums of 10
 //! tracks and one watched folder of 1,000 identified candidates. Run
 //! explicitly in Debug:
 //!
@@ -8,7 +8,7 @@
 //!     --test integration -- test_first_selection:: --ignored --nocapture
 //!
 //! `scripts/perf.sh run first-selection` runs it in the release profile.
-//! It prints the time of each selection and its statements and steps as costs.
+//! It prints the time of each selection and its statements, steps and scope plans as costs.
 
 use bae_import::CandidateKey;
 use bae_library::{
@@ -98,6 +98,19 @@ async fn the_import_pane_first_selection() {
             "count",
         );
         report(&format!("{metric}.app_read_steps"), counts.app_read_steps as f64, "count");
+        report(&format!("{metric}.scope_plans_built"), counts.scope_plans_built as f64, "count");
+        report(
+            &format!("{metric}.scope_plan_sources"),
+            counts.scope_plan_size.sources as f64,
+            "count",
+        );
+        report(&format!("{metric}.scope_plan_cores"), counts.scope_plan_size.cores as f64, "count");
+        report(&format!("{metric}.scope_plan_edges"), counts.scope_plan_size.edges as f64, "count");
+        report(
+            &format!("{metric}.scope_plan_time"),
+            counts.scope_plan_time.as_secs_f64() * 1_000.0,
+            "ms",
+        );
     }
 
     services.close().await.unwrap();
