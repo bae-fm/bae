@@ -38,12 +38,7 @@ struct MacTrackRowReadingOrderTests {
                 of: window,
                 subject: "a track row"
             )
-            return tree.nodes.compactMap { node -> String? in
-                guard node.role == "AXStaticText",
-                    case .text(let text) = node.value
-                else { return nil }
-                return text
-            }
+            return tree.nodes.compactMap(\.textWords)
         }
         #expect(
             texts == ["4", "Low Tide Hours", "Mara Quill", "5:03"],
