@@ -1,8 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// One pressing under a release-group card: its facts, the signals that named
-/// it and the sources that list it; one already in the library is dimmed.
+/// One pressing under a release-group card, a row of the pressing table: each
+/// fact in a column of its own, a dot in the column of each identifier kind
+/// that names it; one already in the library is dimmed.
 struct MacPressingRow: View {
     /// The inset from the row's box to its text.
     static let horizontalPadding = ThemeSpace.related
@@ -57,29 +58,19 @@ struct MacPressingRow: View {
             // The text beside it names the row, and its action picks it.
             .accessibilityHidden(true)
 
-            HStack(spacing: ThemeSpace.related) {
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    editionLine
-                    copyLine
-                    noteLine
-                }
-                // The lines read in order before the row's trailing marks,
-                // which sit higher than the copy and note lines.
-                .accessibilityElement(children: .contain)
-                .accessibilityAction {
-                    if isPickable { onSelect(pressing) }
-                }
-                .allowsHitTesting(false)
-                Spacer(minLength: ThemeSpace.related)
-                if isInLibrary {
-                    libraryMarker
-                        .allowsHitTesting(false)
-                }
-                sourceTags
-                    .allowsHitTesting(false)
+            PressingTableRow { column in
+                cell(column)
+            } details: {
+                detailsCell
+            } chevron: {
                 chevron
-                    .allowsHitTesting(false)
             }
+            // The cells read in order, as the row's one action picks it.
+            .accessibilityElement(children: .contain)
+            .accessibilityAction {
+                if isPickable { onSelect(pressing) }
+            }
+            .allowsHitTesting(false)
             // An "In library" pressing is faded whole, marker included.
             .opacity(isInLibrary ? 0.55 : 1)
         }
@@ -165,91 +156,97 @@ struct MacPressingRow: View {
 
     // MARK: - What the pressing is
 
-    /// The edition line: the years, each label with its catalog numbers,
-    /// then the country.
+    /// The cell of one column: the year in strong text, the label in
+    /// secondary text, then the rest in tertiary text, each cut at its edge;
+    /// a dot in the column of each kind that names the pressing.
     @ViewBuilder
-    private var editionLine: some View {
-        if pressing.editionParts.contains(where: { !$0.isEmpty }) {
-            MacSourcedValue(parts: pressing.editionParts)
-                .themeText(.body)
-                .monospacedDigit()
-                .cutLine(.prose)
-        }
-    }
-
-    // MARK: - Agreement badges
-
-    /// Badges for what the candidate's own text agrees with about this row, in
-    /// one fixed order.
-    @ViewBuilder
-    private var signalBadges: some View {
-        if let agreements {
-            HStack(spacing: ThemeSpace.compact) {
-                agreementBadge(.discId, on: agreements.discId)
-                agreementBadge(.barcode, on: agreements.barcode)
-                agreementBadge(.catalog, on: agreements.catalog)
-                agreementBadge(.label, on: agreements.label)
-                agreementBadge(.year, on: agreements.year)
-                agreementBadge(.country, on: agreements.country)
-                if !agreements.notes.isEmpty {
-                    // Takes the pointer so its notes show on hover; a click
-                    // on it picks the row like a click anywhere else on it.
-                    agreementChip(.notes)
-                        .help(
-                            PressingText.alternatives(
-                                agreements.notes.map(\.stated)
-                            )
-                        )
-                        .onTapGesture {
-                            if isPickable {
-                                onSelect(pressing)
-                            }
-                        }
+    private func cell(_ column: PressingColumn) -> some View {
+        switch column {
+        case .year:
+            PressingCell(column: column) {
+                MacSourcedValue(pressing.years)
+                    .themeText(.strong)
+                    .monospacedDigit()
+            }
+        case .label:
+            PressingCell(column: column) {
+                Text(labelNames)
+                    .themeText(.body)
+                    .foregroundStyle(Theme.textSecondary)
+                    // The space after the label's words, inside its column.
+                    .padding(.trailing, ThemeSpace.related)
+            }
+        case .catalog:
+            tertiaryCell(
+                column,
+                pressing.labels.flatMap(\.catalogNumbers).map(\.stated)
+            )
+        case .country:
+            tertiaryCell(column, pressing.areas)
+        case .format:
+            tertiaryCell(column, pressing.media)
+        case .kind(let kind):
+            PressingCell(column: column, alignment: .center) {
+                // A cell with nothing in it still holds its place in the
+                // row, so the columns after it keep theirs.
+                if let agreements, kind.names(agreements) {
+                    Circle()
+                        .fill(Theme.textSecondary)
+                        .frame(width: pressingDotSize, height: pressingDotSize)
+                        .accessibilityLabel(kind.title)
+                        .accessibilityAddTraits(.isImage)
+                }
+                else {
+                    Color.clear.frame(width: 0, height: 0)
                 }
             }
         }
     }
 
-    /// A badge only for an agreement the row has, so the badges pack without
-    /// gaps.
-    @ViewBuilder
-    private func agreementBadge(
-        _ agreement: SignalBadgeStyle.Agreement,
-        on: Bool
+    private func tertiaryCell(
+        _ column: PressingColumn,
+        _ values: [StatedValue]
     ) -> some View {
-        if on {
-            agreementChip(agreement)
-                .allowsHitTesting(false)
+        PressingCell(column: column) {
+            MacSourcedValue(values)
+                .themeText(.body)
+                .foregroundStyle(Theme.textTertiary)
         }
     }
 
-    private func agreementChip(_ agreement: SignalBadgeStyle.Agreement)
-        -> some View
-    {
-        StatusChip(
-            verbatim: SignalBadgeStyle.label(for: agreement),
-            tone: .accent
-        )
-        // A badge is one word; the row's pressing text truncates instead.
-        .fixedSize()
+    /// Every label the records state, which core lists each name once.
+    private var labelNames: String {
+        pressing.labels.flatMap(\.names)
+            .joined(
+                separator: localizedCoreString("core.label.list_separator")
+            )
     }
 
-    // MARK: - Trailing
-
-    /// Every source listing this pressing, in core's order; picking the row
-    /// takes all of them.
-    private var sourceTags: some View {
-        Text(
-            FactList.joined(
-                pressing.sources.map { bridgeLookupCatalogName(catalog: $0) }
-            )
-        )
-        .themeText(.detail)
+    /// The details, then the notes of the records the folder's text names the
+    /// pressing by in italics, then "In library".
+    private var detailsCell: some View {
+        HStack(spacing: ThemeSpace.compact) {
+            if !pressing.detailsText.isEmpty {
+                Text(pressing.detailsText)
+            }
+            if let notes = agreements?.notes, !notes.isEmpty {
+                MacSourcedValue(notes.map(\.stated))
+                    .italic()
+            }
+            if isInLibrary {
+                libraryMarker
+                    .fixedSize()
+            }
+        }
+        .themeText(.body)
         .foregroundStyle(Theme.textTertiary)
+        .cutLine(.prose)
+        // The details end where the next column begins, a group space on.
+        .padding(.trailing, ThemeSpace.group)
     }
 
     /// The "In library" tag, drawn only while the library holds the pressing,
-    /// so the pressing's lines take the width otherwise.
+    /// so the pressing's details take the width otherwise.
     private var libraryMarker: some View {
         HStack(spacing: ThemeSpace.inline) {
             // The check only marks the words, so VoiceOver reads the words
@@ -258,8 +255,6 @@ struct MacPressingRow: View {
             StatusGlyph(.success)
                 .font(ThemeText.detail.font)
             Text("In library")
-                .themeText(.detail)
-                .foregroundStyle(Theme.textTertiary)
         }
     }
 
@@ -271,61 +266,5 @@ struct MacPressingRow: View {
             )
             .frame(width: ThemeIcon.small.size)
             .accessibilityHidden(true)
-    }
-}
-
-extension MacPressingRow {
-    /// The copy line: what the pressing is made of and its details, then its
-    /// barcodes and the agreement badges.
-    @ViewBuilder
-    private var copyLine: some View {
-        let details = pressing.detailsText
-        let hasCopy =
-            pressing.copyParts.contains(where: { !$0.isEmpty })
-            || !details.isEmpty
-        if hasCopy || !pressing.barcodes.isEmpty || agreements != nil {
-            HStack(spacing: ThemeSpace.related - ThemeSpace.line) {
-                if hasCopy {
-                    Text(copyText)
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.textTertiary)
-                        .cutLine(.prose)
-                }
-                if !pressing.barcodes.isEmpty {
-                    MacSourcedValue(pressing.barcodes)
-                        .themeText(.body)
-                        .foregroundStyle(Theme.textSecondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-                signalBadges
-            }
-        }
-    }
-
-    /// The media and details, each fact followed by the catalogs that state
-    /// it where they differ.
-    private var copyText: AttributedString {
-        var text = MacSourcedValue(parts: pressing.copyParts).attributed
-        if !pressing.detailsText.isEmpty {
-            if !text.characters.isEmpty {
-                text.append(AttributedString(FactList.separator))
-            }
-            text.append(AttributedString(pressing.detailsText))
-        }
-        return text
-    }
-
-    /// The notes of the pressing's records the folder names it by, each
-    /// followed by its catalog where they differ.
-    @ViewBuilder
-    private var noteLine: some View {
-        if let notes = agreements?.notes, !notes.isEmpty {
-            MacSourcedValue(notes.map(\.stated))
-                .themeText(.detail)
-                .italic()
-                .foregroundStyle(Theme.textTertiary)
-                .cutLine(.prose)
-        }
     }
 }

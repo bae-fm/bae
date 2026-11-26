@@ -13,8 +13,6 @@ struct ReleaseGroup: Equatable, Identifiable {
     /// The album's artist as each of its records states it, each distinct
     /// credit once, worded.
     let artists: [String]
-    /// Every label the album's pressings state, each once.
-    let labels: [String]
     let coverArt: BridgeRemoteCover?
     /// Every source carrying this group, in the one order surfaces name
     /// sources in.
@@ -46,7 +44,6 @@ struct ReleaseGroup: Equatable, Identifiable {
         id = bridge.id
         titles = bridge.titles
         artists = bridge.artists.map(\.text)
-        labels = bridge.labels
         coverArt = bridge.coverArt
         sources = bridge.sources
         sections = bridge.sections.map(PressingSection.init(bridge:))

@@ -451,6 +451,7 @@ extension ShotScene {
     static func pressing(
         releaseId: String,
         year: Int32?,
+        label: String = "Harbor Records",
         catalog: String?,
         facts: BridgePressingFacts,
         sources: [BridgeLookupCatalog],
@@ -468,10 +469,9 @@ extension ShotScene {
                     barcode: barcode
                 )
             },
-            sources: sources,
             labels: [
                 BridgeLabelLine(
-                    names: ["Harbor Records"],
+                    names: [label],
                     catalogNumbers: catalog.map { [$0] } ?? []
                 )
             ],
@@ -486,7 +486,8 @@ extension ShotScene {
     static func cdPressing(
         chosen: Bool = false,
         inLibrary: Bool = false,
-        barcode: String? = "0 41234 56789 2"
+        barcode: String? = "0 41234 56789 2",
+        details: [BridgeDiscogsDetail] = []
     ) -> BridgePressing {
         pressing(
             releaseId: "hr-1042",
@@ -494,12 +495,29 @@ extension ShotScene {
             catalog: "HR-1042",
             facts: PreviewData.pressingFacts(
                 country: "US",
-                media: PreviewData.media(.cd)
+                media: PreviewData.media(.cd),
+                discogsDetails: details
             ),
             sources: [.musicBrainz, .discogs],
             barcode: barcode,
             chosen: chosen,
             inLibrary: inLibrary
+        )
+    }
+
+    /// A pressing the folder's own text agrees with in nothing but, where
+    /// given, the notes of its records.
+    static func agreesInNothing(
+        notes: [BridgeTextStatement] = []
+    ) -> BridgeAgreements {
+        BridgeAgreements(
+            discId: false,
+            barcode: false,
+            catalog: false,
+            label: false,
+            year: false,
+            country: false,
+            notes: notes
         )
     }
 
@@ -551,7 +569,6 @@ extension ShotScene {
                 id: "component-low-tide-hours",
                 titles: titles,
                 artists: [.named("Mara Quill")],
-                labels: ["Harbor Records"],
                 coverArt: lowTideHoursCover(
                     named: titles.joined(separator: " / ")
                 ),

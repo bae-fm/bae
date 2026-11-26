@@ -25,8 +25,8 @@ extension ShotScene {
                 recordId("hr-1042", .musicBrainz): agreements(),
                 recordId("hr-1042-eu", .musicBrainz): BridgeAgreements(
                     discId: false,
-                    barcode: false,
-                    catalog: true,
+                    barcode: true,
+                    catalog: false,
                     label: false,
                     year: false,
                     country: false,
@@ -46,7 +46,8 @@ extension ShotScene {
             catalog: "HR-1042",
             facts: PreviewData.pressingFacts(
                 region: .europe,
-                media: PreviewData.media(.cd)
+                media: PreviewData.media(.cd),
+                discogsDetails: [.clubEdition]
             ),
             sources: [.musicBrainz, .discogs]
         )
@@ -75,17 +76,23 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: wideColumn,
+            width: 842,
             height: height,
             images: coverGalleryImages()
         ) {
-            MacReleaseGroup(
-                group: group,
-                isImporting: false,
-                agreements: agreements,
-                onSelect: { _ in }
-            )
-            .frame(width: wideColumn, alignment: .leading)
+            MacPressingTable(kinds: [.discId, .barcode]) {
+                MacReleaseGroup(
+                    group: group,
+                    isImporting: false,
+                    agreements: agreements,
+                    onSelect: { _ in }
+                )
+            }
+            .frame(width: 900, alignment: .leading)
+            // The preview's table is 900 points wide in a 842 point cell, which
+            // cuts it at the cell's edge.
+            .frame(width: 842, alignment: .leading)
+            .clipped()
         }
     }
 }

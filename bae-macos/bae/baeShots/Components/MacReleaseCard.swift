@@ -25,12 +25,18 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: wideColumn,
-            height: 70,
+            width: 842,
+            height: 60,
             images: coverGalleryImages()
         ) {
-            MacReleaseCard(group: group)
-                .frame(width: wideColumn, alignment: .leading)
+            MacPressingTable(kinds: []) {
+                MacReleaseCard(group: group)
+            }
+            .frame(width: 900, alignment: .leading)
+            // The preview's table is 900 points wide in a 842 point cell, which
+            // cuts it at the cell's edge.
+            .frame(width: 842, alignment: .leading)
+            .clipped()
         }
     }
 }

@@ -115,6 +115,7 @@ extension ShotScene {
             macPopoverScenes,
             macPortFieldScenes,
             macPressingRowScenes,
+            macPressingTableScenes,
             macProgressScenes,
             macProgressLineScenes,
             macProgressRingScenes,

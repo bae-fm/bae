@@ -2,72 +2,68 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// A release group header: cover, title, artist and label, a note for each
-/// source whose album links couldn't be read, and one link per source.
+/// A release group's header on the pressing table's grid: its cover, then its
+/// title over its artist where the label column starts, and a rule under
+/// them.
 struct MacReleaseCard: View {
+    private static let coverSize: CGFloat = 40
+
     let group: ReleaseGroup
 
-    var body: some View {
-        HStack(spacing: ThemeSpace.group) {
-            Artwork(
-                content: group.coverImageContent,
-                pointSize: ThemeSize.rowArtwork,
-                cornerRadius: nil
-            )
-            .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
-            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            .overlay(
-                RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-            )
+    @Environment(\.pressingTable)
+    private var table
 
-            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
-                Text(group.title)
-                    .themeText(.heading)
-                    .cutLine(.prose)
-                if !attribution.isEmpty {
-                    Text(attribution)
-                        .themeText(.body)
-                        .foregroundStyle(Theme.textSecondary)
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            HStack(spacing: ThemeSpace.edge) {
+                Artwork(
+                    content: group.coverImageContent,
+                    pointSize: Self.coverSize,
+                    cornerRadius: nil
+                )
+                .frame(width: Self.coverSize, height: Self.coverSize)
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                )
+                // As wide as the year's column, so the title starts at the
+                // label's.
+                .frame(
+                    width: table.width(of: .year),
+                    alignment: .leading
+                )
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(group.title)
+                        .themeText(.strong)
                         .cutLine(.prose)
-                }
-                ForEach(Array(group.sources.enumerated()), id: \.offset) {
-                    _,
-                    source in
-                    if source.albumLinksUnread {
-                        let name = bridgeCatalogName(catalog: source.source)
-                        Text(
-                            "Could not read this album’s links on \(name); it may also be listed separately."
-                        )
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.textSecondary)
+                    if let artist = group.artist {
+                        Text(artist)
+                            .themeText(.body)
+                            .foregroundStyle(Theme.textSecondary)
+                            .cutLine(.prose)
+                    }
+                    ForEach(Array(group.sources.enumerated()), id: \.offset) {
+                        _,
+                        source in
+                        if source.albumLinksUnread {
+                            let name = bridgeCatalogName(catalog: source.source)
+                            Text(
+                                "Could not read this album’s links on \(name); it may also be listed separately."
+                            )
+                            .themeText(.detail)
+                            .foregroundStyle(Theme.textSecondary)
+                        }
                     }
                 }
+                Spacer(minLength: 0)
             }
-            // The board reads the title and its attribution before the
-            // catalog links; by position the links come between the two.
-            .accessibilitySortPriority(1)
-
-            Spacer(minLength: ThemeSpace.related)
-
-            HStack(spacing: ThemeSpace.related) {
-                // A card can carry two albums of one catalog, so a source is
-                // told apart by its place rather than its catalog.
-                ForEach(Array(group.sources.enumerated()), id: \.offset) {
-                    _,
-                    source in
-                    AlbumSourceLink(source: source)
-                }
-            }
+            .padding(.horizontal, ThemeSpace.related)
+            MacHairline()
+                .padding(.horizontal, ThemeSpace.related)
+                .padding(.bottom, ThemeSpace.line)
         }
-    }
-
-    private var attribution: String {
-        FactList.joined([
-            group.artist,
-            group.labels.isEmpty
-                ? nil : PressingText.alternatives(group.labels),
-        ])
     }
 }
 

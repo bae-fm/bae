@@ -1,8 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// A scrolling list of release-group cards with their pressing rows, closed
-/// by `trailing` inside the scroll so it scrolls with the results.
+/// A scrolling table of the release groups' pressings, closed by `trailing`
+/// inside the scroll so it scrolls with the results. A typed search's table
+/// has no identifier columns.
 struct ReleaseGroupListView<Trailing: View>: View {
     let groups: [ReleaseGroup]
     let isImporting: Bool
@@ -39,6 +40,9 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     var showsNarrowedOut = false
     let isImporting: Bool
     var agreements: [String: BridgeAgreements] = [:]
+    /// The identifier kinds the run found, which head the table's columns;
+    /// none for typed-search results.
+    var kinds: [PressingKind] = []
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
@@ -49,18 +53,22 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     let trailing: () -> Trailing
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: ThemeSpace.group) {
-            ForEach(groups) { group in
-                MacReleaseGroup(
-                    group: group,
-                    showsNarrowedOut: showsNarrowedOut,
-                    isImporting: isImporting,
-                    agreements: agreements,
-                    loadingPick: loadingPick,
-                    releaseSelectionFailure: releaseSelectionFailure,
-                    onRetryUnread: onRetryUnread,
-                    onSelect: onSelect,
-                )
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+            MacPressingTable(kinds: kinds) {
+                VStack(alignment: .leading, spacing: ThemeSpace.section) {
+                    ForEach(groups) { group in
+                        MacReleaseGroup(
+                            group: group,
+                            showsNarrowedOut: showsNarrowedOut,
+                            isImporting: isImporting,
+                            agreements: agreements,
+                            loadingPick: loadingPick,
+                            releaseSelectionFailure: releaseSelectionFailure,
+                            onRetryUnread: onRetryUnread,
+                            onSelect: onSelect,
+                        )
+                    }
+                }
             }
             trailing()
         }
@@ -88,7 +96,7 @@ struct AlbumSectionHeading: View {
 }
 
 /// A line closing a result list: what is not in it, and why. Sits where the
-/// next group would be, in the same indent as the pressing rows.
+/// next group would be, in the same indent as the pressing rows' text.
 struct MissingSourceNote: View {
     let text: String
 
@@ -100,18 +108,11 @@ struct MissingSourceNote: View {
     }
 }
 
-/// One release group: its card with the pressing rows hanging beneath on a
-/// connecting rule.
+/// One release group: its card with the pressing rows beneath, on the table's
+/// grid.
 struct MacReleaseGroup: View {
-    /// How far the rule sits in from the card's leading edge.
-    private static let ruleInset = ThemeSpace.edge
-    private static let ruleWidth: CGFloat = 1
-    /// The gap between the rule and the rows.
-    private static let ruleGap = ThemeSpace.related
-    /// Where a pressing row's text starts, from the card's leading edge.
-    static let rowTextInset =
-        ruleInset + ruleWidth + ruleGap
-        + MacPressingRow.horizontalPadding
+    /// Where a pressing row's text starts, from the group's leading edge.
+    static let rowTextInset = MacPressingRow.horizontalPadding
 
     let group: ReleaseGroup
     /// Whether the rows a run's agreement set aside show beneath the offered
@@ -144,46 +145,39 @@ struct MacReleaseGroup: View {
     var body: some View {
         let sections = shownSections
         if sections.contains(where: { !$0.rows.isEmpty }) {
-            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 MacReleaseCard(group: group)
                 pressings(sections)
             }
         }
     }
 
-    /// The group's pressing rows on a rule under the card, album by album,
-    /// with the rows set aside after the offered ones.
+    /// The group's pressing rows under the card, album by album, with the
+    /// rows set aside after the offered ones.
     private func pressings(
         _ sections: [(album: BridgeAlbumHeading?, rows: [Pressing])]
     ) -> some View {
-        HStack(spacing: 0) {
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(width: Self.ruleWidth)
-            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                ForEach(Array(sections.enumerated()), id: \.offset) {
-                    _,
-                    section in
-                    if let album = section.album, !section.rows.isEmpty {
-                        AlbumSectionHeading(album: album)
-                    }
-                    ForEach(section.rows) { pressing in
-                        MacPressingRow(
-                            pressing: pressing,
-                            isImporting: isImporting,
-                            agreements: agreements[pressing.id],
-                            isSelected: pressing.chosen,
-                            loading: loading(pressing),
-                            failure: releaseSelectionFailure,
-                            onRetryUnread: onRetryUnread,
-                            onSelect: onSelect,
-                        )
-                    }
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            ForEach(Array(sections.enumerated()), id: \.offset) {
+                _,
+                section in
+                if let album = section.album, !section.rows.isEmpty {
+                    AlbumSectionHeading(album: album)
+                }
+                ForEach(section.rows) { pressing in
+                    MacPressingRow(
+                        pressing: pressing,
+                        isImporting: isImporting,
+                        agreements: agreements[pressing.id],
+                        isSelected: pressing.chosen,
+                        loading: loading(pressing),
+                        failure: releaseSelectionFailure,
+                        onRetryUnread: onRetryUnread,
+                        onSelect: onSelect,
+                    )
                 }
             }
-            .padding(.leading, Self.ruleGap)
         }
-        .padding(.leading, Self.ruleInset)
     }
 
     /// How core reads a pick on this row right now. When the person picked

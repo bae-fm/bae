@@ -5,48 +5,33 @@ import SwiftUI
 
 extension ShotScene {
     static let macPressingRowScenes: [ShotScene] = [
-        pressingRowScene("mac.component.pressing-row.plain", cdPressing()),
+        pressingRowScene("mac.component.pressing-row.plain", clubCdPressing()),
         pressingRowScene(
             "mac.component.pressing-row.matches",
-            cdPressing(),
+            clubCdPressing(),
             agreements: agreements()
         ),
         pressingRowScene(
             "mac.component.pressing-row.selected",
-            cdPressing(chosen: true),
+            clubCdPressing(chosen: true),
             agreements: agreements()
         ),
         pressingRowScene(
             "mac.component.pressing-row.in-library",
-            cdPressing(inLibrary: true)
+            clubCdPressing(inLibrary: true)
         ),
         pressingRowScene(
             "mac.component.pressing-row.records-differ",
-            differingPressing(),
-            agreements: agreements(
-                catalog: true,
-                notes: [
-                    BridgeTextStatement(
-                        text: "first pressing",
-                        catalogs: [.musicBrainz]
-                    ),
-                    BridgeTextStatement(
-                        text: "club edition",
-                        catalogs: [.discogs]
-                    ),
-                ]
-            ),
-            height: 100
+            differingPressing()
         ),
         pressingRowScene(
             "mac.component.pressing-row.notes",
-            cdPressing(),
-            agreements: agreements(
+            clubCdPressing(),
+            agreements: agreesInNothing(
                 notes: [
                     BridgeTextStatement(text: "first pressing", catalogs: [])
                 ]
-            ),
-            height: 90
+            )
         ),
         pressingRowScene(
             "mac.component.pressing-row.year-unknown",
@@ -56,21 +41,34 @@ extension ShotScene {
                 catalog: "HR-1042",
                 facts: PreviewData.pressingFacts(
                     country: "US",
-                    media: PreviewData.media(.cd)
+                    media: PreviewData.media(.cd),
+                    discogsDetails: [.clubEdition]
                 ),
                 sources: [.musicBrainz, .discogs],
                 barcode: sampleBarcode
-            ),
-            height: 70
+            )
         ),
     ]
+
+    /// The 1992 CD as a club edition.
+    private static func clubCdPressing(
+        chosen: Bool = false,
+        inLibrary: Bool = false
+    ) -> BridgePressing {
+        cdPressing(
+            chosen: chosen,
+            inLibrary: inLibrary,
+            details: [.clubEdition]
+        )
+    }
 
     /// The same CD where MusicBrainz and Discogs state its year and notes
     /// differently, and both state the one country.
     private static func differingPressing() -> BridgePressing {
         let cd = PreviewData.pressingFacts(
             country: "US",
-            media: PreviewData.media(.cd)
+            media: PreviewData.media(.cd),
+            discogsDetails: [.clubEdition]
         )
         return BridgePressing(
             releases: [
@@ -89,7 +87,6 @@ extension ShotScene {
                     barcode: "0 41234 56789 2"
                 ),
             ],
-            sources: [.musicBrainz, .discogs],
             labels: [
                 BridgeStatedLabelLine(
                     names: ["Harbor Records"],
@@ -101,9 +98,6 @@ extension ShotScene {
             years: [
                 BridgeYearStatement(year: 1992, catalogs: [.musicBrainz]),
                 BridgeYearStatement(year: 1993, catalogs: [.discogs]),
-            ],
-            barcodes: [
-                BridgeTextStatement(text: "0 41234 56789 2", catalogs: [])
             ],
             documentFailure: nil,
             pick: pick("hr-1042", .musicBrainz),
@@ -119,7 +113,7 @@ extension ShotScene {
                     catalogs: []
                 )
             ],
-            details: [],
+            details: bridgePressingDetails(facts: cd),
             chosen: false,
             pickBeingRead: false,
             inLibrary: false
@@ -132,13 +126,15 @@ extension ShotScene {
         agreements: BridgeAgreements? = nil
     ) -> some View {
         if let pressing = Pressing(bridge: bridge) {
-            MacPressingRow(
-                pressing: pressing,
-                isImporting: false,
-                agreements: agreements,
-                isSelected: bridge.chosen,
-                onSelect: { _ in }
-            )
+            MacPressingTable(kinds: PressingKind.allCases) {
+                MacPressingRow(
+                    pressing: pressing,
+                    isImporting: false,
+                    agreements: agreements,
+                    isSelected: bridge.chosen,
+                    onSelect: { _ in }
+                )
+            }
         }
     }
 
@@ -146,15 +142,19 @@ extension ShotScene {
         _ id: String,
         _ bridge: BridgePressing,
         agreements: BridgeAgreements? = nil,
-        height: CGFloat = 80
+        height: CGFloat = 52
     ) -> ShotScene {
         component(
             id,
-            width: 560,
+            width: 842,
             height: height
         ) {
             pressingRow(bridge, agreements: agreements)
-                .frame(width: 560, alignment: .leading)
+                .frame(width: 900, alignment: .leading)
+                // The preview's table is 900 points wide in a 842 point cell, which
+                // cuts it at the cell's edge.
+                .frame(width: 842, alignment: .leading)
+                .clipped()
         }
     }
 }

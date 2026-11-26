@@ -6,14 +6,10 @@ import SwiftUI
 /// Each part is one fact's values, and the parts follow each other under the
 /// list separator.
 struct MacSourcedValue: View {
-    let parts: [[StatedValue]]
+    let values: [StatedValue]
 
     init(_ values: [StatedValue]) {
-        parts = [values]
-    }
-
-    init(parts: [[StatedValue]]) {
-        self.parts = parts
+        self.values = values
     }
 
     var body: some View {
@@ -25,18 +21,13 @@ struct MacSourcedValue: View {
             "core.pressing.alternatives_separator"
         )
         var text = AttributedString()
-        for part in parts where !part.isEmpty {
-            if !text.characters.isEmpty {
-                text.append(AttributedString(FactList.separator))
+        for (index, stated) in values.enumerated() {
+            if index > 0 {
+                text.append(grey(alternatives))
             }
-            for (index, stated) in part.enumerated() {
-                if index > 0 {
-                    text.append(grey(alternatives))
-                }
-                text.append(AttributedString(stated.value))
-                if !stated.catalogs.isEmpty {
-                    text.append(grey(" \(stated.catalogs)"))
-                }
+            text.append(AttributedString(stated.value))
+            if !stated.catalogs.isEmpty {
+                text.append(grey(" \(stated.catalogs)"))
             }
         }
         return text

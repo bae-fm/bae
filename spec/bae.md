@@ -1538,8 +1538,7 @@ album first came out are its own album page's (its release group or master);
 the other catalog's release it links as itself gives them only where that page
 states none. A year identification guesses from text (a folder's name, a title) is four digits from 1900 to 2099; a year a source states outright (a tag's date, a catalog's release year) takes any value. The folder's years are read against every record of a row: a
 year any of them says the album first came out confirms the album, and the
-folder names the pressing only by a year after all of them. An album card names the label every pressing
-naming one agrees on, and none where they name different labels.
+folder names the pressing only by a year after all of them.
 
 Pressings group under albums. A MusicBrainz release group and a Discogs master
 are one album only when a statement says so, never because their titles look
@@ -1728,7 +1727,8 @@ The pane shows each identifier the folder states as a chip: its name and its
 value, with no catalog and no count. A chip has one of three looks. An off
 chip, an outline, is an identifier the run leaves out. An on chip, a fill, is
 one the run asks about. A found chip, in the accent's tint, is one that found
-releases.
+releases. A chip whose lookup is still out says *Searching…* after its value,
+and one whose lookup failed shows a warning and a *Retry* button there.
 
 The ISRC chip shows the first ISRC from the files' tags and, when the tags
 carry more, a "+N" button with the count of the rest. Pressing it opens a
@@ -1749,7 +1749,7 @@ it out of the run, or asks about it again once left out. Each catalog number
 in the run is a button that leaves it out of the run, which turns it into an
 off chip, or puts it back.
 On the Mac, VoiceOver reads each of these buttons by its parts: the identifier's
-name, its value and each catalog's name and answer.
+name and its value.
 The pane shows the title search only for a run that searches by title, or that
 waits on its identifiers to decide; it shows none for a run whose identifiers
 answered or whose draft has no title.
@@ -1758,12 +1758,12 @@ and the title's field, each field holding the words the run searches by.
 Leaving a changed field searches again by the new words.
 
 A pressing's row lists every record's value where its records state a fact
-differently: the year, a catalog number, a barcode, the country, the format.
+differently: the year, a catalog number, the country, the format.
 Each value is followed by the catalogs that state it, `1992 MusicBrainz / 1993
 Discogs`; a fact the records agree on, or only one record states, is listed as
 stated with no catalog. Two spellings of one catalog number or barcode are one
 value. The row lists the notes of its records the folder's text names it by,
-each followed by its catalog where they differ, and the barcodes it states.
+each followed by its catalog where they differ.
 What the row lists is what look-alike rows are compared by, so two pressings
 that differ only in what a second record states are two rows. Picking the
 row still applies its lead record alone. An album's header lists every title

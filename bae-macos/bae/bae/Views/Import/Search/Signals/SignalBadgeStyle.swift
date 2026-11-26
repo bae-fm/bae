@@ -5,19 +5,6 @@ import SwiftUI
 /// core sends. Kept as a caseless namespace so the ledger's group labels and the
 /// notes closing a result list word a signal the same way.
 enum SignalBadgeStyle {
-    /// One badge on a pressing row: what the candidate's own text agrees with
-    /// about that release. The first three name the lookup that returned it,
-    /// the rest name a field the folder's text states.
-    enum Agreement {
-        case discId
-        case barcode
-        case catalog
-        case label
-        case year
-        case country
-        case notes
-    }
-
     /// The identifying signals, as a failure line or the
     /// run's lookup row name them.
     enum Signal {
@@ -25,19 +12,6 @@ enum SignalBadgeStyle {
         case barcode
         case catalog
         case isrc
-    }
-
-    /// The agreement's name on its own — a badge.
-    static func label(for agreement: Agreement) -> String {
-        switch agreement {
-        case .discId: label(for: Signal.discId)
-        case .barcode: label(for: Signal.barcode)
-        case .catalog: label(for: Signal.catalog)
-        case .label: String(localized: "Label")
-        case .year: String(localized: "Year")
-        case .country: String(localized: "Country")
-        case .notes: String(localized: "Notes")
-        }
     }
 
     /// The signal's name on its own — a row label.

@@ -13,8 +13,6 @@ struct Pressing: Equatable, Identifiable {
     /// The years the records state: each record's where they differ, each
     /// followed by its catalogs.
     let years: [StatedValue]
-    /// The barcodes the records state, listed as `years` are.
-    let barcodes: [StatedValue]
     /// Where the records say it was released, listed as `years` are.
     let areas: [StatedValue]
     /// What the records say it is made of, listed as `years` are.
@@ -24,9 +22,6 @@ struct Pressing: Equatable, Identifiable {
     let documentFailure: BridgeLookupFailure?
     /// What picking this row claims, as core settled it.
     let link: BridgePressingLink
-    /// Every source listing this pressing, in core's order — the names the
-    /// row's tags carry, whichever record the row is read from.
-    let sources: [BridgeLookupCatalog]
     /// What sets it apart beyond that, as its lead record states it:
     /// "Promo · Reissue".
     let detailsText: String
@@ -41,30 +36,6 @@ struct Pressing: Equatable, Identifiable {
     /// it: the row shows dimmed.
     let inLibrary: Bool
 
-    /// The parts of the edition line, each a fact with the catalogs that state
-    /// it: the years, each label's names and each of its catalog numbers,
-    /// then where it was released.
-    var editionParts: [[StatedValue]] {
-        var parts = [years]
-        for label in labels {
-            if !label.names.isEmpty {
-                let names = label.names.joined(
-                    separator: localizedCoreString("core.label.list_separator")
-                )
-                parts.append([StatedValue(value: names, catalogs: [])])
-            }
-            parts += label.catalogNumbers.map { [$0.stated] }
-        }
-        parts.append(areas)
-        return parts
-    }
-
-    /// The parts of the copy line, each a fact with the catalogs that state
-    /// it: what it is made of.
-    var copyParts: [[StatedValue]] {
-        [media]
-    }
-
     /// Row identity is the lead release's id — stable across a re-search of
     /// the same pressing, so SwiftUI keeps the row rather than tearing it down.
     var id: String {
@@ -78,12 +49,10 @@ struct Pressing: Equatable, Identifiable {
         self.lead = lead
         labels = bridge.labels
         years = bridge.years.map(\.stated)
-        barcodes = bridge.barcodes.map(\.stated)
         areas = bridge.areas.map(\.stated)
         media = bridge.media.map(\.stated)
         documentFailure = bridge.documentFailure
         link = bridge.pick
-        sources = bridge.sources
         detailsText = PressingText.line(bridge.details)
         chosen = bridge.chosen
         pickBeingRead = bridge.pickBeingRead
