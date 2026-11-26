@@ -261,7 +261,7 @@ struct ModalFocusTests {
     func changeCoverLightbox() async throws {
         try await withHost { window, host, presented in
             presented.layers = [changeCoverLayer(opensOnLightbox: true)]
-            _ = try await LayerPanels.top(count: 2)
+            _ = try await LayerPanels.top(modals, count: 2)
             try await checkFocusInside(
                 window,
                 host: host,

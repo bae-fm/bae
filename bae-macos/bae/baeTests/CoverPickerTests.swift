@@ -5,6 +5,7 @@ import Testing
 
 @testable import bae
 
+@MainActor
 @Suite("Cover picker")
 struct CoverPickerTests {
     /// The stack the test's window presents its layers on.
