@@ -63,7 +63,7 @@ struct FieldBoxRow<Field: View>: View {
     }
 }
 
-/// The line under a field: what the field is for, 11.5 over 15, in a colour
+/// The line under a field: what the field is for, 11.5 over 14, in a colour
 /// between secondary and tertiary text, starting where the field's text does.
 /// An error line says what is wrong with the field, in the danger colour.
 struct FieldNote: View {

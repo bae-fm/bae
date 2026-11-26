@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// A loose paragraph between boxes: 11.5 over 15 in secondary text, starting
+/// A loose paragraph between boxes: 11.5 over 14 in secondary text, starting
 /// where a box's row labels start, with the 2pt the design system gives it
 /// above its text (the section's 6pt gap makes 8).
 struct MacNote: View {

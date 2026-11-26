@@ -64,14 +64,15 @@ struct ThemeTextLineTests {
         return (CGFloat(try #require(bottom)) + 1) / scale
     }
 
-    @Test("detail text's baseline is 12 points down its 15 point line")
+    @Test("detail text's baseline is 11 points down its 14 point line")
     func detailTextSitsWhereTheBoardDrawsIt() throws {
-        // The board's line puts the spare height above the words: the
-        // 11.5 point text's baseline is 12 points down the 15 point line.
+        // The board's line splits the spare height half above the words and
+        // half below: the 11.5 point text's baseline is 11 points down the
+        // 14 point line.
         let baseline = try detailBaseline()
         #expect(
-            abs(baseline - 12) < 0.5,
-            "the baseline is \(baseline) points down, not 12"
+            abs(baseline - 11) < 0.5,
+            "the baseline is \(baseline) points down, not 11"
         )
     }
 }

@@ -46,7 +46,7 @@ extension ShotScene {
             )
         let opened = ZStack(alignment: .topLeading) {
             window
-            catalogLinksPopover(records, buttonX: 420, buttonTop: 582)
+            catalogLinksPopover(records, buttonX: 420, buttonTop: 580)
         }
         return ShotStage(opened, images: images) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
@@ -64,6 +64,12 @@ extension ShotScene {
         buttonTop: CGFloat
     ) -> some View {
         let buttonWidth: CGFloat = 185.484375
+        // The button holds the edition line and the copy line, each a
+        // detail line, a line space apart.
+        guard let detailLine = ThemeText.detail.macOSLine else {
+            preconditionFailure("the detail text role has no line height")
+        }
+        let buttonHeight = 2 * detailLine + ThemeSpace.line
         let width = ReleaseRecordsCard.width
         return MacPopoverInPlace(arrowSide: .top, arrowOffset: width / 2) {
             ReleaseRecordsCard(records: records)
@@ -74,7 +80,8 @@ extension ShotScene {
         )
         .padding(
             .top,
-            buttonTop + 41 - popoverArrowLength - popoverShadowRoom
+            buttonTop + buttonHeight + 9 - popoverArrowLength
+                - popoverShadowRoom
         )
     }
 }

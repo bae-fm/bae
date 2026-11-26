@@ -10,7 +10,18 @@ enum ImportCandidateTableLayout {
     static let rowHeight = MacImportRow.coverPointSize + verticalPadding
 
     private static let verticalPadding = 2 * ThemeSpace.compact
-    private static let threeLineRowHeight = 50 + verticalPadding
+    /// A row with its title, its artist and its state: the title's line,
+    /// then two detail lines, a line space apart.
+    private static let threeLineRowHeight: CGFloat = {
+        guard let title = ThemeText.rowTitle.macOSLine,
+            let detail = ThemeText.detail.macOSLine
+        else {
+            preconditionFailure(
+                "the row title and detail text roles have no line height"
+            )
+        }
+        return title + 2 * (ThemeSpace.line + detail) + verticalPadding
+    }()
 
     static func height(for row: BridgeTriageRow) -> CGFloat {
         height(
