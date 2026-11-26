@@ -441,19 +441,10 @@ mirror_enum! {
     },
 }
 
-/// Not a `mirror_struct`: only the text pools cross; what a surface needs from
-/// the rest reaches it through the run's ledger.
+/// Not a `mirror_struct`: only the text signal crosses; what a surface needs
+/// from the rest reaches it through the run's ledger.
 impl BridgeSignals {
-    pub(crate) fn from_core(s: bae_identify::signals::Signals) -> Self {
-        let bae_identify::signals::Signals {
-            origin: _,
-            disc_id: _,
-            barcode: _,
-            text,
-            text_pool: _,
-            isrcs: _,
-            track_titles: _,
-        } = s;
+    pub(crate) fn from_core(text: bae_identify::signals::TextSignal) -> Self {
         BridgeSignals { text: BridgeTextSignal::from_core(text) }
     }
 }

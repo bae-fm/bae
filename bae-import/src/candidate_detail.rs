@@ -12,7 +12,7 @@ use super::triage::{
 use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::{FileEvidence, ImportFailure, ImportedRelease};
 use crate::TriageTab;
-use bae_identify::signals::Signals;
+use bae_identify::signals::PaneSignals;
 use bae_identify::IdentifyStateView;
 use bae_records::LibraryStatus;
 
@@ -37,7 +37,7 @@ pub struct ImportCandidateDetailProjection {
     /// `None` when the tables hold no verdict for that shape.
     pub stored_verdict: Option<IdentifyStateView>,
     /// The signals identification settled on, or `None` before it has.
-    pub signals: Option<Signals>,
+    pub signals: Option<PaneSignals>,
     /// The candidate's Disc IDs and barcodes that name a file of it, as its
     /// pane's read selects them.
     pub file_evidence: Vec<FileEvidence>,
@@ -404,7 +404,7 @@ pub struct ImportCandidateDetail {
     /// of the selected pressing; which lookups found a result is the run's
     /// ledger's to say.
     pub file_evidence: Vec<FileEvidence>,
-    pub signals: Option<Signals>,
+    pub signals: Option<PaneSignals>,
     pub stage: CandidateStage,
 }
 

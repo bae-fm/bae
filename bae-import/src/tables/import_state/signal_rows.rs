@@ -11,7 +11,8 @@ use bae_catalogs::{
     AudioOrigin, AudioSource, CdProof, DownloadProof, InternalFailure, StoreMarker,
 };
 use bae_identify::signals::{
-    BarcodeSignal, ComputedDiscId, DiscIdSignal, Signals, SourcedValue, TextLine, TextSignal,
+    BarcodeSignal, ComputedDiscId, DiscIdSignal, PaneSignals, Signals, SourcedValue, TextLine,
+    TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str =
@@ -54,6 +55,21 @@ fn signal_list_sql(list: &str, value: &str) -> String {
 /// JSON array; a Disc ID or barcode with the file it was read off. A
 /// candidate with no header row reads `signals_row` as NULL.
 pub(super) fn signals_read_columns() -> ColumnList {
+    let mut columns = pane_signals_read_columns();
+    columns.0.push((
+        "signals_text_pool",
+        "(SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) \
+                                  ORDER BY line.position) \
+          FROM import_candidate_text_line AS line \
+          WHERE line.signals_id = signals.signals_id)"
+            .to_string(),
+    ));
+    columns
+}
+
+/// [`signals_read_columns`] without the text lines, which a pane never
+/// shows: every other column of the signals.
+pub(super) fn pane_signals_read_columns() -> ColumnList {
     let sourced = "json_object('value', listed.value, 'origin_path', listed.origin_path)";
     ColumnList(vec![
         (
@@ -77,14 +93,6 @@ pub(super) fn signals_read_columns() -> ColumnList {
         ("signals_free_text", signal_list_sql("free_text", "listed.value")),
         ("signals_isrcs", signal_list_sql("isrc", "listed.value")),
         ("signals_track_titles", signal_list_sql("track_title", "listed.value")),
-        (
-            "signals_text_pool",
-            "(SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) \
-                                      ORDER BY line.position) \
-              FROM import_candidate_text_line AS line \
-              WHERE line.signals_id = signals.signals_id)"
-                .to_string(),
-        ),
     ])
 }
 
@@ -279,9 +287,9 @@ fn free_text(text: &TextSignal) -> &[String] {
     }
 }
 
-/// One candidate's [`signals_read_columns`] as SQLite hands them over, its
-/// lists still JSON.
-pub(super) struct StoredSignals {
+/// One candidate's [`pane_signals_read_columns`] as SQLite hands them over,
+/// its lists still JSON.
+pub(super) struct StoredPaneSignals {
     audio_source: Option<String>,
     cd_rip_proof: Option<String>,
     download_proof: Option<String>,
@@ -299,16 +307,31 @@ pub(super) struct StoredSignals {
     free_text: String,
     isrcs: String,
     track_titles: String,
+}
+
+/// One candidate's [`signals_read_columns`] as SQLite hands them over: the
+/// columns a pane reads, and the text lines, still JSON.
+pub(super) struct StoredSignals {
+    pane: StoredPaneSignals,
     text_pool: String,
 }
 
 /// The [`signals_read_columns`] of `row`; none for a candidate whose signals
 /// were never settled.
 pub(super) fn read_signals(row: &impl Columns) -> rusqlite::Result<Option<StoredSignals>> {
+    let Some(pane) = read_pane_signals(row)? else {
+        return Ok(None);
+    };
+    Ok(Some(StoredSignals { pane, text_pool: row.get("signals_text_pool")? }))
+}
+
+/// The [`pane_signals_read_columns`] of `row`; none for a candidate whose
+/// signals were never settled.
+pub(super) fn read_pane_signals(row: &impl Columns) -> rusqlite::Result<Option<StoredPaneSignals>> {
     if row.get::<Option<String>>("signals_row")?.is_none() {
         return Ok(None);
     }
-    Ok(Some(StoredSignals {
+    Ok(Some(StoredPaneSignals {
         audio_source: row.get("signals_audio_source")?,
         cd_rip_proof: row.get("signals_cd_rip_proof")?,
         download_proof: row.get("signals_download_proof")?,
@@ -326,7 +349,6 @@ pub(super) fn read_signals(row: &impl Columns) -> rusqlite::Result<Option<Stored
         free_text: row.get("signals_free_text")?,
         isrcs: row.get("signals_isrcs")?,
         track_titles: row.get("signals_track_titles")?,
-        text_pool: row.get("signals_text_pool")?,
     }))
 }
 
@@ -349,8 +371,8 @@ fn list_of<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec
         .map_err(|error| DbError::unreadable_json(format!("stored signal {what}"), json, error))
 }
 
-impl StoredSignals {
-    pub(super) fn signals(self) -> Result<Signals, DbError> {
+impl StoredPaneSignals {
+    pub(super) fn signals(self) -> Result<PaneSignals, DbError> {
         let Self {
             audio_source,
             cd_rip_proof,
@@ -369,7 +391,6 @@ impl StoredSignals {
             free_text,
             isrcs,
             track_titles,
-            text_pool,
         } = self;
         let failure_of = |detail: Option<String>, what: &str| {
             detail.map(|detail| InternalFailure { detail }).ok_or_else(|| {
@@ -456,6 +477,20 @@ impl StoredSignals {
             },
             other => return Err(DbError::unreadable("import_candidate_signals.text_state", other)),
         };
+        Ok(PaneSignals {
+            origin,
+            disc_id,
+            barcode,
+            text,
+            isrcs: list_of(&isrcs, "ISRCs")?,
+            track_titles: list_of(&track_titles, "track titles")?,
+        })
+    }
+}
+
+impl StoredSignals {
+    pub(super) fn signals(self) -> Result<Signals, DbError> {
+        let Self { pane, text_pool } = self;
         let text_pool = list_of::<StoredTextLine>(&text_pool, "text lines")?
             .into_iter()
             .map(|line| {
@@ -467,15 +502,7 @@ impl StoredSignals {
                 })
             })
             .collect::<Result<_, DbError>>()?;
-        Ok(Signals {
-            origin,
-            disc_id,
-            barcode,
-            text,
-            text_pool,
-            isrcs: list_of(&isrcs, "ISRCs")?,
-            track_titles: list_of(&track_titles, "track titles")?,
-        })
+        Ok(Signals::of(pane.signals()?, text_pool))
     }
 }
 

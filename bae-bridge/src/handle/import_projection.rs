@@ -156,9 +156,9 @@ impl crate::types::BridgeCandidateInFlight {
         // A failed write, and whether an Import was asked of the answer,
         // reach the UI through the row's live state.
         let signals = match runtime.identification_in_flight() {
-            Some(bae_import::IdentificationInFlight::Run(published)) => {
-                published.signals.map(crate::types::BridgeSignals::from_core)
-            }
+            Some(bae_import::IdentificationInFlight::Run(published)) => published
+                .signals
+                .map(|signals| crate::types::BridgeSignals::from_core(signals.text)),
             Some(bae_import::IdentificationInFlight::Queued) | None => None,
         };
         // The pane reads what identification is doing from the shown
@@ -750,7 +750,7 @@ impl crate::types::BridgeImportCandidateDetail {
             placement: crate::types::BridgeCandidatePanePlacement::from_core(placement, rate),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
-            signals: signals.map(crate::types::BridgeSignals::from_core),
+            signals: signals.map(|signals| crate::types::BridgeSignals::from_core(signals.text)),
             stage: crate::types::BridgeCandidateStage::from_core(stage, images),
         }
     }

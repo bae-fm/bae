@@ -480,6 +480,32 @@ pub(crate) async fn lose_the_isrc_rows(db: &Store, content_hash: &str) {
     .await;
 }
 
+/// Delete every text line of the signals of the candidate `content_hash`.
+pub(crate) async fn delete_text_lines(db: &Store, content_hash: &str) {
+    bae_store::test_fixtures::exec(
+        db,
+        "DELETE FROM import_candidate_text_line \
+         WHERE signals_id = (SELECT signals_id FROM import_candidate_signals \
+                             WHERE content_hash = ?1)",
+        &[content_hash],
+    )
+    .await;
+}
+
+/// Delete every catalog number of the signals of the candidate
+/// `content_hash`.
+pub(crate) async fn delete_catalog_numbers(db: &Store, content_hash: &str) {
+    bae_store::test_fixtures::exec(
+        db,
+        "DELETE FROM import_candidate_signal_value \
+         WHERE list = 'catalog' \
+           AND signals_id = (SELECT signals_id FROM import_candidate_signals \
+                             WHERE content_hash = ?1)",
+        &[content_hash],
+    )
+    .await;
+}
+
 /// Write the one not-asked cell of the candidate `content_hash`'s ledger as
 /// `answer`, which a write the store refuses fails whole.
 pub(crate) async fn set_the_not_asked_cell(

@@ -12,16 +12,17 @@ use super::release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LIN
 use super::verdict_rows::{identification_of, read_verdict_row, verdict_columns, VerdictRow};
 use super::*;
 use crate::tables::FinishRead;
+use bae_identify::signals::PaneSignals;
 
 /// One candidate's own columns and the rows joined one-to-one onto it, as
 /// SQLite hands them over: everything of the candidate but its matches.
-struct StoredCandidate {
+struct StoredCandidate<Signals> {
     content_hash: String,
     candidate_key: crate::CandidateKey,
     metadata_revision: i64,
     author: Option<String>,
     file_edits: super::file_decision_rows::StoredFileEdits,
-    signals: Option<super::signal_rows::StoredSignals>,
+    signals: Option<Signals>,
     provenance: Option<StoredProvenance>,
     link: Option<StoredReleaseLink>,
     lookup_choices: Option<super::lookup_choice_rows::StoredLookupChoices>,
@@ -30,15 +31,19 @@ struct StoredCandidate {
     matches: String,
 }
 
-/// The candidate one row of [`load_states_rows_on`]'s read holds.
-fn read_candidate(row: &Row<'_>) -> Result<StoredCandidate, DbError> {
+/// The candidate one row of [`load_states_rows_on`]'s read holds, its
+/// signals as `read_signals` reads them.
+fn read_candidate<Signals>(
+    row: &Row<'_>,
+    read_signals: fn(&Row<'_>) -> rusqlite::Result<Option<Signals>>,
+) -> Result<StoredCandidate<Signals>, DbError> {
     Ok(StoredCandidate {
         content_hash: row.get("content_hash")?,
         candidate_key: row.get("candidate_key")?,
         metadata_revision: row.get("metadata_revision")?,
         author: row.get("draft_author")?,
         file_edits: read_file_edits(row)?,
-        signals: super::signal_rows::read_signals(row)?,
+        signals: read_signals(row)?,
         provenance: read_provenance(row)?,
         link: read_release_link(row)?,
         lookup_choices: super::lookup_choice_rows::read_lookup_choices(row)?,
@@ -64,32 +69,61 @@ pub(crate) fn load_states_rows_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
-    states_rows_where(sql, "import_candidate_state AS state", only.filter("state.content_hash"))
+    states_rows_where(
+        sql,
+        "import_candidate_state AS state",
+        only.filter("state.content_hash"),
+        SignalsRead {
+            columns: super::signal_rows::signals_read_columns(),
+            read: |row| super::signal_rows::read_signals(row),
+            signals: super::signal_rows::StoredSignals::signals,
+        },
+    )
 }
 
 /// The state of the release the scan stores at `key` when its edit revision
 /// equals the file-edit revision the scan holds, in the same read; `None`
-/// when another revision wrote it.
+/// when another revision wrote it. Its signals are what a pane shows of
+/// them, without their text lines.
 pub(crate) fn load_current_state_on(
     sql: &impl coven::SqlRead,
     key: &crate::CandidateKey,
-) -> Result<Option<DbImportCandidateState>, DbError> {
+) -> Result<Option<DbImportCandidateState<PaneSignals>>, DbError> {
     // The clause keeps at most the one state row of the scan's content hash.
     Ok(states_rows_where(
         sql,
         &current_state_from_sql("state"),
         CandidateFilter::current_at_scan(key),
+        SignalsRead {
+            columns: super::signal_rows::pane_signals_read_columns(),
+            read: |row| super::signal_rows::read_pane_signals(row),
+            signals: super::signal_rows::StoredPaneSignals::signals,
+        },
     )?()?
     .into_values()
     .next())
 }
 
+/// How a read takes the candidate's signals: the columns it selects, the
+/// stored signals it reads off a row, and the signals those make.
+struct SignalsRead<Stored, Signals> {
+    columns: super::column_list::ColumnList,
+    read: fn(&Row<'_>) -> rusqlite::Result<Option<Stored>>,
+    signals: fn(Stored) -> Result<Signals, DbError>,
+}
+
 /// The states `filter` keeps, each with the rows that share its content hash.
-fn states_rows_where(
+fn states_rows_where<Stored, Signals>(
     sql: &impl coven::SqlRead,
     from: &str,
     filter: CandidateFilter,
-) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
+    signals: SignalsRead<Stored, Signals>,
+) -> Result<FinishRead<HashMap<String, DbImportCandidateState<Signals>>>, DbError>
+where
+    Stored: Send + 'static,
+    Signals: Send + 'static,
+{
+    let SignalsRead { columns, read, signals: to_signals } = signals;
     let rows = sql.query(
         &format!(
             "SELECT state.content_hash, state.candidate_key, state.metadata_revision, \
@@ -113,26 +147,29 @@ fn states_rows_where(
              LEFT JOIN import_candidate_verdict AS verdict \
                  ON verdict.content_hash = state.content_hash \
              {clause}",
-            signals = super::signal_rows::signals_read_columns().select(),
+            signals = columns.select(),
             verdict = verdict_columns().select(),
             record = match_record_sql("found"),
             clause = filter.clause,
         ),
         filter.params().as_slice(),
-        |row| Ok(read_candidate(row)),
+        |row| Ok(read_candidate(row, read)),
     )?;
     Ok(Box::new(move || {
         rows.into_iter()
             .map(|candidate| {
                 let candidate = candidate?;
-                Ok((candidate.content_hash.clone(), candidate.state()?))
+                Ok((candidate.content_hash.clone(), candidate.state(to_signals)?))
             })
             .collect()
     }))
 }
 
-impl StoredCandidate {
-    fn state(self) -> Result<DbImportCandidateState, DbError> {
+impl<Stored> StoredCandidate<Stored> {
+    fn state<Signals>(
+        self,
+        to_signals: fn(Stored) -> Result<Signals, DbError>,
+    ) -> Result<DbImportCandidateState<Signals>, DbError> {
         let Self {
             content_hash,
             candidate_key,
@@ -180,7 +217,7 @@ impl StoredCandidate {
             },
         };
         Ok(DbImportCandidateState {
-            signals: signals.map(|stored| stored.signals()).transpose()?,
+            signals: signals.map(to_signals).transpose()?,
             lookup_choices: lookup_choices
                 .map(|stored| stored.choices())
                 .transpose()?
@@ -201,8 +238,8 @@ impl StoredCandidate {
 /// candidate's current state, holds, with `cards`, the cards the verdict's
 /// rows hold; `None` when the state holds no verdict. The pane's read and
 /// the candidate's runtime read both show a stored verdict through this.
-pub(crate) fn stored_verdict_view(
-    state: Option<&DbImportCandidateState>,
+pub(crate) fn stored_verdict_view<Signals>(
+    state: Option<&DbImportCandidateState<Signals>>,
     cards: bae_identify::VerdictCards,
 ) -> Option<bae_identify::IdentifyStateView> {
     let identify = state?.identify.as_ref()?;
@@ -216,7 +253,7 @@ pub(crate) fn stored_verdict_view(
 /// the `import_candidate_state` row with the verdict, signals, provenance, and
 /// file decisions that hang off it.
 #[derive(Debug, Clone, PartialEq)]
-pub struct DbImportCandidateState {
+pub struct DbImportCandidateState<Signals = bae_identify::signals::Signals> {
     pub content_hash: String,
     pub candidate_key: crate::CandidateKey,
     /// What identification concluded, or `None` when nothing has identified
@@ -225,7 +262,7 @@ pub struct DbImportCandidateState {
     pub identify: Option<DbCandidateIdentifyResult>,
     /// The signals identification settled on, or `None` when nothing has
     /// extracted them.
-    pub signals: Option<bae_identify::signals::Signals>,
+    pub signals: Option<Signals>,
     /// What a person decided this candidate's identification asks about. Every
     /// run of it reads this at its start; the default is what a candidate
     /// nobody has decided anything about runs with.

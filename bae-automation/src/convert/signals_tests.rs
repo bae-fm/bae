@@ -1,11 +1,11 @@
 #![cfg(desktop)]
 
 use super::*;
-use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use bae_identify::signals::{BarcodeSignal, DiscIdSignal, PaneSignals, SourcedValue, TextSignal};
 
 #[test]
 fn signals_map_all_three_subsignals() {
-    let signals = Signals {
+    let signals = PaneSignals {
         origin: bae_catalogs::AudioOrigin {
             source: Some(bae_catalogs::AudioSource::CdRip {
                 proof: bae_catalogs::CdProof::RipLog,
@@ -26,7 +26,6 @@ fn signals_map_all_three_subsignals() {
             catalogs: vec!["CAT-1".to_string()],
             free_text: vec!["Album Title".to_string()],
         },
-        text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
     };

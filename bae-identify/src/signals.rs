@@ -44,7 +44,25 @@ pub struct Signals {
     pub track_titles: Vec<String>,
 }
 
+/// The signals as a pane shows them: [`Signals`] without the pooled text
+/// lines, which only a ranking of results reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PaneSignals {
+    pub origin: AudioOrigin,
+    pub disc_id: DiscIdSignal,
+    pub barcode: BarcodeSignal,
+    pub text: TextSignal,
+    pub isrcs: Vec<String>,
+    pub track_titles: Vec<String>,
+}
+
 impl Signals {
+    /// The signals a pane shows, with the text lines a ranking reads.
+    pub fn of(pane: PaneSignals, text_pool: Vec<TextLine>) -> Self {
+        let PaneSignals { origin, disc_id, barcode, text, isrcs, track_titles } = pane;
+        Self { origin, disc_id, barcode, text, text_pool, isrcs, track_titles }
+    }
+
     /// How bae broke reading the folder's files, when it did: the disc ID's
     /// derivation first, then the artwork's reading, which fails the barcode
     /// and text signals together.

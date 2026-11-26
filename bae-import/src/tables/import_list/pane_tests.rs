@@ -934,3 +934,50 @@ async fn pane_reads_no_draft_from_files() {
     let refused = tables.load_import_candidate(&key).await.expect_err("the pane has no draft");
     assert!(refused.to_string().contains("import_candidate_edit"), "{refused}");
 }
+
+/// The pane draws the catalog numbers and free text of a folder's signals but
+/// none of the text lines they were ranked against, so coven reruns its read
+/// when a catalog number changes and not when a text line does.
+#[tokio::test]
+async fn the_pane_s_read_holds_no_text_line_of_its_candidate() {
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = &crate::tables::watched_path::host_root("/music");
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    let key = crate::CandidateKey::folder(&folder_below(root, "shown"));
+    let candidate = key_candidate(root, &key);
+    tables
+        .save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
+    tables.finish_folder_scan(root, generation, None).await.unwrap();
+    let hash = candidate.files.content_hash();
+    let mut row = new_candidate_row(&hash, &candidate.path, &verdict("shown-release", None));
+    row.candidate_key = candidate.key();
+    row.signals = bae_identify::signals::Signals {
+        text: bae_identify::signals::TextSignal::Settled {
+            catalogs: vec!["CAT-1".to_string()],
+            free_text: Vec::new(),
+        },
+        text_pool: vec![bae_identify::signals::TextLine {
+            text: "Label One Records".to_string(),
+            origin: bae_identify::signals::TextOrigin::Artwork,
+        }],
+        ..crate::tables::import_state::tests::sample_signals()
+    };
+    assert!(tables.store_verdict(&row).await.unwrap());
+    let mut live = tables.subscribe_import_candidate(Some(key));
+    let detail =
+        live.next_inline().await.expect("the query stays open").result.unwrap().expect("listed");
+    assert_eq!(
+        detail.signals.expect("the stored signals read back").text.catalogs(),
+        ["CAT-1".to_string()]
+    );
+
+    crate::tables::import_state::tests::delete_text_lines(&db, &hash).await;
+    assert!(!live.is_marked_for_rerun(), "the pane reads none of its candidate's text lines");
+
+    crate::tables::import_state::tests::delete_catalog_numbers(&db, &hash).await;
+    assert!(live.is_marked_for_rerun(), "the pane reads its candidate's catalog numbers");
+}

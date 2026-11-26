@@ -33,7 +33,7 @@ pub(super) struct CandidateDetailRows {
     source_error: Option<crate::GroupingBlock>,
     actionable: bool,
     skipped: bool,
-    current: Option<DbImportCandidateState>,
+    current: Option<DbImportCandidateState<bae_identify::signals::PaneSignals>>,
     /// The Disc IDs and barcodes that name a file of the candidate.
     file_evidence: Vec<crate::FileEvidence>,
     /// The cards the stored verdict's rows hold.

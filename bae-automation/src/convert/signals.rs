@@ -122,9 +122,8 @@ impl AutomationAudioOrigin {
 }
 
 impl AutomationSignals {
-    /// Not a copy: the text pool does not cross.
     #[cfg(desktop)]
-    pub(crate) fn from_core(signals: bae_identify::signals::Signals) -> Self {
+    pub(crate) fn from_core(signals: bae_identify::signals::PaneSignals) -> Self {
         Self {
             origin: AutomationAudioOrigin::from_core(signals.origin),
             disc_id: AutomationDiscIdSignal::from_core(signals.disc_id),
