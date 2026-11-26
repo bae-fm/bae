@@ -40,21 +40,6 @@ enum FindOnlineSectionGlyph: Equatable {
         }
     }
 
-    /// What the typed search has to say about itself; nothing before one is
-    /// submitted.
-    init(search: BridgeCandidateSearch?) {
-        guard let search else {
-            self = .none
-            return
-        }
-        switch search.status {
-        case .searching: self = .working
-        case .found: self = .none
-        case .noMatches: self = .empty
-        case .failed: self = .failed
-        }
-    }
-
     /// Whether the section has nothing to show, which dims it when collapsed.
     var isVacant: Bool {
         switch self {

@@ -490,30 +490,6 @@ extension PreviewData {
         status: .searching
     )
 
-    /// One provider answered, the other dropped.
-    static let searchRunSourceFailed = BridgeCandidateSearch(
-        query: .catalogNumber(catalogNumber: "WPCR-80001"),
-        unusableBarcode: nil,
-        sources: searchSources(
-            musicbrainz: .done(count: 1),
-            discogs: .failed(failure: .network)
-        ),
-        groups: [searchGroupsManualBridge[0]],
-        status: .failed
-    )
-
-    /// Both providers answered with nothing.
-    static let searchRunEmpty = BridgeCandidateSearch(
-        query: .general(artist: "Artist Name", album: "Album Title"),
-        unusableBarcode: nil,
-        sources: searchSources(
-            musicbrainz: .done(count: 0),
-            discogs: .done(count: 0)
-        ),
-        groups: [],
-        status: .noMatches
-    )
-
     // MARK: - Pane states
 
     /// Find online before an automatic run starts.

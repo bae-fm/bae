@@ -143,7 +143,9 @@ struct MacFindOnline: View {
             FindOnlineSectionHeader(
                 section: .search,
                 isOpen: openSection == .search,
-                glyph: FindOnlineSectionGlyph(search: state.search),
+                // The typed search's state shows in the Search section, as
+                // the board draws it, and not in its header.
+                glyph: .none,
                 onOpen: { onOpenSection(.search) }
             )
             if openSection == .search {

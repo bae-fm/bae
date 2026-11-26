@@ -363,26 +363,6 @@ struct FindOnlineSectionGlyphTests {
         )
     }
 
-    @Test("the search's glyph follows its status, and is nothing before one")
-    func searchGlyph() {
-        #expect(FindOnlineSectionGlyph(search: nil) == .none)
-        #expect(
-            FindOnlineSectionGlyph(search: PreviewData.searchRunInFlight)
-                == .working
-        )
-        #expect(
-            FindOnlineSectionGlyph(search: PreviewData.manualSearchRun)
-                == .none
-        )
-        #expect(
-            FindOnlineSectionGlyph(search: PreviewData.searchRunEmpty) == .empty
-        )
-        #expect(
-            FindOnlineSectionGlyph(search: PreviewData.searchRunSourceFailed)
-                == .failed
-        )
-    }
-
     /// A collapsed section with nothing to show dims, so the open one beside
     /// it reads as the place to look.
     @Test("only the empty glyphs read as vacant")
