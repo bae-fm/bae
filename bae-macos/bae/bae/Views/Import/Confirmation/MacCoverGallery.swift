@@ -35,6 +35,10 @@ struct MacCoverGallery: View {
 
     @FocusState
     private var previewFocused: Bool
+    /// Whether the grid's preview takes the focus once its focus has gone,
+    /// in the update after the one that let it go.
+    @State
+    private var refocusesPreview = false
 
     private var gallery: some View {
         VStack(spacing: 0) {
@@ -170,10 +174,19 @@ struct MacCoverGallery: View {
             // on the tile that a double click opened it from. The preview
             // takes the focus in a second update, since a request for the
             // focus it already holds moves nothing.
-            .task(id: gridPreviewShown) {
-                guard gridPreviewShown else { return }
-                previewFocused = false
-                await Task.yield()
+            .onChange(of: gridPreviewShown, initial: true) { _, shown in
+                refocusesPreview = shown && previewFocused
+                if !shown { return }
+                if previewFocused {
+                    previewFocused = false
+                }
+                else {
+                    previewFocused = true
+                }
+            }
+            .onChange(of: previewFocused) { _, focused in
+                guard !focused, refocusesPreview else { return }
+                refocusesPreview = false
                 previewFocused = true
             }
             .onKeyPress(.leftArrow) {
