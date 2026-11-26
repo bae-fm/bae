@@ -1,6 +1,5 @@
-//! A read as the fragment compiler writes it: one SQL statement with named
-//! parameters, the values its request binds to them, and the mapping of each
-//! row it returns. A live query that runs a [`ReadStatement`] runs exactly
+//! A read of one SQL statement with named parameters: the values a request
+//! binds to them, and the mapping of each row the statement returns. A live query that runs a [`ReadStatement`] runs exactly
 //! that statement.
 
 use crate::DbError;
@@ -11,8 +10,7 @@ use coven::SqlReadContext;
 pub type Bound<'request> = Vec<(&'static str, &'request dyn rusqlite::ToSql)>;
 
 /// One read: its SQL, how a request `P` binds the SQL's parameters, and how a
-/// row of its result becomes an `R`. The three are the generated items of one
-/// `read!` (`SQL`, the parameters struct's `params`, the row's `read`).
+/// row of its result becomes an `R`.
 pub struct ReadStatement<P, R> {
     sql: &'static str,
     parameters: for<'request> fn(&'request P) -> Bound<'request>,
