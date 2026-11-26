@@ -303,7 +303,12 @@ extension ShotScene {
             release: release,
             saving: stage == .saving
         )
-        presentEditor(on: uiStore, images: images, session: session)
+        presentEditor(
+            on: uiStore,
+            images: images,
+            session: session,
+            asksToDropTracks: stage == .dropTracksAlert
+        )
         if stage == .coverSheet {
             presentCoverSheet(on: uiStore, images: images)
         }
@@ -319,20 +324,7 @@ extension ShotScene {
                 albumMenu
             }
         }
-        return ShotStage(
-            Group {
-                if stage == .dropTracksAlert {
-                    OverWindow.alert(
-                        DropTracksConfirmation.alert {},
-                        over: window
-                    )
-                }
-                else {
-                    window
-                }
-            },
-            images: images
-        ) {
+        return ShotStage(window, images: images) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
                 && detailAnswered.answered
                 && (stage != .saving || session.readingLine != nil)
@@ -360,14 +352,17 @@ extension ShotScene {
         return session
     }
 
+    /// The editor in its sheet; when `asksToDropTracks`, with the alert that
+    /// asks before Save drops tracks, which the editor raises over its sheet.
     @MainActor
     private static func presentEditor(
         on uiStore: UiStore,
         images: ImageStore,
-        session: ReleaseMetadataEditSession
+        session: ReleaseMetadataEditSession,
+        asksToDropTracks: Bool
     ) {
         uiStore.presentSizedModal { host in
-            ReleaseEditorSheet(
+            let editor = ReleaseEditorSheet(
                 session: session,
                 displayName: "Northbound",
                 host: host,
@@ -375,6 +370,12 @@ extension ShotScene {
                 onClose: {}
             )
             .environment(images)
+            if asksToDropTracks {
+                OverWindow.alert(DropTracksConfirmation.alert {}, over: editor)
+            }
+            else {
+                editor
+            }
         }
     }
 

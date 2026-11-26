@@ -52,7 +52,7 @@ extension ShotScene {
         let title = detail.album.title
         let sheetRelease = ReleaseDetail(bridge: release)
         uiStore.presentModal {
-            ReleaseStorageSheet(
+            let sheet = ReleaseStorageSheet(
                 release: sheetRelease,
                 albumTitle: title,
                 asksBeforeUnpinning: true,
@@ -65,6 +65,22 @@ extension ShotScene {
             )
             .frame(width: 640, height: 600)
             .background(Theme.surfaceElevated)
+            // The sheet raises the alert that asks before Unpin over itself.
+            if stage == .askingToUnpin {
+                OverWindow.alert(
+                    UnpinConfirmation.alert(
+                        for: PendingUnpin(
+                            releaseIds: [release.id],
+                            title: title
+                        ),
+                        dontShowAgain: .constant(false)
+                    ) { _ in },
+                    over: sheet
+                )
+            }
+            else {
+                sheet
+            }
         }
         let images = coverGalleryImages()
         let window = ShotScenes.libraryWindow(
@@ -76,26 +92,7 @@ extension ShotScene {
                 ? albumStorageOutbox(release) : nil,
             size: albumStorageSize
         )
-        return ShotStage(
-            Group {
-                if stage == .askingToUnpin {
-                    OverWindow.alert(
-                        UnpinConfirmation.alert(
-                            for: PendingUnpin(
-                                releaseIds: [release.id],
-                                title: title
-                            ),
-                            dontShowAgain: .constant(false)
-                        ) { _ in },
-                        over: window
-                    )
-                }
-                else {
-                    window
-                }
-            },
-            images: images
-        ) {
+        return ShotStage(window, images: images) {
             backing.session.albums.list?.delivered != nil
         }
     }
