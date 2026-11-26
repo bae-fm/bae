@@ -93,6 +93,41 @@ impl ListedColumns {
         })
     }
 
+    /// The columns of a pane's read, which
+    /// [`super::fragments::Listed`] names.
+    pub(super) fn of(listed: &super::fragments::Listed) -> Self {
+        use crate::CandidateAction as A;
+        let offered = |action: A| match action {
+            A::Import => listed.can_import,
+            A::CancelImport => listed.can_cancel_import,
+            A::Identify => listed.can_identify,
+            A::CancelIdentification => listed.can_cancel_identification,
+            A::RetryIdentification => listed.can_retry_identification,
+            A::ResetToFileMetadata => listed.can_reset_to_file_metadata,
+            A::ClearMetadata => listed.can_clear_metadata,
+            A::Combine => listed.can_combine,
+            A::Separate => listed.can_separate,
+            A::Skip => listed.can_skip,
+            A::Restore => listed.can_restore,
+            A::RevealFolder => listed.can_reveal_folder,
+        };
+        Self {
+            basis: BasisColumns {
+                tab: listed.tab.clone(),
+                import_failed: listed.import_failed,
+                actionable: listed.actionable,
+            },
+            pending_state: listed.pending_state.clone(),
+            needs_you_reason: listed.needs_you_reason.clone(),
+            reason_pressings: listed.reason_pressings,
+            error_detail: listed.error_detail.clone(),
+            actions: crate::CandidateAction::ROW
+                .into_iter()
+                .filter(|&action| offered(action))
+                .collect(),
+        }
+    }
+
     /// Where the list places the release at `key`. The table's checks hold
     /// every column a state needs, so one missing is a row the checks let
     /// through, which is refused here as broken.

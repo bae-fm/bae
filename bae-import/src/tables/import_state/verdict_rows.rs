@@ -504,6 +504,27 @@ pub(super) fn verdict_row_of(row: &impl Columns) -> Result<VerdictRow, DbError> 
     })
 }
 
+/// The verdict a pane's read selects, as
+/// [`super::state_fragments::CurrentState`] names it; none for a candidate
+/// with no verdict.
+pub(super) fn verdict_row_of_state(
+    state: &super::state_fragments::CurrentState,
+) -> Result<Option<VerdictRow>, DbError> {
+    let Some(content_hash) = state.verdict_row.clone() else {
+        return Ok(None);
+    };
+    Ok(Some(VerdictRow {
+        content_hash,
+        kind: super::required(state.verdict_kind.clone(), "verdict_kind")?,
+        track_count: state.verdict_track_count,
+        failures: state.verdict_failures.clone(),
+        error_detail: state.verdict_error_detail.clone(),
+        ledger: StoredLedger::of(state),
+        medium_conflict: medium_conflict_of(state.verdict_medium_conflict.clone())?,
+        kept_own_draft: super::required(state.verdict_kept_own_draft, "verdict_kept_own_draft")?,
+    }))
+}
+
 /// Rebuild what identification concluded from its row, the matches it found
 /// and the ledger it recorded.
 pub(super) fn identification_of(

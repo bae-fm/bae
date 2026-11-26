@@ -7,6 +7,8 @@
 
 use super::*;
 
+pub(crate) mod fragments;
+
 /// What recording an import's origin found.
 pub(super) enum OriginRecord {
     Recorded,

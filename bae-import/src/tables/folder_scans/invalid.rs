@@ -88,6 +88,56 @@ impl InvalidColumns {
         }))
     }
 
+    /// The columns of a pane's read, which
+    /// [`super::fragments::ScanItem`] names; a row of another kind holds no
+    /// reason, which reads as `None`.
+    pub(crate) fn of(scan: &super::fragments::ScanItem) -> Result<Option<Self>, DbError> {
+        let Some(reason) = scan.invalid_reason.clone() else {
+            return Ok(None);
+        };
+        let cover = match &scan.invalid_cover_path {
+            Some(path) => {
+                let stored = |value: Option<i64>, what: &str| {
+                    value.ok_or_else(|| {
+                        DbError::unreadable(
+                            format!("the {what} of a folder's first image"),
+                            None::<i64>,
+                        )
+                    })
+                };
+                Some((
+                    path_column::decode(path.clone())?,
+                    stored(scan.invalid_cover_size, "size")?,
+                    stored(scan.invalid_cover_modified, "modification time")?,
+                ))
+            }
+            None => None,
+        };
+        let tags = scan
+            .invalid_album_title
+            .clone()
+            .map(|album_title| {
+                let artist =
+                    crate::tables::stored_credits::line_of(scan.invalid_credits.as_deref())
+                        .map_err(|error| {
+                            DbError::unreadable_json(
+                                "a skipped folder's credits",
+                                scan.invalid_credits.clone().unwrap_or_default(),
+                                error,
+                            )
+                        })?;
+                Ok::<_, DbError>(SkippedTags { album_title, artist })
+            })
+            .transpose()?;
+        Ok(Some(Self {
+            folder: path_column::decode(scan.invalid_folder.clone())?,
+            separable: scan.invalid_separable,
+            reason: (reason, scan.invalid_shared_name.clone(), scan.invalid_damaged_audio),
+            tags,
+            cover,
+        }))
+    }
+
     /// What the folder's tags call it, when they name an album.
     pub(crate) fn tags(self) -> Option<SkippedTags> {
         self.tags

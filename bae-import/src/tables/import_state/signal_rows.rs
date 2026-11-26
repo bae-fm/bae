@@ -99,33 +99,21 @@ pub(super) fn pane_signals_read_columns() -> ColumnList {
 /// The Disc IDs, then the barcodes, of the release the scan stores at the
 /// key a statement binds as `:key`, that name the candidate file they were
 /// read off, each list in reading order, while the candidate's state is the
-/// current one. A library release's values name no file and are not
-/// selected.
-pub(crate) fn load_file_evidence_on(
-    sql: &impl coven::SqlRead,
-    key: &crate::CandidateKey,
-) -> Result<Vec<crate::FileEvidence>, DbError> {
-    let stored = sql.query(
-        &format!(
-            "SELECT listed.list, listed.value, listed.origin_path \
-             FROM {current} \
-             JOIN import_candidate_signals AS signals \
-                 ON signals.content_hash = state.content_hash \
-             JOIN import_candidate_signal_value AS listed \
-                 ON listed.signals_id = signals.signals_id \
-             WHERE {at_key} \
-               AND listed.list IN ('disc_id', 'barcode') \
-               AND listed.origin_path IS NOT NULL \
-             ORDER BY listed.list = 'barcode', listed.position",
-            current = super::current_state_from_sql("state"),
-            at_key = super::CURRENT_AT_KEY,
-        ),
-        rusqlite::named_params! { ":key": key },
-        |row| Ok((row.get::<_, String>("list")?, row.get("value")?, row.get("origin_path")?)),
-    )?;
+/// current one, as the JSON array that [`super::fragments::FileEvidence`]
+/// returns. A library release's values name no file and are not selected.
+pub(crate) fn file_evidence_of_json(json: &str) -> Result<Vec<crate::FileEvidence>, DbError> {
+    #[derive(serde::Deserialize)]
+    struct Stored {
+        list: String,
+        value: String,
+        origin_path: String,
+    }
+    let stored: Vec<Stored> = serde_json::from_str(json).map_err(|error| {
+        DbError::unreadable_json("the evidence in a candidate's files", json, error)
+    })?;
     stored
         .into_iter()
-        .map(|(list, value, file_id)| {
+        .map(|Stored { list, value, origin_path: file_id }| {
             let signal = match list.as_str() {
                 "disc_id" => crate::EvidenceSignal::DiscId,
                 "barcode" => crate::EvidenceSignal::Barcode,
@@ -372,6 +360,37 @@ fn list_of<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec
 }
 
 impl StoredPaneSignals {
+    /// The signals a pane's read selects, as
+    /// [`super::state_fragments::CurrentState`] names them; none for a
+    /// candidate whose signals were never settled.
+    pub(super) fn of(
+        state: &super::state_fragments::CurrentState,
+    ) -> Result<Option<Self>, DbError> {
+        use super::required;
+        if state.signals_row.is_none() {
+            return Ok(None);
+        }
+        Ok(Some(Self {
+            audio_source: state.signals_audio_source.clone(),
+            cd_rip_proof: state.signals_cd_rip_proof.clone(),
+            download_proof: state.signals_download_proof.clone(),
+            audio_source_file: state.signals_audio_source_file.clone(),
+            not_cd_rate: state.signals_not_cd_rate,
+            disc_id_state: required(state.signals_disc_id_state.clone(), "signals_disc_id_state")?,
+            disc_id_failure: state.signals_disc_id_failure.clone(),
+            barcode_state: required(state.signals_barcode_state.clone(), "signals_barcode_state")?,
+            barcode_failure: state.signals_barcode_failure.clone(),
+            text_state: required(state.signals_text_state.clone(), "signals_text_state")?,
+            text_failure: state.signals_text_failure.clone(),
+            discs: state.signals_discs.clone(),
+            barcodes: state.signals_barcodes.clone(),
+            catalogs: state.signals_catalogs.clone(),
+            free_text: state.signals_free_text.clone(),
+            isrcs: state.signals_isrcs.clone(),
+            track_titles: state.signals_track_titles.clone(),
+        }))
+    }
+
     pub(super) fn signals(self) -> Result<PaneSignals, DbError> {
         let Self {
             audio_source,

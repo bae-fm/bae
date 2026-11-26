@@ -417,6 +417,39 @@ async fn a_verdict_from_another_revision_does_not_resume() {
     assert_eq!(detail.stored_verdict, None);
 }
 
+/// The release of a grouping reads as a candidate; the person's skip of a
+/// release reads as skipped, and the skip of a grouping skips the grouping's
+/// release.
+#[tokio::test]
+async fn the_pane_reads_a_grouped_and_a_skipped_candidate() {
+    let lib = Library::new().await;
+    lib.run(lib.scan("one") + lib.scan("two") + lib.scan("three")).await;
+    lib.run(lib.combine(&["one", "two"], "pair")).await;
+    lib.run(lib.skip("three")).await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    let read = |key: crate::CandidateKey| {
+        let tables = tables.clone();
+        async move {
+            tables
+                .load_import_candidate(&key)
+                .await
+                .unwrap()
+                .expect("the list lists the key")
+                .resolve()
+        }
+    };
+
+    let grouping = read(crate::CandidateKey::grouping("pair")).await;
+    assert!(grouping.actionable);
+    assert!(!grouping.skipped);
+    assert!(matches!(grouping.stage, crate::CandidateStage::Drafting { .. }));
+
+    assert!(read(lib.key("three")).await.skipped);
+
+    lib.run(lib.grouping_skipped("pair", true)).await;
+    assert!(read(crate::CandidateKey::grouping("pair")).await.skipped);
+}
+
 /// The pane of a candidate its import put in the library is placed Done, which
 /// carries nothing of the candidate's draft: its folder check and its draft's
 /// catalogs belong to a candidate still in the queue. Its import status names

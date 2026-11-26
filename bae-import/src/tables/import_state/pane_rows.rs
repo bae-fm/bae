@@ -269,6 +269,12 @@ pub(super) fn has_draft_row_on(
         .is_some())
 }
 
+/// The draft a pane's read selects, as
+/// [`super::fragments::DraftRows`] names it.
+pub(crate) fn draft_of(draft: &super::fragments::DraftRows) -> Result<CandidateDraft, DbError> {
+    StoredDraftRow::of(draft)?.draft()
+}
+
 /// The candidate's draft and cover, from its rows. Every state of a candidate
 /// this device did not import holds a draft row (the scan seeds it, and
 /// deleting the release it imported seeds it again), so a state with none is
@@ -319,23 +325,7 @@ pub(crate) fn load_drafts_on(
             parts = work_parts_json_sql("edit.content_hash"),
         ),
         filter.params().as_slice(),
-        |row| {
-            Ok(StoredDraftRow {
-                content_hash: row.get("content_hash")?,
-                album_title: row.get("album_title")?,
-                album_year: row.get("album_year")?,
-                year: row.get("year")?,
-                labels: read_label_rows(row)?,
-                barcodes: bae_records::records::pressing_columns::read_barcodes(row, "barcodes")?,
-                facts: bae_records::records::pressing_columns::read_facts(row, "")?,
-                album_assignments: row.get("album_assignments")?,
-                mediums: row.get("mediums")?,
-                tracks: row.get("tracks")?,
-                release_roles: row.get("release_roles")?,
-                works: row.get("works")?,
-                parts: row.get("parts")?,
-            })
-        },
+        StoredDraftRow::read,
     )?;
     let mut out = HashMap::with_capacity(rows.len());
     for row in rows {
@@ -387,6 +377,54 @@ struct StoredDraftRow {
 }
 
 impl StoredDraftRow {
+    /// The row a statement returns.
+    fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            content_hash: row.get("content_hash")?,
+            album_title: row.get("album_title")?,
+            album_year: row.get("album_year")?,
+            year: row.get("year")?,
+            labels: read_label_rows(row)?,
+            barcodes: bae_records::records::pressing_columns::read_barcodes(row, "barcodes")?,
+            facts: bae_records::records::pressing_columns::read_facts(row, "")?,
+            album_assignments: row.get("album_assignments")?,
+            mediums: row.get("mediums")?,
+            tracks: row.get("tracks")?,
+            release_roles: row.get("release_roles")?,
+            works: row.get("works")?,
+            parts: row.get("parts")?,
+        })
+    }
+
+    /// The row a pane's read selects, whose lists are the JSON arrays
+    /// [`super::fragments::DraftRows`] returns.
+    fn of(draft: &super::fragments::DraftRows) -> Result<Self, DbError> {
+        let mut facts = bae_records::records::pressing_columns::facts_without_media_of(
+            draft.country.clone(),
+            draft.region.clone(),
+            draft.status.as_deref(),
+            draft.packaging.as_deref(),
+            decoded(&draft.discogs_details, "discogs details")?,
+        )
+        .map_err(|detail| DbError::unreadable("the facts of a stored draft", detail))?;
+        facts.media = decoded(&draft.media, "media")?;
+        Ok(Self {
+            content_hash: draft.draft_content_hash.clone(),
+            album_title: draft.album_title.clone(),
+            album_year: draft.album_year.clone(),
+            year: draft.year.clone(),
+            labels: decoded(&draft.labels, "labels")?,
+            barcodes: decoded(&draft.barcodes, "barcodes")?,
+            facts,
+            album_assignments: draft.album_assignments.clone(),
+            mediums: draft.mediums.clone(),
+            tracks: draft.tracks.clone(),
+            release_roles: draft.release_roles.clone(),
+            works: draft.works.clone(),
+            parts: draft.draft_parts.clone(),
+        })
+    }
+
     fn draft(&self) -> Result<CandidateDraft, DbError> {
         let album_artist_assignments = assignments_of(&self.album_assignments, "album artists")?;
         let mediums = mediums_of(&self.mediums)?;

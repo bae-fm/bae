@@ -1313,9 +1313,14 @@ scrolls to it; a candidate the view no longer shows is scrolled to nowhere.
 The pane reads its one candidate's rows by the candidate's
 key, and so does every read of one candidate's state, draft or preparation, so
 how long one takes does not grow with how many candidates the queue holds.
-The pane reads each of its parts with a statement of its own. Each statement
-binds only the key and finds the candidate's scan row, and the content hash
-the scan stored, by that key, never by a value another statement returned.
+The pane reads each of its two concerns with one composed statement: the
+candidate as the scan, the list and its state hold it, and what an import files
+under, which is the draft the candidate holds or the release this device
+imported from it. SQLite refuses to prepare the pane as one statement, and
+the two statements read one snapshot. Each statement binds only the selected key and finds the
+candidate's scan row, and the content hash the scan stored, by that key, never
+by a value another statement returned. Each domain writes the fragment that
+reads its own rows, and no read names a table another crate owns.
 A scan that stores other folders writes none of the rows the pane reads, so
 coven reruns none of the pane's statements for it.
 The parts are the folder's files, with the track count and the audio summary

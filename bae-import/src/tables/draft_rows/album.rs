@@ -11,7 +11,7 @@ pub(crate) struct DraftAlbumRow {
     kind: String,
     album_id: Option<String>,
     title: Option<String>,
-    credits: String,
+    credits: Option<String>,
 }
 
 impl DraftAlbumRow {
@@ -25,12 +25,23 @@ impl DraftAlbumRow {
         })
     }
 
+    /// The row a pane's read selects, which
+    /// [`crate::tables::import_state::fragments::CandidateAlbum`] names.
+    pub(crate) fn of(album: crate::tables::import_state::fragments::CandidateAlbum) -> Self {
+        let (album_id, title, credits) =
+            match album.album.map(bae_records::records::fragments::LibraryAlbum::into_parts) {
+                Some((album_id, title, credits)) => (Some(album_id), Some(title), Some(credits)),
+                None => (None, None, None),
+            };
+        Self { kind: album.candidate_album_kind, album_id, title, credits }
+    }
+
     /// The album the row names. `owner` names whose draft it is, for the
     /// error of a row bae can't read.
     pub(crate) fn album(self, owner: &str) -> Result<DraftAlbum, DbError> {
         let Self { kind, album_id, title, credits } = self;
-        let library = |choice: &str| match (album_id, title) {
-            (Some(album_id), Some(title)) => Ok((
+        let library = |choice: &str| match (album_id, title, credits) {
+            (Some(album_id), Some(title), Some(credits)) => Ok((
                 album_id,
                 AlbumLine::of(title, bae_records::records::read::credit_line_of_json(&credits)?),
             )),

@@ -44,6 +44,7 @@ pub enum CandidateStateRefusal {
 mod album_pick_rows;
 mod blank_draft_rows;
 mod candidate_rows;
+pub(crate) mod card_fragments;
 mod cards_read;
 mod claim_rows;
 mod column_list;
@@ -52,6 +53,7 @@ mod draft_store;
 mod draft_values;
 pub(super) mod failure_rows;
 mod file_decision_rows;
+pub(crate) mod fragments;
 mod import_commit;
 mod layout;
 mod ledger_rows;
@@ -69,20 +71,23 @@ mod search_rows;
 mod seed_rows;
 mod signal_rows;
 mod standing_rows;
+pub(crate) mod state_fragments;
 mod verdict_failure_rows;
 mod verdict_layout;
 mod verdict_rows;
 
-pub(super) use album_pick_rows::album_pick_sql;
 pub(super) use candidate_rows::{
-    current_state_from_sql, CandidateRows, OneCandidate, CURRENT_AT_KEY, SCANNED_HASH,
+    current_state_from_sql, CandidateRows, OneCandidate, CURRENT_AT_KEY,
 };
+pub(crate) use cards_read::verdict_cards_of_column;
 pub(super) use cards_read::{load_candidate_verdict_cards_on, load_verdict_cards_on};
 pub(super) use claim_rows::{
     claimed_records_of_json, claimed_records_sql, offered_covers_sql, store_claims_of_albums_on,
     store_claims_of_releases_on,
 };
-pub(super) use cover_rows::{cover_read_columns, read_cover, StoredCover};
+pub(crate) use cover_rows::StoredCover;
+pub(super) use cover_rows::{cover_read_columns, read_cover};
+pub(crate) use failure_rows::failure_of;
 use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use file_decision_rows::load_candidate_file_edits_on;
 use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_candidates};
@@ -91,8 +96,10 @@ pub(crate) use import_commit::{
 };
 pub use import_commit::{ImportCommitError, ImportCommitRefusal};
 use pane_failure_rows::load_pane_failure_on;
+pub(crate) use pane_failure_rows::pane_failure_of;
+pub(crate) use pane_rows::draft_of;
 pub use pane_rows::DbCandidatePaneRows;
-pub(super) use pane_rows::{load_pane_rows_on, track_json_sql, StoredTrack};
+pub(super) use pane_rows::StoredTrack;
 pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 pub use preparation_rows::PreparationRefusal;
 pub(crate) use preparation_rows::{
@@ -100,21 +107,23 @@ pub(crate) use preparation_rows::{
     RunVerdictSaved, ScannedCandidateKey,
 };
 pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
+pub(crate) use rows::current_state_of;
 pub use rows::DbImportCandidateState;
 pub(super) use rows::{load_current_state_on, load_states_on, stored_verdict_view};
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
-pub(super) use signal_rows::load_file_evidence_on;
+pub(super) use signal_rows::file_evidence_of_json;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
 #[cfg(test)]
 pub(crate) use standing_rows::StandingColumn;
+pub(crate) use standing_rows::StandingColumns;
 pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, VerdictPick};
 // The source releases' tests store a run's releases as a release run does.
 #[cfg(test)]
 pub(super) use run_rows::store_release_run_on;
 pub(super) use standing_rows::{
-    change_identification_on, end_file_work_unless_of_on, load_standing_on, move_import_on,
-    RuntimeFactColumns, RUNTIME_FACT_COLUMNS,
+    change_identification_on, end_file_work_unless_of_on, move_import_on, RuntimeFactColumns,
+    RUNTIME_FACT_COLUMNS,
 };
 
 use crate::folder_scanner::StoredCandidateEdits;
@@ -229,3 +238,14 @@ fn lookup_reference(catalog: String, key: String) -> Result<LookupRef, DbError> 
 #[cfg(test)]
 #[path = "import_state_tests.rs"]
 pub(crate) mod tests;
+
+/// A column that the presence of its group of columns guarantees. Its absence
+/// is a row the table's checks let through, which is refused as broken.
+fn required<T>(value: Option<T>, column: &str) -> Result<T, DbError> {
+    value.ok_or_else(|| {
+        DbError::unreadable(
+            format!("the {column} column of a candidate's stored rows"),
+            None::<String>,
+        )
+    })
+}

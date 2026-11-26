@@ -4,27 +4,24 @@
 //! list's rows do. And a folder that failed validation, read whole for the
 //! pane that looks into it.
 
-use super::listed::{ListedColumns, LISTED_COLUMNS};
+use super::listed::ListedColumns;
 use super::*;
 use crate::candidate_detail::ImportCandidateDetailProjection;
 use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
-use crate::tables::folder_scans::candidate_cover_choice_on;
-use crate::tables::import_state::{
-    album_pick_sql, current_state_from_sql, load_candidate_verdict_cards_on, load_current_state_on,
-    load_file_evidence_on, load_pane_rows_on, load_standing_on, stored_verdict_view, OneCandidate,
-    CURRENT_AT_KEY, SCANNED_HASH,
-};
-use crate::tables::import_state::{claimed_records_of_json, claimed_records_sql};
-use crate::tables::release_groupings::{load_candidate_on, skipped_on};
+use crate::tables::import_state::fragments::PickedLibraryStatus;
+use crate::tables::import_state::{file_evidence_of_json, stored_verdict_view, StandingColumns};
 use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
-use bae_records::records::release_records::{
-    album_records_name_sql, library_status_of, library_status_sql,
+use bae_store::{Bound, ReadStatement};
+
+use super::pane_read::{
+    PaneDraft, PaneDraftParams, PaneDraftRow, PaneHead, PaneHeadParams, PaneHeadRow,
 };
 
-#[derive(Clone, PartialEq)]
-pub(super) struct CandidateDetailRows {
+/// The candidate the pane is set to, as the scan, the list and the candidate's
+/// state hold it: everything the pane shows of it but what it files under.
+struct HeadRows {
     candidate: FolderCandidate,
     files: crate::PaneFiles,
     /// How many folders the candidate's files come from, when they come
@@ -40,21 +37,17 @@ pub(super) struct CandidateDetailRows {
     cards: bae_identify::VerdictCards,
     standing: crate::TriageRuntimeFacts,
     listed: ListedColumns,
-    stage: StageRows,
-}
-
-/// What the pane reads past the candidate's folder: its draft and what goes
-/// with it, or the release this device imported from its files.
-#[derive(Clone, PartialEq)]
-enum StageRows {
-    Drafting(Box<DraftRows>),
-    Imported(ImportedRelease),
+    /// The release this device imported from the candidate's files.
+    imported: Option<ImportedRelease>,
 }
 
 /// A candidate's draft and the rows its pane draws beside it.
-#[derive(Clone, PartialEq)]
 struct DraftRows {
-    pane_rows: DbCandidatePaneRows,
+    draft: crate::CandidateDraft,
+    draft_blank: bool,
+    draft_valid: bool,
+    failure: Option<crate::ImportFailure>,
+    pane_failure: Option<crate::PaneFailure>,
     mapping: super::mapping_rows::MappingRows,
     album_artists: Option<crate::ArtistField>,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -66,187 +59,198 @@ struct DraftRows {
 }
 
 /// One candidate, whole, with its standing and where the list places it.
-/// `None` when the key names no release the list lists — which is what
-/// clears a selection.
-pub(super) fn load_candidate_detail_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-) -> Result<Option<CandidateDetailRows>, DbError> {
-    let Some((listed, part_count)) = sql
-        .query_row(
-            &format!(
-                "SELECT {LISTED_COLUMNS}, {actions}, \
-                        (SELECT COUNT(*) FROM scan_candidate AS candidate \
-                         JOIN scan_candidate_part AS part \
-                           ON part.watched_folder_path = candidate.watched_folder_path \
-                          AND part.candidate_path = candidate.path \
-                         WHERE candidate.path = p.key) AS part_count \
-                 FROM import_list_placement AS p \
-                 LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
-                 WHERE p.key = ? AND p.item = 'candidate'",
-                actions = super::actions::action_columns(),
+struct CandidateDetailRows {
+    head: HeadRows,
+    /// What the pane reads past the candidate's folder when no release was
+    /// imported from it.
+    draft: Option<DraftRows>,
+}
+
+impl HeadRows {
+    /// The candidate the pane's head read returned.
+    fn of(row: PaneHeadRow) -> Result<Self, DbError> {
+        let PaneHeadRow {
+            listed,
+            scan,
+            grouping,
+            files,
+            standing,
+            imported,
+            state,
+            evidence,
+            cards,
+        } = row;
+        let key = listed.listed_key.clone();
+        let unlisted =
+            || DbError::unreadable(format!("the scan_candidate rows of listed {key}"), 0);
+        let part_count = u64::try_from(listed.part_count).map_err(|error| {
+            DbError::unreadable("the part count of a listed candidate", error.to_string())
+        })?;
+        let listed_columns = ListedColumns::of(&listed);
+        let scan = folder_scans::CandidateRow::of(scan.ok_or_else(unlisted)?)?;
+        let grouping = grouping.ok_or_else(unlisted)?;
+        let root = scan.root().to_path_buf();
+        let stored = release_groupings::stored_release_candidate(
+            &root,
+            scan.item()?,
+            grouping.taken_in,
+            release_groupings::block_of(
+                grouping.blocked,
+                grouping.blocked_subject,
+                grouping.blocked_holder,
+            )?,
+        )?
+        .ok_or_else(unlisted)?;
+        let skipped = grouping.skipped.ok_or_else(|| {
+            DbError::unreadable(
+                format!("the release_grouping row of {key}"),
+                &stored.candidate.grouping,
+            )
+        })?;
+        let files = files
+            .ok_or_else(|| DbError::unreadable(format!("the files of {key}"), None::<String>))?;
+        Ok(Self {
+            candidate: stored.candidate,
+            files: pane_files::pane_files_of_json(&files.pane_files)?,
+            part_count,
+            source_error: stored.error,
+            actionable: stored.actionable,
+            skipped,
+            current: state.map(import_state::current_state_of).transpose()?,
+            file_evidence: evidence
+                .map(|evidence| file_evidence_of_json(&evidence.file_evidence))
+                .transpose()?
+                .unwrap_or_default(),
+            cards: import_state::verdict_cards_of_column(
+                cards.and_then(|cards| cards.verdict_cards).as_deref(),
+            )?,
+            standing: StandingColumns::of(standing).standing(&key)?.facts(),
+            listed: listed_columns,
+            imported: imported.map(|imported| {
+                let (release_id, album_id) = imported.release.into_ids();
+                ImportedRelease { release_id, album_id }
+            }),
+        })
+    }
+}
+
+impl DraftRows {
+    /// The draft the pane's draft read returned.
+    fn of(row: PaneDraftRow) -> Result<Self, DbError> {
+        let key = row
+            .pane_key
+            .ok_or_else(|| DbError::unreadable("the pane's draft read", None::<String>))?;
+        let missing = |what: &str| DbError::unreadable(format!("{what} of {key}"), None::<String>);
+        let draft = row
+            .draft
+            .ok_or_else(|| missing("import_candidate_edit of a candidate not imported here"))?;
+        let flags = row.flags.ok_or_else(|| missing("import_candidate_edit of a stored draft"))?;
+        let claimed = row
+            .claimed
+            .and_then(|claimed| claimed.claimed_records)
+            .ok_or_else(|| missing("the claimed records"))?;
+        Ok(Self {
+            draft: import_state::draft_of(&draft)?,
+            draft_blank: flags.draft_blank,
+            draft_valid: flags.draft_valid,
+            failure: row.failure.map(import_state::failure_of).transpose()?,
+            pane_failure: row
+                .pane_failure
+                .map(|failure| {
+                    import_state::pane_failure_of(
+                        &failure.pane_failure_command,
+                        &failure.pane_failure_category,
+                        failure.pane_failure_detail,
+                    )
+                })
+                .transpose()?,
+            mapping: super::mapping_rows::MappingRows::of_document(
+                row.mapping
+                    .and_then(|mapping| mapping.mapping)
+                    .ok_or_else(|| missing("the mapping"))?,
             ),
-            [key],
-            |row| {
-                Ok((
-                    ListedColumns::read(row, 0)?,
-                    bae_store::read::count_column::<u64>(row, "part_count")?,
-                ))
+            album_artists: row
+                .artist_field
+                .and_then(|field| field.artist_field)
+                .as_deref()
+                .map(artist_field_of_json)
+                .transpose()?,
+            records: import_state::claimed_records_of_json(&claimed)?,
+            picked_library_status: match row.status {
+                Some(PickedLibraryStatus {
+                    picked_status_release_id: Some(release_id),
+                    picked_status_albums,
+                    ..
+                }) => {
+                    let albums = picked_status_albums
+                        .ok_or_else(|| missing("the library albums of the picked release"))?;
+                    Some(bae_records::records::fragments::library_status_of_columns(
+                        release_id, &albums,
+                    )?)
+                }
+                _ => None,
             },
-        )
-        .optional()?
-    else {
+            album: crate::tables::draft_rows::DraftAlbumRow::of(
+                row.album.ok_or_else(|| missing("the album"))?,
+            )
+            .album(&key.to_string())?,
+            cover: row.cover.map(|cover| folder_scans::cover_choice_of(cover, &key)).transpose()?,
+        })
+    }
+}
+
+impl From<&Option<crate::CandidateKey>> for PaneHeadParams {
+    fn from(key: &Option<crate::CandidateKey>) -> Self {
+        Self { key: key.clone() }
+    }
+}
+
+impl From<&Option<crate::CandidateKey>> for PaneDraftParams {
+    fn from(key: &Option<crate::CandidateKey>) -> Self {
+        Self { key: key.clone() }
+    }
+}
+
+fn head_params(request: &PaneHeadParams) -> Bound<'_> {
+    request.params()
+}
+
+fn draft_params(request: &PaneDraftParams) -> Bound<'_> {
+    request.params()
+}
+
+/// The pane's head read, for the candidate its request names or none.
+static HEAD: ReadStatement<PaneHeadParams, PaneHeadRow> =
+    ReadStatement::new(PaneHead::SQL, head_params, PaneHeadRow::read);
+
+/// The pane's draft read, for the same request.
+static DRAFT: ReadStatement<PaneDraftParams, PaneDraftRow> =
+    ReadStatement::new(PaneDraft::SQL, draft_params, PaneDraftRow::read);
+
+/// What the two reads answered, as one candidate's rows; `None` when the key
+/// names no release the list lists.
+fn detail_rows(
+    (head, draft): (Vec<PaneHeadRow>, Vec<PaneDraftRow>),
+) -> Result<Option<CandidateDetailRows>, crate::ImportError> {
+    let Some(head) = head.into_iter().next() else {
         return Ok(None);
     };
-    let stored = load_candidate_on(sql, key)?.ok_or_else(|| {
-        DbError::unreadable(format!("the scan_candidate rows of listed {key}"), 0)
-    })?;
-    let skipped = skipped_on(sql, key)?;
-    let files = super::pane_files::load_pane_files_on(sql, key)?;
-    let standing = load_standing_on(sql, key)?.facts();
-    let imported = imported_on(sql, key)?;
-    let current = load_current_state_on(sql, key)?;
-    let file_evidence = load_file_evidence_on(sql, key)?;
-    let cards = load_candidate_verdict_cards_on(sql, key)?;
-    let candidate = stored.candidate;
+    let head = HeadRows::of(head)?;
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
-    let stage = match imported {
-        Some(release) => StageRows::Imported(release),
-        None => StageRows::Drafting(Box::new(draft_rows_on(sql, key)?)),
+    let draft = match head.imported {
+        Some(_) => None,
+        None => Some(DraftRows::of(draft.into_iter().next().ok_or_else(|| {
+            DbError::unreadable("the draft rows of a candidate not imported here", None::<String>)
+        })?)?),
     };
-    Ok(Some(CandidateDetailRows {
-        candidate,
-        files,
-        part_count,
-        source_error: stored.error,
-        actionable: stored.actionable,
-        skipped,
-        current,
-        file_evidence,
-        cards,
-        standing,
-        listed,
-        stage,
-    }))
-}
-
-/// The release this device imported from the files of the release the scan
-/// stores at `key`.
-fn imported_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-) -> Result<Option<ImportedRelease>, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT r.id, r.album_id FROM scan_candidate AS scan \
-             JOIN local_release_origin AS o ON o.content_hash = scan.content_hash \
-             JOIN releases AS r ON r.id = o.release_id \
-             WHERE scan.path = ?",
-            [key],
-            |row| Ok(ImportedRelease { release_id: row.get(0)?, album_id: row.get(1)? }),
-        )
-        .optional()?)
-}
-
-/// The draft of the release the scan stores at `key` and what its pane draws
-/// beside it: the linked releases' records, its cover, the album an import
-/// files under, and the draft's album artists with how each stands to the
-/// library. Each
-/// statement binds only `key` and reads the candidate's content hash from
-/// the scan's row itself.
-fn draft_rows_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-) -> Result<DraftRows, DbError> {
-    let pane_rows = load_pane_rows_on(sql, OneCandidate::Scanned(key))?;
-    let mapping = super::mapping_rows::load_mapping_rows_on(sql, key)?;
-    // Read here, inside the pane's live query, so an artist another import
-    // commits, or any artist row that changes, reads the credits again. The
-    // mapping statement reads each track's own artists' standing the same way.
-    let album_artists = super::artist_standings::album_artist_field_on(
-        sql,
-        super::artist_standings::CreditSource::Candidate(OneCandidate::Scanned(key)),
-    )?;
-    // Every catalog record of what the candidate is linked to, as the write
-    // that stored the link, or a claimed release, merged them: the linked
-    // pressing's releases describe it, an album names its own.
-    let records =
-        claimed_records_of_json(&while_current_on(sql, key, &claimed_records_sql(SCANNED_HASH))?)?;
-    let picked_library_status = picked_library_status_on(sql, key)?;
-    let album = candidate_album_on(sql, key)?;
-    let cover = candidate_cover_choice_on(sql, key)?;
-    Ok(DraftRows {
-        pane_rows,
-        mapping,
-        album_artists,
-        records,
-        picked_library_status,
-        album,
-        cover,
-    })
-}
-
-/// The JSON array that the statement `array` returns for the release the
-/// scan stores at `key`, while the candidate's state is the one its scanned
-/// files hold (its edit revision is the scan's), and `[]` otherwise: the
-/// pane shows a link's records only for the current state.
-fn while_current_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-    array: &str,
-) -> Result<String, DbError> {
-    Ok(sql.query_row(
-        &format!(
-            "SELECT CASE WHEN EXISTS ( \
-                 SELECT 1 FROM {current} WHERE {at_key}) \
-             THEN ({array}) ELSE '[]' END",
-            current = current_state_from_sql("state"),
-            at_key = CURRENT_AT_KEY,
-        ),
-        named_params! { ":key": key },
-        |row| row.get(0),
-    )?)
-}
-
-/// The album an import of the candidate `key` files under, read in one
-/// statement: the one picked, else the one its link's records name, else a
-/// new one.
-fn candidate_album_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-) -> Result<crate::DraftAlbum, DbError> {
-    let named = album_records_name_sql(
-        &format!(
-            "SELECT key, value ->> 'catalog', value ->> 'kind', value ->> 'key', \
-                    value ->> 'album' \
-             FROM json_each(({claimed}))",
-            claimed = claimed_records_sql(SCANNED_HASH),
-        ),
-        "'[]'",
-    );
-    let row = sql.query_row(
-        &format!(
-            "WITH pick AS ({pick}), \
-             choice (kind, album_id) AS ( \
-                 SELECT pick.pick, pick.album_id FROM pick WHERE pick.pick <> 'records' \
-                 UNION ALL \
-                 SELECT 'named', named.id \
-                 FROM ({named}) AS named JOIN pick ON pick.pick = 'records') \
-             SELECT COALESCE(choice.kind, 'none'), a.id, a.title, {credits} \
-             FROM (SELECT 1) LEFT JOIN choice LEFT JOIN albums AS a ON a.id = choice.album_id",
-            pick = album_pick_sql(SCANNED_HASH),
-            credits = bae_records::records::query::album_credits_json_sql(),
-        ),
-        named_params! { ":key": key },
-        crate::tables::draft_rows::DraftAlbumRow::of_row,
-    )?;
-    row.album(&key.to_string())
+    Ok(Some(CandidateDetailRows { head, draft }))
 }
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, crate::ImportError> {
-        let Self {
+        let Self { head, draft } = self;
+        let HeadRows {
             candidate,
             files,
             part_count,
@@ -258,8 +262,8 @@ impl CandidateDetailRows {
             cards,
             standing,
             listed,
-            stage,
-        } = self;
+            imported,
+        } = head;
         let listed = listed.listed(&candidate.key())?;
         let signals = current.as_ref().and_then(|state| state.signals.clone());
         let lookup_choices =
@@ -269,18 +273,28 @@ impl CandidateDetailRows {
         // candidate's own text, so the rows are already in their new order
         // after the person discounts a catalog number.
         let stored_verdict = stored_verdict_view(current.as_ref(), cards);
-        let stage = match stage {
-            StageRows::Imported(release) => ProjectedStage::Imported { release },
-            StageRows::Drafting(draft) => {
+        let stage = match (imported, draft) {
+            (Some(release), _) => ProjectedStage::Imported { release },
+            (None, None) => {
+                return Err(crate::ImportError::Internal {
+                    detail: "the pane read no draft for a candidate nothing was imported from"
+                        .to_string(),
+                })
+            }
+            (None, Some(draft)) => {
                 let DraftRows {
-                    pane_rows,
+                    draft,
+                    draft_blank,
+                    draft_valid,
+                    failure,
+                    pane_failure,
                     mapping,
                     album_artists,
                     records,
                     picked_library_status,
                     album,
                     cover,
-                } = *draft;
+                } = draft;
                 let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
                     mapping.read(album_artists.is_some())?;
                 ProjectedStage::Drafting(Box::new(DraftProjection {
@@ -294,16 +308,16 @@ impl CandidateDetailRows {
                     records,
                     picked_library_status,
                     album,
-                    metadata_draft: pane_rows.draft.release_edit(),
-                    draft_blank: pane_rows.draft_blank,
-                    draft_valid: pane_rows.draft_valid,
+                    metadata_draft: draft.release_edit(),
+                    draft_blank,
+                    draft_valid,
                     album_artists,
                     mapping,
                     track_length_ms,
                     cover,
                     lookup_choices,
-                    failure: pane_rows.failure,
-                    pane_failure: pane_rows.pane_failure,
+                    failure,
+                    pane_failure,
                 }))
             }
         };
@@ -324,30 +338,6 @@ impl CandidateDetailRows {
     }
 }
 
-/// Which library albums hold the release the candidate `key` is linked to,
-/// the pressing its link names first; `None` for a candidate linked to no
-/// pressing. The link's foreign key keeps the release it names stored.
-fn picked_library_status_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-) -> Result<Option<LibraryStatus>, DbError> {
-    Ok(sql
-        .query_row(
-            &library_status_sql(
-                "SELECT 0, link.release_id, link.source, release.source_group_id \
-                 FROM scan_candidate AS scan \
-                 JOIN import_candidate_release_link AS link \
-                     ON link.content_hash = scan.content_hash AND link.kind = 'pressing' \
-                 JOIN source_release AS release \
-                     ON (release.catalog, release.release_id) = (link.source, link.release_id) \
-                 WHERE scan.path = :key",
-            ),
-            named_params! { ":key": key },
-            library_status_of,
-        )
-        .optional()?)
-}
-
 impl ImportTables {
     /// The candidate the request names, as the pane reads it, live; `None` for
     /// no key or a key naming no release the list lists, which clears a
@@ -361,11 +351,28 @@ impl ImportTables {
         crate::ImportError,
     > {
         self.store
-            .subscribe_reconfigurable(initial, |key, sql| match key {
-                None => Ok(None),
-                Some(key) => Ok(pane::load_candidate_detail_on(&sql, key)?),
-            })
-            .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
+            .subscribe_reconfigurable_statements(initial, &HEAD, &DRAFT)
+            .process(|rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
+    }
+
+    /// The mapping rows and album artists of the pane's draft read, for a
+    /// test.
+    #[cfg(test)]
+    pub(super) async fn load_pane_mapping_for_test(
+        &self,
+        key: &crate::CandidateKey,
+    ) -> Result<(super::mapping_rows::MappingRows, Option<crate::ArtistField>), crate::ImportError>
+    {
+        let request = PaneDraftParams::from(&Some(key.clone()));
+        let row = self
+            .store
+            .read(move |sql| DRAFT.run(&sql, &request))
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| DbError::unreadable("the pane's draft read", None::<String>))?;
+        let draft = DraftRows::of(row)?;
+        Ok((draft.mapping, draft.album_artists))
     }
 
     /// The folder that failed validation at the key the read is set to, as
@@ -392,10 +399,15 @@ impl ImportTables {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<ImportCandidateDetailProjection>, crate::ImportError> {
-        let key = key.clone();
+        let key = Some(key.clone());
         self.store
-            .read(move |sql| pane::load_candidate_detail_on(&sql, &key))
-            .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
+            .read(move |sql| {
+                Ok((
+                    HEAD.run(&sql, &PaneHeadParams::from(&key))?,
+                    DRAFT.run(&sql, &PaneDraftParams::from(&key))?,
+                ))
+            })
+            .process(|rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
             .await
     }
 }

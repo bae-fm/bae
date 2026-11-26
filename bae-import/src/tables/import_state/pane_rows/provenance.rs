@@ -98,6 +98,24 @@ pub(crate) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredPr
 }
 
 impl StoredProvenance {
+    /// The provenance a pane's read selects, as
+    /// [`super::super::state_fragments::CurrentState`] names it; none for a
+    /// draft that records none.
+    pub(crate) fn of(
+        state: &super::super::state_fragments::CurrentState,
+    ) -> Result<Option<Self>, DbError> {
+        if state.provenance_row.is_none() {
+            return Ok(None);
+        }
+        Ok(Some(Self {
+            kind: super::super::required(state.provenance_kind.clone(), "provenance_kind")?,
+            source: state.provenance_source.clone(),
+            release_id: state.provenance_release_id.clone(),
+        }))
+    }
+}
+
+impl StoredProvenance {
     pub(crate) fn provenance(self) -> Result<MetadataProvenance, DbError> {
         match self.kind.as_str() {
             "file_tags" => Ok(MetadataProvenance::FileMetadata),

@@ -400,7 +400,8 @@ fn skipped_files_json(candidate: &str) -> String {
     )
 }
 
-struct CandidateRow {
+#[derive(Clone, PartialEq)]
+pub(crate) struct CandidateRow {
     watched_folder_path: PathBuf,
     path: CandidateKey,
     generation: i64,
@@ -443,79 +444,112 @@ pub(crate) fn load_candidate_items_rows(
             skipped_files = skipped_files_json("candidate"),
         ),
         entries.params(),
-        |row| {
-            Ok(CandidateRow {
-                watched_folder_path: path_column::get(row, "watched_folder_path")?,
-                path: row.get("path")?,
-                generation: row.get("generation")?,
-                kind: row.get("kind")?,
-                name: row.get("name")?,
-                relative_folder: row.get("relative_folder")?,
-                folder: path_column::get(row, "folder")?,
-                file_root: path_column::get(row, "file_root")?,
-                scope: row.get("scope")?,
-                file_edit_revision: row.get("file_edit_revision")?,
-                grouping_key: row.get("grouping_key")?,
-                files: row.get("files")?,
-                parts: row.get("parts")?,
-                skipped_files: row.get("skipped_files")?,
-                invalid: InvalidColumns::read(row)?,
-            })
-        },
+        CandidateRow::read,
     )?;
-    Ok(Box::new(move || {
-        let mut items = Vec::with_capacity(rows.len());
-        for row in rows {
-            let generation = to_u64(row.generation, "a scan candidate's generation")?;
-            let item = match row.kind.as_str() {
-                "invalid" => ScanItem::Invalid(InvalidCandidate {
+    Ok(Box::new(move || rows.into_iter().map(CandidateRow::item).collect()))
+}
+
+impl CandidateRow {
+    /// The row of a statement that selects the columns of `scan_candidate`
+    /// the fields name, and [`invalid_columns_sql`]'s.
+    pub(crate) fn read(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            watched_folder_path: path_column::get(row, "watched_folder_path")?,
+            path: row.get("path")?,
+            generation: row.get("generation")?,
+            kind: row.get("kind")?,
+            name: row.get("name")?,
+            relative_folder: row.get("relative_folder")?,
+            folder: path_column::get(row, "folder")?,
+            file_root: path_column::get(row, "file_root")?,
+            scope: row.get("scope")?,
+            file_edit_revision: row.get("file_edit_revision")?,
+            grouping_key: row.get("grouping_key")?,
+            files: row.get("files")?,
+            parts: row.get("parts")?,
+            skipped_files: row.get("skipped_files")?,
+            invalid: InvalidColumns::read(row)?,
+        })
+    }
+
+    /// The row of a pane's read, which [`super::fragments::ScanItem`] names.
+    pub(crate) fn of(scan: super::fragments::ScanItem) -> Result<Self, DbError> {
+        let invalid = InvalidColumns::of(&scan)?;
+        Ok(Self {
+            watched_folder_path: path_column::decode(scan.watched_folder_path)?,
+            path: scan.path,
+            generation: scan.generation,
+            kind: scan.kind,
+            name: scan.name,
+            relative_folder: scan.relative_folder,
+            folder: path_column::decode(scan.folder)?,
+            file_root: path_column::decode(scan.file_root)?,
+            scope: scan.scope,
+            file_edit_revision: scan.file_edit_revision,
+            grouping_key: scan.grouping_key,
+            files: scan.files,
+            parts: scan.parts,
+            skipped_files: scan.skipped_files,
+            invalid,
+        })
+    }
+
+    /// The root the entry is stored under.
+    pub(crate) fn root(&self) -> &Path {
+        &self.watched_folder_path
+    }
+
+    /// The stored entry the row holds.
+    pub(crate) fn item(self) -> Result<StoredScanItem, DbError> {
+        let row = self;
+        let generation = to_u64(row.generation, "a scan candidate's generation")?;
+        let item = match row.kind.as_str() {
+            "invalid" => ScanItem::Invalid(InvalidCandidate {
+                path: row.folder,
+                name: row.name,
+                watched_folder_path: row.watched_folder_path,
+                relative_folder: row.relative_folder,
+                grouping: row.grouping_key,
+                files: skipped_files_of(&row.path, &row.skipped_files)?,
+                // The schema holds a reason on every row of an invalid
+                // folder.
+                tags: row
+                    .invalid
+                    .ok_or_else(|| {
+                        DbError::unreadable(
+                            format!("the reason folder {} failed validation", row.path),
+                            None::<String>,
+                        )
+                    })?
+                    .tags(),
+            }),
+            kind @ ("tentative" | "valid") => {
+                let candidate = FolderCandidate {
                     path: row.folder,
+                    file_root: row.file_root,
                     name: row.name,
+                    files: CategorizedFiles {
+                        files: files_of(&row.path, &row.files)?,
+                        parts: parts_of(&row.path, &row.parts)?,
+                    },
                     watched_folder_path: row.watched_folder_path,
+                    scope: scope_of(&row.scope)?,
+                    file_edit_revision: to_u64(
+                        row.file_edit_revision,
+                        "a scan candidate's file edit revision",
+                    )?,
                     relative_folder: row.relative_folder,
                     grouping: row.grouping_key,
-                    files: skipped_files_of(&row.path, &row.skipped_files)?,
-                    // The schema holds a reason on every row of an invalid
-                    // folder.
-                    tags: row
-                        .invalid
-                        .ok_or_else(|| {
-                            DbError::unreadable(
-                                format!("the reason folder {} failed validation", row.path),
-                                None::<String>,
-                            )
-                        })?
-                        .tags(),
-                }),
-                kind @ ("tentative" | "valid") => {
-                    let candidate = FolderCandidate {
-                        path: row.folder,
-                        file_root: row.file_root,
-                        name: row.name,
-                        files: CategorizedFiles {
-                            files: files_of(&row.path, &row.files)?,
-                            parts: parts_of(&row.path, &row.parts)?,
-                        },
-                        watched_folder_path: row.watched_folder_path,
-                        scope: scope_of(&row.scope)?,
-                        file_edit_revision: to_u64(
-                            row.file_edit_revision,
-                            "a scan candidate's file edit revision",
-                        )?,
-                        relative_folder: row.relative_folder,
-                        grouping: row.grouping_key,
-                    };
-                    match kind {
-                        "tentative" => ScanItem::Discovered(candidate),
-                        _ => ScanItem::Valid(candidate),
-                    }
+                };
+                match kind {
+                    "tentative" => ScanItem::Discovered(candidate),
+                    _ => ScanItem::Valid(candidate),
                 }
-                other => return Err(DbError::unreadable("scan_candidate.kind", other)),
-            };
-            items.push(StoredScanItem { key: row.path, generation, item });
-        }
-        Ok(items)
-    }))
+            }
+            other => return Err(DbError::unreadable("scan_candidate.kind", other)),
+        };
+        Ok(StoredScanItem { key: row.path, generation, item })
+    }
 }
 
 /// A list an entry's row holds as JSON, decoded.

@@ -82,13 +82,11 @@ artist_field AS MATERIALIZED (
     FROM field_counts
 )";
 
-/// Whose artist fields the standing clauses read: a candidate's draft, or a
-/// release editor's form, whose album artists and explicit tracks' artists
-/// the statement binds as the JSON arrays that the release editor's
-/// `assignment_rows` makes.
+/// Whose artist fields the standing clauses read: a release editor's form,
+/// whose album artists and explicit tracks' artists the statement binds as
+/// the JSON arrays that the release editor's `assignment_rows` makes.
 #[derive(Clone, Copy)]
 pub(crate) enum CreditSource<'a> {
-    Candidate(crate::tables::import_state::OneCandidate<'a>),
     Form { album_artists: &'a String, track_artists: &'a String },
 }
 
@@ -105,21 +103,6 @@ impl CreditSource<'_> {
     /// in part 0 with no track, each track's in part 1.
     fn raw(self) -> String {
         match self {
-            Self::Candidate(candidate) => {
-                format!(
-                    "SELECT 0 AS part, NULL AS track_id, 0 AS track_position, \
-                            a.position AS position, {ASSIGNMENT_COLUMNS} \
-                     FROM import_candidate_album_artist_assignment AS a \
-                     WHERE a.content_hash = {owner} \
-                     UNION ALL \
-                     SELECT 1, t.track_id, t.position, a.position, {ASSIGNMENT_COLUMNS} \
-                     FROM import_candidate_track_artist_assignment AS a \
-                     JOIN import_candidate_track AS t \
-                         ON t.content_hash = a.content_hash AND t.track_id = a.track_id \
-                     WHERE a.content_hash = {owner} AND t.artist_assignment_kind = 'explicit'",
-                    owner = candidate.hash_sql(),
-                )
-            }
             Self::Form { .. } => {
                 let rows = crate::tables::release_edit::assignment_rows_sql;
                 format!(
@@ -141,14 +124,8 @@ impl CreditSource<'_> {
     /// library stores for its draft's credits (`credit_resolutions`); for a
     /// form, the rule's SQL over the form's credits in `raw`.
     fn answers(self) -> String {
-        use crate::tables::credit_resolutions::{rule_answer_json_sql, stored_answer_json_sql};
+        use crate::tables::credit_resolutions::rule_answer_json_sql;
         match self {
-            Self::Candidate(_) => format!(
-                "credit_answer (name_key, mb, dg, artists) AS ( \
-                     SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id, {} \
-                     FROM import_credit_resolution AS r)",
-                stored_answer_json_sql("r.id"),
-            ),
             Self::Form { .. } => format!(
                 "form_credit AS ( \
                      SELECT DISTINCT bae_artist_name_key(name) AS name_key, \
@@ -167,7 +144,6 @@ impl CreditSource<'_> {
     /// What [`Self::raw`] binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match self {
-            Self::Candidate(candidate) => candidate.params(),
             Self::Form { album_artists, track_artists } => vec![
                 (":album_artists", *album_artists as &dyn rusqlite::ToSql),
                 (":track_artists", *track_artists as &dyn rusqlite::ToSql),

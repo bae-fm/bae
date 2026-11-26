@@ -111,6 +111,19 @@ pub(crate) struct StoredCover {
     copies: String,
 }
 
+impl StoredCover {
+    /// The columns of a cover a pane's read selects.
+    pub(crate) fn new(
+        kind: String,
+        file_id: Option<String>,
+        url: Option<String>,
+        source: Option<String>,
+        copies: String,
+    ) -> Self {
+        Self { kind, file_id, url, source, copies }
+    }
+}
+
 /// The [`cover_read_columns`] of `row`; none for a candidate that chose no
 /// cover.
 pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>> {

@@ -24,6 +24,7 @@ pub(super) use folder_readings::{store_folder_reading, validate_decision_key_own
 use std::path::{Path, PathBuf};
 
 pub(super) mod folder_readings;
+pub(crate) mod fragments;
 pub use folder_readings::FolderReadingRefusal;
 
 /// Why reading a release of folders picked together apart again was
@@ -79,11 +80,7 @@ pub(super) fn load_candidate_on(
     let Some((root, stored)) = folder_scans::load_item_by_key(sql, key, RowSources::Any)? else {
         return Ok(None);
     };
-    let generation = stored.generation;
     let key = stored.key.clone();
-    let Some((candidate, settled)) = release_of_stored(&root, stored)? else {
-        return Ok(None);
-    };
     #[expect(
         clippy::read_keyed_statement,
         reason = "kept finding: reads whether a grouping took the candidate in, keyed by the candidate key the first statement returned"
@@ -93,13 +90,33 @@ pub(super) fn load_candidate_on(
         [&key],
         |row| row.get::<_, bool>(0),
     )?;
+    let grouping = match &stored.item {
+        ScanItem::Valid(candidate) | ScanItem::Discovered(candidate) => candidate.grouping.clone(),
+        ScanItem::Invalid(_) => None,
+    };
     #[expect(
         clippy::read_keyed_statement,
         reason = "kept finding: reads the grouping's block keyed by the grouping the first statement returned"
     )]
-    let error = match &candidate.grouping {
+    let error = match &grouping {
         Some(grouping) => load_block_on(sql, grouping)?,
         None => None,
+    };
+    stored_release_candidate(&root, stored, taken_in, error)
+}
+
+/// The release the stored entry `stored`, under `root`, holds, with whether
+/// a grouping took it in and what blocks the grouping; `None` for a folder
+/// that failed validation.
+pub(super) fn stored_release_candidate(
+    root: &Path,
+    stored: folder_scans::StoredScanItem,
+    taken_in: bool,
+    error: Option<GroupingBlock>,
+) -> Result<Option<StoredReleaseCandidate>, DbError> {
+    let generation = stored.generation;
+    let Some((candidate, settled)) = release_of_stored(root, stored)? else {
+        return Ok(None);
     };
     Ok(Some(StoredReleaseCandidate {
         actionable: settled && !taken_in && error.is_none(),

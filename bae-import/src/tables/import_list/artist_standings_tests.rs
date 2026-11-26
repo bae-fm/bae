@@ -20,31 +20,22 @@ fn artist(id: &str, name: &str, discogs: Option<&str>, musicbrainz: Option<&str>
     }
 }
 
-/// The candidate `hash`'s album artists and its first track's own artists,
-/// each with its standing.
-async fn fields_of(
-    db: &bae_store::Store,
-    hash: &str,
-) -> (Option<ArtistField>, Option<ArtistField>) {
-    let hash = hash.to_string();
-    db.read(move |sql| {
-        let source =
-            CreditSource::Candidate(crate::tables::import_state::OneCandidate::Hash(&hash));
-        let album = album_artist_field_on(&sql, source)?;
-        let track: Option<String> = sql
-            .query_row(
-                &format!(
-                    "WITH {} SELECT field FROM artist_field WHERE part = 1",
-                    artist_field_clauses(source)
-                ),
-                source.params().as_slice(),
-                |row| row.get(0),
-            )
-            .optional()?;
-        Ok((album, track.as_deref().map(artist_field_of_json).transpose()?))
-    })
-    .await
-    .unwrap()
+/// The pane's album artists of the candidate `stored_pane_candidate` stores,
+/// and its first track's own artists, each with its standing.
+async fn fields_of(db: &bae_store::Store) -> (Option<ArtistField>, Option<ArtistField>) {
+    let (mapping, album) = ImportTables::new(db.clone())
+        .load_pane_mapping_for_test(&crate::tables::import_state::tests::pane_candidate_key())
+        .await
+        .unwrap();
+    let table = mapping.read(album.is_some()).unwrap().table;
+    let track =
+        table.track_sides.iter().flatten().flat_map(|side| side.rows()).find_map(|row| match &row
+            .artist
+        {
+            crate::TrackArtistDisplay::Own(field) => Some(field.clone()),
+            _ => None,
+        });
+    (album, track)
 }
 
 /// The field `standing` of `credits`, each beside its artist's standing.
@@ -110,7 +101,7 @@ async fn each_field_counts_how_its_artists_stand() {
     ] {
         let album: Vec<Credited> = credits.iter().map(|(credited, _)| credited.clone()).collect();
         controls.set_album_artists(&hash, &album).await.unwrap();
-        let (album_field, track_field) = fields_of(&db, &hash).await;
+        let (album_field, track_field) = fields_of(&db).await;
         assert_eq!(album_field, Some(field_of(standing, credits)));
         assert_eq!(track_field, None, "the track takes its album's artists");
     }
@@ -144,7 +135,7 @@ async fn a_track_s_own_artists_stand_apart_from_the_album_s() {
         .await
         .unwrap();
 
-    let (album, track) = fields_of(&db, &hash).await;
+    let (album, track) = fields_of(&db).await;
     let named = |name: &str| Credited::plain(ArtistAssignment::named(name));
     assert_eq!(
         album,

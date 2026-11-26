@@ -36,6 +36,20 @@ pub(super) fn load_failure_on(
     .map_err(DbError::from)
 }
 
+/// The failure a pane's read selects, as [`super::fragments::Failure`]
+/// names it.
+pub(crate) fn failure_of(failure: super::fragments::Failure) -> Result<ImportFailure, DbError> {
+    Ok(ImportFailure {
+        reason: ImportFailureReason { detail: failure.failure_error },
+        failed_at: bae_util::timestamp::parse_rfc3339(&failure.failed_at).map_err(|error| {
+            DbError::unreadable(
+                "import_candidate_failure.failed_at",
+                format!("{}: {error}", failure.failed_at),
+            )
+        })?,
+    })
+}
+
 /// Drop the failure the last import of `content_hash` left.
 pub(crate) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [content_hash])?;

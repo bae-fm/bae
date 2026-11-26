@@ -62,6 +62,34 @@ pub(super) fn read_lookup_choices(row: &Row<'_>) -> rusqlite::Result<Option<Stor
 }
 
 impl StoredLookupChoices {
+    /// The choices a pane's read selects, as
+    /// [`super::state_fragments::CurrentState`] names them; none for a
+    /// candidate that has decided nothing.
+    pub(super) fn of(
+        state: &super::state_fragments::CurrentState,
+    ) -> Result<Option<Self>, DbError> {
+        if state.choices_row.is_none() {
+            return Ok(None);
+        }
+        let search_words =
+            match (state.choices_search_album.clone(), state.choices_search_artist.clone()) {
+                (Some(album), Some(artist)) => Some(SearchWords { album, artist }),
+                _ => None,
+            };
+        Ok(Some(Self {
+            disc_id_excluded: super::required(
+                state.choices_disc_id_excluded,
+                "choices_disc_id_excluded",
+            )?,
+            search_words,
+            chosen_catalogs: state.choices_chosen_catalogs.clone(),
+            discounted_catalogs: state.choices_discounted_catalogs.clone(),
+            excluded_barcodes: state.choices_excluded_barcodes.clone(),
+        }))
+    }
+}
+
+impl StoredLookupChoices {
     pub(super) fn choices(self) -> Result<LookupChoices, DbError> {
         let list = |json: &str, what: &str| {
             serde_json::from_str::<Vec<String>>(json)

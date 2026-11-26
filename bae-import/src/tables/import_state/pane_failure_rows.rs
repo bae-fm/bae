@@ -281,13 +281,21 @@ pub(super) fn load_pane_failure_on(
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?)),
     )
     .optional()?
-    .map(|(command, category, detail)| {
-        Ok(PaneFailure {
-            command: command_of(&command)?,
-            error: UiError::Diagnostic { category: category_of(&category)?, detail },
-        })
-    })
+    .map(|(command, category, detail)| pane_failure_of(&command, &category, detail))
     .transpose()
+}
+
+/// The failure of the pane's last command that the columns `command`,
+/// `category` and `detail` of `import_candidate_pane_failure` hold.
+pub(crate) fn pane_failure_of(
+    command: &str,
+    category: &str,
+    detail: String,
+) -> Result<PaneFailure, DbError> {
+    Ok(PaneFailure {
+        command: command_of(command)?,
+        error: UiError::Diagnostic { category: category_of(category)?, detail },
+    })
 }
 
 /// Forget the failure the pane states for `content_hash`'s last command.

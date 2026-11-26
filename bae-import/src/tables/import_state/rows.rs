@@ -112,6 +112,27 @@ struct SignalsRead<Stored, Signals> {
     signals: fn(Stored) -> Result<Signals, DbError>,
 }
 
+/// The current state a pane's read selects, as
+/// [`super::state_fragments::CurrentState`] names it.
+pub(crate) fn current_state_of(
+    state: super::state_fragments::CurrentState,
+) -> Result<DbImportCandidateState, DbError> {
+    StoredCandidate {
+        content_hash: state.content_hash.clone(),
+        candidate_key: state.candidate_key.clone(),
+        metadata_revision: state.metadata_revision,
+        author: state.draft_author.clone(),
+        file_edits: super::file_decision_rows::StoredFileEdits::of(&state),
+        signals: super::signal_rows::StoredSignals::of(&state)?,
+        provenance: StoredProvenance::of(&state)?,
+        link: StoredReleaseLink::of(&state)?,
+        lookup_choices: super::lookup_choice_rows::StoredLookupChoices::of(&state)?,
+        verdict: super::verdict_rows::verdict_row_of_state(&state)?,
+        matches: state.candidate_matches,
+    }
+    .state()
+}
+
 /// The states `filter` keeps, each with the rows that share its content hash.
 fn states_rows_where<Stored, Signals>(
     sql: &impl coven::SqlRead,

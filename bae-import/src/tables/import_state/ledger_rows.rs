@@ -537,6 +537,30 @@ struct StoredLookup {
 }
 
 impl StoredLedger {
+    /// The ledger a pane's read selects, as
+    /// [`super::state_fragments::CurrentState`] names it.
+    pub(super) fn of(state: &super::state_fragments::CurrentState) -> Self {
+        Self {
+            disc_id: state.ledger_disc_id_step.clone(),
+            barcode: state.ledger_barcode_step.clone(),
+            catalog: state.ledger_catalog_step.clone(),
+            isrc: state.ledger_isrc_step.clone(),
+            search: state.ledger_search_step.clone(),
+            search_album: state.ledger_search_album.clone(),
+            search_artist: state.ledger_search_artist.clone(),
+            stray_unlisted: state.ledger_stray_unlisted,
+            providers: state.ledger_providers.clone(),
+            isrcs: state.ledger_isrcs.clone(),
+            isrc_shown: state.ledger_isrc_shown.clone(),
+            isrc_more_count: state.ledger_isrc_more_count,
+            offered_catalogs: state.ledger_offered_catalogs.clone(),
+            offered_catalog_count: state.ledger_offered_catalog_count,
+            rows: state.ledger_rows.clone(),
+        }
+    }
+}
+
+impl StoredLedger {
     /// The ledger these rows record, its cells laying out the releases they
     /// found, `None` for a verdict that recorded none.
     pub(super) fn ledger(self, content_hash: &str) -> Result<Option<IdentifyRunView>, DbError> {

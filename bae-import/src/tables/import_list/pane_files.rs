@@ -6,7 +6,7 @@
 use super::*;
 use crate::folder_scanner::FileVersion;
 use crate::{PaneFile, PaneFileRole, PaneFiles};
-use bae_records::source_audio::{source_audio_summary_sql, SourceAudioSummary};
+use bae_records::source_audio::SourceAudioSummary;
 use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
 use bae_util::content_type_hint::ContentTypeHint;
@@ -20,83 +20,6 @@ pub(crate) fn supported_cover(
     Ok(rusqlite::types::Value::Integer(i64::from(ContentTypeHint::path_is_supported_cover(
         std::path::Path::new(&path),
     ))))
-}
-
-/// The pane's files of the candidate the statement binds as `:key`, as one
-/// JSON document.
-///
-/// An audio file plays as a CUE image when the scan bound it to a sheet that
-/// lays out the folder's tracks: a sheet whose binding resolved, which is on a
-/// disc and has an audio track. The audio summary is
-/// [`source_audio_summary_sql`] over the folder's audio files.
-fn pane_files_sql() -> String {
-    format!(
-        "
-WITH
-candidate AS (
-    SELECT watched_folder_path, path FROM scan_candidate WHERE path = :key LIMIT 1
-),
-f AS (
-    SELECT file.* FROM scan_candidate_file AS file
-    JOIN candidate
-        ON file.watched_folder_path = candidate.watched_folder_path
-       AND file.candidate_path = candidate.path
-),
-sheet_tracks (relative_path, count) AS (
-    SELECT track.sheet_relative_path, COUNT(*) FROM scan_cue_track AS track
-    JOIN candidate
-        ON track.watched_folder_path = candidate.watched_folder_path
-       AND track.candidate_path = candidate.path
-    WHERE track.mode = 'audio'
-    GROUP BY track.sheet_relative_path
-),
-carved (relative_path) AS (
-    SELECT DISTINCT bound.audio_relative_path FROM scan_sheet_audio_file AS bound
-    JOIN candidate
-        ON bound.watched_folder_path = candidate.watched_folder_path
-       AND bound.candidate_path = candidate.path
-    JOIN f AS sheet ON sheet.relative_path = bound.sheet_relative_path
-    JOIN sheet_tracks ON sheet_tracks.relative_path = sheet.relative_path
-    WHERE sheet.sheet_binding = 'resolved' AND sheet.sheet_place = 'side'
-),
-entries AS (
-    SELECT f.position, f.role,
-           {showable} AS cover,
-           json_object(
-               'name', f.relative_path, 'size', f.size,
-               'file_name', f.file_name, 'path', hex(f.absolute_path),
-               'modified_at_ns', f.modified_at_ns, 'role', f.role,
-               'content_type', f.audio_content_type, 'sample_rate_hz', f.audio_sample_rate_hz,
-               'bits_per_sample', f.audio_bits_per_sample, 'bitrate_kbps', f.audio_bitrate_kbps,
-               'channels', f.audio_channels,
-               'sheet_tracks', CASE WHEN f.role = 'track_sheet'
-                                    THEN COALESCE(sheet_tracks.count, 0) END) AS json
-    FROM f LEFT JOIN sheet_tracks ON sheet_tracks.relative_path = f.relative_path
-)
-SELECT json_object(
-    'files', json((SELECT json_group_array(json(json) ORDER BY position) FROM entries)),
-    'cover_files', json((SELECT json_group_array(json(json) ORDER BY position)
-                         FROM entries WHERE cover)),
-    'images', json(NULLIF((SELECT json_group_array(json(json) ORDER BY position)
-                           FROM entries WHERE role = 'artwork'), '[]')),
-    'track_count', (SELECT COUNT(*) FROM scan_candidate_unit AS unit
-                    JOIN candidate
-                        ON unit.watched_folder_path = candidate.watched_folder_path
-                       AND unit.candidate_path = candidate.path),
-    'source_audio', {source_audio})",
-        showable = super::showable_artwork_sql("f"),
-        source_audio = source_audio_summary_sql(
-            "SELECT f.position,
-                    CASE WHEN carved.relative_path IS NULL THEN 'file' ELSE 'cue' END AS layout,
-                    f.audio_content_type AS content_type,
-                    f.audio_sample_rate_hz AS sample_rate_hz,
-                    f.audio_bits_per_sample AS bits_per_sample,
-                    f.audio_bitrate_kbps AS bitrate_kbps, f.audio_channels AS channels,
-                    f.audio_duration_ms AS duration_ms
-             FROM f LEFT JOIN carved ON carved.relative_path = f.relative_path
-             WHERE f.role = 'audio'"
-        ),
-    )
 }
 
 #[derive(serde::Deserialize)]
@@ -179,15 +102,10 @@ impl FileJson {
     }
 }
 
-/// The pane's files of the candidate `key`.
-pub(super) fn load_pane_files_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-) -> Result<PaneFiles, DbError> {
-    let json: String =
-        sql.query_row(&pane_files_sql(), named_params! { ":key": key }, |row| row.get(0))?;
-    let document: Document = serde_json::from_str(&json)
-        .map_err(|error| DbError::unreadable_json("the pane's files", &json, error))?;
+/// The pane's files that the statement wrote as one JSON document.
+pub(super) fn pane_files_of_json(json: &str) -> Result<PaneFiles, DbError> {
+    let document: Document = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json("the pane's files", json, error))?;
     Ok(PaneFiles {
         files: document.files.into_iter().map(FileJson::file).collect::<Result<_, _>>()?,
         cover_files: document

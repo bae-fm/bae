@@ -401,6 +401,12 @@ pub(crate) fn load_candidate_verdict_cards_on(
     json.map_or_else(|| Ok(VerdictCards::default()), |json| verdict_cards_of(&json))
 }
 
+/// The cards the JSON document `json` holds, which a pane's read selects;
+/// none for a candidate whose verdict holds no findings.
+pub(crate) fn verdict_cards_of_column(json: Option<&str>) -> Result<VerdictCards, DbError> {
+    json.map_or_else(|| Ok(VerdictCards::default()), verdict_cards_of)
+}
+
 /// What [`verdict_cards_sql`] answers.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredVerdictCards {

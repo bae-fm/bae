@@ -37,7 +37,7 @@ pub(super) const COLUMNS: &str = "identification, content_hash, file_edit_revisi
      identify_run, import_asked, save_failure_error, import_step, import_id";
 
 /// One row's columns as SQLite holds them.
-pub(super) struct StandingColumns {
+pub(crate) struct StandingColumns {
     identification: Option<String>,
     content_hash: Option<String>,
     file_edit_revision: Option<i64>,
@@ -50,7 +50,7 @@ pub(super) struct StandingColumns {
 }
 
 impl StandingColumns {
-    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
+    pub(crate) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
         Ok(Self {
             identification: row.get(first)?,
             content_hash: row.get(first + 1)?,
@@ -64,10 +64,40 @@ impl StandingColumns {
         })
     }
 
+    /// The columns of a pane's read, which
+    /// [`super::fragments::Standing`] names; a candidate with no standing row
+    /// holds none of them.
+    pub(crate) fn of(standing: Option<super::fragments::Standing>) -> Self {
+        let Some(standing) = standing else {
+            return Self {
+                identification: None,
+                content_hash: None,
+                file_edit_revision: None,
+                admission: None,
+                identify_run: None,
+                import_asked: None,
+                save_failure_error: None,
+                import_step: None,
+                import_id: None,
+            };
+        };
+        Self {
+            identification: standing.identification,
+            content_hash: standing.standing_content_hash,
+            file_edit_revision: standing.standing_file_edit_revision,
+            admission: standing.admission,
+            identify_run: standing.identify_run,
+            import_asked: standing.import_asked,
+            save_failure_error: standing.save_failure_error,
+            import_step: standing.import_step,
+            import_id: standing.import_id,
+        }
+    }
+
     /// The standing these columns hold for `key`. The table's checks hold
     /// every column a stage needs, so one missing is a row the checks let
     /// through, which is refused here as broken.
-    pub(super) fn standing(self, key: &CandidateKey) -> Result<StoredStanding, DbError> {
+    pub(crate) fn standing(self, key: &CandidateKey) -> Result<StoredStanding, DbError> {
         let broken =
             |what: &str| DbError::unreadable(format!("import_candidate_standing of {key}"), what);
         let identification = match self.identification.as_deref() {

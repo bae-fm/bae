@@ -18,273 +18,6 @@ use crate::{
     TrackSource, TrackTableRow, TrackTableRun, TrackTableSide,
 };
 
-/// The mapping table as one JSON document, for the release the scan stores
-/// at the key the statement binds as `:key`, over the draft stored under its
-/// content hash. Each row carries its draft track whole (`track_json_sql`)
-/// and the track's own artists, each with how it stands to the library
-/// (`artist_field_clauses`), so the rows need no join to another read's
-/// draft. `key` is the key the statement binds. The disc numbers a sheet can
-/// take, 1 up to the count of resolved sheets, number those sheets: a
-/// recursive CTE that counted up to them would make coven rerun the
-/// statement for a write to any row of the tables it reads.
-/// The mediums a sheet of the folder `:key` can be put on, with the columns
-/// of `release_mediums`, for the statement of [`mapping_sql`]: the draft's
-/// mediums, a disc of one side at each position up to the count of the
-/// folder's bound sheets, so that each sheet can go on a disc of its own,
-/// and the disc each sheet is on, each with the sides the draft gives it or
-/// the side a sheet is on, whichever is more.
-const PANE_MEDIUMS: &str = "(SELECT reach.position AS id, :key AS release_id, reach.position, \
-            m.medium, \
-            MAX(COALESCE(m.side_count, 1), \
-                COALESCE((SELECT MAX(sheet_side) FROM f \
-                          WHERE sheet_place = 'side' AND sheet_medium = reach.position), 1)) \
-                AS side_count \
-     FROM (SELECT 1 AS position \
-           UNION SELECT position FROM import_candidate_medium \
-                 WHERE content_hash = (SELECT content_hash FROM candidate) \
-           UNION SELECT ROW_NUMBER() OVER (ORDER BY position) FROM f \
-                 WHERE role = 'track_sheet' AND sheet_binding = 'resolved' \
-           UNION SELECT sheet_medium FROM f WHERE sheet_place = 'side') AS reach \
-     LEFT JOIN import_candidate_medium AS m \
-         ON m.content_hash = (SELECT content_hash FROM candidate) \
-        AND m.position = reach.position)";
-
-fn mapping_sql(key: &crate::CandidateKey) -> String {
-    format!(
-        "
-WITH
-{standing_clauses},
-candidate AS (
-    SELECT watched_folder_path, path, content_hash FROM scan_candidate WHERE path = :key LIMIT 1
-),
-f AS (
-    SELECT * FROM scan_candidate_file WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key
-),
-audio_json (relative_path, json) AS (
-    SELECT relative_path,
-           json_object('file_id', relative_path, 'name', file_name, 'path', hex(absolute_path))
-    FROM f WHERE role = 'audio'
-),
-{places},
-rows AS (
-    SELECT t.position, t.title, t.track_id,
-           (SELECT {track} FROM import_candidate_track AS track
-            WHERE track.content_hash = t.content_hash AND track.track_id = t.track_id)
-               AS track_json,
-           p.side_kind, p.side_ordinal, p.number,
-           u.position IS NOT NULL
-               AND u.file_kind IS t.file_kind AND u.file_id IS t.file_id
-               AND u.sheet_id IS t.sheet_id AND u.slice_index IS t.slice_index AS unit_matches,
-           u.file_kind, u.sheet_id, u.file_id AS unit_file_id, u.slice_index,
-           u.duration_ms AS unit_ms,
-           u.start_sample, u.end_sample, a.json AS audio,
-           ct.start_cue_frames * 1000 / 75 AS cue_start_ms,
-           CASE WHEN t.stated_length_ms IS NOT NULL AND u.duration_ms IS NOT NULL
-                     AND bae_lengths_disagree(u.duration_ms, t.stated_length_ms)
-                THEN t.stated_length_ms END AS listed_ms
-    FROM import_candidate_track AS t
-    JOIN place AS p ON p.id = t.track_id AND p.release_id = t.content_hash
-    LEFT JOIN scan_candidate_unit AS u
-        ON u.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND u.candidate_path = :key AND u.position = t.position
-    LEFT JOIN audio_json AS a ON a.relative_path = u.file_id
-    LEFT JOIN scan_cue_track AS ct
-        ON ct.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND ct.candidate_path = :key
-       AND ct.sheet_relative_path = u.sheet_id AND ct.position = u.cue_track_position
-    WHERE t.content_hash = (SELECT content_hash FROM candidate)
-),
-marked AS (
-    SELECT *,
-           side_kind IS NOT LAG(side_kind) OVER w OR side_ordinal IS NOT LAG(side_ordinal) OVER w
-               AS side_start,
-           side_kind IS NOT LAG(side_kind) OVER w OR side_ordinal IS NOT LAG(side_ordinal) OVER w
-               OR sheet_id IS NOT LAG(sheet_id) OVER w AS run_start
-    FROM rows WINDOW w AS (ORDER BY position)
-),
-numbered AS (
-    SELECT *, SUM(side_start) OVER (ORDER BY position) AS side_no,
-              SUM(run_start) OVER (ORDER BY position) AS run_no
-    FROM marked
-),
-refs (sheet, file_reference, seq) AS (
-    SELECT sheet, file_reference, MIN(seq) FROM (
-        SELECT sheet, file_reference,
-               ROW_NUMBER() OVER (PARTITION BY sheet ORDER BY track_position, part, index_position)
-                   AS seq
-        FROM (
-            SELECT ct.sheet_relative_path AS sheet, ci.file_reference, ct.position AS track_position,
-                   0 AS part, ci.position AS index_position
-            FROM scan_cue_track AS ct
-            JOIN scan_cue_index AS ci
-                ON (ci.watched_folder_path, ci.candidate_path, ci.sheet_relative_path, ci.track_position)
-                 = (ct.watched_folder_path, ct.candidate_path, ct.sheet_relative_path, ct.position)
-            WHERE ct.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND ct.candidate_path = :key AND ct.mode = 'audio'
-            UNION ALL
-            SELECT ct.sheet_relative_path, ct.file_reference, ct.position, 1, 0
-            FROM scan_cue_track AS ct
-            WHERE ct.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND ct.candidate_path = :key AND ct.mode = 'audio'
-        )
-    ) GROUP BY sheet, file_reference
-),
-side_choice_rows AS (SELECT * FROM {side_choices}),
-side_choices AS (
-    SELECT json_group_array(json_object('medium', c.medium, 'side', c.side, 'kind', c.kind,
-                                        'ordinal', c.ordinal) ORDER BY c.medium, c.side) AS json
-    FROM side_choice_rows AS c
-),
-reference_json (sheet, seq, bound, json) AS (
-    SELECT r.sheet, r.seq, sa.audio_relative_path IS NOT NULL,
-           json_object(
-               'file_reference', r.file_reference,
-               'file_id', sa.audio_relative_path,
-               'options', json((
-                   SELECT json_group_array(json_object(
-                       'file_id', o.audio_relative_path, 'offer', o.offer,
-                       'codec', o.codec) ORDER BY fo.position)
-                   FROM scan_candidate_sheet_offer AS o
-                   JOIN f AS fo ON fo.relative_path = o.audio_relative_path
-                   WHERE o.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND o.candidate_path = :key
-                     AND o.sheet_relative_path = r.sheet
-                     AND o.file_reference = r.file_reference)))
-    FROM refs AS r
-    LEFT JOIN scan_sheet_audio_file AS sa
-        ON sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
-       AND sa.sheet_relative_path = r.sheet AND sa.file_reference = r.file_reference
-),
-sheet_audio_counts (sheet, count) AS (
-    SELECT sheet_relative_path, COUNT(*) FROM scan_sheet_audio_file
-    WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key GROUP BY sheet_relative_path
-),
-sheets (relative_path, json) AS (
-    SELECT s.relative_path,
-           json_object(
-               'sheet_id', s.relative_path, 'name', s.relative_path,
-               'bound', CASE s.sheet_binding
-                   WHEN 'resolved' THEN CASE COALESCE(n.count, 0)
-                       WHEN 0 THEN json_object('binding', 'resolved_to_none')
-                       WHEN 1 THEN json_object('binding', 'describes', 'audio', json((
-                           SELECT a.json FROM scan_sheet_audio_file AS sa
-                           JOIN audio_json AS a ON a.relative_path = sa.audio_relative_path
-                           WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
-                             AND sa.sheet_relative_path = s.relative_path)))
-                       ELSE json_object('binding', 'describes_files', 'audio_count', n.count) END
-                   WHEN 'unresolved' THEN json_object('binding', 'unresolved', 'requested', json((
-                       SELECT json_group_array(r.file_reference ORDER BY r.seq)
-                       FROM refs AS r
-                       WHERE r.sheet = s.relative_path
-                         AND NOT EXISTS (SELECT 1 FROM scan_sheet_audio_file AS sa
-                                         WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate)
-                                           AND sa.candidate_path = :key
-                                           AND sa.sheet_relative_path = s.relative_path
-                                           AND sa.file_reference = r.file_reference))))
-                   WHEN 'refused_codec' THEN json_object('binding', 'refused_codec', 'codec', s.sheet_binding_codec)
-                   ELSE json_object('binding', s.sheet_binding) END,
-               'place', s.sheet_place,
-               -- The choice of the side the sheet is on; every side of a
-               -- disc that is not a record or cassette is the disc, which
-               -- its first side names.
-               'assigned', CASE WHEN s.sheet_place = 'side' THEN json((
-                   SELECT json_object('medium', c.medium, 'side', c.side, 'kind', c.kind,
-                                      'ordinal', c.ordinal)
-                   FROM side_choice_rows AS c
-                   WHERE c.medium = s.sheet_medium
-                     AND c.side = CASE WHEN c.kind = 'sided' THEN s.sheet_side ELSE 1 END)) END,
-               'bound_audio', json((
-                   SELECT CASE COUNT(*)
-                       WHEN 0 THEN json_object('kind', 'none')
-                       WHEN 1 THEN json_object('kind', 'one', 'reference', json(MIN(r.json)))
-                       ELSE json_object('kind', 'several',
-                                        'references', json_group_array(json(r.json) ORDER BY r.seq))
-                   END
-                   FROM reference_json AS r
-                   WHERE r.sheet = s.relative_path AND r.bound)),
-               'unbound_references', CASE WHEN EXISTS (
-                       SELECT 1 FROM reference_json AS r
-                       WHERE r.sheet = s.relative_path AND NOT r.bound)
-                   THEN json((SELECT json_group_array(json(r.json) ORDER BY r.seq)
-                              FROM reference_json AS r
-                              WHERE r.sheet = s.relative_path AND NOT r.bound))
-                   END,
-               'side_choices', CASE WHEN s.sheet_binding = 'resolved'
-                                    THEN json((SELECT json FROM side_choices))
-                                    ELSE json('[]') END)
-    FROM f AS s LEFT JOIN sheet_audio_counts AS n ON n.sheet = s.relative_path
-    WHERE s.role = 'track_sheet'
-),
-runs AS (
-    SELECT side_no, run_no, MIN(side_kind) AS side_kind, MIN(side_ordinal) AS side_ordinal,
-           json_object(
-               'sheet', json((SELECT json FROM sheets WHERE relative_path = n.sheet_id)),
-               'rows', json_group_array(json_object(
-                   'track', json(track_json), 'matches', unit_matches,
-                   'artists', json({track_artists}),
-                   'number', number,
-                   'listed_ms', listed_ms,
-                   'unit', CASE WHEN file_kind IS NOT NULL THEN json_object(
-                       'audio', json(audio), 'length_ms', unit_ms,
-                       'source', CASE file_kind
-                           WHEN 'sheet_slice' THEN json_object(
-                               'kind', file_kind, 'start_ms', cue_start_ms,
-                               'start', start_sample, 'end', end_sample)
-                           ELSE json_object('kind', file_kind) END) END)
-                   ORDER BY position)) AS json
-    FROM numbered AS n GROUP BY side_no, run_no
-),
-sides AS (
-    SELECT json_group_array(json_object('kind', side_kind, 'ordinal', side_ordinal,
-                                        'runs', json(runs_json)) ORDER BY side_no) AS json
-    FROM (SELECT side_no, MIN(side_kind) AS side_kind, MIN(side_ordinal) AS side_ordinal,
-                 json_group_array(json(json) ORDER BY run_no) AS runs_json
-          FROM runs GROUP BY side_no)
-),
-{unplayed}
-SELECT json_object(
-    'images', json(NULLIF((SELECT json_group_array(json_object(
-                        'file_id', relative_path, 'name', file_name, 'path', hex(absolute_path),
-                        'size', size, 'modified_at_ns', modified_at_ns) ORDER BY position)
-                    FROM f WHERE role = 'artwork'), '[]')),
-    'sides', json(NULLIF((SELECT json FROM sides), '[]')),
-    'files', json(NULLIF((SELECT json_group_array(
-                       CASE f.role
-                           WHEN 'track_sheet' THEN json_object('sheet', json(s.json))
-                           ELSE json_object('file', json_object(
-                               'file_id', f.relative_path, 'name', f.relative_path,
-                               'size', f.size, 'role', f.role))
-                       END ORDER BY f.position)
-                   FROM f LEFT JOIN sheets AS s ON s.relative_path = f.relative_path
-                   WHERE f.relative_path IN (SELECT file_id FROM unplayed_files)), '[]')),
-    'untitled', (SELECT COUNT(*) FILTER (WHERE bae_trim(title) = '') FROM rows),
-    'tracks', (SELECT COUNT(*) FROM rows),
-    'length_ms', (SELECT COALESCE(SUM(unit_ms), 0) FROM rows),
-    'units', (SELECT COUNT(*) FROM scan_candidate_unit
-              WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key))",
-        track = crate::tables::import_state::track_json_sql(),
-        standing_clauses = super::artist_field_clauses(super::CreditSource::Candidate(
-            crate::tables::import_state::OneCandidate::Scanned(key)
-        )),
-        track_artists = super::track_artist_field_sql("n.track_id"),
-        side_choices = bae_records::records::sheet_side_choices_sql(PANE_MEDIUMS),
-        unplayed = bae_records::records::files::unplayed_files_cte(
-            &format!(
-                "(SELECT f.relative_path AS file_id, {showable} AS showable_image FROM f)",
-                showable = crate::tables::import_list::showable_artwork_sql("f")
-            ),
-            "(SELECT unit_file_id AS audio_file_id, sheet_id AS sheet_file_id FROM rows)",
-        ),
-        places = bae_records::records::track_places_ctes(
-            bae_records::records::MediumsSource::Draft {
-                mediums: "(SELECT position AS id, content_hash AS release_id, position, medium, \
-                                  side_count FROM import_candidate_medium \
-                           WHERE content_hash = (SELECT content_hash FROM candidate))",
-                places: "(SELECT track_id AS id, content_hash AS release_id, medium AS medium_id, \
-                                 side, track_number, stated_length_ms, position \
-                          FROM import_candidate_track \
-                          WHERE content_hash = (SELECT content_hash FROM candidate))",
-            },
-            "m.release_id = (SELECT content_hash FROM candidate)",
-        ),
-    )
-}
-
 /// A SQL truth value, which JSON holds as 0 or 1.
 fn flag<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
     Ok(<i64 as serde::Deserialize>::deserialize(deserializer)? != 0)
@@ -465,16 +198,6 @@ struct Document {
     units: u32,
 }
 
-/// Read the mapping table of the release the scan stores at `key`.
-pub(super) fn load_mapping_rows_on(
-    sql: &SqlReadContext<'_>,
-    key: &crate::CandidateKey,
-) -> Result<MappingRows, DbError> {
-    let document: String =
-        sql.query_row(&mapping_sql(key), named_params! { ":key": key }, |row| row.get(0))?;
-    Ok(MappingRows { document })
-}
-
 /// The mapping statement's document, read: the mapping table, and how long
 /// its tracks play together.
 pub(super) struct MappingRead {
@@ -484,6 +207,12 @@ pub(super) struct MappingRead {
 }
 
 impl MappingRows {
+    /// The mapping table's rows as the statement wrote them in one JSON
+    /// document.
+    pub(super) fn of_document(document: String) -> Self {
+        Self { document }
+    }
+
     /// The mapping table over the draft's tracks. Refuses a draft whose
     /// tracks are not the folder's audio units in order: every write that
     /// changes the folder's files rebuilds the draft, so a mismatch is a
@@ -724,21 +453,7 @@ impl crate::tables::ImportTables {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<MappingTable, ImportError> {
-        let key = key.clone();
-        let (mapping, has_album_artists) = self
-            .store
-            .read(move |sql| {
-                let mapping = load_mapping_rows_on(&sql, &key)?;
-                let album_artists = super::artist_standings::album_artist_field_on(
-                    &sql,
-                    super::artist_standings::CreditSource::Candidate(
-                        crate::tables::import_state::OneCandidate::Scanned(&key),
-                    ),
-                )?;
-                Ok::<_, DbError>((mapping, album_artists.is_some()))
-            })
-            .await
-            .expect("the rows are read");
-        mapping.read(has_album_artists).map(|read| read.table)
+        let (mapping, album_artists) = self.load_pane_mapping_for_test(key).await?;
+        mapping.read(album_artists.is_some()).map(|read| read.table)
     }
 }

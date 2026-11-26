@@ -207,32 +207,28 @@ impl CoverVersionColumns {
     }
 }
 
-/// The cover the release the scan stores at `key` chose, with the version
-/// its scan read the image from, read in one statement; `None` when it chose
-/// none.
-pub(crate) fn candidate_cover_choice_on(
-    sql: &SqlReadContext<'_>,
+/// The cover choice that a pane's read selects, as
+/// [`super::fragments::CoverChoice`] names it.
+pub(crate) fn cover_choice_of(
+    cover: super::fragments::CoverChoice,
     key: &CandidateKey,
-) -> Result<Option<CoverChoice>, DbError> {
-    let read = sql
-        .query_row(
-            &format!(
-                "SELECT {cover}, {COVER_VERSION_COLUMNS} FROM scan_candidate AS c \
-                 JOIN import_candidate_cover AS cover ON cover.content_hash = c.content_hash \
-                 {joins} \
-                 WHERE c.path = :key LIMIT 1",
-                cover = crate::tables::import_state::cover_read_columns(),
-                joins = cover_version_joins("cover.kind", "cover.file_id"),
-            ),
-            named_params! { ":key": key },
-            |row| {
-                Ok((crate::tables::import_state::read_cover(row)?, CoverVersionColumns::read(row)?))
-            },
-        )
-        .optional()?;
-    let Some((Some(cover), versions)) = read else {
-        return Ok(None);
+) -> Result<CoverChoice, DbError> {
+    let versions = CoverVersionColumns {
+        local: (cover.cover_local_path, cover.cover_local_size, cover.cover_local_modified),
+        embedded_source: cover.cover_embedded_source,
+        embedded: (
+            cover.cover_embedded_size,
+            cover.cover_embedded_modified,
+            cover.cover_embedded_path,
+        ),
     };
-    let selection = cover.selection()?;
-    versions.choice(key, &selection).map(Some)
+    let selection = crate::tables::import_state::StoredCover::new(
+        cover.cover_kind,
+        cover.cover_file_id,
+        cover.cover_url,
+        cover.cover_source,
+        cover.cover_copies,
+    )
+    .selection()?;
+    versions.choice(key, &selection)
 }

@@ -119,6 +119,27 @@ pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<Stored
 }
 
 impl StoredReleaseLink {
+    /// The link a pane's read selects, as
+    /// [`super::state_fragments::CurrentState`] names it; none for an unlinked
+    /// candidate.
+    pub(crate) fn of(
+        state: &super::state_fragments::CurrentState,
+    ) -> Result<Option<Self>, DbError> {
+        let Some(content_hash) = state.link_row.clone() else {
+            return Ok(None);
+        };
+        Ok(Some(Self {
+            content_hash,
+            kind: super::required(state.link_kind.clone(), "link_kind")?,
+            source: state.link_source.clone(),
+            release_id: state.link_release_id.clone(),
+            partners: state.link_partners.clone(),
+            albums: state.link_albums.clone(),
+        }))
+    }
+}
+
+impl StoredReleaseLink {
     pub(crate) fn link(self) -> Result<ReleaseLink, DbError> {
         let Self { content_hash, kind, source, release_id, partners, albums } = self;
         let pairs = |json: &str, what: &str| {
