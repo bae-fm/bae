@@ -63,7 +63,8 @@ struct ForcedAppearanceTests {
         let controller = HostingWindowController(
             content:
                 content
-                .appearance(mode: mode, accent: .standard, tone: .standard),
+                .appearance(mode: mode, accent: .standard, tone: .standard)
+                .modalWindows(ModalWindows()),
             contentSize: CGSize(width: 100, height: 60),
             sizing: [],
             bridging: [],

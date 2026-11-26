@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 import Testing
 
@@ -14,7 +15,7 @@ struct HostingWindowControllerTests {
         weak var released: HostingWindowController?
         autoreleasepool {
             let controller = HostingWindowController(
-                content: Text(verbatim: "Window"),
+                content: Text(verbatim: "Window").modalWindows(ModalWindows()),
                 contentSize: CGSize(width: 200, height: 100),
                 sizing: [],
                 bridging: [],

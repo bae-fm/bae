@@ -150,7 +150,8 @@ struct ShotWindowPlacementTests {
         placement: WindowFrameAutosave.Opening
     ) -> HostingWindowController {
         HostingWindowController(
-            content: Color.clear.frame(width: size.width, height: size.height),
+            content: Color.clear.frame(width: size.width, height: size.height)
+                .modalWindows(ModalWindows()),
             contentSize: nil,
             sizing: [.minSize, .maxSize],
             bridging: [],

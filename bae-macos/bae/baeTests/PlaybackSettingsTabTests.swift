@@ -75,7 +75,8 @@ struct PlaybackSettingsTabTests {
                             castEnabled: true
                         )
                     )
-                    .environment(UiStore()),
+                    .environment(UiStore())
+                    .modalWindows(ModalWindows()),
                 contentSize: CGSize(width: 500, height: 300),
                 sizing: [],
                 bridging: [],
