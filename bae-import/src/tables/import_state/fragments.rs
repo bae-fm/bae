@@ -105,7 +105,8 @@ sqlive_compose::fragment!(
                 WHERE claimed.content_hash = (
                     SELECT scan.content_hash
                     FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
-                        AS scan))))) AS named
+                        AS scan)))),
+            excluding: (SELECT NULL WHERE 0)) AS named
         JOIN pick ON pick.pick = 'records')
     SELECT :key AS candidate_album_key, COALESCE(choice.kind, 'none') AS candidate_album_kind,
            album.*

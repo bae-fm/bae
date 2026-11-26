@@ -116,7 +116,7 @@ pub fn release_details_on<X>(
         cover_version = cover_version_sql("rel.id"),
         extra_columns =
             if extra_columns.is_empty() { String::new() } else { format!(", {extra_columns}") },
-        sending = super::queued_uploads::RELEASES_SENDING,
+        sending = super::queued_uploads::ReleasesSending::SQL,
         condition = set.condition(),
     );
     Ok(sql.query(&statement, params![set.id()], |row| {

@@ -23,15 +23,30 @@ pub(super) const RELEASE_HAS_QUEUED_FILE: &str = "SELECT EXISTS (SELECT 1 FROM r
 pub(super) const RELEASE_FILE_QUEUED: &str = "SELECT EXISTS (SELECT 1 FROM release_files AS f \
      JOIN coven_uploads AS upload ON upload.file = f.file WHERE f.id = ?1)";
 
-/// Each release with files this process is sending now, and how many. One
-/// row per upload in flight is read, each release file found by its file.
-pub const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
-     FROM coven_sending AS sending \
-     JOIN release_files AS f ON f.file = sending.file \
-     GROUP BY f.release_id";
+// Each release with files this process is sending now, and how many. One row
+// per upload in flight is read, each release file found by its file.
+sqlive_compose::fragment!(
+    ReleaseSending { files: i64 },
+    r#"
+    SELECT f.release_id, COUNT(*) AS files
+    FROM coven_sending AS sending
+    JOIN release_files AS f ON f.file = sending.file
+    GROUP BY f.release_id
+"#
+);
+
+// The releases [`ReleaseSending`] lists, whose SQL a statement built as text
+// holds.
+sqlive_compose::read!(
+    ReleasesSending,
+    r#"
+    SELECT sending.*
+    FROM @crate::records::queued_uploads::ReleaseSending AS sending
+"#
+);
 
 /// The counts of a release's upload, beside `release_storage storage` joined
-/// to [`RELEASES_SENDING`] as `sending`: how many of its files are queued,
+/// to [`ReleasesSending`] as `sending`: how many of its files are queued,
 /// how many of those only wait and how many are being sent, and how many are
 /// stored. [`release_upload_progress_in_row`] and [`release_upload_in_row`]
 /// map them.
@@ -49,7 +64,7 @@ macro_rules! release_upload_count_columns {
 pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 
 /// The columns a release's upload reads beside `release_storage storage`
-/// joined to [`RELEASES_SENDING`] as `sending`, which
+/// joined to [`ReleasesSending`] as `sending`, which
 /// [`release_upload_in_row`] maps: its counts
 /// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the name of the release file whose
 /// missing original a move of the release waits for, which the release's
@@ -58,31 +73,45 @@ pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 pub const RELEASE_UPLOAD_COLUMNS: &str =
     concat!(release_upload_count_columns!(), ", storage.missing_original_file");
 
-/// What holds the upload queue back, as one row: `upload_wait` names the
-/// wait ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the
-/// earliest time coven gives a file's wait to end. Each file's wait is
-/// coven's, as `coven_upload_phases` gives it, read once. The first that
-/// holds names the wait: `paused` while the person paused uploads;
-/// `sync_stopped` while sync isn't running; nothing while a file is being
-/// sent; `offline` while coven
-/// says the device has no usable network; `metered` while a file waits for
-/// an unmetered network; `retrying` while a file waits for its retry or a
-/// provider's cooldown to end. NULL when nothing holds the queue.
-pub const UPLOAD_QUEUE_HOLD: &str = "SELECT CASE \
-         WHEN pause.paused THEN 'paused' \
-         WHEN phases.not_syncing THEN 'sync_stopped' \
-         WHEN phases.sending THEN NULL \
-         WHEN (SELECT usable FROM coven_network) IS 0 THEN 'offline' \
-         WHEN phases.metered THEN 'metered' \
-         WHEN phases.wait_at IS NOT NULL THEN 'retrying' \
-     END AS upload_wait, phases.wait_at AS upload_wait_at \
-     FROM coven_upload_pause AS pause, (SELECT MAX(wait = 'not_syncing') AS not_syncing, \
-             MAX(phase = 'uploading') AS sending, \
-             MAX(wait = 'metered') AS metered, \
-             MIN(at) AS wait_at \
-         FROM coven_upload_phases) AS phases";
+// What holds the upload queue back, as one row: `upload_wait` names the wait
+// ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the earliest
+// time coven gives a file's wait to end. Each file's wait is coven's, as
+// `coven_upload_phases` gives it, read once. The first that holds names the
+// wait: `paused` while the person paused uploads; `sync_stopped` while sync
+// isn't running; nothing while a file is being sent; `offline` while coven
+// says the device has no usable network; `metered` while a file waits for an
+// unmetered network; `retrying` while a file waits for its retry or a
+// provider's cooldown to end. NULL when nothing holds the queue.
+sqlive_compose::fragment!(
+    UploadQueueHeld { upload_wait: Option<String>, upload_wait_at: Option<i64> },
+    r#"
+    SELECT CASE
+               WHEN pause.paused THEN 'paused'
+               WHEN phases.not_syncing THEN 'sync_stopped'
+               WHEN phases.sending THEN NULL
+               WHEN (SELECT usable FROM coven_network) IS 0 THEN 'offline'
+               WHEN phases.metered THEN 'metered'
+               WHEN phases.wait_at IS NOT NULL THEN 'retrying'
+           END AS upload_wait, phases.wait_at AS upload_wait_at
+    FROM coven_upload_pause AS pause,
+         (SELECT MAX(wait = 'not_syncing') AS not_syncing,
+                 MAX(phase = 'uploading') AS sending,
+                 MAX(wait = 'metered') AS metered,
+                 MIN(at) AS wait_at
+          FROM coven_upload_phases) AS phases
+"#
+);
 
-/// What holds the upload queue back, as [`UPLOAD_QUEUE_HOLD`] names it.
+// [`UploadQueueHeld`]'s row, whose SQL a statement built as text holds.
+sqlive_compose::read!(
+    UploadQueueHold,
+    r#"
+    SELECT held.*
+    FROM @crate::records::queued_uploads::UploadQueueHeld AS held
+"#
+);
+
+/// What holds the upload queue back, as [`UploadQueueHold`] names it.
 pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadQueueWait>> {
     let Some(wait) = row.get::<_, Option<String>>("upload_wait")? else {
         return Ok(None);
@@ -151,9 +180,10 @@ pub fn release_upload_on(
         .query_row(
             &format!(
                 "SELECT {RELEASE_UPLOAD_COLUMNS} FROM release_storage storage \
-                 LEFT JOIN ({RELEASES_SENDING}) sending \
+                 LEFT JOIN ({sending}) sending \
                      ON sending.release_id = storage.release_id \
-                 WHERE storage.release_id = ?1 AND storage.queued_count > 0"
+                 WHERE storage.release_id = ?1 AND storage.queued_count > 0",
+                sending = ReleasesSending::SQL,
             ),
             [release_id],
             release_upload_in_row,

@@ -1,7 +1,9 @@
 //! Reading and writing a release's records — every catalog's description of
 //! it.
 
+use super::fragments::library_status_of_columns;
 use super::*;
+use bae_store::{statement_optional, statement_rows};
 
 impl Records {
     /// Test seam: write a release's records outside the atomic import path,
@@ -27,7 +29,8 @@ impl Records {
     }
 
     /// The library album `records` file a release under, leaving out the
-    /// releases `excluding`, as [`album_records_name_sql`] names it.
+    /// releases `excluding`, as
+    /// [`AlbumRecordsName`](super::fragments::AlbumRecordsName) names it.
     pub async fn album_records_name(
         &self,
         records: &[bae_catalogs::records::ReleaseRecord],
@@ -72,7 +75,8 @@ impl Records {
     /// client that names the releases it asks about. The import pane's rows
     /// read whether the library holds them in their own statement.
     ///
-    /// [`library_status_sql`] says which albums each check finds.
+    /// [`LibraryStatusRows`](super::fragments::LibraryStatusRows) says which
+    /// albums each check finds.
     pub async fn check_releases_in_library(
         &self,
         checks: &[LibraryCheck],
@@ -197,21 +201,53 @@ pub(super) fn set_records_on(
 }
 
 /// The library album `records` file a release under, leaving out the
-/// releases `excluding`, as [`album_records_name_sql`] names it.
+/// releases `excluding`, as
+/// [`AlbumRecordsName`](super::fragments::AlbumRecordsName) names it.
 pub fn album_records_name_on(
     sql: &impl coven::SqlRead,
     records: &[bae_catalogs::records::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
-    let excluding = serde_json::Value::from(excluding.to_vec()).to_string();
-    Ok(sql
-        .query_row(
-            &album_records_name_sql(RECORDS_OF_JSON, ":excluding"),
-            rusqlite::named_params! { ":records": records_json(records), ":excluding": excluding },
-            |row| row.get(0),
-        )
-        .optional()?)
+    let named = statement_optional(
+        sql,
+        &AlbumRecordsNameOfJsonParams {
+            records: records_json(records),
+            excluding: serde_json::Value::from(excluding.to_vec()).to_string(),
+        },
+    )?;
+    Ok(named.map(|row| row.named.album_id))
 }
+
+// [`AlbumRecordsName`](super::fragments::AlbumRecordsName) over the records of
+// the JSON array `records` ([`records_json`]), leaving out the releases of the
+// JSON array `excluding`.
+sqlive_compose::read!(
+    AlbumRecordsNameOfJson(records: String, excluding: String),
+    r#"
+    SELECT named.*
+    FROM @crate::records::fragments::AlbumRecordsName(
+        records: (SELECT record.key, record.value ->> 0, record.value ->> 1,
+                         record.value ->> 2, record.value ->> 3
+                  FROM json_each(:records) AS record),
+        excluding: (SELECT left_out.value FROM json_each(:excluding) AS left_out)
+    ) AS named
+"#
+);
+
+// [`LibraryStatusRows`](super::fragments::LibraryStatusRows) over the checks
+// of the JSON array `checks`, each a `[release_id, catalog, group_id]`, in
+// its order.
+sqlive_compose::read!(
+    LibraryStatusOfJson(checks: String),
+    r#"
+    SELECT status.*
+    FROM @crate::records::fragments::LibraryStatusRows(checks: (
+        SELECT asked.key, asked.value ->> 0, asked.value ->> 1, asked.value ->> 2
+        FROM json_each(:checks) AS asked
+    )) AS status
+    ORDER BY status.position
+"#
+);
 
 /// The album a save files the release `release_id` under once its records
 /// are `records`, and the album it is in now, as
@@ -399,8 +435,8 @@ pub fn album_records_name_sql(records: &str, excluding: &str) -> String {
 }
 
 /// One statement answers every check: the caller passes the checks as one
-/// JSON array, and the statement that [`library_status_sql`] builds returns
-/// one row for each check, in check order.
+/// JSON array, and [`LibraryStatusOfJson`] returns one row for each check, in
+/// check order.
 fn check_releases_in_library_on(
     sql: &impl coven::SqlRead,
     checks: &[LibraryCheck],
@@ -408,7 +444,7 @@ fn check_releases_in_library_on(
     if checks.is_empty() {
         return Ok(Vec::new());
     }
-    let checks_json = serde_json::Value::Array(
+    let checks = serde_json::Value::Array(
         checks
             .iter()
             .map(|check| {
@@ -417,70 +453,10 @@ fn check_releases_in_library_on(
             .collect(),
     )
     .to_string();
-    Ok(sql.query(
-        &library_status_sql("SELECT key, value ->> 0, value ->> 1, value ->> 2 FROM json_each(?1)"),
-        params![checks_json],
-        library_status_of,
-    )?)
-}
-
-/// The statement that says which library albums hold each release that
-/// `checks` selects, as `(position, release_id, catalog, group_id)`: a
-/// catalog's release and the album (MusicBrainz release group, Discogs
-/// master) that the catalog files the release under, `group_id` NULL for
-/// none.
-///
-/// The statement matches each check by plain equality on the index its kind
-/// of record has (its pressing on `idx_release_records_catalog_key`, its
-/// album on `idx_release_records_catalog_album`) and returns one row for each
-/// check, in `position` order, holding its albums as a JSON array, those
-/// holding its pressing first, then by age. [`library_status_of`] reads a
-/// row.
-pub fn library_status_sql(checks: &str) -> String {
-    format!(
-        r#"
-            WITH checks(position, release_id, catalog, group_id) AS ({checks}),
-            matches(position, album_id, holds_release) AS (
-                SELECT checks.position, r.album_id, 1
-                FROM checks
-                JOIN release_records rr
-                  ON rr.catalog = checks.catalog
-                 AND rr.kind = 'pressing'
-                 AND rr.key = checks.release_id
-                JOIN releases r ON r.id = rr.release_id
-                UNION ALL
-                SELECT checks.position, r.album_id, 0
-                FROM checks
-                JOIN release_records rr
-                  ON rr.catalog = checks.catalog
-                 AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = checks.group_id
-                JOIN releases r ON r.id = rr.release_id
-                WHERE checks.group_id IS NOT NULL
-            ),
-            found AS MATERIALIZED (
-                SELECT matches.position, a.id AS album_id, a.title AS album_title,
-                       a.created_at, MAX(matches.holds_release) AS holds_release
-                FROM matches
-                JOIN albums a ON a.id = matches.album_id
-                GROUP BY matches.position, a.id
-            )
-            SELECT checks.release_id,
-                   (SELECT json_group_array(json_object(
-                        'album_id', found.album_id,
-                        'album_title', found.album_title,
-                        'holds_release', found.holds_release)
-                        ORDER BY found.holds_release DESC, found.created_at, found.album_id)
-                    FROM found WHERE found.position = checks.position) AS albums
-            FROM checks
-            ORDER BY checks.position
-        "#
-    )
-}
-
-/// The library status one row of [`library_status_sql`] holds.
-pub fn library_status_of(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryStatus> {
-    let albums: Vec<StoredAlbumMatch> = bae_store::read::json_column(row, "albums")?;
-    Ok(library_status_from(row.get("release_id")?, albums))
+    statement_rows(sql, &LibraryStatusOfJsonParams { checks })?
+        .into_iter()
+        .map(|row| library_status_of_columns(row.status.release_id, &row.status.albums))
+        .collect()
 }
 
 /// The library status of `release_id` whose `albums` the check's statement

@@ -48,7 +48,7 @@ sqlive_compose::fragment!(
 
 sqlive_compose::fragment!(
     LibraryStatusRows with checks(position INTEGER, release_id TEXT, catalog TEXT, group_id TEXT)
-        { release_id: String, albums: String },
+        { position: i64, release_id: String, albums: String },
     r#"
     WITH matches(position, album_id, holds_release) AS (
         SELECT checks.position, release.album_id, 1
@@ -75,7 +75,7 @@ sqlive_compose::fragment!(
         JOIN albums AS album ON album.id = matches.album_id
         GROUP BY matches.position, album.id
     )
-    SELECT checks.release_id,
+    SELECT checks.position, checks.release_id,
            COALESCE((SELECT json_group_array(json_object(
                                 'album_id', found.album_id,
                                 'album_title', found.album_title,
@@ -101,7 +101,7 @@ pub fn library_status_of_columns(
 sqlive_compose::fragment!(
     AlbumRecordsName with records(
         position INTEGER, catalog TEXT, kind TEXT, key TEXT, album_key TEXT
-    ) { album_id: String },
+    ), excluding(release_id TEXT) { album_id: String },
     r#"
     WITH refs AS (
         SELECT position,
@@ -123,12 +123,14 @@ sqlive_compose::fragment!(
           ON rr.catalog = o.pressing_catalog AND rr.kind = 'pressing'
          AND rr.key = o.pressing_key
         JOIN releases AS r ON r.id = rr.release_id
+        WHERE rr.release_id NOT IN (SELECT excluding.release_id FROM excluding)
         UNION ALL
         SELECT o.position, o.own, r.album_id, 1 AS match_rank FROM owned AS o
         JOIN release_records AS rr
           ON rr.catalog = o.album_catalog
          AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = o.album_key
         JOIN releases AS r ON r.id = rr.release_id
+        WHERE rr.release_id NOT IN (SELECT excluding.release_id FROM excluding)
     ) AS named
     JOIN albums AS a ON a.id = named.album_id
     ORDER BY named.position, named.match_rank, a.id IS named.own DESC, a.created_at, a.id

@@ -9,7 +9,7 @@ use crate::album_detail::StoragePage;
 use crate::album_detail::StorageRow;
 use crate::storage_actions::{selection_action_columns, storage_action_columns};
 use bae_records::records::queued_uploads::{
-    upload_queue_wait_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS, UPLOAD_QUEUE_HOLD,
+    upload_queue_wait_in_row, ReleasesSending, UploadQueueHold, RELEASE_UPLOAD_COLUMNS,
 };
 
 impl LibraryViews {
@@ -277,7 +277,8 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
         &format!(
             "SELECT EXISTS (SELECT 1 FROM coven_upload_queue), \
                  hold.upload_wait, hold.upload_wait_at \
-             FROM ({UPLOAD_QUEUE_HOLD}) AS hold"
+             FROM ({hold}) AS hold",
+            hold = UploadQueueHold::SQL,
         ),
         [],
         |row| {
@@ -450,7 +451,8 @@ fn storage_row_joins() -> String {
         "CROSS JOIN release_storage storage ON storage.release_id = listing.release_id \
          JOIN releases r ON r.id = listing.release_id \
          JOIN albums a ON a.id = listing.album_id \
-         LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = listing.release_id"
+         LEFT JOIN ({sending}) sending ON sending.release_id = listing.release_id",
+        sending = ReleasesSending::SQL,
     )
 }
 

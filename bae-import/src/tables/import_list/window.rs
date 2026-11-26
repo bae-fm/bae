@@ -38,7 +38,7 @@ use crate::RelativeFolder;
 use crate::{CandidateKey, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
 use bae_catalogs::records::ReleaseRecord;
 use bae_records::records::queued_uploads::{
-    release_upload_progress_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COUNT_COLUMNS,
+    release_upload_progress_in_row, ReleasesSending, RELEASE_UPLOAD_COUNT_COLUMNS,
 };
 use bae_records::records::read::{
     records_column, release_records_json_sql, release_records_kind_sql,
@@ -358,11 +358,12 @@ fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) 
          LEFT JOIN import_candidate_cover AS cover ON cover.content_hash = s.content_hash \
          LEFT JOIN release_storage AS storage \
              ON storage.release_id = origin.release_id AND storage.queued_count > 0 \
-         LEFT JOIN ({RELEASES_SENDING}) AS sending ON sending.release_id = storage.release_id \
+         LEFT JOIN ({releases_sending}) AS sending ON sending.release_id = storage.release_id \
          {covers} \
          {invalid_join} \
          ORDER BY w.n",
         cover = cover_read_columns(),
+        releases_sending = ReleasesSending::SQL,
         library_cover = bae_records::records::files::cover_version_sql("origin.release_id"),
         library_records = release_records_json_sql("origin.release_id"),
         library_records_kind = release_records_kind_sql("origin.release_id"),
