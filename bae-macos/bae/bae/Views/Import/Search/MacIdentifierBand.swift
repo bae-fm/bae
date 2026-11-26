@@ -86,7 +86,8 @@ struct MacIdentifierBand: View {
             label: label,
             value: disc.discId,
             style: MacIdentifierChipStyle(disc.chip.look),
-            onPress: { onToggleLookup(.toggleDiscId) }
+            onPress: { onToggleLookup(.toggleDiscId) },
+            separatesTrailing: disc.chip.trailing.isFailed
         ) {
             ChipTrailing(state: disc.chip.trailing, onRetry: onRetryFailed)
         }
@@ -116,7 +117,10 @@ struct MacIdentifierBand: View {
                     label: label,
                     value: row.value,
                     style: MacIdentifierChipStyle(row.chip.look),
-                    onPress: { onToggleLookup(.toggleBarcode(code: row.value)) }
+                    onPress: {
+                        onToggleLookup(.toggleBarcode(code: row.value))
+                    },
+                    separatesTrailing: row.chip.trailing.isFailed
                 ) {
                     ChipTrailing(
                         state: row.chip.trailing,
@@ -150,7 +154,8 @@ struct MacIdentifierBand: View {
                     label: label,
                     value: row.value,
                     style: MacIdentifierChipStyle(row.chip.look),
-                    onPress: { onToggleCatalogAgreement(row.value) }
+                    onPress: { onToggleCatalogAgreement(row.value) },
+                    separatesTrailing: row.chip.trailing.isFailed
                 ) {
                     ChipTrailing(
                         state: row.chip.trailing,

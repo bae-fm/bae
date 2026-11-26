@@ -41,7 +41,8 @@ extension ShotScene {
             MacIdentifierChip(
                 label: "Barcode",
                 value: sampleBarcode,
-                onPress: {}
+                onPress: {},
+                separatesTrailing: true
             ) {
                 ChipTrailing(
                     state: .failed(failure: .timeout),

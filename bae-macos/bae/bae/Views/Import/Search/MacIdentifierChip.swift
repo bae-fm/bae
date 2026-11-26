@@ -79,11 +79,30 @@ struct MacIdentifierChip<Trailing: View>: View {
     /// and value stay separate elements for accessibility, as the board draws
     /// them.
     var onPress: (() -> Void)?
+    /// Whether the trailing part holds controls of its own, a failed chip's
+    /// Retry. Then the chip is a box of two controls, the toggle that holds
+    /// the label and value, and the trailing part beside it, since one button
+    /// cannot hold another.
+    var separatesTrailing = false
     @ViewBuilder
     let trailing: Trailing
 
     var body: some View {
-        if let onPress {
+        if let onPress, separatesTrailing {
+            MacIdentifierChipFrame(style: style) {
+                // The label and value stay elements of their own, which a
+                // button around them would hide, so the toggle is the
+                // parts' own action.
+                HStack(spacing: ThemeSpace.compact) { parts }
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onPress)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAction(.default, onPress)
+                trailing
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+        else if let onPress {
             Button(action: onPress) { content }
                 .buttonStyle(.accentPlain)
         }
@@ -94,15 +113,21 @@ struct MacIdentifierChip<Trailing: View>: View {
 
     private var content: some View {
         MacIdentifierChipFrame(style: style, containsParts: style != .dash) {
-            IdentifierLabel(text: label, style: style)
-            if let list = values {
-                MacIdentifierMoreValues(list: list, style: style)
-            }
-            else if let value {
-                IdentifierValueText(value: value, style: style)
-            }
+            parts
             trailing
                 .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    /// The label and what the chip holds.
+    @ViewBuilder
+    private var parts: some View {
+        IdentifierLabel(text: label, style: style)
+        if let list = values {
+            MacIdentifierMoreValues(list: list, style: style)
+        }
+        else if let value {
+            IdentifierValueText(value: value, style: style)
         }
     }
 }
@@ -320,9 +345,18 @@ struct ChipTrailing: View {
                         .foregroundStyle(Theme.accent)
                 }
                 .buttonStyle(.accentPlain)
+                .accessibilityLabel("Retry")
                 .help("Retry")
             }
         }
+    }
+}
+
+extension BridgeChipTrailing {
+    /// Whether the trailing part is a failure with its own Retry button.
+    var isFailed: Bool {
+        if case .failed = self { return true }
+        return false
     }
 }
 
