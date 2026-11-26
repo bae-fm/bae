@@ -3,6 +3,8 @@
 .bae-preview { margin: 0; padding: var(--space-edge); background: var(--elevated); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); display: flex; flex-direction: column; gap: var(--space-group); }
 .bae-preview-android { font-family: var(--font-android); background: var(--background); }
 .bae-preview-row { display: flex; align-items: center; gap: var(--space-edge); }
+/* Each row and its cell start on a whole point, as the app's shot starts its view: a row's length along the page's flow rounds up to the next whole point, and the cell sits at the row's top, so no centring moves it off the point. */
+.bae-preview-row { flex-basis: calc-size(max-content, round(up, size, 1px)); }
 .bae-preview-row-wide { align-items: flex-start; }
 .bae-preview-row-wide > .bae-preview-name { padding-top: calc(var(--space-compact) + var(--space-hairline)); }
 /* A wide row's component fills its cell's width, unless the component or its wrapper sets a width of its own. */
@@ -14,7 +16,7 @@
 /* An Android wide row draws at the phone's width, 412dp, as the app's screen shots take it. */
 .bae-preview-android .bae-preview-row-wide > .bae-preview-cell { flex: none; width: 412px; }
 .bae-preview-name { width: 110px; flex: none; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
-.bae-preview-cell { flex: 1; min-width: 0; display: flex; align-items: center; }
+.bae-preview-cell { flex: 1; min-width: 0; align-self: flex-start; display: flex; align-items: center; }
 .bae-preview-slot { padding: var(--space-group); border: 1px dashed var(--hairline-strong); border-radius: var(--radius-card); color: var(--text-secondary); }
 .bae-m-switch { position: relative; width: 32px; height: 18px; flex: none; border: 0; border-radius: 999px; padding: 0; cursor: pointer; background: var(--tile); }
 .bae-m-switch-on { background: var(--accent-fill); }
