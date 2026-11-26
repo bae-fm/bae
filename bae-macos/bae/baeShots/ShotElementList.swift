@@ -86,6 +86,7 @@ struct ShotElementList: Encodable {
     static func read(
         board: String,
         window: NSWindow,
+        modals: ModalWindows,
         size: CGSize,
         scale: Int
     ) throws -> Self {
@@ -96,8 +97,7 @@ struct ShotElementList: Encodable {
         // window's own content holds, and an alert or an open menu after
         // everything. The window under a layer that another layer covers is
         // out of reach, as a board lists it.
-        let layers = ModalWindows.shared.layerPanels
-        let modals = ModalWindows.shared
+        let layers = modals.layerPanels
         let windowRoot = tree.nodes.lastIndex { $0.parent == nil }
         for panel in modals.panels
         where !layers.contains(where: {

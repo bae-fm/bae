@@ -51,11 +51,12 @@ enum ShotRenderer {
         defaults.set(tone.rawValue, forKey: "appearance.tone")
         defer { defaults.removePersistentDomain(forName: suite) }
         // A layer that fades in would be captured partway.
-        ModalWindows.shared.fades = false
+        let modals = ModalWindows(fades: false)
         let stage = try scene.stage()
         let rootView = scene.frame.applyTitleBar(to: stage.view)
             .appAppearance()
             .shotSettings(defaults)
+            .modalWindows(modals)
         let (window, captured) = try hostWindow(
             rootView,
             for: scene,
@@ -102,7 +103,8 @@ enum ShotRenderer {
             window,
             host: captured,
             scene: scene,
-            windowScene: windowScene
+            windowScene: windowScene,
+            modals: modals
         )
     }
 
@@ -111,21 +113,21 @@ enum ShotRenderer {
         _ window: NSWindow,
         host: NSView,
         scene: ShotScene,
-        windowScene: WindowScene?
+        windowScene: WindowScene?,
+        modals: ModalWindows
     ) async throws -> Capture {
         let pixels: Data
         if let windowScene {
             // The app shows the alerts a few run loop passes after AppKit
             // orders the window in, so the renderer waits for them before it
             // makes the top one key.
-            let alerts = try await alertPanels()
-            let sheets = window.attachedSheet.map { [$0] } ?? []
-            try await becomeKey(window, scene: scene)
+            let alerts = try await alertPanels(of: modals)
+            try await becomeKey(window, modals: modals, scene: scene)
             logFocus(of: window, scene: scene)
             pixels = try await windowPNG(
                 of: window,
-                sheets: sheets,
                 alerts: alerts,
+                modals: modals,
                 on: windowScene.display,
                 scene: scene
             )
@@ -140,6 +142,7 @@ enum ShotRenderer {
             elements: try ShotElementList.read(
                 board: scene.id,
                 window: window,
+                modals: modals,
                 size: host.bounds.size,
                 scale: scale
             )

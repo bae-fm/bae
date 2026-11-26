@@ -54,7 +54,21 @@
         var layerEnvironment = LayerEnvironment()
     }
 
+    extension EnvironmentValues {
+        /// The stack of modal panels that this window's host made, which
+        /// every alert and layer presented from the window sits on.
+        @Entry
+        var modalWindows: ModalWindows?
+    }
+
     extension View {
+        /// This view with `stack` as the stack that every alert and layer it
+        /// presents sits on. Whoever hosts a window makes the stack and gives
+        /// it here; a stack serves every window of one host.
+        public func modalWindows(_ stack: ModalWindows) -> some View {
+            environment(\.modalWindows, stack)
+        }
+
         /// Shows `layers` over this view, the first of the ones that are new
         /// first, each over the one before. A layer is withdrawn when it
         /// leaves `layers` or this view disappears. Each draws with the values
@@ -107,6 +121,7 @@
         }
 
         weak var view: NSView?
+        var modals: ModalWindows?
         /// What the presenting view asked for last: its layers, the values
         /// they draw with and the look of the window they sit on.
         private struct Wanted {
@@ -151,7 +166,11 @@
             guard !gone, let latest, let view, view.window != nil else {
                 return
             }
-            let modals = ModalWindows.shared
+            guard let modals else {
+                preconditionFailure(
+                    "A layer is presented in a window whose host gave no modal stack (modalWindows(_:))"
+                )
+            }
             let wanted = Set(latest.layers.map(\.id))
             for key in order.reversed() where !wanted.contains(key) {
                 if let layer = live.removeValue(forKey: key) {
@@ -195,7 +214,7 @@
         func withdrawShown() {
             for key in order.reversed() {
                 if let layer = live[key] {
-                    ModalWindows.shared.withdraw(id: layer.id)
+                    modals?.withdraw(id: layer.id)
                 }
             }
             live = [:]
@@ -212,6 +231,8 @@
 
     private struct LayerAnchor: NSViewRepresentable {
         let layers: [MacLayer]
+        @Environment(\.modalWindows)
+        private var modals
         @Environment(\.layerEnvironment)
         private var environment
         @Environment(\.surfaceTone)
@@ -235,6 +256,7 @@
 
         func updateNSView(_ view: NSView, context: Context) {
             context.coordinator.view = view
+            context.coordinator.modals = modals
             context.coordinator.update(
                 layers: layers,
                 environment: environment,

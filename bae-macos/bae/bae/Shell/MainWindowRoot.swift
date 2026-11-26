@@ -53,6 +53,7 @@ struct MainWindowRoot: View {
                 searchFocusRequests: searchFocusRequests
             )
         }
+        .modalWindows(appDelegate.modalWindows)
     }
 
     /// The welcome flow in the mode a menu item asked for, showing

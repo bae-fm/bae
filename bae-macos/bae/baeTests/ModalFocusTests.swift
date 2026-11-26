@@ -11,6 +11,9 @@ import Testing
 @MainActor
 @Suite("Modal focus", .serialized)
 struct ModalFocusTests {
+    /// The stack the test's window presents on.
+    let modals = ModalWindows()
+
     private static let underneath: Set<String> = ["Under one", "Under two"]
 
     /// What the host window shows over its two buttons.
@@ -26,6 +29,7 @@ struct ModalFocusTests {
         @Bindable
         var presented: Presented
         let images: ImageStore
+        let modals: ModalWindows
 
         var body: some View {
             VStack {
@@ -49,6 +53,7 @@ struct ModalFocusTests {
                 )
             }
             .layerEnvironment { $0.environment(images) }
+            .modalWindows(modals)
         }
     }
 
@@ -73,7 +78,7 @@ struct ModalFocusTests {
         let presented = Presented()
         let size = NSSize(width: 600, height: 400)
         try await SnapshotTestSupport.withHostedWindow(
-            Host(presented: presented, images: try images()),
+            Host(presented: presented, images: try images(), modals: modals),
             size: size
         ) { window, host in
             // A failed test closes what it opened too, since the next test
@@ -91,7 +96,7 @@ struct ModalFocusTests {
                 attached: false
             )
             presented.alert = false
-            try await LayerPanels.closed()
+            try await LayerPanels.closed(modals)
             if let failure { throw failure }
         }
     }
@@ -99,7 +104,7 @@ struct ModalFocusTests {
     /// The window that holds the keyboard: the top panel, or the sheet
     /// attached to `window`.
     private func keyed(_ window: NSWindow) -> NSWindow {
-        ModalWindows.shared.panels.last ?? window.attachedSheet ?? window
+        modals.panels.last ?? window.attachedSheet ?? window
     }
 
     /// Whether `window` holds a focused element named one of `names`.
@@ -220,7 +225,7 @@ struct ModalFocusTests {
     func sheet() async throws {
         try await withHost { window, host, presented in
             presented.layers = [sheetLayer()]
-            _ = try await LayerPanels.top()
+            _ = try await LayerPanels.top(modals)
             try await checkFocusInside(window, host: host, layer: "sheet")
         }
     }
@@ -229,7 +234,7 @@ struct ModalFocusTests {
     func document() async throws {
         try await withHost { window, host, presented in
             presented.layers = [documentLayer()]
-            _ = try await LayerPanels.top()
+            _ = try await LayerPanels.top(modals)
             try await checkFocusInside(window, host: host, layer: "document")
         }
     }
@@ -238,7 +243,7 @@ struct ModalFocusTests {
     func folderLightbox() async throws {
         try await withHost { window, host, presented in
             presented.layers = [folderLightboxLayer()]
-            _ = try await LayerPanels.top()
+            _ = try await LayerPanels.top(modals)
             try await checkFocusInside(window, host: host, layer: "lightbox")
         }
     }
@@ -247,7 +252,7 @@ struct ModalFocusTests {
     func changeCover() async throws {
         try await withHost { window, host, presented in
             presented.layers = [changeCoverLayer(opensOnLightbox: false)]
-            _ = try await LayerPanels.top()
+            _ = try await LayerPanels.top(modals)
             try await checkFocusInside(window, host: host, layer: "cover")
         }
     }

@@ -168,6 +168,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var settingsWindow: HostingWindowController?
     @ObservationIgnored
     var storageManagerWindow: HostingWindowController?
+    /// The stack of modal panels that every window of the app presents its
+    /// alerts and layers on.
+    @ObservationIgnored
+    let modalWindows = ModalWindows()
     /// The main menu's File ▸ Open Library.
     @ObservationIgnored
     let openLibraryMenu = OpenLibraryMenu()

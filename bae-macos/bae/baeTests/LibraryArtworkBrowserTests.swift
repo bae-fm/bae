@@ -7,6 +7,9 @@ import Testing
 
 @MainActor
 struct LibraryArtworkBrowserTests {
+    /// The stack the test's window presents its layers on.
+    let modals = ModalWindows()
+
     /// Space opens the image the grid focuses, the release's cover, in the
     /// lightbox, and Escape brings the grid back with the keyboard on it,
     /// without looking the covers up again; Return then saves the image the
@@ -39,13 +42,13 @@ struct LibraryArtworkBrowserTests {
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.space, in: host)
                 try await Wait.until { lightbox.ended() }
-                let panel = try await LayerPanels.top()
+                let panel = try await LayerPanels.top(modals)
                 try await LayerPanels.focused(panel)
                 try await SnapshotTestSupport.settle(
                     try LayerPanels.content(of: panel)
                 )
                 try HostedInput.keyDown(.escape, in: panel)
-                try await LayerPanels.closed()
+                try await LayerPanels.closed(modals)
                 try await SnapshotTestSupport.settle(host)
                 #expect(!dismissed)
                 try HostedInput.keyDown(.rightArrow, in: window)
@@ -137,6 +140,7 @@ extension LibraryArtworkBrowserTests {
                     onDone: calls.onDone
                 )
                 .layerEnvironment { $0.environment(images) }
+                .modalWindows(modals)
                 .environment(
                     Importer(coverGallery: {
                         .fixed(gallery, delivered: delivered)

@@ -130,6 +130,7 @@ struct ShotElementListTests {
         let list = try ShotElementList.read(
             board: "a titled window",
             window: window,
+            modals: ModalWindows(),
             size: size,
             scale: 2
         )

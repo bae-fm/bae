@@ -9,13 +9,17 @@ import Testing
 @MainActor
 @Suite("Error alert window choice", .serialized)
 struct ErrorAlertWindowTests {
+    /// The stack that every window of the test presents on.
+    let modals = ModalWindows()
+
     /// A window that can host the shared error alert.
     private struct Window: View {
         let uiStore: UiStore
         let kind: ErrorAlertWindow
+        let modals: ModalWindows
 
         var body: some View {
-            Color.clear.errorAlert(uiStore, in: kind)
+            Color.clear.errorAlert(uiStore, in: kind).modalWindows(modals)
         }
     }
 
@@ -24,20 +28,20 @@ struct ErrorAlertWindowTests {
         let uiStore = UiStore()
         let size = NSSize(width: 600, height: 400)
         try await SnapshotTestSupport.withHostedWindow(
-            Window(uiStore: uiStore, kind: .settings),
+            Window(uiStore: uiStore, kind: .settings, modals: modals),
             size: size
         ) { back, _ in
             back.identifier = ErrorAlertWindow.settings.identifier
             try await SnapshotTestSupport.withHostedWindow(
-                Window(uiStore: uiStore, kind: .main),
+                Window(uiStore: uiStore, kind: .main, modals: modals),
                 size: size
             ) { front, _ in
                 front.identifier = ErrorAlertWindow.main.identifier
                 uiStore.showError("Could not reach the cloud.")
                 defer { uiStore.clearError() }
                 try await SnapshotTestSupport.untilWindows {
-                    ModalWindows.shared.panels.contains {
-                        ModalWindows.shared.parent(of: $0) === front
+                    modals.panels.contains {
+                        modals.parent(of: $0) === front
                     }
                 }
                 try await Wait.nextIdle(
@@ -48,7 +52,7 @@ struct ErrorAlertWindowTests {
                     line: #line
                 )
                 #expect(
-                    autoreleasepool { ModalWindows.shared.panels.count } == 1
+                    autoreleasepool { modals.panels.count } == 1
                 )
                 #expect(autoreleasepool { back.childWindows?.isEmpty } ?? true)
 
@@ -57,15 +61,15 @@ struct ErrorAlertWindowTests {
                     in: .settings
                 )
                 try await SnapshotTestSupport.untilWindows {
-                    ModalWindows.shared.panels.contains {
-                        ModalWindows.shared.parent(of: $0) === back
+                    modals.panels.contains {
+                        modals.parent(of: $0) === back
                     }
                 }
-                #expect(ModalWindows.shared.panels.count == 1)
+                #expect(modals.panels.count == 1)
                 #expect(autoreleasepool { front.childWindows?.isEmpty } ?? true)
                 uiStore.clearError()
                 try await SnapshotTestSupport.untilWindows {
-                    ModalWindows.shared.panels.isEmpty
+                    modals.panels.isEmpty
                 }
             }
         }

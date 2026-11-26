@@ -94,9 +94,13 @@
 
     private struct LayerRoot: View {
         let model: LayerModel
+        let modals: ModalWindows
 
         var body: some View {
             model.environment.install(on: model.content())
+                // A layer or alert that this layer's content presents sits
+                // on the same stack.
+                .modalWindows(modals)
                 // A layer that this layer's content presents takes the same
                 // values.
                 .environment(\.layerEnvironment, model.environment)
@@ -179,10 +183,13 @@
     /// parent key. Withdrawing an entry first withdraws every entry above it.
     @MainActor
     public final class ModalWindows {
-        public static let shared = ModalWindows()
+        /// Whether layers fade in and out. A host that captures a layer
+        /// partway through its fade turns this off.
+        public let fades: Bool
 
-        /// Whether layers fade in and out.
-        public var fades = true
+        public init(fades: Bool = true) {
+            self.fades = fades
+        }
 
         /// What an entry is.
         private enum Kind {
@@ -326,7 +333,9 @@
             guard let parent = target(over: window) else {
                 preconditionFailure("There is no window to show a layer over")
             }
-            let host = NSHostingView(rootView: LayerRoot(model: model))
+            let host = NSHostingView(
+                rootView: LayerRoot(model: model, modals: self)
+            )
             host.sizingOptions = []
             host.wantsLayer = true
             host.layer?.cornerRadius = placement.cornerRadius

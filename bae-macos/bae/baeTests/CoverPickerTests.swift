@@ -7,6 +7,9 @@ import Testing
 
 @Suite("Cover picker")
 struct CoverPickerTests {
+    /// The stack the test's window presents its layers on.
+    let modals = ModalWindows()
+
     private actor CoverRecorder {
         var reads: [String] = []
         var selected: BridgeCoverSelection?
@@ -47,6 +50,7 @@ struct CoverPickerTests {
                 onDone: {}
             )
             .layerEnvironment { $0.environment(images) }
+            .modalWindows(modals)
             .environment(
                 Importer(coverGallery: { .fixed(gallery(of: release)) })
             )

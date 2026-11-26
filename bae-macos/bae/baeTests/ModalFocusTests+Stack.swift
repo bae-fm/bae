@@ -12,8 +12,8 @@ extension ModalFocusTests {
             autoreleasepool { NSApp.activate(ignoringOtherApps: true) }
             #expect(await holds { NSApp.isActive }, "the app is active")
             presented.layers = [sheetLayer()]
-            let panel = try await LayerPanels.top()
-            #expect(ModalWindows.shared.parent(of: panel) === window)
+            let panel = try await LayerPanels.top(modals)
+            #expect(modals.parent(of: panel) === window)
             #expect(panel.frame == window.frame)
             #expect(!panel.hidesOnDeactivate)
             #expect(await holds { panel.isKeyWindow }, "the layer is key")
@@ -46,7 +46,7 @@ extension ModalFocusTests {
                     Color.red
                 }
             ]
-            let panel = try await LayerPanels.top()
+            let panel = try await LayerPanels.top(modals)
             let view = try #require(window.contentView)
             let frame = window.convertToScreen(
                 view.convert(view.bounds, to: nil)
@@ -63,23 +63,23 @@ extension ModalFocusTests {
             autoreleasepool { NSApp.activate(ignoringOtherApps: true) }
             presented.layers = [sheetLayer(), documentLayer()]
             try await SnapshotTestSupport.untilWindows {
-                ModalWindows.shared.layerPanels.count == 2
+                modals.layerPanels.count == 2
             }
-            let panels = ModalWindows.shared.layerPanels
-            #expect(ModalWindows.shared.parent(of: panels[0]) === window)
-            #expect(ModalWindows.shared.parent(of: panels[1]) === panels[0])
+            let panels = modals.layerPanels
+            #expect(modals.parent(of: panels[0]) === window)
+            #expect(modals.parent(of: panels[1]) === panels[0])
 
             presented.alert = true
             try await SnapshotTestSupport.untilWindows {
-                ModalWindows.shared.panels.count == 3
+                modals.panels.count == 3
             }
-            let alert = try #require(ModalWindows.shared.panels.last)
-            #expect(ModalWindows.shared.parent(of: alert) === panels[1])
+            let alert = try #require(modals.panels.last)
+            #expect(modals.parent(of: alert) === panels[1])
             #expect(await holds { alert.isKeyWindow })
 
             presented.layers = [sheetLayer()]
             #expect(
-                await holds { ModalWindows.shared.panels == [panels[0]] },
+                await holds { modals.panels == [panels[0]] },
                 "the alert and the layer over it are withdrawn"
             )
             #expect(
@@ -87,7 +87,7 @@ extension ModalFocusTests {
                 "the key went back to the window under them"
             )
             presented.layers = []
-            try await LayerPanels.closed()
+            try await LayerPanels.closed(modals)
         }
     }
 
@@ -117,12 +117,14 @@ extension ModalFocusTests {
     private struct EnvironmentHost: View {
         let uiStore: UiStore
         let presented: Presented
+        let modals: ModalWindows
 
         var body: some View {
             Color.clear
                 .frame(width: 400, height: 300)
                 .macLayers(presented.layers)
                 .layerEnvironment { $0.environment(uiStore) }
+                .modalWindows(modals)
                 .environment(\.colorScheme, .dark)
         }
     }
@@ -138,10 +140,14 @@ extension ModalFocusTests {
             MacLayer(id: "probe") { EnvironmentProbe() }
         ]
         try await SnapshotTestSupport.withHostedWindow(
-            EnvironmentHost(uiStore: uiStore, presented: presented),
+            EnvironmentHost(
+                uiStore: uiStore,
+                presented: presented,
+                modals: modals
+            ),
             size: NSSize(width: 400, height: 300)
         ) { _, _ in
-            let panel = try await LayerPanels.top()
+            let panel = try await LayerPanels.top(modals)
             try await SnapshotTestSupport.settle(
                 try LayerPanels.content(of: panel)
             )
@@ -153,7 +159,7 @@ extension ModalFocusTests {
                 "the layer reads the store its host installs and the window's scheme: \(tree.nodes.map { Self.words(of: $0) })"
             )
             presented.layers = []
-            try await LayerPanels.closed()
+            try await LayerPanels.closed(modals)
         }
     }
 
@@ -173,7 +179,7 @@ extension ModalFocusTests {
     func layerTreeHoldsWhatTheViewSets() async throws {
         try await withHost { _, _, presented in
             presented.layers = [MacLayer(id: "styled") { StyledLayer() }]
-            let panel = try await LayerPanels.top()
+            let panel = try await LayerPanels.top(modals)
             try await SnapshotTestSupport.settle(
                 try LayerPanels.content(of: panel)
             )
@@ -212,7 +218,7 @@ extension ModalFocusTests {
                     MacModal(onDismiss: {}) { PasteLayer() }
                 }
             ]
-            let panel = try await LayerPanels.top()
+            let panel = try await LayerPanels.top(modals)
             #expect(await holds { panel.isKeyWindow }, "the layer is key")
             let pasteboard = NSPasteboard.general
             let saved = pasteboard.string(forType: .string)

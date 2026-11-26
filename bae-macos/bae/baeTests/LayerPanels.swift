@@ -6,12 +6,15 @@ import Testing
 /// the tests read where the layer's controls live.
 @MainActor
 enum LayerPanels {
-    /// The panel of the layer on top, once `count` layers are showing.
-    static func top(count: Int = 1) async throws -> NSPanel {
+    /// The panel of the layer on top of `modals`, once `count` layers are showing.
+    static func top(
+        _ modals: ModalWindows,
+        count: Int = 1
+    ) async throws -> NSPanel {
         try await SnapshotTestSupport.untilWindows {
-            ModalWindows.shared.layerPanels.count >= count
+            modals.layerPanels.count >= count
         }
-        return try #require(ModalWindows.shared.layerPanels.last)
+        return try #require(modals.layerPanels.last)
     }
 
     /// Waits until something in `panel` has the keyboard focus, which a layer's
@@ -24,9 +27,9 @@ enum LayerPanels {
     }
 
     /// Waits until no layer is showing.
-    static func closed() async throws {
+    static func closed(_ modals: ModalWindows) async throws {
         try await SnapshotTestSupport.untilWindows {
-            ModalWindows.shared.layerPanels.isEmpty
+            modals.layerPanels.isEmpty
         }
     }
 

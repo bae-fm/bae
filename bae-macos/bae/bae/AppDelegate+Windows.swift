@@ -30,7 +30,8 @@ extension AppDelegate {
                     checkForUpdatesViewModel: requiredApplicationServices
                         .checkForUpdatesViewModel
                 )
-                .appAppearance(),
+                .appAppearance()
+                .modalWindows(modalWindows),
                 // Fixed at what the content asks for.
                 contentSize: nil,
                 sizing: [.minSize, .maxSize],
@@ -61,7 +62,8 @@ extension AppDelegate {
             ?? HostingWindowController(
                 content: StorageManagerWindowRoot(appDelegate: self)
                     .themedWindowTitleBar()
-                    .appAppearance(),
+                    .appAppearance()
+                    .modalWindows(modalWindows),
                 contentSize: CGSize(width: 1100, height: 660),
                 sizing: .minSize,
                 bridging: .toolbars,

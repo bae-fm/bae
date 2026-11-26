@@ -67,6 +67,7 @@ extension CoverLightboxTests {
                 )
             }
             .layerEnvironment { $0.environment(images) }
+            .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
@@ -130,7 +131,7 @@ extension CoverLightboxTests {
             try await Wait.until { lightbox.ended(loading: front.image) }
             // The lightbox is a window over the gallery, which holds the
             // keyboard and VoiceOver.
-            let panel = try await LayerPanels.top()
+            let panel = try await LayerPanels.top(modals)
             let layer = try LayerPanels.content(of: panel)
             try await SnapshotTestSupport.settle(layer)
             #expect(autoreleasepool { panel.isAccessibilityModal() })

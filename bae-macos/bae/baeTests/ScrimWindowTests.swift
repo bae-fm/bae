@@ -11,6 +11,9 @@ import Testing
 @MainActor
 @Suite("Scrim window")
 struct ScrimWindowTests {
+    /// The stack the test's window presents its alert on.
+    let modals = ModalWindows()
+
     /// The scrim windows over `window`.
     private func scrims(over window: NSWindow) -> [NSWindow] {
         autoreleasepool {
@@ -45,12 +48,14 @@ struct ScrimWindowTests {
 
             // A view that asks for its alert as it is first built raises it.
             host.rootView = AnyView(
-                Color.clear.macAlert(isPresented: .constant(true)) {
-                    (
-                        MacAlertWords(Text(verbatim: "Title")),
-                        [MacAlertButton(Text(verbatim: "OK"))]
-                    )
-                }
+                Color.clear
+                    .macAlert(isPresented: .constant(true)) {
+                        (
+                            MacAlertWords(Text(verbatim: "Title")),
+                            [MacAlertButton(Text(verbatim: "OK"))]
+                        )
+                    }
+                    .modalWindows(modals)
             )
             #expect(
                 await holds { scrims(over: window).count == 1 },

@@ -11,6 +11,9 @@ import Testing
 /// `cover-picker-lookup-failed` shots'; a lookup still out spins.
 @MainActor
 struct CoverPickerEmptyStateTests {
+    /// The stack the test's window presents its layers on.
+    let modals = ModalWindows()
+
     /// The saving line's spinner is laid out in every state, hidden while
     /// nothing saves, so a lookup still out is the one more.
     @Test("Only a lookup still out spins")
@@ -54,6 +57,7 @@ struct CoverPickerEmptyStateTests {
                 onDone: {}
             )
             .layerEnvironment { $0.environment(ImageStore.stub()) }
+            .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in

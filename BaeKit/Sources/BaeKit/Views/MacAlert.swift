@@ -421,6 +421,8 @@
         /// window's tone, accent and scheme while the alert is up.
         @State
         private var look: PanelLook?
+        @Environment(\.modalWindows)
+        private var modals
         @Environment(\.surfaceTone)
         private var tone
         @Environment(\.accentChoice)
@@ -439,7 +441,7 @@
                     }
                     else {
                         anchor.arrived = nil
-                        ModalWindows.shared.withdraw(id: id)
+                        modals?.withdraw(id: id)
                     }
                 }
                 .onChange(of: hostedAppearance) { _, appearance in
@@ -447,11 +449,11 @@
                 }
                 .onChange(of: scheme) { _, scheme in
                     look?.scheme = scheme
-                    ModalWindows.shared.matchParentAppearance(id: id)
+                    modals?.matchParentAppearance(id: id)
                 }
                 .onDisappear {
                     anchor.arrived = nil
-                    ModalWindows.shared.withdraw(id: id)
+                    modals?.withdraw(id: id)
                 }
         }
 
@@ -464,6 +466,11 @@
         /// yet (an alert asked for as its view is first built), as soon as
         /// the view is in one.
         private func raise() {
+            guard let modals else {
+                preconditionFailure(
+                    "An alert is presented in a window whose host gave no modal stack (modalWindows(_:))"
+                )
+            }
             let anchor = anchor
             let id = id
             let replacementGroup = presentation.replacementGroup
@@ -475,7 +482,7 @@
                 look: look
             )
             let show: @MainActor () -> Void = {
-                ModalWindows.shared.present(
+                modals.present(
                     id: id,
                     over: anchor.view?.window,
                     replacementGroup: replacementGroup,
@@ -487,7 +494,7 @@
                     anchor.view?.window != nil
                 }
                 else {
-                    ModalWindows.shared.canPresent(over: anchor.view?.window)
+                    modals.canPresent(over: anchor.view?.window)
                 }
             if canPresent {
                 show()

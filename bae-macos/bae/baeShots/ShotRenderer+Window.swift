@@ -106,6 +106,7 @@ extension ShotRenderer {
     /// Fails, naming the front app, when the window never becomes key.
     static func becomeKey(
         _ window: NSWindow,
+        modals: ModalWindows,
         scene: ShotScene
     ) async throws {
         // A scene drawn inactive leaves its window without the key.
@@ -123,7 +124,7 @@ extension ShotRenderer {
                 // as active under it: the buttons of an alert whose panel is
                 // not key draw as inactive.
                 let keyed =
-                    ModalWindows.shared.panels.last ?? window.attachedSheet
+                    modals.panels.last ?? window.attachedSheet
                     ?? window
                 if keyed.isKeyWindow { return true }
                 keyed.makeKeyAndOrderFront(nil)
@@ -141,20 +142,22 @@ extension ShotRenderer {
     /// The alert panels the app shows, once each is drawn, as the app puts an
     /// alert up: a clear panel of its own over the window, which the window
     /// server holds apart from the window it sits on.
-    static func alertPanels() async throws -> [CGWindowID] {
+    static func alertPanels(of modals: ModalWindows) async throws
+        -> [CGWindowID]
+    {
         // The app shows an alert when the alert's view appears, a few run
         // loop passes after AppKit orders the window in.
         // An alert is a panel, which hides while its app is not active, as
         // this app never is, so each is kept up.
         try await Wait.until {
-            let panels = ModalWindows.shared.panels
+            let panels = modals.panels
             for panel in panels {
                 panel.hidesOnDeactivate = false
                 if !panel.isVisible { panel.orderFront(nil) }
             }
             return panels.allSatisfy { $0.isVisible }
         }
-        return ModalWindows.shared.panels.map { CGWindowID($0.windowNumber) }
+        return modals.panels.map { CGWindowID($0.windowNumber) }
     }
 
     /// Wait for the window server to show each of `windows` on the screen,
@@ -189,12 +192,13 @@ extension ShotRenderer {
     /// the displays hold then.
     static func windowPNG(
         of window: NSWindow,
-        sheets: [NSWindow],
         alerts: [CGWindowID],
+        modals: ModalWindows,
         on display: ShotDisplay,
         scene: ShotScene
     ) async throws -> Data {
-        let shown = [window] + sheets + ModalWindows.shared.panels
+        let sheets = window.attachedSheet.map { [$0] } ?? []
+        let shown = [window] + sheets + modals.panels
         do {
             try await shownOnScreen(shown, scene: scene)
             return try await windowPNG(

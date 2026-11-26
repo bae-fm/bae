@@ -10,13 +10,17 @@ import Testing
 @MainActor
 @Suite("Alerts over sheets", .serialized)
 struct AlertOverSheetTests {
+    /// The stack that every window of the test presents on.
+    let modals = ModalWindows()
+
     /// A window that can host the shared error alert.
     private struct Window: View {
         let uiStore: UiStore
         let kind: ErrorAlertWindow
+        let modals: ModalWindows
 
         var body: some View {
-            Color.clear.errorAlert(uiStore, in: kind)
+            Color.clear.errorAlert(uiStore, in: kind).modalWindows(modals)
         }
     }
 
@@ -104,7 +108,7 @@ struct AlertOverSheetTests {
     func theErrorAlertShowsOverTheSheet() async throws {
         let uiStore = UiStore()
         try await SnapshotTestSupport.withHostedWindow(
-            Window(uiStore: uiStore, kind: .main),
+            Window(uiStore: uiStore, kind: .main, modals: modals),
             size: NSSize(width: 600, height: 400)
         ) { window, _ in
             window.identifier = ErrorAlertWindow.main.identifier
@@ -120,18 +124,18 @@ struct AlertOverSheetTests {
                 )
             )
             #expect(
-                await holds { !ModalWindows.shared.panels.isEmpty },
+                await holds { !modals.panels.isEmpty },
                 "the alert is raised"
             )
 
-            let alert = try #require(ModalWindows.shared.panels.last)
-            let shield = try #require(ModalWindows.shared.shields.last)
+            let alert = try #require(modals.panels.last)
+            let shield = try #require(modals.shields.last)
             #expect(alert.isVisible)
             #expect(alert.canBecomeKey)
             // The alert is the top of the chain: it sits over the sheet
             // that sits over the window, so the window and the sheet are the
             // ones blocked.
-            #expect(ModalWindows.shared.parent(of: alert) === sheet)
+            #expect(modals.parent(of: alert) === sheet)
             #expect(autoreleasepool { sheet.sheetParent } === window)
             #expect(
                 autoreleasepool { sheet.childWindows?.contains(alert) } == true
@@ -152,10 +156,10 @@ struct AlertOverSheetTests {
 
             uiStore.clearError()
             #expect(
-                await holds { ModalWindows.shared.panels.isEmpty },
+                await holds { modals.panels.isEmpty },
                 "the alert is withdrawn"
             )
-            #expect(ModalWindows.shared.shields.isEmpty)
+            #expect(modals.shields.isEmpty)
             #expect(autoreleasepool { sheet.childWindows?.isEmpty } ?? true)
             // The keyboard returns to the sheet the alert was over.
             #expect(
@@ -179,20 +183,22 @@ struct AlertOverSheetTests {
     )
     func anAlertAskedForAtFirstBuildIsRaised() async throws {
         try await SnapshotTestSupport.withHostedWindow(
-            Color.clear.macAlert(isPresented: .constant(true)) {
-                (
-                    MacAlertWords(Text(verbatim: "Title")),
-                    [MacAlertButton(Text(verbatim: "OK"))]
-                )
-            },
+            Color.clear
+                .macAlert(isPresented: .constant(true)) {
+                    (
+                        MacAlertWords(Text(verbatim: "Title")),
+                        [MacAlertButton(Text(verbatim: "OK"))]
+                    )
+                }
+                .modalWindows(modals),
             size: NSSize(width: 600, height: 400)
         ) { window, _ in
             #expect(
-                await holds { ModalWindows.shared.panels.count == 1 },
+                await holds { modals.panels.count == 1 },
                 "the alert is raised"
             )
-            let alert = try #require(ModalWindows.shared.panels.first)
-            #expect(ModalWindows.shared.parent(of: alert) === window)
+            let alert = try #require(modals.panels.first)
+            #expect(modals.parent(of: alert) === window)
         }
     }
 }

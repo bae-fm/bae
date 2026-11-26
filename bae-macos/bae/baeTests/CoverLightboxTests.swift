@@ -7,6 +7,9 @@ import Testing
 
 @MainActor
 struct CoverLightboxTests {
+    /// The stack the test's window presents its layers on.
+    let modals = ModalWindows()
+
     enum Opening: CaseIterable {
         case preview, thumbnail, space
     }
@@ -49,6 +52,7 @@ struct CoverLightboxTests {
                 )
             }
             .layerEnvironment { $0.environment(images) }
+            .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
@@ -64,7 +68,7 @@ struct CoverLightboxTests {
             try await Wait.until { lightbox.ended(loading: opened.image) }
             try await SnapshotTestSupport.settle(host)
             // The lightbox is a window of its own, which takes the keys.
-            let panel = try await LayerPanels.top()
+            let panel = try await LayerPanels.top(modals)
             let layer = try LayerPanels.content(of: panel)
             try await LayerPanels.focused(panel)
             // Return cannot save through the lightbox into the underlying picker.
@@ -73,7 +77,7 @@ struct CoverLightboxTests {
             try HostedInput.keyDown(.rightArrow, in: panel)
             try await Wait.until { lightbox.ended(loading: moved.image) }
             try HostedInput.keyDown(.escape, in: panel)
-            try await LayerPanels.closed()
+            try await LayerPanels.closed(modals)
             try await SnapshotTestSupport.settle(host)
             #expect(!dismissed && selected == nil)
             try await rereadShortcuts(window: window, host: host)
@@ -142,6 +146,7 @@ struct CoverLightboxTests {
                 )
             }
             .layerEnvironment { $0.environment(images) }
+            .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
@@ -226,6 +231,7 @@ struct CoverLightboxTests {
                 onDismiss: {}
             )
             .layerEnvironment { $0.environment(images) }
+            .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, _ in
