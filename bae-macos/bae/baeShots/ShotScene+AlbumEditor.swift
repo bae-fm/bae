@@ -307,23 +307,18 @@ extension ShotScene {
             on: uiStore,
             images: images,
             session: session,
-            asksToDropTracks: stage == .dropTracksAlert
+            stage: stage
         )
         if stage == .coverSheet {
             presentCoverSheet(on: uiStore, images: images)
         }
-        let window = ZStack(alignment: .topLeading) {
-            ShotScenes.libraryWindow(
-                uiStore: uiStore,
-                backing: backing,
-                playbackStore: boardPlayback(),
-                images: images,
-                size: size
-            )
-            if stage == .albumMenu {
-                albumMenu
-            }
-        }
+        let window = ShotScenes.libraryWindow(
+            uiStore: uiStore,
+            backing: backing,
+            playbackStore: boardPlayback(),
+            images: images,
+            size: size
+        )
         return ShotStage(window, images: images) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
                 && detailAnswered.answered
@@ -352,14 +347,15 @@ extension ShotScene {
         return session
     }
 
-    /// The editor in its sheet; when `asksToDropTracks`, with the alert that
-    /// asks before Save drops tracks, which the editor raises over its sheet.
+    /// The editor in its sheet, with what `stage` opens over it from the
+    /// editor: the alert that asks before Save drops tracks, or the album
+    /// pop-up.
     @MainActor
     private static func presentEditor(
         on uiStore: UiStore,
         images: ImageStore,
         session: ReleaseMetadataEditSession,
-        asksToDropTracks: Bool
+        stage: AlbumEditorStage
     ) {
         uiStore.presentSizedModal { host in
             let editor = ReleaseEditorSheet(
@@ -370,10 +366,12 @@ extension ShotScene {
                 onClose: {}
             )
             .environment(images)
-            if asksToDropTracks {
+            switch stage {
+            case .dropTracksAlert:
                 OverWindow.alert(DropTracksConfirmation.alert {}, over: editor)
-            }
-            else {
+            case .albumMenu:
+                editor.overlay(alignment: .topLeading) { albumMenu }
+            default:
                 editor
             }
         }
@@ -412,8 +410,17 @@ extension ShotScene {
         }
     }
 
-    /// The album pop-up open over its row, where the board draws it.
+    /// The album pop-up open over its row, where the board draws it in the
+    /// window. It is drawn in the editor's layer, which covers the window, so
+    /// it is placed from the window's top-left.
     private static var albumMenu: some View {
+        GeometryReader { geometry in
+            let layer = geometry.frame(in: .global).origin
+            albumMenuFace.offset(x: -layer.x, y: -layer.y)
+        }
+    }
+
+    private static var albumMenuFace: some View {
         MacMenuInPlace(
             {
                 MacMenu(
