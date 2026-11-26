@@ -14,11 +14,12 @@ import org.junit.Test
 class DialogReadingOrderTest : BaeBoardShot() {
     @Test
     fun theScreenUnderADialogIsListedInTheOrderItHasWithoutTheDialog() {
-        compose.settleInBaeLook {
-            InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
-                removeLibraryParts(sceneLibrary, RemovalLoss.Counted(holdsUnsent = false), {}, {})
+        val screenOrder =
+            compose.settleInBaeLook {
+                InPlaceDialogScene(behind = { WelcomeLibrariesScene() }) {
+                    removeLibraryParts(sceneLibrary, RemovalLoss.Counted(holdsUnsent = false), {}, {})
+                }
             }
-        }
         val elements =
             ElementList
                 .of(
@@ -26,7 +27,7 @@ class DialogReadingOrderTest : BaeBoardShot() {
                     compose.onRoot().fetchSemanticsNode(),
                     embedded = emptyList(),
                     unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(),
-                    reading = ReadingOrder.of(compose.onRoot().fetchSemanticsNode().root as android.view.View),
+                    reading = ReadingOrder.of(compose.onRoot().fetchSemanticsNode().root as android.view.View, screenOrder),
                 ).getJSONArray("elements")
         val labels =
             (0 until elements.length())

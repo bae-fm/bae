@@ -51,18 +51,19 @@ class AndroidTrackRowTest {
 
     @Test
     fun currentTrackLeadIsReadAfterTheAlbumTitleAboveTheRow() {
-        compose.settleInBaeLook {
-            TestTheme {
-                Column {
-                    Text("Album title")
-                    AndroidTrackRow(
-                        TrackRowData("4", "Low Tide Hours", null, "5:03", isCurrent = true, isPlaying = true),
-                        TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {}),
-                        positionColumnWidth = 40.dp,
-                    )
+        val screenOrder =
+            compose.settleInBaeLook {
+                TestTheme {
+                    Column {
+                        Text("Album title")
+                        AndroidTrackRow(
+                            TrackRowData("4", "Low Tide Hours", null, "5:03", isCurrent = true, isPlaying = true),
+                            TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {}),
+                            positionColumnWidth = 40.dp,
+                        )
+                    }
                 }
             }
-        }
         val root = compose.onRoot().fetchSemanticsNode()
         val elements =
             ElementList
@@ -71,7 +72,7 @@ class AndroidTrackRowTest {
                     root,
                     embedded = emptyList(),
                     unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(),
-                    reading = ReadingOrder.of(root.root as View),
+                    reading = ReadingOrder.of(root.root as View, screenOrder),
                 ).getJSONArray("elements")
         val labels = (0 until elements.length()).map { elements.getJSONObject(it).optString("label") }
 

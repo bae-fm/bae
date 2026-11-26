@@ -24,13 +24,14 @@ class AndroidRowReadingOrderTest {
 
     @Test
     fun aRowsTrailingButtonIsReadAfterItsTitleAndTheLineUnderIt() {
-        compose.settleInBaeLook {
-            TestTheme {
-                AndroidRow(title = "Role", subtitle = "Member") {
-                    AndroidButton(kind = ButtonKind.TEXT, onClick = {}) { Text("Make admin") }
+        val screenOrder =
+            compose.settleInBaeLook {
+                TestTheme {
+                    AndroidRow(title = "Role", subtitle = "Member") {
+                        AndroidButton(kind = ButtonKind.TEXT, onClick = {}) { Text("Make admin") }
+                    }
                 }
             }
-        }
         val root = compose.onRoot().fetchSemanticsNode()
         val elements =
             ElementList
@@ -39,7 +40,7 @@ class AndroidRowReadingOrderTest {
                     root,
                     embedded = emptyList(),
                     unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(),
-                    reading = ReadingOrder.of(root.root as View),
+                    reading = ReadingOrder.of(root.root as View, screenOrder),
                 ).getJSONArray("elements")
         val labels =
             (0 until elements.length())
