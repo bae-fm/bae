@@ -1199,6 +1199,7 @@ owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/skipped_candidates.rs",
     "bae-import/src/tables/skipped_candidates.sql",
+    "bae-import/src/tables/skipped_candidates/",
 ]
 tables = ["skipped_import_candidates"]
 

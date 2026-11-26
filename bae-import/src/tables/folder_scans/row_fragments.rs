@@ -10,3 +10,11 @@ sqlive_compose::fragment!(
     FROM scan_candidate AS scan
     WHERE scan.path = :key
 "#);
+
+sqlive_compose::fragment!(
+    ScanGrouping(key: crate::CandidateKey) { grouping_key: Option<crate::CandidateKey> },
+    r#"
+    SELECT scan.grouping_key
+    FROM scan_candidate AS scan
+    WHERE scan.path = :key
+"#);

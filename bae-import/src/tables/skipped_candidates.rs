@@ -2,6 +2,8 @@
 //! its folder on disk, under a watched folder. Setting one aside ends its
 //! identification in the same write. Its table is `skipped_candidates.sql`.
 
+pub mod row_fragments;
+
 use super::import_state::change_identification_on;
 use super::watched_folders::require_watched;
 use super::*;

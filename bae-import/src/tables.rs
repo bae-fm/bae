@@ -22,7 +22,7 @@ mod release_edit;
 mod release_groupings;
 pub(crate) mod release_sheet_decisions;
 mod sheet_decision_columns;
-mod skipped_candidates;
+pub mod skipped_candidates;
 pub mod source_releases;
 mod stored_credits;
 pub(crate) mod trim;
