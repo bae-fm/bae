@@ -434,13 +434,15 @@
                 // Fade out, then take the panel away: it takes no click or key
                 // meanwhile.
                 entry.panel.ignoresMouseEvents = true
-                withAnimation(.easeInOut(duration: 0.2)) { model.shown = false }
                 let parent = entry.parent
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(220))
-                    parent.removeChildWindow(panel)
-                    panel.orderOut(nil)
-                    panel.contentView = nil
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    model.shown = false
+                } completion: {
+                    MainActor.assumeIsolated {
+                        parent.removeChildWindow(panel)
+                        panel.orderOut(nil)
+                        panel.contentView = nil
+                    }
                 }
             }
             else {
