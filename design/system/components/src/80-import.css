@@ -104,13 +104,13 @@
 .bae-m-idchip-more-open { anchor-name: --bae-idchip-more; }
 .bae-m-idchip-pop { position: absolute; position-anchor: --bae-idchip-more; left: anchor(center); top: anchor(bottom); }
 .bae-m-idchip-codes { padding: var(--space-group); display: flex; flex-direction: column; gap: var(--space-line); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-/* Find online's pressings: one grid that every album and row shares, each on the grid's columns (subgrid). */
+/* Find online's pressings: one grid that every album and row shares, each on the grid's columns (subgrid). The kinds' names sit a line's space above the albums, and the albums a section's space apart. */
 .bae-m-ptable { display: grid; column-gap: var(--space-edge); row-gap: var(--space-line); }
-.bae-m-ptable-kinds, .bae-m-rgroup, .bae-m-rcard, .bae-m-rcard-head, .bae-m-prow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+.bae-m-ptable-kinds, .bae-m-ptable-groups, .bae-m-rgroup, .bae-m-rcard, .bae-m-rcard-head, .bae-m-prow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+.bae-m-ptable-groups { row-gap: var(--space-section); }
 .bae-m-ptable-kinds { padding: 0 var(--space-related); }
 .bae-m-ptable-kind { justify-self: center; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-rgroup { row-gap: var(--space-line); }
-.bae-m-rgroup + .bae-m-rgroup { margin-top: var(--space-section); }
 .bae-m-rcard-head { align-items: center; padding: 0 var(--space-related) var(--space-related); }
 .bae-m-rcard-cover { grid-column: 1; display: flex; }
 .bae-m-rcard-text { grid-column: 2 / -1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }

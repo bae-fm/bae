@@ -394,7 +394,7 @@
     var tracks = ['max-content', 'max-content', 'max-content', 'max-content', 'max-content', 'minmax(150px, 1fr)'].concat(kinds.map(function () { return 'max-content'; }), ['calc(11px + var(--space-section))']);
     return h(PressingKinds.Provider, { value: kinds }, h('div', { className: 'bae-m-ptable', style: { gridTemplateColumns: tracks.join(' ') } },
       kinds.length ? h('div', { className: 'bae-m-ptable-kinds' }, kinds.map(function (k, i) { return h('span', { key: k, className: 'bae-m-ptable-kind', style: { gridColumn: 7 + i } }, k); })) : null,
-      props.children));
+      h('div', { className: 'bae-m-ptable-groups' }, props.children)));
   }
   // A found album's header on the table's grid: its cover at 40pt, as wide as the year's column at its least, then its title over its artist, starting where the label does, on a rule.
   function MacReleaseCard(props) {
