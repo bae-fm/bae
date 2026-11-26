@@ -9,61 +9,63 @@ capability = "SQLite"
 [[database.domains]]
 name = "records"
 owner = "bae_records::Records"
-homes = ["bae-records/src/records.rs", "bae-records/src/records.sql"]
+homes = ["bae-records/src/records.rs", "bae-records/src/records/"]
 tables = ["albums", "tracks"]
 
 [[database.domains]]
-name = "people"
-owner = "bae_people::People"
-homes = ["bae-people/src/people.rs"]
+name = "ratings"
+owner = "bae_records::Records"
+homes = ["bae-records/src/ratings.rs"]
 tables = ["ratings"]
 "#;
 
-fn owners() -> TableOwners {
-    TableOwners::from_policy(POLICY).unwrap()
+fn domains() -> Domains {
+    Domains::from_policy(POLICY).unwrap()
+}
+
+fn foreign(table: &str, domain: &str) -> ForeignRead {
+    ForeignRead { table: table.into(), domain: domain.into() }
 }
 
 #[test]
-fn a_crate_reads_its_own_tables_and_the_tables_no_domain_lists() {
-    let reads = owners().foreign_reads(
-        "bae-records",
-        ["albums", "tracks", "coven_files", "json_each"].map(String::from),
-    );
-    assert_eq!(reads, []);
+fn a_domains_homes_read_its_tables_and_the_tables_no_domain_lists() {
+    for file in ["bae-records/src/records.rs", "bae-records/src/records/fragments.rs"] {
+        let reads = domains().foreign_reads(
+            file,
+            ["albums", "tracks", "coven_files", "json_each"].map(String::from),
+        );
+        assert_eq!(reads, [], "{file}");
+    }
 }
 
 #[test]
-fn a_crate_that_reads_another_crates_table_is_named_with_the_owner() {
-    let reads = owners().foreign_reads("bae-people", ["ratings", "albums"].map(String::from));
-    assert_eq!(
-        reads,
-        [ForeignRead {
-            table: "albums".into(),
-            owner: "bae-records".into(),
-            domain: "records".into()
-        }]
-    );
+fn a_domain_does_not_read_another_domains_table_in_the_same_crate() {
+    let reads = domains()
+        .foreign_reads("bae-records/src/ratings.rs", ["ratings", "albums"].map(String::from));
+    assert_eq!(reads, [foreign("albums", "records")]);
 }
 
 #[test]
-fn a_crate_without_a_domain_reads_no_domain_table() {
-    let reads = owners().foreign_reads("bae-views", ["ratings"].map(String::from));
-    assert_eq!(reads.len(), 1);
+fn a_file_in_no_domains_homes_reads_no_domain_table() {
+    // A home that names a file holds no other file whose path it begins.
+    for file in ["bae-records/src/views.rs", "bae-records/src/records.rs.orig"] {
+        let reads = domains().foreign_reads(file, ["ratings"].map(String::from));
+        assert_eq!(reads, [foreign("ratings", "ratings")], "{file}");
+    }
 }
 
 #[test]
-fn a_domain_with_homes_in_two_crates_is_refused() {
-    let policy = POLICY.replace(
-        "homes = [\"bae-people/src/people.rs\"]",
-        "homes = [\"bae-people/src/people.rs\", \"bae-records/src/x.rs\"]",
-    );
-    let error = TableOwners::from_policy(&policy).unwrap_err();
-    assert!(error.contains("people"), "{error}");
+fn homes_of_two_domains_that_hold_one_file_are_refused() {
+    for home in ["bae-records/src/records.rs", "bae-records/src/records/ratings.rs"] {
+        let policy = POLICY.replace("bae-records/src/ratings.rs", home);
+        let error = Domains::from_policy(&policy).unwrap_err();
+        assert!(error.contains(home), "{error}");
+    }
 }
 
 #[test]
 fn a_table_in_two_domains_is_refused() {
     let policy = POLICY.replace("tables = [\"ratings\"]", "tables = [\"ratings\", \"albums\"]");
-    let error = TableOwners::from_policy(&policy).unwrap_err();
+    let error = Domains::from_policy(&policy).unwrap_err();
     assert!(error.contains("albums"), "{error}");
 }

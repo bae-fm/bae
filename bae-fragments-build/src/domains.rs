@@ -1,9 +1,10 @@
-//! Which crate owns each library table, from the `[[database.domains]]` rows
-//! of `owner-construction-check.toml`, and the rule that a fragment reads only
-//! its own crate's tables.
+//! The database domains, from the `[[database.domains]]` rows of
+//! `owner-construction-check.toml`: the files each domain's homes hold, the
+//! tables each owns, and the rule that a call reads only the tables of the
+//! domain that holds its file.
 
 use serde::Deserialize;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 #[derive(Deserialize)]
 struct Policy {
@@ -22,73 +23,72 @@ struct Domain {
     tables: Vec<String>,
 }
 
-/// Each library table with the crate that owns it.
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct TableOwners {
-    owners: BTreeMap<String, Owner>,
+/// Each domain's homes, and each library table with the domain that owns it.
+#[derive(Debug)]
+pub(crate) struct Domains {
+    /// Each home with its domain's name. No two domains' homes hold one file.
+    homes: Vec<(String, String)>,
+    /// Each table with its domain's name.
+    tables: BTreeMap<String, String>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Owner {
-    crate_name: String,
-    domain: String,
-}
-
-/// A call that reads a table another crate owns.
+/// A table a call reads whose domain's homes don't hold the call's file.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ForeignRead {
     pub(crate) table: String,
-    pub(crate) owner: String,
     pub(crate) domain: String,
 }
 
-impl TableOwners {
-    /// The owners the policy file's `text` names. Every home of a domain is
-    /// in one crate, the crate's folder being the first part of the path.
+/// Whether the home `home`, a file or a folder whose path ends in `/`, holds
+/// `path`.
+fn holds(home: &str, path: &str) -> bool {
+    path == home || (home.ends_with('/') && path.starts_with(home))
+}
+
+impl Domains {
+    /// The domains the policy file's `text` names.
     pub(crate) fn from_policy(text: &str) -> Result<Self, String> {
         let policy: Policy = toml::from_str(text).map_err(|error| error.to_string())?;
-        let mut owners = BTreeMap::new();
+        let mut homes: Vec<(String, String)> = Vec::new();
+        let mut tables = BTreeMap::new();
         for domain in policy.database.domains {
-            let crates: BTreeSet<&str> = domain
-                .homes
-                .iter()
-                .map(|home| home.split('/').next().unwrap_or(home.as_str()))
-                .collect();
-            let Some(crate_name) = crates.first().filter(|_| crates.len() == 1) else {
-                return Err(format!(
-                    "the domain {:?} has homes in {} crates, and a domain belongs to one",
-                    domain.name,
-                    crates.len()
-                ));
-            };
-            for table in &domain.tables {
-                let owner =
-                    Owner { crate_name: (*crate_name).to_owned(), domain: domain.name.clone() };
-                if owners.insert(table.clone(), owner).is_some() {
+            for home in domain.homes {
+                if let Some((other_home, other)) = homes.iter().find(|(other_home, other)| {
+                    *other != domain.name && (holds(other_home, &home) || holds(&home, other_home))
+                }) {
+                    return Err(format!(
+                        "the home {home} of the domain {:?} and the home {other_home} of the \
+                         domain {other:?} hold the same files, and a file is in one domain",
+                        domain.name
+                    ));
+                }
+                homes.push((home, domain.name.clone()));
+            }
+            for table in domain.tables {
+                if tables.insert(table.clone(), domain.name.clone()).is_some() {
                     return Err(format!("the table {table} is in two domains"));
                 }
             }
         }
-        Ok(Self { owners })
+        Ok(Self { homes, tables })
     }
 
-    /// The tables of `tables`, lowercase, that a crate other than `crate_name`
-    /// owns. A name no domain lists is no library table (coven's views, SQLite's
-    /// own) and is free to read.
+    /// The tables of `tables`, lowercase, that the file `file`, a path in the
+    /// workspace, may not read: those of a domain whose homes don't hold it. A
+    /// name no domain lists is no library table (coven's views, SQLite's own)
+    /// and is free to read.
     pub(crate) fn foreign_reads(
         &self,
-        crate_name: &str,
+        file: &str,
         tables: impl IntoIterator<Item = String>,
     ) -> Vec<ForeignRead> {
+        let file_domain =
+            self.homes.iter().find(|(home, _)| holds(home, file)).map(|(_, domain)| domain);
         tables
             .into_iter()
             .filter_map(|table| {
-                let owner = self.owners.get(&table)?;
-                (owner.crate_name != crate_name).then(|| ForeignRead {
-                    table,
-                    owner: owner.crate_name.clone(),
-                    domain: owner.domain.clone(),
-                })
+                let domain = self.tables.get(&table)?;
+                (file_domain != Some(domain)).then(|| ForeignRead { table, domain: domain.clone() })
             })
             .collect()
     }

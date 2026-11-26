@@ -1,6 +1,6 @@
 use super::foreign_reads;
-use crate::domains::TableOwners;
-use sqlive_compose::compiler::{CallKind, CompiledCall, Location};
+use crate::domains::Domains;
+use sqlive_compose::compiler::{compile_crate, Input, Setup};
 
 const POLICY: &str = r#"
 [database]
@@ -9,39 +9,76 @@ capability = "SQLite"
 [[database.domains]]
 name = "records"
 owner = "bae_records::Records"
-homes = ["bae-records/src/records.rs"]
-tables = ["albums"]
+homes = ["bae-music/src/records.rs"]
+tables = ["probe_books"]
 
 [[database.domains]]
 name = "people"
 owner = "bae_people::People"
-homes = ["bae-people/src/people.rs"]
-tables = ["ratings"]
+homes = ["bae-music/src/people.rs"]
+tables = ["probe_reviews"]
 "#;
 
-fn call(kind: CallKind, name: &str, reads: &[&str]) -> CompiledCall {
-    CompiledCall {
-        kind,
-        name: name.to_owned(),
-        location: Location { file: "src/fragments.rs".to_owned(), line: 7, column: 1 },
-        sql: String::new(),
-        reads: reads.iter().map(|table| (*table).to_owned()).collect(),
-    }
+const SCHEMA: &str = "
+    CREATE TABLE probe_books (id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL) STRICT;
+    CREATE TABLE probe_reviews (book_id TEXT PRIMARY KEY NOT NULL, stars INTEGER NOT NULL) STRICT;
+";
+
+const RECORDS: &str = r##"
+sqlive_compose::fragment!(
+    BookTitle(id: String),
+    r#"SELECT book.title AS title FROM probe_books AS book WHERE book.id = :id"#
+);
+"##;
+
+/// The refusals of the crate `bae-music`, whose records domain holds
+/// [`RECORDS`] and whose people domain holds the source `people`.
+fn refusals(people: &str) -> Vec<String> {
+    let compiled = compile_crate(Input {
+        crate_name: "bae-music".to_owned(),
+        source_reader: &|path| match path {
+            "src/lib.rs" => Ok("mod people;\nmod records;\n".to_owned()),
+            "src/people.rs" => Ok(people.to_owned()),
+            "src/records.rs" => Ok(RECORDS.to_owned()),
+            _ => Err(std::io::ErrorKind::NotFound.into()),
+        },
+        manifests: Vec::new(),
+        setup: Setup {
+            sql: vec![SCHEMA.to_owned()],
+            functions: Vec::new(),
+            collations: Vec::new(),
+        },
+    })
+    .unwrap_or_else(|errors| panic!("{errors:?}"));
+    foreign_reads("bae-music", &Domains::from_policy(POLICY).unwrap(), &compiled.calls)
 }
 
 #[test]
-fn a_call_that_reads_another_crates_table_names_the_call_and_the_owner() {
-    let owners = TableOwners::from_policy(POLICY).unwrap();
-    let calls = [call(CallKind::Fragment, "Rated", &["ratings", "albums"])];
+fn a_read_that_names_another_domains_table_is_refused_with_the_domain() {
+    let refused = refusals(
+        r##"sqlive_compose::read!(
+    Rated(id: String),
+    r#"SELECT review.stars AS stars, book.title AS title FROM probe_reviews AS review
+       JOIN probe_books AS book ON book.id = review.book_id WHERE review.book_id = :id"#
+);
+"##,
+    );
     assert_eq!(
-        foreign_reads("bae-people", &owners, &calls),
-        ["bae-people/src/fragments.rs:7: fragment! Rated reads albums, a table of records (bae-records); read it through a fragment of bae-records"]
+        refused,
+        ["bae-music/src/people.rs:1: read! Rated reads probe_books, a table of the domain \"records\", \
+          whose homes don't hold this file; read it through a fragment of that domain"]
     );
 }
 
 #[test]
-fn a_call_that_reads_only_its_own_tables_passes() {
-    let owners = TableOwners::from_policy(POLICY).unwrap();
-    let calls = [call(CallKind::Read, "Page", &["ratings"]), call(CallKind::Read, "Empty", &[])];
-    assert_eq!(foreign_reads("bae-people", &owners, &calls), Vec::<String>::new());
+fn a_read_that_spreads_another_domains_fragment_passes() {
+    let refused = refusals(
+        r##"sqlive_compose::read!(
+    Rated(id: String),
+    r#"SELECT review.stars AS stars, book.* FROM probe_reviews AS review
+       JOIN @crate::records::BookTitle(id: :id) AS book ON 1 WHERE review.book_id = :id"#
+);
+"##,
+    );
+    assert_eq!(refused, Vec::<String>::new());
 }

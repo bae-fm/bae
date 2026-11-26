@@ -1,8 +1,8 @@
 //! The build step of a crate that writes fragments (`sqlive-compose`): it
 //! checks the crate's `fragment!`, `read!` and `write!` calls against the library's
 //! schema, writes the Rust they include, hands the crate's fragments to the
-//! crates that spread them, and refuses a call that reads a table another
-//! crate owns.
+//! crates that spread them, and refuses a call that reads a table of a domain
+//! whose homes don't hold the call's file.
 //!
 //! The schema is every crate's SQL in migration order, on top of coven's
 //! readable objects, as a library's migration makes it. A crate that a
@@ -73,7 +73,7 @@ struct Checked {
 
 /// Compile the crate `crate_name`, whose folder is `crate_dir` in the
 /// workspace `root`, against the library's schema for each kind of device the
-/// crate is built for, and refuse a call that reads another crate's table.
+/// crate is built for, and refuse a call that reads another domain's table.
 /// `manifests` are the fragments of the crates it depends on.
 fn check_crate(
     crate_name: &str,
@@ -84,7 +84,7 @@ fn check_crate(
     let workspace = |path: &Path| read_file(&root.join(path));
     let policy_text = read_file(&root.join("owner-construction-check.toml"))
         .map_err(|error| error.to_string())?;
-    let owners = domains::TableOwners::from_policy(&policy_text)?;
+    let domains = domains::Domains::from_policy(&policy_text)?;
     let members = members(&workspace).map_err(|error| error.to_string())?;
     let coven = coven_objects::coven_objects();
 
@@ -119,7 +119,7 @@ fn check_crate(
         return Err(failures.join("\n"));
     }
     let output = output.ok_or("the crate compiled for no schema")?;
-    let foreign = foreign_reads(crate_name, &owners, &output.calls);
+    let foreign = foreign_reads(crate_name, &domains, &output.calls);
     if !foreign.is_empty() {
         return Err(foreign.join("\n"));
     }
@@ -173,11 +173,11 @@ fn setup_of(coven: &coven_objects::CovenObjects, migration: &Migration) -> Setup
     Setup { sql, functions, collations: migration.collations.clone() }
 }
 
-/// Each call of the crate that reads a table another crate owns, as a line of
-/// text.
+/// Each call of the crate that reads a table of a domain whose homes don't hold
+/// the call's file, as a line of text.
 fn foreign_reads(
     crate_name: &str,
-    owners: &domains::TableOwners,
+    domains: &domains::Domains,
     calls: &[CompiledCall],
 ) -> Vec<String> {
     let mut lines = Vec::new();
@@ -187,10 +187,12 @@ fn foreign_reads(
             CallKind::Read => "read",
             CallKind::Write => "write",
         };
-        for read in owners.foreign_reads(crate_name, call.reads.iter().cloned()) {
+        let file = format!("{crate_name}/{}", call.location.file);
+        for read in domains.foreign_reads(&file, call.reads.iter().cloned()) {
             lines.push(format!(
-                "{crate_name}/{}:{}: {macro_name}! {} reads {}, a table of {} ({}); read it through a fragment of {}",
-                call.location.file, call.location.line, call.name, read.table, read.domain, read.owner, read.owner
+                "{file}:{}: {macro_name}! {} reads {}, a table of the domain {:?}, whose homes \
+                 don't hold this file; read it through a fragment of that domain",
+                call.location.line, call.name, read.table, read.domain
             ));
         }
     }

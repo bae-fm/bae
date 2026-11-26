@@ -1323,7 +1323,7 @@ imported from it. SQLite refuses to prepare the pane as one statement, and
 the two statements read one snapshot. Each statement binds only the selected key and finds the
 candidate's scan row, and the content hash the scan stored, by that key, never
 by a value another statement returned. Each domain writes the fragment that
-reads its own rows, and no read names a table another crate owns.
+reads its own rows, and no read names a table another domain owns.
 Every other read of a candidate's current state, its verdict's cards and its
 matches spreads the same fragments, each handed the owners whose rows it reads,
 a candidate's content hash or an identify run: the candidate's runtime reads its
@@ -6307,7 +6307,7 @@ the desktop's secret service.
 | bae-loc | the string catalog: checks it and writes each platform's resources |
 | bae-theme | the shared theme, written as Swift and Kotlin |
 | bae-schema-manifest | the build step that writes each crate's schema parts from its `schema.toml` |
-| bae-fragments-build | the build step that each crate holding a `fragment!`, a `read!` or a `write!` runs: it checks the crate's `fragment!`, `read!` and `write!` calls against the library's schema on coven's readable objects (a phone's schema too, for a crate a phone holds), writes the Rust they include, hands the crate's fragments to the crates that spread them, and fails the build when a call reads a table that another crate's domain owns |
+| bae-fragments-build | the build step that each crate holding a `fragment!`, a `read!` or a `write!` runs: it checks the crate's `fragment!`, `read!` and `write!` calls against the library's schema on coven's readable objects (a phone's schema too, for a crate a phone holds), writes the Rust they include, hands the crate's fragments to the crates that spread them, and fails the build when a call reads a table of a domain whose homes don't hold the call's file |
 | bae-uniffi-bindgen | the bindings generator |
 
 bae-cast stands between bae-playback, which holds the renderer session, and
