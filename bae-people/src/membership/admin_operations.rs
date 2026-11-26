@@ -8,6 +8,8 @@ use crate::admin_change::{
     AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangePlace, AdminChangeState,
     AdminChanges,
 };
+use bae_store::statement_rows;
+use rusqlite::types::{FromSql, ValueRef};
 
 /// What an admin change changes, as its `admin_operations` row holds it.
 pub(super) enum AdminTarget {
@@ -20,142 +22,153 @@ pub(super) enum AdminTarget {
     Approval(coven::MemberId, Option<String>),
 }
 
-/// The operation kinds some place shows. A change whose operation coven lists
-/// with another kind is no admin change bae makes.
-const PLACED_KINDS: &str =
-    "'RenameStore', 'SetRole', 'RemoveMember', 'RemoveDevice', 'ApproveJoin', 'ReplaceMemberKeys'";
+// Each admin change this device asked for, with its operation as coven lists
+// it, the person's profile, the device's name and the place that shows it.
+// `coven_operations` lists a change's operation until the write that deletes
+// the change's row acknowledges it. A change whose operation coven lists with
+// a kind no place shows has no place.
+sqlive_compose::fragment!(
+    AdminOperation {
+        kind: coven::OperationKind,
+        member: Option<coven::MemberId>,
+        device: Option<coven::DeviceId>,
+        role: Option<coven::MemberRole>,
+        place: Option<String>
+    },
+    r#"
+    SELECT a.operation, o.kind, o.outcome, a.member, a.device, a.role, a.name,
+           person.*, d.name AS device_name,
+           CASE WHEN o.kind = 'RenameStore' THEN 'library'
+                WHEN o.kind = 'SetRole' THEN 'person'
+                WHEN o.kind IN ('RemoveMember', 'RemoveDevice', 'ApproveJoin',
+                                'ReplaceMemberKeys') THEN 'people'
+           END AS place
+    FROM admin_operations AS a
+    JOIN coven_operations AS o ON o.operation = a.operation
+    LEFT JOIN @crate::people::profiles::Profile AS person ON person.id = a.member
+    LEFT JOIN coven_devices AS d ON d.device = a.device
+"#
+);
 
-/// Each admin change this device asked for, with its operation as coven
-/// lists it. `coven_operations` lists a change's operation until the write
-/// that deletes the change's row acknowledges it.
-pub(super) const ADMIN_CHANGES_FROM: &str = "FROM admin_operations AS a \
-     JOIN coven_operations AS o ON o.operation = a.operation";
+// The reads of each place's changes, in the order this device asked for them.
+// Each also returns a change with no place, so that the row's decoding fails
+// the read wherever the person looks.
 
-/// The changes that show in `place`, each with its operation as coven lists
-/// it, the person's profile name and the device's name, in the order this
-/// device asked for them.
-fn admin_changes_sql(place: &AdminChangePlace) -> String {
-    format!(
-        "SELECT a.operation, o.kind, o.outcome, \
-                a.member, a.device, a.role, a.name, p.name, d.name \
-         {ADMIN_CHANGES_FROM} \
-         LEFT JOIN people AS p ON p.id = a.member \
-         LEFT JOIN coven_devices AS d ON d.device = a.device \
-         WHERE {shown} \
-         ORDER BY a.operation",
-        shown = shown_in(place),
-    )
-}
+sqlive_compose::read!(
+    LibraryAdminChanges,
+    r#"
+    SELECT change.*
+    FROM @crate::membership::admin_operations::AdminOperation AS change
+    WHERE change.place IS NULL OR change.place = 'library'
+    ORDER BY change.operation
+"#
+);
 
-/// Whether any change shows in `place`, as [`admin_changes_sql`] returns
-/// them.
-pub(super) fn any_admin_change_sql(place: &AdminChangePlace) -> String {
-    format!("SELECT EXISTS (SELECT 1 {ADMIN_CHANGES_FROM} WHERE {shown})", shown = shown_in(place))
-}
+sqlive_compose::read!(
+    PersonAdminChanges(member: coven::MemberId),
+    r#"
+    SELECT change.*
+    FROM @crate::membership::admin_operations::AdminOperation AS change
+    WHERE change.place IS NULL OR (change.place = 'person' AND change.member = :member)
+    ORDER BY change.operation
+"#
+);
 
-/// The condition, over [`ADMIN_CHANGES_FROM`], that keeps the changes that
-/// show in `place`: those of the kinds the place shows, and every change
-/// whose operation coven lists with a kind no place shows, so that the row
-/// reader fails the read in every place.
-pub(super) fn shown_in(place: &AdminChangePlace) -> String {
-    let kinds = match place {
-        AdminChangePlace::Library => "o.kind = 'RenameStore'",
-        AdminChangePlace::Person(_) => "o.kind = 'SetRole' AND a.member = ?1",
-        AdminChangePlace::People => {
-            "o.kind IN ('RemoveMember', 'RemoveDevice', 'ApproveJoin', 'ReplaceMemberKeys')"
-        }
-    };
-    format!("(o.kind NOT IN ({PLACED_KINDS}) OR ({kinds}))")
-}
+sqlive_compose::read!(
+    PeopleAdminChanges,
+    r#"
+    SELECT change.*
+    FROM @crate::membership::admin_operations::AdminOperation AS change
+    WHERE change.place IS NULL OR change.place = 'people'
+    ORDER BY change.operation
+"#
+);
 
 fn admin_changes_on(
     sql: &impl coven::SqlRead,
     place: &AdminChangePlace,
-) -> rusqlite::Result<AdminChanges> {
-    let member = match place {
-        AdminChangePlace::Person(member) => Some(*member),
-        AdminChangePlace::Library | AdminChangePlace::People => None,
+) -> Result<AdminChanges, DbError> {
+    let operations: Vec<AdminOperation> = match place {
+        AdminChangePlace::Library => statement_rows(sql, &LibraryAdminChangesParams {})?
+            .into_iter()
+            .map(|row| row.change)
+            .collect(),
+        AdminChangePlace::Person(member) => {
+            statement_rows(sql, &PersonAdminChangesParams { member: *member })?
+                .into_iter()
+                .map(|row| row.change)
+                .collect()
+        }
+        AdminChangePlace::People => statement_rows(sql, &PeopleAdminChangesParams {})?
+            .into_iter()
+            .map(|row| row.change)
+            .collect(),
     };
-    let changes = sql.query(
-        &admin_changes_sql(place),
-        rusqlite::params_from_iter(member.iter()),
-        admin_change_row,
-    )?;
-    let any = sql.query_row(
-        &any_admin_change_sql(place),
-        rusqlite::params_from_iter(member.iter()),
-        |row| row.get(0),
-    )?;
+    let changes =
+        operations.into_iter().map(AdminOperation::into_change).collect::<Result<Vec<_>, _>>()?;
+    let any = !changes.is_empty();
     Ok(AdminChanges { changes, any })
 }
 
-/// One change as [`admin_changes_sql`] reads it.
-fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
-    let operation = coven::OperationId(row.get(0)?);
-    let member = || {
-        row.get::<_, Option<coven::MemberId>>(3)?.ok_or_else(|| {
-            bae_store::read::column_conversion_error(row, 3, "a member change names no member")
-        })
-    };
-    let kind = row.get::<_, coven::OperationKind>(1)?;
-    let change = match kind {
-        coven::OperationKind::RenameStore => AdminChangeKind::RenameLibrary {
-            name: row.get::<_, Option<String>>(6)?.ok_or_else(|| {
-                bae_store::read::column_conversion_error(row, 6, "a rename names no name")
-            })?,
-        },
-        coven::OperationKind::SetRole => AdminChangeKind::SetRole {
-            member: member()?,
-            person: row.get(7)?,
-            role: row.get::<_, Option<coven::MemberRole>>(5)?.ok_or_else(|| {
-                bae_store::read::column_conversion_error(row, 5, "a role change names no role")
-            })?,
-        },
-        coven::OperationKind::RemoveMember => {
-            AdminChangeKind::RemovePerson { member: member()?, person: row.get(7)? }
-        }
-        coven::OperationKind::ApproveJoin | coven::OperationKind::ReplaceMemberKeys => {
-            AdminChangeKind::Approve {
+impl AdminOperation {
+    /// The change as its place shows it.
+    fn into_change(self) -> Result<AdminChange, DbError> {
+        let operation = coven::OperationId(self.operation);
+        let unreadable = |cause: String| {
+            DbError::unreadable(format!("the admin change of operation {}", operation.0), cause)
+        };
+        let missing = |what: &str| unreadable(what.to_owned());
+        let member = self.member;
+        let member = || member.ok_or_else(|| missing("a member change names no member"));
+        let profile_name = self.person.map(|profile| profile.name);
+        let change = match self.kind {
+            coven::OperationKind::RenameStore => AdminChangeKind::RenameLibrary {
+                name: self.name.ok_or_else(|| missing("a rename names no name"))?,
+            },
+            coven::OperationKind::SetRole => AdminChangeKind::SetRole {
                 member: member()?,
-                person: match row.get::<_, Option<String>>(6)? {
-                    Some(invitee) => Some(invitee),
-                    None => row.get(7)?,
-                },
+                person: profile_name,
+                role: self.role.ok_or_else(|| missing("a role change names no role"))?,
+            },
+            coven::OperationKind::RemoveMember => {
+                AdminChangeKind::RemovePerson { member: member()?, person: profile_name }
             }
-        }
-        coven::OperationKind::RemoveDevice => AdminChangeKind::RemoveDevice {
-            device: row.get::<_, Option<coven::DeviceId>>(4)?.ok_or_else(|| {
-                bae_store::read::column_conversion_error(row, 4, "a removal names no device")
-            })?,
-            // coven journals the removal of a device this device
-            // hasn't read, which it lists only once it has.
-            name: row.get(8)?,
-        },
-        other => {
-            return Err(bae_store::read::column_conversion_error(
-                row,
-                1,
-                format!("an admin change of kind {other:?}"),
-            ))
-        }
-    };
-    let outcome = match kind {
-        coven::OperationKind::ReplaceMemberKeys => {
-            row.get::<_, Option<coven::FreshChangeOutcome>>(2)?.map(fresh_change_outcome)
-        }
-        // RenameStore, SetRole, RemoveMember, RemoveDevice and ApproveJoin,
-        // the other kinds the match above reads.
-        _ => row.get::<_, Option<coven::ChangeOutcome>>(2)?,
-    };
-    let state = match outcome {
-        None => AdminChangeState::Waiting,
-        Some(coven::ChangeOutcome::Landed(_) | coven::ChangeOutcome::Satisfied) => {
-            AdminChangeState::Done
-        }
-        Some(coven::ChangeOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
-        Some(coven::ChangeOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
-    };
-    Ok(AdminChange { operation, change, state })
+            coven::OperationKind::ApproveJoin | coven::OperationKind::ReplaceMemberKeys => {
+                AdminChangeKind::Approve { member: member()?, person: self.name.or(profile_name) }
+            }
+            coven::OperationKind::RemoveDevice => AdminChangeKind::RemoveDevice {
+                device: self.device.ok_or_else(|| missing("a removal names no device"))?,
+                // coven journals the removal of a device this device
+                // hasn't read, which it lists only once it has.
+                name: self.device_name,
+            },
+            other => return Err(unreadable(format!("an admin change of kind {other:?}"))),
+        };
+        let outcome = self
+            .outcome
+            .map(|stored| {
+                let stored = ValueRef::Blob(&stored);
+                match self.kind {
+                    coven::OperationKind::ReplaceMemberKeys => {
+                        coven::FreshChangeOutcome::column_result(stored).map(fresh_change_outcome)
+                    }
+                    // RenameStore, SetRole, RemoveMember, RemoveDevice and
+                    // ApproveJoin, the other kinds the match above reads.
+                    _ => coven::ChangeOutcome::column_result(stored),
+                }
+            })
+            .transpose()
+            .map_err(|error| unreadable(error.to_string()))?;
+        let state = match outcome {
+            None => AdminChangeState::Waiting,
+            Some(coven::ChangeOutcome::Landed(_) | coven::ChangeOutcome::Satisfied) => {
+                AdminChangeState::Done
+            }
+            Some(coven::ChangeOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
+            Some(coven::ChangeOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
+        };
+        Ok(AdminChange { operation, change, state })
+    }
 }
 
 /// How a member's key replacement ended, as an admin change ends: it is
@@ -218,7 +231,7 @@ impl Membership {
         &self,
         place: AdminChangePlace,
     ) -> coven::LiveQuery<AdminChanges, bae_store::DbError> {
-        self.store.subscribe(move |sql| Ok(admin_changes_on(&sql, &place)?))
+        self.store.subscribe(move |sql| admin_changes_on(&sql, &place))
     }
 
     /// Acknowledge a finished admin change's outcome, so it leaves the list:

@@ -14,7 +14,7 @@ mod initials;
 pub use initials::initials;
 pub(crate) mod joining;
 pub use joining::private_circle_name;
-mod profiles;
+pub(crate) mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
 pub mod rating_systems;
 pub use rating_systems::{

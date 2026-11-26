@@ -15,8 +15,8 @@ pub struct AdminChange {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AdminChanges {
     pub changes: Vec<AdminChange>,
-    /// Whether the place has a change, which the read's own statement
-    /// answers, so a screen draws the place's section from it.
+    /// Whether the place has a change, so a screen draws the place's section
+    /// from it.
     pub any: bool,
 }
 
