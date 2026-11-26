@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=2234 -->
+<!-- @dsCard group="Import" height=2866 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacFindOnline</title></head>
@@ -10,7 +10,7 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   var chips = 'Disc ID|Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-|on,Barcode|0123456789012|on,ISRC||dash', titleSearch = 'Artist Name|Album Title One|on', offered = 'LC 6006,BN-4055';
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Default', h(B.MacFindOnline, { discogsBar: true, automatic: 'nothing-found', chips: chips, titleSearch: titleSearch, offered: offered })), W('No Discogs bar', h(B.MacFindOnline, { automatic: 'nothing-found', chips: chips, titleSearch: titleSearch, offered: offered })), W('Not started', h(B.MacFindOnline, { discogsBar: true, automatic: 'not-started' })), W('Found', h(B.MacFindOnline, { discogsBar: true, chips: chips, titleSearch: titleSearch, offered: offered }, slot('What the run found'))), W('Sentence', h(B.MacFindOnline, { discogsBar: true, automatic: 'nothing-found', sentence: 'No catalog has this.', chips: chips, titleSearch: titleSearch, offered: offered })), W('Nothing found, an answer', h(B.MacFindOnline, { discogsBar: true, automatic: 'nothing-found', sentence: 'No catalog has this.', chips: chips, titleSearch: titleSearch, offered: offered }, slot('The way to answer')))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Default', h(B.MacFindOnline, { discogsBar: true, automatic: 'nothing-found', chips: chips, titleSearch: titleSearch, offered: offered })), W('No Discogs bar', h(B.MacFindOnline, { automatic: 'nothing-found', chips: chips, titleSearch: titleSearch, offered: offered })), W('Not started', h(B.MacFindOnline, { discogsBar: true, automatic: 'not-started' })), W('Found', h(B.MacFindOnline, { discogsBar: true, chips: chips, titleSearch: titleSearch, offered: offered }, slot('What the run found'))), W('Working', h(B.MacFindOnline, { discogsBar: true, automatic: 'working', chips: chips, titleSearch: titleSearch, offered: offered })), W('Failed', h(B.MacFindOnline, { discogsBar: true, automatic: 'failed', chips: chips, titleSearch: titleSearch, offered: offered })), W('Sentence', h(B.MacFindOnline, { discogsBar: true, automatic: 'nothing-found', sentence: 'No catalog has this.', chips: chips, titleSearch: titleSearch, offered: offered })), W('Nothing found, an answer', h(B.MacFindOnline, { discogsBar: true, automatic: 'nothing-found', sentence: 'No catalog has this.', chips: chips, titleSearch: titleSearch, offered: offered }, slot('The way to answer')))));
 </script>
 </body>
 </html>
