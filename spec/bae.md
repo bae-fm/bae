@@ -1324,8 +1324,12 @@ the two statements read one snapshot. Each statement binds only the selected key
 candidate's scan row, and the content hash the scan stored, by that key, never
 by a value another statement returned. Each domain writes the fragment that
 reads its own rows, and no read names a table another crate owns.
-The candidate's runtime reads its stored verdict, which is the current state and
-the verdict's cards, from the same two fragments the pane spreads.
+Every other read of a candidate's current state, its verdict's cards and its
+matches spreads the same fragments, each handed the owners whose rows it reads,
+a candidate's content hash or an identify run: the candidate's runtime reads its
+stored verdict and the run it shows from them, with the run's signals and its
+typed search, and the candidate's preparation and the start of an identify run
+read its state from them.
 The candidate's preparation and the start of an identify run read its draft from
 the same draft fragment, given the candidate's content hash.
 A scan that stores other folders writes none of the rows the pane reads, so
