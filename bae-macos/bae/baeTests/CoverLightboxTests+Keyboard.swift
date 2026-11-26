@@ -34,11 +34,6 @@ extension CoverLightboxTests {
         }
     }
 
-    /// The names of the elements in `window` that have the keyboard focus.
-    func focusedNames(in window: NSWindow) throws -> Set<String> {
-        try names(in: window) { $0.focused == true }
-    }
-
     /// Hosts the gallery with two remote covers, its images read, and runs
     /// `body` on its window.
     func withGallery(
