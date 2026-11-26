@@ -14,16 +14,41 @@ impl ImportServiceHandle {
         (crate::folder_scanner::FolderCandidate, crate::preparations::StoredPreparation),
         crate::ImportError,
     > {
+        let tables = self.services.tables.clone();
+        let (candidate, stored, ()) = self
+            .metadata_write_base_read_by(candidate_key, |content_hash| async move {
+                Ok(tables.load_candidate_preparation(&content_hash).await?.map(|read| (read, ())))
+            })
+            .await?;
+        Ok((candidate, stored))
+    }
+
+    /// [`Self::metadata_write_base`] with the preparation read by `read`,
+    /// which the content hash is handed to, and whatever else the same read
+    /// returns beside it.
+    pub(super) async fn metadata_write_base_read_by<Beside, Read>(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        read: impl FnOnce(String) -> Read,
+    ) -> Result<
+        (crate::folder_scanner::FolderCandidate, crate::preparations::StoredPreparation, Beside),
+        crate::ImportError,
+    >
+    where
+        Read: std::future::Future<
+            Output = Result<
+                Option<(crate::tables::CandidatePreparationRead, Beside)>,
+                bae_store::DbError,
+            >,
+        >,
+    {
         let candidate = self.require_release_candidate(candidate_key).await?;
-        let current = crate::preparations::read_preparation(
-            &self.services.tables,
-            &candidate.files.content_hash(),
-        )
-        .await?
-        .ok_or_else(|| crate::ImportError::Internal {
-            detail: format!("{candidate_key} has no stored import preparation"),
+        let (read, beside) = read(candidate.files.content_hash()).await?.ok_or_else(|| {
+            crate::ImportError::Internal {
+                detail: format!("{candidate_key} has no stored import preparation"),
+            }
         })?;
-        Ok((candidate, current))
+        Ok((candidate, crate::preparations::stored_of(read)?, beside))
     }
 
     /// Clear the candidate's draft, keeping its file decisions and its release

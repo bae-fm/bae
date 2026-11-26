@@ -29,18 +29,15 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let candidate = self.require_release_candidate(&candidate_key).await?;
+        let tables = self.services.tables.clone();
+        let (candidate, stored, cards) = self
+            .metadata_write_base_read_by(&candidate_key, |content_hash| async move {
+                tables.load_candidate_preparation_with_cards(&content_hash).await
+            })
+            .await?;
         let content_hash = candidate.files.content_hash();
-        let (read, cards) = self
-            .services
-            .tables
-            .load_candidate_preparation_with_cards(&content_hash)
-            .await?
-            .ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{candidate_key} has no stored import preparation"),
-            })?;
         let crate::preparations::StoredPreparation { preparation: current, lookup_choices, .. } =
-            crate::preparations::stored_of(read)?;
+            stored;
         if !current.file_edits.is_at_revision(candidate.file_edit_revision) {
             return Err(crate::ImportError::Internal {
                 detail: format!("{candidate_key} has no state for its files as they stand"),
