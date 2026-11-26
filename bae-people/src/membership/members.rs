@@ -2,10 +2,10 @@
 //! (`coven_members`, `coven_devices`): each member with their devices that
 //! can sync and those that lost access, each list in device-id order.
 
-use super::fragments::{CurrentMembersParams, Member, ViewerIsAdminParams};
+use super::fragments::{CurrentMembersParams, Member};
 use super::*;
 use crate::membership::{ActiveDevice, FormerDevice, Members, MembershipMember};
-use bae_store::{statement_row, statement_rows, FormerDeviceState};
+use bae_store::{statement_rows, FormerDeviceState};
 
 impl Membership {
     pub async fn members(&self) -> Result<Members, DbError> {
@@ -26,12 +26,13 @@ impl Membership {
 const THIS_DEVICE_NAME: &str = "SELECT name FROM coven_devices WHERE is_self AND state = 'active'";
 
 fn membership_on(sql: &SqlReadContext<'_>) -> Result<Members, DbError> {
-    let admin = statement_row(sql, &ViewerIsAdminParams {})?;
-    let members = statement_rows(sql, &CurrentMembersParams {})?
-        .into_iter()
-        .map(|row| row.member.into_membership())
-        .collect::<Result<_, _>>()?;
-    Ok(Members { members, self_is_admin: admin.admin.self_is_admin })
+    let rows = statement_rows(sql, &CurrentMembersParams {})?;
+    // Each row says whether this device's member is an admin. An admin is a
+    // current member, so a read that returns no row has none.
+    let self_is_admin = rows.first().is_some_and(|row| row.member.viewer.self_is_admin);
+    let members =
+        rows.into_iter().map(|row| row.member.into_membership()).collect::<Result<_, _>>()?;
+    Ok(Members { members, self_is_admin })
 }
 
 impl Member {

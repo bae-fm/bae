@@ -51,15 +51,6 @@ sqlive_compose::fragment!(
 "#
 );
 
-// Whether the member using this device is an admin, as one row.
-sqlive_compose::read!(
-    ViewerIsAdmin,
-    r#"
-    SELECT admin.*
-    FROM @crate::membership::fragments::SelfIsAdmin AS admin
-"#
-);
-
 // The members who remain in the library, in member-id order.
 sqlive_compose::read!(
     CurrentMembers,
