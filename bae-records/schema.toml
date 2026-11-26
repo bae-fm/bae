@@ -40,6 +40,13 @@ version = 1
 compute = "crate::records::artist_sql::artist_is_various_artists"
 
 [[function]]
+static = "VARIOUS_ARTISTS_ID"
+name = "bae_various_artists_id"
+arguments = 1
+version = 1
+compute = "crate::records::artist_sql::various_artists_id"
+
+[[function]]
 static = "AUDIO_CODEC"
 name = "bae_audio_codec"
 arguments = 1
@@ -63,6 +70,7 @@ functions = [
     "crate::ARTIST_NAME_KEY",
     "crate::ARTIST_IDENTITY",
     "crate::ARTIST_IS_VARIOUS_ARTISTS",
+    "crate::VARIOUS_ARTISTS_ID",
     "crate::AUDIO_CODEC",
     "crate::LENGTHS_DISAGREE",
 ]

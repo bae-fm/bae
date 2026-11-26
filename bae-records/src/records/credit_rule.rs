@@ -20,8 +20,8 @@ sqlive_compose::fragment!(
     ),
     rule_probe AS MATERIALIZED (
         SELECT DISTINCT
-               CASE look.kind WHEN 'own' THEN c.mb WHEN 'alone' THEN c.mb ELSE '89ad4ac3-39f7-470e-963a-56509c546377' END AS mb,
-               CASE look.kind WHEN 'own' THEN c.dg WHEN 'various' THEN '194' END AS dg
+               CASE look.kind WHEN 'own' THEN c.mb WHEN 'alone' THEN c.mb ELSE bae_various_artists_id('musicbrainz') END AS mb,
+               CASE look.kind WHEN 'own' THEN c.dg WHEN 'various' THEN bae_various_artists_id('discogs') END AS dg
         FROM rule_credit AS c
         JOIN (SELECT 'own' AS kind UNION ALL SELECT 'alone' UNION ALL SELECT 'various'
               UNION ALL SELECT 'various alone') AS look
@@ -90,8 +90,8 @@ sqlive_compose::fragment!(
                step.step_mb AS name_mb,
                CASE WHEN step.kind = 'disagrees' THEN NULL ELSE step.step_dg END AS name_dg
         FROM (SELECT x.name_key, x.mb, x.dg,
-                     CASE WHEN x.by_va THEN '89ad4ac3-39f7-470e-963a-56509c546377' ELSE x.mb END AS step_mb,
-                     CASE WHEN x.by_va THEN '194' ELSE x.dg END AS step_dg,
+                     CASE WHEN x.by_va THEN bae_various_artists_id('musicbrainz') ELSE x.mb END AS step_mb,
+                     CASE WHEN x.by_va THEN bae_various_artists_id('discogs') ELSE x.dg END AS step_dg,
                      CASE WHEN x.by_va THEN x.v_kind ELSE x.o_kind END AS kind,
                      CASE WHEN x.by_va THEN x.v_id ELSE x.o_id END AS id,
                      CASE WHEN x.by_va THEN x.v_name ELSE x.o_name END AS name,
@@ -110,7 +110,7 @@ sqlive_compose::fragment!(
                     FROM rule_credit AS c
                     JOIN rule_match AS own ON own.mb IS c.mb AND own.dg IS c.dg
                     LEFT JOIN rule_match AS various
-                        ON c.various AND various.mb = '89ad4ac3-39f7-470e-963a-56509c546377' AND various.dg = '194') AS x)
+                        ON c.various AND various.mb = bae_various_artists_id('musicbrainz') AND various.dg = bae_various_artists_id('discogs')) AS x)
              AS step
         LEFT JOIN rule_match AS alone
             ON step.kind = 'disagrees' AND alone.mb IS step.step_mb AND alone.dg IS NULL

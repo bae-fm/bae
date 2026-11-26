@@ -42,3 +42,19 @@ pub(crate) fn artist_is_various_artists(
         crate::VARIOUS_ARTISTS.named_by(musicbrainz.as_deref(), discogs.as_deref()),
     )))
 }
+
+/// `bae_various_artists_id(catalog)`: the id of the Various Artists entry of
+/// the catalog `'musicbrainz'` or `'discogs'` (`crate::VARIOUS_ARTISTS`), the
+/// one source that SQL reads those ids from.
+pub(crate) fn various_artists_id(
+    arguments: &bae_store::SqlArguments<'_>,
+) -> rusqlite::Result<rusqlite::types::Value> {
+    let catalog = arguments.get::<String>(0)?;
+    match catalog.as_str() {
+        "musicbrainz" => Ok(Value::Text(crate::VARIOUS_ARTISTS.musicbrainz.to_string())),
+        "discogs" => Ok(Value::Text(crate::VARIOUS_ARTISTS.discogs.to_string())),
+        other => Err(rusqlite::Error::UserFunctionError(
+            format!("bae_various_artists_id knows no catalog {other}").into(),
+        )),
+    }
+}
