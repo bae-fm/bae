@@ -45,26 +45,6 @@ impl OneCandidate<'_> {
     }
 }
 
-/// The `import_candidate_state` row joined as `state` that is the current
-/// state of the release the scan stores at the key a statement binds as
-/// `:key`: the state of the content hash the scan holds, at the file-edit
-/// revision the scan holds. A statement reading a scanned release's current
-/// state takes this as a FROM item, with [`CURRENT_AT_KEY`] in its WHERE.
-/// The scan's row is a table of the statement, so coven narrows `state` by
-/// it and reruns the statement only for the writes that reach the key's
-/// state: a condition holding a subquery narrows nothing.
-pub(crate) fn current_state_from_sql(state: &str) -> String {
-    format!(
-        "scan_candidate AS scanned \
-         JOIN import_candidate_state AS {state} \
-             ON {state}.content_hash = scanned.content_hash \
-            AND {state}.edit_revision = scanned.file_edit_revision"
-    )
-}
-
-/// The condition of [`current_state_from_sql`] that names the key.
-pub(crate) const CURRENT_AT_KEY: &str = "scanned.path = :key";
-
 /// A [`CandidateRows`]' clause, and the parameter it binds.
 pub(crate) struct CandidateFilter {
     pub(crate) clause: String,

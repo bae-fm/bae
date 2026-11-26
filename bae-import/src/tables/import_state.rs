@@ -80,9 +80,7 @@ mod verdict_failure_rows;
 mod verdict_layout;
 mod verdict_rows;
 
-pub(super) use candidate_rows::{
-    current_state_from_sql, CandidateRows, OneCandidate, CURRENT_AT_KEY,
-};
+pub(super) use candidate_rows::{CandidateRows, OneCandidate};
 pub(super) use cards_read::load_verdict_cards_on;
 use cards_read::verdict_cards_of_column;
 pub(super) use claim_rows::{
