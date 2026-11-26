@@ -125,8 +125,10 @@
 /* The label takes a related space more after it, and the details a group's before the identifier columns. */
 .bae-m-prow-label { box-sizing: border-box; min-width: 200px; padding-right: var(--space-related); }
 .bae-m-prow-details { padding-right: var(--space-group); }
-.bae-m-prow-details-line { display: inline-flex; align-items: center; gap: var(--space-compact); }
-.bae-m-prow-words { display: inline-flex; gap: var(--space-related); }
+.bae-m-prow-details-line { display: grid; align-items: center; column-gap: var(--space-compact); }
+/* Each word is a column of its own that grows to the word's width, so the words share the line as the details' texts do (MacPressingRow). */
+.bae-m-prow-words { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, max-content); column-gap: var(--space-related); }
+.bae-m-prow-words > span, .bae-m-prow-notes { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-prow-notes { font-style: italic; }
 .bae-m-prow-inlib { display: inline-flex; align-items: center; gap: var(--space-inline); }
 .bae-m-prow-mark { justify-self: center; }
