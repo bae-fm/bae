@@ -13,10 +13,10 @@ struct PlaylistPicture: View {
             Artwork(imageRef: cover, pointSize: size, cornerRadius: nil)
                 .frame(width: size, height: size)
         case .grid(let covers):
-            // The board's grid puts the split at the half rounded up, a
-            // whole point: a 103 pt picture is 52 pt and 51 pt of covers.
-            let near = (size / 2).rounded(.toNearestOrAwayFromZero)
-            let far = size - near
+            // The board's grid splits at the exact half: a 103 pt picture
+            // has 51.5 pt of covers on each side of the split.
+            let near = size / 2
+            let far = near
             VStack(spacing: 0) {
                 row(covers, from: 0, height: near, near: near, far: far)
                 row(covers, from: 2, height: far, near: near, far: far)
