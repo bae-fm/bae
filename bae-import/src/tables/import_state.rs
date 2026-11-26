@@ -45,6 +45,7 @@ mod album_pick_rows;
 mod blank_draft_rows;
 mod candidate_rows;
 pub(crate) mod card_fragments;
+pub mod cards_fragment;
 mod cards_read;
 mod claim_rows;
 mod column_list;

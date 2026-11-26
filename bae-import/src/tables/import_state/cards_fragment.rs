@@ -16,10 +16,7 @@ sqlive_compose::fragment!(
     },
     r#"
     SELECT (
-                    WITH recs AS (
-                    SELECT m.*
-                        FROM members AS m
-                    ), pressings AS (
+                    WITH pressings AS (
                         SELECT r.card, r.pressing, r.kind, MIN(r.section) AS section,
                             MIN(r.row_order) AS row_order, MAX(r.chosen) AS chosen,
                             MAX(r.pick_being_read) AS pick_being_read,
@@ -35,7 +32,7 @@ sqlive_compose::fragment!(
                         MAX(r.a_barcode), 'catalog', MAX(r.a_catalog), 'label',
                         MAX(r.a_label), 'year', MAX(r.a_year), 'country', MAX(r.a_country),
                         'title', MAX(r.a_title), 'artist', MAX(r.a_artist)) AS agreed
-                    FROM recs AS r
+                    FROM members AS r
                         JOIN records AS rc ON rc.ord = r.ord
                     GROUP BY r.card, r.pressing, r.kind
                     ), notes AS (
@@ -53,7 +50,7 @@ sqlive_compose::fragment!(
                                 SELECT DISTINCT r.card, r.pressing, r.kind, r.named_note,
                                     r.source, MIN(r.record_order) OVER (PARTITION BY r.card,
                                     r.pressing, r.kind, r.named_note) AS first
-                                FROM recs AS r
+                                FROM members AS r
                                 WHERE r.named_note IS NOT NULL
                             ) AS d
                             GROUP BY d.card, d.pressing, d.kind, d.named_note

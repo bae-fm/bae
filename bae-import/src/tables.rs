@@ -15,7 +15,7 @@ mod draft_rows;
 mod folder_scans;
 pub(crate) mod import_list;
 mod import_origin;
-pub(crate) mod import_state;
+pub mod import_state;
 mod layout_bindings;
 mod picture_copies;
 mod release_edit;

@@ -144,7 +144,7 @@ sqlive_compose::fragment!(
                         FROM import_candidate_lookup_release AS found
                         WHERE found.verdict_id = lookup.verdict_id AND found.step = lookup.step
                             AND found.position = lookup.position AND found.cell = lookup.cell
-                        ), 'cards', json((SELECT cards.cards FROM @crate::cards::Cards(members: (
+                        ), 'cards', json((SELECT cards.cards FROM @crate::tables::import_state::cards_fragment::Cards(members: (
                                     SELECT found.ordinal AS ord, found.card, found.pressing,
                                         found.record_order, found.section, found.row_order,
                                         'answered' AS kind, matched.source, matched.release_id,

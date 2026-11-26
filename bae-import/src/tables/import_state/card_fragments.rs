@@ -9,7 +9,7 @@ sqlive_compose::fragment!(
     SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row, (
             SELECT (
                 WITH listed_cards AS MATERIALIZED (
-                    SELECT (SELECT cards.cards FROM @crate::cards::Cards(members: (
+                    SELECT (SELECT cards.cards FROM @crate::tables::import_state::cards_fragment::Cards(members: (
                                 SELECT found.position AS ord, found.card, found.pressing,
                                     found.record_order, found.section, found.row_order,
                                     found.listing AS kind, found.source, found.release_id,

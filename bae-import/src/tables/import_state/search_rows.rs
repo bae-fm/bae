@@ -623,7 +623,7 @@ sqlive_compose::fragment!(
     r#"
     SELECT typed.candidate_key AS search_key, (
             json_object('mode', typed.mode, 'artist', typed.artist, 'album', typed.album,
-                'catalog_number', typed.catalog_number, 'barcode', typed.barcode, 'cards',(SELECT cards.cards FROM @crate::cards::Cards(members: (
+                'catalog_number', typed.catalog_number, 'barcode', typed.barcode, 'cards',(SELECT cards.cards FROM @crate::tables::import_state::cards_fragment::Cards(members: (
                         SELECT ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1 AS
                             ord, found.card, found.pressing, found.record_order, found.section,
                             found.row_order, 'returned' AS kind, found.source, found.release_id,
