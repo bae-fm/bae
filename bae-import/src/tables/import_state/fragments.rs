@@ -59,13 +59,15 @@ sqlive_compose::fragment!(
     WITH status(release_id, albums) AS (
         SELECT found.release_id, found.albums
         FROM @bae_records::records::fragments::LibraryStatusRows(checks: (
-            SELECT 0, link.release_id, link.source, release.source_group_id
-            FROM scan_candidate AS scan
-            JOIN import_candidate_release_link AS link
-              ON link.content_hash = scan.content_hash AND link.kind = 'pressing'
-            JOIN source_release AS release
-              ON (release.catalog, release.release_id) = (link.source, link.release_id)
-            WHERE scan.path = :key)) AS found)
+            SELECT 0, link.release_id, link.source,
+                   @crate::tables::source_releases::row_fragments::LinkedAlbumGroup(parent: link)
+                       AS source_group_id
+            FROM import_candidate_release_link AS link
+            WHERE link.content_hash = (
+                      SELECT scan.content_hash
+                      FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
+                          AS scan)
+              AND link.kind = 'pressing')) AS found)
     SELECT :key AS picked_status_key, release_id AS picked_status_release_id,
            albums AS picked_status_albums
     FROM status
