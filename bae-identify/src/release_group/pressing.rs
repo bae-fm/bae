@@ -145,15 +145,6 @@ impl Pressing {
         self.choice
     }
 
-    /// Every catalog listing this pressing, in the order surfaces list
-    /// catalogs: the row's tags, whichever record the row is read from.
-    pub fn sources(&self) -> Vec<LookupCatalog> {
-        LookupCatalog::ALL
-            .into_iter()
-            .filter(|catalog| self.releases.iter().any(|release| release.source == *catalog))
-            .collect()
-    }
-
     /// The release a row picks when the person picks the row itself.
     pub fn lead(&self) -> &MetadataResult {
         self.releases.first().expect("a pressing is built from at least one release")

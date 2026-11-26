@@ -111,7 +111,8 @@ extension ShotScene {
                 discId: .read(discs: [
                     BridgeDiscIdRow(
                         discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                        lookup: .noMatch
+                        lookup: .noMatch,
+                        chip: .init(look: .on, trailing: .nothing)
                     )
                 ]),
                 barcode: .noCodes,
@@ -123,8 +124,9 @@ extension ShotScene {
                 search: .searched(
                     album: "Northbound",
                     artist: "Mara Quill",
-                    cells: PreviewData.cells(.noMatch, .noMatch)
+                    chip: .init(look: .on, trailing: .nothing)
                 ),
+                foundKinds: [],
                 readingArtwork: false
             )
         ),

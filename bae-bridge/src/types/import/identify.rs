@@ -116,23 +116,53 @@ pub enum BridgeLookupState {
     },
 }
 
-/// Mirrors `bae_identify::ProviderCell`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeProviderCell {
-    pub source: BridgeLookupCatalog,
-    pub lookup: BridgeLookupState,
+/// How an identifier's chip looks, from what its lookups did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeChipLook {
+    /// The run leaves the identifier out.
+    Off,
+    /// The run asks about it.
+    On,
+    /// A lookup of it found releases.
+    Found,
 }
 
-/// One value and every provider's lookup of it. Mirrors
-/// `bae_identify::SignalValueRow`.
+/// What a chip says after its value while its lookups are out or failed.
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum BridgeChipTrailing {
+    Nothing,
+    /// A lookup is still out.
+    Searching,
+    /// A lookup failed, with the first failure.
+    Failed {
+        failure: BridgeLookupFailure,
+    },
+}
+
+/// An identifier's chip: its look and what trails its value.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeChipState {
+    pub look: BridgeChipLook,
+    pub trailing: BridgeChipTrailing,
+}
+
+/// The identifiers a pressing can be named by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeIdentifierKind {
+    DiscId,
+    Barcode,
+    Catalog,
+}
+
+/// One value and its chip. Mirrors `bae_identify::SignalValueRow`, whose
+/// cells, one lookup for each provider, cross as the chip's state.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSignalValueRow {
     pub value: String,
     /// Whether the person left this value out of the run; always false for a
     /// catalog number.
     pub excluded: bool,
-    /// One per provider in the run, in the run's provider order.
-    pub cells: Vec<BridgeProviderCell>,
+    pub chip: BridgeChipState,
 }
 
 /// The disc-ID step: one lookup per disc ID, since only MusicBrainz answers
@@ -158,6 +188,7 @@ pub enum BridgeDiscIdStep {
 pub struct BridgeDiscIdRow {
     pub disc_id: String,
     pub lookup: BridgeLookupState,
+    pub chip: BridgeChipState,
 }
 
 /// Mirrors `bae_identify::BarcodeStepView`, without its `scanning`,
@@ -215,6 +246,7 @@ pub enum BridgeIsrcStep {
         /// button's popover lists.
         isrcs: Vec<String>,
         lookup: BridgeLookupState,
+        chip: BridgeChipState,
     },
 }
 
@@ -230,8 +262,7 @@ pub enum BridgeSearchStep {
         album: String,
         /// Blank where the title alone was searched.
         artist: String,
-        /// One per provider, in the run's provider order.
-        cells: Vec<BridgeProviderCell>,
+        chip: BridgeChipState,
     },
 }
 
@@ -245,6 +276,9 @@ pub struct BridgeIdentifyRun {
     pub catalog: BridgeCatalogStep,
     pub isrc: BridgeIsrcStep,
     pub search: BridgeSearchStep,
+    /// The identifiers whose chips found releases, in the band's order: they
+    /// head the pressing table's columns.
+    pub found_kinds: Vec<BridgeIdentifierKind>,
     /// Whether the artwork is still being read, so more barcodes or catalog
     /// numbers may come.
     pub reading_artwork: bool,

@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// A catalog number extraction found and the run is not looking up: the
-/// number, outlined. Pressing it puts the number into the run and every
+/// number, as an off chip. Pressing it puts the number into the run and every
 /// provider looks it up.
 struct CatalogCandidateChip: View {
     let value: String
@@ -12,7 +12,7 @@ struct CatalogCandidateChip: View {
         MacIdentifierChip(
             label: String(localized: "Catalog #"),
             value: value,
-            style: .outlined,
+            style: .off,
             onPress: onActivate
         ) {
             EmptyView()

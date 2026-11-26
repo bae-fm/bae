@@ -603,9 +603,7 @@ extension PreviewData {
         _ found: NotFoundFolder,
         providers: [BridgeLookupCatalog]
     ) -> BridgeIdentifyRun {
-        let noMatch = providers.map {
-            BridgeProviderCell(source: $0, lookup: .noMatch)
-        }
+        let nothingFound = BridgeChipState(look: .on, trailing: .nothing)
         return BridgeIdentifyRun(
             providers: providers,
             discId: .absent,
@@ -615,7 +613,7 @@ extension PreviewData {
                     BridgeSignalValueRow(
                         value: found.catalogNumber,
                         excluded: false,
-                        cells: noMatch
+                        chip: nothingFound
                     )
                 ],
                 candidates: []
@@ -624,8 +622,9 @@ extension PreviewData {
             search: .searched(
                 album: found.album,
                 artist: found.artist,
-                cells: noMatch
+                chip: nothingFound
             ),
+            foundKinds: [],
             readingArtwork: false
         )
     }
@@ -667,7 +666,6 @@ extension PreviewData {
                     sourceGroupId: "board-copper-sky"
                 )
             ],
-            sources: [.musicBrainz],
             labels: [
                 BridgeLabelLine(
                     names: ["Fen Records"],
@@ -687,7 +685,6 @@ extension PreviewData {
             id: "board-copper-sky",
             titles: [copperSky.album],
             artists: [.named(copperSky.artist)],
-            labels: ["Fen Records"],
             // The catalog serves the cover as a file the scene's image store
             // reads, so the card draws it as the board does.
             coverArt: BridgeRemoteCover(

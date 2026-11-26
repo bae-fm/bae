@@ -399,8 +399,10 @@ impl JudgedFindings {
     }
 }
 
+mod chip;
 mod ledger;
 mod outcome;
+pub use chip::{ChipLook, ChipState, ChipTrailing, IdentifierKind};
 use ledger::{
     barcode_step, catalog_step, disc_id_step, identifiers_found_something, isrc_step, search_step,
 };

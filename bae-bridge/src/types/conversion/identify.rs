@@ -143,22 +143,44 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    BridgeProviderCell = bae_identify::ProviderCell,
+mirror_enum! {
+    BridgeChipLook = bae_identify::ChipLook,
     from_core: fn,
-    fields: { source: (BridgeLookupCatalog), lookup: (BridgeLookupState) },
+    variants: { Off, On, Found },
+}
+
+mirror_enum! {
+    BridgeChipTrailing = bae_identify::ChipTrailing,
+    from_core: fn,
+    variants: { Nothing, Searching, Failed { failure: (BridgeLookupFailure) } },
 }
 
 mirror_struct! {
-    BridgeDiscIdRow = bae_identify::DiscIdRow,
+    BridgeChipState = bae_identify::ChipState,
     from_core: fn,
-    fields: { disc_id, lookup: (BridgeLookupState) },
+    fields: { look: (BridgeChipLook), trailing: (BridgeChipTrailing) },
 }
 
-mirror_struct! {
-    BridgeSignalValueRow = bae_identify::SignalValueRow,
+mirror_enum! {
+    BridgeIdentifierKind = bae_identify::IdentifierKind,
     from_core: fn,
-    fields: { value, excluded, cells: (each BridgeProviderCell) },
+    variants: { DiscId, Barcode, Catalog },
+}
+
+impl BridgeDiscIdRow {
+    fn from_core(row: bae_identify::DiscIdRow) -> Self {
+        let chip = BridgeChipState::from_core(row.chip());
+        let bae_identify::DiscIdRow { disc_id, lookup } = row;
+        Self { disc_id, lookup: BridgeLookupState::from_core(lookup), chip }
+    }
+}
+
+impl BridgeSignalValueRow {
+    fn from_core(row: bae_identify::SignalValueRow) -> Self {
+        let chip = BridgeChipState::from_core(row.chip());
+        let bae_identify::SignalValueRow { value, excluded, cells: _ } = row;
+        Self { value, excluded, chip }
+    }
 }
 
 impl BridgeDiscIdStep {
@@ -219,24 +241,38 @@ impl BridgeCatalogStep {
     }
 }
 
-mirror_enum! {
-    BridgeSearchStep = bae_identify::SearchStepView,
-    from_core: fn,
-    variants: {
-        NotNeeded,
-        Waiting { album, artist },
-        Searched { album, artist, cells: (each BridgeProviderCell) },
-    },
+impl BridgeSearchStep {
+    fn from_core(step: bae_identify::SearchStepView) -> Self {
+        use bae_identify::SearchStepView;
+        let chip = step.chip().map(BridgeChipState::from_core);
+        match step {
+            SearchStepView::NotNeeded => Self::NotNeeded,
+            SearchStepView::Waiting { album, artist } => Self::Waiting { album, artist },
+            SearchStepView::Searched { album, artist, cells: _ } => Self::Searched {
+                album,
+                artist,
+                chip: chip.expect("a search that went out has a chip"),
+            },
+        }
+    }
 }
 
-mirror_enum! {
-    BridgeIsrcStep = bae_identify::IsrcStepView,
-    from_core: fn,
-    variants: {
-        Reading,
-        Absent,
-        Read { shown, more_count, isrcs, lookup: (BridgeLookupState) },
-    },
+impl BridgeIsrcStep {
+    fn from_core(step: bae_identify::IsrcStepView) -> Self {
+        use bae_identify::IsrcStepView;
+        let chip = step.chip().map(BridgeChipState::from_core);
+        match step {
+            IsrcStepView::Reading => Self::Reading,
+            IsrcStepView::Absent => Self::Absent,
+            IsrcStepView::Read { shown, more_count, isrcs, lookup } => Self::Read {
+                shown,
+                more_count,
+                isrcs,
+                lookup: BridgeLookupState::from_core(lookup),
+                chip: chip.expect("codes that are read have a chip"),
+            },
+        }
+    }
 }
 
 impl BridgeIdentifyRun {
@@ -244,6 +280,8 @@ impl BridgeIdentifyRun {
     /// disc-ID step.
     fn from_core(run: bae_identify::IdentifyRunView, rate: Option<u32>) -> Self {
         let reading_artwork = run.reading_artwork();
+        let found_kinds =
+            run.found_kinds().into_iter().map(BridgeIdentifierKind::from_core).collect();
         let bae_identify::IdentifyRunView { providers, disc_id, barcode, catalog, isrc, search } =
             run;
         Self {
@@ -253,6 +291,7 @@ impl BridgeIdentifyRun {
             catalog: BridgeCatalogStep::from_core(catalog),
             isrc: BridgeIsrcStep::from_core(isrc),
             search: BridgeSearchStep::from_core(search),
+            found_kinds,
             reading_artwork,
         }
     }
@@ -270,7 +309,8 @@ impl BridgeReleaseGroup {
             id,
             titles,
             artists,
-            labels,
+            // No screen shows an album's label on its header.
+            labels: _,
             cover_art,
             sources,
             // No screen shows a card's span of years.
@@ -282,7 +322,6 @@ impl BridgeReleaseGroup {
             id,
             titles,
             artists: artists.into_iter().map(BridgeCreditLine::from_core).collect(),
-            labels,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
             sources: sources.into_iter().map(BridgeReleaseGroupSource::from_core).collect(),
             sections: sections.into_iter().map(BridgePressingSection::from_core).collect(),
@@ -315,7 +354,8 @@ impl BridgePressing {
         // `releases`.
         let facts = BridgePressingFacts::from_core(pressing.lead().facts());
         let choice = pressing.choice();
-        let bae_identify::release_group::Statements { years, labels, barcodes, areas, media } =
+        // The table lists no barcode and no source tags in a row.
+        let bae_identify::release_group::Statements { years, labels, barcodes: _, areas, media } =
             pressing.statements().clone();
         BridgePressing {
             document_failure: pressing
@@ -324,11 +364,9 @@ impl BridgePressing {
                 .map(BridgeLookupFailure::from_core),
             labels: labels.into_iter().map(BridgeStatedLabelLine::from_core).collect(),
             years: years.into_iter().map(BridgeYearStatement::from_core).collect(),
-            barcodes: barcodes.into_iter().map(BridgeTextStatement::from_core).collect(),
             areas: areas.into_iter().map(BridgeTermsStatement::from_area).collect(),
             media: media.into_iter().map(BridgeTermsStatement::from_media).collect(),
             pick: crate::types::BridgePressingLink::from_core(pressing.pick()),
-            sources: pressing.sources().into_iter().map(BridgeLookupCatalog::from_core).collect(),
             details: crate::types::bridge_pressing_details(facts),
             in_library: pressing.in_library(),
             releases: pressing.releases.into_iter().map(BridgeMetadataResult::from_core).collect(),

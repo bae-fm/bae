@@ -25,7 +25,6 @@ extension PreviewData {
                     sourceGroupId: "group-preview"
                 )
             ],
-            sources: [.musicBrainz],
             labels: [
                 BridgeLabelLine(
                     names: ["Label Name"],
@@ -67,7 +66,6 @@ extension PreviewData {
                     sourceGroupId: "master-6"
                 ),
             ],
-            sources: [.musicBrainz, .discogs],
             labels: [
                 BridgeLabelLine(
                     names: ["Label Name"],
@@ -93,7 +91,6 @@ extension PreviewData {
         id: "group-preview",
         titles: ["Album Title"],
         artists: [.named("Artist Name")],
-        labels: ["Label Name"],
         coverArt: nil,
         sources: [
             BridgeReleaseGroupSource(
@@ -149,7 +146,6 @@ extension PreviewData {
             id: "grp-1",
             titles: ["Album Title One"],
             artists: [.named("Artist Name")],
-            labels: ["Label Name"],
             coverArt: nil,
             sources: [
                 BridgeReleaseGroupSource(
@@ -177,7 +173,6 @@ extension PreviewData {
                                     sourceGroupId: "grp-1"
                                 )
                             ],
-                            sources: [.musicBrainz],
                             labels: [
                                 BridgeLabelLine(
                                     names: ["Label Name"],
@@ -206,7 +201,6 @@ extension PreviewData {
                                     sourceGroupId: "grp-1"
                                 )
                             ],
-                            sources: [.musicBrainz],
                             labels: [
                                 BridgeLabelLine(
                                     names: ["Another Label"],
@@ -230,7 +224,6 @@ extension PreviewData {
             id: "grp-2",
             titles: ["Album Title One (Remaster)"],
             artists: [.named("Artist Name")],
-            labels: ["Reissue Records"],
             coverArt: nil,
             sources: [
                 BridgeReleaseGroupSource(
@@ -277,7 +270,6 @@ extension PreviewData {
                                     sourceGroupId: "master-7"
                                 ),
                             ],
-                            sources: [.musicBrainz, .discogs],
                             labels: [
                                 BridgeLabelLine(
                                     names: ["Reissue Records"],
@@ -309,7 +301,6 @@ extension PreviewData {
         id: "group-disc",
         titles: ["Album Title"],
         artists: [.named("Artist Name")],
-        labels: ["Label A"],
         coverArt: nil,
         sources: [
             BridgeReleaseGroupSource(
@@ -337,7 +328,6 @@ extension PreviewData {
                                 sourceGroupId: "group-disc"
                             )
                         ],
-                        sources: [.musicBrainz],
                         labels: [
                             BridgeLabelLine(
                                 names: ["Label A"],
@@ -362,7 +352,6 @@ extension PreviewData {
         id: "group-bar",
         titles: ["Other Album Title"],
         artists: [.named("Artist Name")],
-        labels: ["Label B"],
         coverArt: nil,
         sources: [
             BridgeReleaseGroupSource(
@@ -389,7 +378,6 @@ extension PreviewData {
                                 sourceGroupId: "group-bar"
                             )
                         ],
-                        sources: [.musicBrainz],
                         labels: [
                             BridgeLabelLine(
                                 names: ["Label B"],
@@ -455,17 +443,6 @@ extension PreviewData {
         BridgeCatalogCandidate(value: "7243 8 29100"),
         BridgeCatalogCandidate(value: "CDP 546"),
     ]
-
-    /// Both providers' cells for one value.
-    static func cells(
-        _ musicBrainz: BridgeLookupState,
-        _ discogs: BridgeLookupState
-    ) -> [BridgeProviderCell] {
-        [
-            BridgeProviderCell(source: .musicBrainz, lookup: musicBrainz),
-            BridgeProviderCell(source: .discogs, lookup: discogs),
-        ]
-    }
 
     /// A lookup that named the exact-match album's pressings.
     static let foundExact = BridgeLookupState.found(
@@ -672,7 +649,11 @@ extension PreviewData {
                 discId: .read(discs: [
                     BridgeDiscIdRow(
                         discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                        lookup: .failed(failure: .network)
+                        lookup: .failed(failure: .network),
+                        chip: .init(
+                            look: .on,
+                            trailing: .failed(failure: .network)
+                        )
                     )
                 ]),
                 barcode: .rows(
@@ -680,9 +661,11 @@ extension PreviewData {
                         BridgeSignalValueRow(
                             value: "0123456789012",
                             excluded: false,
-                            cells: cells(
-                                .noMatch,
-                                .failed(failure: .provider(status: 503))
+                            chip: .init(
+                                look: .on,
+                                trailing: .failed(
+                                    failure: .provider(status: 503)
+                                )
                             )
                         )
                     ]
@@ -690,6 +673,7 @@ extension PreviewData {
                 catalog: .noneFound,
                 isrc: .absent,
                 search: .notNeeded,
+                foundKinds: [],
                 readingArtwork: false
             ),
             // The band's cells show both failures.
@@ -734,7 +718,6 @@ extension PreviewData {
                         id: "group-preview",
                         titles: ["Album Title"],
                         artists: [.named("Artist Name")],
-                        labels: ["Label Name"],
                         coverArt: nil,
                         sources: searchGroupExactBridge.sources,
                         sections: [
@@ -776,7 +759,6 @@ extension PreviewData {
                         id: "group-preview",
                         titles: ["Album Title"],
                         artists: [.named("Artist Name")],
-                        labels: ["Label Name"],
                         coverArt: nil,
                         sources: searchGroupExactBridge.sources,
                         sections: [

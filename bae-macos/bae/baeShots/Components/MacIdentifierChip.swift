@@ -5,35 +5,39 @@ import SwiftUI
 
 extension ShotScene {
     static let macIdentifierChipScenes: [ShotScene] = [
+        identifierChipScene("mac.component.identifier-chip.off") {
+            MacIdentifierChip(
+                label: "Barcode",
+                value: sampleBarcode,
+                style: .off,
+                onPress: {}
+            ) { EmptyView() }
+        },
         identifierChipScene("mac.component.identifier-chip.on") {
             MacIdentifierChip(
                 label: "Barcode",
                 value: sampleBarcode,
                 onPress: {}
-            ) {
-                EmptyView()
-            }
+            ) { EmptyView() }
         },
-        identifierChipScene("mac.component.identifier-chip.off") {
+        identifierChipScene("mac.component.identifier-chip.found") {
             MacIdentifierChip(
                 label: "Barcode",
                 value: sampleBarcode,
-                style: .outlined,
+                style: .found,
                 onPress: {}
             ) { EmptyView() }
         },
         identifierChipScene("mac.component.identifier-chip.dash") {
             MacIdentifierChip(label: "Barcode")
         },
-        identifierChipScene("mac.component.identifier-chip.found") {
-            MacIdentifierChip(
-                label: "Barcode",
-                value: sampleBarcode,
-                onPress: {}
-            ) {
-                capsule(.musicBrainz, .found(count: 2, groups: []))
-                capsule(.discogs, .noMatch)
-            }
+        identifierChipScene("mac.component.identifier-chip.title-search") {
+            TitleSearchChip(
+                album: "Low Tide Hours",
+                artist: "Mara Quill",
+                style: .on,
+                onCommit: { _, _ in }
+            ) { EmptyView() }
         },
         identifierChipScene("mac.component.identifier-chip.several-values") {
             MacIdentifierChip(label: "Barcode", values: severalValues) {
@@ -52,7 +56,7 @@ extension ShotScene {
                 moreValuesPopover(
                     severalCodes,
                     buttonCenter: severalValuesMoreButtonCenter,
-                    buttonBottom: 16
+                    buttonBottom: 15.5
                 )
             }
             .frame(width: 842, height: 119, alignment: .topLeading)
@@ -72,14 +76,7 @@ extension ShotScene {
     )
 
     /// Where the +N button's centre is from the chip's left.
-    private static let severalValuesMoreButtonCenter: CGFloat = 160.3
-
-    private static func capsule(
-        _ source: BridgeLookupCatalog,
-        _ lookup: BridgeLookupState
-    ) -> some View {
-        ProviderCapsule(source: source, lookup: lookup, onRetry: {})
-    }
+    private static let severalValuesMoreButtonCenter: CGFloat = 169.4
 
     private static func identifierChipScene<Chip: View>(
         _ id: String,

@@ -66,9 +66,10 @@ fn the_run_says_whether_the_artwork_is_still_being_read() {
     assert!(!run_of(in_flight(BarcodeProgress::Lookups { codes: Vec::new() })).reading_artwork);
 }
 
-/// A code crosses as one row with one cell per provider, each its own.
+/// A code crosses as one row whose chip is on and trails the first failure of
+/// its providers' lookups.
 #[test]
-fn a_code_crosses_as_a_row_with_one_cell_per_provider() {
+fn a_code_crosses_as_a_row_with_its_chip() {
     let step = barcode_step(in_flight(BarcodeProgress::Lookups {
         codes: vec![ValueLookup {
             value: "0123456789012".to_string(),
@@ -92,17 +93,18 @@ fn a_code_crosses_as_a_row_with_one_cell_per_provider() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].value, "0123456789012");
     assert!(!rows[0].excluded);
-    assert_eq!(rows[0].cells.len(), 2);
-    assert_eq!(rows[0].cells[0].source, BridgeLookupCatalog::MusicBrainz);
-    assert!(matches!(rows[0].cells[0].lookup, BridgeLookupState::LookingUp));
-    assert_eq!(rows[0].cells[1].source, BridgeLookupCatalog::Discogs);
-    assert!(matches!(
-        &rows[0].cells[1].lookup,
-        BridgeLookupState::Failed { failure: BridgeLookupFailure::Provider { status: Some(500) } }
-    ));
+    assert_eq!(
+        rows[0].chip,
+        BridgeChipState {
+            look: BridgeChipLook::On,
+            trailing: BridgeChipTrailing::Failed {
+                failure: BridgeLookupFailure::Provider { status: Some(500) }
+            },
+        }
+    );
 }
 
-/// A code the person left out crosses as a row whose cells say so.
+/// A code the person left out crosses as a row whose chip is off.
 #[test]
 fn a_code_left_out_crosses_as_a_row_that_says_so() {
     let mut state = in_flight(BarcodeProgress::NotAsked {
@@ -119,10 +121,10 @@ fn a_code_left_out_crosses_as_a_row_that_says_so() {
     };
     assert_eq!(rows.len(), 1);
     assert!(rows[0].excluded);
-    assert!(rows[0].cells.iter().all(|cell| matches!(
-        cell.lookup,
-        BridgeLookupState::NotAsked { reason: BridgeNotAskedReason::LeftOut }
-    )));
+    assert_eq!(
+        rows[0].chip,
+        BridgeChipState { look: BridgeChipLook::Off, trailing: BridgeChipTrailing::Nothing }
+    );
 }
 
 /// A disc ID nobody looked up crosses as read, with why.

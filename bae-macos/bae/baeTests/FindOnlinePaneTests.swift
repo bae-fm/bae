@@ -28,11 +28,11 @@ final class FindOnlinePaneTests: XCTestCase {
         }
     }
 
-    /// A failure with no band to hang a capsule's Retry off — a folder that
+    /// A failure with no band to hang a chip's Retry off — a folder that
     /// carried nothing to lay out, or a verdict stored before its signals
     /// were — is a dead end without this: the reasons, and one way to ask
     /// again beneath them. A failure that does have a band says it in the
-    /// capsule that failed instead, so the lines come in the one case and
+    /// chip that failed instead, so the lines come in the one case and
     /// not the other. How they look is the `import-search-failure-lines`
     /// shot's.
     func testAFailureWithNoBandOffersItsRetry() {

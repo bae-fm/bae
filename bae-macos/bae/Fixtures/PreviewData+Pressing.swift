@@ -38,7 +38,6 @@ extension BridgePressing {
     /// reading it as identification's own pick.
     init(
         releases: [BridgeMetadataResult],
-        sources: [BridgeLookupCatalog],
         labels: [BridgeLabelLine] = [],
         documentFailure: BridgeLookupFailure? = nil,
         pick: BridgePressingLink,
@@ -52,7 +51,6 @@ extension BridgePressing {
         let media = bridgeMediaTerms(media: facts.media)
         self.init(
             releases: releases,
-            sources: sources,
             labels: labels.map { line in
                 BridgeStatedLabelLine(
                     names: line.names,
@@ -65,10 +63,6 @@ extension BridgePressing {
                 .map {
                     [BridgeYearStatement(year: $0, catalogs: [])]
                 } ?? [],
-            barcodes: (lead?.barcodes ?? [])
-                .map {
-                    BridgeTextStatement(text: $0, catalogs: [])
-                },
             documentFailure: documentFailure,
             pick: pick,
             areas: area.isEmpty

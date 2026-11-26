@@ -93,8 +93,6 @@ pub struct BridgeReleaseGroup {
     /// The album's artist as each of its records states it, listed as
     /// `titles` are.
     pub artists: Vec<BridgeCreditLine>,
-    /// Every label the album's pressings state, each once.
-    pub labels: Vec<String>,
     /// Representative cover for the card.
     pub cover_art: Option<BridgeRemoteCover>,
     /// Every source carrying this group, in the one order surfaces name
@@ -151,9 +149,6 @@ pub struct BridgeReleaseGroupSource {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePressing {
     pub releases: Vec<BridgeMetadataResult>,
-    /// Every catalog listing the pressing, in the order surfaces list
-    /// catalogs: the row's tags.
-    pub sources: Vec<BridgeLookupCatalog>,
     /// Every label the records state, in the order of the record the row
     /// leads with, each name once with its catalog numbers after it.
     pub labels: Vec<BridgeStatedLabelLine>,
@@ -161,8 +156,6 @@ pub struct BridgePressing {
     /// alone, each with its catalogs where they differ, none where no record
     /// states one.
     pub years: Vec<BridgeYearStatement>,
-    /// The barcodes the records state, listed as `years` are.
-    pub barcodes: Vec<BridgeTextStatement>,
     /// Why a record's full document could not be read when identification
     /// offered the row, which then shows what its search result said.
     pub document_failure: Option<BridgeLookupFailure>,

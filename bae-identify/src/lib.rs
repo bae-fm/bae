@@ -46,8 +46,9 @@ pub use state::{
 };
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
-    BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
-    FailureLines, FoundDecision, IdentifyRunView, IdentifyStateView, IsrcStepView, JudgedFindings,
-    LookupStep, LookupView, MissingSearch, ProviderCell, PublishedRun, RowAgreements, RunOutcome,
-    SearchStepView, SignalValueRow, VerdictCards,
+    BarcodeStepView, CatalogCandidateView, CatalogStepView, ChipLook, ChipState, ChipTrailing,
+    DiscIdRow, DiscIdStepView, FailureLines, FoundDecision, IdentifierKind, IdentifyRunView,
+    IdentifyStateView, IsrcStepView, JudgedFindings, LookupStep, LookupView, MissingSearch,
+    ProviderCell, PublishedRun, RowAgreements, RunOutcome, SearchStepView, SignalValueRow,
+    VerdictCards,
 };

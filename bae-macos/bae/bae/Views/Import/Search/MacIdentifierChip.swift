@@ -1,38 +1,86 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
 // The pieces the identifier band is built from.
 
-/// Filled for a value the run asks about, outlined for one it does not, and
-/// outlined and struck through for one the person struck out. A chip that
-/// holds no value, only a dash, has no fill and no ring.
+/// What a chip says about its identifier. Off is an outline, for an
+/// identifier the run leaves out. On is a fill, for one the run asks about.
+/// Found is the accent's tint, for one that found releases. A chip that holds
+/// no value, only a dash, has no fill and no ring.
 enum MacIdentifierChipStyle {
-    case filled
+    case off
+    case on
+    case found
     case dash
-    case outlined
-    case struck
 }
 
-/// The widest a chip's value is drawn before it truncates in the middle.
-private let identifierValueWidth: CGFloat = 92
+/// How much of the background shows through a value's inset.
+private let identifierInsetOpacity = 0.7
+/// How much of the accent shows in a found chip's fill.
+private let identifierFoundOpacity = 0.26
+/// How much of the primary text colour a found chip's name keeps.
+private let identifierFoundNameOpacity = 0.75
 
-/// One identifier in the band: its kind, its value, and the providers' answers.
+extension MacIdentifierChipStyle {
+    var nameColor: Color {
+        switch self {
+        case .off, .on, .dash: Theme.textTertiary
+        case .found: Theme.textPrimary.opacity(identifierFoundNameOpacity)
+        }
+    }
+
+    var valueColor: Color {
+        switch self {
+        case .off, .dash: Theme.textTertiary
+        case .on: Color.halfway(Theme.textPrimary, Theme.textSecondary)
+        case .found: Theme.textPrimary
+        }
+    }
+}
+
+extension Color {
+    /// The colour halfway between two, taken in the appearance it is drawn
+    /// in.
+    fileprivate static func halfway(_ first: Color, _ second: Color) -> Color {
+        Color(
+            nsColor: NSColor(name: nil) { appearance in
+                var halfway: NSColor?
+                appearance.performAsCurrentDrawingAppearance {
+                    halfway = NSColor(first).usingColorSpace(.sRGB)
+                        .flatMap {
+                            from in
+                            NSColor(second).usingColorSpace(.sRGB)
+                                .flatMap {
+                                    from.blended(withFraction: 0.5, of: $0)
+                                }
+                        }
+                }
+                guard let halfway else {
+                    preconditionFailure(
+                        "the theme's text colours blend in sRGB"
+                    )
+                }
+                return halfway
+            }
+        )
+    }
+}
+
+/// One identifier in the band: its kind and its value.
 struct MacIdentifierChip<Trailing: View>: View {
     let label: String
     var value: String?
     /// What the chip draws where it holds several values: the first, then +N.
     /// Takes the place of `value`.
     var values: MacIdentifierChipValues?
-    var style: MacIdentifierChipStyle = .filled
-    /// Where pressing the chip does something, what it does. The chip's label,
-    /// value and answers stay separate elements for accessibility, as the
-    /// board draws them.
+    var style: MacIdentifierChipStyle = .on
+    /// Where pressing the chip does something, what it does. The chip's label
+    /// and value stay separate elements for accessibility, as the board draws
+    /// them.
     var onPress: (() -> Void)?
     @ViewBuilder
     let trailing: Trailing
-
-    @State
-    private var isHovered = false
 
     var body: some View {
         if let onPress {
@@ -45,42 +93,75 @@ struct MacIdentifierChip<Trailing: View>: View {
     }
 
     private var content: some View {
-        HStack(spacing: ThemeSpace.compact) {
-            IdentifierLabel(text: label)
+        MacIdentifierChipFrame(style: style, containsParts: style != .dash) {
+            IdentifierLabel(text: label, style: style)
             if let list = values {
-                MacIdentifierMoreValues(list: list)
+                MacIdentifierMoreValues(list: list, style: style)
             }
             else if let value {
                 IdentifierValueText(value: value, style: style)
             }
-            // The catalogs' capsules keep their full width.
             trailing
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.line)
+    }
+}
+
+/// The chip's box: its look's fill or outline, and the room round its parts.
+struct MacIdentifierChipFrame<Content: View>: View {
+    let style: MacIdentifierChipStyle
+    /// Whether the chip's parts stay separate elements for accessibility. A
+    /// chip of one part, as the dash chip's name, is that part's element.
+    var containsParts = true
+    @ViewBuilder
+    let content: Content
+
+    @State
+    private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.compact) {
+            content
+        }
+        .padding(.horizontal, ThemeSpace.compact + ThemeSpace.hairline)
+        .padding(.vertical, ThemeSpace.line + ThemeSpace.hairline)
         .background(fill, in: RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .overlay {
-            if style == .outlined || style == .struck {
+            if style == .off {
                 RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .strokeBorder(border, lineWidth: 1)
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .onHover { isHovered = $0 }
-        .accessibilityElement(children: .contain)
+        .accessibilityChildren(containing: containsParts)
     }
 
     private var fill: Color {
         switch style {
-        case .filled: isHovered ? Theme.pressed : Theme.hover
+        case .on: isHovered ? Theme.pressed : Theme.hover
+        case .found: Theme.accent.opacity(identifierFoundOpacity)
         case .dash: Color.clear
-        case .outlined, .struck: isHovered ? Theme.hover : Color.clear
+        case .off: isHovered ? Theme.hover : Color.clear
         }
     }
 
     private var border: Color {
         isHovered ? Theme.hairlineStrong : Theme.hairline
+    }
+}
+
+extension View {
+    /// Keeps the view's parts as separate elements for accessibility, or
+    /// leaves them as they are.
+    @ViewBuilder
+    fileprivate func accessibilityChildren(containing: Bool) -> some View {
+        if containing {
+            accessibilityElement(children: .contain)
+        }
+        else {
+            self
+        }
     }
 }
 
@@ -96,7 +177,7 @@ extension MacIdentifierChip where Trailing == IdentifierDash {
             label: label,
             value: value,
             values: values,
-            style: value == nil && values == nil ? .dash : .filled
+            style: value == nil && values == nil ? .dash : .on
         ) {
             IdentifierDash()
         }
@@ -124,23 +205,39 @@ struct MacIdentifierChipValues: Equatable {
     }
 }
 
-/// A chip's value in the mono face, cut at the chip's value width.
-private struct IdentifierValueText: View {
+/// A chip's value on its inset: the background at 70%, in the detail type.
+struct IdentifierValueText: View {
     let value: String
     let style: MacIdentifierChipStyle
 
     var body: some View {
         Text(value)
-            .themeText(.mono)
-            .strikethrough(style == .struck)
-            // A value is in the primary text colour whatever the chip's
-            // style, as its board draws it: the style shows in the fill, the
-            // outline and the strike.
-            .foregroundStyle(Theme.textPrimary)
+            .themeText(.detail)
+            .foregroundStyle(style.valueColor)
             .cutLine(.prose)
-            .frame(maxWidth: identifierValueWidth, alignment: .leading)
-            // A short value takes its own width, as the board's does.
-            .fixedSize(horizontal: true, vertical: false)
+            .identifierInset()
+    }
+}
+
+extension View {
+    /// Sets the view on a value's inset. The inset is a hairline taller than
+    /// the detail line on each side and overlaps the chip's padding there, so
+    /// it never makes the chip taller. `overlapsNext` pulls the next part of
+    /// the chip up to it.
+    func identifierInset(overlapsNext: Bool = true) -> some View {
+        padding(.horizontal, ThemeSpace.compact - ThemeSpace.hairline)
+            .padding(.vertical, ThemeSpace.hairline)
+            .background(
+                Theme.background.opacity(identifierInsetOpacity),
+                in: RoundedRectangle(
+                    cornerRadius: ThemeRadius.chip - ThemeSpace.hairline
+                )
+            )
+            .padding(.vertical, -ThemeSpace.line)
+            .padding(
+                .trailing,
+                overlapsNext ? ThemeSpace.line - ThemeSpace.compact : 0
+            )
     }
 }
 
@@ -148,21 +245,22 @@ private struct IdentifierValueText: View {
 /// value in it is a button.
 private struct MacIdentifierMoreValues: View {
     let list: MacIdentifierChipValues
+    let style: MacIdentifierChipStyle
 
     @State
     private var showsAll = false
 
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
-            IdentifierValueText(value: list.shown, style: .filled)
+            IdentifierValueText(value: list.shown, style: style)
             if let more = list.moreTitle {
                 MacButton(kind: .plain) {
                     showsAll = true
                 } label: {
                     Text(verbatim: more)
                         .themeText(.chip)
+                        .foregroundStyle(style.nameColor)
                 }
-                .accent()
                 // The button reads every value, as the first alone would
                 // leave the rest unheard.
                 .accessibilityHint(list.spoken)
@@ -174,7 +272,7 @@ private struct MacIdentifierMoreValues: View {
     }
 }
 
-/// Every value of a chip, one a line, in the mono face: a 150 point column
+/// Every value of a chip, one a line, in the detail type: a 150 point column
 /// with a group space round it, set in the popover's 14 points at the sides
 /// and below and 4 above, as the board draws it.
 struct MacIdentifierValuesPopover: View {
@@ -184,7 +282,7 @@ struct MacIdentifierValuesPopover: View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(verbatim: line)
-                    .themeText(.mono)
+                    .themeText(.detail)
                     .foregroundStyle(Theme.textPrimary)
             }
         }
@@ -196,24 +294,43 @@ struct MacIdentifierValuesPopover: View {
     }
 }
 
-/// One provider's name and its lookup's glyph, inside a value's chip.
-struct ProviderCapsule: View {
-    let source: BridgeLookupCatalog
-    let lookup: BridgeLookupState
+/// What trails a chip's value while one of its lookups is out or has failed,
+/// as core says: nothing once every lookup answered, as the chip's look shows
+/// what they found.
+struct ChipTrailing: View {
+    let state: BridgeChipTrailing
     let onRetry: () -> Void
 
     var body: some View {
-        HStack(spacing: ThemeSpace.inline) {
-            Text(bridgeLookupCatalogName(catalog: source))
-                .themeText(.chip)
-                .foregroundStyle(StatusTone.neutral.color)
-                .fixedSize()
-            LookupCellView(lookup: lookup, onRetry: onRetry)
+        switch state {
+        case .nothing:
+            EmptyView()
+        case .searching:
+            ChipWait(searching: ())
+        case .failed(let failure):
+            HStack(spacing: ThemeSpace.compact) {
+                IdentifierWarning()
+                    .help(failure.badgeLine)
+                Button(action: onRetry) {
+                    Image(systemName: "arrow.clockwise")
+                        .themeIcon(.small)
+                        .foregroundStyle(Theme.accent)
+                }
+                .buttonStyle(.accentPlain)
+                .help("Retry")
+            }
         }
-        .padding(.leading, ThemeSpace.compact)
-        .padding(.trailing, ThemeSpace.inline)
-        .padding(.vertical, ThemeSpace.hairline)
-        .background(StatusTone.neutral.fill, in: Capsule())
+    }
+}
+
+extension MacIdentifierChipStyle {
+    /// The look core gives a chip.
+    init(_ look: BridgeChipLook) {
+        switch look {
+        case .off: self = .off
+        case .on: self = .on
+        case .found: self = .found
+        }
     }
 }
 
@@ -265,12 +382,11 @@ struct ChipWait: View {
     }
 
     /// A catalog still being asked about a value.
-    init?(waitingOn lookup: BridgeLookupState) {
-        guard case .lookingUp = lookup else { return nil }
+    init(searching: Void) {
         words = String(
             localized: "Searching…",
             comment:
-                "Find online ledger: beside a catalog's name in an identifier's chip, while bae asks that catalog about the identifier."
+                "Find online ledger: at the end of an identifier's chip, while bae asks a catalog about the identifier."
         )
     }
 
@@ -316,154 +432,15 @@ struct ScanningChip: View {
     }
 }
 
-/// One provider's lookup of one value as a glyph.
-struct LookupCellView: View {
-    let lookup: BridgeLookupState
-    let onRetry: () -> Void
-
-    var body: some View {
-        switch lookup {
-        case .queued:
-            Circle()
-                .fill(Theme.hairlineStrong)
-                .frame(width: 5, height: 5)
-        case .notAsked:
-            IdentifierDash()
-        case .lookingUp:
-            ChipWait(waitingOn: lookup)
-        case .found(let count, let groups):
-            LookupCountView(count: Int(count), groups: groups)
-        case .noMatch:
-            StatusChip(verbatim: 0.formatted())
-        case .failed(let failure):
-            HStack(spacing: ThemeSpace.compact) {
-                IdentifierWarning()
-                    .help(failure.badgeLine)
-                Button(action: onRetry) {
-                    Image(systemName: "arrow.clockwise")
-                        .themeIcon(.small)
-                        .foregroundStyle(Theme.accent)
-                }
-                .buttonStyle(.accentPlain)
-                .help("Retry")
-            }
-        }
-    }
-}
-
-/// A match count that shows the releases it stands for on hover.
-struct LookupCountView: View {
-    let count: Int
-    let groups: [BridgeReleaseGroup]
-
-    var body: some View {
-        StatusChip(
-            verbatim: count.formatted(),
-            tone: count > 0 ? .success : .neutral
-        )
-        .hoverPopover(arrowEdge: .bottom) {
-            LookupReleasesPopover(
-                groups: groups.map(ReleaseGroup.init(bridge:))
-            )
-        }
-    }
-}
-
-/// The releases one lookup found, headed by album when there are several.
-struct LookupReleasesPopover: View {
-    let groups: [ReleaseGroup]
-
-    private static let thumbnailSize: CGFloat = 16
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
-            if groups.count == 1, let group = groups.first {
-                ForEach(group.pressings) { pressing in
-                    LookupReleaseLine(pressing: pressing)
-                }
-            }
-            else {
-                ForEach(Array(groups.enumerated()), id: \.element.id) {
-                    index,
-                    group in
-                    if index > 0 {
-                        MacHairline()
-                            .padding(.horizontal, ThemeSpace.line)
-                            .padding(.vertical, ThemeSpace.inline)
-                    }
-                    HStack(spacing: ThemeSpace.compact) {
-                        Artwork(
-                            content: group.coverImageContent,
-                            pointSize: Self.thumbnailSize,
-                            cornerRadius: nil
-                        )
-                        .frame(
-                            width: Self.thumbnailSize,
-                            height: Self.thumbnailSize
-                        )
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        )
-                        Text(group.title)
-                            .themeText(.rowTitle)
-                            .lineLimit(1)
-                        if let artist = group.artist {
-                            Text(verbatim: "\(FactList.glyph) \(artist)")
-                                .themeText(.detail)
-                                .foregroundStyle(Theme.textTertiary)
-                                .lineLimit(1)
-                        }
-                    }
-                    .padding(.horizontal, ThemeSpace.compact)
-                    .padding(.top, ThemeSpace.inline)
-                    .padding(.bottom, ThemeSpace.line)
-                    ForEach(group.pressings) { pressing in
-                        // Under the album's title, past its thumbnail.
-                        LookupReleaseLine(pressing: pressing)
-                            .padding(
-                                .leading,
-                                Self.thumbnailSize + ThemeSpace.compact
-                            )
-                    }
-                }
-            }
-        }
-        .padding(ThemeSpace.compact)
-        .frame(width: 264)
-    }
-}
-
-/// One pressing a lookup found: the facts that tell pressings of one album
-/// apart, as its edition line and then what it is made of.
-struct LookupReleaseLine: View {
-    let pressing: Pressing
-
-    var body: some View {
-        HStack(spacing: ThemeSpace.compact) {
-            MacSourcedValue(parts: pressing.editionParts)
-                .themeText(.detail)
-                .foregroundStyle(Theme.textSecondary)
-                .monospacedDigit()
-                .lineLimit(1)
-            MacSourcedValue(parts: pressing.copyParts)
-                .themeText(.fine)
-                .foregroundStyle(Theme.textTertiary)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.line)
-    }
-}
-
 /// The caption naming the value after it.
 struct IdentifierLabel: View {
     let text: String
+    var style: MacIdentifierChipStyle = .on
 
     var body: some View {
         Text(text)
             .themeText(.chip)
-            .foregroundStyle(Theme.textTertiary)
+            .foregroundStyle(style.nameColor)
             .fixedSize()
     }
 }

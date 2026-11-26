@@ -12,7 +12,8 @@ extension PreviewData {
         discId: .read(discs: [
             BridgeDiscIdRow(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: .found(count: 1, groups: [searchGroupExactBridge])
+                lookup: .found(count: 1, groups: [searchGroupExactBridge]),
+                chip: .init(look: .found, trailing: .nothing)
             )
         ]),
         barcode: .rows(
@@ -20,12 +21,12 @@ extension PreviewData {
                 BridgeSignalValueRow(
                     value: "0123456789012",
                     excluded: false,
-                    cells: cells(.lookingUp, foundExact)
+                    chip: .init(look: .found, trailing: .searching)
                 ),
                 BridgeSignalValueRow(
                     value: "9999999999999",
                     excluded: true,
-                    cells: cells(leftOut, leftOut)
+                    chip: .init(look: .off, trailing: .nothing)
                 ),
             ]
         ),
@@ -35,9 +36,11 @@ extension PreviewData {
         ),
         isrc: .read(
             isrcs: ["XX0000000001", "XX0000000002"],
-            lookup: .found(count: 1, groups: [searchGroupExactBridge])
+            lookup: .found(count: 1, groups: [searchGroupExactBridge]),
+            chip: .init(look: .found, trailing: .nothing)
         ),
         search: .notNeeded,
+        foundKinds: [.discId, .barcode],
         readingArtwork: false
     )
 
@@ -49,6 +52,7 @@ extension PreviewData {
         catalog: .numbers(rows: [], candidates: []),
         isrc: .absent,
         search: .notNeeded,
+        foundKinds: [],
         readingArtwork: true
     )
 
@@ -61,12 +65,12 @@ extension PreviewData {
                 BridgeSignalValueRow(
                     value: "5051961234567",
                     excluded: false,
-                    cells: cells(.noMatch, .failed(failure: .timeout))
+                    chip: .init(look: .on, trailing: .failed(failure: .timeout))
                 ),
                 BridgeSignalValueRow(
                     value: "0123456789012",
                     excluded: false,
-                    cells: cells(.lookingUp, .lookingUp)
+                    chip: .init(look: .on, trailing: .searching)
                 ),
             ]
         ),
@@ -75,16 +79,18 @@ extension PreviewData {
                 BridgeSignalValueRow(
                     value: "LC 6006",
                     excluded: false,
-                    cells: cells(.lookingUp, .noMatch)
+                    chip: .init(look: .on, trailing: .searching)
                 )
             ],
             candidates: Array(catalogCandidates.dropFirst())
         ),
         isrc: .read(
             isrcs: ["XX0000000001"],
-            lookup: .failed(failure: .timeout)
+            lookup: .failed(failure: .timeout),
+            chip: .init(look: .on, trailing: .failed(failure: .timeout))
         ),
         search: .notNeeded,
+        foundKinds: [],
         readingArtwork: false
     )
 
@@ -94,7 +100,8 @@ extension PreviewData {
         discId: .read(discs: [
             BridgeDiscIdRow(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: .noMatch
+                lookup: .noMatch,
+                chip: .init(look: .on, trailing: .nothing)
             )
         ]),
         barcode: .rows(
@@ -102,7 +109,7 @@ extension PreviewData {
                 BridgeSignalValueRow(
                     value: "0123456789012",
                     excluded: false,
-                    cells: cells(.noMatch, .noMatch)
+                    chip: .init(look: .on, trailing: .nothing)
                 )
             ]
         ),
@@ -114,8 +121,9 @@ extension PreviewData {
         search: .searched(
             album: "Album Title One",
             artist: "Artist Name",
-            cells: cells(.noMatch, .noMatch)
+            chip: .init(look: .on, trailing: .nothing)
         ),
+        foundKinds: [],
         readingArtwork: false
     )
 
@@ -125,7 +133,8 @@ extension PreviewData {
         discId: .read(discs: [
             BridgeDiscIdRow(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: .found(count: 1, groups: [searchGroupExactBridge])
+                lookup: .found(count: 1, groups: [searchGroupExactBridge]),
+                chip: .init(look: .found, trailing: .nothing)
             )
         ]),
         barcode: .rows(
@@ -133,7 +142,7 @@ extension PreviewData {
                 BridgeSignalValueRow(
                     value: "0123456789012",
                     excluded: false,
-                    cells: cells(foundExact, foundExact)
+                    chip: .init(look: .found, trailing: .nothing)
                 )
             ]
         ),
@@ -143,6 +152,7 @@ extension PreviewData {
         ),
         isrc: .absent,
         search: .notNeeded,
+        foundKinds: [.discId, .barcode],
         readingArtwork: false
     )
 
@@ -154,7 +164,8 @@ extension PreviewData {
         discId: .read(discs: [
             BridgeDiscIdRow(
                 discId: "v8n2Kq1Z…",
-                lookup: .found(count: 2, groups: [searchGroupExactBridge])
+                lookup: .found(count: 2, groups: [searchGroupExactBridge]),
+                chip: .init(look: .found, trailing: .nothing)
             )
         ]),
         barcode: .rows(
@@ -162,21 +173,14 @@ extension PreviewData {
                 BridgeSignalValueRow(
                     value: "0 41234 56789 2",
                     excluded: false,
-                    cells: [
-                        BridgeProviderCell(
-                            source: .discogs,
-                            lookup: .found(
-                                count: 1,
-                                groups: [searchGroupExactBridge]
-                            )
-                        )
-                    ]
+                    chip: .init(look: .found, trailing: .nothing)
                 )
             ]
         ),
         catalog: .numbers(rows: [], candidates: []),
         isrc: .absent,
         search: .notNeeded,
+        foundKinds: [.discId, .barcode],
         readingArtwork: false
     )
 
@@ -191,6 +195,7 @@ extension PreviewData {
         ),
         isrc: .absent,
         search: .notNeeded,
+        foundKinds: [],
         readingArtwork: false
     )
 
@@ -218,7 +223,8 @@ extension BridgeIsrcStep {
     /// rest. A fixture holds at least one code.
     static func read(
         isrcs: [String],
-        lookup: BridgeLookupState
+        lookup: BridgeLookupState,
+        chip: BridgeChipState
     ) -> BridgeIsrcStep {
         guard let shown = isrcs.first else {
             preconditionFailure("an ISRC step that is read holds a code")
@@ -227,7 +233,8 @@ extension BridgeIsrcStep {
             shown: shown,
             moreCount: UInt32(isrcs.count - 1),
             isrcs: isrcs,
-            lookup: lookup
+            lookup: lookup,
+            chip: chip
         )
     }
 }

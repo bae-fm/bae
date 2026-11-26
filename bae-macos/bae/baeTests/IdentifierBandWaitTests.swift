@@ -21,18 +21,14 @@ struct IdentifierBandWaitTests {
                 BridgeSignalValueRow(
                     value: "0123456789012",
                     excluded: false,
-                    cells: [
-                        BridgeProviderCell(
-                            source: .musicBrainz,
-                            lookup: .lookingUp
-                        )
-                    ]
+                    chip: .init(look: .on, trailing: .searching)
                 )
             ]
         ),
         catalog: .numbers(rows: [], candidates: []),
         isrc: .reading,
         search: .waiting(album: "Album Title", artist: "Artist Name"),
+        foundKinds: [],
         readingArtwork: true
     )
 
@@ -42,10 +38,7 @@ struct IdentifierBandWaitTests {
         #expect(ChipWait(waitingOn: run.discId)?.words == "Reading…")
         #expect(ChipWait(waitingOn: run.isrc)?.words == "Reading…")
         #expect(ChipWait(waitingOn: run.search)?.words == "Waiting…")
-        #expect(
-            ChipWait(waitingOn: BridgeLookupState.lookingUp)?.words
-                == "Searching…"
-        )
+        #expect(ChipWait(searching: ()).words == "Searching…")
         #expect(
             ChipWait(readingArtworkOf: run)?.words == "Reading artwork…"
         )
@@ -58,12 +51,12 @@ struct IdentifierBandWaitTests {
             ChipWait(
                 waitingOn: BridgeIsrcStep.read(
                     isrcs: ["XX0000000001"],
-                    lookup: .noMatch
+                    lookup: .noMatch,
+                    chip: .init(look: .on, trailing: .nothing)
                 )
             ) == nil
         )
         #expect(ChipWait(waitingOn: BridgeSearchStep.notNeeded) == nil)
-        #expect(ChipWait(waitingOn: BridgeLookupState.queued) == nil)
         #expect(ChipWait(readingArtworkOf: PreviewData.identifyRunFound) == nil)
     }
 

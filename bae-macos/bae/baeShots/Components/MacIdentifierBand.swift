@@ -11,7 +11,7 @@ extension ShotScene {
         ),
         identifierBandScene(
             "mac.component.identifier-band.nothing-found",
-            bandRun(.noMatch)
+            noMatchRun
         ),
         identifierBandScene(
             "mac.component.identifier-band.wrapped",
@@ -23,6 +23,10 @@ extension ShotScene {
         identifierBandScene(
             "mac.component.identifier-band.left-out",
             leftOutRun
+        ),
+        identifierBandScene(
+            "mac.component.identifier-band.title-search",
+            titleSearchRun
         ),
         identifierBandScene(
             "mac.component.identifier-band.catalog-numbers",
@@ -42,6 +46,18 @@ extension ShotScene {
         ),
     ]
 
+    /// The run whose Disc ID and barcode matched nothing, so it searches by
+    /// the folder's artist and title, which found a release.
+    private static var titleSearchRun: BridgeIdentifyRun {
+        var run = noMatchRun
+        run.search = .searched(
+            album: "Low Tide Hours",
+            artist: "Mara Quill",
+            chip: .init(look: .found, trailing: .nothing)
+        )
+        return run
+    }
+
     /// A catalog number whose release both catalogs name, with the Disc ID
     /// and the barcode left out of the run.
     private static let leftOutRun = BridgeIdentifyRun(
@@ -49,20 +65,15 @@ extension ShotScene {
         discId: .read(discs: [
             BridgeDiscIdRow(
                 discId: "v8n2Kq1Z…",
-                lookup: .notAsked(reason: .leftOut)
+                lookup: .notAsked(reason: .leftOut),
+                chip: .init(look: .off, trailing: .nothing)
             )
         ]),
         barcode: .rows(rows: [
             BridgeSignalValueRow(
                 value: sampleBarcode,
                 excluded: true,
-                cells: [.musicBrainz, .discogs]
-                    .map {
-                        BridgeProviderCell(
-                            source: $0,
-                            lookup: .notAsked(reason: .leftOut)
-                        )
-                    }
+                chip: .init(look: .off, trailing: .nothing)
             )
         ]),
         catalog: .numbers(
@@ -70,19 +81,14 @@ extension ShotScene {
                 BridgeSignalValueRow(
                     value: "HR-1042",
                     excluded: false,
-                    cells: [.musicBrainz, .discogs]
-                        .map {
-                            BridgeProviderCell(
-                                source: $0,
-                                lookup: .found(count: 1, groups: [])
-                            )
-                        }
+                    chip: .init(look: .found, trailing: .nothing)
                 )
             ],
             candidates: []
         ),
         isrc: .absent,
         search: .notNeeded,
+        foundKinds: [.catalog],
         readingArtwork: false
     )
 
@@ -98,7 +104,8 @@ extension ShotScene {
         var run = PreviewData.identifyRunBandBoard
         run.isrc = .read(
             isrcs: boardIsrcs,
-            lookup: .found(count: 2, groups: [])
+            lookup: .found(count: 2, groups: []),
+            chip: .init(look: .found, trailing: .nothing)
         )
         return run
     }
@@ -106,7 +113,7 @@ extension ShotScene {
     /// The ISRC chip's +N pressed: the popover under the button lists every
     /// code, drawn in place as the app draws it, 10 points under the chip.
     private static func isrcsShownScene(_ id: String) -> ShotScene {
-        component(id, width: 842, height: 263) {
+        component(id, width: 842, height: 259) {
             ZStack(alignment: .topLeading) {
                 MacIdentifierBand(
                     run: isrcsRun,
@@ -119,16 +126,16 @@ extension ShotScene {
                 moreValuesPopover(
                     boardIsrcs,
                     buttonCenter: isrcsMoreButtonCenter,
-                    buttonBottom: 18
+                    buttonBottom: 15.5
                 )
             }
-            .frame(width: 842, height: 263, alignment: .topLeading)
+            .frame(width: 842, height: 259, alignment: .topLeading)
         }
     }
 
     /// Where the +N button's centre is from the left of the band, in the
     /// board's found run with ISRCs.
-    private static let isrcsMoreButtonCenter: CGFloat = 611.5
+    private static let isrcsMoreButtonCenter: CGFloat = 446.6
 
     /// A chip's popover of every value, drawn in place as the board draws
     /// it: its right edge 75 points right of the +N button's centre, which is
@@ -165,44 +172,33 @@ extension ShotScene {
         ),
         isrc: .absent,
         search: .notNeeded,
+        foundKinds: [],
         readingArtwork: false
     )
 
-    /// The run where Disc ID and barcode each wait on, or found nothing
-    /// from, the catalog that answers them.
-    private static func bandRun(
-        _ lookup: BridgeLookupState
-    ) -> BridgeIdentifyRun {
-        BridgeIdentifyRun(
-            providers: [.musicBrainz, .discogs],
-            discId: .read(discs: [
-                BridgeDiscIdRow(discId: "v8n2Kq1Z…", lookup: lookup)
-            ]),
-            barcode: .rows(rows: [
-                BridgeSignalValueRow(
-                    value: sampleBarcode,
-                    excluded: false,
-                    cells: barcodeSources(lookup)
-                        .map {
-                            BridgeProviderCell(source: $0, lookup: lookup)
-                        }
-                )
-            ]),
-            catalog: .numbers(rows: [], candidates: []),
-            isrc: .absent,
-            search: .notNeeded,
-            readingArtwork: false
-        )
-    }
-
-    /// A barcode that nothing matched was asked of both catalogs; one still
-    /// being looked up waits on Discogs alone.
-    private static func barcodeSources(
-        _ lookup: BridgeLookupState
-    ) -> [BridgeLookupCatalog] {
-        if case .noMatch = lookup { return [.musicBrainz, .discogs] }
-        return [.discogs]
-    }
+    /// The run whose Disc ID and barcode both catalogs answered with nothing.
+    private static let noMatchRun = BridgeIdentifyRun(
+        providers: [.musicBrainz, .discogs],
+        discId: .read(discs: [
+            BridgeDiscIdRow(
+                discId: "v8n2Kq1Z…",
+                lookup: .noMatch,
+                chip: .init(look: .on, trailing: .nothing)
+            )
+        ]),
+        barcode: .rows(rows: [
+            BridgeSignalValueRow(
+                value: sampleBarcode,
+                excluded: false,
+                chip: .init(look: .on, trailing: .nothing)
+            )
+        ]),
+        catalog: .numbers(rows: [], candidates: []),
+        isrc: .absent,
+        search: .notNeeded,
+        foundKinds: [],
+        readingArtwork: false
+    )
 
     private static func identifierBandScene(
         _ id: String,
