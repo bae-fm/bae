@@ -57,7 +57,7 @@ struct MacS3FormAccessibilityTests {
                 ? [kAXStaticTextRole, kAXTextFieldRole, kAXStaticTextRole]
                 : [kAXStaticTextRole, kAXTextFieldRole]
             #expect(parts.map(\.role) == expectedRoles)
-            #expect(parts.first?.staticText == "Region")
+            #expect(parts.first?.textWords == "Region")
         }
     }
 }

@@ -23,6 +23,14 @@ extension AccessibilityTree {
 }
 
 extension AccessibilityTree.Node {
+    /// The words of a static text; nil for any other element.
+    var textWords: String? {
+        guard role == NSAccessibility.Role.staticText.rawValue,
+            case .text(let words)? = value
+        else { return nil }
+        return words
+    }
+
     /// The centre of the element's frame in the window's coordinates.
     @MainActor
     func center(in window: NSWindow) -> NSPoint {

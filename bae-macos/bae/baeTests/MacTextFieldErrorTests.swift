@@ -29,7 +29,7 @@ struct MacTextFieldErrorTests {
                 of: window,
                 subject: "Text field error"
             )
-            #expect(tree.nodes.compactMap(\.staticText).contains(message))
+            #expect(tree.nodes.compactMap(\.textWords).contains(message))
         }
     }
 }

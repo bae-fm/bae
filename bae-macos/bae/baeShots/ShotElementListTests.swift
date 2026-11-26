@@ -13,7 +13,7 @@ struct ShotElementListTests {
     private let display: ShotDisplay
 
     init() async throws {
-        display = try await ShotDisplay.shared()
+        display = try await ShotDisplay.forTests()
     }
 
     private func list(_ id: String) async throws -> ShotElementList {

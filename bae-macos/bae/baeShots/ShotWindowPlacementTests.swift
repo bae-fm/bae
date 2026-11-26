@@ -17,7 +17,7 @@ struct ShotWindowPlacementTests {
         arguments: Reopen.allCases
     )
     func restoresMovedWindow(reopen: Reopen) async throws {
-        let movedScreen = try await ShotDisplay.shared().screen()
+        let movedScreen = try await ShotDisplay.forTests().screen()
         let screens = NSScreen.screens
         let firstScreen = try #require(screens.first)
         try #require(movedScreen.displayNumber != firstScreen.displayNumber)

@@ -41,7 +41,7 @@
                     of: window,
                     subject: "the Dropbox folder picker"
                 )
-                let words = tree.nodes.compactMap(\.staticText)
+                let words = tree.nodes.compactMap(\.textWords)
                 #expect(
                     words == [
                         String(localized: browser.provider.words.heading),
