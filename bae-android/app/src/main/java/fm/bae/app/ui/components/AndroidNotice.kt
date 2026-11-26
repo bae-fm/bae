@@ -239,22 +239,25 @@ private fun CenteredNotice(
                 textAlign = TextAlign.Center,
             )
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (hasDetails) {
-                AndroidButton(kind = ButtonKind.TEXT, onClick = onDetails, stage = stage) {
-                    Text(stringResource(R.string.details))
+        // With no button there is no row: an empty one would still take the group gap and lift the words.
+        if (hasDetails || action != null) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (hasDetails) {
+                    AndroidButton(kind = ButtonKind.TEXT, onClick = onDetails, stage = stage) {
+                        Text(stringResource(R.string.details))
+                    }
                 }
-            }
-            action?.let {
-                AndroidButton(
-                    kind = ButtonKind.TONAL,
-                    onClick = it.onClick,
-                    enabled = it.enabled,
-                    stage = stage,
-                ) { Text(it.label) }
+                action?.let {
+                    AndroidButton(
+                        kind = ButtonKind.TONAL,
+                        onClick = it.onClick,
+                        enabled = it.enabled,
+                        stage = stage,
+                    ) { Text(it.label) }
+                }
             }
         }
     }
