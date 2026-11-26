@@ -23,10 +23,6 @@ struct MacReleaseCard: View {
                 )
                 .frame(width: Self.coverSize, height: Self.coverSize)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        .strokeBorder(Theme.hairline, lineWidth: 1)
-                )
                 // As wide as the year's column, so the title starts at the
                 // label's.
                 .frame(
