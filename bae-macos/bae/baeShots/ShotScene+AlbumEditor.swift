@@ -370,7 +370,11 @@ extension ShotScene {
             case .dropTracksAlert:
                 OverWindow.alert(DropTracksConfirmation.alert {}, over: editor)
             case .albumMenu:
-                editor.overlay(alignment: .topLeading) { albumMenu }
+                OverWindow.menu(
+                    albumMenu,
+                    at: CGPoint(x: 258, y: 278),
+                    over: editor
+                )
             default:
                 editor
             }
@@ -410,17 +414,8 @@ extension ShotScene {
         }
     }
 
-    /// The album pop-up open over its row, where the board draws it in the
-    /// window. It is drawn in the editor's layer, which covers the window, so
-    /// it is placed from the window's top-left.
+    /// The album pop-up, which opens over its row.
     private static var albumMenu: some View {
-        GeometryReader { geometry in
-            let layer = geometry.frame(in: .global).origin
-            albumMenuFace.offset(x: -layer.x, y: -layer.y)
-        }
-    }
-
-    private static var albumMenuFace: some View {
         MacMenuInPlace(
             {
                 MacMenu(
@@ -433,7 +428,5 @@ extension ShotScene {
             highlighted: 0,
             isPopUp: true
         )
-        .padding(.leading, 258)
-        .padding(.top, 278)
     }
 }

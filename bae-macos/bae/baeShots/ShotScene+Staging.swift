@@ -39,6 +39,31 @@ enum OverWindow {
         window.macAlert(isPresented: .constant(true)) { alert }
     }
 
+    /// An open menu over the window that shows `content`, as the app shows
+    /// one: a window of its own over that window, which a board reads after
+    /// everything under it (`ShotMenuWindows`). Its top-left is `origin`
+    /// points from the window's top-left.
+    @MainActor
+    static func menu(
+        _ menu: some View,
+        at origin: CGPoint,
+        over content: some View
+    ) -> some View {
+        content.macLayers([
+            MacLayer(id: "open menu") {
+                menu
+                    .padding(.leading, origin.x)
+                    .padding(.top, origin.y)
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .topLeading
+                    )
+                    .background(MenuWindowMark())
+            }
+        ])
+    }
+
     /// A popover, its top edge `top` points below the window's top and its
     /// right edge `trailing` points in from the window's right, with the
     /// arrow on its top edge pointing at what opened it.
@@ -226,4 +251,35 @@ struct SettingsWindowShot<Page: View>: View {
                 )
             )
     }
+}
+
+/// The windows of the open menus a scene shows (`OverWindow.menu`), which the
+/// element list reads after everything under them, as a board lists an open
+/// menu.
+@MainActor
+enum ShotMenuWindows {
+    private static let windows = NSHashTable<NSWindow>.weakObjects()
+
+    static func holds(_ window: NSWindow) -> Bool {
+        windows.contains(window)
+    }
+
+    fileprivate static func add(_ window: NSWindow) {
+        windows.add(window)
+    }
+}
+
+/// Marks the window it is in as an open menu's.
+private struct MenuWindowMark: NSViewRepresentable {
+    final class Mark: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            MainActor.assumeIsolated { ShotMenuWindows.add(window) }
+        }
+    }
+
+    func makeNSView(context: Context) -> NSView { Mark() }
+
+    func updateNSView(_ view: NSView, context: Context) {}
 }

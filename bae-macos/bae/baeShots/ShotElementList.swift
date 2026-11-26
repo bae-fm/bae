@@ -93,9 +93,9 @@ struct ShotElementList: Encodable {
         // An alert or a layer is a separate window over this one, so this list
         // adds its elements where it draws them over this window. A board
         // reads a layer before the player, which is the last element the
-        // window's own content holds, and an alert after everything. The
-        // window under a layer that another layer covers is out of reach, as
-        // a board lists it.
+        // window's own content holds, and an alert or an open menu after
+        // everything. The window under a layer that another layer covers is
+        // out of reach, as a board lists it.
         let layers = ModalWindows.shared.layerPanels
         let modals = ModalWindows.shared
         let windowRoot = tree.nodes.lastIndex { $0.parent == nil }
@@ -109,7 +109,8 @@ struct ShotElementList: Encodable {
                 try AccessibilityTree.read(of: panel, subject: board),
                 atX: panel.frame.minX - window.frame.minX,
                 y: window.frame.maxY - panel.frame.maxY,
-                before: layers.contains(panel) ? player : nil
+                before: (layers.contains(panel)
+                    && !ShotMenuWindows.holds(panel)) ? player : nil
             )
         }
         // A row scrolled out of its pane, or clipped by the window, is not on
