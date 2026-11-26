@@ -10,3 +10,13 @@ sqlive_compose::fragment!(
     FROM source_release AS release
     WHERE release.catalog = @parent.source AND release.release_id = @parent.release_id
 "#);
+
+sqlive_compose::fragment!(
+    MatchAlbumFirstYear on import_candidate_match {
+        album_first_year: Option<i32>
+    },
+    r#"
+    SELECT release.album_first_year
+    FROM source_release AS release
+    WHERE release.catalog = @parent.source AND release.release_id = @parent.release_id
+"#);

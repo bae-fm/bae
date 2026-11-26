@@ -39,9 +39,9 @@ sqlive_compose::fragment!(
                 @parent.document_failure IS NOT NULL THEN json_object('kind',
                 @parent.document_failure, 'status', @parent.document_failure_status) END,
                 'album_first_year',(
-            SELECT fetched.album_first_year
-            FROM source_release AS fetched
-            WHERE fetched.catalog = @parent.source AND fetched.release_id = @parent.release_id
+            SELECT @crate::tables::source_releases::row_fragments::MatchAlbumFirstYear(parent: own)
+            FROM import_candidate_match AS own
+            WHERE own.match_id = @parent.match_id
             ), 'labels', json((
             SELECT json_group_array(json_object('name', entry.name, 'catalog_number',
                 entry.catalog_number, 'musicbrainz_label_id', entry.musicbrainz_label_id,
