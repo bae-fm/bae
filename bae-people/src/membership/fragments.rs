@@ -1,7 +1,8 @@
 //! What the membership domain offers to other reads: a member of the library
 //! with their devices, and whether the member using this device is an admin,
-//! both read from coven's views. The members list runs the reads here, and
-//! the people and rating systems statements, built as text, hold their SQL.
+//! both read from coven's views. The members list runs the reads here, the
+//! rating systems read spreads whether the member is an admin, and the people
+//! statements, built as text, hold the members' SQL.
 
 sqlive_compose::fragment!(
     SelfIsAdmin { self_is_admin: bool },

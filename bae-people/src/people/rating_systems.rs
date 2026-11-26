@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::collections::Stars;
-use crate::membership::fragments::ViewerIsAdmin;
+use bae_store::statement_row;
 
 /// How the library shows the ratings of albums, or of tracks. Each person's
 /// rating stays one to five stars, or none, under every system.
@@ -110,9 +110,39 @@ pub(crate) fn write_first_rating_systems(sql: &coven::MemberWrite<'_>) -> rusqli
     Ok(())
 }
 
-/// The library's one `rating_systems` row.
-pub const RATING_SYSTEMS_SQL: &str =
-    "SELECT albums, tracks FROM rating_systems WHERE id = 'library'";
+// The library's one `rating_systems` row.
+sqlive_compose::fragment!(
+    LibraryRatingSystems,
+    r#"
+    SELECT systems.albums, systems.tracks
+    FROM rating_systems AS systems
+    WHERE systems.id = 'library'
+"#
+);
+
+// [`LibraryRatingSystems`]'s row, whose SQL a statement built as text holds.
+sqlive_compose::read!(
+    LibraryRatingSystemsRow,
+    r#"
+    SELECT library.*
+    FROM @crate::people::rating_systems::LibraryRatingSystems AS library
+"#
+);
+
+// The library's rating systems, and whether the member using this device may
+// change them.
+sqlive_compose::read!(
+    RatingSystemsToChange,
+    r#"
+    SELECT library.*, viewer.*
+    FROM @crate::people::rating_systems::LibraryRatingSystems AS library
+    JOIN @crate::membership::fragments::SelfIsAdmin AS viewer ON 1
+"#
+);
+
+/// The SQL of the library's one `rating_systems` row, for a statement built
+/// as text.
+pub const RATING_SYSTEMS_SQL: &str = LibraryRatingSystemsRow::SQL;
 
 pub(super) const MIN_HEART_STARS: Stars = Stars::Three;
 
@@ -122,11 +152,13 @@ pub fn is_heart(stars: Stars) -> bool {
     stars as i64 >= MIN_HEART_STARS as i64
 }
 
-fn rating_systems_row(row: &Row<'_>) -> rusqlite::Result<RatingSystems> {
-    Ok(RatingSystems {
-        albums: bae_store::read::parsed_column(row, "albums")?,
-        tracks: bae_store::read::parsed_column(row, "tracks")?,
-    })
+impl LibraryRatingSystems {
+    fn systems(&self) -> Result<RatingSystems, DbError> {
+        let system = |stored: &str| {
+            stored.parse().map_err(|refusal| DbError::unreadable("a rating system", refusal))
+        };
+        Ok(RatingSystems { albums: system(&self.albums)?, tracks: system(&self.tracks)? })
+    }
 }
 
 impl People {
@@ -134,20 +166,11 @@ impl People {
     /// one after each change, with the permission to change either system.
     pub fn subscribe_rating_systems(&self) -> coven::LiveQuery<RatingSystemsSettings, DbError> {
         self.inner.store.subscribe(|sql| {
-            Ok(sql.query_row(
-                &format!(
-                    "SELECT systems.*, ({viewer}) AS can_change \
-                     FROM ({RATING_SYSTEMS_SQL}) AS systems",
-                    viewer = ViewerIsAdmin::SQL,
-                ),
-                [],
-                |row| {
-                    Ok(RatingSystemsSettings {
-                        systems: rating_systems_row(row)?,
-                        can_change: row.get("can_change")?,
-                    })
-                },
-            )?)
+            let row = statement_row(&sql, &RatingSystemsToChangeParams {})?;
+            Ok(RatingSystemsSettings {
+                systems: row.library.systems()?,
+                can_change: row.viewer.self_is_admin,
+            })
         })
     }
 

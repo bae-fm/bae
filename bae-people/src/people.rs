@@ -16,7 +16,7 @@ pub(crate) mod joining;
 pub use joining::private_circle_name;
 mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
-pub(crate) mod rating_systems;
+pub mod rating_systems;
 pub use rating_systems::{
     is_heart, RatedItems, RatingSystem, RatingSystemError, RatingSystems, RatingSystemsSettings,
     RATING_SYSTEMS_SQL,
