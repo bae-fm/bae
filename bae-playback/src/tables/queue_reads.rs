@@ -19,6 +19,7 @@ pub fn subscribe_queue_value(
 }
 
 /// The queue as its screens show it now.
+#[cfg(any(test, feature = "test-utils"))]
 pub async fn queue_value(store: &Store) -> Result<crate::ResolvedQueueSnapshot, DbError> {
     store.read(|sql| queue_value_on(&sql)).await
 }
