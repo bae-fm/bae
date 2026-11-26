@@ -263,10 +263,8 @@ sqlive_compose::fragment!(
         SELECT draft_blank, draft_valid
         FROM import_candidate_edit
             WHERE content_hash =(
-            SELECT scan.content_hash
-            FROM scan_candidate AS scan
-            WHERE scan.path = :key
-        )
+                SELECT scan.content_hash
+                FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
     )
     SELECT :key AS draft_flags_key, draft_blank, draft_valid
     FROM statement
