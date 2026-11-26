@@ -4,7 +4,7 @@ import SwiftUI
     import AppKit
 
     /// The corner radius of a Mac window, as the boards draw it.
-    private let windowRadius: CGFloat = 17
+    let windowRadius: CGFloat = 17
 
     /// A window over all of another window, title bar included, that dims it
     /// with `Theme.scrim` and takes every click aimed at it, for a

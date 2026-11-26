@@ -79,57 +79,6 @@ struct AccessibilityTree: Sendable {
         return Self(nodes: reader.nodes)
     }
 
-    /// The element the accessibility API lists for `window`, and the
-    /// window's top-left in the API's coordinates: points from the top-left
-    /// of the main display.
-    @MainActor
-    private static func listedWindow(
-        _ window: NSWindow,
-        subject: String
-    ) throws -> (element: AXUIElement, origin: CGPoint) {
-        guard let main = NSScreen.screens.first else {
-            throw ReadError.noScreen(subject)
-        }
-        let frame = window.frame
-        let origin = CGPoint(x: frame.minX, y: main.frame.maxY - frame.maxY)
-        let size = frame.size
-        let application = AXUIElementCreateApplication(getpid())
-        AXUIElementSetMessagingTimeout(application, 10)
-        var windows: CFTypeRef?
-        let status = AXUIElementCopyAttributeValue(
-            application,
-            kAXWindowsAttribute as CFString,
-            &windows
-        )
-        guard status == .success, let list = windows as? [AXUIElement] else {
-            throw ReadError.unavailable(subject, status.rawValue)
-        }
-        // A locked screen lists no window of any app.
-        guard !list.isEmpty else {
-            throw ReadError.listsNoWindow(subject)
-        }
-        // A window that only takes clicks over another has the same frame
-        // and holds nothing: the one that holds elements is the window.
-        let there = list.filter {
-            guard let frame = Reader.frame(of: $0) else { return false }
-            return abs(frame.minX - origin.x) <= 1
-                && abs(frame.minY - origin.y) <= 1
-                && abs(frame.width - size.width) <= 1
-                && abs(frame.height - size.height) <= 1
-        }
-        let holding = try there.first {
-            try !Reader.children(of: $0, subject: subject).isEmpty
-        }
-        guard let element = holding ?? there.first else {
-            throw ReadError.windowNotListed(
-                subject,
-                wanted: CGRect(origin: origin, size: size),
-                listed: list.compactMap(Reader.frame(of:))
-            )
-        }
-        return (element, origin)
-    }
-
     fileprivate struct Reader {
         let origin: CGPoint
         /// What the tree is read for, which an error names.
@@ -550,14 +499,29 @@ extension CGRect {
 }
 
 extension AccessibilityTree {
-    /// This tree with `other`'s elements after its own, `other` read from a
-    /// window that sits at `x`, `y` points from this tree's window's top-left.
-    func adding(_ other: Self, atX x: Double, y: Double) -> Self {
-        let base = nodes.count
+    /// This tree with `other`'s elements after its own, or before the node at
+    /// `index` and the nodes it holds, `other` read from a window that sits at
+    /// `x`, `y` points from this tree's window's top-left.
+    func adding(
+        _ other: Self,
+        atX x: Double,
+        y: Double,
+        before index: Int? = nil
+    ) -> Self {
+        let at = index ?? nodes.count
+        let count = other.nodes.count
         return Self(
-            nodes: nodes
+            nodes: nodes[..<at].map { $0 }
                 + other.nodes.map {
-                    $0.placed(dx: x, dy: y, parent: $0.parent.map { $0 + base })
+                    $0.placed(dx: x, dy: y, parent: $0.parent.map { $0 + at })
+                }
+                + nodes[at...]
+                .map {
+                    $0.placed(
+                        dx: 0,
+                        dy: 0,
+                        parent: $0.parent.map { $0 >= at ? $0 + count : $0 }
+                    )
                 }
         )
     }
@@ -666,5 +630,74 @@ extension AccessibilityTree.Node {
             parent: parent,
             wordsBox: wordsBox?.offsetBy(dx: dx, dy: dy)
         )
+    }
+}
+
+extension AccessibilityTree {
+    /// The element the accessibility API lists for `window`, and the
+    /// window's top-left in the API's coordinates: points from the top-left
+    /// of the main display.
+    @MainActor
+    fileprivate static func listedWindow(
+        _ window: NSWindow,
+        subject: String
+    ) throws -> (element: AXUIElement, origin: CGPoint) {
+        guard let main = NSScreen.screens.first else {
+            throw ReadError.noScreen(subject)
+        }
+        let frame = window.frame
+        let origin = CGPoint(x: frame.minX, y: main.frame.maxY - frame.maxY)
+        let size = frame.size
+        let application = AXUIElementCreateApplication(getpid())
+        AXUIElementSetMessagingTimeout(application, 10)
+        var windows: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(
+            application,
+            kAXWindowsAttribute as CFString,
+            &windows
+        )
+        guard status == .success, let list = windows as? [AXUIElement] else {
+            throw ReadError.unavailable(subject, status.rawValue)
+        }
+        // A locked screen lists no window of any app.
+        guard !list.isEmpty else {
+            throw ReadError.listsNoWindow(subject)
+        }
+        // A window that only takes clicks over another has the same frame
+        // and holds nothing: the one that holds elements is the window.
+        // Windows of one frame, such as a layer's panel over its window, are
+        // told apart by an identifier that this read gives `window` alone.
+        let token = UUID().uuidString
+        let previous = window.accessibilityIdentifier()
+        window.setAccessibilityIdentifier(token)
+        defer { window.setAccessibilityIdentifier(previous) }
+        let same = list.filter {
+            guard let frame = Reader.frame(of: $0) else { return false }
+            return abs(frame.minX - origin.x) <= 1
+                && abs(frame.minY - origin.y) <= 1
+                && abs(frame.width - size.width) <= 1
+                && abs(frame.height - size.height) <= 1
+        }
+        let named = same.filter {
+            var identifier: CFTypeRef?
+            AXUIElementCopyAttributeValue(
+                $0,
+                kAXIdentifierAttribute as CFString,
+                &identifier
+            )
+            return (identifier as? String) == token
+        }
+        let there = named.isEmpty ? same : named
+        let holding = try there.first {
+            try !Reader.children(of: $0, subject: subject).isEmpty
+        }
+        guard let element = holding ?? there.first else {
+            throw ReadError.windowNotListed(
+                subject,
+                wanted: CGRect(origin: origin, size: size),
+                listed: list.compactMap(Reader.frame(of:))
+            )
+        }
+        return (element, origin)
     }
 }

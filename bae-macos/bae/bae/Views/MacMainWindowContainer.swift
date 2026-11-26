@@ -9,17 +9,8 @@ enum SearchOverlaySpace {
     static let name = "searchOverlay"
 }
 
-/// The sort priority of the `rank`th part VoiceOver reads after the window's
-/// parts and its side pane: below the side pane's default 0, and above the -2
-/// of an open menu, which the boards list last.
-private enum ReadingPriority {
-    static func of(rank: Int) -> Double {
-        -Double(rank) / 10
-    }
-}
-
 /// Reads the stores for `MacMainWindow` and holds what surrounds it: the
-/// overlays, the search dropdown, the file importer and the alerts.
+/// layers over it, the search dropdown, the file importer and the alerts.
 struct MacMainWindowContainer: View {
     @Environment(Queue.self)
     var queue
@@ -74,108 +65,99 @@ struct MacMainWindowContainer: View {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
 
-    var body: some View {
-        ZStack {
-            MacMainWindow(showSidePane: uiStore.showSidePane) {
-                MacTitleBar(
-                    searchText: $searchText,
-                    onSearchFieldFrame: { searchFieldFrame = $0 }
-                )
-            } content: {
-                // Only the active section is mounted: `.onHover` tracking
-                // areas ignore opacity, so a hidden one would leak hover.
-                if uiStore.activeSection == .library {
-                    LibraryView()
+    /// What the window shows over its content, each over the one before: the
+    /// folder lightbox, the audio preview, each modal, and the document
+    /// viewer, over the modal it may have been opened from.
+    private var layers: [MacLayer] {
+        var layers: [MacLayer] = []
+        if let lightbox = uiStore.lightbox, let place = lightbox.place {
+            layers.append(
+                MacLayer(id: "lightbox", fades: true) {
+                    MacLightbox(
+                        place: place,
+                        load: lightboxLoad,
+                        onSelect: { lightbox.focus($0) },
+                        onDismiss: { uiStore.closeLightbox() },
+                    )
                 }
-                else {
-                    MacImportWindow(endEditing: endEditing)
+            )
+        }
+        if let preview = importStore.previewState.active {
+            layers.append(
+                MacLayer(id: "preview") {
+                    PreviewOverlay(
+                        name: preview.target.name,
+                        isPlaying: preview.isPlaying
+                    )
                 }
-            } queuePanel: {
-                MacQueuePanelContainer(
-                    initialHoveredEntry: initialHoveredQueueEntry,
-                    onClose: {
-                        uiStore.setSidePanePresented(false)
-                    },
-                    onInsertTracks: { dropped, index in
-                        queueActions.insertDropped(
-                            dropped,
-                            at: index,
-                            order: AlbumGridOrder(session: session)
+            )
+        }
+        for (index, builder) in uiStore.modalStack.enumerated() {
+            layers.append(
+                MacLayer(id: "modal \(index)") {
+                    MacModal(
+                        onDismiss: { uiStore.dismissModal() },
+                        sizedContent: builder
+                    )
+                }
+            )
+        }
+        if let document = uiStore.document {
+            layers.append(
+                MacLayer(id: "document") {
+                    MacModal(onDismiss: { uiStore.dismissDocument() }) {
+                        DocumentViewerView(
+                            name: document.name,
+                            text: document.text,
+                            onClose: { uiStore.dismissDocument() }
                         )
                     }
-                )
-            } nowPlayingBar: {
-                MacNowPlayingBarContainer(
-                    onDropToQueue: { dropped in
-                        queueActions.addDropped(
-                            dropped,
-                            order: AlbumGridOrder(session: session)
-                        )
-                    },
-                )
-                // VoiceOver reads the bar after every modal and the document.
-                // A modal's priority is below the side pane's, which keeps
-                // the default.
-                .accessibilityElement(children: .contain)
-                .accessibilitySortPriority(
-                    ReadingPriority.of(
-                        rank: uiStore.modalStack.count
-                            + (uiStore.document == nil ? 1 : 2)
-                    )
-                )
-            }
+                }
+            )
+        }
+        return layers
+    }
 
-            // Lightbox overlay
-            if let lightbox = uiStore.lightbox, let place = lightbox.place {
-                MacLightbox(
-                    place: place,
-                    load: lightboxLoad,
-                    onSelect: { lightbox.focus($0) },
-                    onDismiss: { uiStore.closeLightbox() },
-                )
-                .transition(.opacity)
-                .zIndex(1)
+    var body: some View {
+        MacMainWindow(showSidePane: uiStore.showSidePane) {
+            MacTitleBar(
+                searchText: $searchText,
+                onSearchFieldFrame: { searchFieldFrame = $0 }
+            )
+        } content: {
+            // Only the active section is mounted: `.onHover` tracking
+            // areas ignore opacity, so a hidden one would leak hover.
+            if uiStore.activeSection == .library {
+                LibraryView()
             }
-
-            // Audio shot overlay
-            if let preview = importStore.previewState.active {
-                PreviewOverlay(
-                    name: preview.target.name,
-                    isPlaying: preview.isPlaying
-                )
+            else {
+                MacImportWindow(endEditing: endEditing)
             }
-
-            // Modal overlay
-            // VoiceOver reads each modal after the side pane and after the
-            // modals under it, as the boards do: an earlier modal's priority
-            // is the higher.
-            ForEach(Array(uiStore.modalStack.enumerated()), id: \.offset) {
-                index,
-                builder in
-                MacModal(
-                    onDismiss: { uiStore.dismissModal() },
-                    sizedContent: builder
-                )
-                .accessibilitySortPriority(
-                    ReadingPriority.of(rank: index + 1)
-                )
-            }
-
-            // Document viewer, over the modal it may have been opened from
-            if let document = uiStore.document {
-                MacModal(onDismiss: { uiStore.dismissDocument() }) {
-                    DocumentViewerView(
-                        name: document.name,
-                        text: document.text,
-                        onClose: { uiStore.dismissDocument() }
+        } queuePanel: {
+            MacQueuePanelContainer(
+                initialHoveredEntry: initialHoveredQueueEntry,
+                onClose: {
+                    uiStore.setSidePanePresented(false)
+                },
+                onInsertTracks: { dropped, index in
+                    queueActions.insertDropped(
+                        dropped,
+                        at: index,
+                        order: AlbumGridOrder(session: session)
                     )
                 }
-                .accessibilitySortPriority(
-                    ReadingPriority.of(rank: uiStore.modalStack.count + 1)
-                )
-            }
+            )
+        } nowPlayingBar: {
+            MacNowPlayingBarContainer(
+                onDropToQueue: { dropped in
+                    queueActions.addDropped(
+                        dropped,
+                        order: AlbumGridOrder(session: session)
+                    )
+                },
+            )
         }
-        .animation(.easeInOut(duration: 0.2), value: uiStore.lightbox != nil)
+        .macLayers(layers)
         .overlay {
             if uiStore.showSearchPopover, uiStore.searchResults != nil,
                 let rect = searchFieldFrame

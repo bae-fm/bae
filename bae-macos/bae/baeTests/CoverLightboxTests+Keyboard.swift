@@ -128,12 +128,17 @@ extension CoverLightboxTests {
             )
             try open(.space, window: window, host: host)
             try await Wait.until { lightbox.ended(loading: front.image) }
-            try await SnapshotTestSupport.settle(host)
-            // Open, VoiceOver reads none of them.
-            #expect(try galleryControls(in: window).isEmpty)
+            // The lightbox is a window over the gallery, which holds the
+            // keyboard and VoiceOver.
+            let panel = try await LayerPanels.top()
+            let layer = try LayerPanels.content(of: panel)
+            try await SnapshotTestSupport.settle(layer)
+            #expect(autoreleasepool { panel.isAccessibilityModal() })
+            // Open, VoiceOver reads none of the gallery's controls.
+            #expect(try galleryControls(in: panel).isEmpty)
             // Tab goes round the lightbox's own controls and never to one
             // of the gallery's, and never to nothing the tree lists.
-            let walk = try await tabWalk(in: window, host: host, steps: 16)
+            let walk = try await tabWalk(in: panel, host: layer, steps: 16)
             for focused in walk {
                 #expect(!focused.isEmpty)
                 #expect(

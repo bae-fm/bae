@@ -44,7 +44,7 @@ struct MacCoverGallery: View {
                         .disabled(remoteItems.isLoading || isSaving)
                 }
                 MacButton("Done", action: onDone)
-                    .keyboardShortcut(shortcutWhenUncovered(.cancelAction))
+                    .keyboardShortcut(.cancelAction)
                     .disabled(isSaving)
             }
             HStack(spacing: 0) {
@@ -121,7 +121,7 @@ struct MacCoverGallery: View {
                         onSelect(CoverItem(gallery: focus.cover))
                     }
                 }
-                .keyboardShortcut(shortcutWhenUncovered(.defaultAction))
+                .keyboardShortcut(.defaultAction)
                 .disabled(
                     content.focus?.cover.selection == nil
                         || content.focus?.cover.selection == selectedCover
@@ -156,27 +156,24 @@ struct MacCoverGallery: View {
 
     var body: some View {
         gallery
-            // The lightbox takes the pointer and the keys while it is open;
-            // the gallery under its backdrop draws as it is, not dimmed as a
-            // disabled one is, so its shortcuts are the lightbox's to take.
-            .allowsHitTesting(browser.layout != .lightbox)
-            .accessibilityHidden(browser.layout == .lightbox)
-            // While the lightbox is open, Tab and VoiceOver reach only the
-            // lightbox. A view that is focusable only when the lightbox is
-            // closed passes that on to the buttons inside it.
-            .modifier(KeyboardOnlyWhenOpen(open: browser.layout == .lightbox))
-            .overlay { lightboxOverlay }
+            // The lightbox is a window over the gallery's frame, so the
+            // pointer, Tab and VoiceOver reach only the lightbox while it is
+            // open.
+            .macLayers(lightboxLayers)
             .onAppear {
                 if opensOnLightbox { browser.layout = .lightbox }
             }
             // The grid's preview gets keyboard focus whenever it appears: when
             // the sheet opens on the grid, its covers arrive, or the lightbox
-            // closes back to it. The code never clears the preview's focus
-            // itself: the lightbox gets focus when it opens, and clearing the
-            // preview's focus in the same update would clear the lightbox's
-            // too.
+            // closes back to it. The lightbox is a window of its own, so this
+            // window's focus stays where it was while the lightbox is open,
+            // on the tile that a double click opened it from. The preview
+            // takes the focus in a second update, since a request for the
+            // focus it already holds moves nothing.
             .onChange(of: gridPreviewShown, initial: true) { _, shown in
-                if shown { previewFocused = true }
+                guard shown else { return }
+                previewFocused = false
+                Task { @MainActor in previewFocused = true }
             }
             .onKeyPress(.leftArrow) {
                 guard browser.layout == .grid else { return .ignored }
@@ -190,57 +187,54 @@ struct MacCoverGallery: View {
             }
     }
 
-    @ViewBuilder
-    private var lightboxOverlay: some View {
-        if browser.layout == .lightbox {
-            VStack(spacing: 0) {
-                if let focus = content.focus {
-                    MacLightbox(
-                        place: LightboxPlace(
-                            items: content.items,
-                            current: CoverItem(gallery: focus.cover),
-                            neighbors: focus.neighbors.map {
-                                LightboxNeighbors(
-                                    previous: $0.previous,
-                                    next: $0.next
-                                )
-                            }
-                        ),
-                        load: lightboxLoad,
-                        onSelect: { focusedCover = $0 },
-                        onDismiss: showGrid,
-                        onBrowseAll: showGrid
-                    )
-                }
-                else {
-                    if remoteItems.isLoading {
-                        MacSpinner("Fetching covers…")
-                            .frame(
-                                maxWidth: .infinity,
-                                maxHeight: .infinity
-                            )
-                    }
-                    else {
-                        MacContentUnavailable(title: "No cover art available")
-                    }
-                    Button("Browse all images", action: showGrid)
-                    Button("Done", action: onDone)
-                        .keyboardShortcut(.cancelAction)
-                }
-                if remoteItems.hasStatus || error != nil {
-                    lightboxStatus
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+    private var lightboxLayers: [MacLayer] {
+        guard browser.layout == .lightbox else { return [] }
+        return [
+            MacLayer(id: "lightbox", cover: .presentingView) { lightbox }
+        ]
     }
 
-    /// `shortcut` while the grid shows; the lightbox over the gallery owns
-    /// the keys, so the gallery's buttons keep none.
-    private func shortcutWhenUncovered(
-        _ shortcut: KeyboardShortcut
-    ) -> KeyboardShortcut? {
-        browser.layout == .lightbox ? nil : shortcut
+    @ViewBuilder
+    private var lightbox: some View {
+        VStack(spacing: 0) {
+            if let focus = content.focus {
+                MacLightbox(
+                    place: LightboxPlace(
+                        items: content.items,
+                        current: CoverItem(gallery: focus.cover),
+                        neighbors: focus.neighbors.map {
+                            LightboxNeighbors(
+                                previous: $0.previous,
+                                next: $0.next
+                            )
+                        }
+                    ),
+                    load: lightboxLoad,
+                    onSelect: { focusedCover = $0 },
+                    onDismiss: showGrid,
+                    onBrowseAll: showGrid
+                )
+            }
+            else {
+                if remoteItems.isLoading {
+                    MacSpinner("Fetching covers…")
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity
+                        )
+                }
+                else {
+                    MacContentUnavailable(title: "No cover art available")
+                }
+                Button("Browse all images", action: showGrid)
+                Button("Done", action: onDone)
+                    .keyboardShortcut(.cancelAction)
+            }
+            if remoteItems.hasStatus || error != nil {
+                lightboxStatus
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var gridPreviewShown: Bool {
@@ -348,22 +342,6 @@ extension MacCoverGallery {
                 .foregroundStyle(Theme.textSecondary)
         case .linked, .failed:
             EmptyView()
-        }
-    }
-}
-
-/// While `open`, nothing under the view takes the keyboard. Closed, the view
-/// is left as it is, so it adds no Tab stop of its own.
-private struct KeyboardOnlyWhenOpen: ViewModifier {
-    let open: Bool
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if open {
-            content.focusable(false)
-        }
-        else {
-            content
         }
     }
 }

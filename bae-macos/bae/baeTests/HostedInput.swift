@@ -94,13 +94,18 @@ enum HostedInput {
 
     /// The keys the tests press: what each types and which key it is.
     enum Key {
-        case `return`, escape, space, rightArrow, downArrow
+        case `return`, escape, space, leftArrow, rightArrow, downArrow
 
         var characters: String {
             switch self {
             case .return: "\r"
             case .escape: "\u{1b}"
             case .space: " "
+            case .leftArrow:
+                String(
+                    utf16CodeUnits: [UInt16(NSLeftArrowFunctionKey)],
+                    count: 1
+                )
             case .rightArrow:
                 String(
                     utf16CodeUnits: [UInt16(NSRightArrowFunctionKey)],
@@ -119,6 +124,7 @@ enum HostedInput {
             case .return: 36
             case .escape: 53
             case .space: 49
+            case .leftArrow: 123
             case .rightArrow: 124
             case .downArrow: 125
             }

@@ -39,8 +39,13 @@ struct LibraryArtworkBrowserTests {
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.space, in: host)
                 try await Wait.until { lightbox.ended() }
-                try await SnapshotTestSupport.settle(host)
-                try HostedInput.keyDown(.escape, in: window)
+                let panel = try await LayerPanels.top()
+                try await LayerPanels.focused(panel)
+                try await SnapshotTestSupport.settle(
+                    try LayerPanels.content(of: panel)
+                )
+                try HostedInput.keyDown(.escape, in: panel)
+                try await LayerPanels.closed()
                 try await SnapshotTestSupport.settle(host)
                 #expect(!dismissed)
                 try HostedInput.keyDown(.rightArrow, in: window)

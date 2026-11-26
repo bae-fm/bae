@@ -50,6 +50,8 @@ enum ShotRenderer {
         defaults.set(accent.rawValue, forKey: "appearance.accent")
         defaults.set(tone.rawValue, forKey: "appearance.tone")
         defer { defaults.removePersistentDomain(forName: suite) }
+        // A layer that fades in would be captured partway.
+        ModalWindows.shared.fades = false
         let stage = try scene.stage()
         // A view that opens or moves after the window shows, such as an album
         // grid's detail opening on its place's first answer, lands at once,

@@ -63,22 +63,51 @@ struct CoverLightboxTests {
             // its image and is laid out.
             try await Wait.until { lightbox.ended(loading: opened.image) }
             try await SnapshotTestSupport.settle(host)
+            // The lightbox is a window of its own, which takes the keys.
+            let panel = try await LayerPanels.top()
+            let layer = try LayerPanels.content(of: panel)
+            try await LayerPanels.focused(panel)
             // Return cannot save through the lightbox into the underlying picker.
-            try HostedInput.keyEquivalent(.return, in: host)
+            try HostedInput.keyEquivalent(.return, in: layer)
             #expect(selected == nil)
-            try HostedInput.keyDown(.rightArrow, in: window)
+            try HostedInput.keyDown(.rightArrow, in: panel)
             try await Wait.until { lightbox.ended(loading: moved.image) }
+            try HostedInput.keyDown(.escape, in: panel)
+            try await LayerPanels.closed()
             try await SnapshotTestSupport.settle(host)
-            try HostedInput.keyDown(.escape, in: window)
-            try await SnapshotTestSupport.settle(host)
-            #expect(!dismissed)
-            #expect(selected == nil)
+            #expect(!dismissed && selected == nil)
+            try await rereadShortcuts(window: window, host: host)
             try HostedInput.keyEquivalent(.return, in: host)
             try await SnapshotTestSupport.settle(host)
             #expect(
                 selected?.id == (opening == .thumbnail ? file.id : booklet.id)
             )
         }
+    }
+
+    /// The title of the cover the gallery's grid focuses.
+    private func focusedTitle(in window: NSWindow) throws -> String? {
+        try AccessibilityTree.read(of: window, subject: "the gallery").nodes
+            .first { $0.selected == true }?
+            .controlName
+    }
+
+    /// Returns the grid to the cover it focuses, by way of the first cover,
+    /// which the picker already holds and so disables its button for. The
+    /// hosted window is never key, so SwiftUI reads the shortcut's action
+    /// again only when its button turns on, which in the app the window
+    /// becoming key when the lightbox closes also does.
+    func rereadShortcuts(window: NSWindow, host: NSView) async throws {
+        let covers = ["Discogs · 1 · Front", "Discogs · 1 · Booklet"]
+        let title = try focusedTitle(in: window)
+        while try focusedTitle(in: window) != covers[0] {
+            try HostedInput.keyDown(.rightArrow, in: window)
+            try await SnapshotTestSupport.settle(host)
+        }
+        let back: HostedInput.Key =
+            title == covers[1] ? .rightArrow : .leftArrow
+        try HostedInput.keyDown(back, in: window)
+        try await SnapshotTestSupport.settle(host)
     }
 
     @Test("Arrow keys browse the grid as soon as the sheet opens on it")

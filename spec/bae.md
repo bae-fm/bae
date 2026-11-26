@@ -5320,9 +5320,9 @@ the reader. A track's load, or a load at a saved position, fetches first the
 window its decode reads first.
 
 The seek bar never leaves the player. On a Mac, VoiceOver reads the window's
-title bar, then its content, then the side pane when it is open, then each
-open modal in the order they opened, then the document viewer when it is
-open, then the player. In the player it reads the track, the transport, the
+title bar, then its content, then the side pane when it is open, then the
+player. While a modal, the document viewer or a lightbox is open, VoiceOver
+reads only the one opened last (§9.6), as it does for an alert. In the player it reads the track, the transport, the
 seek bar, then Play on, Queue, Mute and Volume when those controls are present.
 VoiceOver reads Volume as a slider.
 In the queue's now-playing card, VoiceOver reads Now playing, the title and
@@ -6210,8 +6210,13 @@ and confirmations block pointer, keyboard and VoiceOver access to the
 frontmost window or its open sheet until the person dismisses the alert.
 VoiceOver announces a Mac alert by its title, and the alert holds its message
 and buttons.
+On a Mac an open sheet, the document viewer and a lightbox keep the pointer,
+keyboard and VoiceOver inside them in the same way, until the person closes
+them. The keyboard shortcuts of the window under one stop answering, and the
+main menu's commands answer as before. A click on the window of one of them
+brings bae forward.
 A Mac alert dims the whole window behind it, title bar included, and so does a
-presentation drawn inside the window, such as a modal or the side pause. A
+sheet that bae draws, such as a modal, and the side pause. A
 sheet that macOS presents as a system sheet, such as Enter code on the welcome
 window, adds no dimming of its own: the window behind it shows only the
 dimming macOS draws.
