@@ -24,7 +24,7 @@ extension BridgeDeviceStorage {
 
     /// A library with nothing pinned.
     static let previewNothingPinned = make(
-        [(.cache, 220_000_000), (.library, 420_000_000)]
+        [(.cache, 1_800_000_000), (.library, 420_000_000)]
     )
 
     /// What core measured as `parts`, with the choices the cache offers.
