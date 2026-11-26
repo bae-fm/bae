@@ -9,6 +9,7 @@ impl LibraryManager {
         Ok(())
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_artists_for_album(
         &self,
         album_id: &str,
