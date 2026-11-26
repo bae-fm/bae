@@ -65,9 +65,7 @@ struct MacIdentifyBar<Trailing: View>: View {
                 }
             }
         ) {
-            // The board draws the menu's label as the character, which is
-            // 1.5 pt narrower than the ellipsis symbol.
-            Text(verbatim: "\u{22EF}")
+            Image(systemName: "ellipsis")
         }
         .accessibilityLabel(Text("Metadata"))
         .fixedSize()
