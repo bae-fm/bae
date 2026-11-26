@@ -1375,6 +1375,7 @@ name = "bae-sync-status"
 version = "0.0.0-dev"
 dependencies = [
  "bae-diagnostics",
+ "bae-fragments-build",
  "bae-people",
  "bae-records",
  "bae-schema-manifest",
@@ -1383,6 +1384,7 @@ dependencies = [
  "bae-util",
  "coven",
  "rusqlite",
+ "sqlive-compose",
  "thiserror 2.0.21",
  "tokio",
  "url",

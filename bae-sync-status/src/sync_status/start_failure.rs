@@ -2,6 +2,7 @@
 //! `sync_start_failure`'s columns hold it: the failure's class, and for a
 //! storage failure coven's reason with what that reason names.
 
+use super::fragments::StartFailure;
 use super::*;
 use bae_diagnostics::{UiError, UiErrorCategory, UiErrorClass};
 use coven::{DropboxAccess, OAuthAccess, StorageFailure};
@@ -214,16 +215,14 @@ fn unnamed(column: &str, value: &str) -> DbError {
     DbError::unreadable(format!("sync_start_failure.{column}"), value)
 }
 
-/// The row's columns as read, before they are named back into a category.
-struct StoredColumns {
-    category: String,
-    storage_failure: Option<String>,
-    required_access: Option<String>,
-    size_bytes: Option<i64>,
-    limit_bytes: Option<i64>,
-}
+/// A stored row, named back into the failure it records.
+impl StartFailure {
+    /// Why the last attempt to start sync failed.
+    pub(super) fn into_error(self) -> Result<UiError, DbError> {
+        let category = self.category()?;
+        Ok(UiError::Diagnostic { category, detail: self.detail })
+    }
 
-impl StoredColumns {
     fn category(&self) -> Result<UiErrorCategory, DbError> {
         let unnamed_class = || unnamed("category", &self.category);
         let class = UiErrorClass::named(&self.category).ok_or_else(unnamed_class)?;
@@ -302,57 +301,6 @@ impl StoredColumns {
         Ok((bytes("size_bytes", self.size_bytes)?, bytes("limit_bytes", self.limit_bytes)?))
     }
 }
-
-/// The columns of `sync_start_failure`'s row as the status query reads them:
-/// the class's columns with the failure's text, which are all NULL when no
-/// failed start stands.
-pub(super) struct StartFailureColumns(Option<(StoredColumns, String)>);
-
-impl StartFailureColumns {
-    /// The columns of the table's row: category, storage failure, required
-    /// access, size, limit, then detail, from column `first`. The category
-    /// and the detail are both NULL or both set; a row that has one without
-    /// the other is damaged.
-    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        let category: Option<String> = row.get(first)?;
-        let detail: Option<String> = row.get(first + 5)?;
-        match (category, detail) {
-            (Some(category), Some(detail)) => Ok(Self(Some((
-                StoredColumns {
-                    category,
-                    storage_failure: row.get(first + 1)?,
-                    required_access: row.get(first + 2)?,
-                    size_bytes: row.get(first + 3)?,
-                    limit_bytes: row.get(first + 4)?,
-                },
-                detail,
-            )))),
-            (None, None) => Ok(Self(None)),
-            (category, detail) => Err(rusqlite::Error::FromSqlConversionFailure(
-                first,
-                rusqlite::types::Type::Null,
-                format!(
-                    "sync_start_failure has a category and a detail together: category {category:?}, detail {detail:?}"
-                )
-                .into(),
-            )),
-        }
-    }
-
-    /// Why the last attempt to start sync failed, while that stands.
-    pub(super) fn error(self) -> Result<Option<UiError>, DbError> {
-        self.0
-            .map(|(columns, detail)| {
-                Ok(UiError::Diagnostic { category: columns.category()?, detail })
-            })
-            .transpose()
-    }
-}
-
-/// The columns the status query reads of `sync_start_failure`, in the order
-/// [`StartFailureColumns`] reads them.
-pub(super) const START_FAILURE_COLUMNS: &str = "failure.category, failure.storage_failure, \
-     failure.required_access, failure.size_bytes, failure.limit_bytes, failure.detail";
 
 impl SyncStatus {
     /// Record why starting sync failed.

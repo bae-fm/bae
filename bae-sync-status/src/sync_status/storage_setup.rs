@@ -13,6 +13,7 @@
 //! when the library opens is past it, and only sync's connection finishes
 //! it.
 
+use super::fragments::StorageSetup;
 use super::*;
 use bae_diagnostics::UiErrorCategory;
 
@@ -89,52 +90,26 @@ impl SetupRow {
     }
 }
 
-/// Whether a storage setup runs on this device: one in `coven_operations`
-/// has no outcome yet.
-const STORAGE_SETUP_RUNNING: &str = "EXISTS (SELECT 1 FROM coven_operations AS setup \
-     WHERE setup.kind = 'StorageSetup' AND setup.outcome IS NULL)";
+sqlive_compose::read!(
+    LibraryStorageSetup,
+    r#"
+    SELECT current.*
+    FROM @crate::sync_status::fragments::StorageSetup AS current
+"#
+);
 
-/// The columns the status query reads of this device's storage setups: whether
-/// one runs, then the newest one that ended undone, which it reads only for
-/// when none runs.
-pub(super) fn storage_setup_columns() -> String {
-    format!("{STORAGE_SETUP_RUNNING} AS setup_running, undone.operation, undone.outcome")
-}
-
-/// The newest storage setup that ended undone, which [`STORAGE_SETUP_COLUMNS`]
-/// reads from: coven names how an operation ended in `outcome_kind`.
-pub(super) const UNDONE_SETUP_JOIN: &str = "LEFT JOIN (SELECT operation, outcome \
-     FROM coven_operations \
-     WHERE kind = 'StorageSetup' AND outcome_kind IN ('undone', 'rejected') \
-     ORDER BY operation DESC LIMIT 1) AS undone";
-
-/// [`STORAGE_SETUP_COLUMNS`] as read, from column `first` on.
-pub(super) struct StorageSetupColumns {
-    running: bool,
-    undone: Option<(coven::OperationId, Option<coven::StorageSetupOutcome>)>,
-}
-
-impl StorageSetupColumns {
-    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        let undone = row
-            .get::<_, Option<i64>>(first + 1)?
-            .map(|operation| {
-                Ok::<_, rusqlite::Error>((coven::OperationId(operation), row.get(first + 2)?))
-            })
-            .transpose()?;
-        Ok(Self { running: row.get(first)?, undone })
-    }
-
+impl StorageSetup {
     /// Where this device's storage setup stands: running while any setup
     /// runs, or else the newest setup that ended undone, or `None`.
     pub(super) fn state(self) -> Result<Option<StorageSetupState>, DbError> {
-        if self.running {
+        if self.setup_running {
             return Ok(Some(StorageSetupState::Running));
         }
-        let Some((operation, outcome)) = self.undone else {
+        let Some(operation) = self.undone_operation else {
             return Ok(None);
         };
-        match SetupRow::of(outcome) {
+        let operation = coven::OperationId(operation);
+        match SetupRow::of(self.undone_outcome) {
             SetupRow::Undone(why) => Ok(Some(StorageSetupState::Undone { operation, why })),
             row @ (SetupRow::Running | SetupRow::Settled) => Err(DbError::unreadable(
                 "coven_operations.outcome of the newest undone storage setup",
@@ -160,8 +135,8 @@ impl SyncStatus {
     pub async fn storage_setup_running(&self) -> Result<bool, DbError> {
         self.store
             .read(|sql| {
-                Ok(sql
-                    .query_row(&format!("SELECT {STORAGE_SETUP_RUNNING}"), [], |row| row.get(0))?)
+                let row = bae_store::statement_row(&sql, &LibraryStorageSetupParams {})?;
+                Ok(row.current.setup_running)
             })
             .await
     }

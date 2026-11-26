@@ -5,12 +5,16 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# The crates that depend on this one receive its fragments through this key.
+links = "bae_sync_status_sql"
 
 [lib]
 name = "bae_sync_status"
 path = "src/lib.rs"
 
 [build-dependencies]
+# Checks the crate's read fragments against the schema and writes the Rust they include.
+bae-fragments-build = { workspace = true }
 # Writes the schema this crate declares from its `schema.toml`.
 bae-schema-manifest = { workspace = true }
 
@@ -31,6 +35,8 @@ rusqlite = { workspace = true }
 # How a failure to record a failed start says it holds a bug already reported.
 bae-util = { workspace = true }
 thiserror = { workspace = true }
+# The macros the read fragments are written with.
+sqlive-compose = { workspace = true }
 
 [dev-dependencies]
 bae-store = { workspace = true, features = ["test-utils"] }

@@ -2,6 +2,7 @@
 
 use super::*;
 use bae_store::test_fixtures::temp_db;
+use sqlive_compose::Returning as _;
 
 #[tokio::test]
 async fn a_library_with_nothing_recorded_reads_as_not_synced() {
@@ -34,7 +35,9 @@ fn connected_library() -> rusqlite::Connection {
 
 /// The status the statement gives `connection`.
 fn status_of(connection: &rusqlite::Connection) -> SyncStatusSnapshot {
-    snapshot_of(connection.query_row(&status_query(), [], StatusColumns::read).unwrap()).unwrap()
+    let row =
+        connection.query_row(LibrarySyncStatus::SQL, [], LibrarySyncStatusParams::read).unwrap();
+    row.current.into_snapshot().unwrap()
 }
 
 /// A pass that failed on coven's own operation reads as a failed state,
