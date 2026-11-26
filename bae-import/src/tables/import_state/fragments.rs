@@ -316,20 +316,15 @@ sqlive_compose::fragment!(
     SELECT :key AS claimed_key, (
             SELECT CASE WHEN EXISTS (
             SELECT 1
-            FROM scan_candidate AS scanned
-            JOIN import_candidate_state AS state ON state.content_hash = scanned.content_hash AND
-                state.edit_revision = scanned.file_edit_revision
-                WHERE scanned.path = :key
+            FROM @crate::tables::import_state::current_owner::CurrentOwner(key: :key) AS owner
             ) THEN (
             SELECT json_group_array(json_object('catalog', claimed.catalog, 'kind',
                 claimed.kind, 'key', claimed.key, 'album', claimed.album) ORDER BY
                 claimed.position)
             FROM import_candidate_claimed_record AS claimed
                 WHERE claimed.content_hash =(
-                SELECT scan.content_hash
-                FROM scan_candidate AS scan
-                WHERE scan.path = :key
-            )
+                    SELECT scan.content_hash
+                    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
         ) ELSE '[]' END
     ) AS claimed_records
 "#);
