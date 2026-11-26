@@ -17,29 +17,16 @@ impl Records {
     /// Replace an artist's image bytes and row atomically: the write stages
     /// the bytes as a new coven file and points the row at it, and the file
     /// the row named before goes with its last reference.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn write_artist_image(
         &self,
         image: &DbArtistImage,
         bytes: &[u8],
     ) -> Result<(), ImageWriteError> {
-        self.write_artist_image_after_planning(image, bytes, || async {}).await
-    }
-
-    async fn write_artist_image_after_planning<F, Fut>(
-        &self,
-        image: &DbArtistImage,
-        bytes: &[u8],
-        after_planning: F,
-    ) -> Result<(), ImageWriteError>
-    where
-        F: FnOnce() -> Fut,
-        Fut: std::future::Future<Output = ()>,
-    {
         let image = image.clone();
         let id = image.artist_id.clone();
         let planned =
             self.store.read(move |sql| image_file_on(&sql, &LibraryImageType::Artist, &id)).await?;
-        after_planning().await;
         let bytes = bytes.to_vec();
         self.store
             .write_staged(
@@ -364,6 +351,7 @@ impl Records {
     /// The releases whose own files are queued, in upload queue order
     /// (`UPLOADING_RELEASES`). Image uploads, a release's cover among them,
     /// remain visible in the queue but are no release uploading.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn uploading_releases(&self) -> Result<Vec<String>, DbError> {
         self.store
             .read(|sql| {

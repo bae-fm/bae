@@ -54,6 +54,7 @@ impl Records {
             .await
     }
     /// Find artist by ID. Caller-provided ID — may not exist.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_artist_by_id(&self, artist_id: &str) -> Result<Option<DbArtist>, DbError> {
         let artist_id = artist_id.to_string();
         self.store

@@ -6,6 +6,7 @@ use crate::UploadProgress;
 use bae_store::UPLOADS_PAUSED;
 
 /// How many of the release `?1`'s files wait in this device's upload queue.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) const RELEASE_QUEUED_FILE_COUNT: &str = "SELECT COUNT(*) FROM release_files AS f \
      JOIN coven_uploads AS upload ON upload.file = f.file \
      WHERE f.release_id = ?1";
@@ -220,6 +221,7 @@ pub(super) fn sending_release_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendin
 
 impl Records {
     /// How many of the release's files still wait to upload from this device.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn count_pending_uploads_for_release(
         &self,
         release_id: &str,
