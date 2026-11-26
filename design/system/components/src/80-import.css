@@ -120,6 +120,8 @@
 .bae-m-prow-selected { background: var(--accent-tint); box-shadow: inset 0 0 0 1px var(--accent-tint-strong); }
 .bae-m-prow-inlibrary { opacity: 0.55; }
 .bae-m-prow-cell { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A cell of one value holds it as a flex item, so the value takes the half-point width of a Text and the column after it starts where the app starts it. */
+.bae-m-prow-text { display: flex; }
 /* The year cell is at least as wide as an album's 40pt cover, so the year column, with the row's inset, is at least 48pt. The label cell is at least 200pt, its space after it included. */
 .bae-m-prow-year { min-width: 40px; }
 /* The label takes a related space more after it, and the details a group's before the identifier columns. */

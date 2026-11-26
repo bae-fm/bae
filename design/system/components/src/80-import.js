@@ -425,11 +425,12 @@
   function MacPressingRow(props) {
     var kinds = React.useContext(PressingKinds), matches = list(props.matches);
     var sv = function (v) { return v ? h(MacSourcedValue, { value: v }) : null; };
-    var cell = function (key, className, value, extra) { return h('span', { key: key, className: cx('bae-m-prow-cell', extra) }, value ? h('span', { className: className }, value) : null); };
+    // Each value is one Text, cut at its cell's edge, so the cell lays it out as a box at its half-point width.
+    var cell = function (key, className, value, extra) { return h('span', { key: key, className: cx('bae-m-prow-cell', 'bae-m-prow-text', extra) }, value ? h('span', { className: cx('bae-m-text bae-ellipsis', className) }, value) : null); };
     var words = list(props.details);
     var details = [words.length ? h('span', { key: 'd', className: 'bae-m-prow-words' }, words.map(function (w, i) { return h('span', { key: i }, w); })) : null,
-      props.notes ? h('span', { key: 'n', className: 'bae-m-prow-notes' }, sv(props.notes)) : null,
-      props.inLibrary ? h('span', { key: 'l', className: 'bae-m-prow-inlib' }, h(StatusGlyph, { tone: 'success', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular' }), 'In library') : null].filter(Boolean);
+      props.notes ? h('span', { key: 'n', className: 'bae-m-text bae-m-prow-notes' }, sv(props.notes)) : null,
+      props.inLibrary ? h('span', { key: 'l', className: 'bae-m-prow-inlib' }, h(StatusGlyph, { tone: 'success', set: 'mac', size: tokenPoints('type-detail-size'), weight: 'regular' }), h('span', null, 'In library')) : null].filter(Boolean);
     // SwiftUI's HStack hands its texts the line's width in turn, the narrowest first, each its own width or an equal share of what is left, so a short word stays whole while a longer one ends in an ellipsis: Limited e… Numbered. A grid shares its width the same way among columns that each grow to their text's width. In library keeps its width.
     var tracks = details.map(function (d) { return d.key === 'l' ? 'max-content' : 'minmax(0, max-content)'; }).join(' ');
     return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected', props.inLibrary && 'bae-m-prow-inlibrary') },
