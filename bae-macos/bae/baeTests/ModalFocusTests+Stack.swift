@@ -91,6 +91,25 @@ extension ModalFocusTests {
         }
     }
 
+    @Test(
+        "A window that closes while layers and an alert are up takes their entries from the stack"
+    )
+    func closingTheWindowWithdrawsItsEntries() async throws {
+        try await withHost { window, _, presented in
+            presented.layers = [sheetLayer(), documentLayer()]
+            _ = try await LayerPanels.top(modals, count: 2)
+            presented.alert = true
+            try await SnapshotTestSupport.untilWindows {
+                modals.panels.count == 3
+            }
+            autoreleasepool { window.close() }
+            #expect(
+                await holds { modals.panels.isEmpty },
+                "the stack still holds \(modals.panels.count) entries of the closed window"
+            )
+        }
+    }
+
     // MARK: - Environment
 
     /// The words an element carries: its title, description and value.

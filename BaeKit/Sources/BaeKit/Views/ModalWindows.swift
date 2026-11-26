@@ -296,11 +296,9 @@
                     )
                 )
             }
-            let observers = keepWith(
-                parent: parent,
-                panel: panel,
-                place: place
-            )
+            let observers =
+                keepWith(parent: parent, panel: panel, place: place)
+                + [dropWhenClosed(parent: parent, id: id)]
 
             shown.append(
                 Shown(
@@ -356,11 +354,9 @@
                 guard let panel, let parent else { return }
                 panel.setFrame(placement.frame(over: parent), display: true)
             }
-            let observers = keepWith(
-                parent: parent,
-                panel: panel,
-                place: place
-            )
+            let observers =
+                keepWith(parent: parent, panel: panel, place: place)
+                + [dropWhenClosed(parent: parent, id: id)]
             shown.append(
                 Shown(
                     id: id,
@@ -376,6 +372,24 @@
             panel.makeKeyAndOrderFront(nil)
             if !model.shown {
                 withAnimation(.easeInOut(duration: 0.2)) { model.shown = true }
+            }
+        }
+
+        /// Withdraws the entry `id` when its parent window closes, since a
+        /// closed window gives the keyboard to nothing and an entry over it
+        /// would stay in the stack for good.
+        private func dropWhenClosed(
+            parent: NSWindow,
+            id: UUID
+        ) -> NSObjectProtocol {
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: parent,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.withdraw(id: id, returningKey: false)
+                }
             }
         }
 
@@ -418,17 +432,20 @@
         }
 
         /// Withdraws the entry `id` after every entry above it, and gives the
-        /// keyboard back to the window under it. Returns whether the keyboard
-        /// went back.
+        /// keyboard back to the window under it unless `returningKey` is
+        /// false, as when that window is closing. Returns whether the
+        /// keyboard went back.
         @discardableResult
-        func withdraw(id: UUID) -> Bool {
+        func withdraw(id: UUID, returningKey: Bool = true) -> Bool {
             guard let index = shown.firstIndex(where: { $0.id == id }) else {
                 return false
             }
             var hadKey = false
             let panel = shown[index].panel
             for above in shown.reversed() where above.parent === panel {
-                if withdraw(id: above.id) { hadKey = true }
+                if withdraw(id: above.id, returningKey: returningKey) {
+                    hadKey = true
+                }
             }
             guard let index = shown.firstIndex(where: { $0.id == id }) else {
                 return hadKey
@@ -462,7 +479,7 @@
             }
             markTopModal()
             // The keyboard goes back to the window the entry was over.
-            if hadKey, entry.parent.isVisible {
+            if returningKey, hadKey, entry.parent.isVisible {
                 entry.parent.makeKey()
                 return true
             }
