@@ -28,6 +28,7 @@
 
     /// Where a layer sits: over the whole window it is presented in, or over
     /// the frame of the view that presents it.
+    @MainActor
     struct LayerPlacement {
         weak var view: NSView?
         let wholeWindow: Bool
