@@ -129,7 +129,7 @@ fn stored_candidate_of<Signals>(
 pub(crate) fn current_state_of(
     state: CurrentState,
 ) -> Result<DbImportCandidateState<PaneSignals>, DbError> {
-    let signals = super::signal_rows::StoredPaneSignals::of(&state)?;
+    let signals = super::signal_rows::StoredPaneSignals::of(state.signals.as_ref());
     stored_candidate_of(state, signals)?.state(super::signal_rows::StoredPaneSignals::signals)
 }
 
@@ -140,7 +140,7 @@ fn full_state_of(
     lines: Option<SignalTextPool>,
 ) -> Result<DbImportCandidateState, DbError> {
     let text_pool = lines.map(|lines| lines.signals_text_pool);
-    let signals = super::signal_rows::StoredPaneSignals::of(&state)?
+    let signals = super::signal_rows::StoredPaneSignals::of(state.signals.as_ref())
         .map(|pane| {
             Ok::<_, DbError>(super::signal_rows::StoredSignals::of(
                 pane,

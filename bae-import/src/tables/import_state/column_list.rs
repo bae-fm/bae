@@ -19,17 +19,6 @@ impl ColumnList {
             .collect::<Vec<_>>()
             .join(", ")
     }
-
-    /// The expressions as one JSON object, each under its name.
-    pub(super) fn object(&self) -> String {
-        let pairs = self
-            .0
-            .iter()
-            .map(|(name, expression)| format!("'{name}', {expression}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!("json_object({pairs})")
-    }
 }
 
 /// Where a reader takes its named columns from: a statement's row, or one

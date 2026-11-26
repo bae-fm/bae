@@ -480,15 +480,6 @@ pub(super) fn verdict_columns() -> ColumnList {
     ColumnList(columns)
 }
 
-/// The [`verdict_columns`] of `row`; none for a candidate no verdict stands
-/// for.
-pub(super) fn read_verdict_row(row: &impl Columns) -> Result<Option<VerdictRow>, DbError> {
-    if row.get::<Option<String>>("verdict_row")?.is_none() {
-        return Ok(None);
-    }
-    verdict_row_of(row).map(Some)
-}
-
 /// The [`verdict_columns`] of a row read from `import_candidate_verdict`
 /// itself, where every row holds a verdict.
 pub(super) fn verdict_row_of(row: &impl Columns) -> Result<VerdictRow, DbError> {

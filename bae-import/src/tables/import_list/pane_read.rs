@@ -22,7 +22,8 @@ sqlive_compose::read!(
     LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(key: :key)
         AS grouping ON 1
     LEFT JOIN @crate::tables::folder_scans::fragments::PaneFiles(key: :key) AS files ON 1
-    LEFT JOIN @crate::tables::import_state::fragments::Standing(key: :key) AS standing ON 1
+    LEFT JOIN @crate::tables::import_state::fragments::Standing(
+        keys: (SELECT :key AS candidate_key)) AS standing ON 1
     LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
         AS imported ON 1
     LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(

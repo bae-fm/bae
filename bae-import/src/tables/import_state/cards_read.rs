@@ -192,43 +192,6 @@ fn run_files_sql(verdict: &str) -> String {
     )
 }
 
-/// The SQL of a scalar subquery reading the cards of the typed search whose
-/// number `search_run` names, the SQL of a column of the search's own row.
-pub(super) fn search_cards_sql(search_run: &str) -> String {
-    let from = format!(
-        "FROM import_candidate_match AS found \
-         JOIN import_candidate_search_source AS part \
-           ON part.search_run = found.search_run AND part.catalog = found.source \
-         WHERE found.search_run = {search_run}"
-    );
-    let ord = "ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1";
-    cards_sql(
-        &format!(
-            "SELECT {ord} AS ord, \
-                    found.card, found.pressing, found.record_order, found.section, \
-                    found.row_order, 'returned' AS kind, found.source, found.release_id, \
-                    0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, \
-                    0 AS a_label, 0 AS a_year, 0 AS a_country, 0 AS a_title, 0 AS a_artist, \
-                    NULL AS named_note, {choice} \
-             {from}",
-            choice = choice_columns_sql(
-                "found",
-                "(SELECT asked.content_hash FROM import_candidate_search AS asked \
-                  WHERE asked.search_run = found.search_run)",
-                None,
-            ),
-        ),
-        &format!(
-            "SELECT {ord} AS ord, {record} AS record {from}",
-            record = match_record_sql("found"),
-        ),
-        &format!(
-            "(SELECT l.list FROM import_candidate_card_list AS l \
-              WHERE l.search_run = {search_run})"
-        ),
-    )
-}
-
 /// The SQL of a scalar subquery reading the cards of the ledger cell the
 /// lookup row `lookup` names, a column of a read over the ledger's lookups of
 /// the verdict joined as `verdict`.

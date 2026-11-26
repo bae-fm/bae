@@ -16,8 +16,8 @@
 //! search replaces it, and the table is emptied as the library opens.
 //! Its tables are `search_rows.sql`, which every device's library holds.
 
-use super::cards_read::{groups_of, search_cards_sql};
-use super::column_list::{ColumnList, Columns, JsonColumns};
+use super::cards_read::groups_of;
+use super::column_list::{Columns, JsonColumns};
 use super::layout::lay_out_search_on;
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_rows::{store_match, MatchOwner, Written};
@@ -131,48 +131,6 @@ struct StoredPart {
     found: i64,
 }
 
-/// The parts of the search a column names as one JSON list column in the
-/// order of their positions, each with the count of releases it returned. A
-/// search's release references a part that answered, so only such a part
-/// counts any.
-fn parts_column(search_run: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-                  'catalog', part.catalog, 'state', part.state, 'failure', part.failure, \
-                  'failure_status', part.failure_status, 'error_detail', part.error_detail, \
-                  'found', (SELECT COUNT(*) FROM import_candidate_match AS found \
-                            WHERE found.search_run = part.search_run \
-                              AND found.source = part.catalog)) \
-                  ORDER BY part.position) \
-          FROM import_candidate_search_source AS part \
-          WHERE part.search_run = {search_run})"
-    )
-}
-
-/// Where the search a column names stands as a whole, as the text
-/// [`status_of`] reads: searching while a part is, else failed when a part
-/// failed, else no matches when a part answered and no part returned a
-/// release, else found.
-fn status_column(search_run: &str) -> String {
-    let part_in = |state: &str| {
-        format!(
-            "EXISTS (SELECT 1 FROM import_candidate_search_source AS part \
-                     WHERE part.search_run = {search_run} AND part.state = '{state}')"
-        )
-    };
-    format!(
-        "CASE WHEN {searching} THEN 'searching' \
-              WHEN {failed} THEN 'failed' \
-              WHEN {done} AND NOT EXISTS (SELECT 1 FROM import_candidate_match AS found \
-                                          WHERE found.search_run = {search_run}) \
-                  THEN 'no_matches' \
-              ELSE 'found' END",
-        searching = part_in("searching"),
-        failed = part_in("failed"),
-        done = part_in("done"),
-    )
-}
-
 /// The status a [`status_column`] holds.
 fn status_of(status: &str) -> Result<SearchStatus, DbError> {
     Ok(match status {
@@ -217,23 +175,7 @@ impl StoredPart {
     }
 }
 
-/// The search of the key a read joins as `keys`, as one JSON object holding
-/// the columns [`search_in`] reads, NULL for a key with none.
-pub(super) fn search_object_sql() -> String {
-    ColumnList(vec![
-        ("mode", "typed.mode".to_string()),
-        ("artist", "typed.artist".to_string()),
-        ("album", "typed.album".to_string()),
-        ("catalog_number", "typed.catalog_number".to_string()),
-        ("barcode", "typed.barcode".to_string()),
-        ("cards", search_cards_sql("typed.search_run")),
-        ("parts", parts_column("typed.search_run")),
-        ("status", status_column("typed.search_run")),
-    ])
-    .object()
-}
-
-/// The search a [`search_object_sql`] object holds.
+/// The search the JSON object of a runtime read's search holds.
 pub(super) fn search_in(search: &JsonColumns) -> Result<CandidateSearch, DbError> {
     let parts = search.get::<String>("parts")?;
     let stored: Vec<StoredPart> = serde_json::from_str(&parts)

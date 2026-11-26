@@ -13,49 +13,444 @@
 //! identification standing are a release's.
 //! Its table is `run_rows.sql`, which every device's library holds.
 
-use super::cards_read::StoredVerdictCards;
 use super::column_list::JsonColumns;
-use super::match_record::{match_record_sql, StoredRecord};
-use super::match_rows::StoredMatches;
-use super::search_rows::{search_in, search_object_sql};
-use super::signal_rows::{read_signals, signals_read_columns, store_signals};
-use super::standing_rows::{
-    change_identification_on, StandingColumns, COLUMNS as STANDING_COLUMNS,
-};
-use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_columns};
+use super::search_rows::search_in;
+use super::signal_rows::{store_signals, StoredPaneSignals, StoredSignals};
+use super::standing_rows::change_identification_on;
+use super::verdict_rows::{outcome_of, store_outcome};
 use super::verdict_rows::{Outcome, Owner};
 use super::*;
 use crate::candidate_runtime::{
     IdentificationChange, IdentificationMove, StoredRuntime, StoredVerdict,
 };
+use crate::candidate_search::CandidateSearch;
 use crate::CandidateFiles;
 use crate::IdentifyRunId;
 use bae_catalogs::source_release::SourceRelease;
 use bae_identify::signals::Signals;
 use bae_identify::{IdentifyState, PublishedRun, RunOutcome};
 
-/// One run of a key as [`load_runtimes_on`] nests it.
-#[derive(serde::Deserialize)]
-struct StoredRun {
-    run: i64,
-    verdict: JsonColumns,
-    signals: JsonColumns,
-    cards: StoredVerdictCards,
-    matches: Vec<StoredRecord>,
-}
+sqlive_compose::fragment!(
+    RuntimeSearch with keys(candidate_key TEXT) {
+        search_key: crate::CandidateKey,
+        search: String
+    },
+    r#"
+    SELECT typed.candidate_key AS search_key, (
+            json_object('mode', typed.mode, 'artist', typed.artist, 'album', typed.album,
+                'catalog_number', typed.catalog_number, 'barcode', typed.barcode, 'cards',(
+                WITH recs AS (
+                SELECT m.*
+                    FROM (
+                        SELECT ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1 AS
+                            ord, found.card, found.pressing, found.record_order, found.section,
+                            found.row_order, 'returned' AS kind, found.source, found.release_id,
+                            0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS
+                            a_year, 0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS
+                            named_note,(EXISTS(
+                        SELECT 1
+                        FROM import_candidate_release_link AS release_link
+                            WHERE release_link.content_hash =(
+                            SELECT asked.content_hash
+                            FROM import_candidate_search AS asked
+                            WHERE asked.search_run = found.search_run
+                        ) AND release_link.kind = 'pressing' AND release_link.source =
+                            found.source AND release_link.release_id = found.release_id
+                        ) OR (0 AND NOT EXISTS (
+                        SELECT 1
+                        FROM import_candidate_release_link AS release_link
+                            WHERE release_link.content_hash =(
+                            SELECT asked.content_hash
+                            FROM import_candidate_search AS asked
+                            WHERE asked.search_run = found.search_run
+                        ) AND release_link.kind = 'pressing'
+                    ))) AS chosen, 0 AS pick_being_read
+                    FROM import_candidate_match AS found
+                    JOIN import_candidate_search_source AS part ON part.search_run =
+                        found.search_run AND part.catalog = found.source
+                    WHERE found.search_run = typed.search_run
+                ) AS m
+                ), pressings AS (
+                    SELECT r.card, r.pressing, r.kind, MIN(r.section) AS section,
+                        MIN(r.row_order) AS row_order, MAX(r.chosen) AS chosen,
+                        MAX(r.pick_being_read) AS pick_being_read,
+                        json_group_array(json(rc.record) ORDER BY r.record_order) AS records,
+                        MAX(json_object('catalog', r.source, 'key', r.release_id)) FILTER (WHERE
+                        r.record_order = 0) AS lead, MAX(EXISTS(
+                    SELECT 1
+                    FROM @bae_records::records::spread_fragments::HeldPressing AS held
+                    WHERE held.catalog = r.source AND held.key = r.release_id
+                )) FILTER (WHERE r.record_order = 0) AS in_library, json_object('disc_id',
+                    MAX(r.a_disc_id), 'barcode', MAX(r.a_barcode), 'catalog', MAX(r.a_catalog),
+                    'label', MAX(r.a_label), 'year', MAX(r.a_year), 'country', MAX(r.a_country),
+                    'title', MAX(r.a_title), 'artist', MAX(r.a_artist)) AS agreed
+                FROM recs AS r
+                    JOIN (
+                        SELECT ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1 AS
+                            ord, json_object('position', found.position, 'pressing',
+                            found.pressing, 'listing', found.listing, 'media_kind',
+                            found.media_kind, 'album_links', found.album_links, 'source',
+                            found.source, 'release_id', found.release_id, 'title', found.title,
+                            'credits', found.credits, 'year', found.year, 'country',
+                            found.country, 'region', found.region, 'status', found.status,
+                            'packaging', found.packaging, 'source_group_id',
+                            found.source_group_id, 'named_note', found.named_note,
+                            'discogs_details', json(found.discogs_details), 'cover', CASE WHEN
+                            found.cover_url IS NOT NULL THEN json_object('url', found.cover_url,
+                            'label', found.cover_label, 'source', found.cover_source,
+                            'standing', found.cover_standing) END, 'source_tracks', CASE WHEN
+                            found.source_tracks_kind = 'listed' THEN json_object('kind',
+                            'listed', 'count', found.source_tracks_count) WHEN
+                            found.source_tracks_kind IS NOT NULL THEN json_object('kind',
+                            found.source_tracks_kind) END, 'document_failure', CASE WHEN
+                            found.document_failure IS NOT NULL THEN json_object('kind',
+                            found.document_failure, 'status', found.document_failure_status)
+                            END, 'album_first_year',(
+                        SELECT fetched.album_first_year
+                        FROM source_release AS fetched
+                        WHERE fetched.catalog = found.source AND fetched.release_id =
+                            found.release_id
+                        ), 'labels', json((
+                        SELECT json_group_array(json_object('name', entry.name,
+                            'catalog_number', entry.catalog_number, 'musicbrainz_label_id',
+                            entry.musicbrainz_label_id, 'discogs_label_id',
+                            entry.discogs_label_id) ORDER BY entry.ordinal)
+                        FROM import_candidate_match_label AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'barcodes', json((
+                        SELECT json_group_array(entry.barcode ORDER BY entry.ordinal)
+                        FROM import_candidate_match_barcode AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'cover_copies', json((
+                        SELECT json_group_array(json_object('url', copy.url, 'max_edge',
+                            copy.max_edge) ORDER BY copy.max_edge)
+                        FROM import_candidate_match_cover_copy AS copy
+                        WHERE copy.match_id = found.match_id
+                        )), 'media', json((
+                        SELECT json_group_array(json_object('kind', entry.media_kind, 'medium',
+                            entry.medium, 'quantity', entry.quantity) ORDER BY entry.ordinal)
+                        FROM import_candidate_match_medium AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'links', json((
+                        SELECT json_group_array(json_array(entry.catalog, entry.key) ORDER BY
+                            entry.ordinal)
+                        FROM import_candidate_match_link AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'album_link_rows', json((
+                        SELECT json_group_array(json_object('catalog', entry.catalog, 'key',
+                            entry.key) ORDER BY entry.ordinal)
+                        FROM import_candidate_match_album_link AS entry
+                        WHERE entry.match_id = found.match_id
+                    ))) AS record
+                    FROM import_candidate_match AS found
+                    JOIN import_candidate_search_source AS part ON part.search_run =
+                        found.search_run AND part.catalog = found.source
+                    WHERE found.search_run = typed.search_run
+                ) AS rc ON rc.ord = r.ord
+                GROUP BY r.card, r.pressing, r.kind
+                ), notes AS (
+                SELECT g.card, g.pressing, g.kind, json_group_array(json_object('note', g.note,
+                    'catalogs', json(CASE WHEN g.noted > 1 THEN g.catalogs ELSE '[]' END)) ORDER
+                    BY g.first) AS notes
+                    FROM (
+                    SELECT h.*, COUNT(*) OVER (PARTITION BY h.card, h.pressing, h.kind) AS noted
+                        FROM (
+                        SELECT d.card, d.pressing, d.kind, d.named_note AS note, MIN(d.first) AS
+                            first, json_group_array(d.source ORDER BY
+                            bae_catalog_rank(d.source)) AS catalogs
+                            FROM (
+                            SELECT DISTINCT r.card, r.pressing, r.kind, r.named_note, r.source,
+                                MIN(r.record_order) OVER (PARTITION BY r.card, r.pressing,
+                                r.kind, r.named_note) AS first
+                            FROM recs AS r
+                            WHERE r.named_note IS NOT NULL
+                        ) AS d
+                        GROUP BY d.card, d.pressing, d.kind, d.named_note
+                    ) AS h
+                ) AS g
+                GROUP BY g.card, g.pressing, g.kind
+                ), rowj AS (
+                    SELECT p.*, json_object('records', json(p.records), 'in_library',
+                        p.in_library, 'agreed', json(p.agreed), 'chosen', p.chosen,
+                        'pick_being_read', p.pick_being_read, 'notes', json(COALESCE(n.notes,
+                        '[]')), 'statements', json((
+                    SELECT json_group_array(json_object('fact', t.fact, 'line', t.line,
+                        'ordinal', t.ordinal, 'value', t.value, 'catalogs', json(t.catalogs))
+                        ORDER BY t.line, t.ordinal)
+                    FROM import_candidate_row_statement AS t
+                        WHERE t.list =(
+                        SELECT l.list
+                        FROM import_candidate_card_list AS l
+                        WHERE l.search_run = typed.search_run
+                    ) AND t.listing = p.kind AND t.pressing = p.pressing
+                ))) AS row
+                FROM pressings AS p
+                LEFT JOIN notes AS n ON n.card = p.card AND n.pressing = p.pressing AND n.kind =
+                    p.kind
+                ), secj AS (
+                SELECT r.card, r.section, json_object('pressings',
+                    json((json_group_array(json(r.row) ORDER BY r.row_order) FILTER (WHERE
+                    r.kind <> 'narrowed_out'))), 'narrowed_out',
+                    json((json_group_array(json(r.row) ORDER BY r.row_order) FILTER (WHERE
+                    r.kind = 'narrowed_out')))) AS section_json, json_group_array(json(r.lead)
+                    ORDER BY r.row_order) FILTER (WHERE r.kind <> 'narrowed_out') AS leads
+                FROM rowj AS r
+                GROUP BY r.card, r.section
+                ), card_secs AS (
+                SELECT s.card, json_group_array(json(s.section_json) ORDER BY s.section) AS
+                    sections, json_group_array(json(s.leads) ORDER BY s.section) AS leads
+                FROM secj AS s
+                GROUP BY s.card
+                ) SELECT json_group_array(json_object('id', c.id, 'titles', json((
+                SELECT json_group_array(t.text ORDER BY t.ordinal)
+                FROM import_candidate_card_text AS t
+                    WHERE t.list =(
+                    SELECT l.list
+                    FROM import_candidate_card_list AS l
+                    WHERE l.search_run = typed.search_run
+                ) AND t.card = c.card AND t.kind = 'title'
+                )), 'artists', json((
+                SELECT json_group_array(t.text ORDER BY t.ordinal)
+                FROM import_candidate_card_text AS t
+                    WHERE t.list =(
+                    SELECT l.list
+                    FROM import_candidate_card_list AS l
+                    WHERE l.search_run = typed.search_run
+                ) AND t.card = c.card AND t.kind = 'artist'
+                )), 'labels', json((
+                SELECT json_group_array(t.text ORDER BY t.ordinal)
+                FROM import_candidate_card_text AS t
+                    WHERE t.list =(
+                    SELECT l.list
+                    FROM import_candidate_card_list AS l
+                    WHERE l.search_run = typed.search_run
+                ) AND t.card = c.card AND t.kind = 'label'
+                )), 'cover', json((
+                SELECT json(rc.record)
+                    FROM (
+                        SELECT ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1 AS
+                            ord, json_object('position', found.position, 'pressing',
+                            found.pressing, 'listing', found.listing, 'media_kind',
+                            found.media_kind, 'album_links', found.album_links, 'source',
+                            found.source, 'release_id', found.release_id, 'title', found.title,
+                            'credits', found.credits, 'year', found.year, 'country',
+                            found.country, 'region', found.region, 'status', found.status,
+                            'packaging', found.packaging, 'source_group_id',
+                            found.source_group_id, 'named_note', found.named_note,
+                            'discogs_details', json(found.discogs_details), 'cover', CASE WHEN
+                            found.cover_url IS NOT NULL THEN json_object('url', found.cover_url,
+                            'label', found.cover_label, 'source', found.cover_source,
+                            'standing', found.cover_standing) END, 'source_tracks', CASE WHEN
+                            found.source_tracks_kind = 'listed' THEN json_object('kind',
+                            'listed', 'count', found.source_tracks_count) WHEN
+                            found.source_tracks_kind IS NOT NULL THEN json_object('kind',
+                            found.source_tracks_kind) END, 'document_failure', CASE WHEN
+                            found.document_failure IS NOT NULL THEN json_object('kind',
+                            found.document_failure, 'status', found.document_failure_status)
+                            END, 'album_first_year',(
+                        SELECT fetched.album_first_year
+                        FROM source_release AS fetched
+                        WHERE fetched.catalog = found.source AND fetched.release_id =
+                            found.release_id
+                        ), 'labels', json((
+                        SELECT json_group_array(json_object('name', entry.name,
+                            'catalog_number', entry.catalog_number, 'musicbrainz_label_id',
+                            entry.musicbrainz_label_id, 'discogs_label_id',
+                            entry.discogs_label_id) ORDER BY entry.ordinal)
+                        FROM import_candidate_match_label AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'barcodes', json((
+                        SELECT json_group_array(entry.barcode ORDER BY entry.ordinal)
+                        FROM import_candidate_match_barcode AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'cover_copies', json((
+                        SELECT json_group_array(json_object('url', copy.url, 'max_edge',
+                            copy.max_edge) ORDER BY copy.max_edge)
+                        FROM import_candidate_match_cover_copy AS copy
+                        WHERE copy.match_id = found.match_id
+                        )), 'media', json((
+                        SELECT json_group_array(json_object('kind', entry.media_kind, 'medium',
+                            entry.medium, 'quantity', entry.quantity) ORDER BY entry.ordinal)
+                        FROM import_candidate_match_medium AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'links', json((
+                        SELECT json_group_array(json_array(entry.catalog, entry.key) ORDER BY
+                            entry.ordinal)
+                        FROM import_candidate_match_link AS entry
+                        WHERE entry.match_id = found.match_id
+                        )), 'album_link_rows', json((
+                        SELECT json_group_array(json_object('catalog', entry.catalog, 'key',
+                            entry.key) ORDER BY entry.ordinal)
+                        FROM import_candidate_match_album_link AS entry
+                        WHERE entry.match_id = found.match_id
+                    ))) AS record
+                    FROM import_candidate_match AS found
+                    JOIN import_candidate_search_source AS part ON part.search_run =
+                        found.search_run AND part.catalog = found.source
+                    WHERE found.search_run = typed.search_run
+                ) AS rc
+                WHERE rc.ord = c.cover_ord
+                )), 'leads', json((
+                SELECT json_group_array(json(lead.value))
+                FROM json_each(cs.leads) AS sec, json_each(sec.value) AS lead
+            )), 'sources', json(c.sources), 'headings', json(c.headings), 'year_min',
+                c.year_min, 'year_max', c.year_max, 'sections', json(cs.sections)) ORDER BY
+                c.card_order)
+                FROM (
+                SELECT t.*
+                FROM import_candidate_card AS t
+                    WHERE t.list =(
+                    SELECT l.list
+                    FROM import_candidate_card_list AS l
+                    WHERE l.search_run = typed.search_run
+                )
+            ) AS c
+            JOIN card_secs AS cs ON cs.card = c.card
+            ), 'parts',(
+                SELECT json_group_array(json_object('catalog', part.catalog, 'state',
+                    part.state, 'failure', part.failure, 'failure_status', part.failure_status,
+                    'error_detail', part.error_detail, 'found',(
+                SELECT COUNT(*)
+                FROM import_candidate_match AS found
+                WHERE found.search_run = part.search_run AND found.source = part.catalog
+            )) ORDER BY part.position)
+            FROM import_candidate_search_source AS part
+            WHERE part.search_run = typed.search_run
+            ), 'status', CASE WHEN EXISTS (
+            SELECT 1
+            FROM import_candidate_search_source AS part
+            WHERE part.search_run = typed.search_run AND part.state = 'searching'
+            ) THEN 'searching' WHEN EXISTS (
+            SELECT 1
+            FROM import_candidate_search_source AS part
+            WHERE part.search_run = typed.search_run AND part.state = 'failed'
+            ) THEN 'failed' WHEN EXISTS (
+            SELECT 1
+            FROM import_candidate_search_source AS part
+            WHERE part.search_run = typed.search_run AND part.state = 'done'
+            ) AND NOT EXISTS (
+            SELECT 1
+            FROM import_candidate_match AS found
+            WHERE found.search_run = typed.search_run
+        ) THEN 'no_matches' ELSE 'found' END)
+    ) AS search
+    FROM keys
+    JOIN import_candidate_search AS typed ON typed.candidate_key = keys.candidate_key
+"#);
 
-impl StoredRun {
-    /// What the run last published, under the key it is of.
-    fn published(self, key: &CandidateKey) -> Result<(IdentifyRunId, PublishedRun), DbError> {
-        let Self { run, verdict, signals, cards, matches } = self;
-        let verdict = read_verdict_row(&verdict)?.ok_or_else(|| {
-            DbError::unreadable(format!("the verdict row of {key}'s run {run}"), None::<String>)
-        })?;
-        let (outcome, cards) = outcome_and_cards(verdict, matches, cards, &format!("run {run}"))?;
-        let signals = read_signals(&signals)?.map(|stored| stored.signals()).transpose()?;
-        let number = to_u64(run, &format!("{key}'s run number"))?;
-        Ok((IdentifyRunId::of_number(number), PublishedRun { outcome, signals, cards }))
+sqlive_compose::fragment!(
+    RuntimeRows with keys(candidate_key TEXT) {
+        runtime_key: crate::CandidateKey,
+        runtime_run: Option<i64>
+    },
+    r#"
+    WITH chosen AS (
+        SELECT keys.candidate_key AS candidate_key, (
+            SELECT run.identify_run
+            FROM import_identify_run AS run
+            JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run
+            LEFT JOIN import_candidate_standing AS standing
+                ON standing.candidate_key = run.candidate_key
+            WHERE run.candidate_key = keys.candidate_key
+                AND (standing.identification IS NULL OR run.identify_run = standing.identify_run)
+            ORDER BY verdict.kind = 'running' DESC, run.identify_run DESC
+            LIMIT 1
+        ) AS identify_run
+        FROM keys
+    ), owners AS (
+        SELECT NULL AS content_hash, chosen.identify_run AS identify_run
+        FROM chosen
+        WHERE chosen.identify_run IS NOT NULL
+    )
+    SELECT chosen.candidate_key AS runtime_key, chosen.identify_run AS runtime_run,
+        standing.*, state.*, lines.*, cards.*, search.*
+    FROM chosen
+    LEFT JOIN @crate::tables::import_state::fragments::Standing(
+        keys: (SELECT * FROM keys)) AS standing ON standing.standing_key = chosen.candidate_key
+    LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(
+        owner: (SELECT * FROM owners)) AS state ON state.owner_row = 'run ' || chosen.identify_run
+    LEFT JOIN @crate::tables::import_state::state_fragments::SignalTextPool(
+        owner: (SELECT * FROM owners)) AS lines ON lines.owner_row = 'run ' || chosen.identify_run
+    LEFT JOIN @crate::tables::import_state::card_fragments::VerdictCards(
+        owner: (SELECT * FROM owners)) AS cards ON cards.owner_row = 'run ' || chosen.identify_run
+    LEFT JOIN @crate::tables::import_state::run_rows::RuntimeSearch(
+        keys: (SELECT * FROM keys)) AS search ON search.search_key = chosen.candidate_key
+"#);
+
+sqlive_compose::read!(
+    RuntimeOf(key: crate::CandidateKey),
+    r#"
+    SELECT runtime.*
+    FROM @crate::tables::import_state::run_rows::RuntimeRows(
+        keys: (SELECT :key AS candidate_key)) AS runtime
+"#
+);
+
+sqlive_compose::read!(
+    EveryRuntime,
+    r#"
+    SELECT runtime.*
+    FROM @crate::tables::import_state::run_rows::RuntimeRows(keys: (
+        SELECT standing.candidate_key AS candidate_key FROM import_candidate_standing AS standing
+        UNION SELECT run.candidate_key FROM import_identify_run AS run
+            JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run
+        UNION SELECT typed.candidate_key FROM import_candidate_search AS typed)) AS runtime
+    ORDER BY runtime.runtime_key
+"#
+);
+
+sqlive_compose::read!(
+    RunSignals(key: crate::CandidateKey, run: i64),
+    r#"
+    WITH owners AS (
+        SELECT NULL AS content_hash, run.identify_run AS identify_run
+        FROM import_identify_run AS run
+        WHERE run.candidate_key = :key AND run.identify_run = :run
+    )
+    SELECT signals.*, lines.*
+    FROM @crate::tables::import_state::state_fragments::Signals(
+        owner: (SELECT * FROM owners)) AS signals
+    LEFT JOIN @crate::tables::import_state::state_fragments::SignalTextPool(
+        owner: (SELECT * FROM owners)) AS lines ON lines.owner_row = signals.owner_row
+"#
+);
+
+/// What the run a runtime read chose last published, under the key it is of.
+fn published_of(
+    key: &CandidateKey,
+    row: RuntimeRows,
+) -> Result<Option<(IdentifyRunId, PublishedRun)>, DbError> {
+    let Some(run) = row.runtime_run else {
+        return Ok(None);
+    };
+    let state = row.state.ok_or_else(|| {
+        DbError::unreadable(format!("the stored rows of {key}'s run {run}"), None::<String>)
+    })?;
+    let owner = format!("run {run}");
+    let verdict = super::verdict_rows::verdict_row_of_state(&state)?.ok_or_else(|| {
+        DbError::unreadable(format!("the verdict row of {key}'s run {run}"), None::<String>)
+    })?;
+    let matches = super::match_record::match_rows_of(&owner, &state.candidate_matches)?;
+    let (outcome, _) = outcome_of(verdict, matches)?;
+    // A run in flight shows its cards, and an answer only when it holds
+    // findings.
+    let cards = match &outcome {
+        RunOutcome::Running { .. } => true,
+        RunOutcome::Answered(verdict) => verdict.findings().is_some(),
     }
+    .then(|| {
+        super::verdict_cards_of_column(row.cards.and_then(|cards| cards.verdict_cards).as_deref())
+    })
+    .transpose()?
+    .unwrap_or_default();
+    let signals = StoredPaneSignals::of(state.signals.as_ref())
+        .map(|pane| {
+            let lines = row.lines.map(|lines| lines.signals_text_pool);
+            StoredSignals::of(pane, super::required(lines, "the signals' text lines")?).signals()
+        })
+        .transpose()?;
+    let number = to_u64(run, &format!("{key}'s run number"))?;
+    Ok(Some((IdentifyRunId::of_number(number), PublishedRun { outcome, signals, cards })))
 }
 
 /// `key`'s stored verdict as its pane shows it, read and converted as the
@@ -74,147 +469,42 @@ fn load_stored_verdict_on(
         .map(|view| StoredVerdict { view, not_cd_rate }))
 }
 
-/// How a verdict row stands, with its matches, and the cards it shows: a run
-/// in flight shows its cards, and an answer only when it holds findings.
-fn outcome_and_cards(
-    verdict: super::verdict_rows::VerdictRow,
-    matches: Vec<StoredRecord>,
-    cards: StoredVerdictCards,
-    owner: &str,
-) -> Result<(RunOutcome, bae_identify::VerdictCards), DbError> {
-    let found = StoredMatches {
-        rows: matches
-            .into_iter()
-            .map(|record| record.match_row(owner))
-            .collect::<Result<_, _>>()?,
-    };
-    let (outcome, _) = outcome_of(verdict, found)?;
-    let cards = match &outcome {
-        RunOutcome::Running { .. } => true,
-        RunOutcome::Answered(verdict) => verdict.findings().is_some(),
-    }
-    .then(|| cards.cards())
-    .transpose()?
-    .unwrap_or_default();
-    Ok((outcome, cards))
-}
-
-/// The run a key's runtime shows, as one JSON object column: the run its
-/// identification standing names, or, for a key with no identification
-/// standing (a library release's re-identify session), its latest run in
-/// flight, else its latest answer.
-fn run_column(key: &str) -> String {
-    format!(
-        "(SELECT json_object( \
-                  'run', run.identify_run, \
-                  'verdict', {verdict}, \
-                  'signals', {signals}, \
-                  'cards', json({cards}), \
-                  'matches', json((SELECT json_group_array(json({record}) ORDER BY found.position) \
-                                   FROM import_candidate_match AS found \
-                                   WHERE found.verdict_id = verdict.verdict_id))) \
-          FROM import_identify_run AS run \
-          JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run \
-          LEFT JOIN import_candidate_signals AS signals \
-              ON signals.identify_run = run.identify_run \
-          WHERE run.candidate_key = {key} \
-            AND (standing.identification IS NULL \
-                 OR run.identify_run = standing.identify_run) \
-          ORDER BY verdict.kind = 'running' DESC, run.identify_run DESC \
-          LIMIT 1)",
-        record = match_record_sql("found"),
-        verdict = verdict_columns().object(),
-        signals = signals_read_columns().object(),
-        cards = super::cards_read::verdict_cards_sql("verdict"),
-    )
-}
-
-/// Every key something is running for, or `key` alone whatever runs for it,
-/// as one statement reads it: its standing, the run its runtime shows with
-/// the verdict, signals, cards and releases nested in it, and its typed
-/// search nested as one object.
-fn load_runtimes_on(
-    sql: &impl coven::SqlRead,
-    key: Option<&CandidateKey>,
-) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
-    let keys = match key {
-        Some(_) => "SELECT ?1 AS candidate_key",
-        None => {
-            "SELECT candidate_key FROM import_candidate_standing \
-             UNION SELECT run.candidate_key FROM import_identify_run AS run \
-                   JOIN import_candidate_verdict AS verdict \
-                       ON verdict.identify_run = run.identify_run \
-             UNION SELECT candidate_key FROM import_candidate_search"
-        }
-    };
-    let rows = sql.query(
-        &format!(
-            "SELECT keys.candidate_key AS runtime_key, \
-                    {STANDING_COLUMNS}, \
-                    {run} AS runtime_run, \
-                    (SELECT {search} FROM import_candidate_search AS typed \
-                     WHERE typed.candidate_key = keys.candidate_key) AS runtime_search \
-             FROM ({keys}) AS keys \
-             LEFT JOIN import_candidate_standing AS standing \
-                 ON standing.candidate_key = keys.candidate_key \
-             ORDER BY keys.candidate_key",
-            STANDING_COLUMNS = STANDING_COLUMNS,
-            search = search_object_sql(),
-            run = run_column("keys.candidate_key"),
-        ),
-        rusqlite::params_from_iter(key),
-        |row| {
-            Ok((
-                row.get::<_, CandidateKey>("runtime_key")?,
-                StandingColumns::read(row, 1)?,
-                row.get::<_, Option<String>>("runtime_run")?,
-                row.get::<_, Option<String>>("runtime_search")?,
-            ))
-        },
-    )?;
-    rows.into_iter()
-        .map(|(key, standing, run, search)| {
-            let run = run
-                .map(|json| {
-                    let stored: StoredRun = serde_json::from_str(&json).map_err(|error| {
-                        DbError::unreadable_json("a key's stored run", &json, error)
-                    })?;
-                    stored.published(&key)
-                })
-                .transpose()?;
-            let search = search
-                .map(|json| {
-                    let columns: JsonColumns = serde_json::from_str(&json).map_err(|error| {
-                        DbError::unreadable_json("a key's stored search", &json, error)
-                    })?;
-                    search_in(&columns)
-                })
-                .transpose()?;
-            let runtime = StoredRuntime { standing: standing.standing(&key)?, run, search };
-            Ok((key, runtime))
+/// The typed search a runtime read returned.
+fn search_of(search: Option<RuntimeSearch>) -> Result<Option<CandidateSearch>, DbError> {
+    search
+        .map(|found| {
+            let columns: JsonColumns = serde_json::from_str(&found.search).map_err(|error| {
+                DbError::unreadable_json("a key's stored search", &found.search, error)
+            })?;
+            search_in(&columns)
         })
-        .collect()
+        .transpose()
+}
+
+/// What one row of a runtime read holds, as the runtime shows it: where its key
+/// stands, what the run it names last published, and its typed search.
+fn runtime_of(row: RuntimeRows) -> Result<(CandidateKey, StoredRuntime), DbError> {
+    let key = row.runtime_key.clone();
+    let standing = super::standing_of(row.standing.clone(), &key)?;
+    let search = search_of(row.search.clone())?;
+    Ok((key.clone(), StoredRuntime { standing, run: published_of(&key, row)?, search }))
 }
 
 /// Where `key` stands, what the run its runtime shows last published, and
-/// its typed search.
+/// its typed search. The runtime shows the run its identification standing
+/// names or, for a key with no identification standing (a library release's
+/// re-identify session), its latest run in flight, else its latest answer.
 pub(crate) fn load_stored_runtime_on(
     sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<StoredRuntime, DbError> {
+    let request = RuntimeOfParams { key: key.clone() };
     // The statement reads one row for the one key it is given.
-    Ok(load_runtimes_on(sql, Some(key))?
+    sql.query(RuntimeOf::SQL, request.params().as_slice(), RuntimeOfRow::read)?
         .into_iter()
         .next()
-        .map(|(_, runtime)| runtime)
-        .unwrap_or_default())
-}
-
-/// Delete every run's published state: nothing a run published outlives
-/// the process that ran it.
-pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_identify_run", [])?;
-    Ok(())
+        .map(|row| runtime_of(row.runtime).map(|(_, runtime)| runtime))
+        .unwrap_or_else(|| Ok(StoredRuntime::default()))
 }
 
 /// Every key something is running for: where it stands, what the run its
@@ -222,7 +512,17 @@ pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
 fn load_stored_runtimes_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
-    load_runtimes_on(sql, None)
+    sql.query(EveryRuntime::SQL, EveryRuntimeParams {}.params().as_slice(), EveryRuntimeRow::read)?
+        .into_iter()
+        .map(|row| runtime_of(row.runtime))
+        .collect()
+}
+
+/// Delete every run's published state: nothing a run published outlives
+/// the process that ran it.
+pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+    sql.execute("DELETE FROM import_identify_run", [])?;
+    Ok(())
 }
 
 /// Store `outcome` as how `run` of `key` stands, with each of `releases`
@@ -337,19 +637,25 @@ impl ImportTables {
         let run = to_i64(run.number(), "an identify run")?;
         self.store
             .read(move |sql| {
-                let stored = sql.query(
-                    &format!(
-                        "SELECT {signals} \
-                     FROM import_identify_run AS run \
-                     JOIN import_candidate_signals AS signals \
-                         ON signals.identify_run = run.identify_run \
-                     WHERE run.candidate_key = ?1 AND run.identify_run = ?2",
-                        signals = signals_read_columns().select(),
-                    ),
-                    params![key, run],
-                    |row| read_signals(row),
-                )?;
-                stored.into_iter().next().flatten().map(|stored| stored.signals()).transpose()
+                let request = RunSignalsParams { key, run };
+                let row = sql
+                    .query(RunSignals::SQL, request.params().as_slice(), RunSignalsRow::read)?
+                    .into_iter()
+                    .next();
+                row.map(|row| {
+                    let lines = row.lines.map(|lines| lines.signals_text_pool);
+                    StoredPaneSignals::of(Some(&row.signals))
+                        .map(|pane| {
+                            StoredSignals::of(
+                                pane,
+                                super::required(lines, "the signals' text lines")?,
+                            )
+                            .signals()
+                        })
+                        .transpose()
+                })
+                .transpose()
+                .map(Option::flatten)
             })
             .await
     }

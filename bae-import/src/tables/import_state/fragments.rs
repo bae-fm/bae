@@ -1,7 +1,7 @@
 //! What the candidate state offers the candidate pane: what is running for the candidate, the evidence in its files, its draft, its failures, and the records and album its draft links to.
 
 sqlive_compose::fragment!(
-    Standing(key: crate::CandidateKey) {
+    Standing with keys(candidate_key TEXT) {
         standing_key: crate::CandidateKey,
         identification: Option<String>,
         standing_content_hash: Option<String>,
@@ -14,14 +14,13 @@ sqlive_compose::fragment!(
         import_id: Option<String>
     },
     r#"
-    WITH statement(identification, standing_content_hash, standing_file_edit_revision, admission, identify_run, import_asked, save_failure_error, import_step, import_id) AS (
-        SELECT identification, content_hash, file_edit_revision, admission, identify_run,
-            import_asked, save_failure_error, import_step, import_id
-        FROM import_candidate_standing
-        WHERE candidate_key = :key
-    )
-    SELECT :key AS standing_key, identification, standing_content_hash, standing_file_edit_revision, admission, identify_run, import_asked, save_failure_error, import_step, import_id
-    FROM statement
+    SELECT standing.candidate_key AS standing_key, standing.identification,
+        standing.content_hash AS standing_content_hash,
+        standing.file_edit_revision AS standing_file_edit_revision, standing.admission,
+        standing.identify_run, standing.import_asked, standing.save_failure_error,
+        standing.import_step, standing.import_id
+    FROM keys
+    JOIN import_candidate_standing AS standing ON standing.candidate_key = keys.candidate_key
 "#);
 
 sqlive_compose::fragment!(
