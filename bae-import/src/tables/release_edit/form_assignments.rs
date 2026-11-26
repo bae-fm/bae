@@ -13,7 +13,6 @@ use crate::{ArtistAssignment, Credited};
 #[derive(serde::Serialize)]
 pub(super) struct FormAssignmentRow<'a> {
     track_id: Option<&'a str>,
-    track_position: usize,
     position: usize,
     artist_id: Option<&'a str>,
     credit_key: Option<&'a str>,
@@ -26,15 +25,13 @@ pub(super) struct FormAssignmentRow<'a> {
 }
 
 impl<'a> FormAssignmentRow<'a> {
-    /// `credited` at `position`: the album's when `track` is `None`, else
-    /// the track's of that id at that place.
-    fn of(track: Option<(&'a str, usize)>, position: usize, credited: &'a Credited) -> Self {
+    /// `credited` at `position`: the album's when `track_id` is `None`, else
+    /// the track's of that id.
+    fn of(track_id: Option<&'a str>, position: usize, credited: &'a Credited) -> Self {
         let join_phrase = credited.join.as_deref();
-        let (track_id, track_position) = track.map_or((None, 0), |(id, place)| (Some(id), place));
         match &credited.artist {
             ArtistAssignment::Picked { artist, credit_name } => Self {
                 track_id,
-                track_position,
                 position,
                 artist_id: Some(&artist.artist_id),
                 credit_key: credit_name.as_ref().map(|credit_name| credit_name.key.as_str()),
@@ -47,7 +44,6 @@ impl<'a> FormAssignmentRow<'a> {
             },
             ArtistAssignment::Credit { credit } => Self {
                 track_id,
-                track_position,
                 position,
                 artist_id: None,
                 credit_key: None,
@@ -63,24 +59,24 @@ impl<'a> FormAssignmentRow<'a> {
 }
 
 /// `assignments` as [`FormAssignmentRow`]s in their order: the album's when
-/// `track` is `None`, else those of the track of that id at that place.
+/// `track_id` is `None`, else those of the track of that id.
 pub(super) fn assignment_rows<'a>(
-    track: Option<(&'a str, usize)>,
+    track_id: Option<&'a str>,
     assignments: &'a [Credited],
 ) -> impl Iterator<Item = FormAssignmentRow<'a>> {
     assignments
         .iter()
         .enumerate()
-        .map(move |(position, assignment)| FormAssignmentRow::of(track, position, assignment))
+        .map(move |(position, assignment)| FormAssignmentRow::of(track_id, position, assignment))
 }
 
 /// A subquery over the JSON array of [`FormAssignmentRow`]s that the
 /// parameter `param` binds, with the columns of a draft's assignment table
-/// and `track_id` and `track_position`. A picked artist the library no
+/// and `track_id`. A picked artist the library no
 /// longer holds is a credit of the values the form holds for it.
 pub(super) fn assignment_rows_sql(param: &str) -> String {
     format!(
-        "(SELECT track_id, track_position, position, \
+        "(SELECT track_id, position, \
                  CASE WHEN held THEN 'picked' ELSE 'credit' END AS assignment_kind, \
                  CASE WHEN held THEN artist_id END AS artist_id, \
                  name, sort_name, musicbrainz_artist_id, discogs_artist_id, \
@@ -88,7 +84,6 @@ pub(super) fn assignment_rows_sql(param: &str) -> String {
                  CASE WHEN held THEN NULL ELSE credited_as END AS credited_as, \
                  join_phrase \
           FROM (SELECT j.value ->> 'track_id' AS track_id, \
-                       j.value ->> 'track_position' AS track_position, \
                        j.value ->> 'position' AS position, \
                        j.value ->> 'artist_id' AS artist_id, \
                        j.value ->> 'name' AS name, j.value ->> 'sort_name' AS sort_name, \

@@ -16,8 +16,6 @@ sqlive_compose::read!(
     form_raw AS (
         SELECT credits.part AS part,
                CASE WHEN credits.part = 1 THEN j.value ->> 'track_id' END AS track_id,
-               CASE WHEN credits.part = 1 THEN j.value ->> 'track_position' ELSE 0 END
-                   AS track_position,
                j.value ->> 'position' AS position,
                CASE WHEN library_artist.artist_id IS NOT NULL THEN 'picked' ELSE 'credit' END
                    AS assignment_kind,

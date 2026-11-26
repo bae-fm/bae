@@ -89,7 +89,7 @@ sqlive_compose::fragment!(
             SELECT part, track_id, field
             FROM @bae_records::records::artist_standing::ArtistFieldStanding(
                 raw: (
-            SELECT 0 AS part, NULL AS track_id, 0 AS track_position, a.position AS position,
+            SELECT 0 AS part, NULL AS track_id, a.position AS position,
                 a.assignment_kind, a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id,
                 a.discogs_artist_id, a.credit_key, a.credited_as, a.join_phrase
             FROM import_candidate_album_artist_assignment AS a
@@ -98,7 +98,7 @@ sqlive_compose::fragment!(
                 FROM scan_candidate AS scan
                 WHERE scan.path = :key
             )
-            UNION ALL SELECT 1, t.track_id, t.position, a.position, a.assignment_kind,
+            UNION ALL SELECT 1, t.track_id, a.position, a.assignment_kind,
                 a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id, a.discogs_artist_id,
                 a.credit_key, a.credited_as, a.join_phrase
             FROM import_candidate_track_artist_assignment AS a
@@ -513,7 +513,7 @@ sqlive_compose::fragment!(
             SELECT part, track_id, field
             FROM @bae_records::records::artist_standing::ArtistFieldStanding(
                 raw: (
-            SELECT 0 AS part, NULL AS track_id, 0 AS track_position, a.position AS position,
+            SELECT 0 AS part, NULL AS track_id, a.position AS position,
                 a.assignment_kind, a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id,
                 a.discogs_artist_id, a.credit_key, a.credited_as, a.join_phrase
             FROM import_candidate_album_artist_assignment AS a
@@ -522,7 +522,7 @@ sqlive_compose::fragment!(
                 FROM scan_candidate AS scan
                 WHERE scan.path = :key
             )
-            UNION ALL SELECT 1, t.track_id, t.position, a.position, a.assignment_kind,
+            UNION ALL SELECT 1, t.track_id, a.position, a.assignment_kind,
                 a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id, a.discogs_artist_id,
                 a.credit_key, a.credited_as, a.join_phrase
             FROM import_candidate_track_artist_assignment AS a

@@ -75,13 +75,12 @@ impl FormParams {
         let track_artists: Vec<_> = edit
             .tracks
             .iter()
-            .enumerate()
-            .flat_map(|(place, track)| {
+            .flat_map(|track| {
                 let own: &[crate::Credited] = match &track.artist_assignments {
                     TrackArtistAssignments::AlbumArtists => &[],
                     TrackArtistAssignments::Explicit(assignments) => assignments,
                 };
-                assignment_rows(Some((track.id.as_str(), place)), own)
+                assignment_rows(Some(track.id.as_str()), own)
             })
             .collect();
         let form_tracks: Vec<_> = edit

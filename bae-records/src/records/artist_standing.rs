@@ -8,10 +8,9 @@
 //! library or partly new.
 
 sqlive_compose::fragment!(
-    ArtistFieldStanding with raw(part INTEGER, track_id TEXT, track_position INTEGER,
-        position INTEGER, assignment_kind TEXT, artist_id TEXT, name TEXT, sort_name TEXT,
-        musicbrainz_artist_id TEXT, discogs_artist_id TEXT, credit_key TEXT, credited_as TEXT,
-        join_phrase TEXT),
+    ArtistFieldStanding with raw(part INTEGER, track_id TEXT, position INTEGER, assignment_kind TEXT,
+        artist_id TEXT, name TEXT, sort_name TEXT, musicbrainz_artist_id TEXT,
+        discogs_artist_id TEXT, credit_key TEXT, credited_as TEXT, join_phrase TEXT),
         credit_answer(name_key TEXT, mb TEXT, dg TEXT, artists TEXT)
     { part: i64, track_id: Option<String>, field: String },
     r#"
