@@ -93,10 +93,24 @@ struct MacLightbox<Item: LightboxImage>: View {
                         // share its middle.
                         imageContent
                             .padding(.top, lightboxStageTopInset)
+                            .accessibilityElement(children: .contain)
+                            .accessibilitySortPriority(2)
                         if place.canCycle {
-                            cycleNavButtons
+                            navButton(
+                                "chevron.backward",
+                                alignment: .leading,
+                                action: goPrevious
+                            )
+                            .accessibilitySortPriority(3)
+                            navButton(
+                                "chevron.forward",
+                                alignment: .trailing,
+                                action: goNext
+                            )
+                            .accessibilitySortPriority(1)
                         }
                         closeButtonOverlay
+                            .accessibilitySortPriority(4)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .task(id: currentRequest) {
@@ -137,6 +151,11 @@ struct MacLightbox<Item: LightboxImage>: View {
             }
             .allowsHitTesting(true)
         }
+        // VoiceOver reads the top row, the back arrow, what the stage
+        // shows, the forward arrow, then the label and the strip. By where
+        // they sit, a message at the stage's middle reads before or after
+        // the back arrow as the stage's height moves it by a half point.
+        .accessibilityElement(children: .contain)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .focusable()
         .focusEffectDisabled()
@@ -240,22 +259,19 @@ extension MacLightbox {
         .padding(.vertical, ThemeSpace.related)
     }
 
-    fileprivate var cycleNavButtons: some View {
-        HStack {
-            circleIconButton(
-                systemName: "chevron.backward",
-                diameter: navButtonDiameter,
-                icon: .stageArrow,
-                action: goPrevious
-            )
-            Spacer()
-            circleIconButton(
-                systemName: "chevron.forward",
-                diameter: navButtonDiameter,
-                icon: .stageArrow,
-                action: goNext
-            )
-        }
+    /// An arrow at one side of the stage.
+    fileprivate func navButton(
+        _ systemName: String,
+        alignment: Alignment,
+        action: @escaping () -> Void
+    ) -> some View {
+        circleIconButton(
+            systemName: systemName,
+            diameter: navButtonDiameter,
+            icon: .stageArrow,
+            action: action
+        )
+        .frame(maxWidth: .infinity, alignment: alignment)
         .padding(.horizontal, ThemeSpace.edge)
         // The arrows sit level with the middle of the stage under the row
         // that holds the close button.

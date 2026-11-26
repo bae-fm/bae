@@ -2445,7 +2445,9 @@ moved to while the folder holds it, otherwise the folder's first image, and its
 arrows move to the images before and after it, wrapping around the ends; a lone
 image has none. On the Mac, the lightbox's strip shows a thumbnail of each image
 when it holds more than one, and VoiceOver reads each thumbnail button by its
-image's name, the caption the lightbox shows for it. The folder's lightbox covers
+image's name, the caption the lightbox shows for it. VoiceOver reads the Mac
+lightbox's top row first, then the back arrow, the image or the message in its
+place, the forward arrow, the caption and the strip. The folder's lightbox covers
 the whole main window, and its caption is the image's file name with *Release
 files* under it. The folder's lightbox has no
 *Browse all images* button. Clicking an image in the
