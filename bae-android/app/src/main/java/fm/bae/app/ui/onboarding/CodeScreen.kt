@@ -326,9 +326,8 @@ private fun EmptyWelcome(
 }
 
 /**
- * Centres its children top to bottom with the odd pixel left over below them. The board's browser keeps the
- * half pixel as a fraction and rounds each child's top down to the pixel, where Compose's centre rounds the
- * half pixel up and puts the logo a pixel lower.
+ * Centres its children top to bottom with the odd pixel left over below them, as the board's welcome does.
+ * Compose's own centre rounds the half pixel up and puts the logo a pixel lower.
  */
 private object CentreRoundingDown : Arrangement.Vertical {
     override fun Density.arrange(

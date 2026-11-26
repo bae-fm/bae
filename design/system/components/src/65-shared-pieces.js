@@ -67,15 +67,17 @@
     if (props.empty) {
       return h('div', { className: 'bae-a-welcome-home bae-a-welcome-home-empty' },
         h('div', { className: 'bae-a-welcome-home-brand' },
-          h(Logo, { size: 150, bob: true, glow: true, android: true }),
-          h('div', { className: 'bae-a-welcome-tagline' }, 'Your music, everywhere')),
+          h('div', { className: 'bae-a-welcome-home-stack bae-a-welcome-home-brand-stack' },
+            h(Logo, { size: 150, bob: true, glow: true, android: true }),
+            h('div', { className: 'bae-a-welcome-tagline' }, 'Your music, everywhere'))),
         h(AndroidWelcomeActions));
     }
     return h('div', { className: 'bae-a-welcome-home' },
-      h('div', { className: 'bae-a-welcome-home-logo' }, h(Logo, { size: 96, bob: true, glow: true, android: true })),
-      h('div', { className: 'bae-a-welcome-tagline bae-a-welcome-tagline-centred' }, 'Your music, everywhere'),
-      h(AndroidWelcomeLibraries, { state: props.state }),
-      props.children);
+      h('div', { className: 'bae-a-welcome-home-stack' },
+        h('div', { className: 'bae-a-welcome-home-logo' }, h(Logo, { size: 96, bob: true, glow: true, android: true })),
+        h('div', { className: 'bae-a-welcome-tagline bae-a-welcome-tagline-centred' }, 'Your music, everywhere'),
+        h(AndroidWelcomeLibraries, { state: props.state }),
+        props.children));
   }
 
   var RESTORE_CODE = 'CVR1-UJZDEGXDNCF32EPF3DHODZDOCIS2JHTLGMXGEDN73U55XTPLPFT7V4SEH2KVJ72CEUVW75EFR6EDT4SYWB5WKH7DNSIPZZ7FK4ZRI3R2WYOJFLJOOA7LQSAJ2XUID5ZZZZG6ZDMEN4KHVDGAJGXBENYJQWX6HH7566TFJGVQ6KBNXJBTFQXKWOVOMPZOM7WBBR6QMW4WXFOGO6MVN6A6WFHYM6L3VFZ5ZFKKIBJ5J6WJIBAGI3MNB';

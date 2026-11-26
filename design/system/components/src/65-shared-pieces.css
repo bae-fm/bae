@@ -19,7 +19,10 @@
 .bae-m-welcome-home-actions { margin-top: calc(var(--space-page) + var(--space-related)); width: 240px; }
 .bae-a-welcome-home { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: var(--space-section) 0 calc(var(--space-page) + var(--space-edge)); }
 .bae-a-welcome-home-empty { justify-content: flex-start; padding: 0 0 var(--space-section); }
-.bae-a-welcome-home-brand { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--space-group) + var(--space-line)); }
+.bae-a-welcome-home-brand { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+/* The app centres the welcome's content top to bottom and leaves the odd device pixel below it, so each top lands on a device pixel. The stack's height rounds up to the whole point, which leaves the screen's whole-point column an even number of device pixels to share above and below. */
+.bae-a-welcome-home-stack { flex: none; height: calc-size(max-content, round(up, size, 1px)); display: flex; flex-direction: column; }
+.bae-a-welcome-home-brand-stack { align-items: center; gap: calc(var(--space-group) + var(--space-line)); }
 .bae-a-welcome-home-logo { display: flex; justify-content: center; }
 .bae-a-welcome-tagline { position: relative; font-size: var(--type-android-body-large-size); font-weight: var(--type-android-body-large-weight); line-height: var(--type-android-body-large-line-height); color: var(--text-secondary); }
 .bae-a-welcome-tagline-centred { padding: calc(var(--space-group) + var(--space-line)) var(--space-page) var(--space-edge); text-align: center; }
