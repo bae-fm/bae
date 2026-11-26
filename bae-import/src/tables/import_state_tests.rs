@@ -480,6 +480,29 @@ pub(crate) async fn lose_the_isrc_rows(db: &Store, content_hash: &str) {
     .await;
 }
 
+/// Write the one not-asked cell of the candidate `content_hash`'s ledger as
+/// `answer`, which a write the store refuses fails whole.
+pub(crate) async fn set_the_not_asked_cell(
+    db: &Store,
+    content_hash: &str,
+    answer: &'static str,
+    reason: Option<&'static str>,
+    asked_by: Option<i64>,
+) -> Result<usize, bae_store::DbError> {
+    let content_hash = content_hash.to_string();
+    db.call(move |sql| {
+        Ok(sql.execute(
+            "UPDATE import_candidate_lookup \
+             SET answer = ?1, not_asked_reason = ?2, asked_by = ?3 \
+             WHERE answer = 'not_asked' \
+               AND verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
+                                 WHERE content_hash = ?4)",
+            rusqlite::params![answer, reason, asked_by, content_hash],
+        )?)
+    })
+    .await
+}
+
 /// The import pane's controls over one candidate: its writers as the handle
 /// calls them, for the candidate the scan lists at `key` under `root`, each
 /// composed against the candidate as it stands when the control is used.

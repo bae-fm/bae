@@ -431,34 +431,16 @@ async fn a_recorded_verdict_holds_no_queued_cell() {
     };
     rows[0].cells[0].lookup = LookupView::NotAsked { reason: NotAskedReason::NoCatalog };
     let (db, hash, _tmp) = stored_verdict(&verdict).await;
-    // Sets the one not-asked cell to `answer`, which a failed write refuses
-    // whole.
-    let set = |answer: &'static str, reason: Option<&'static str>, asked_by: Option<i64>| {
-        let (db, hash) = (db.clone(), hash.clone());
-        async move {
-            db.call(move |sql| {
-                Ok(sql.execute(
-                    "UPDATE import_candidate_lookup \
-                     SET answer = ?1, not_asked_reason = ?2, asked_by = ?3 \
-                     WHERE answer = 'not_asked' \
-                       AND verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                         WHERE content_hash = ?4)",
-                    params![answer, reason, asked_by, hash],
-                )?)
-            })
-            .await
-        }
-    };
     for (answer, asked_by) in
         [("queued", Some(1)), ("looking_up", Some(1)), ("queued", None), ("looking_up", None)]
     {
         assert!(
-            set(answer, None, asked_by).await.is_err(),
+            set_the_not_asked_cell(&db, &hash, answer, None, asked_by).await.is_err(),
             "a recorded verdict took a {answer} cell asked by {asked_by:?}"
         );
     }
     assert_eq!(
-        set("not_asked", Some("left_out"), None).await.unwrap(),
+        set_the_not_asked_cell(&db, &hash, "not_asked", Some("left_out"), None).await.unwrap(),
         1,
         "the same write settles the cell as not asked"
     );
