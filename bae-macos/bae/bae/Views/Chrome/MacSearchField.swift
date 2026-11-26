@@ -46,6 +46,9 @@ struct MacSearchField: View {
                 .themeText(.body)
                 .foregroundStyle(textColor)
                 .focused(focused)
+                // The box draws the focus ring, so the system's own ring
+                // around the field's edge stays off.
+                .focusEffectDisabled()
                 .accessibilityLabel(prompt)
                 .accessibilityAddTraits(.isSearchField)
                 .onKeyPress(.escape) {
