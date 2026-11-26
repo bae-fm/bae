@@ -138,6 +138,8 @@
 .bae-m-input::placeholder { color: var(--text-tertiary); }
 .bae-m-input:focus, .bae-m-input-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--field-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-input-error, .bae-m-input-error:focus { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
+/* The code field sets the code in the mono role, its groups a plain space apart, as AppKit draws the field's text. */
+.bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: var(--space-related); padding-bottom: var(--space-related); font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .bae-m-field-note { padding-left: var(--space-field-inset); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-tertiary)); }
 .bae-m-errorline { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--danger); }
 
