@@ -9,7 +9,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.HeartIcons
+import fm.bae.app.ui.appearance.SymbolIcons
 
 /**
  * The rating of a library whose rating system is Heart, read-only: one heart, filled in the accent when [on] (the
@@ -21,7 +21,7 @@ fun Heart(
     size: Dp,
 ) {
     Icon(
-        imageVector = if (on) HeartIcons.Filled else HeartIcons.Outline,
+        imageVector = if (on) SymbolIcons.HeartFilled else SymbolIcons.HeartOutline,
         contentDescription = if (on) stringResource(R.string.heart_on) else null,
         tint = if (on) MaterialTheme.colorScheme.primary else BaeTheme.colors.hairlineStrong,
         modifier = Modifier.size(size),
