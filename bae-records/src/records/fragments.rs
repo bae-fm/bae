@@ -146,12 +146,15 @@ sqlive_compose::fragment!(
 
 impl LibraryAlbum {
     /// The album's id, title and credits as the JSON array that
-    /// [`super::read::credit_line_of_json`] reads.
-    pub fn into_parts(self) -> (String, String, String) {
-        (
-            self.album_id,
-            self.title,
-            self.credits.map_or_else(|| "[]".to_owned(), |credits| credits.credits),
-        )
+    /// [`super::read::credit_line_of_json`] reads. The credits' own SQL yields
+    /// a value for every album, so a missing one is a broken composition.
+    pub fn into_parts(self) -> Result<(String, String, String), DbError> {
+        let credits = self.credits.ok_or_else(|| {
+            DbError::unreadable(
+                format!("the credits of library album {}", self.album_id),
+                None::<String>,
+            )
+        })?;
+        Ok((self.album_id, self.title, credits.credits))
     }
 }

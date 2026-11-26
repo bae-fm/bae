@@ -192,7 +192,7 @@ impl DraftRows {
             },
             album: crate::tables::draft_rows::DraftAlbumRow::of(
                 row.album.ok_or_else(|| missing("the album"))?,
-            )
+            )?
             .album(&key.to_string())?,
             cover: row.cover.map(|cover| folder_scans::cover_choice_of(cover, &key)).transpose()?,
         })
