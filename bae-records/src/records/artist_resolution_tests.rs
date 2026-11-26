@@ -53,6 +53,42 @@ async fn resolve(db: &bae_store::Store, credits: &[DbArtist]) -> ResolvedArtists
     .unwrap()
 }
 
+/// Resolving a write's credits reads every library artist they can name in
+/// one statement, however many credits there are and whichever of their picked
+/// artist, catalog ids and name places each.
+#[tokio::test]
+async fn resolving_credits_reads_their_candidates_in_one_statement() {
+    let (db, _tmp) = library().await;
+    let various = &crate::VARIOUS_ARTISTS;
+    add_artist(&db, "picked", "Picked Name", None, None).await;
+    add_artist(&db, "first", "Held Name", Some("discogs-1"), None).await;
+    add_artist(&db, "second", "Held Name", Some("discogs-1"), None).await;
+    add_artist(&db, "named", "Artist Name", None, None).await;
+    add_artist(&db, "various", "Various Artists", None, Some(various.musicbrainz)).await;
+    add_artist(&db, "catalogued", "Other Name", Some("discogs-2"), Some("mb-2")).await;
+    let credits = vec![
+        credit("picked", "Picked Name", None, None),
+        credit("held", "Held Name", Some("discogs-1"), None),
+        credit("by-name", "artist name", None, None),
+        credit("various-credit", "Various", Some(various.discogs), None),
+        credit("disagreeing", "New Name", Some("discogs-2"), Some("mb-new")),
+    ];
+    let picked = HashSet::from(["picked".to_string()]);
+
+    let counter = db.track_work_for_test().await.unwrap();
+    let resolved = db
+        .read_coven(move |sql| resolve_artists_on(&sql, &credits, &picked, GonePicked::Refuse))
+        .await
+        .unwrap();
+
+    assert_eq!(counter.take().app_read_statements, 1);
+    let new = crate::identity::artist_id(Some("mb-new"), None).unwrap();
+    assert_eq!(resolved.ids, ["picked", "first", "named", "various", new.as_str()]);
+    let merged: Vec<&str> =
+        resolved.merges.iter().map(|merge| merge.absorbed.id.as_str()).collect();
+    assert_eq!(merged, ["second"]);
+}
+
 #[tokio::test]
 async fn a_name_only_credit_is_the_one_library_artist_of_that_name() {
     let (db, _tmp) = library().await;
@@ -168,6 +204,27 @@ async fn an_absorbed_artist_is_not_matched_by_its_name() {
     let resolved = resolve(&db, &[credit("credit", "Artist Name", None, None)]).await;
 
     assert_eq!(resolved.ids, ["credit"]);
+}
+
+/// A credit printing another of an artist's names is that artist, and one an
+/// absorbed artist held names the artist it shows as.
+#[tokio::test]
+async fn a_printed_name_names_the_artist_that_holds_it_or_shows_for_its_holder() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "first", "Artist Name", Some("discogs-1"), None).await;
+    add_artist(&db, "second", "Other Name", Some("discogs-1"), None).await;
+    let records = crate::test_fixtures::test_records(&db);
+    let printed = bae_store::EnteredName::parse("Printed Name").unwrap();
+    records.add_artist_credit_name("second", &printed).await.unwrap();
+    let credits = [credit("credit", "Printed Name", None, None)];
+    assert_eq!(resolve(&db, &credits).await.ids, ["second"]);
+
+    records
+        .find_or_create_artists(&[credit("merging", "Artist Name", Some("discogs-1"), None)])
+        .await
+        .unwrap();
+
+    assert_eq!(resolve(&db, &credits).await.ids, ["first"]);
 }
 
 #[tokio::test]

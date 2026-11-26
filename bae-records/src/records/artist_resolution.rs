@@ -41,6 +41,7 @@
 //! credit alone decides as that SQL says.
 
 use super::catalog_match::*;
+use super::credit_candidates::{candidates_on, IdHolders, LookedUpCredit};
 use super::*;
 
 /// Why a write's credits cannot be written as the library stands. Nothing of
@@ -265,13 +266,17 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
     let mut merges: Vec<ArtistIdMerge> = Vec::new();
     let mut unpicked = Vec::new();
 
-    for credit in credits {
+    let looked_up = credits
+        .iter()
+        .map(|credit| LookedUpCredit {
+            credit,
+            picked: picked.contains(&credit.id),
+            various: with_both_various_artists_ids(credit),
+        })
+        .collect();
+    for (credit, candidates) in credits.iter().zip(candidates_on(sql, looked_up)?) {
         if picked.contains(&credit.id) {
-            #[expect(
-                clippy::read_query_per_row,
-                reason = "kept finding: looks up each picked credit's artist with a statement of its own"
-            )]
-            if artist_by_id_on(sql, &credit.id)?.is_some() {
+            if candidates.picked_held {
                 ids.push(credit.id.clone());
                 continue;
             }
@@ -282,15 +287,8 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
         }
 
         let so_far = WriteSoFar { inserts: &inserts, staged: &external_id_updates };
-        #[expect(
-            clippy::read_query_per_row,
-            reason = "kept finding: matches each credit by its catalog ids with statements of its own"
-        )]
-        let (credit, matched) = settled_catalog_match_on(sql, credit, so_far)?;
-        #[expect(
-            clippy::read_query_per_row,
-            reason = "kept finding: matches each credit no catalog id placed by its name with statements of its own"
-        )]
+        let (credit, matched) =
+            settled_catalog_match(candidates.by_ids, candidates.various, credit, so_far);
         let resolved_id = match matched {
             Some(CatalogFound { holder, folded }) => {
                 let id = match holder {
@@ -328,9 +326,13 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
                 }
                 id
             }
-            None => {
-                resolve_by_name_on(sql, &credit, &mut inserts, &mut external_id_updates, &merges)?
-            }
+            None => resolve_by_name(
+                &candidates.named,
+                &credit,
+                &mut inserts,
+                &mut external_id_updates,
+                &merges,
+            ),
         };
         ids.push(resolved_id);
     }
@@ -412,13 +414,13 @@ pub fn credit_artists_checked_on(
 
 /// The name step for a credit no catalog id placed: the one new artist of
 /// this write it names, else the one library artist, else a new artist.
-fn resolve_by_name_on<Q: coven::SqlRead>(
-    sql: &Q,
+fn resolve_by_name(
+    library_named: &[DbArtist],
     credit: &DbArtist,
     inserts: &mut Vec<DbArtist>,
     external_id_updates: &mut Vec<DbArtist>,
     merges: &[ArtistIdMerge],
-) -> Result<String, DbError> {
+) -> String {
     #[expect(
         clippy::read_filter,
         reason = "kept finding: keeps the new artists of this write whose name and catalog ids match the credit"
@@ -434,11 +436,11 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
         .collect();
     if let [only] = pending.as_slice() {
         inserts[*only].fill_missing(credit);
-        return Ok(inserts[*only].id.clone());
+        return inserts[*only].id.clone();
     }
     if pending.is_empty() {
         // An artist this write merges into another is that one.
-        let mut named = name_matches_on(sql, credit, external_id_updates)?;
+        let mut named = name_matches(library_named, credit, external_id_updates);
         named.retain(|artist| !merges.iter().any(|merge| merge.absorbed.id == artist.id));
         #[expect(
             clippy::read_length_branch,
@@ -449,11 +451,11 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
             linked.fill_missing(credit);
             let id = linked.id.clone();
             stage_artist_update(external_id_updates, linked);
-            return Ok(id);
+            return id;
         }
     }
     inserts.push(credit.clone());
-    Ok(credit.id.clone())
+    credit.id.clone()
 }
 
 /// `links` with each one's artist rewritten from the credit id it names to
@@ -517,70 +519,46 @@ fn with_both_various_artists_ids(credit: &DbArtist) -> Option<DbArtist> {
     }
 }
 
-/// The credit as the catalog-id step settles it ([`settled_on`]), and the
+/// The credit as the catalog-id step settles it ([`settled`]), and the
 /// artist its ids name. A credit naming Various Artists by one catalog's id,
 /// which no artist holds, goes by both catalogs' Various Artists ids.
-#[expect(
-    clippy::read_keyed_statement,
-    reason = "kept finding: settles the catalog match with statements keyed by the match the first statements returned"
-)]
-fn settled_catalog_match_on<Q: coven::SqlRead>(
-    sql: &Q,
+fn settled_catalog_match(
+    by_ids: IdHolders,
+    various: Option<(DbArtist, IdHolders)>,
     credit: &DbArtist,
     so_far: WriteSoFar<'_, DbArtist>,
-) -> rusqlite::Result<(DbArtist, Option<CatalogFound<DbArtist>>)> {
-    let (credit, matched) = match catalog_match_on(sql, credit, so_far)? {
-        CatalogMatch::Unmatched => match with_both_various_artists_ids(credit) {
-            Some(both) => match catalog_match_on(sql, &both, so_far)? {
-                CatalogMatch::Unmatched => (credit.clone(), CatalogMatch::Unmatched),
-                matched => (both, matched),
-            },
-            None => (credit.clone(), CatalogMatch::Unmatched),
-        },
-        matched => (credit.clone(), matched),
+) -> (DbArtist, Option<CatalogFound<DbArtist>>) {
+    let Ok(matched) = catalog_match(&by_ids, credit, so_far);
+    // The artists holding the ids of the credit as it is settled.
+    let (credit, holders, matched) = match (matched, various) {
+        (CatalogMatch::Unmatched, Some((both, holders))) => {
+            let Ok(matched) = catalog_match(&holders, &both, so_far);
+            match matched {
+                CatalogMatch::Unmatched => (credit.clone(), by_ids, CatalogMatch::Unmatched),
+                matched => (both, holders, matched),
+            }
+        }
+        (matched, _) => (credit.clone(), by_ids, matched),
     };
-    settled_on(sql, credit, matched, so_far)
+    let Ok(decided) = settled(&holders, credit, matched, so_far);
+    decided
 }
 
-/// Every shown library artist whose folded name is the credit's and whose
-/// catalog ids — as this write's own fills leave them — agree with the
-/// credit's. Absorbed artists are left out: a merge shows them as their
-/// survivor, which is matched on its own name.
+/// Of `named`, the shown library artists that go by the credit's folded
+/// name, those whose catalog ids — as this write's own fills leave them —
+/// agree with the credit's.
 #[expect(
     clippy::read_filter,
     clippy::read_pick,
     reason = "kept finding: puts this write's staged fills over the artists the name matched, and keeps those whose catalog ids agree with the credit's"
 )]
-pub(super) fn name_matches_on<Q: coven::SqlRead>(
-    sql: &Q,
-    credit: &DbArtist,
-    staged: &[DbArtist],
-) -> rusqlite::Result<Vec<DbArtist>> {
-    let key = bae_types::text_match::artist_name_key(&credit.name);
-    if key.is_empty() {
-        return Ok(Vec::new());
-    }
-    // An artist goes by its own name and by each of its other printed names;
-    // a printed name an absorbed artist held names the artist it shows as.
-    let named = sql.query(
-        &format!(
-            "SELECT * FROM artists WHERE {shown} AND (name_key = ?1 OR id IN ( \
-                 SELECT {credit_artist} FROM artist_credits credit_name \
-                 WHERE credit_name.name_key = ?1)) \
-             ORDER BY id",
-            shown = artist_is_shown("artists"),
-            credit_artist = shown_artist_id("credit_name.artist_id"),
-        ),
-        params![key],
-        row_to_artist,
-    )?;
-    Ok(named
-        .into_iter()
-        .map(|artist| {
-            staged.iter().find(|staged| staged.id == artist.id).cloned().unwrap_or(artist)
-        })
-        .filter(|artist| ids_agree(artist, credit))
-        .collect())
+fn name_matches(named: &[DbArtist], credit: &DbArtist, staged: &[DbArtist]) -> Vec<DbArtist> {
+    named
+        .iter()
+        .map(|artist| staged.iter().find(|staged| staged.id == artist.id).unwrap_or(artist))
+        .filter(|artist| ids_agree(*artist, credit))
+        .cloned()
+        .collect()
 }
 
 impl CatalogIds for DbArtist {
@@ -617,47 +595,12 @@ impl CatalogRow for DbArtist {
             self.sort_name.clone_from(&other.sort_name);
         }
     }
-
-    fn holding_on<Q: coven::SqlRead>(
-        sql: &Q,
-        column: CatalogColumn,
-        catalog_id: &str,
-    ) -> rusqlite::Result<Vec<Self>> {
-        let (column, identity) = match column {
-            CatalogColumn::Discogs => {
-                ("discogs_artist_id", Self::catalog_entry_id(None, Some(catalog_id)))
-            }
-            CatalogColumn::MusicBrainz => {
-                ("musicbrainz_artist_id", Self::catalog_entry_id(Some(catalog_id), None))
-            }
-        };
-        sql.query(
-            &format!(
-                "SELECT a.* FROM artists a WHERE a.id IN ( \
-                     SELECT {} FROM artists named \
-                     WHERE named.{column} = ?1 OR named.id = ?2) \
-                 ORDER BY a.id",
-                shown_artist_id("named.id")
-            ),
-            params![catalog_id, identity],
-            row_to_artist,
-        )
-    }
 }
 
 impl CatalogCredit for DbArtist {
     fn by_musicbrainz_alone(&self) -> Self {
         Self { discogs_artist_id: None, ..self.clone() }
     }
-}
-
-fn artist_by_id_on<Q: coven::SqlRead>(
-    sql: &Q,
-    artist_id: &str,
-) -> Result<Option<DbArtist>, DbError> {
-    sql.query_row("SELECT * FROM artists WHERE id = ?", params![artist_id], row_to_artist)
-        .optional()
-        .map_err(DbError::from)
 }
 
 /// Record that `absorbed` is merged into `survivor`, once, and name the

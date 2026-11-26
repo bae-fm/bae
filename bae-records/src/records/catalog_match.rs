@@ -55,16 +55,19 @@ pub(super) trait CatalogRow: CatalogIds + Clone {
     /// Take each catalog id this row lacks from `other`, a row or credit of
     /// the same artist or label, and whatever else such a row takes from it.
     fn fill_missing(&mut self, other: &Self);
+}
+
+/// Where the catalog-id step finds the library rows an id names.
+pub(super) trait CatalogLibrary<R> {
+    /// Why the rows can't be found.
+    type Error;
 
     /// Every library row whose `column` holds `catalog_id`, or whose row the
     /// catalog id names (its column may have been filled in or edited
-    /// since), followed through any merge to the row it shows as. More than
-    /// one is a library holding one catalog entry on several.
-    fn holding_on<Q: coven::SqlRead>(
-        sql: &Q,
-        column: CatalogColumn,
-        catalog_id: &str,
-    ) -> rusqlite::Result<Vec<Self>>;
+    /// since), followed through any merge to the row it shows as, in id
+    /// order. More than one is a library holding one catalog entry on
+    /// several.
+    fn holding(&self, column: CatalogColumn, catalog_id: &str) -> Result<Vec<R>, Self::Error>;
 }
 
 /// What names a library row by its catalog ids: an artist credit, or a
@@ -138,12 +141,12 @@ pub(super) struct Held<R> {
 
 /// The catalog-id step: the row the credit's Discogs and MusicBrainz ids
 /// name, as this write so far leaves the library.
-pub(super) fn catalog_match_on<Q: coven::SqlRead, R: CatalogRow>(
-    sql: &Q,
+pub(super) fn catalog_match<L: CatalogLibrary<R>, R: CatalogRow>(
+    library: &L,
     credit: &impl CatalogIds,
     so_far: WriteSoFar<'_, R>,
-) -> rusqlite::Result<CatalogMatch<R>> {
-    let holder = |column| holder_on(sql, column, credit.catalog_id(column), so_far);
+) -> Result<CatalogMatch<R>, L::Error> {
+    let holder = |column| holder_of(library, column, credit.catalog_id(column), so_far);
     let by_discogs = holder(CatalogColumn::Discogs)?;
     let by_musicbrainz = holder(CatalogColumn::MusicBrainz)?;
     let agrees = |holder: &Holder<R>| ids_agree(holder.row(), credit);
@@ -189,20 +192,20 @@ pub(super) fn catalog_match_on<Q: coven::SqlRead, R: CatalogRow>(
 /// it, and the row its ids name. Where its two ids disagree, the MusicBrainz
 /// id decides: the Discogs id is dropped from the credit, which then goes by
 /// its MusicBrainz id alone, and nothing is given the Discogs id.
-pub(super) fn settled_on<Q: coven::SqlRead, C: CatalogCredit, R: CatalogRow>(
-    sql: &Q,
+pub(super) fn settled<L: CatalogLibrary<R>, C: CatalogCredit, R: CatalogRow>(
+    library: &L,
     credit: C,
     matched: CatalogMatch<R>,
     so_far: WriteSoFar<'_, R>,
-) -> rusqlite::Result<(C, Option<CatalogFound<R>>)> {
+) -> Result<(C, Option<CatalogFound<R>>), L::Error> {
     match matched {
         CatalogMatch::Unmatched => Ok((credit, None)),
         CatalogMatch::Found(found) => Ok((credit, Some(found))),
         CatalogMatch::Disagrees => {
-            let settled = credit.by_musicbrainz_alone();
-            match catalog_match_on(sql, &settled, so_far)? {
-                CatalogMatch::Unmatched => Ok((settled, None)),
-                CatalogMatch::Found(found) => Ok((settled, Some(found))),
+            let alone = credit.by_musicbrainz_alone();
+            match catalog_match(library, &alone, so_far)? {
+                CatalogMatch::Unmatched => Ok((alone, None)),
+                CatalogMatch::Found(found) => Ok((alone, Some(found))),
                 CatalogMatch::Disagrees => {
                     unreachable!("a credit carrying one catalog id agrees with what it names")
                 }
@@ -215,19 +218,19 @@ pub(super) fn settled_on<Q: coven::SqlRead, C: CatalogCredit, R: CatalogRow>(
 /// leaves the library: a new row it makes, else the library row
 /// [`exact_holder`] names. No id is held by both, since a new row is made
 /// only of ids no row holds.
-fn holder_on<Q: coven::SqlRead, R: CatalogRow>(
-    sql: &Q,
+fn holder_of<L: CatalogLibrary<R>, R: CatalogRow>(
+    library: &L,
     column: CatalogColumn,
     id: Option<&str>,
     so_far: WriteSoFar<'_, R>,
-) -> rusqlite::Result<Option<Holder<R>>> {
+) -> Result<Option<Holder<R>>, L::Error> {
     let Some(id) = id else {
         return Ok(None);
     };
     if let Some(new) = so_far.inserts.iter().find(|new| new.catalog_id(column) == Some(id)) {
         return Ok(Some(Holder::New(new.clone())));
     }
-    let stored = R::holding_on(sql, column, id)?;
+    let stored = library.holding(column, id)?;
     Ok(exact_holder(id, stored, so_far.staged, column).map(Holder::Library))
 }
 

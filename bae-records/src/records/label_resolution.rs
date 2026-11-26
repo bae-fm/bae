@@ -154,21 +154,24 @@ impl CatalogRow for LabelRow {
     fn fill_missing(&mut self, other: &Self) {
         self.fill_from(other);
     }
+}
 
-    fn holding_on<Q: coven::SqlRead>(
-        sql: &Q,
-        column: CatalogColumn,
-        catalog_id: &str,
-    ) -> rusqlite::Result<Vec<Self>> {
+/// The library's labels, as a write's transaction reads them.
+struct LibraryLabels<'a, Q>(&'a Q);
+
+impl<Q: coven::SqlRead> CatalogLibrary<LabelRow> for LibraryLabels<'_, Q> {
+    type Error = rusqlite::Error;
+
+    fn holding(&self, column: CatalogColumn, catalog_id: &str) -> rusqlite::Result<Vec<LabelRow>> {
         let (column, identity) = match column {
             CatalogColumn::Discogs => {
-                ("discogs_label_id", Self::catalog_entry_id(None, Some(catalog_id)))
+                ("discogs_label_id", LabelRow::catalog_entry_id(None, Some(catalog_id)))
             }
             CatalogColumn::MusicBrainz => {
-                ("musicbrainz_label_id", Self::catalog_entry_id(Some(catalog_id), None))
+                ("musicbrainz_label_id", LabelRow::catalog_entry_id(Some(catalog_id), None))
             }
         };
-        sql.query(
+        self.0.query(
             &format!(
                 "SELECT l.* FROM labels l WHERE l.id IN ( \
                      SELECT shown.shown_label_id FROM labels named \
@@ -350,8 +353,9 @@ fn resolve_label_on(
     write: &PressingWrite<'_>,
 ) -> Result<String, IdentityWriteError> {
     let so_far = WriteSoFar { inserts: &decided.inserts, staged: &decided.fills };
-    let matched = catalog_match_on(tx, label, so_far)?;
-    let (label, found) = settled_on(tx, label.clone(), matched, so_far)?;
+    let library = LibraryLabels(tx);
+    let matched = catalog_match(&library, label, so_far)?;
+    let (label, found) = settled(&library, label.clone(), matched, so_far)?;
     let label = &label;
     if let Some(CatalogFound { holder, folded }) = found {
         let existing = match holder {

@@ -99,15 +99,39 @@ pub fn credit_name_column(
         .map_err(|error| column_conversion_error(row, key, error))
 }
 
-/// One credit as [`super::query::album_credits_json_sql`] spells it.
-#[derive(serde::Deserialize)]
-pub(super) struct CreditJson {
+/// An artist as a JSON object of its row's columns spells it.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub(crate) struct ArtistJson {
     id: String,
     name: String,
     sort_name: Option<String>,
     discogs_artist_id: Option<String>,
     musicbrainz_artist_id: Option<String>,
     created_at: String,
+}
+
+impl ArtistJson {
+    pub(super) fn into_artist(self) -> Result<DbArtist, DbError> {
+        let created_at =
+            bae_util::timestamp::parse_rfc3339(&self.created_at).map_err(|_unparsed| {
+                DbError::unreadable(format!("artist {} created_at", self.id), &self.created_at)
+            })?;
+        Ok(DbArtist {
+            id: self.id,
+            name: self.name,
+            sort_name: self.sort_name,
+            discogs_artist_id: self.discogs_artist_id,
+            musicbrainz_artist_id: self.musicbrainz_artist_id,
+            created_at,
+        })
+    }
+}
+
+/// One credit as [`super::query::album_credits_json_sql`] spells it.
+#[derive(serde::Deserialize)]
+pub(super) struct CreditJson {
+    #[serde(flatten)]
+    artist: ArtistJson,
     credit_key: Option<String>,
     credit_name: Option<String>,
     join: Option<String>,
@@ -160,29 +184,12 @@ pub(super) fn credits_of(credits: Vec<CreditJson>) -> Result<Vec<LibraryCredit>,
     credits
         .into_iter()
         .map(|credit| {
-            let created_at =
-                bae_util::timestamp::parse_rfc3339(&credit.created_at).map_err(|_unparsed| {
-                    DbError::unreadable(
-                        format!("artist {} created_at", credit.id),
-                        &credit.created_at,
-                    )
-                })?;
+            let artist = credit.artist.into_artist()?;
             let credit_name =
                 joined_credit_name(credit.credit_key, credit.credit_name).map_err(|error| {
-                    DbError::unreadable(format!("artist {} credit name", credit.id), error)
+                    DbError::unreadable(format!("artist {} credit name", artist.id), error)
                 })?;
-            Ok(LibraryCredit {
-                artist: DbArtist {
-                    id: credit.id,
-                    name: credit.name,
-                    sort_name: credit.sort_name,
-                    discogs_artist_id: credit.discogs_artist_id,
-                    musicbrainz_artist_id: credit.musicbrainz_artist_id,
-                    created_at,
-                },
-                credit: credit_name,
-                join: credit.join,
-            })
+            Ok(LibraryCredit { artist, credit: credit_name, join: credit.join })
         })
         .collect()
 }

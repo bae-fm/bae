@@ -52,6 +52,7 @@ pub(crate) mod lengths_disagree;
 use artist_credit_names::settle_credit_name;
 pub mod artist_resolution;
 mod catalog_match;
+mod credit_candidates;
 pub mod label_resolution;
 #[cfg(any(test, feature = "test-utils"))]
 pub use artist_resolution::{credit_artists_checked_on, resolved_in_an_empty_library};
