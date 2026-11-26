@@ -244,10 +244,7 @@ pub(super) fn cell_cards_sql(lookup: &str, verdict: &str) -> String {
     // report says the pane's statement reads every row of
     // `import_candidate_lookup_release`, because this read sits in subqueries
     // of the FROM clause nested in the cell's lookup. Looking the verdict up
-    // by its id makes the report say it reads that verdict's rows. The
-    // release's match also names the cell's verdict itself: coven narrows the
-    // match's label, medium and link rows to this cell's verdict only through
-    // that direct condition, not through the join to the found row.
+    // by its id makes the report say it reads that verdict's rows.
     let verdict_id = format!(
         "(SELECT of_verdict.verdict_id FROM import_candidate_verdict AS of_verdict \
           WHERE of_verdict.verdict_id = {lookup}.verdict_id)"
@@ -257,7 +254,7 @@ pub(super) fn cell_cards_sql(lookup: &str, verdict: &str) -> String {
          JOIN import_candidate_match AS matched \
            ON matched.verdict_id = found.verdict_id \
           AND matched.position = found.match_position \
-         WHERE {found} AND matched.verdict_id = {lookup}.verdict_id",
+         WHERE {found}",
         found = cell("found", &verdict_id),
     );
     cards_sql(
