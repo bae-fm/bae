@@ -46,8 +46,11 @@ pub(crate) fn load_verdict_cards_on(
     let row = sql
         .query(CardsOfCandidate::SQL, request.params().as_slice(), CardsOfCandidateRow::read)?
         .into_iter()
-        .next();
-    verdict_cards_of_column(row.and_then(|row| row.cards.verdict_cards).as_deref())
+        .next()
+        .ok_or_else(|| {
+            DbError::unreadable(format!("the cards of candidate {content_hash}"), None::<String>)
+        })?;
+    verdict_cards_of_column(row.cards.verdict_cards.as_deref())
 }
 
 /// The cards the JSON document `json` holds, which a pane's read selects;

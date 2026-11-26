@@ -70,8 +70,7 @@ impl Records {
     /// Check, for each candidate in `checks`, whether the library already
     /// holds the same pressing or the same album (group), for an automation
     /// client that names the releases it asks about. The import pane's rows
-    /// read whether the library holds them in their own statement
-    /// ([`pressing_held_sql`]).
+    /// read whether the library holds them in their own statement.
     ///
     /// [`library_status_sql`] says which albums each check finds.
     pub async fn check_releases_in_library(
@@ -475,19 +474,6 @@ pub fn library_status_sql(checks: &str) -> String {
             FROM checks
             ORDER BY checks.position
         "#
-    )
-}
-
-/// The SQL of a condition that holds when the library holds the release
-/// `key` of `catalog` as a pressing: a release whose records name that
-/// catalog's release as the pressing it is, matched on
-/// `idx_release_records_catalog_key`. Deleting a release deletes its records,
-/// so the library does not hold a deleted release.
-pub fn pressing_held_sql(catalog: &str, key: &str) -> String {
-    format!(
-        "EXISTS (SELECT 1 FROM release_records AS held \
-                 WHERE held.catalog = {catalog} AND held.kind = 'pressing' \
-                   AND held.key = {key})"
     )
 }
 

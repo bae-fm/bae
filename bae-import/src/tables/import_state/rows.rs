@@ -109,12 +109,13 @@ fn stored_candidate_of<Signals>(
     state: CurrentState,
     signals: Option<Signals>,
 ) -> Result<StoredCandidate<Signals>, DbError> {
+    let own = super::required(state.state_row.clone(), "import_candidate_state")?;
     Ok(StoredCandidate {
-        content_hash: super::required(state.content_hash.clone(), "content_hash")?,
-        candidate_key: super::required(state.candidate_key.clone(), "candidate_key")?,
-        metadata_revision: super::required(state.metadata_revision, "metadata_revision")?,
-        author: state.draft_author.clone(),
-        file_edits: super::file_decision_rows::StoredFileEdits::of(&state)?,
+        content_hash: own.content_hash.clone(),
+        candidate_key: own.candidate_key.clone(),
+        metadata_revision: own.metadata_revision,
+        author: own.draft_author.clone(),
+        file_edits: super::file_decision_rows::StoredFileEdits::of(&own),
         signals,
         provenance: StoredProvenance::of(&state)?,
         link: StoredReleaseLink::of(&state)?,

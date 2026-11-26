@@ -3,13 +3,6 @@
 sqlive_compose::fragment!(
     CurrentState with owner(content_hash TEXT, identify_run INTEGER) {
         owner_row: String,
-        content_hash: Option<String>,
-        candidate_key: Option<crate::CandidateKey>,
-        metadata_revision: Option<i64>,
-        draft_author: Option<String>,
-        edits_revision: Option<i64>,
-        edits_sheet_places: String,
-        edits_sheet_references: String,
         provenance_row: Option<String>,
         provenance_kind: Option<String>,
         provenance_source: Option<String>,
@@ -52,22 +45,9 @@ sqlive_compose::fragment!(
         candidate_matches: String
     },
     r#"
-    WITH statement(owner_row, content_hash, candidate_key, metadata_revision, draft_author, edits_revision, edits_sheet_places, edits_sheet_references, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, choices_row, choices_disc_id_excluded, choices_search_album, choices_search_artist, choices_chosen_catalogs, choices_discounted_catalogs, choices_excluded_barcodes, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches) AS (
+    WITH statement(owner_row, provenance_row, provenance_kind, provenance_source, provenance_release_id, link_row, link_kind, link_source, link_release_id, link_partners, link_albums, choices_row, choices_disc_id_excluded, choices_search_album, choices_search_artist, choices_chosen_catalogs, choices_discounted_catalogs, choices_excluded_barcodes, verdict_row, verdict_kind, verdict_track_count, verdict_failures, verdict_error_detail, verdict_medium_conflict, verdict_kept_own_draft, ledger_disc_id_step, ledger_barcode_step, ledger_catalog_step, ledger_isrc_step, ledger_search_step, ledger_search_album, ledger_search_artist, ledger_stray_unlisted, ledger_providers, ledger_isrcs, ledger_isrc_shown, ledger_isrc_more_count, ledger_offered_catalogs, ledger_offered_catalog_count, ledger_rows, candidate_matches) AS (
             SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row,
-                state.content_hash, state.candidate_key, state.metadata_revision, edit.author
-                AS draft_author, state.edit_revision AS edits_revision,(
-            SELECT json_group_array(json_object('sheet_id', place.sheet_id, 'place',
-                place.place, 'medium', place.medium, 'side', place.side) ORDER BY
-                place.sheet_id)
-            FROM import_candidate_sheet_place AS place
-            WHERE place.content_hash = state.content_hash
-            ) AS edits_sheet_places,(
-            SELECT json_group_array(json_object('sheet_id', binding.sheet_id, 'file_reference',
-                binding.file_reference, 'file_id', binding.file_id) ORDER BY binding.sheet_id,
-                binding.file_reference)
-            FROM import_candidate_sheet_reference AS binding
-            WHERE binding.content_hash = state.content_hash
-            ) AS edits_sheet_references,  provenance.content_hash AS provenance_row, provenance.kind
+                  provenance.content_hash AS provenance_row, provenance.kind
                 AS provenance_kind, provenance.source AS provenance_source,
                 provenance.release_id AS provenance_release_id, link.content_hash AS link_row,
                 link.kind AS link_kind, link.source AS link_source, link.release_id AS
@@ -370,19 +350,19 @@ sqlive_compose::fragment!(
             WHERE found.verdict_id = verdict.verdict_id
         ) AS candidate_matches
         FROM owner
-        LEFT JOIN import_candidate_state AS state ON state.content_hash = owner.content_hash
-        LEFT JOIN import_candidate_edit AS edit ON edit.content_hash = state.content_hash
-        LEFT JOIN import_candidate_draft_provenance AS provenance ON provenance.content_hash =
-            state.content_hash
+                LEFT JOIN import_candidate_draft_provenance AS provenance ON provenance.content_hash =
+            owner.content_hash
         LEFT JOIN import_candidate_release_link AS link ON link.content_hash =
-            state.content_hash
+            owner.content_hash
         LEFT JOIN import_candidate_lookup_choices AS choices ON choices.content_hash =
-            state.content_hash
+            owner.content_hash
         LEFT JOIN import_candidate_verdict AS verdict ON verdict.content_hash IS
             owner.content_hash AND verdict.identify_run IS owner.identify_run
     )
-    SELECT statement.owner_row, statement.content_hash, statement.candidate_key, statement.metadata_revision, statement.draft_author, statement.edits_revision, statement.edits_sheet_places, statement.edits_sheet_references, statement.provenance_row, statement.provenance_kind, statement.provenance_source, statement.provenance_release_id, statement.link_row, statement.link_kind, statement.link_source, statement.link_release_id, statement.link_partners, statement.link_albums, statement.choices_row, statement.choices_disc_id_excluded, statement.choices_search_album, statement.choices_search_artist, statement.choices_chosen_catalogs, statement.choices_discounted_catalogs, statement.choices_excluded_barcodes, statement.verdict_row, statement.verdict_kind, statement.verdict_track_count, statement.verdict_failures, statement.verdict_error_detail, statement.verdict_medium_conflict, statement.verdict_kept_own_draft, statement.ledger_disc_id_step, statement.ledger_barcode_step, statement.ledger_catalog_step, statement.ledger_isrc_step, statement.ledger_search_step, statement.ledger_search_album, statement.ledger_search_artist, statement.ledger_stray_unlisted, statement.ledger_providers, statement.ledger_isrcs, statement.ledger_isrc_shown, statement.ledger_isrc_more_count, statement.ledger_offered_catalogs, statement.ledger_offered_catalog_count, statement.ledger_rows, statement.candidate_matches, signals.*
+    SELECT statement.owner_row, statement.provenance_row, statement.provenance_kind, statement.provenance_source, statement.provenance_release_id, statement.link_row, statement.link_kind, statement.link_source, statement.link_release_id, statement.link_partners, statement.link_albums, statement.choices_row, statement.choices_disc_id_excluded, statement.choices_search_album, statement.choices_search_artist, statement.choices_chosen_catalogs, statement.choices_discounted_catalogs, statement.choices_excluded_barcodes, statement.verdict_row, statement.verdict_kind, statement.verdict_track_count, statement.verdict_failures, statement.verdict_error_detail, statement.verdict_medium_conflict, statement.verdict_kept_own_draft, statement.ledger_disc_id_step, statement.ledger_barcode_step, statement.ledger_catalog_step, statement.ledger_isrc_step, statement.ledger_search_step, statement.ledger_search_album, statement.ledger_search_artist, statement.ledger_stray_unlisted, statement.ledger_providers, statement.ledger_isrcs, statement.ledger_isrc_shown, statement.ledger_isrc_more_count, statement.ledger_offered_catalogs, statement.ledger_offered_catalog_count, statement.ledger_rows, statement.candidate_matches, signals.*, state_row.*
     FROM statement
+    LEFT JOIN @crate::tables::import_state::state_fragments::StateRow(owner: (SELECT * FROM owner))
+        AS state_row ON state_row.owner_row = statement.owner_row
     LEFT JOIN @crate::tables::import_state::state_fragments::Signals(owner: (SELECT * FROM owner))
         AS signals ON signals.owner_row = statement.owner_row
 "#);
@@ -457,4 +437,33 @@ sqlive_compose::fragment!(
             signals.identify_run IS owner.identify_run
     )
     SELECT * FROM statement
+"#);
+
+sqlive_compose::fragment!(
+    StateRow with owner(content_hash TEXT, identify_run INTEGER) {
+        owner_row: String,
+        candidate_key: crate::CandidateKey,
+        draft_author: Option<String>,
+        edits_revision: i64,
+        edits_sheet_places: String,
+        edits_sheet_references: String
+    },
+    r#"
+    SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row,
+        state.content_hash, state.candidate_key, state.metadata_revision, edit.author AS draft_author, state.edit_revision AS edits_revision, COALESCE((
+            SELECT json_group_array(json_object('sheet_id', place.sheet_id, 'place',
+                place.place, 'medium', place.medium, 'side', place.side) ORDER BY
+                place.sheet_id)
+            FROM import_candidate_sheet_place AS place
+            WHERE place.content_hash = state.content_hash
+            ), '[]') AS edits_sheet_places, COALESCE((
+            SELECT json_group_array(json_object('sheet_id', binding.sheet_id, 'file_reference',
+                binding.file_reference, 'file_id', binding.file_id) ORDER BY binding.sheet_id,
+                binding.file_reference)
+            FROM import_candidate_sheet_reference AS binding
+            WHERE binding.content_hash = state.content_hash
+            ), '[]') AS edits_sheet_references
+    FROM owner
+    JOIN import_candidate_state AS state ON state.content_hash = owner.content_hash
+    LEFT JOIN import_candidate_edit AS edit ON edit.content_hash = state.content_hash
 "#);
