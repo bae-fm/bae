@@ -13,7 +13,7 @@ mod identification;
 mod import_destination;
 mod name_pattern;
 mod presentation;
-pub mod row;
+mod row;
 mod save;
 mod server;
 

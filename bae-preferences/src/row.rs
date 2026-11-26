@@ -15,8 +15,8 @@ use super::{
 };
 use bae_store::{statement_row, DbError, Store};
 use coven::{CovenWrite, SqlRead};
+use rusqlite::params;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
-use rusqlite::{params, Row};
 use std::path::PathBuf;
 
 // The `preferences` row.
@@ -61,10 +61,10 @@ sqlive_compose::fragment!(
 "#
 );
 
-// Every save preset, in the order the settings list them: one row, whatever
-// the number of presets.
+// The save presets whose ids `wanted` holds, in the order the settings list
+// them: one row, whatever the number of presets.
 sqlive_compose::fragment!(
-    StoredSavePresets {
+    SavePresetsAmong with wanted(id TEXT) {
         struct SavePresetColumns {
             id: String,
             name: String,
@@ -79,33 +79,37 @@ sqlive_compose::fragment!(
                'id', preset.id, 'name', preset.name, 'codec', preset.codec,
                'bit_depth', preset.bit_depth, 'bitrate_kbps', preset.bitrate_kbps)
                ORDER BY preset.position) AS save_presets
-    FROM save_preset AS preset
+    FROM wanted
+    JOIN save_preset AS preset ON preset.id = wanted.id
 "#
 );
 
-// The file name pattern's pieces in order: one row, whatever their number.
+// Every save preset.
 sqlive_compose::fragment!(
-    StoredFilenameTokens {
-        struct FilenameTokenColumns { value: Option<String>, text: Option<String> }
-        filename_tokens: json<Vec<FilenameTokenColumns>>
-    },
+    StoredSavePresets,
     r#"
-    SELECT json_group_array(json_object('value', token.value, 'text', token.text)
-               ORDER BY token.position) AS filename_tokens
-    FROM save_filename_token AS token
+    SELECT every.*
+    FROM @crate::row::SavePresetsAmong(wanted: (SELECT held.id FROM save_preset AS held))
+        AS every
 "#
 );
 
-// The folder name pattern's pieces in order: one row, whatever their number.
+// The pieces of the file name pattern and of the folder name pattern, each in
+// order: one row, whatever their number.
 sqlive_compose::fragment!(
-    StoredFolderTokens {
-        struct FolderTokenColumns { value: Option<String>, text: Option<String> }
-        folder_tokens: json<Vec<FolderTokenColumns>>
+    StoredNamePatterns {
+        struct NameTokenColumns { value: Option<String>, text: Option<String> }
+        filename_tokens: json<Vec<NameTokenColumns>>,
+        folder_tokens: json<Vec<NameTokenColumns>>
     },
     r#"
-    SELECT json_group_array(json_object('value', token.value, 'text', token.text)
-               ORDER BY token.position) AS folder_tokens
-    FROM save_folder_token AS token
+    SELECT
+        (SELECT json_group_array(json_object('value', token.value, 'text', token.text)
+                    ORDER BY token.position)
+         FROM save_filename_token AS token) AS filename_tokens,
+        (SELECT json_group_array(json_object('value', token.value, 'text', token.text)
+                    ORDER BY token.position)
+         FROM save_folder_token AS token) AS folder_tokens
 "#
 );
 
@@ -141,16 +145,41 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    FilenameTokensRead,
+    NamePatternsRead,
     r#"
-    SELECT tokens.* FROM @crate::row::StoredFilenameTokens AS tokens
+    SELECT patterns.* FROM @crate::row::StoredNamePatterns AS patterns
 "#
 );
 
+// The preset the last save used.
 sqlive_compose::read!(
-    FolderTokensRead,
+    LastSavePresetRead,
     r#"
-    SELECT tokens.* FROM @crate::row::StoredFolderTokens AS tokens
+    SELECT presets.*
+    FROM @crate::row::SavePresetsAmong(wanted: (
+        SELECT stored.last_save_preset AS id FROM preferences AS stored)) AS presets
+"#
+);
+
+// The preset `id`, none once no preset has the id.
+sqlive_compose::read!(
+    SavePresetRead(id: String),
+    r#"
+    SELECT presets.*
+    FROM @crate::row::SavePresetsAmong(wanted: (SELECT :id AS id)) AS presets
+"#
+);
+
+// Every save preset, with the id of the one a save panel shows chosen when
+// the person has selected `selected`.
+sqlive_compose::read!(
+    SaveChoiceRead(selected: String) { chosen_id: Option<String> },
+    r#"
+    SELECT presets.*,
+        COALESCE(
+            (SELECT chosen.id FROM save_preset AS chosen WHERE chosen.id = :selected),
+            (SELECT stored.last_save_preset FROM preferences AS stored)) AS chosen_id
+    FROM @crate::row::StoredSavePresets AS presets
 "#
 );
 
@@ -193,16 +222,15 @@ fn config_on(
     let storage_access =
         coven::MemberAccess::from_columns(recorded.account, recorded.access_key_id)
             .map_err(|error| DbError::unreadable("this person's access to storage", error))?;
+    let prefs = preferences_on(sql)?;
+    let last_save_preset =
+        one_save_preset(statement_row(sql, &LastSavePresetReadParams {})?.presets)?
+            .ok_or_else(|| invalid("last_save_preset", &prefs.last_save_preset))?;
     Ok(Config {
         store_id,
         library_path,
-        prefs: preferences_on(sql)?,
-        last_save_preset: save_preset_of(sql.query_row(
-            "SELECT s.* FROM preferences AS p \
-             JOIN save_preset AS s ON s.id = p.last_save_preset",
-            [],
-            save_preset_columns,
-        )?)?,
+        prefs,
+        last_save_preset,
         storage: recorded.location,
         storage_access,
     })
@@ -221,10 +249,8 @@ pub fn subscribe_save_preset(
     id: String,
 ) -> coven::LiveQuery<Option<SavePreset>, bae_store::DbError> {
     store.subscribe(move |sql| {
-        let stored = sql
-            .query("SELECT * FROM save_preset WHERE id = ?1", [id.as_str()], save_preset_columns)?
-            .pop();
-        stored.map(save_preset_of).transpose()
+        let request = SavePresetReadParams { id: id.clone() };
+        one_save_preset(statement_row(&sql, &request)?.presets)
     })
 }
 
@@ -247,17 +273,17 @@ pub fn subscribe_save_choice(
     selected: String,
 ) -> coven::ReconfigurableLiveQuery<String, Vec<SaveChoiceRow>, bae_store::DbError> {
     store.subscribe_reconfigurable(selected, |selected, sql| {
-        let stored = sql.query(
-            "SELECT s.*, s.id = COALESCE( \
-                 (SELECT id FROM save_preset WHERE id = ?1), \
-                 (SELECT last_save_preset FROM preferences)) AS chosen \
-             FROM save_preset AS s ORDER BY s.position",
-            [selected.as_str()],
-            |row| Ok((save_preset_columns(row)?, row.get("chosen")?)),
-        )?;
-        stored
+        let request = SaveChoiceReadParams { selected: selected.clone() };
+        let row = statement_row(&sql, &request)?;
+        row.presets
+            .every
+            .save_presets
             .into_iter()
-            .map(|(columns, chosen)| Ok(SaveChoiceRow { preset: save_preset_of(columns)?, chosen }))
+            .map(|columns| {
+                let preset = save_preset_of(columns)?;
+                let chosen = row.chosen_id.as_deref() == Some(preset.id.as_str());
+                Ok(SaveChoiceRow { preset, chosen })
+            })
             .collect()
     })
 }
@@ -298,24 +324,14 @@ impl PreferencesRow {
 fn preferences_on(sql: &impl SqlRead) -> Result<Preferences, DbError> {
     let save_presets = statement_row(sql, &SavePresetsReadParams {})?
         .presets
+        .every
         .save_presets
         .into_iter()
         .map(save_preset_of)
         .collect::<Result<_, _>>()?;
-    let save_filename_pattern = pattern_of(
-        statement_row(sql, &FilenameTokensReadParams {})?
-            .tokens
-            .filename_tokens
-            .into_iter()
-            .map(|token| (token.value, token.text)),
-    )?;
-    let save_folder_pattern = pattern_of(
-        statement_row(sql, &FolderTokensReadParams {})?
-            .tokens
-            .folder_tokens
-            .into_iter()
-            .map(|token| (token.value, token.text)),
-    )?;
+    let patterns = statement_row(sql, &NamePatternsReadParams {})?.patterns;
+    let save_filename_pattern = pattern_of(patterns.filename_tokens)?;
+    let save_folder_pattern = pattern_of(patterns.folder_tokens)?;
     let stored = statement_row(sql, &PreferenceColumnsReadParams {})?.stored;
     let subsonic_network =
         match (stored.subsonic_network.as_str(), stored.subsonic_network_interface) {
@@ -366,15 +382,10 @@ fn preferences_on(sql: &impl SqlRead) -> Result<Preferences, DbError> {
     })
 }
 
-/// The columns of the `save_preset` row `row`.
-fn save_preset_columns(row: &Row<'_>) -> rusqlite::Result<SavePresetColumns> {
-    Ok(SavePresetColumns {
-        id: row.get("id")?,
-        name: row.get("name")?,
-        codec: row.get("codec")?,
-        bit_depth: row.get("bit_depth")?,
-        bitrate_kbps: row.get("bitrate_kbps")?,
-    })
+/// The preset of `presets`, which a read of the presets under one id
+/// returned; none when no preset has the id.
+fn one_save_preset(presets: SavePresetsAmong) -> Result<Option<SavePreset>, DbError> {
+    presets.save_presets.into_iter().next().map(save_preset_of).transpose()
 }
 
 /// One preset as the columns of its `save_preset` row hold it.
@@ -598,13 +609,14 @@ impl PatternValue for SaveFolderValue {
     }
 }
 
-/// The pattern whose stored pieces, in order, are `pieces`, each the `value`
-/// and `text` columns of a row of `Value`'s table.
+/// The pattern whose stored pieces, in order, are `tokens`, rows of
+/// `Value`'s table.
 fn pattern_of<Value: PatternValue>(
-    pieces: impl Iterator<Item = (Option<String>, Option<String>)>,
+    tokens: Vec<NameTokenColumns>,
 ) -> Result<NamePattern<Value>, DbError> {
-    let pieces = pieces
-        .map(|piece| match piece {
+    let pieces = tokens
+        .into_iter()
+        .map(|token| match (token.value, token.text) {
             (Some(value), None) => Value::from_column(&value)
                 .map(NamePiece::Value)
                 .ok_or_else(|| invalid("value", value)),
