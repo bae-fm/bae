@@ -3,7 +3,7 @@
 //! file decisions, signals, draft provenance, release link and lookup
 //! choices.
 
-use super::candidate_rows::CandidateFilter;
+use super::candidate_rows::{current_state_from_sql, CandidateFilter};
 use super::file_decision_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
 use super::match_record::{match_record_sql, match_rows_of};
@@ -64,7 +64,7 @@ pub(crate) fn load_states_rows_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
-    states_rows_where(sql, only.filter("state.content_hash"))
+    states_rows_where(sql, "import_candidate_state AS state", only.filter("state.content_hash"))
 }
 
 /// The state of the release the scan stores at `key` when its edit revision
@@ -75,12 +75,19 @@ pub(crate) fn load_current_state_on(
     key: &crate::CandidateKey,
 ) -> Result<Option<DbImportCandidateState>, DbError> {
     // The clause keeps at most the one state row of the scan's content hash.
-    Ok(states_rows_where(sql, CandidateFilter::current_at_scan(key))?()?.into_values().next())
+    Ok(states_rows_where(
+        sql,
+        &current_state_from_sql("state"),
+        CandidateFilter::current_at_scan(key),
+    )?()?
+    .into_values()
+    .next())
 }
 
 /// The states `filter` keeps, each with the rows that share its content hash.
 fn states_rows_where(
     sql: &impl coven::SqlRead,
+    from: &str,
     filter: CandidateFilter,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let rows = sql.query(
@@ -92,7 +99,7 @@ fn states_rows_where(
                     (SELECT json_group_array({record} ORDER BY found.position) \
                      FROM import_candidate_match AS found \
                      WHERE found.verdict_id = verdict.verdict_id) AS candidate_matches \
-             FROM import_candidate_state AS state \
+             FROM {from} \
              LEFT JOIN import_candidate_edit AS edit \
                  ON edit.content_hash = state.content_hash \
              LEFT JOIN import_candidate_signals AS signals \

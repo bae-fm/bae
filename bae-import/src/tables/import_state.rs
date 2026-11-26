@@ -74,7 +74,9 @@ mod verdict_layout;
 mod verdict_rows;
 
 pub(super) use album_pick_rows::album_pick_sql;
-pub(super) use candidate_rows::{current_at_scan_sql, CandidateRows, OneCandidate, SCANNED_HASH};
+pub(super) use candidate_rows::{
+    current_state_from_sql, CandidateRows, OneCandidate, CURRENT_AT_KEY, SCANNED_HASH,
+};
 pub(super) use cards_read::{load_candidate_verdict_cards_on, load_verdict_cards_on};
 pub(super) use claim_rows::{
     claimed_records_of_json, claimed_records_sql, offered_covers_sql, store_claims_of_albums_on,

@@ -6,7 +6,7 @@
 //! refetch replaces them.
 
 use super::*;
-use crate::tables::import_state::{current_at_scan_sql, offered_covers_sql};
+use crate::tables::import_state::{current_state_from_sql, offered_covers_sql, CURRENT_AT_KEY};
 
 /// The link of the candidate whose content hash the expression `hash` names,
 /// as one JSON value: its kind, catalog and release, its partners and its
@@ -55,7 +55,7 @@ listed (rank, pos, kind, key, item) AS (
            json_object('kind', 'remote', 'cover', json(o.cover))
     FROM ({offered}) AS o
     WHERE NOT EXISTS (SELECT 1 FROM fetch)
-      AND EXISTS (SELECT 1 FROM import_candidate_state AS state WHERE {current})
+      AND EXISTS (SELECT 1 FROM {current} WHERE {at_key})
       AND :filter IN ('all', o.source)
     UNION ALL
     SELECT 2, f.position, 'file', f.relative_path,
@@ -72,7 +72,8 @@ items (rank, pos, kind, key, preferred, item) AS (
 ){walk}",
         showable = crate::tables::import_list::showable_artwork_sql("f"),
         link = link_sql("c.content_hash"),
-        current = current_at_scan_sql("state"),
+        current = current_state_from_sql("state"),
+        at_key = CURRENT_AT_KEY,
         offered = offered_covers_sql("c"),
         walk = super::walk::walk_sql("(SELECT linked FROM fetch)"),
     )

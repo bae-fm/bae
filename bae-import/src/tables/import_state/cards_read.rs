@@ -244,7 +244,10 @@ pub(super) fn cell_cards_sql(lookup: &str, verdict: &str) -> String {
     // report says the pane's statement reads every row of
     // `import_candidate_lookup_release`, because this read sits in subqueries
     // of the FROM clause nested in the cell's lookup. Looking the verdict up
-    // by its id makes the report say it reads that verdict's rows.
+    // by its id makes the report say it reads that verdict's rows. The
+    // release's match also names the cell's verdict itself: coven narrows the
+    // match's label, medium and link rows to this cell's verdict only through
+    // that direct condition, not through the join to the found row.
     let verdict_id = format!(
         "(SELECT of_verdict.verdict_id FROM import_candidate_verdict AS of_verdict \
           WHERE of_verdict.verdict_id = {lookup}.verdict_id)"
@@ -254,7 +257,7 @@ pub(super) fn cell_cards_sql(lookup: &str, verdict: &str) -> String {
          JOIN import_candidate_match AS matched \
            ON matched.verdict_id = found.verdict_id \
           AND matched.position = found.match_position \
-         WHERE {found}",
+         WHERE {found} AND matched.verdict_id = {lookup}.verdict_id",
         found = cell("found", &verdict_id),
     );
     cards_sql(
@@ -385,12 +388,13 @@ pub(crate) fn load_candidate_verdict_cards_on(
     let json: Option<String> = sql
         .query_row(
             &format!(
-                "SELECT {cards} FROM import_candidate_state AS state \
+                "SELECT {cards} FROM {current} \
                  JOIN import_candidate_verdict AS verdict \
                      ON verdict.content_hash = state.content_hash \
-                 WHERE {current} AND {holds_findings}",
+                 WHERE {at_key} AND {holds_findings}",
                 cards = verdict_cards_sql("verdict"),
-                current = super::current_at_scan_sql("state"),
+                current = super::current_state_from_sql("state"),
+                at_key = super::CURRENT_AT_KEY,
                 holds_findings = super::verdict_rows::holds_findings_sql("verdict"),
             ),
             named_params! { ":key": key },

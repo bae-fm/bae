@@ -71,18 +71,25 @@ impl OneCandidate<'_> {
     }
 }
 
-/// Whether the `import_candidate_state` row joined as `state` is the current
+/// The `import_candidate_state` row joined as `state` that is the current
 /// state of the release the scan stores at the key a statement binds as
 /// `:key`: the state of the content hash the scan holds, at the file-edit
-/// revision the scan holds. Every read of a scanned release's current state
-/// uses this condition.
-pub(crate) fn current_at_scan_sql(state: &str) -> String {
+/// revision the scan holds. A statement reading a scanned release's current
+/// state takes this as a FROM item, with [`CURRENT_AT_KEY`] in its WHERE.
+/// The scan's row is a table of the statement, so coven narrows `state` by
+/// it and reruns the statement only for the writes that reach the key's
+/// state: a condition holding a subquery narrows nothing.
+pub(crate) fn current_state_from_sql(state: &str) -> String {
     format!(
-        "({state}.content_hash, {state}.edit_revision) = \
-             (SELECT scan.content_hash, scan.file_edit_revision \
-              FROM scan_candidate AS scan WHERE scan.path = :key)"
+        "scan_candidate AS scanned \
+         JOIN import_candidate_state AS {state} \
+             ON {state}.content_hash = scanned.content_hash \
+            AND {state}.edit_revision = scanned.file_edit_revision"
     )
 }
+
+/// The condition of [`current_state_from_sql`] that names the key.
+pub(crate) const CURRENT_AT_KEY: &str = "scanned.path = :key";
 
 /// The content hash of the release the scan stores at the key a statement
 /// binds as `:key`.
@@ -105,13 +112,13 @@ enum CandidateBinds {
 }
 
 impl CandidateFilter {
-    /// Matches the state row of the content hash the scan holds for the
-    /// release `key` only when its edit revision equals the file-edit
-    /// revision the scan holds, and no row otherwise. For a statement reading
-    /// `import_candidate_state AS state`.
+    /// Keeps the scan's row of the release `key`, for a statement that reads
+    /// the state through [`current_state_from_sql`]: that join keeps the
+    /// state row of the content hash the scan holds only when its edit
+    /// revision equals the file-edit revision the scan holds.
     pub(crate) fn current_at_scan(key: &crate::CandidateKey) -> Self {
         Self {
-            clause: format!("WHERE {}", current_at_scan_sql("state")),
+            clause: format!("WHERE {CURRENT_AT_KEY}"),
             binds: CandidateBinds::AtScan(key.clone()),
         }
     }

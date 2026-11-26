@@ -100,16 +100,17 @@ pub(crate) fn load_file_evidence_on(
     let stored = sql.query(
         &format!(
             "SELECT listed.list, listed.value, listed.origin_path \
-             FROM import_candidate_state AS state \
+             FROM {current} \
              JOIN import_candidate_signals AS signals \
                  ON signals.content_hash = state.content_hash \
              JOIN import_candidate_signal_value AS listed \
                  ON listed.signals_id = signals.signals_id \
-             WHERE {current} \
+             WHERE {at_key} \
                AND listed.list IN ('disc_id', 'barcode') \
                AND listed.origin_path IS NOT NULL \
              ORDER BY listed.list = 'barcode', listed.position",
-            current = super::current_at_scan_sql("state"),
+            current = super::current_state_from_sql("state"),
+            at_key = super::CURRENT_AT_KEY,
         ),
         rusqlite::named_params! { ":key": key },
         |row| Ok((row.get::<_, String>("list")?, row.get("value")?, row.get("origin_path")?)),

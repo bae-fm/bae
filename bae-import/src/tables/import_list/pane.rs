@@ -11,9 +11,9 @@ use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::candidate_cover_choice_on;
 use crate::tables::import_state::{
-    album_pick_sql, current_at_scan_sql, load_candidate_verdict_cards_on, load_current_state_on,
+    album_pick_sql, current_state_from_sql, load_candidate_verdict_cards_on, load_current_state_on,
     load_file_evidence_on, load_pane_rows_on, load_standing_on, stored_verdict_view, OneCandidate,
-    SCANNED_HASH,
+    CURRENT_AT_KEY, SCANNED_HASH,
 };
 use crate::tables::import_state::{claimed_records_of_json, claimed_records_sql};
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
@@ -199,9 +199,10 @@ fn while_current_on(
     Ok(sql.query_row(
         &format!(
             "SELECT CASE WHEN EXISTS ( \
-                 SELECT 1 FROM import_candidate_state AS state WHERE {current}) \
+                 SELECT 1 FROM {current} WHERE {at_key}) \
              THEN ({array}) ELSE '[]' END",
-            current = current_at_scan_sql("state"),
+            current = current_state_from_sql("state"),
+            at_key = CURRENT_AT_KEY,
         ),
         named_params! { ":key": key },
         |row| row.get(0),

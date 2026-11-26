@@ -592,6 +592,118 @@ async fn a_scan_of_another_folder_leaves_the_pane_s_read_unmarked() {
     assert!(live.is_marked_for_rerun(), "skipping the pane's candidate changes what it reads");
 }
 
+/// What another folder's identification stores in the tables that hold a
+/// verdict's ledger, its failures and its text lines — a ledger row, an ISRC, an
+/// offered catalog number, a provider, a failure and a text line — is no row of
+/// the pane's candidate, so coven reruns the pane's read for none of it.
+#[tokio::test]
+async fn a_verdict_stored_for_another_folder_leaves_the_pane_s_read_unmarked() {
+    use bae_identify::{
+        CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView, IdentifyRunView,
+        IsrcStepView, LookupView, ProviderCell, SearchStepView, SignalValueRow,
+    };
+
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = &crate::tables::watched_path::host_root("/music");
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    let mut candidates = Vec::new();
+    for name in ["shown", "other"] {
+        // Folders whose files hash apart: two folders that share a content hash
+        // share their state rows, so a write for one is a write for the other.
+        let key = crate::CandidateKey::folder(&folder_below(root, name));
+        let candidate = key_candidate(root, &key);
+        tables
+            .save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
+            .await
+            .unwrap();
+        candidates.push(candidate);
+    }
+    tables.finish_folder_scan(root, generation, None).await.unwrap();
+    assert_ne!(candidates[0].files.content_hash(), candidates[1].files.content_hash());
+    let [shown, other] = &candidates[..] else { unreachable!("two candidates") };
+    save_verdict_with_ledger(&db, shown, "shown-release", Some(sample_ledger())).await;
+    let mut live = tables.subscribe_import_candidate(Some(shown.key()));
+    live.next_inline().await.expect("the query stays open").result.unwrap().expect("listed");
+
+    let found = LookupView::answered(&vec![sample_match()]);
+    let ledger = IdentifyRunView {
+        providers: vec![LookupCatalog::MusicBrainz],
+        disc_id: DiscIdStepView::Read {
+            discs: vec![DiscIdRow { disc_id: "disc-1".to_string(), lookup: found }],
+        },
+        barcode: bae_identify::BarcodeStepView::Absent,
+        catalog: CatalogStepView::Numbers {
+            scanning: false,
+            rows: vec![SignalValueRow {
+                value: "CAT-1".to_string(),
+                excluded: false,
+                cells: vec![ProviderCell {
+                    source: LookupCatalog::MusicBrainz,
+                    lookup: LookupView::NoMatch,
+                }],
+            }],
+            candidates: vec![CatalogCandidateView { value: "CAT-9".to_string() }],
+            candidate_count: 1,
+        },
+        isrc: IsrcStepView::Read {
+            shown: "USAAA0000001".to_string(),
+            more_count: 0,
+            isrcs: vec!["USAAA0000001".to_string()],
+            // A release the findings do not list, so the verdict stores it as
+            // an unlisted match that only this cell shows.
+            lookup: LookupView::answered(&vec![bae_catalogs::search::MetadataResult {
+                release_id: "rel-unlisted".to_string(),
+                ..sample_match()
+            }]),
+        },
+        search: SearchStepView::NotNeeded,
+    };
+    let verdict = TerminalVerdict::Failed {
+        failures: vec![bae_identify::IdentifyFailure::DiscId(bae_catalogs::LookupFailure::Timeout)],
+        findings: sample_findings(),
+        track_count: 11,
+        ledger: Some(ledger),
+    };
+    let mut row = new_candidate_row(&other.files.content_hash(), &other.path, &verdict);
+    row.candidate_key = other.key();
+    row.signals = bae_identify::signals::Signals {
+        origin: bae_catalogs::AudioOrigin::default(),
+        disc_id: bae_identify::signals::DiscIdSignal::Computed {
+            discs: vec![bae_identify::signals::ComputedDiscId {
+                disc_id: "disc-1".to_string(),
+                source_file: Some("rip.log".to_string()),
+            }],
+        },
+        barcode: bae_identify::signals::BarcodeSignal::Settled {
+            codes: vec![bae_identify::signals::SourcedValue {
+                value: "0123456789012".to_string(),
+                origin_path: Some("back.jpg".to_string()),
+            }],
+        },
+        text: bae_identify::signals::TextSignal::Settled {
+            catalogs: vec!["CAT-1".to_string()],
+            free_text: vec!["Some Words".to_string()],
+        },
+        text_pool: Vec::new(),
+        isrcs: vec!["USAAA0000001".to_string()],
+        track_titles: vec!["Track One".to_string()],
+    };
+    row.signals.text_pool = vec![bae_identify::signals::TextLine {
+        text: "Label One Records".to_string(),
+        origin: bae_identify::signals::TextOrigin::Artwork,
+    }];
+    assert!(tables.store_verdict(&row).await.unwrap());
+    assert!(
+        !live.is_marked_for_rerun(),
+        "the verdict's ledger, failures and text lines are another folder's rows"
+    );
+
+    save_verdict(&db, shown, "shown-again").await;
+    assert!(live.is_marked_for_rerun(), "the pane's own candidate's verdict changes what it reads");
+}
+
 /// The import list shows a folder that failed validation under Skipped, with
 /// what its scan stored of it: the reason it failed, its tagged title and
 /// artist, and its cover image. The list selects it like any row, and the pane
