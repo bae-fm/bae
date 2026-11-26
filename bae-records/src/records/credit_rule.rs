@@ -1,6 +1,8 @@
 //! The rule every write of an artist credit decides by (`artist_resolution`),
 //! as a fragment for the reads that apply it in SQL: a draft's stored answers
-//! and a release editor's form, which no table holds.
+//! and a release editor's form, which no table holds. The lookups the rule
+//! decides between, `ArtistsHoldingIds` and `ArtistsNamed`, are fragments the
+//! write that decides spreads too (`credit_candidates`).
 
 sqlive_compose::fragment!(
     CreditAnswers with credits(name_key TEXT, musicbrainz_artist_id TEXT, discogs_artist_id TEXT)
@@ -29,34 +31,27 @@ sqlive_compose::fragment!(
                OR (look.kind IN ('various', 'various alone') AND c.various)
     ),
     rule_probe_id AS MATERIALIZED (
-        SELECT DISTINCT side.col, CASE side.col WHEN 'mb' THEN p.mb ELSE p.dg END AS cid,
-               CASE side.col WHEN 'mb' THEN bae_artist_identity(p.mb, NULL)
-                    ELSE bae_artist_identity(NULL, p.dg) END AS derived
+        SELECT DISTINCT side.catalog,
+               CASE side.catalog WHEN 'musicbrainz' THEN p.mb ELSE p.dg END AS catalog_id
         FROM rule_probe AS p
-        JOIN (SELECT 'mb' AS col UNION ALL SELECT 'dg') AS side
-            ON CASE side.col WHEN 'mb' THEN p.mb ELSE p.dg END IS NOT NULL
+        JOIN (SELECT 'musicbrainz' AS catalog UNION ALL SELECT 'discogs') AS side
+            ON CASE side.catalog WHEN 'musicbrainz' THEN p.mb ELSE p.dg END IS NOT NULL
     ),
     rule_holding AS MATERIALIZED (
-        SELECT DISTINCT p.col, p.cid, a.id, a.name, a.sort_name,
+        SELECT holding.catalog, holding.catalog_id, a.id, a.name, a.sort_name,
                a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg
-        FROM (SELECT p.col, p.cid, named.id AS named_id
-              FROM rule_probe_id AS p JOIN artists AS named
-                  ON p.col = 'mb' AND named.musicbrainz_artist_id = p.cid
-              UNION SELECT p.col, p.cid, named.id
-              FROM rule_probe_id AS p JOIN artists AS named
-                  ON p.col = 'dg' AND named.discogs_artist_id = p.cid
-              UNION SELECT p.col, p.cid, named.id
-              FROM rule_probe_id AS p JOIN artists AS named ON named.id = p.derived) AS p
-        JOIN artists AS a ON a.id = (SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = named_id)
+        FROM @crate::records::credit_rule::ArtistsHoldingIds(ids: (
+            SELECT catalog, catalog_id FROM rule_probe_id)) AS holding
+        JOIN artists AS a ON a.id = holding.artist_id
     ),
     rule_held AS MATERIALIZED (
-        SELECT col, cid, MIN(id) AS id,
+        SELECT catalog, catalog_id, MIN(id) AS id,
                json_group_array(name ORDER BY id) ->> 0 AS name,
                json_group_array(sort_name ORDER BY id) FILTER (WHERE sort_name IS NOT NULL)
                    ->> 0 AS sort_name,
                json_group_array(mb ORDER BY id) FILTER (WHERE mb IS NOT NULL) ->> 0 AS mb,
                json_group_array(dg ORDER BY id) FILTER (WHERE dg IS NOT NULL) ->> 0 AS dg
-        FROM rule_holding GROUP BY col, cid
+        FROM rule_holding GROUP BY catalog, catalog_id
     ),
     rule_match AS MATERIALIZED (
         SELECT mb, dg,
@@ -73,8 +68,9 @@ sqlive_compose::fragment!(
                      CASE WHEN m.id IS NOT NULL THEN m.mb ELSE d.mb END AS artist_mb,
                      CASE WHEN m.id IS NOT NULL THEN m.dg ELSE d.dg END AS artist_dg
               FROM rule_probe AS p
-              LEFT JOIN rule_held AS d ON d.col = 'dg' AND d.cid = p.dg
-              LEFT JOIN rule_held AS m ON m.col = 'mb' AND m.cid = p.mb)
+              LEFT JOIN rule_held AS d ON d.catalog = 'discogs' AND d.catalog_id = p.dg
+              LEFT JOIN rule_held AS m
+                  ON m.catalog = 'musicbrainz' AND m.catalog_id = p.mb)
     ),
     rule_settled AS MATERIALIZED (
         SELECT step.name_key, step.mb, step.dg,
@@ -126,12 +122,11 @@ sqlive_compose::fragment!(
                CASE WHEN r.id IS NOT NULL THEN r.artist_mb ELSE a.musicbrainz_artist_id END,
                CASE WHEN r.id IS NOT NULL THEN r.artist_dg ELSE a.discogs_artist_id END
         FROM rule_settled AS r
-        LEFT JOIN (SELECT name_key, id AS artist_id FROM artists
-                   UNION SELECT credit_name.name_key, (SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = credit_name.artist_id)
-                   FROM artist_credits AS credit_name) AS named
-            ON r.id IS NULL AND r.name_key <> '' AND named.name_key = r.name_key
+        LEFT JOIN @crate::records::credit_rule::ArtistsNamed(names: (
+            SELECT name_key FROM rule_credit WHERE name_key <> '')) AS named
+            ON r.id IS NULL AND named.name_key = r.name_key
         LEFT JOIN artists AS a
-            ON a.id = named.artist_id AND EXISTS (SELECT 1 FROM artist_shown_as shown_as WHERE shown_as.artist_id = a.id AND shown_as.shown_artist_id = a.id)
+            ON a.id = named.artist_id
            AND (a.musicbrainz_artist_id IS NULL OR r.name_mb IS NULL
                 OR a.musicbrainz_artist_id = r.name_mb)
            AND (a.discogs_artist_id IS NULL OR r.name_dg IS NULL OR a.discogs_artist_id = r.name_dg)
@@ -156,3 +151,50 @@ impl CreditAnswers {
         (self.name_key, self.musicbrainz_artist_id, self.discogs_artist_id, self.artists)
     }
 }
+
+// One row for each id of `ids` and artist that holds it. `catalog` is
+// `musicbrainz` or `discogs`. An artist holds an id when its column of that
+// catalog holds it, or when the id names its row (its column may have been
+// filled in or edited since). Each is followed through any merge to the artist
+// it shows as.
+sqlive_compose::fragment!(
+    ArtistsHoldingIds with ids(catalog TEXT, catalog_id TEXT)
+        { catalog: String, catalog_id: String, artist_id: String },
+    r#"
+    SELECT DISTINCT held.catalog, held.catalog_id, shown.shown_artist_id AS artist_id
+    FROM (SELECT asked.catalog, asked.catalog_id, named.id AS named_id
+          FROM ids AS asked JOIN artists AS named
+              ON asked.catalog = 'musicbrainz'
+             AND named.musicbrainz_artist_id = asked.catalog_id
+          UNION ALL
+          SELECT asked.catalog, asked.catalog_id, named.id
+          FROM ids AS asked JOIN artists AS named
+              ON asked.catalog = 'discogs' AND named.discogs_artist_id = asked.catalog_id
+          UNION ALL
+          SELECT asked.catalog, asked.catalog_id, named.id
+          FROM ids AS asked JOIN artists AS named
+              ON named.id = CASE asked.catalog
+                  WHEN 'musicbrainz' THEN bae_artist_identity(asked.catalog_id, NULL)
+                  ELSE bae_artist_identity(NULL, asked.catalog_id) END) AS held
+    JOIN artist_shown_as AS shown ON shown.artist_id = held.named_id
+"#
+);
+
+// One row for each folded name of `names` and shown artist that goes by it, as
+// its own name or as one of its other printed names; a printed name an
+// absorbed artist held names the artist it shows as.
+sqlive_compose::fragment!(
+    ArtistsNamed with names(name_key TEXT) { name_key: String, artist_id: String },
+    r#"
+    SELECT asked.name_key, shown.artist_id
+    FROM names AS asked
+    JOIN artists AS named ON named.name_key = asked.name_key
+    JOIN artist_shown_as AS shown
+        ON shown.artist_id = named.id AND shown.shown_artist_id = named.id
+    UNION
+    SELECT asked.name_key, shown.shown_artist_id
+    FROM names AS asked
+    JOIN artist_credits AS printed ON printed.name_key = asked.name_key
+    JOIN artist_shown_as AS shown ON shown.artist_id = printed.artist_id
+"#
+);

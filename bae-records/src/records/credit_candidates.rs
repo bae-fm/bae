@@ -9,13 +9,10 @@ use bae_store::{statement_rows, DbError};
 use std::convert::Infallible;
 
 // One row for each credit of `credits`, with the artists it can name, each
-// list in id order. `picked_held` says whether the library holds the artist
-// `picked_id`. A list for a catalog id holds every artist whose column holds
-// the id, or whose row the id names (its column may have been filled in or
-// edited since), each followed through any merge to the artist it shows as.
-// `named` holds every shown artist that goes by `name_key`, as its own name or
-// as one of its other printed names; a printed name an absorbed artist held
-// names the artist it shows as. No artist goes by an empty key.
+// list in id order. The lists by catalog id hold what `ArtistsHoldingIds`
+// finds, and `named` what `ArtistsNamed` finds. `picked_held` says
+// whether the library holds the artist `picked_id`. No artist goes by an empty
+// `name_key`.
 sqlive_compose::fragment!(
     CreditCandidates with credits(
         position INTEGER, picked_id TEXT, name_key TEXT,
@@ -31,7 +28,7 @@ sqlive_compose::fragment!(
         named: json<Vec<crate::records::read::ArtistJson>>
     },
     r#"
-    WITH asked(found_by, lookup_key) AS MATERIALIZED (
+    WITH asked_id(catalog, catalog_id) AS MATERIALIZED (
         SELECT 'musicbrainz', musicbrainz_artist_id FROM credits
         WHERE musicbrainz_artist_id IS NOT NULL
         UNION SELECT 'musicbrainz', various_musicbrainz_artist_id FROM credits
@@ -40,40 +37,18 @@ sqlive_compose::fragment!(
               WHERE discogs_artist_id IS NOT NULL
         UNION SELECT 'discogs', various_discogs_artist_id FROM credits
               WHERE various_discogs_artist_id IS NOT NULL
-        UNION SELECT 'name', name_key FROM credits WHERE name_key <> ''
-    ),
-    held(found_by, lookup_key, named_id) AS (
-        SELECT asked.found_by, asked.lookup_key, named.id
-        FROM asked JOIN artists AS named
-            ON asked.found_by = 'musicbrainz'
-           AND named.musicbrainz_artist_id = asked.lookup_key
-        UNION ALL
-        SELECT asked.found_by, asked.lookup_key, named.id
-        FROM asked JOIN artists AS named
-            ON asked.found_by = 'discogs' AND named.discogs_artist_id = asked.lookup_key
-        UNION ALL
-        SELECT asked.found_by, asked.lookup_key, named.id
-        FROM asked JOIN artists AS named
-            ON named.id = CASE asked.found_by
-                WHEN 'musicbrainz' THEN bae_artist_identity(asked.lookup_key, NULL)
-                WHEN 'discogs' THEN bae_artist_identity(NULL, asked.lookup_key) END
     ),
     found(found_by, lookup_key, artist_id) AS (
-        SELECT held.found_by, held.lookup_key, shown.shown_artist_id
-        FROM held JOIN artist_shown_as AS shown ON shown.artist_id = held.named_id
-        UNION
-        SELECT asked.found_by, asked.lookup_key, shown.artist_id
-        FROM asked
-        JOIN artists AS named
-            ON asked.found_by = 'name' AND named.name_key = asked.lookup_key
-        JOIN artist_shown_as AS shown
-            ON shown.artist_id = named.id AND shown.shown_artist_id = named.id
-        UNION
-        SELECT asked.found_by, asked.lookup_key, shown.shown_artist_id
-        FROM asked
-        JOIN artist_credits AS printed
-            ON asked.found_by = 'name' AND printed.name_key = asked.lookup_key
-        JOIN artist_shown_as AS shown ON shown.artist_id = printed.artist_id
+        SELECT holding.catalog, holding.catalog_id, holding.artist_id
+        FROM (SELECT held.*
+              FROM @crate::records::credit_rule::ArtistsHoldingIds(ids: (
+                  SELECT catalog, catalog_id FROM asked_id)) AS held) AS holding
+        UNION ALL
+        SELECT 'name', named.name_key, named.artist_id
+        FROM (SELECT goes_by.*
+              FROM @crate::records::credit_rule::ArtistsNamed(names: (
+                  SELECT DISTINCT name_key FROM credits WHERE name_key <> '')) AS goes_by)
+             AS named
     ),
     answered(found_by, lookup_key, artists) AS MATERIALIZED (
         SELECT found.found_by, found.lookup_key,
