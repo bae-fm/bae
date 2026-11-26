@@ -99,6 +99,8 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
     /// Whether the line is starting to follow a stream, which shows what the
     /// stream holds during SwiftUI's update of the line.
     private var joining = false
+    /// The line height a note takes: the detail role's.
+    private var noteLine: CGFloat = 0
 
     var accent: NSColor {
         get { bar.accent }
@@ -123,6 +125,7 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         case .note:
             label.font = ThemeText.detail.nsFont
             label.textColor = NSColor(Theme.textSecondary)
+            noteLine = ThemeText.detail.macOSLine ?? 0
         }
         label.lineBreakMode = .byTruncatingTail
         stack.orientation = .vertical
@@ -148,7 +151,9 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
 
     /// The line's height while a step runs.
     var steppingHeight: CGFloat {
-        stack.fittingSize.height
+        // A note is as tall as SwiftUI's detail text: the label's own fitting
+        // height is a point shorter than the role's line.
+        max(stack.fittingSize.height, noteLine)
     }
 
     /// Follow `progress`, showing at once what it holds. That show tells
