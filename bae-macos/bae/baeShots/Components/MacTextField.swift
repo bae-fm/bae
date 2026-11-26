@@ -82,7 +82,9 @@ extension ShotScene {
         labelColumn: Bool = false
     ) -> ShotScene {
         component(id, width: previewWidth, height: 90) {
-            FieldColumn {
+            // A column of fields holds every label at the widest one's width;
+            // the preview's is 90.
+            FieldColumn(labelWidth: labelColumn ? 90 : nil) {
                 MacTextField(
                     "Name",
                     note: note,
@@ -95,13 +97,6 @@ extension ShotScene {
                         invalid: state == .invalid,
                         focusesOnAppear: state == .focused
                     )
-                }
-                if labelColumn {
-                    // A column of fields holds every label at the widest
-                    // one's width; the preview's is 90.
-                    GridRow {
-                        Color.clear.frame(width: 90, height: 0)
-                    }
                 }
             }
             .frame(width: previewWidth, alignment: .leading)
