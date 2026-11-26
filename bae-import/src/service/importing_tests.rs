@@ -27,6 +27,13 @@ fn local_import_command(
     }
 }
 
+/// The release this device imported from the files of the release the scan
+/// stores at `key`.
+async fn imported_release(test: &TestService, key: &crate::CandidateKey) -> Option<String> {
+    let entry = test.service.tables.load_candidate_entry(key).await.unwrap();
+    entry.expect("the scan stores the release").imported
+}
+
 /// A source file that cannot be opened mid-import fails the import with the
 /// open's own error and leaves nothing of the release behind: no album, no
 /// release, and the candidate's failure recorded for its pane. Importing the
@@ -77,7 +84,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "a failed import writes no album"
     );
     assert!(
-        test.service.tables.release_imported_from(&candidate.content_hash).await.unwrap().is_none(),
+        imported_release(&test, &candidate_key).await.is_none(),
         "a failed import writes no release of its files"
     );
 
@@ -103,10 +110,8 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "the retry writes the release once"
     );
     assert_eq!(bae_store::test_fixtures::row_count(&test.db, "releases").await, 1);
-    let release = tables
-        .release_imported_from(&candidate.content_hash)
+    let release = imported_release(&test, &candidate_key)
         .await
-        .unwrap()
         .expect("the retried import records the release of its files");
     assert_eq!(
         bae_records::test_fixtures::test_records(&test.db)
@@ -432,10 +437,7 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
         .await;
     drop(blocked);
 
-    assert!(
-        test.service.tables.release_imported_from(&content_hash).await.unwrap().is_none(),
-        "the import failed"
-    );
+    assert!(imported_release(&test, &candidate_key).await.is_none(), "the import failed");
     assert_eq!(spent_row_counts(&test, &content_hash).await, before);
 }
 
@@ -526,13 +528,7 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
     };
     assert_eq!(covers().await, 0, "a scan seeds no cover for files imported here");
 
-    let release_id = test
-        .service
-        .tables
-        .release_imported_from(&content_hash)
-        .await
-        .unwrap()
-        .expect("the import is recorded");
+    let release_id = imported_release(&test, &candidate_key).await.expect("the import is recorded");
     bae_records::test_fixtures::delete_release(
         &bae_records::test_fixtures::test_records(&test.db),
         &release_id,
@@ -721,13 +717,12 @@ async fn an_imported_release_keeps_each_documents_kind() {
     test.temp.write(folder.join("notes.txt"), b"Recorded live.\n");
     test.temp.write(folder.join("booklet.pdf"), b"%PDF-1.4\n");
     let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Album").await;
-    let content_hash = stored.candidate.content_hash.clone();
 
     test.service.queue_import_for_test(&candidate_key, "import-1").await;
     test.service
         .prepare_and_run_folder_import(
             "import-1".to_string(),
-            candidate_key,
+            candidate_key.clone(),
             crate::release_candidate::CandidateSource {
                 path: folder.clone(),
                 scope: crate::ReleaseFileScope::Recursive,
@@ -739,12 +734,8 @@ async fn an_imported_release_keeps_each_documents_kind() {
         .await
         .expect("the release imports");
 
-    let release = test
-        .service
-        .tables
-        .release_imported_from(&content_hash)
+    let release = imported_release(&test, &candidate_key)
         .await
-        .unwrap()
         .expect("the import records the release of its files");
     let files = bae_records::test_fixtures::test_records(&test.db)
         .get_files_for_release(&release)
@@ -807,7 +798,7 @@ async fn an_imported_release_keeps_the_sheet_decisions_the_person_made() {
     test.service
         .prepare_and_run_folder_import(
             "import-1".to_string(),
-            candidate_key,
+            candidate_key.clone(),
             crate::release_candidate::CandidateSource {
                 path: folder.clone(),
                 scope: crate::ReleaseFileScope::Recursive,
@@ -819,12 +810,8 @@ async fn an_imported_release_keeps_the_sheet_decisions_the_person_made() {
         .await
         .expect("the release imports");
 
-    let release = test
-        .service
-        .tables
-        .release_imported_from(&content_hash)
+    let release = imported_release(&test, &candidate_key)
         .await
-        .unwrap()
         .expect("the import records the release of its files");
     let kept = test.service.tables.load_release_sheet_decisions(&release).await.unwrap();
     assert_eq!(kept, decided);

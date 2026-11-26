@@ -65,15 +65,6 @@ pub(super) fn imported_release_on(
         .optional()?)
 }
 
-impl ImportTables {
-    /// The release this device imported from the files hashed `hash`, if it
-    /// imported one.
-    pub async fn release_imported_from(&self, hash: &str) -> Result<Option<String>, DbError> {
-        let hash = hash.to_string();
-        self.store.read(move |sql| imported_release_on(&sql, &hash)).await
-    }
-}
-
 #[cfg(test)]
 #[path = "import_origin_tests.rs"]
 mod tests;
