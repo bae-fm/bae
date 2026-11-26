@@ -51,7 +51,10 @@ impl ImportServiceHandle {
             true => ChoiceChange::Ranking,
             false => ChoiceChange::Lookups,
         };
-        self.services.tables.save_import_candidate_lookup_choices(&content_hash, &choices).await?;
+        self.services
+            .tables
+            .save_pane_lookup_choices(candidate_key, &content_hash, &choices)
+            .await?;
         Ok(change)
     }
 }

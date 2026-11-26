@@ -468,13 +468,13 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     assert_eq!(files.reads(&tags), before, "no file is read again");
     let stored = tables.load_candidate_file_tag_snapshot(&album_key).await.unwrap().unwrap();
     assert_ne!(
-        stored.candidate.files.content_hash(),
-        reading.candidate.files.content_hash(),
+        stored.entry.candidate.files.content_hash(),
+        reading.entry.candidate.files.content_hash(),
         "the release holds a new file"
     );
     let preparation = crate::preparations::stored_preparation(
         test.tables(),
-        &stored.candidate.files.content_hash(),
+        &stored.entry.candidate.files.content_hash(),
     )
     .await
     .unwrap()
@@ -517,7 +517,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
             .unwrap()
             .unwrap();
         assert!(stored.snapshot.is_some(), "{folder} keeps the tags read from its track");
-        hashes.push(stored.candidate.files.content_hash());
+        hashes.push(stored.entry.candidate.files.content_hash());
     }
     assert_eq!(hashes[0], hashes[1], "the two folders hash alike");
     let tracks = [root.join("First/01.flac"), root.join("Second/01.flac")];

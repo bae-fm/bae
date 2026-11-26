@@ -268,3 +268,45 @@ sqlive_compose::fragment!(
             ))) END
         ))) AS pane_files
 "#);
+
+sqlive_compose::fragment!(
+    TagSnapshot(key: crate::CandidateKey, with_cover_bytes: bool) {
+        scan_generation: i64,
+        tag_file_edit_revision: i64,
+        cover_source_relative_path: Option<String>,
+        cover_content_type: Option<String>,
+        has_cover_data: bool,
+        cover_data: Option<Vec<u8>>,
+        tag_files: String
+    },
+    r#"
+    SELECT snapshot.scan_generation,
+        snapshot.file_edit_revision AS tag_file_edit_revision,
+        snapshot.embedded_cover_source_relative_path AS cover_source_relative_path,
+        snapshot.embedded_cover_content_type AS cover_content_type,
+        snapshot.embedded_cover_data IS NOT NULL AS has_cover_data,
+        CASE WHEN :with_cover_bytes THEN snapshot.embedded_cover_data END AS cover_data,(
+            SELECT json_group_array(json_object('relative_path', tags.relative_path,
+                'file_size', tags.file_size, 'modified_at_ns', tags.modified_at_ns,
+                'unparseable_reason', tags.unparseable_reason, 'title', tags.title,
+                'track_artists', tags.track_artists, 'album_title', tags.album_title,
+                'album_artists', tags.album_artists, 'compilation', tags.compilation,
+                'years', tags.years, 'track_number', tags.track_number,
+                'disc_number', tags.disc_number) ORDER BY files.position)
+            FROM scan_candidate_file_tag AS tags
+            JOIN scan_candidate_file AS files
+                ON files.watched_folder_path = tags.watched_folder_path
+                AND files.candidate_path = tags.candidate_path
+                AND files.relative_path = tags.relative_path
+            WHERE tags.watched_folder_path = snapshot.watched_folder_path
+                AND tags.candidate_path = snapshot.candidate_path
+        ) AS tag_files
+    FROM scan_candidate_tag_snapshot AS snapshot
+    WHERE snapshot.watched_folder_path = (
+        SELECT candidate.watched_folder_path
+        FROM scan_candidate AS candidate
+        WHERE candidate.path = :key
+        LIMIT 1
+    ) AND snapshot.candidate_path = :key
+"#
+);

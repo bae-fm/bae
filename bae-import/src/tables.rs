@@ -42,10 +42,11 @@ pub(crate) use folder_scans::{
 pub use import_list::{FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot};
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub use import_state::DbCandidatePaneRows;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) use import_state::ImportClaim;
 pub(crate) use import_state::{
     CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    CommittingCandidate, ImportClaim, ImportCommitGuard, ImportRows, NewAlbum, NewArtistImages,
-    RunVerdictSaved, ScannedCandidateKey,
+    CommittingCandidate, ImportCommitGuard, ImportRows, NewAlbum, NewArtistImages, RunVerdictSaved,
 };
 pub use import_state::{
     CandidateStateRefusal, DbCandidateIdentifyResult, DbImportCandidateState, ImportCommitError,
@@ -55,7 +56,9 @@ pub use release_edit::{
     release_edit_form_on, release_edit_layout_on, release_edit_still_as_opened_on,
     store_release_edit_sheet_decisions_on, ReleaseEditContext, ReleaseEditSeedRefusal,
 };
-pub(crate) use release_groupings::GroupingFacts;
+pub(crate) use release_groupings::{
+    require_combination_idle, CandidateEntry, GroupingFacts, ScannedEntry,
+};
 pub use release_groupings::{FolderReadingRefusal, GroupingChanges, SeparationRefusal};
 pub use watched_folders::watched_path;
 pub use watched_folders::{WatchedFolderRefusal, WatchedFoldersRemoved};

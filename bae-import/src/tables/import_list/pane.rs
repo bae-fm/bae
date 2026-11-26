@@ -76,7 +76,7 @@ impl HeadRows {
             grouping,
             files,
             standing,
-            imported: _,
+            imported,
             state,
             evidence,
             cards,
@@ -88,36 +88,24 @@ impl HeadRows {
             DbError::unreadable("the part count of a listed candidate", error.to_string())
         })?;
         let listed_columns = ListedColumns::of(&listed);
-        let scan = folder_scans::CandidateRow::of(scan.ok_or_else(unlisted)?)?;
-        let grouping = grouping.ok_or_else(unlisted)?;
-        let root = scan.root().to_path_buf();
-        let stored = release_groupings::stored_release_candidate(
-            &root,
-            scan.item()?,
-            grouping.taken_in,
-            release_groupings::block_of(
-                grouping.blocked,
-                grouping.blocked_subject,
-                grouping.blocked_holder,
-            )?,
+        let entry = release_groupings::CandidateEntry::of(
+            scan.ok_or_else(unlisted)?,
+            grouping,
+            standing,
+            imported,
         )?
         .ok_or_else(unlisted)?;
-        let skipped = grouping.skipped.ok_or_else(|| {
-            DbError::unreadable(
-                format!("the release_grouping row of {key}"),
-                &stored.candidate.grouping,
-            )
-        })?;
+        let actionable = entry.actionable();
         let files = files
             .ok_or_else(|| DbError::unreadable(format!("the files of {key}"), None::<String>))?;
         let (current, cards) = import_state::current_state_and_cards_of(state, cards)?;
         Ok(Self {
-            candidate: stored.candidate,
+            candidate: entry.candidate,
             files: pane_files::pane_files_of_json(&files.pane_files)?,
             part_count,
-            source_error: stored.error,
-            actionable: stored.actionable,
-            skipped,
+            source_error: entry.block,
+            actionable,
+            skipped: entry.skipped,
             current,
             file_evidence: file_evidence_of_json(
                 &evidence
@@ -130,7 +118,7 @@ impl HeadRows {
                     .file_evidence,
             )?,
             cards,
-            standing: import_state::standing_of(standing, &key)?.facts(),
+            standing: entry.runtime,
             listed: listed_columns,
         })
     }
@@ -218,12 +206,12 @@ impl From<&Option<crate::CandidateKey>> for PaneDraftParams {
 fn detail_rows(
     (head, draft): (Vec<PaneHeadRow>, Vec<PaneDraftRow>),
 ) -> Result<Option<CandidateDetailRows>, crate::ImportError> {
-    let Some(mut head) = head.into_iter().next() else {
+    let Some(head) = head.into_iter().next() else {
         return Ok(None);
     };
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
-    let imported = head.imported.take();
+    let imported = head.imported.clone();
     let head = HeadRows::of(head)?;
     let stage = match imported {
         Some(imported) => {

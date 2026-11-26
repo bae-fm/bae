@@ -411,7 +411,6 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
     };
     crate::tables::ImportTables::new(db.clone())
         .apply_file_metadata(
-            &root,
             &candidate.key(),
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),

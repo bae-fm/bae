@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey, ScanItem};
+use crate::tables::require_combination_idle;
 use crate::{CandidateKey, ImportError};
 
 impl ImportServiceHandle {
@@ -12,10 +13,16 @@ impl ImportServiceHandle {
         &self,
         key: &CandidateKey,
     ) -> Result<Vec<std::path::PathBuf>, ImportError> {
-        let detail = self.services.tables.load_import_candidate(key).await?.ok_or_else(|| {
-            ImportError::Internal { detail: format!("{key} is no longer a candidate") }
-        })?;
-        Ok(detail.candidate.source_folders())
+        let entry = self
+            .services
+            .tables
+            .load_candidate_entry(key)
+            .await?
+            .filter(|entry| entry.listed())
+            .ok_or_else(|| ImportError::Internal {
+                detail: format!("{key} is no longer a candidate"),
+            })?;
+        Ok(entry.candidate.source_folders())
     }
 
     /// Read the releases at `keys` as one, in key order and named after the
@@ -37,12 +44,10 @@ impl ImportServiceHandle {
         keys.sort();
         keys.dedup();
         let mut members = Vec::with_capacity(keys.len());
-        {
-            let _commit = self.services.folder_state_commit.lock("check folders to combine").await;
-            for key in &keys {
-                self.ensure_combination_idle(key).await?;
-                members.push(self.editable_candidate_for_commit(key).await?);
-            }
+        for key in &keys {
+            let entry = self.editable_candidate(key).await?;
+            require_combination_idle(key, &entry.runtime)?;
+            members.push(entry.candidate);
         }
         // A picked release is rebuilt from its members, not from disk, so it
         // cannot itself be picked.
@@ -148,10 +153,8 @@ impl ImportServiceHandle {
         &self,
         key: &CandidateKey,
     ) -> Result<Vec<CandidateKey>, ImportError> {
-        {
-            let _commit =
-                self.services.folder_state_commit.lock("check a release to separate").await;
-            self.ensure_combination_idle(key).await?;
+        if let Some(entry) = self.services.tables.load_candidate_entry(key).await? {
+            require_combination_idle(key, &entry.runtime)?;
         }
         match self.services.tables.load_grouping(key).await? {
             Some(crate::tables::GroupingFacts::Anchored { folder, .. }) => {
@@ -222,25 +225,6 @@ impl ImportServiceHandle {
                 ScanItem::Discovered(_) => continue,
             };
             self.services.event_tx.send(ImportEvent::Scan(event));
-        }
-        Ok(())
-    }
-
-    /// Refuse to combine or separate a release an import owns or that is
-    /// waiting for or running an identification, read from its standing
-    /// under the commit lock the caller holds.
-    async fn ensure_combination_idle(&self, key: &crate::CandidateKey) -> Result<(), ImportError> {
-        let facts = self.runtime.standing_facts(key).await?;
-        if facts.importing() {
-            return Err(ImportError::CandidateImportInProgress);
-        }
-        if matches!(
-            facts.identification,
-            Some(crate::IdentificationStatus::Queued | crate::IdentificationStatus::Running)
-        ) {
-            return Err(ImportError::Internal {
-                detail: format!("identification is still running for {key}"),
-            });
         }
         Ok(())
     }

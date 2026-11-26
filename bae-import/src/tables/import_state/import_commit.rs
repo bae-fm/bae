@@ -228,10 +228,12 @@ fn load_committing_candidate(
     candidate_key: &crate::CandidateKey,
     expectation: &crate::service::ImportExpectation,
 ) -> Result<Option<CommittingCandidate>, DbError> {
-    let Some(stored) = super::release_groupings::load_candidate_on(sql, candidate_key)? else {
+    let Some(stored) = super::folder_scans::load_candidate_file_tag_snapshot(sql, candidate_key)?
+    else {
         return Ok(None);
     };
-    let candidate = stored.candidate;
+    let actionable = stored.entry.actionable();
+    let candidate = stored.entry.candidate;
     let revisions: Option<(i64, i64)> = sql
         .query_row(
             "SELECT edit_revision, metadata_revision FROM import_candidate_state \
@@ -248,16 +250,13 @@ fn load_committing_candidate(
             ))
         })
         .transpose()?;
-    let file_tag_snapshot =
-        super::folder_scans::load_candidate_file_tag_snapshot(sql, candidate_key)?
-            .and_then(|stored| stored.snapshot);
     Ok(Some(CommittingCandidate {
-        actionable: stored.actionable,
+        actionable,
         source: candidate.source(),
         content_hash: candidate.files.content_hash(),
         file_edit_revision: candidate.file_edit_revision,
         prepared_revisions,
-        file_tag_snapshot,
+        file_tag_snapshot: stored.snapshot,
     }))
 }
 

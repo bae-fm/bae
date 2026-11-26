@@ -54,18 +54,10 @@ impl ImportServiceHandle {
                 crate::tables::CandidateStateRefusal::NoState(content_hash.clone())
             })?;
         crate::pane::keep_row_identities(&mut draft.tracks, &current.metadata.draft.tracks)?;
-        let _commit = self
-            .commit_lock_for_revision(
-                "clear metadata",
-                &candidate_key,
-                &content_hash,
-                current.file_edits.revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("clear metadata").await;
         self.services
             .tables
             .apply_source(
-                &candidate.watched_folder_path,
                 &crate::CandidateAsRead {
                     content_hash: content_hash.clone(),
                     file_edit_revision: candidate.file_edit_revision,
@@ -96,21 +88,17 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let _commit = self
-            .commit_lock_for_revision(
-                "keep the folder's own draft",
-                &candidate_key,
-                &content_hash,
-                current.file_edits.revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("keep the folder's own draft").await;
         self.services
             .tables
-            .keep_own_draft(&crate::CandidateAsRead {
-                content_hash: content_hash.clone(),
-                file_edit_revision: candidate.file_edit_revision,
-                metadata_revision: current.metadata_revision,
-            })
+            .keep_own_draft(
+                &candidate_key,
+                &crate::CandidateAsRead {
+                    content_hash: content_hash.clone(),
+                    file_edit_revision: candidate.file_edit_revision,
+                    metadata_revision: current.metadata_revision,
+                },
+            )
             .await
     }
 
@@ -134,21 +122,17 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let _commit = self
-            .commit_lock_for_revision(
-                "unlink the release",
-                &candidate_key,
-                &content_hash,
-                current.file_edits.revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("unlink the release").await;
         self.services
             .tables
-            .unlink(&crate::CandidateAsRead {
-                content_hash,
-                file_edit_revision: candidate.file_edit_revision,
-                metadata_revision: current.metadata_revision,
-            })
+            .unlink(
+                &candidate_key,
+                &crate::CandidateAsRead {
+                    content_hash,
+                    file_edit_revision: candidate.file_edit_revision,
+                    metadata_revision: current.metadata_revision,
+                },
+            )
             .await
     }
 

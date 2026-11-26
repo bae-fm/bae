@@ -225,23 +225,16 @@ impl ImportServiceHandle {
                 read.snapshot,
                 Some(&current.metadata.draft.tracks),
             )?;
-            let commit = self
-                .commit_lock_for_revision(
-                    "pick file tags",
-                    &candidate_key,
-                    &content_hash,
-                    current.file_edits.revision,
-                )
-                .await?;
+            let commit = self.services.folder_state_commit.lock("pick file tags").await;
             // A scan that stored the candidate while its tags were read gave it
             // a newer generation, and the write only accepts tags read at the
             // current one: read again.
             let stored_generation = self
                 .services
                 .tables
-                .load_candidate_file_tag_snapshot(&candidate_key)
+                .load_candidate_entry(&candidate_key)
                 .await?
-                .map(|stored| stored.scan_generation);
+                .map(|entry| entry.generation);
             if stored_generation != Some(seed.snapshot.scan_generation) {
                 drop(commit);
                 continue;
@@ -250,7 +243,6 @@ impl ImportServiceHandle {
                 .services
                 .tables
                 .apply_file_metadata(
-                    &read.candidate.watched_folder_path,
                     &candidate_key,
                     &crate::CandidateAsRead {
                         content_hash: content_hash.clone(),
@@ -352,18 +344,10 @@ impl ImportServiceHandle {
             )
             .await?;
         let settled_by_choice = bae_identify::TerminalVerdict::of_pick(picked, folder_tracks);
-        let _commit = self
-            .commit_lock_for_revision(
-                "pick a release",
-                &candidate_key,
-                &content_hash,
-                current.file_edits.revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("pick a release").await;
         self.services
             .tables
             .apply_pick(
-                &candidate.watched_folder_path,
                 &crate::CandidateAsRead {
                     content_hash: content_hash.clone(),
                     file_edit_revision: candidate.file_edit_revision,

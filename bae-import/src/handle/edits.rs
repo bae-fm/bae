@@ -7,10 +7,9 @@
 
 use super::*;
 
-/// The candidate a pane edit of its draft is composed against: where the scan
-/// lists it, and the revisions it stood at when read.
+/// The candidate a pane edit of its draft is composed against: its key, and
+/// the revisions it stood at when read.
 struct DraftEditBase {
-    watched_folder_path: std::path::PathBuf,
     candidate_path: crate::CandidateKey,
     candidate: crate::CandidateAsRead,
 }
@@ -56,18 +55,10 @@ impl ImportServiceHandle {
                 crate::cover_art::PreparedCover::Embedded(source_file_id)
             }
         };
-        let _commit = self
-            .commit_lock_for_revision(
-                "set the cover",
-                candidate_key,
-                &hash,
-                candidate.file_edit_revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("set the cover").await;
         self.services
             .tables
             .set_prepared_cover(
-                &candidate.watched_folder_path,
                 &candidate.key(),
                 &crate::CandidateAsRead {
                     content_hash: hash,
@@ -90,17 +81,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            let candidate = this.require_release_candidate(&candidate_key).await?;
-            let hash = candidate.files.content_hash();
-            let _commit = this
-                .commit_lock_for_revision(
-                    "pick the album",
-                    &candidate_key,
-                    &hash,
-                    candidate.file_edit_revision,
-                )
-                .await?;
-            Ok(this.services.tables.set_candidate_album_pick(&hash, pick).await?)
+            this.services.tables.set_candidate_album_pick(&candidate_key, pick).await
         })
         .await
     }
@@ -126,23 +107,10 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let candidate = self.require_release_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        let _commit = self
-            .commit_lock_for_revision(
-                "edit a field",
-                candidate_key,
-                &hash,
-                candidate.file_edit_revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("edit a field").await;
         self.services
             .tables
-            .set_field_prepared(
-                &candidate.watched_folder_path,
-                &candidate.key(),
-                &hash,
-                candidate.file_edit_revision,
-                edit,
-            )
+            .set_field_prepared(&candidate.key(), &hash, candidate.file_edit_revision, edit)
             .await?;
         Ok(())
     }
@@ -170,22 +138,10 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let assignments = crate::Credited::normalized_list(assignments);
         let base = self.draft_edit_base(candidate_key).await?;
-        let _commit = self
-            .commit_lock_for_revision(
-                "set album artists",
-                candidate_key,
-                &base.candidate.content_hash,
-                base.candidate.file_edit_revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("set album artists").await;
         self.services
             .tables
-            .set_album_artists_prepared(
-                &base.watched_folder_path,
-                &base.candidate_path,
-                &base.candidate,
-                &assignments,
-            )
+            .set_album_artists_prepared(&base.candidate_path, &base.candidate, &assignments)
             .await?;
         Ok(())
     }
@@ -211,22 +167,10 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         track.artist_assignments.normalize();
         let base = self.draft_edit_base(candidate_key).await?;
-        let _commit = self
-            .commit_lock_for_revision(
-                "edit a track",
-                candidate_key,
-                &base.candidate.content_hash,
-                base.candidate.file_edit_revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("edit a track").await;
         self.services
             .tables
-            .set_track_edit_prepared(
-                &base.watched_folder_path,
-                &base.candidate_path,
-                &base.candidate,
-                &track,
-            )
+            .set_track_edit_prepared(&base.candidate_path, &base.candidate, &track)
             .await?;
         Ok(())
     }
@@ -254,18 +198,10 @@ impl ImportServiceHandle {
         assignments: crate::TrackArtistAssignments,
     ) -> Result<(), crate::ImportError> {
         let base = self.draft_edit_base(candidate_key).await?;
-        let _commit = self
-            .commit_lock_for_revision(
-                "set track artists",
-                candidate_key,
-                &base.candidate.content_hash,
-                base.candidate.file_edit_revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("set track artists").await;
         self.services
             .tables
             .set_track_artists_prepared(
-                &base.watched_folder_path,
                 &base.candidate_path,
                 &base.candidate,
                 &track_ids,
@@ -291,7 +227,6 @@ impl ImportServiceHandle {
         }
         Ok(DraftEditBase {
             candidate_path: candidate.key(),
-            watched_folder_path: candidate.watched_folder_path,
             candidate: crate::CandidateAsRead {
                 content_hash: hash,
                 file_edit_revision: preparation.file_edits.revision,

@@ -23,8 +23,13 @@ use crate::CandidateKey;
 pub(super) use folder_readings::{store_folder_reading, validate_decision_key_ownership};
 use std::path::{Path, PathBuf};
 
+pub(super) mod entry;
 pub(super) mod folder_readings;
 pub(crate) mod fragments;
+pub(crate) use entry::{
+    load_candidate_entry_on, require_editable_files_on, require_workable_on, CandidateEntry,
+    ScannedEntry,
+};
 pub use folder_readings::FolderReadingRefusal;
 
 /// Why reading a release of folders picked together apart again was
@@ -35,16 +40,6 @@ pub enum SeparationRefusal {
     /// already.
     #[error("{0} is not a release read from folders picked together")]
     NotPicked(CandidateKey),
-}
-
-/// A stored release, whether it may be worked on, and why not when it is a
-/// grouping's release that is blocked.
-pub(super) struct StoredReleaseCandidate {
-    pub candidate: FolderCandidate,
-    pub generation: u64,
-    /// Valid, not taken into a grouping, and not blocked.
-    pub actionable: bool,
-    pub error: Option<GroupingBlock>,
 }
 
 /// What rebuilding groupings changed.
@@ -71,73 +66,6 @@ pub(crate) enum GroupingFacts {
     Anchored { folder: FolderReleaseDecisionKey, decision: FolderReleaseDecision },
     /// Releases the person read as one, by key, in play order.
     Picked { members: Vec<CandidateKey> },
-}
-
-pub(super) fn load_candidate_on(
-    sql: &impl coven::SqlRead,
-    key: &CandidateKey,
-) -> Result<Option<StoredReleaseCandidate>, DbError> {
-    let Some((root, stored)) = folder_scans::load_item_by_key(sql, key, RowSources::Any)? else {
-        return Ok(None);
-    };
-    let key = stored.key.clone();
-    #[expect(
-        clippy::read_keyed_statement,
-        reason = "kept finding: reads whether a grouping took the candidate in, keyed by the candidate key the first statement returned"
-    )]
-    let taken_in = sql.query_row(
-        "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?)",
-        [&key],
-        |row| row.get::<_, bool>(0),
-    )?;
-    let grouping = match &stored.item {
-        ScanItem::Valid(candidate) | ScanItem::Discovered(candidate) => candidate.grouping.clone(),
-        ScanItem::Invalid(_) => None,
-    };
-    #[expect(
-        clippy::read_keyed_statement,
-        reason = "kept finding: reads the grouping's block keyed by the grouping the first statement returned"
-    )]
-    let error = match &grouping {
-        Some(grouping) => load_block_on(sql, grouping)?,
-        None => None,
-    };
-    stored_release_candidate(&root, stored, taken_in, error)
-}
-
-/// The release the stored entry `stored`, under `root`, holds, with whether
-/// a grouping took it in and what blocks the grouping; `None` for a folder
-/// that failed validation.
-pub(super) fn stored_release_candidate(
-    root: &Path,
-    stored: folder_scans::StoredScanItem,
-    taken_in: bool,
-    error: Option<GroupingBlock>,
-) -> Result<Option<StoredReleaseCandidate>, DbError> {
-    let generation = stored.generation;
-    let Some((candidate, settled)) = release_of_stored(root, stored)? else {
-        return Ok(None);
-    };
-    Ok(Some(StoredReleaseCandidate {
-        actionable: settled && !taken_in && error.is_none(),
-        candidate,
-        generation,
-        error,
-    }))
-}
-
-/// The release the stored entry `stored`, under `root`, holds, and whether
-/// the scan settled on it; `None` for a folder that failed validation.
-pub(super) fn release_of_stored(
-    root: &Path,
-    stored: folder_scans::StoredScanItem,
-) -> Result<Option<(FolderCandidate, bool)>, DbError> {
-    folder_scans::stored_entry_belongs(root, &stored.key, &stored.item)?;
-    Ok(match stored.item {
-        ScanItem::Valid(candidate) => Some((candidate, true)),
-        ScanItem::Discovered(candidate) => Some((candidate, false)),
-        ScanItem::Invalid(_) => None,
-    })
 }
 
 /// Forget every grouping anchored at or taking a release from a folder at or
@@ -171,30 +99,6 @@ pub(super) fn forget_at_or_below(
         }
     }
     Ok(removed)
-}
-
-/// Whether the person set the release stored at `key` aside. A release that
-/// a grouping reads as one carries the skip on its grouping's row, which the
-/// scan row's `grouping_key` names; any other release carries it as a row of
-/// its own key in the skip table. Fails when no scan row stores `key`, or when
-/// the grouping row its scan row names is missing.
-pub(super) fn skipped_on(sql: &impl coven::SqlRead, key: &CandidateKey) -> Result<bool, DbError> {
-    let (grouping, skipped): (Option<CandidateKey>, Option<bool>) = sql
-        .query_row(
-            "SELECT scan.grouping_key, \
-                    CASE WHEN scan.grouping_key IS NOT NULL THEN grouping.skipped \
-                         ELSE EXISTS (SELECT 1 FROM skipped_import_candidates \
-                                      WHERE candidate_path = scan.path) END \
-             FROM scan_candidate AS scan \
-             LEFT JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key \
-             WHERE scan.path = ? LIMIT 1",
-            [key],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .optional()?
-        .ok_or_else(|| DbError::unreadable(format!("the scan_candidate row of {key}"), 0))?;
-    skipped
-        .ok_or_else(|| DbError::unreadable(format!("the release_grouping row of {key}"), grouping))
 }
 
 /// Rebuild the release of every grouping with no anchor that takes in one of
@@ -559,6 +463,65 @@ fn anchored_at(
     })
 }
 
+/// Refuse to take `member`, as the caller read it, into a new grouping,
+/// read inside the write that takes it: the scan must still store it as read,
+/// no grouping may hold it, it may not be in the library, and nothing may be
+/// importing or identifying it.
+fn require_combinable_on(
+    sql: &CovenWrite<'_>,
+    member: &FolderCandidate,
+) -> Result<(), crate::ImportError> {
+    let key = member.key();
+    let entry = load_candidate_entry_on(sql, &key)?
+        .filter(|entry| entry.settled && entry.candidate == *member)
+        .ok_or_else(|| CombineRefusal::MemberChanged(member.name.clone()))?;
+    if !entry.listed() || entry.imported.is_some() {
+        return Err(CombineRefusal::MemberTaken(member.name.clone()).into());
+    }
+    require_combination_idle(&key, &entry.runtime)
+}
+
+/// Refuse to combine or separate the release at `key` while an import owns it
+/// or it is waiting for or running an identification, as `runtime` says.
+pub(crate) fn require_combination_idle(
+    key: &CandidateKey,
+    runtime: &crate::TriageRuntimeFacts,
+) -> Result<(), crate::ImportError> {
+    if runtime.importing() {
+        return Err(crate::ImportError::CandidateImportInProgress);
+    }
+    if matches!(
+        runtime.identification,
+        Some(crate::IdentificationStatus::Queued | crate::IdentificationStatus::Running)
+    ) {
+        return Err(crate::ImportError::Internal {
+            detail: format!("identification is still running for {key}"),
+        });
+    }
+    Ok(())
+}
+
+/// Set the release a grouping reads as one aside, or back; `false` when it
+/// already was, or no grouping has `key`.
+fn set_grouping_skipped_on(
+    sql: &CovenWrite<'_>,
+    key: &CandidateKey,
+    skipped: bool,
+) -> Result<bool, DbError> {
+    let changed = sql.execute(
+        "UPDATE release_grouping SET skipped = ? WHERE key = ? AND skipped != ?",
+        params![skipped, key, skipped],
+    )? == 1;
+    if changed && skipped {
+        super::import_state::change_identification_on(
+            sql,
+            key,
+            &crate::candidate_runtime::IdentificationChange::Ended,
+        )?;
+    }
+    Ok(changed)
+}
+
 /// Why grouping `key`'s release cannot be worked on, when something says so.
 pub(super) fn load_block_on(
     sql: &impl coven::SqlRead,
@@ -613,39 +576,46 @@ pub(super) fn block_of(
 }
 
 impl ImportTables {
+    /// Set the release at `key` aside, or back; `false` when it already was.
+    /// A release a grouping reads as one carries the skip on its grouping's
+    /// row, any other in the skip table. Set aside, the release is not
+    /// identification's to answer: its identification ends with the skip.
+    /// Refused unless the release may be worked on, read inside the write.
+    pub(crate) async fn set_candidate_skipped(
+        &self,
+        key: &CandidateKey,
+        skipped: bool,
+    ) -> Result<bool, crate::ImportError> {
+        let key = key.clone();
+        self.store
+            .write(move |sql| {
+                let sql = &sql;
+                let entry = require_workable_on(sql, &key)?;
+                if entry.skipped == skipped {
+                    return Ok::<_, crate::ImportError>(false);
+                }
+                Ok(match &entry.candidate.grouping {
+                    Some(_) => set_grouping_skipped_on(sql, &key, skipped)?,
+                    None => super::skipped_candidates::set_folder_skipped_on(
+                        sql,
+                        &entry.candidate.path,
+                        skipped,
+                    )?,
+                })
+            })
+            .await
+    }
+
+    /// [`set_grouping_skipped_on`] in a transaction of its own, whatever the
+    /// grouping's release stands at.
+    #[cfg(test)]
     pub(crate) async fn set_grouping_skipped(
         &self,
         key: &CandidateKey,
         skipped: bool,
     ) -> Result<bool, DbError> {
         let key = key.clone();
-        self.store
-            .call(move |sql| {
-                let changed = sql.execute(
-                    "UPDATE release_grouping SET skipped = ? WHERE key = ? AND skipped != ?",
-                    params![skipped, key, skipped],
-                )? == 1;
-                // Set aside, the release is not identification's to answer: its
-                // identification ends with the skip.
-                if changed && skipped {
-                    super::import_state::change_identification_on(
-                        sql,
-                        &key,
-                        &crate::candidate_runtime::IdentificationChange::Ended,
-                    )?;
-                }
-                Ok(changed)
-            })
-            .await
-    }
-
-    /// Whether the person set this release aside.
-    pub(crate) async fn is_release_candidate_skipped(
-        &self,
-        candidate: &FolderCandidate,
-    ) -> Result<bool, DbError> {
-        let key = candidate.key();
-        self.store.read(move |sql| skipped_on(&sql, &key)).await
+        self.store.call(move |sql| set_grouping_skipped_on(sql, &key, skipped)).await
     }
 
     /// The release stored at `key`, whatever its standing: a candidate being
@@ -654,10 +624,7 @@ impl ImportTables {
         &self,
         key: &CandidateKey,
     ) -> Result<Option<FolderCandidate>, DbError> {
-        let key = key.clone();
-        self.store
-            .read(move |sql| Ok(load_candidate_on(&sql, &key)?.map(|stored| stored.candidate)))
-            .await
+        Ok(self.load_candidate_entry(key).await?.map(|entry| entry.candidate))
     }
 
     /// The release stored at `key`, when it may be worked on — or why a
@@ -666,18 +633,10 @@ impl ImportTables {
         &self,
         key: &CandidateKey,
     ) -> Result<Result<Option<FolderCandidate>, GroupingBlock>, DbError> {
-        let key = key.clone();
-        self.store
-            .read(move |sql| {
-                let Some(stored) = load_candidate_on(&sql, &key)? else {
-                    return Ok(Ok(None));
-                };
-                if let Some(block) = stored.error {
-                    return Ok(Err(block));
-                }
-                Ok(Ok(stored.actionable.then_some(stored.candidate)))
-            })
-            .await
+        Ok(match self.load_candidate_entry(key).await?.map(CandidateEntry::workable) {
+            None => Ok(None),
+            Some(workable) => workable.map(|entry| entry.map(|entry| entry.candidate)),
+        })
     }
 
     /// How the grouping `key` reads, or `None` when no grouping has that key.
@@ -779,22 +738,7 @@ impl ImportTables {
                     super::import_state::restart_state_on(sql, &content_hash, &key, &inherited)?;
                 }
                 for member in &members {
-                    let member_key = member.key();
-                    if folder_scans::load_item_by_key(sql, &member_key, RowSources::Any)?
-                        .map(|(_, stored)| stored.item)
-                        != Some(ScanItem::Valid(member.clone()))
-                    {
-                        return Err(CombineRefusal::MemberChanged(member.name.clone()).into());
-                    }
-                    let unavailable = sql.query_row(
-                    "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?1) \
-                     OR EXISTS(SELECT 1 FROM local_release_origin WHERE content_hash = ?2)",
-                    params![member_key, member.files.content_hash()],
-                    |row| row.get::<_, bool>(0),
-                )?;
-                    if unavailable {
-                        return Err(CombineRefusal::MemberTaken(member.name.clone()).into());
-                    }
+                    require_combinable_on(sql, member)?;
                 }
                 sql.execute(
                     "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
@@ -852,6 +796,10 @@ impl ImportTables {
         self.store
             .write(move |sql| {
                 let sql = &sql;
+                require_combination_idle(
+                    &key,
+                    &crate::tables::import_state::load_standing_on(sql, &key)?.facts(),
+                )?;
                 let members: Vec<CandidateKey> = sql.query(
                     "SELECT member_key FROM release_grouping_member \
                  WHERE grouping_key = ? ORDER BY position",

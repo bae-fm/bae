@@ -88,18 +88,10 @@ impl ImportServiceHandle {
             &offered,
             bae_identify::row_facts::folder_pressing_year(&text, &records),
         );
-        let _commit = self
-            .commit_lock_for_revision(
-                "link the album",
-                &candidate_key,
-                &content_hash,
-                current.file_edits.revision,
-            )
-            .await?;
+        let _commit = self.services.folder_state_commit.lock("link the album").await;
         self.services
             .tables
             .apply_shared_album(
-                &candidate.watched_folder_path,
                 &crate::CandidateAsRead {
                     content_hash,
                     file_edit_revision: candidate.file_edit_revision,

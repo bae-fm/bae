@@ -176,7 +176,6 @@ pub(crate) async fn prepare_named_candidate(
     service: &ImportService,
     preparations: &crate::tables::ImportTables,
     content_hash: &str,
-    watched_folder_path: &std::path::Path,
     candidate_path: &crate::CandidateKey,
     album_title: &str,
 ) -> u64 {
@@ -190,7 +189,6 @@ pub(crate) async fn prepare_named_candidate(
         vec![crate::Credited::plain(crate::ArtistAssignment::named("Artist Name"))];
     preparations
         .apply_source(
-            watched_folder_path,
             &crate::CandidateAsRead {
                 content_hash: content_hash.to_string(),
                 file_edit_revision: preparation.file_edits.revision,
@@ -248,15 +246,9 @@ pub(crate) async fn store_scanned_candidate(
     .unwrap()
     .expect("the stored scan generation is current");
     tables.finish_folder_scan(folder, generation, None).await.unwrap();
-    let metadata_revision = prepare_named_candidate(
-        service,
-        &test.preparations,
-        &content_hash,
-        folder,
-        &candidate_key,
-        name,
-    )
-    .await;
+    let metadata_revision =
+        prepare_named_candidate(service, &test.preparations, &content_hash, &candidate_key, name)
+            .await;
     let file_tag_snapshot = tables
         .load_candidate_file_tag_snapshot(&candidate_key)
         .await

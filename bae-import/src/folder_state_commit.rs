@@ -1,9 +1,25 @@
-//! The lock every write to a candidate's folder state is taken under.
+//! The lock that orders writes to candidates' folder state.
 //!
-//! A scan storing what it read, a person's pane control, an identification
-//! storing its verdict and an import claiming its candidate all take it, so
-//! how long any one of them holds it is how long every other one waits. Each
-//! holder names what it is doing; releasing the lock logs how long that
+//! A write that gates on a candidate's entry and standing reads them inside
+//! its own transaction, so the gate needs no lock. A writer takes this lock
+//! for what its transaction does not cover:
+//!
+//! - A pane control that changes a preparation or the lookup choices, an
+//!   identification storing its verdict and an import claiming its candidate
+//!   compose what they write, or what they import, from rows read before the
+//!   transaction. Under the lock, each of them reads what the one before it
+//!   wrote.
+//! - A file decision is also ordered against scans: a scan checks the stored
+//!   file decisions' revisions under the lock before it stores what it read.
+//! - Scans, adding and removing watched folders, and combining releases and
+//!   separating picked ones announce what they stored, and holding the lock
+//!   keeps those announcements in the order of the writes.
+//!
+//! Picking an album, setting a release aside and storing a pane's failure
+//! compose nothing from an earlier read and don't take it.
+//!
+//! How long one holder keeps the lock is how long every other one waits.
+//! Each holder names what it is doing; releasing the lock logs how long that
 //! operation waited for it and held it, and warns when a hold was long enough
 //! for a click queued behind it to be felt.
 

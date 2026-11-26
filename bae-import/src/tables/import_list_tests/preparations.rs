@@ -262,10 +262,11 @@ impl Library {
     pub(crate) fn kept_own_draft(&self, display_path: &str) -> Write {
         let preparations = self.preparations();
         let tables = self.tables();
+        let key = self.key(display_path);
         let hash = self.hash(display_path);
         Write::step(async move {
             let read = as_read(&tables, &hash).await;
-            preparations.keep_own_draft(&read).await.unwrap();
+            preparations.keep_own_draft(&key, &read).await.unwrap();
         })
     }
 }

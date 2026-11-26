@@ -734,7 +734,7 @@ async fn another_folder_s_draft_link_failures_and_skip_leave_the_pane_s_read_unm
 
     tables
         .save_import_pane_failure(
-            &hash,
+            &other.key(),
             Some(crate::PaneFailure {
                 command: crate::PaneCommand::Import,
                 error: bae_diagnostics::UiError::import("the command failed"),

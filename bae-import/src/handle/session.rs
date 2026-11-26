@@ -25,7 +25,8 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
-        if self.services.tables.load_import_candidate(candidate_key).await?.is_none() {
+        let entry = self.services.tables.load_candidate_entry(candidate_key).await?;
+        if !entry.is_some_and(|entry| entry.listed()) {
             return Ok(());
         }
         self.store_pane_failure(candidate_key, None).await
@@ -65,8 +66,8 @@ impl ImportServiceHandle {
     }
 
     /// Store `failure` as the one the pane states for the candidate's last
-    /// command, or none. Under the commit lock, so the write cannot land on a
-    /// candidate an import is committing.
+    /// command, or none. The write refuses a candidate this device imported,
+    /// so it cannot land on one an import has committed.
     async fn store_pane_failure(
         &self,
         candidate_key: &crate::CandidateKey,
@@ -75,11 +76,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            let _commit = this.services.folder_state_commit.lock("store a pane failure").await;
-            let projection = this.drafting_candidate(&candidate_key).await?;
-            let content_hash = projection.candidate.files.content_hash();
-            this.services.tables.save_import_pane_failure(&content_hash, failure).await?;
-            Ok(())
+            this.services.tables.save_import_pane_failure(&candidate_key, failure).await
         })
         .await
     }

@@ -18,7 +18,6 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
     for error in [
         crate::tables::ImportTables::new(db.clone())
             .set_prepared_cover(
-                &host_root("/music"),
                 &pane_candidate_key(),
                 &as_read(&hash, 0),
                 &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()),
@@ -27,7 +26,6 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
             .expect_err("a cover with nothing picked"),
         crate::tables::ImportTables::new(db.clone())
             .set_field_prepared(
-                &host_root("/music"),
                 &pane_candidate_key(),
                 &hash,
                 0,
@@ -40,7 +38,6 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
             .expect_err("a field with nothing picked"),
         crate::tables::ImportTables::new(db.clone())
             .set_track_edit_prepared(
-                &host_root("/music"),
                 &pane_candidate_key(),
                 &as_read(&hash, 0),
                 &edited_row("import-track-0", "Track Title", None),
@@ -81,7 +78,6 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
 
     let error = crate::tables::ImportTables::new(db.clone())
         .set_prepared_cover(
-            &root,
             &pane_candidate_key(),
             &as_read(&hash, 0),
             &PreparedCover::Local("cover.jpg".to_string()),
@@ -114,12 +110,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         },
     };
     crate::tables::ImportTables::new(db.clone())
-        .set_prepared_cover(
-            &host_root("/music"),
-            &pane_candidate_key(),
-            &as_read(&hash, 0),
-            &current_cover,
-        )
+        .set_prepared_cover(&pane_candidate_key(), &as_read(&hash, 0), &current_cover)
         .await
         .unwrap();
 
@@ -134,12 +125,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         },
     };
     crate::tables::ImportTables::new(db.clone())
-        .set_prepared_cover(
-            &host_root("/music"),
-            &pane_candidate_key(),
-            &as_read(&hash, 0),
-            &stale_cover,
-        )
+        .set_prepared_cover(&pane_candidate_key(), &as_read(&hash, 0), &stale_cover)
         .await
         .expect_err("revision zero is stale after the first selection");
 
@@ -259,7 +245,7 @@ async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
     crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
 
-    PaneControls::new(&db, &host_root("/music"), &row.candidate_key)
+    PaneControls::new(&db, &row.candidate_key)
         .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Album")
         .await
         .unwrap();

@@ -1,7 +1,6 @@
 //! A draft's roles and works as stored values.
 
 use crate::tables::import_state::tests::*;
-use crate::tables::watched_path::host_root;
 use bae_store::test_fixtures::empty_db;
 
 /// A draft's roles and works are values it stores: they read back as they
@@ -76,7 +75,6 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
 
     crate::tables::ImportTables::new(db.clone())
         .apply_source(
-            &host_root("/music"),
             &as_read(&hash, 0),
             &pane_candidate_key(),
             &crate::CandidateMetadataDraft {

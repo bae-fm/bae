@@ -290,39 +290,6 @@ pub(super) fn entries_reading_sql(readers: Readers<'_>, below: bool) -> String {
 
 // ── Candidates ──────────────────────────────────────────────────────────────
 
-/// The scan generation the valid candidate at `candidate_path` under
-/// `watched_folder_path` is stored at, refused unless the scan still lists it
-/// with the files `content_hash` names at `expected_file_edit_revision`: what a
-/// write prepared against those files checks before it lands.
-pub(crate) fn require_current_candidate(
-    sql: &CovenWrite<'_>,
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    content_hash: &str,
-    expected_file_edit_revision: u64,
-) -> Result<u64, crate::ImportError> {
-    let current: Option<(String, i64, i64)> = sql
-        .query_row(
-            "SELECT content_hash, generation, file_edit_revision \
-             FROM scan_candidate WHERE watched_folder_path = ? AND path = ? AND kind = 'valid'",
-            params![coven::path_bytes(watched_folder_path), candidate_path],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        )
-        .optional()?;
-    let expected_file_edit_revision =
-        to_i64(expected_file_edit_revision, "candidate file revision")?;
-    // Gone, read as no release, or holding other files than the save was
-    // prepared against.
-    match current {
-        Some((hash, generation, revision))
-            if hash == content_hash && revision == expected_file_edit_revision =>
-        {
-            Ok(to_u64(generation, "scan_candidate.generation")?)
-        }
-        _ => Err(crate::tables::PreparationRefusal::Changed(candidate_path.clone()).into()),
-    }
-}
-
 #[derive(Clone, PartialEq)]
 pub(crate) struct CandidateRow {
     watched_folder_path: PathBuf,

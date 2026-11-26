@@ -61,18 +61,24 @@ impl ImportTables {
         self.store.read(move |sql| load_album_pick_on(&sql, &content_hash)).await
     }
 
-    /// Record `pick` for the candidate `content_hash`. The table's foreign key
-    /// refuses an album the library no longer holds.
+    /// Record `pick` for the candidate at `key`. Refused unless the write
+    /// reads it as a release that may be worked on and edited. The table's
+    /// foreign key refuses an album the library no longer holds.
     pub(crate) async fn set_candidate_album_pick(
         &self,
-        content_hash: &str,
+        key: &crate::CandidateKey,
         pick: crate::AlbumPick,
-    ) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
+    ) -> Result<(), crate::ImportError> {
+        let key = key.clone();
         self.store
-            .call_sql(move |sql| {
+            .write(move |sql| {
+                let entry = crate::tables::release_groupings::require_workable_on(&sql, &key)?;
+                entry.standing().editable()?;
+                let content_hash = entry.candidate.files.content_hash();
                 let album_id = match pick {
-                    crate::AlbumPick::Records => return delete_album_pick(&sql, &content_hash),
+                    crate::AlbumPick::Records => {
+                        return Ok::<_, crate::ImportError>(delete_album_pick(&sql, &content_hash)?)
+                    }
                     crate::AlbumPick::New => None,
                     crate::AlbumPick::Album { album_id } => Some(album_id),
                 };

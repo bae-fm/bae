@@ -189,7 +189,7 @@ impl ImportServiceHandle {
         let commit = self.services.folder_state_commit.lock("start an import").await;
         // Refused for every request kind: an import owns it, or this device
         // already imported its files, and one folder hash is one release here.
-        let candidate = self.editable_candidate_for_commit(candidate_key).await?;
+        let candidate = self.editable_candidate(candidate_key).await?.candidate;
         // Asked under the lock the verdict write ends its answer under, so the
         // ask is on the answer that write carries out, or the write has ended
         // it and what follows imports the stored pick. Every request kind
@@ -198,14 +198,6 @@ impl ImportServiceHandle {
         if self.runtime.ask_import_once_stored(candidate_key).await? {
             info!("{candidate_key} imports once the release its run picked is read and stored");
             return Ok(ImportStart::WhenPickStored);
-        }
-        match request {
-            ImportRequest::Candidate => {}
-            ImportRequest::Selection => {
-                if self.runtime.standing_facts(candidate_key).await?.identifying() {
-                    return Err(crate::ImportError::CandidateBeingIdentified);
-                }
-            }
         }
         let content_hash = candidate.files.content_hash();
         let preparation =
@@ -234,11 +226,9 @@ impl ImportServiceHandle {
                     detail: format!("{candidate_key} is not an actionable folder candidate"),
                 });
             };
-            let crate::tables::DbCandidateFileTagSnapshot {
-                scan_generation,
-                candidate: snapshot_candidate,
-                snapshot,
-            } = stored;
+            let crate::tables::DbCandidateFileTagSnapshot { entry, snapshot } = stored;
+            let scan_generation = entry.generation;
+            let snapshot_candidate = entry.candidate;
             if snapshot_candidate.files.content_hash() != content_hash
                 || snapshot_candidate.file_edit_revision != candidate.file_edit_revision
             {
@@ -295,11 +285,24 @@ impl ImportServiceHandle {
             user_edit: None,
         };
 
-        // Claimed under the lock the standing was read under, so no second
-        // import can claim these files in between. Once claimed, the
-        // candidate is not identification's to answer: the claim ends its
-        // run in the same write, and its work stops.
-        self.runtime.claim_for_import(candidate_key, &import_id, true).await?;
+        // The claim reads the candidate's entry and standing in its own
+        // write, so no second import can claim these files. The lock, held
+        // since before the preparation was read, keeps a pane edit from
+        // changing it before the claim. Once claimed, the candidate is not
+        // identification's to answer: the claim ends its run in the same
+        // write, and its work stops.
+        let refuse_identifying = match request {
+            ImportRequest::Candidate => false,
+            ImportRequest::Selection => true,
+        };
+        self.runtime
+            .claim_scanned_for_import(
+                candidate_key,
+                &crate::CandidateFiles::of(&candidate),
+                &import_id,
+                refuse_identifying,
+            )
+            .await?;
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
         drop(commit);
@@ -424,7 +427,6 @@ impl ImportServiceHandle {
             self.services
                 .tables
                 .apply_source(
-                    &candidate.watched_folder_path,
                     &crate::CandidateAsRead {
                         content_hash: content_hash.clone(),
                         file_edit_revision: candidate.file_edit_revision,

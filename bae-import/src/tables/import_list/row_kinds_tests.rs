@@ -143,7 +143,6 @@ async fn library_of(kind: Kind, rows: u64) -> Library {
                 };
                 tables
                     .apply_file_metadata(
-                        &lib.root,
                         &candidate.key(),
                         &as_read(&tables, &hash).await,
                         &snapshot,

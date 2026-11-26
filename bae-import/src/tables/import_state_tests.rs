@@ -534,33 +534,31 @@ pub(crate) async fn set_the_not_asked_cell(
 }
 
 /// The import pane's controls over one candidate: its writers as the handle
-/// calls them, for the candidate the scan lists at `key` under `root`, each
+/// calls them, for the candidate the scan lists at `key`, each
 /// composed against the candidate as it stands when the control is used.
 pub(crate) struct PaneControls {
     preparations: crate::tables::ImportTables,
     tables: crate::tables::ImportTables,
-    root: PathBuf,
     key: crate::CandidateKey,
 }
 
 impl PaneControls {
-    pub(crate) fn new(db: &Store, root: &Path, key: &crate::CandidateKey) -> Self {
+    pub(crate) fn new(db: &Store, key: &crate::CandidateKey) -> Self {
         Self {
             preparations: crate::tables::ImportTables::new(db.clone()),
             tables: crate::tables::ImportTables::new(db.clone()),
-            root: root.to_path_buf(),
             key: key.clone(),
         }
     }
 
     /// The controls over the scanned candidate `candidate`.
     pub(crate) fn of(db: &Store, candidate: &crate::folder_scanner::FolderCandidate) -> Self {
-        Self::new(db, &candidate.watched_folder_path, &candidate.key())
+        Self::new(db, &candidate.key())
     }
 
     /// The controls over [`stored_pane_candidate`]'s candidate.
     pub(crate) fn of_pane_candidate(db: &Store) -> Self {
-        Self::new(db, &host_root("/music"), &pane_candidate_key())
+        Self::new(db, &pane_candidate_key())
     }
 
     /// The candidate `content_hash` as the pane reads it now.
@@ -600,7 +598,7 @@ impl PaneControls {
     ) -> Result<u64, crate::ImportError> {
         let read = self.read(content_hash).await;
         self.preparations
-            .set_field_prepared(&self.root, &self.key, content_hash, read.file_edit_revision, edit)
+            .set_field_prepared(&self.key, content_hash, read.file_edit_revision, edit)
             .await
     }
 
@@ -611,7 +609,7 @@ impl PaneControls {
         cover: &crate::cover_art::PreparedCover,
     ) -> Result<u64, crate::ImportError> {
         let read = self.read(content_hash).await;
-        self.preparations.set_prepared_cover(&self.root, &self.key, &read, cover).await
+        self.preparations.set_prepared_cover(&self.key, &read, cover).await
     }
 
     /// Set the album's artists to `assignments`.
@@ -621,9 +619,7 @@ impl PaneControls {
         assignments: &[crate::Credited],
     ) -> Result<u64, crate::ImportError> {
         let read = self.read(content_hash).await;
-        self.preparations
-            .set_album_artists_prepared(&self.root, &self.key, &read, assignments)
-            .await
+        self.preparations.set_album_artists_prepared(&self.key, &read, assignments).await
     }
 
     /// Change one row of the mapping table to `row`.
@@ -633,6 +629,6 @@ impl PaneControls {
         row: &crate::RawTrackEdit,
     ) -> Result<u64, crate::ImportError> {
         let read = self.read(content_hash).await;
-        self.preparations.set_track_edit_prepared(&self.root, &self.key, &read, row).await
+        self.preparations.set_track_edit_prepared(&self.key, &read, row).await
     }
 }

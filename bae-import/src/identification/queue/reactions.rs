@@ -192,7 +192,7 @@ async fn follow(context: &Context, queue: &mut Queue, key: &crate::CandidateKey)
     let Some(held) = queue.held(key) else {
         return;
     };
-    let candidate = match answerable_candidate(context, key).await {
+    let candidate = match context.import.answerable_candidate(key).await {
         Ok(Some(candidate)) => candidate,
         Ok(None) => {
             queue.withdraw(context, key).await;

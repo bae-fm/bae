@@ -46,8 +46,7 @@ pub(crate) fn settle_candidate_files(
                 // Deleting the file rows deletes the file-tag reading with
                 // them; the files themselves did not change, so it is put
                 // back as it was, at the revision it was taken at.
-                let reading =
-                    tag_snapshot::load_file_tag_snapshot(sql, &watched_folder_path, &path)?;
+                let reading = tag_snapshot::load_file_tag_snapshot(sql, &path)?;
                 sql.execute(
                     "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
                     params![coven::path_bytes(&watched_folder_path), path],

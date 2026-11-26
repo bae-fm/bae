@@ -45,19 +45,21 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         reader: std::sync::Arc<dyn crate::file_tag_reader::FileTagReader>,
     ) -> Result<FileTagSnapshotRead, crate::ImportError> {
-        self.require_release_candidate(candidate_key).await?;
-        let Some(stored) =
-            self.services.tables.load_candidate_file_tag_snapshot(candidate_key).await?
-        else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
+        let missing = || crate::ImportError::Internal {
+            detail: format!("{candidate_key} is not a scanned candidate"),
         };
-        let crate::tables::DbCandidateFileTagSnapshot {
-            scan_generation,
-            candidate,
-            snapshot: stored_snapshot,
-        } = stored;
+        let crate::tables::DbCandidateFileTagSnapshot { entry, snapshot: stored_snapshot } = self
+            .services
+            .tables
+            .load_candidate_file_tag_snapshot(candidate_key)
+            .await?
+            .ok_or_else(missing)?;
+        let entry = entry
+            .workable()
+            .map_err(|reason| crate::ImportError::GroupingBlocked { reason })?
+            .ok_or_else(missing)?;
+        let scan_generation = entry.generation;
+        let candidate = entry.candidate;
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let file_edit_revision = candidate.file_edit_revision;
         let lease = bae_store::lease_one(&self.services.files).await;

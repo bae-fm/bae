@@ -446,7 +446,7 @@ impl ImportTables {
                     None
                 } else {
                     let Some(stored) =
-                        crate::tables::release_groupings::load_candidate_on(sql, &key)?
+                        crate::tables::release_groupings::load_candidate_entry_on(sql, &key)?
                     else {
                         return Err(CandidateStateRefusal::NotScanned(key).into());
                     };

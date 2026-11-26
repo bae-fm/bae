@@ -359,7 +359,6 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
 
     let error = crate::tables::ImportTables::new(db.clone())
         .apply_source(
-            &host_root("/music"),
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
                 file_edit_revision: stale.file_edits.revision,
@@ -410,7 +409,6 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
 
     let error = crate::tables::ImportTables::new(db.clone())
         .apply_source(
-            &root,
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
                 file_edit_revision: stale.file_edits.revision,
@@ -636,7 +634,6 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .expect("the candidate has a stored preparation");
     crate::tables::ImportTables::new(db.clone())
         .set_track_edit_prepared(
-            &host_root("/music"),
             &pane_candidate_key(),
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),

@@ -103,8 +103,8 @@ pub(super) fn replace_lookup_choices_on(
             content_hash,
         ],
     )?;
-    // Written under the folder-state lock, after a read under it found the
-    // candidate listed, and a listed candidate holds a state row.
+    // A pane's save reads the candidate listed in this transaction, and a
+    // listed candidate holds a state row.
     assert!(affected == 1, "a candidate's lookup choices have no candidate state row to hang off");
     sql.execute(
         "DELETE FROM import_candidate_excluded_barcode WHERE content_hash = ?",
@@ -154,12 +154,43 @@ pub(super) fn replace_lookup_choices_on(
 }
 
 impl ImportTables {
-    /// Record what a candidate's identification asks about, whole: the rows
-    /// under `content_hash` become exactly this value.
+    /// Record what the identification of the candidate at `key`, holding the
+    /// files hashed `content_hash`, asks about, whole. The write reads the
+    /// candidate's entry and standing itself. It refuses a candidate the
+    /// import list doesn't show with those files, and one this device
+    /// imported.
+    pub(crate) async fn save_pane_lookup_choices(
+        &self,
+        key: &crate::CandidateKey,
+        content_hash: &str,
+        choices: &LookupChoices,
+    ) -> Result<(), crate::ImportError> {
+        let key = key.clone();
+        let content_hash = content_hash.to_string();
+        let choices = choices.clone();
+        self.store
+            .write(move |sql| {
+                let sql = &sql;
+                let entry = crate::tables::release_groupings::load_candidate_entry_on(sql, &key)?
+                    .filter(|entry| {
+                        entry.listed() && entry.candidate.files.content_hash() == content_hash
+                    })
+                    .ok_or_else(|| crate::tables::PreparationRefusal::Changed(key.clone()))?;
+                if let Some(release_id) = entry.imported {
+                    return Err(crate::ImportError::FilesAlreadyImported { release_id });
+                }
+                Ok(replace_lookup_choices_on(sql, &content_hash, &choices)?)
+            })
+            .await
+    }
+
+    /// Record what a candidate's identification asks about, whole, for a
+    /// test: the rows under `content_hash` become exactly this value.
     ///
     /// One transaction, so a reader never sees the header of one decision
     /// beside another's catalog numbers.
-    pub async fn save_import_candidate_lookup_choices(
+    #[cfg(test)]
+    pub(crate) async fn save_import_candidate_lookup_choices(
         &self,
         content_hash: &str,
         choices: &LookupChoices,

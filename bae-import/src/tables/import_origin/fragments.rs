@@ -9,3 +9,10 @@ sqlive_compose::fragment!(
     JOIN @bae_records::records::fragments::ReleaseAlbum AS release
       ON release.release_id = origin.release_id
 "#);
+
+impl ImportedRelease {
+    /// The id of the release this device imported.
+    pub(crate) fn into_release_id(self) -> String {
+        self.release.into_ids().0
+    }
+}

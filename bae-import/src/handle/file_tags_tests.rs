@@ -179,7 +179,7 @@ async fn a_file_decision_makes_the_tags_read_again() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
-    let StoredCandidate { handle, candidate, key, tmp, .. } =
+    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } =
         stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
@@ -200,13 +200,11 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .await
         .unwrap()
         .snapshot;
-    let root = tmp.path().join("watched");
 
     let error = handle
         .services
         .tables
         .apply_file_metadata(
-            &root,
             &key,
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
@@ -263,7 +261,7 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
     assert_eq!(reader.read_count(), 4, "the tags were read twice");
     assert_eq!(
         stored.snapshot.map(|snapshot| snapshot.scan_generation),
-        Some(stored.scan_generation)
+        Some(stored.entry.generation)
     );
     shut_down(handle).await;
 }

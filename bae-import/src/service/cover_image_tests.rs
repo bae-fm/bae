@@ -82,15 +82,9 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         scan.rescan(&root).await.unwrap();
         let candidate = tables.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
         let hash = candidate.files.content_hash();
-        let revision = prepare_named_candidate(
-            &test.service,
-            &test.preparations,
-            &hash,
-            std::path::Path::new(&root_text),
-            &key,
-            "Cover Album",
-        )
-        .await;
+        let revision =
+            prepare_named_candidate(&test.service, &test.preparations, &hash, &key, "Cover Album")
+                .await;
         let preparation = crate::preparations::stored_preparation(&test.service.tables, &hash)
             .await
             .unwrap()
@@ -98,7 +92,6 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         let revision = test
             .preparations
             .apply_source(
-                std::path::Path::new(&root_text),
                 &crate::CandidateAsRead {
                     content_hash: hash.clone(),
                     file_edit_revision: candidate.file_edit_revision,

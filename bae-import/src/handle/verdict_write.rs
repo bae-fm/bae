@@ -1,5 +1,4 @@
-//! The write of an identification's verdict, and the check under the same
-//! lock that the candidate can still be answered.
+//! The write of an identification's verdict.
 
 use super::*;
 
@@ -17,9 +16,10 @@ pub(crate) enum VerdictWrite {
 
 impl ImportServiceHandle {
     /// Store the verdict `run` reached, unless the candidate can no longer be
-    /// answered or its files are not the ones the verdict answers. The check
-    /// and the write share the commit lock, and the write ends `run`'s pending
-    /// save itself, so a caller torn down mid-write leaves nothing pending.
+    /// answered or its files are not the ones the verdict answers, which the
+    /// write reads inside its own transaction. It runs under the commit lock
+    /// and ends `run`'s pending save itself, so a caller torn down mid-write
+    /// leaves nothing pending.
     ///
     /// A verdict that lands ends `run`'s identification of the candidate in
     /// its own transaction: no read sees the verdict beside the run, or the
@@ -85,16 +85,6 @@ impl ImportServiceHandle {
         row: &crate::tables::NewImportCandidateVerdict,
         run: crate::IdentifyRunId,
     ) -> Result<Option<bool>, crate::ImportError> {
-        let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
-            return Ok(None);
-        };
-        // A verdict on other files than the candidate has now would describe
-        // a shape it no longer has.
-        if candidate.files.content_hash() != row.content_hash
-            || candidate.file_edit_revision != row.file_edit_revision
-        {
-            return Ok(None);
-        }
         match self.services.tables.store_run_verdict(row, candidate_key, run).await? {
             // The verdict's write ended the answer, and what its run
             // published, inside it.
@@ -105,21 +95,6 @@ impl ImportServiceHandle {
             }
             None => Ok(None),
         }
-    }
-
-    /// The candidate at `key` as an identification can still answer it: a
-    /// stored, actionable candidate whose standing is answerable.
-    pub(crate) async fn answerable_candidate(
-        &self,
-        key: &crate::CandidateKey,
-    ) -> Result<Option<crate::folder_scanner::FolderCandidate>, crate::ImportError> {
-        let Some(candidate) = self.get_release_candidate(key).await? else {
-            return Ok(None);
-        };
-        if !self.candidate_standing(key, &candidate).await?.answerable() {
-            return Ok(None);
-        }
-        Ok(Some(candidate))
     }
 }
 

@@ -111,7 +111,7 @@ pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS
 pub use preparation_rows::PreparationRefusal;
 pub(crate) use preparation_rows::{
     CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    RunVerdictSaved, ScannedCandidateKey,
+    RunVerdictSaved,
 };
 pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 use rows::current_state_of;
@@ -120,10 +120,11 @@ pub(super) use rows::{load_states_on, stored_verdict_view};
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
 pub(super) use signal_rows::file_evidence_of_json;
 use signal_rows::{delete_signals, store_signals};
-pub(crate) use standing_rows::standing_of;
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) use standing_rows::ImportClaim;
 #[cfg(test)]
 pub(crate) use standing_rows::StandingColumn;
+pub(crate) use standing_rows::{load_standing_on, standing_of};
 pub(crate) use stored_verdict_read::{current_state_and_cards_of, load_current_state_and_cards_on};
 pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, VerdictPick};
 // The source releases' tests store a run's releases as a release run does.

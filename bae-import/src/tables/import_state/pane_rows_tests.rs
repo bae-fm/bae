@@ -1,7 +1,6 @@
 //! A draft's rows and the artist assignments as stored and read back.
 
 use crate::tables::import_state::tests::*;
-use crate::tables::watched_path::host_root;
 use crate::{ArtistAssignment, RawTrackEdit, TrackArtistAssignments};
 use bae_catalogs::credits::ArtistCredit;
 use bae_records::ExistingArtist;
@@ -116,7 +115,6 @@ async fn a_stated_length_past_sqlites_range_fails_the_save() {
 
     let saved = crate::tables::ImportTables::new(db.clone())
         .apply_source(
-            &host_root("/music"),
             &as_read(&hash, 0),
             &pane_candidate_key(),
             &crate::CandidateMetadataDraft {

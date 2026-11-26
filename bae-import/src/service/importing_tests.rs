@@ -266,7 +266,7 @@ async fn seed_spent_rows(
         .unwrap();
     tables
         .save_import_pane_failure(
-            content_hash,
+            candidate_key,
             Some(crate::PaneFailure {
                 command: crate::PaneCommand::Unlink,
                 error: bae_diagnostics::UiError::diagnostic(
@@ -280,7 +280,7 @@ async fn seed_spent_rows(
     let album = picked_album(test).await;
     tables
         .set_candidate_album_pick(
-            content_hash,
+            candidate_key,
             crate::AlbumPick::Album { album_id: album.id.clone() },
         )
         .await
@@ -567,7 +567,6 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
         &test.service,
         &test.preparations,
         &content_hash,
-        &folder,
         &candidate_key,
         "Box Set Again",
     )
@@ -670,15 +669,9 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     scan.rescan(&root).await.unwrap();
     let candidate = tables.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
     let hash = candidate.files.content_hash();
-    let revision = prepare_named_candidate(
-        &test.service,
-        &test.preparations,
-        &hash,
-        std::path::Path::new(&root_text),
-        &key,
-        "Album Title",
-    )
-    .await;
+    let revision =
+        prepare_named_candidate(&test.service, &test.preparations, &hash, &key, "Album Title")
+            .await;
     let reading = async || {
         tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap().snapshot.unwrap()
     };

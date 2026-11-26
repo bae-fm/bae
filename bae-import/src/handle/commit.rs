@@ -1,63 +1,48 @@
-//! The commit lock a candidate's writes take, the standing they check under
-//! it, and the task each durable write runs to completion on.
+//! The gates a command on a candidate refuses early by, and the task each
+//! durable write runs to completion on. The write itself reads the
+//! candidate's entry and standing again inside its transaction, and refuses
+//! by them; [`crate::FolderStateCommit`] says which writes also take the
+//! commit lock.
 
 use super::*;
 
 impl ImportServiceHandle {
-    /// The stored candidate whose preparation may still be changed. A caller
-    /// about to write holds `folder_state_commit` across this and the write so
-    /// an import claim cannot land between them; without the lock it only
-    /// refuses early.
-    pub(super) async fn editable_candidate_for_commit(
+    /// The release at `key` when it may be worked on and its preparation may
+    /// still be changed.
+    pub(super) async fn editable_candidate(
         &self,
         key: &crate::CandidateKey,
-    ) -> Result<crate::folder_scanner::FolderCandidate, crate::ImportError> {
-        let candidate = self.require_release_candidate(key).await?;
-        self.candidate_standing(key, &candidate).await?.editable()?;
-        Ok(candidate)
+    ) -> Result<crate::tables::CandidateEntry, crate::ImportError> {
+        let entry = self
+            .services
+            .tables
+            .load_candidate_entry(key)
+            .await?
+            .map(crate::tables::CandidateEntry::workable)
+            .transpose()
+            .map_err(|reason| crate::ImportError::GroupingBlocked { reason })?
+            .flatten()
+            .ok_or_else(|| crate::ImportError::Internal {
+                detail: format!("{key} is not a scanned candidate"),
+            })?;
+        entry.standing().editable()?;
+        Ok(entry)
     }
 
-    /// Whether the stored candidate at `key` is set aside, already in the
-    /// library, or claimed by a running import — the claim read from its
-    /// standing, which a caller about to write reads under the commit lock.
-    /// Read from the tables because the list's query lands after the commit
-    /// it reflects.
-    pub(crate) async fn candidate_standing(
+    /// The candidate at `key` as an identification can still answer it: a
+    /// stored, actionable release that is not set aside, imported or claimed
+    /// by an import.
+    pub(crate) async fn answerable_candidate(
         &self,
         key: &crate::CandidateKey,
-        candidate: &crate::folder_scanner::FolderCandidate,
-    ) -> Result<crate::CandidateStanding, crate::ImportError> {
-        Ok(crate::CandidateStanding {
-            skipped: self.services.tables.is_release_candidate_skipped(candidate).await?,
-            imported: self
-                .services
-                .tables
-                .release_imported_from(&candidate.files.content_hash())
-                .await?,
-            claimed: self.runtime.import_claimed(key).await?,
-        })
-    }
-
-    /// Take `folder_state_commit` and recheck under it that the candidate is
-    /// still at the revision the edit was prepared from. The caller holds the
-    /// guard across its write; `operation` names it in the lock's log lines.
-    pub(super) async fn commit_lock_for_revision(
-        &self,
-        operation: &'static str,
-        key: &crate::CandidateKey,
-        expected_content_hash: &str,
-        expected_file_edit_revision: u64,
-    ) -> Result<crate::FolderStateCommitGuard, crate::ImportError> {
-        let commit = self.services.folder_state_commit.lock(operation).await;
-        let candidate = self.editable_candidate_for_commit(key).await?;
-        if candidate.files.content_hash() != expected_content_hash
-            || candidate.file_edit_revision != expected_file_edit_revision
-        {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{key} changed before its edit could be stored"),
-            });
-        }
-        Ok(commit)
+    ) -> Result<Option<crate::folder_scanner::FolderCandidate>, crate::ImportError> {
+        Ok(self
+            .services
+            .tables
+            .load_candidate_entry(key)
+            .await?
+            .filter(|entry| entry.actionable() && entry.standing().answerable())
+            .map(|entry| entry.candidate))
     }
 
     /// Run a durable write to completion once it has been asked for.
@@ -88,11 +73,10 @@ impl ImportServiceHandle {
     }
 }
 
-/// Where a stored candidate stands in the queue, read once from the three
-/// places that each hold one fact about it: the skip table, the releases this
-/// device imported, and the standings table's import claims. Every gate that decides what
-/// may be done to a candidate reads this rather than composing the three
-/// on its own.
+/// Where a stored candidate stands in the queue: whether it is set aside,
+/// whether this device imported its files and whether an import claims it,
+/// read with the candidate's entry as one statement. Every gate that decides
+/// what may be done to a candidate reads this.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateStanding {
     /// The person set it aside.

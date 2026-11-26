@@ -679,7 +679,19 @@ async fn separating_a_picked_grouping_ends_its_release_s_identification() {
         .unwrap()
         .unwrap()
         .expect("the grouping's release is stored");
-    admitted(&db, &key, crate::CandidateFiles::of(&release)).await;
+    // A separation is refused while a run is queued or running, so this
+    // identification is one that failed to start.
+    tables
+        .change_candidate_identifications(vec![(
+            key.clone(),
+            crate::candidate_runtime::IdentificationChange::StartFailed {
+                files: crate::CandidateFiles::of(&release),
+                failure: crate::SaveFailure::NotWritten { error: "no run".to_string() },
+            },
+        )])
+        .await
+        .unwrap();
+    assert!(tables.load_candidate_standing(&key).await.unwrap().identification.is_some());
 
     tables.separate_picked_grouping(&key).await.unwrap();
 

@@ -15,10 +15,7 @@ fn save_expectation(
     crate::tables::CandidateSaveExpectation {
         edit_revision: preparation.file_edits.revision,
         metadata_revision: preparation.metadata_revision,
-        scanned: Some(crate::tables::ScannedCandidateKey {
-            watched_folder_path: candidate.watched_folder_path.clone(),
-            candidate_path: crate::CandidateKey::folder(&candidate.path),
-        }),
+        editing: Some(crate::CandidateKey::folder(&candidate.path)),
     }
 }
 
@@ -34,7 +31,7 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
     let mut stale =
         tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     let expected = save_expectation(&candidate, &stale);
-    crate::tables::import_state::tests::PaneControls::new(&db, &root, &key)
+    crate::tables::import_state::tests::PaneControls::new(&db, &key)
         .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Newer album")
         .await
         .unwrap();
@@ -95,7 +92,7 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
         .unwrap();
     assert!(matches!(result, crate::tables::CandidateSaved::Landed(_)));
     let stored = tables.load_candidate_file_tag_snapshot(&key).await.unwrap().unwrap();
-    assert_eq!(stored.candidate.file_edit_revision, 1);
+    assert_eq!(stored.entry.candidate.file_edit_revision, 1);
     assert_eq!(stored.snapshot, Some(reading));
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
 }

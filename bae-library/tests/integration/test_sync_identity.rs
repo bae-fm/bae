@@ -407,7 +407,6 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) -> bae_util::test
     let artist = device.records().find_artist_by_id(artist_id).await.unwrap().unwrap();
     bae_import::tables::ImportTables::new(store.clone())
         .set_album_artists_prepared(
-            &watched,
             &candidate.key(),
             &bae_import::CandidateAsRead { content_hash, file_edit_revision: 0, metadata_revision },
             &[bae_import::Credited::plain(ArtistAssignment::picked(ExistingArtist::from(artist)))],

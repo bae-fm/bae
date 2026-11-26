@@ -61,8 +61,7 @@ impl ImportServiceHandle {
             })?;
         let bound_file_id = reference.bound.as_ref().map(|file| file.file_id.as_str());
         if audio_file_id.is_some() && bound_file_id == audio_file_id.as_deref() {
-            let _commit = self.services.folder_state_commit.lock("check a sheet binding").await;
-            self.editable_candidate_for_commit(&candidate_key).await?;
+            self.editable_candidate(&candidate_key).await?;
             return Ok(());
         }
         let decision = match audio_file_id {
@@ -132,8 +131,7 @@ impl ImportServiceHandle {
         // The menu fires even when the current place is picked again; writing
         // would clear the verdict of a folder whose shape did not change.
         if selected.place == place {
-            let _commit = self.services.folder_state_commit.lock("check a sheet place").await;
-            self.editable_candidate_for_commit(&candidate_key).await?;
+            self.editable_candidate(&candidate_key).await?;
             debug!("{sheet_file_id} is already on {place:?}; nothing to write");
             return Ok(());
         }
@@ -184,7 +182,7 @@ impl ImportServiceHandle {
         // because tag reads can be slow and every pane control waits on this
         // lock.
         let content_hash = files.content_hash();
-        let current_candidate = self.editable_candidate_for_commit(candidate_key).await?;
+        let current_candidate = self.editable_candidate(candidate_key).await?.candidate;
         let current_files = &current_candidate.files;
         let expected_revision = current_candidate.file_edit_revision;
         if current_files.content_hash() != content_hash || expected_revision != offered_revision {
@@ -242,14 +240,15 @@ impl ImportServiceHandle {
                         "file decision produced no settled candidate for {candidate_key}"
                     ),
                 })?;
-            let stored = self
+            let scan_generation = self
                 .services
                 .tables
-                .load_candidate_file_tag_snapshot(candidate_key)
+                .load_candidate_entry(candidate_key)
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no scanned tag snapshot identity"),
-                })?;
+                })?
+                .generation;
             let mut replacement = current_candidate.clone();
             replacement.files = settled_files.clone();
             let reads = crate::folder_scanner::FileReads::new(
@@ -262,7 +261,7 @@ impl ImportServiceHandle {
                 .blocking("read the files' track metadata", move || {
                     crate::file_metadata_seed::FileMetadataSeed::read(
                         &replacement,
-                        stored.scan_generation,
+                        scan_generation,
                         &reads,
                         None,
                     )
@@ -279,14 +278,7 @@ impl ImportServiceHandle {
             let layout = self.services.tables.lay_out_sheet_moves(&redrawn).await?;
             let draft = redrawn.laid_out(layout)?;
 
-            let commit = self
-                .commit_lock_for_revision(
-                    "store a file decision",
-                    candidate_key,
-                    &content_hash,
-                    expected_revision,
-                )
-                .await?;
+            let commit = self.services.folder_state_commit.lock("store a file decision").await;
             // A scan may have added or dropped a folder with these files while
             // this was prepared; if so, prepare again.
             let matching_now = self

@@ -45,9 +45,7 @@ pub(super) use self::cover_choice::{
 };
 pub(super) use self::invalid::{invalid_columns_sql, load_invalid_detail, InvalidColumns};
 pub(crate) use self::read::CandidateRow;
-pub(super) use self::read::{
-    load_item_by_key, require_current_candidate, RowSources, StoredScanItem,
-};
+pub(super) use self::read::{load_item_by_key, RowSources};
 /// Named only by a test that commits a reading under a stamp it took.
 #[cfg(test)]
 pub(crate) use self::reading::FolderReadingStamp;
@@ -760,7 +758,7 @@ pub(super) fn write_entry(
     // audio it was read from.
     let carried = match file_metadata.is_some() {
         true => None,
-        false => tag_snapshot::load_file_tag_snapshot(sql, watched_folder_path, &entry_key)?
+        false => tag_snapshot::load_file_tag_snapshot(sql, &entry_key)?
             .filter(|snapshot| item_was_read_for(item, snapshot)),
     };
     let removed_keys = match source {

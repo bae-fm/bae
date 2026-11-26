@@ -459,6 +459,22 @@ mod candidate_lookup {
         );
     }
 
+    /// A command that changes a candidate refuses a key naming nothing the
+    /// same way.
+    #[tokio::test]
+    async fn a_command_on_an_unknown_key_is_not_found() {
+        let fixture = automation_over().await;
+        scan(&fixture, "Album").await;
+
+        let missing = candidate_key_name(&CandidateKey::folder(&fixture.root().join("Albmu")));
+        let error = fixture
+            .automation
+            .read_candidate_file_tags(missing)
+            .await
+            .expect_err("a key naming nothing takes no command");
+        assert_eq!(error.kind(), "not_found");
+    }
+
     /// A name that is not the hex of a key's bytes names no key at all.
     #[tokio::test]
     async fn a_name_that_is_not_hex_is_refused() {

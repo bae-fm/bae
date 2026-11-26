@@ -54,12 +54,6 @@ async fn pure_reads_use_the_read_connection() {
     queue.clear_playback_state().await.unwrap();
     tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
     assert!(tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap().is_none());
-    let album = std::path::Path::new(root).join("Album");
-    let album = album.to_str().unwrap();
-    let never_skipped = std::path::Path::new(root).join("Never Skipped");
-    tables.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap();
-    assert!(!tables.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap());
-    tables.set_import_candidate_skipped(&never_skipped, false).await.unwrap();
     let generation = tables
         .begin_folder_scan(std::path::Path::new(root), bae_import::VolumeKind::Local)
         .await

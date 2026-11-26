@@ -309,18 +309,31 @@ pub(super) fn delete_pane_failure(sql: &CovenWrite<'_>, content_hash: &str) -> R
 }
 
 impl ImportTables {
-    /// Store `failure` as the failure the pane states for `content_hash`'s
-    /// last command, or none.
-    pub async fn save_import_pane_failure(
+    /// Store `failure` as the failure the pane states for the last command
+    /// of the candidate at `key`, or none. The write reads the candidate's
+    /// entry and standing itself. It refuses a candidate the import list
+    /// doesn't show, and one whose files this device imported, which keeps
+    /// no pane.
+    pub(crate) async fn save_import_pane_failure(
         &self,
-        content_hash: &str,
+        key: &crate::CandidateKey,
         failure: Option<PaneFailure>,
-    ) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
+    ) -> Result<(), crate::ImportError> {
+        let key = key.clone();
         self.store
-            .call(move |sql| {
+            .write(move |sql| {
+                let sql = &sql;
+                let entry = crate::tables::release_groupings::load_candidate_entry_on(sql, &key)?
+                    .filter(|entry| entry.listed())
+                    .ok_or_else(|| crate::ImportError::Internal {
+                        detail: format!("{key} is not a scanned folder candidate"),
+                    })?;
+                if let Some(release_id) = entry.imported {
+                    return Err(crate::ImportError::FilesAlreadyImported { release_id });
+                }
+                let content_hash = entry.candidate.files.content_hash();
                 let Some(PaneFailure { command, error }) = failure else {
-                    return delete_pane_failure(sql, &content_hash);
+                    return Ok(delete_pane_failure(sql, &content_hash)?);
                 };
                 let UiError::Diagnostic { category, detail } = error;
                 let affected = sql.execute(
@@ -339,9 +352,8 @@ impl ImportTables {
                         detail
                     ],
                 )?;
-                // Written under the folder-state lock, after a read under it
-                // found the candidate listed, and a listed candidate holds a
-                // state row.
+                // The write read the candidate as listed, and a listed
+                // candidate holds a state row.
                 assert!(affected == 1, "the pane's failure has no candidate state row to hang off");
                 Ok(())
             })

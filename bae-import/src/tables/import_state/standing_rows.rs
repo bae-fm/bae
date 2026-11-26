@@ -510,7 +510,8 @@ pub(crate) fn move_import_on(
     Ok(true)
 }
 
-/// What claiming a candidate for an import did.
+/// What a test's claim of a candidate for an import did.
+#[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum ImportClaim {
     /// The import owns the candidate, and the identification change the
@@ -536,7 +537,8 @@ impl ImportTables {
             .await
     }
 
-    /// Where `candidate_key` stands.
+    /// Where `candidate_key` stands, for a test.
+    #[cfg(test)]
     pub(crate) async fn load_candidate_standing(
         &self,
         candidate_key: &CandidateKey,
@@ -578,8 +580,10 @@ impl ImportTables {
             .await
     }
 
-    /// Claim `candidate_key` for `import_id`, and, when the claim lands, make
-    /// `identification` to the candidate's identification in the same write.
+    /// Claim `candidate_key` for `import_id` whatever the scan holds at it,
+    /// for a test, and, when the claim lands, make `identification` to the
+    /// candidate's identification in the same write.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn claim_candidate_import(
         &self,
         candidate_key: &CandidateKey,
@@ -597,6 +601,46 @@ impl ImportTables {
                     .map(|change| change_identification_on(sql, &candidate_key, &change))
                     .transpose()?;
                 Ok(ImportClaim::Claimed { identification })
+            })
+            .await
+    }
+
+    /// Claim the scanned candidate at `candidate_key`, prepared from the
+    /// files `files` names, for `import_id`, ending its identification in
+    /// the same write. The write reads the candidate's entry and standing
+    /// itself, and is refused unless the scan lists it with those files and
+    /// it may still be edited — and, with `refuse_identifying`, while it is
+    /// being identified.
+    pub(crate) async fn claim_scanned_candidate_import(
+        &self,
+        candidate_key: &CandidateKey,
+        files: &crate::CandidateFiles,
+        import_id: &str,
+        refuse_identifying: bool,
+    ) -> Result<(), crate::ImportError> {
+        let candidate_key = candidate_key.clone();
+        let files = files.clone();
+        let import_id = import_id.to_string();
+        self.store
+            .write(move |sql| {
+                let sql = &sql;
+                let entry = crate::tables::release_groupings::require_editable_files_on(
+                    sql,
+                    &candidate_key,
+                    &files.content_hash,
+                    files.file_edit_revision,
+                )?;
+                if refuse_identifying && entry.runtime.identifying() {
+                    return Err(crate::ImportError::CandidateBeingIdentified);
+                }
+                // The standing the gate just read, in this write, holds no
+                // import.
+                assert!(
+                    claim_import_on(sql, &candidate_key, &import_id)?,
+                    "the unclaimed candidate {candidate_key} refused a claim"
+                );
+                change_identification_on(sql, &candidate_key, &IdentificationChange::Ended)?;
+                Ok(())
             })
             .await
     }

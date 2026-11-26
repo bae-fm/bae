@@ -4,10 +4,7 @@
 
 use crate::preparations::{CandidateAsRead, CandidatePreparation};
 use crate::tables::CandidateStateRefusal;
-use crate::tables::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportTables,
-    ScannedCandidateKey,
-};
+use crate::tables::{CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportTables};
 use crate::{CandidateDraft, TrackArtistAssignments};
 
 impl ImportTables {
@@ -15,13 +12,12 @@ impl ImportTables {
     /// fetched for a remote one.
     pub async fn set_prepared_cover(
         &self,
-        watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         read: &CandidateAsRead,
         cover: &crate::cover_art::PreparedCover,
     ) -> Result<u64, crate::ImportError> {
         let cover = cover.clone();
-        self.edit_read_candidate(watched_folder_path, candidate_path, read, move |prep| {
+        self.edit_read_candidate(candidate_path, read, move |prep| {
             prep.metadata.cover = Some(cover);
             Ok(())
         })
@@ -35,14 +31,13 @@ impl ImportTables {
     /// [`CandidateAsRead`] — its caller never reads a metadata revision.
     pub async fn set_field_prepared(
         &self,
-        watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         content_hash: &str,
         expected_file_edit_revision: u64,
         edit: crate::DraftFieldEdit,
     ) -> Result<u64, crate::ImportError> {
         self.edit_candidate(
-            scanned_key(watched_folder_path, candidate_path),
+            candidate_path,
             content_hash,
             expected_file_edit_revision,
             None,
@@ -59,7 +54,6 @@ impl ImportTables {
     /// candidate edit resets the override to its metadata draft.
     pub async fn set_album_artists_prepared(
         &self,
-        watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         read: &CandidateAsRead,
         assignments: &[crate::Credited],
@@ -68,7 +62,7 @@ impl ImportTables {
             return Err(crate::EditValidationError::NoAlbumArtist.into());
         }
         let assignments = assignments.to_vec();
-        self.edit_read_candidate(watched_folder_path, candidate_path, read, move |prep| {
+        self.edit_read_candidate(candidate_path, read, move |prep| {
             prep.metadata.draft.album_artist_assignments = assignments;
             Ok(())
         })
@@ -78,12 +72,11 @@ impl ImportTables {
     /// Record one mapping-table row the user changed.
     pub async fn set_track_edit_prepared(
         &self,
-        watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         read: &CandidateAsRead,
         row: &crate::RawTrackEdit,
     ) -> Result<u64, crate::ImportError> {
-        self.edit_read_candidate(watched_folder_path, candidate_path, read, |prep| {
+        self.edit_read_candidate(candidate_path, read, |prep| {
             apply_track_edit(&mut prep.metadata.draft, row)
         })
         .await
@@ -91,7 +84,6 @@ impl ImportTables {
 
     pub async fn set_track_artists_prepared(
         &self,
-        watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         read: &CandidateAsRead,
         track_ids: &[String],
@@ -100,24 +92,23 @@ impl ImportTables {
         if track_ids.is_empty() {
             return Err(TrackEditRefusal::NoTrackNamed.into());
         }
-        self.edit_read_candidate(watched_folder_path, candidate_path, read, |prep| {
+        self.edit_read_candidate(candidate_path, read, |prep| {
             fill_track_artists(&mut prep.metadata.draft, track_ids, assignments)
         })
         .await
     }
 
     /// A pane edit composed against the candidate as `read`: refused when
-    /// the scan no longer lists it at that file revision, or either revision
-    /// moved.
+    /// the scan no longer lists it at that file revision, it may no longer be
+    /// edited, or either revision moved.
     async fn edit_read_candidate(
         &self,
-        watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         read: &CandidateAsRead,
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), crate::ImportError>,
     ) -> Result<u64, crate::ImportError> {
         self.edit_candidate(
-            scanned_key(watched_folder_path, candidate_path),
+            candidate_path,
             &read.content_hash,
             read.file_edit_revision,
             Some(read.metadata_revision),
@@ -129,15 +120,16 @@ impl ImportTables {
     /// Load one candidate, change its metadata, and save it whole under the
     /// next metadata revision, as the person's draft.
     ///
-    /// `scanned` names where the scan must still list the candidate at the
-    /// expected file revision; the revision expectations are checked against
+    /// `key` names the candidate edited, which the save refuses unless the
+    /// scan still lists it at the expected file revision and it may still be
+    /// edited; the revision expectations are checked against
     /// the loaded value, and the save re-checks them in its transaction. A
     /// metadata expectation left `None` is the loaded value itself: a typed
     /// field is independent of the draft it is typed over, so it pins the
     /// file shape alone.
     async fn edit_candidate(
         &self,
-        scanned: ScannedCandidateKey,
+        key: &crate::CandidateKey,
         content_hash: &str,
         expected_file_edit_revision: u64,
         expected_metadata_revision: Option<u64>,
@@ -158,7 +150,7 @@ impl ImportTables {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: Some(scanned),
+            editing: Some(key.clone()),
         };
         change(&mut prep)?;
         // An edit is the person working on the draft, whoever wrote it before:
@@ -194,16 +186,6 @@ pub enum TrackEditRefusal {
     /// The edit would change the audio under a row, which is the folder's.
     #[error("the edit of row {0} changes its audio")]
     AudioChanged(String),
-}
-
-fn scanned_key(
-    watched_folder_path: &std::path::Path,
-    candidate_path: &crate::CandidateKey,
-) -> ScannedCandidateKey {
-    ScannedCandidateKey {
-        watched_folder_path: watched_folder_path.to_path_buf(),
-        candidate_path: candidate_path.clone(),
-    }
 }
 
 /// Replace one row's title and artists. Its audio is the folder's, so a row

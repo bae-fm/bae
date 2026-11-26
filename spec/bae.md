@@ -1332,6 +1332,12 @@ typed search, and the candidate's preparation and the start of an identify run
 read its state from them.
 The candidate's preparation and the start of an identify run read its draft from
 the same draft fragment, given the candidate's content hash.
+Before a pane control, the import worker, identification or automation acts on
+a scanned candidate, bae reads the candidate's entry (what the scan stored and,
+for a grouping, whether it can be worked on) and where it stands (set aside,
+imported, claimed by an import) with one composed statement, and a read of the
+folder's file tags takes the entry in the same statement. A write that the
+entry or standing can refuse reads them inside its own transaction.
 A scan that stores other folders writes none of the rows the pane reads, so
 coven reruns none of the pane's statements for it.
 The parts are the folder's files, with the track count and the audio summary

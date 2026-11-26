@@ -162,14 +162,16 @@ impl Automation {
         {
             return Ok(automation_candidate_from_invalid(&row));
         }
-        Err(AutomationError::not_found(format!("candidate '{candidate_key}' not found")))
+        Err(unknown_candidate(&candidate_key))
     }
 
     /// The key `candidate_key` names, refused unless the import tables hold
     /// a candidate under it, so a typo is refused here rather than stored.
     async fn known_key(&self, candidate_key: String) -> Result<CandidateKey, AutomationError> {
         let key = candidate_key_named(&candidate_key)?;
-        self.get_candidate(candidate_key).await?;
+        if !self.services.import_holds_candidate(&key).await.map_err(AutomationError::from)? {
+            return Err(unknown_candidate(&candidate_key));
+        }
         Ok(key)
     }
 
@@ -614,6 +616,10 @@ impl Automation {
             }
         }
     }
+}
+
+fn unknown_candidate(candidate_key: &str) -> AutomationError {
+    AutomationError::not_found(format!("candidate '{candidate_key}' not found"))
 }
 
 #[cfg(test)]

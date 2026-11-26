@@ -9,7 +9,7 @@ pub(super) async fn request(
     queue: &mut Queue,
     candidate_key: crate::CandidateKey,
 ) {
-    let candidate = match answerable_candidate(context, &candidate_key).await {
+    let candidate = match context.import.answerable_candidate(&candidate_key).await {
         Ok(Some(candidate)) => candidate,
         Ok(None) => {
             warn!(

@@ -11,40 +11,19 @@ use super::*;
 use crate::folder_scanner::CategorizedFiles;
 use crate::folder_scanner::FolderCandidate;
 use crate::preparations::CandidatePreparation;
+use crate::tables::release_groupings::{load_candidate_entry_on, require_editable_files_on};
 
-/// The revisions a save was prepared against, and — for a write that must
-/// not land on a folder the scan has since re-read — where the scan lists it.
+/// The revisions a save was prepared against, and — for a person's write —
+/// the candidate it edits.
 #[derive(Debug, Clone)]
 pub(crate) struct CandidateSaveExpectation {
     pub edit_revision: u64,
     pub metadata_revision: u64,
-    pub scanned: Option<ScannedCandidateKey>,
-}
-
-/// Where the scan tables list a candidate: the root it is under and its key.
-#[derive(Debug, Clone)]
-pub(crate) struct ScannedCandidateKey {
-    pub watched_folder_path: std::path::PathBuf,
-    pub candidate_path: crate::CandidateKey,
-}
-
-impl ScannedCandidateKey {
-    /// Refuse the write unless the scan tables still list this candidate with
-    /// the files the write was prepared against; returns its scan generation.
-    fn verify(
-        &self,
-        sql: &CovenWrite<'_>,
-        content_hash: &str,
-        file_revision: u64,
-    ) -> Result<u64, crate::ImportError> {
-        folder_scans::require_current_candidate(
-            sql,
-            &self.watched_folder_path,
-            &self.candidate_path,
-            content_hash,
-            file_revision,
-        )
-    }
+    /// The key of the candidate the save edits. The save reads its entry and
+    /// standing inside its transaction, and is refused unless the scan lists
+    /// it with the files the save was prepared against, and it may still be
+    /// edited. `None` for a save that edits no listed candidate.
+    pub editing: Option<crate::CandidateKey>,
 }
 
 /// Rows a candidate save carries in its transaction beside the candidate's
@@ -76,8 +55,9 @@ pub(crate) enum RunVerdictSaved {
     /// The verdict landed, and this is what it did to the run's
     /// identification of the candidate.
     Landed(crate::candidate_runtime::IdentificationMove),
-    /// The stored revisions had moved past the expectation; nothing was
-    /// written.
+    /// The stored revisions had moved past the expectation, or the candidate
+    /// is no longer one identification may answer with these files; nothing
+    /// was written.
     Superseded,
 }
 
@@ -179,6 +159,22 @@ pub enum PreparationRefusal {
     Changed(crate::CandidateKey),
 }
 
+/// Whether identification may still answer the candidate at `key` with the
+/// verdict `prep` holds: a release that may be worked on, not set aside,
+/// imported or claimed by an import, with the files the verdict answers.
+fn answers_on(
+    sql: &CovenWrite<'_>,
+    key: &crate::CandidateKey,
+    prep: &CandidatePreparation,
+) -> Result<bool, DbError> {
+    Ok(load_candidate_entry_on(sql, key)?.is_some_and(|entry| {
+        entry.actionable()
+            && entry.standing().answerable()
+            && entry.candidate.file_edit_revision == prep.file_edits.revision
+            && entry.candidate.files.content_hash() == prep.content_hash
+    }))
+}
+
 /// Write `prep` over what is stored, provided the stored revisions still
 /// match `expected`: every row that differs, and no other.
 pub(super) fn save_preparation_on(
@@ -189,10 +185,10 @@ pub(super) fn save_preparation_on(
 ) -> Result<CandidateSaved, crate::ImportError> {
     prep.validate()?;
     let content_hash = prep.content_hash.as_str();
-    let scan_generation = expected
-        .scanned
+    let edited = expected
+        .editing
         .as_ref()
-        .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
+        .map(|key| require_editable_files_on(sql, key, content_hash, expected.edit_revision))
         .transpose()?;
     // Before any write, so a refused cover leaves everything as it was.
     if let Some(cover) = &prep.metadata.cover {
@@ -329,17 +325,21 @@ pub(super) fn save_preparation_on(
         }
     }
     if let Some(snapshot) = &extras.file_tag_snapshot {
-        let scanned = expected.scanned.as_ref().ok_or(PreparationRefusal::SnapshotOfUnscanned)?;
+        let (key, entry) = expected
+            .editing
+            .as_ref()
+            .zip(edited.as_ref())
+            .ok_or(PreparationRefusal::SnapshotOfUnscanned)?;
         if !prep.file_edits.is_at_revision(snapshot.file_edit_revision)
-            || Some(snapshot.scan_generation) != scan_generation
+            || snapshot.scan_generation != entry.generation
             || !super::folder_scans::tag_snapshot::replace_candidate_file_tag_snapshot_on(
                 sql,
-                &scanned.watched_folder_path,
-                &scanned.candidate_path,
+                &entry.candidate.watched_folder_path,
+                key,
                 snapshot,
             )?
         {
-            return Err(PreparationRefusal::TagsChanged(scanned.candidate_path.clone()).into());
+            return Err(PreparationRefusal::TagsChanged(key.clone()).into());
         }
     }
     // The verdict, link and provenance written above name these, or some
@@ -387,6 +387,8 @@ impl ImportTables {
     /// a save that lands ends that run's identification of the candidate at
     /// `candidate_key` in the same transaction, so no read sees the verdict
     /// beside the run still going, or the run ended without its verdict.
+    /// Nothing lands unless that transaction reads the candidate as one
+    /// identification may still answer, with the files the verdict answers.
     pub(crate) async fn save_run_verdict(
         &self,
         prep: CandidatePreparation,
@@ -396,18 +398,23 @@ impl ImportTables {
         run: crate::IdentifyRunId,
     ) -> Result<RunVerdictSaved, crate::ImportError> {
         self.store
-            .write(move |sql| match save_preparation_on(&sql, &prep, &expected, &extras)? {
-                CandidateSaved::Landed(_) => {
-                    Ok(RunVerdictSaved::Landed(super::change_identification_on(
-                        &sql,
-                        &candidate_key,
-                        &crate::candidate_runtime::IdentificationChange::AnswerEnded { run },
-                    )?))
+            .write(move |sql| {
+                if !answers_on(&sql, &candidate_key, &prep)? {
+                    return Ok(RunVerdictSaved::Superseded);
                 }
-                CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
-                // A run's verdict brings a catalog's cover or keeps the one
-                // stored, which its own save checked.
-                CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
+                match save_preparation_on(&sql, &prep, &expected, &extras)? {
+                    CandidateSaved::Landed(_) => {
+                        Ok(RunVerdictSaved::Landed(super::change_identification_on(
+                            &sql,
+                            &candidate_key,
+                            &crate::candidate_runtime::IdentificationChange::AnswerEnded { run },
+                        )?))
+                    }
+                    CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
+                    // A run's verdict brings a catalog's cover or keeps the
+                    // one stored, which its own save checked.
+                    CandidateSaved::CoverRefused(refusal) => Err(crate::ImportError::from(refusal)),
+                }
             })
             .await
     }

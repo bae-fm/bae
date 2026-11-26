@@ -401,8 +401,13 @@ async fn a_found_release_whose_stored_answer_cannot_be_read_fails_its_identifica
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::CandidateKey::folder(&dir);
     fixture.scan(1).await;
-    let candidate =
-        answerable_candidate(&fixture.context, &key).await.unwrap().expect("the scan holds it");
+    let candidate = fixture
+        .context
+        .import
+        .answerable_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the scan holds it");
 
     fail_unchecked(
         &fixture.context,
@@ -457,7 +462,10 @@ async fn a_candidate_that_cannot_be_read_is_an_error_not_unanswerable() {
     fixture.scan(1).await;
     crate::tables::ImportTables::lose_scan_candidate_parts_for_test(fixture.temp.path()).await;
 
-    answerable_candidate(&fixture.context, &key)
+    fixture
+        .context
+        .import
+        .answerable_candidate(&key)
         .await
         .expect_err("a candidate whose rows cannot be read is not just unanswerable");
 }

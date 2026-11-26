@@ -13,7 +13,7 @@ pub(super) async fn admit_found(
 ) {
     let mut admitted = Vec::with_capacity(keys.len());
     for key in keys {
-        let candidate = match answerable_candidate(context, &key).await {
+        let candidate = match context.import.answerable_candidate(&key).await {
             Ok(Some(candidate)) => candidate,
             Ok(None) => continue,
             Err(error) => {
@@ -65,23 +65,6 @@ async fn fail_unchecked(
             )
             .await,
     );
-}
-
-/// The candidate at `key` if an answer can still be stored for it: not set
-/// aside, imported, or claimed by an import. The same read the verdict write
-/// makes. A read that fails is an error, not a candidate that cannot be
-/// answered; the queue has no caller to tell, so each of its callers reports
-/// it as a bug.
-pub(super) async fn answerable_candidate(
-    context: &Context,
-    key: &crate::CandidateKey,
-) -> Result<Option<FolderCandidate>, crate::ImportError> {
-    match context.import.answerable_candidate(key).await {
-        // A grouping the person's sources no longer allow is a candidate that
-        // cannot be answered, not a failed read.
-        Err(crate::ImportError::GroupingBlocked { .. }) => Ok(None),
-        answered => answered,
-    }
 }
 
 /// What one run of a candidate begins from.

@@ -8,7 +8,9 @@
 //! write as the change that moves it.
 
 use super::{CandidateRuntime, IdentificationChange, IdentificationMove, IdentificationStage};
+#[cfg(any(test, feature = "test-utils"))]
 use crate::tables::ImportClaim;
+#[cfg(test)]
 use crate::triage::TriageRuntimeFacts;
 use crate::CandidateKey;
 use crate::IdentifyRunId;
@@ -239,10 +241,29 @@ impl CandidateRuntime {
 
     /// Record that `import_id` owns this candidate, from the moment its
     /// command is queued rather than when the worker first reports, since
-    /// whether identification may still answer the candidate reads it.
+    /// whether identification may still answer the candidate reads it; see
+    /// [`ImportTables::claim_scanned_candidate_import`]. Once claimed, the
+    /// candidate is not identification's to answer: the claim ends its
+    /// identification, whatever it was, in the same write.
+    pub(crate) async fn claim_scanned_for_import(
+        &self,
+        key: &CandidateKey,
+        files: &CandidateFiles,
+        import_id: &str,
+        refuse_identifying: bool,
+    ) -> Result<(), crate::ImportError> {
+        self.tables
+            .claim_scanned_candidate_import(key, files, import_id, refuse_identifying)
+            .await?;
+        #[cfg(any(test, feature = "test-utils"))]
+        self.tell_every_change(std::iter::once(key)).await;
+        Ok(())
+    }
+
+    /// Claim `key` for `import_id` whatever the scan holds at it, for a test.
     /// Refused when an import already owns it. With `ending_identification`
-    /// the claim ends the candidate's identification, whatever it was, in the
-    /// same write: once claimed, it is not identification's to answer.
+    /// the claim ends the candidate's identification in the same write.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn claim_for_import(
         &self,
         key: &CandidateKey,
@@ -260,7 +281,6 @@ impl CandidateRuntime {
         match claim {
             ImportClaim::Refused => Err(crate::ImportError::CandidateImportInProgress),
             ImportClaim::Claimed { .. } => {
-                #[cfg(any(test, feature = "test-utils"))]
                 self.tell_every_change(std::iter::once(key)).await;
                 Ok(())
             }
@@ -282,12 +302,14 @@ impl CandidateRuntime {
         Ok(())
     }
 
-    /// Whether an import owns `key`, read from its claim.
+    /// Whether an import owns `key`, read from its claim, for a test.
+    #[cfg(test)]
     pub(crate) async fn import_claimed(&self, key: &CandidateKey) -> Result<bool, DbError> {
         Ok(self.tables.load_candidate_standing(key).await?.import.is_some())
     }
 
-    /// Where `key` stands, as its row reads it.
+    /// Where `key` stands, as its row reads it, for a test.
+    #[cfg(test)]
     pub(crate) async fn standing_facts(
         &self,
         key: &CandidateKey,

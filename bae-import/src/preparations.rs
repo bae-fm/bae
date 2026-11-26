@@ -19,9 +19,7 @@ pub use preparation::{
 };
 
 use crate::folder_scanner::CandidateFileEdits;
-use crate::tables::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
-};
+use crate::tables::{CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved};
 use crate::tables::{DbCandidateIdentifyResult, ImportTables, NewImportCandidateVerdict};
 use crate::ImportError;
 
@@ -42,7 +40,8 @@ impl ImportTables {
     /// leaves the link and the draft alone.
     ///
     /// Nothing lands when the row's file decisions moved past the ones the
-    /// verdict answers, or no row holds the candidate. A draft edited since
+    /// verdict answers, no row holds the candidate, or identification may no
+    /// longer answer it with these files. A draft edited since
     /// the run began is replaced like any other: the later write wins.
     ///
     /// A verdict `run` reached that lands ends that run's identification of
@@ -85,8 +84,8 @@ impl ImportTables {
 
     /// The candidate's whole state with `verdict` recorded, ready to save
     /// against the revisions it was loaded at; `None` when no row holds the
-    /// candidate or its file decisions moved past the ones the verdict
-    /// answers.
+    /// candidate, its files were imported, or its file decisions moved past
+    /// the ones the verdict answers.
     async fn verdict_save(
         &self,
         verdict: &NewImportCandidateVerdict,
@@ -94,7 +93,9 @@ impl ImportTables {
         Option<(CandidatePreparation, CandidateSaveExpectation, CandidateSaveExtras)>,
         ImportError,
     > {
-        let Some(mut prep) = self.load_stored(&verdict.content_hash).await? else {
+        let Some(crate::tables::CandidatePreparationRead::Stored(mut prep)) =
+            self.load_candidate_preparation(&verdict.content_hash).await?
+        else {
             return Ok(None);
         };
         if !prep.file_edits.is_at_revision(verdict.file_edit_revision) {
@@ -103,7 +104,7 @@ impl ImportTables {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: None,
+            editing: None,
         };
         prep.candidate_key = verdict.candidate_key.clone();
         prep.identification = Some(DbCandidateIdentifyResult {
@@ -164,7 +165,7 @@ impl ImportTables {
         let expected = CandidateSaveExpectation {
             edit_revision: read.file_edit_revision,
             metadata_revision: read.metadata_revision,
-            scanned: None,
+            editing: Some(candidate_key.clone()),
         };
         prep.candidate_key = candidate_key.clone();
         prep.file_edits = edits.clone();
@@ -229,7 +230,7 @@ impl ImportTables {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: None,
+            editing: None,
         };
         let extras =
             CandidateSaveExtras { releases: releases.to_vec(), ..CandidateSaveExtras::default() };
@@ -244,18 +245,13 @@ impl ImportTables {
 
     pub async fn apply_source(
         &self,
-        watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
         candidate_key: &crate::CandidateKey,
         metadata: &crate::CandidateMetadataDraft,
     ) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
-        let scanned = ScannedCandidateKey {
-            watched_folder_path: watched_folder_path.to_path_buf(),
-            candidate_path: candidate_key.clone(),
-        };
-        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None, Vec::new())
-            .await
+        let editing = Some(candidate_key.clone());
+        self.apply_metadata(prep, editing, candidate_key, metadata.clone(), None, Vec::new()).await
     }
 
     /// A person's pick: the candidate is linked to `link`, the draft read
@@ -267,13 +263,8 @@ impl ImportTables {
     /// run's result already stands. The read and the write share this load.
     /// `releases` are the pick's releases as read, primary and partners,
     /// stored in the same write.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "one write's inputs, each a different part of the pick"
-    )]
     pub(crate) async fn apply_pick(
         &self,
-        watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
         candidate_key: &crate::CandidateKey,
         link: &bae_identify::PressingLink,
@@ -283,10 +274,6 @@ impl ImportTables {
     ) -> Result<u64, ImportError> {
         let mut prep = self.loaded_at(read).await?;
         prep.link = Some(crate::ReleaseLink::Pressing(link.clone()));
-        let scanned = ScannedCandidateKey {
-            watched_folder_path: watched_folder_path.to_path_buf(),
-            candidate_path: candidate_key.clone(),
-        };
         // A pick answers the folder, so the person keeping their own draft
         // over the verdict stands no more.
         match &mut prep.identification {
@@ -298,8 +285,8 @@ impl ImportTables {
                 })
             }
         }
-        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None, releases)
-            .await
+        let editing = Some(candidate_key.clone());
+        self.apply_metadata(prep, editing, candidate_key, metadata.clone(), None, releases).await
     }
 
     /// The person could not tell which of the pressings the stored verdict
@@ -312,7 +299,6 @@ impl ImportTables {
     /// they read more.
     pub(crate) async fn apply_shared_album(
         &self,
-        watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
         candidate_key: &crate::CandidateKey,
         link: &bae_identify::AlbumLink,
@@ -330,10 +316,7 @@ impl ImportTables {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: Some(ScannedCandidateKey {
-                watched_folder_path: watched_folder_path.to_path_buf(),
-                candidate_path: candidate_key.clone(),
-            }),
+            editing: Some(candidate_key.clone()),
         };
         prep.link = Some(crate::ReleaseLink::Album(link.clone()));
         prep.candidate_key = candidate_key.clone();
@@ -360,24 +343,33 @@ impl ImportTables {
     /// The person keeps their own draft over what the stored verdict offered:
     /// none of its releases is the folder's, or it found none. The candidate
     /// is linked to no release; the draft stays as it is.
-    pub(crate) async fn keep_own_draft(&self, read: &CandidateAsRead) -> Result<u64, ImportError> {
+    pub(crate) async fn keep_own_draft(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        read: &CandidateAsRead,
+    ) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
         if prep.identification.is_none() {
             return Err(CandidateStateRefusal::NoLookup(read.content_hash.clone()).into());
         }
-        self.set_link_aside(prep, read).await
+        self.set_link_aside(candidate_key, prep, read).await
     }
 
     /// The person unlinks the candidate from its release. The draft stays as
     /// it is, and a stored lookup stands set aside, so the candidate is
     /// unmatched rather than waiting on the lookup's offer again.
-    pub(crate) async fn unlink(&self, read: &CandidateAsRead) -> Result<u64, ImportError> {
+    pub(crate) async fn unlink(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        read: &CandidateAsRead,
+    ) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
-        self.set_link_aside(prep, read).await
+        self.set_link_aside(candidate_key, prep, read).await
     }
 
     async fn set_link_aside(
         &self,
+        candidate_key: &crate::CandidateKey,
         mut prep: CandidatePreparation,
         read: &CandidateAsRead,
     ) -> Result<u64, ImportError> {
@@ -388,7 +380,7 @@ impl ImportTables {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: None,
+            editing: Some(candidate_key.clone()),
         };
         let revision = prep.metadata_revision;
         match self
@@ -409,7 +401,6 @@ impl ImportTables {
     /// candidate shape.
     pub(crate) async fn apply_file_metadata(
         &self,
-        watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         read: &CandidateAsRead,
         snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
@@ -417,10 +408,6 @@ impl ImportTables {
         cover: Option<&crate::cover_art::PreparedCover>,
     ) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
-        let scanned = ScannedCandidateKey {
-            watched_folder_path: watched_folder_path.to_path_buf(),
-            candidate_path: candidate_path.clone(),
-        };
         let metadata = crate::CandidateMetadataDraft {
             draft: draft.clone(),
             provenance: Some(crate::MetadataProvenance::FileMetadata),
@@ -428,7 +415,7 @@ impl ImportTables {
         };
         self.apply_metadata(
             prep,
-            Some(scanned),
+            Some(candidate_path.clone()),
             candidate_path,
             metadata,
             Some(snapshot.clone()),
@@ -456,7 +443,7 @@ impl ImportTables {
     async fn apply_metadata(
         &self,
         mut prep: CandidatePreparation,
-        scanned: Option<ScannedCandidateKey>,
+        editing: Option<crate::CandidateKey>,
         candidate_key: &crate::CandidateKey,
         mut metadata: crate::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::file_tag_snapshot::FileTagSnapshot>,
@@ -467,7 +454,7 @@ impl ImportTables {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned,
+            editing,
         };
         prep.candidate_key = candidate_key.clone();
         prep.author = MetadataAuthor::Person;

@@ -4,6 +4,7 @@
 //! hooks that move or watch them.
 
 use super::*;
+use crate::tables::ScannedEntry;
 
 impl ImportServiceHandle {
     /// Every key with something in flight right now, read from the standings
@@ -85,13 +86,8 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<ImportCandidateSnapshot>, crate::ImportError> {
-        let stored = self.services.tables.load_folder_scan_item(key).await?;
-        let candidate = match stored {
-            Some(crate::folder_scanner::ScanItem::Valid(candidate)) => Some((candidate, true)),
-            Some(crate::folder_scanner::ScanItem::Discovered(candidate)) => {
-                Some((candidate, false))
-            }
-            Some(crate::folder_scanner::ScanItem::Invalid(_)) => {
+        let entry = match self.services.tables.load_scanned_entry(key).await? {
+            Some(ScannedEntry::InvalidFolder) => {
                 return Ok(self
                     .services
                     .tables
@@ -99,21 +95,37 @@ impl ImportServiceHandle {
                     .await?
                     .map(ImportCandidateSnapshot::Invalid));
             }
+            Some(ScannedEntry::Release(entry)) => Some(*entry),
             None => None,
         };
         let runtime = self.runtime.snapshot(key).await?;
-        if let Some((candidate, actionable)) = candidate {
-            let standing = self.candidate_standing(key, &candidate).await?;
+        if let Some(entry) = entry {
             return Ok(Some(ImportCandidateSnapshot::Folder {
-                candidate,
+                candidate: entry.candidate,
                 runtime,
-                actionable,
-                skipped: standing.skipped,
-                is_added: standing.imported.is_some(),
+                actionable: entry.settled,
+                skipped: entry.skipped,
+                is_added: entry.imported.is_some(),
             }));
         }
         Ok(runtime
             .map(|runtime| ImportCandidateSnapshot::Runtime { key: key.to_string(), runtime }))
+    }
+
+    /// Whether the import tables hold a candidate under `key`: a release the
+    /// import list shows, or a folder that failed validation and that the
+    /// list shows.
+    pub async fn holds_candidate(
+        &self,
+        key: &crate::CandidateKey,
+    ) -> Result<bool, crate::ImportError> {
+        Ok(match self.services.tables.load_scanned_entry(key).await? {
+            Some(ScannedEntry::Release(entry)) => entry.listed(),
+            Some(ScannedEntry::InvalidFolder) => {
+                self.services.tables.load_invalid_row(key).await?.is_some()
+            }
+            None => false,
+        })
     }
 }
 

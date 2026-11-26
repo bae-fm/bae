@@ -182,7 +182,7 @@ pub(super) fn settle_scanned_candidates(
         // identification was of, which ends with it.
         end_file_work_unless_of_on(sql, path, Some(&decided))?;
         // Settled above, in this write, as a release reading the files.
-        let stored = super::release_groupings::load_candidate_on(sql, path)?
+        let stored = super::release_groupings::load_candidate_entry_on(sql, path)?
             .unwrap_or_else(|| panic!("{path}, settled in this write, reads as no release"));
         updated_candidates.push(stored.candidate);
     }

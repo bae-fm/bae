@@ -1,4 +1,7 @@
-//! What release groupings offer the candidate pane: whether a grouping took the candidate in, why it cannot be worked on, and whether the candidate is skipped.
+//! What release groupings offer other reads: whether a grouping took the
+//! candidate in, why it cannot be worked on, and whether the candidate is
+//! skipped; and a candidate's entry with where it stands, which composes that
+//! with the scan's rows, the standing and the release imported from it.
 
 sqlive_compose::fragment!(
     GroupingOfCandidate(key: crate::CandidateKey) {
@@ -18,3 +21,18 @@ sqlive_compose::fragment!(
     FROM @crate::tables::folder_scans::row_fragments::ScanGrouping(key: :key) AS scan
     LEFT JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key
 "#);
+
+sqlive_compose::fragment!(
+    EnteredCandidate(key: crate::CandidateKey),
+    r#"
+    SELECT scan.*, grouping.*, standing.*, imported.*
+    FROM @crate::tables::folder_scans::fragments::ScanItems(
+        keys: (SELECT :key AS candidate_key)) AS scan
+    LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(key: :key)
+        AS grouping ON 1
+    LEFT JOIN @crate::tables::import_state::fragments::Standing(
+        keys: (SELECT :key AS candidate_key)) AS standing ON 1
+    LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
+        AS imported ON 1
+"#
+);

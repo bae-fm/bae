@@ -3,7 +3,6 @@
 
 use crate::cover_art::PreparedCover;
 use crate::tables::import_state::tests::*;
-use crate::tables::watched_path::host_root;
 use bae_catalogs::catalog::Catalog;
 use bae_store::test_fixtures::empty_db;
 
@@ -100,12 +99,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     let (_, hash) = stored_pane_candidate(&db).await;
 
     crate::tables::ImportTables::new(db.clone())
-        .set_prepared_cover(
-            &host_root("/music"),
-            &pane_candidate_key(),
-            &as_read(&hash, 0),
-            &remote_cover(),
-        )
+        .set_prepared_cover(&pane_candidate_key(), &as_read(&hash, 0), &remote_cover())
         .await
         .unwrap();
 
