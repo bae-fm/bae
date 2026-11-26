@@ -66,10 +66,10 @@ struct MacAlbumArtistField: View {
         if inheritsAlbumArtists { return String(localized: "Album artist") }
         guard let summary = ArtistAssignmentsSummary(field: field)
         else { return placeholder }
-        guard let label = summary.identityLabel else { return summary.names }
+        guard let badge = summary.identityBadge else { return summary.names }
         return String(
             localized: "album-artist-field.name",
-            defaultValue: "\(summary.names) \(label)",
+            defaultValue: "\(summary.names) \(badge.label)",
             comment:
                 "The album artist button's spoken name: %1$@ is the artist names, %2$@ the badge beside them"
         )
@@ -84,8 +84,8 @@ struct MacAlbumArtistField: View {
             HStack(spacing: ThemeSpace.inline) {
                 Text(summary.names)
                     .cutLine(.prose)
-                if let label = summary.identityLabel {
-                    StatusChip(verbatim: label, tone: summary.identityTone)
+                if let badge = summary.identityBadge {
+                    StatusChip(verbatim: badge.label, tone: badge.tone)
                         .fixedSize()
                 }
             }

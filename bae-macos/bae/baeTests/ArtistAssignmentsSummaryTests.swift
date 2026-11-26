@@ -28,8 +28,7 @@ struct ArtistAssignmentsSummaryTests {
         )
 
         #expect(summary.names == "Artist Name")
-        #expect(summary.identityLabel == nil)
-        #expect(summary.identityTone == .neutral)
+        #expect(summary.identityBadge == nil)
     }
 
     @Test("one new artist reads as its own name and badge")
@@ -51,8 +50,9 @@ struct ArtistAssignmentsSummaryTests {
         )
 
         #expect(summary.names == "New Artist Name")
-        #expect(summary.identityLabel == "New")
-        #expect(summary.identityTone == .accent)
+        #expect(
+            summary.identityBadge == ArtistsBadge(label: "New", tone: .accent)
+        )
     }
 
     @Test("a credit several library artists could be counts them")
@@ -71,8 +71,10 @@ struct ArtistAssignmentsSummaryTests {
             )
         )
 
-        #expect(summary.identityLabel == "2 in library")
-        #expect(summary.identityTone == .neutral)
+        #expect(
+            summary.identityBadge
+                == ArtistsBadge(label: "2 in library", tone: .neutral)
+        )
     }
 
     @Test("several artists read as one list with one badge")
@@ -103,7 +105,10 @@ struct ArtistAssignmentsSummaryTests {
         #expect(
             summary.names == "First Artist, Second Artist, and Third Artist"
         )
-        #expect(summary.identityLabel == "2 new")
+        #expect(
+            summary.identityBadge
+                == ArtistsBadge(label: "2 new", tone: .neutral)
+        )
     }
 
     @Test("artists left to choose are counted")
@@ -126,7 +131,10 @@ struct ArtistAssignmentsSummaryTests {
             )
         )
 
-        #expect(summary.identityLabel == "1 to choose")
+        #expect(
+            summary.identityBadge
+                == ArtistsBadge(label: "1 to choose", tone: .neutral)
+        )
     }
 
     @Test("a credit list prints each credit's printed name and join")

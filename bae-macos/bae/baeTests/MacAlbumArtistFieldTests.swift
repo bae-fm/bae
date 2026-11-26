@@ -44,8 +44,8 @@ struct MacAlbumArtistFieldTests {
                 )
             )
         )
-        #expect(linked.identityLabel == nil)
-        #expect(new.identityLabel == "New")
+        #expect(linked.identityBadge == nil)
+        #expect(new.identityBadge?.label == "New")
     }
 
     /// A compilation credits more artists than the line can hold. The header

@@ -160,27 +160,35 @@ extension BridgeArtistStanding {
     }
 }
 
+/// A badge beside an artist field's names: its words and its tone.
+struct ArtistsBadge: Equatable {
+    let label: String
+    let tone: StatusTone
+}
+
 extension BridgeArtistsStanding {
     /// The badge naming how a whole field's artists stand to the library,
-    /// which is none when every artist is in the library.
-    var label: String? {
+    /// which is none when every artist is in the library. New draws in the
+    /// accent, since the import adds every artist; each count is neutral.
+    var badge: ArtistsBadge? {
         switch self {
         case .library: nil
-        case .new: String(localized: "New")
-        case .someNew(let count): String(localized: "\(Int(count)) new")
+        case .new: ArtistsBadge(label: String(localized: "New"), tone: .accent)
+        case .someNew(let count):
+            ArtistsBadge(
+                label: String(localized: "\(Int(count)) new"),
+                tone: .neutral
+            )
         case .choose(let choices):
-            String(localized: "\(Int(choices)) in library")
+            ArtistsBadge(
+                label: String(localized: "\(Int(choices)) in library"),
+                tone: .neutral
+            )
         case .someToChoose(let count):
-            String(localized: "\(Int(count)) to choose")
-        }
-    }
-
-    /// The badge's tone: the accent for New, which says every artist is added
-    /// by the import, and neutral for each count.
-    var tone: StatusTone {
-        switch self {
-        case .new: .accent
-        case .library, .someNew, .choose, .someToChoose: .neutral
+            ArtistsBadge(
+                label: String(localized: "\(Int(count)) to choose"),
+                tone: .neutral
+            )
         }
     }
 }
@@ -190,16 +198,14 @@ extension BridgeArtistsStanding {
 /// is in the library.
 struct ArtistAssignmentsSummary: Equatable {
     let names: String
-    let identityLabel: String?
-    let identityTone: StatusTone
+    let identityBadge: ArtistsBadge?
 
     /// `nil` when the field names no artist, so the field shows its
     /// placeholder.
     init?(field: BridgeArtistField?) {
         guard let field else { return nil }
         names = bridgeCreditLine(credits: field.credits.map(\.credited)).text
-        identityLabel = field.standing.label
-        identityTone = field.standing.tone
+        identityBadge = field.standing.badge
     }
 }
 
