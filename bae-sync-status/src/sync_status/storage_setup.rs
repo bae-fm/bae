@@ -105,11 +105,11 @@ impl StorageSetup {
         if self.setup_running {
             return Ok(Some(StorageSetupState::Running));
         }
-        let Some(operation) = self.undone_operation else {
+        let Some(undone) = self.undone else {
             return Ok(None);
         };
-        let operation = coven::OperationId(operation);
-        match SetupRow::of(self.undone_outcome) {
+        let operation = coven::OperationId(undone.operation);
+        match SetupRow::of(undone.outcome) {
             SetupRow::Undone(why) => Ok(Some(StorageSetupState::Undone { operation, why })),
             row @ (SetupRow::Running | SetupRow::Settled) => Err(DbError::unreadable(
                 "coven_operations.outcome of the newest undone storage setup",

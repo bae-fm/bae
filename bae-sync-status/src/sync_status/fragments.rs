@@ -12,25 +12,34 @@ sqlive_compose::fragment!(
 "#
 );
 
+// The newest storage setup that ended undone, if any. coven names how an
+// operation ended in `outcome_kind`.
+sqlive_compose::fragment!(
+    UndoneSetup {
+        operation: i64,
+        outcome: Option<coven::StorageSetupOutcome>,
+    },
+    r#"
+    SELECT setup.operation, setup.outcome
+    FROM coven_operations AS setup
+    WHERE setup.kind = 'StorageSetup' AND setup.outcome_kind IN ('undone', 'rejected')
+    ORDER BY setup.operation DESC
+    LIMIT 1
+"#
+);
+
 // One row always: whether a storage setup runs, which is one in
 // `coven_operations` with no outcome yet, beside the newest one that ended
-// undone, if any. coven names how an operation ended in `outcome_kind`.
+// undone.
 sqlive_compose::fragment!(
-    StorageSetup {
-        setup_running: bool,
-        undone_operation: Option<i64>,
-        undone_outcome: Option<coven::StorageSetupOutcome>,
-    },
+    StorageSetup { setup_running: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM coven_operations AS setup
                    WHERE setup.kind = 'StorageSetup' AND setup.outcome IS NULL)
                AS setup_running,
-           undone.operation AS undone_operation, undone.outcome AS undone_outcome
+           undone.*
     FROM (SELECT 1) AS one
-    LEFT JOIN (SELECT operation, outcome
-               FROM coven_operations
-               WHERE kind = 'StorageSetup' AND outcome_kind IN ('undone', 'rejected')
-               ORDER BY operation DESC LIMIT 1) AS undone ON 1
+    LEFT JOIN @crate::sync_status::fragments::UndoneSetup AS undone ON 1
 "#
 );
 
