@@ -99,16 +99,18 @@ private struct MacSearchFieldBox: ViewModifier {
                 .padding(.horizontal, ThemeSpace.group)
                 .frame(height: 28)
                 // A sunken well like the section control's.
-                .background(
+                .background(Capsule().fill(Theme.well))
+                .overlay(
                     Capsule()
-                        .fill(Theme.well)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    focused ? Theme.accent : Color.clear,
-                                    lineWidth: 1
-                                )
+                        .strokeBorder(
+                            focused ? Theme.accent : Color.clear,
+                            lineWidth: 1
                         )
+                        // Drawn as one image: as vector paths the ring
+                        // leaves a straight bar at each end of the capsule
+                        // in a capture of the view.
+                        .drawingGroup()
+                        .allowsHitTesting(false)
                 )
                 .animation(.easeInOut(duration: 0.15), value: focused)
         case .filter:
