@@ -170,10 +170,11 @@ struct MacCoverGallery: View {
             // on the tile that a double click opened it from. The preview
             // takes the focus in a second update, since a request for the
             // focus it already holds moves nothing.
-            .onChange(of: gridPreviewShown, initial: true) { _, shown in
-                guard shown else { return }
+            .task(id: gridPreviewShown) {
+                guard gridPreviewShown else { return }
                 previewFocused = false
-                Task { @MainActor in previewFocused = true }
+                await Task.yield()
+                previewFocused = true
             }
             .onKeyPress(.leftArrow) {
                 guard browser.layout == .grid else { return .ignored }
