@@ -9,7 +9,10 @@ Of several values, separated by " · ", as the ISRC chip holds, the chip shows t
   - `on` (the default): the hover fill, with the name in tertiary text and the value halfway between primary and secondary text, for an identifier the run asks about.
   - `found`: the accent at 26%, with the name in primary text at 75% and the value in primary text, for an identifier that found releases.
   - `dash`: a dash after the name for an identifier the files leave out, with no fill and no ring.
+- `trailing`: what follows the value while a lookup of it is out or has failed, in any look but `dash`, as core says.
+  - `searching`: Searching… in the chip type in tertiary text, while a catalog is still being asked about the value.
+  - `failed`: the warning status glyph, whose `reason` shows on hover, then the Retry button, arrow.clockwise in the accent, which asks again only the lookups that failed. Both are at the small icon size, a compact space apart. The Retry glyph's frame is 14 points tall, so a failed chip is 20 points tall where the others are 19.
 - `toggles`: the chip is a button. Pressing it leaves its identifier out of the run, or puts back one left out. The button reports no pressed state: the look shows it.
 - `fields`: the title search's words, `Artist=…,Title=…`. The chip reads Artist, the artist's field, Title, the title's field, in place of a name and value, and each field draws as a value does.
 
-**In the code:** macOS: `MacIdentifierChip` and `IdentifierDash` (`bae-macos/bae/bae/Views/Import/Search/MacIdentifierChip.swift`).
+**In the code:** macOS: `MacIdentifierChip`, `IdentifierDash` and `ChipTrailing` (`bae-macos/bae/bae/Views/Import/Search/MacIdentifierChip.swift`).

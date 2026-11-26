@@ -507,7 +507,7 @@ export declare function MacReleaseFields(props: { year?: string; media?: string;
 /** One file of a release: name and size; kind opens (a button that opens it), audio (with Play) or other; damaged says why the file is damaged. */
 export declare function MacReleaseFileRow(props: { name: string; size?: string; kind?: 'opens' | 'audio' | 'other'; damaged?: string }): React.ReactElement;
 /** One identifier the files state: label and value, or a dash, in the look off, on or found; or the title search's fields ("Artist=…,Title=…"). */
-export declare function MacIdentifierChip(props: { label?: string; value?: string; state?: 'off' | 'on' | 'found' | 'dash'; toggles?: boolean; fields?: string; moreShown?: boolean; moreOpen?: boolean }): React.ReactElement;
+export declare function MacIdentifierChip(props: { label?: string; value?: string; state?: 'off' | 'on' | 'found' | 'dash'; /** What follows the value while a lookup of it is out or has failed. */ trailing?: 'searching' | 'failed'; /** Why the lookup failed, on the warning's hover. */ reason?: string; toggles?: boolean; fields?: string; moreShown?: boolean; moreOpen?: boolean }): React.ReactElement;
 /** A pressing fact, each record's value followed by its catalog when the records differ ("1992:MusicBrainz|1993:Discogs"). */
 export declare function MacSourcedValue(props: { value: string }): React.ReactElement;
 /** One bulk action with how many selected folders it applies to; a child sits before the count. */

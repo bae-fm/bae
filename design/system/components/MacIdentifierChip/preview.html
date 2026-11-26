@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=440 -->
+<!-- @dsCard group="Import" height=528 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacIdentifierChip</title></head>
@@ -13,6 +13,8 @@
     N('Off', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'off' })),
     N('On', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true })),
     N('Found', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'found' })),
+    N('Searching', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, trailing: 'searching' })),
+    N('Failed', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, trailing: 'failed', reason: 'The metadata provider timed out' })),
     N('Dash', h(B.MacIdentifierChip, { label: 'Barcode', state: 'dash' })),
     N('Title search', h(B.MacIdentifierChip, { fields: 'Artist=Mara Quill,Title=Low Tide Hours' })),
     N('Several values', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2 · 0 41234 56789 3 · 0 41234 56789 4' })),

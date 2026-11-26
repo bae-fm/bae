@@ -28,6 +28,27 @@ extension ShotScene {
                 onPress: {}
             ) { EmptyView() }
         },
+        identifierChipScene("mac.component.identifier-chip.searching") {
+            MacIdentifierChip(
+                label: "Barcode",
+                value: sampleBarcode,
+                onPress: {}
+            ) {
+                ChipTrailing(state: .searching, onRetry: {})
+            }
+        },
+        identifierChipScene("mac.component.identifier-chip.failed") {
+            MacIdentifierChip(
+                label: "Barcode",
+                value: sampleBarcode,
+                onPress: {}
+            ) {
+                ChipTrailing(
+                    state: .failed(failure: .timeout),
+                    onRetry: {}
+                )
+            }
+        },
         identifierChipScene("mac.component.identifier-chip.dash") {
             MacIdentifierChip(label: "Barcode")
         },

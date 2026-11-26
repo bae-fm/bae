@@ -90,6 +90,11 @@
 .bae-m-idchip-field { border: 0; outline: none; field-sizing: content; min-width: 2ch; margin: calc(-1 * var(--space-line)) 0; }
 .bae-m-idchip-field:last-child { margin-right: calc(var(--space-line) - var(--space-compact)); }
 .bae-m-idchip-dashmark { width: 8px; height: 1.5px; background: var(--hairline-strong); }
+/* What follows a value while a lookup of it is out or has failed: Searching… in the chip type in tertiary text, whatever the look; or the warning glyph and Retry, a compact space apart. The toggle of a chip that offers Retry draws as its parts, in the chip's own row. */
+.bae-m-idchip-wait { font: var(--type-chip-weight) var(--type-chip-size)/var(--type-chip-line-height) var(--font-sans); color: var(--text-tertiary); white-space: nowrap; }
+.bae-m-idchip-failed { display: inline-flex; align-items: center; gap: var(--space-compact); }
+.bae-m-idchip-warn { display: inline-flex; }
+.bae-m-idchip-toggle { display: contents; }
 /* The ISRC chip's +N: a button after the first code, in the label's colour, whose popover lists every code, a line each, under it. */
 .bae-m-idchip-more { display: inline-flex; }
 .bae-m-idchip-more > button { font: inherit; color: inherit; }

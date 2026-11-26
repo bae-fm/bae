@@ -337,30 +337,39 @@
   // One identifier the folder's files state, in one of three looks (`state`): `off`, an outline, for an identifier the run leaves out, struck out or not yet put in, such as a catalog number the folder offers that no release confirms; `on` (the default), the hover fill, for one the run asks about; `found`, the accent's tint, for one that found releases. `dash`: a dash after the label for an identifier the files leave out, with no fill and no ring.
   // The label is in the chip type, the value on a dark inset of the chip's fill in the detail type. A chip of several values (" · "-separated, the files' ISRCs) shows the first, then a +N button that opens a popover listing every one, a line each; `moreShown` draws that popover open, after the chip. The band sets `moreOpen` instead, which shows the button open and leaves the popover to the band.
   // `toggles`: the chip is a button that leaves its identifier out of the run or puts it back. `fields`: the title search's words, "Artist=…,Title=…", each name followed by its field in place of the label and value.
+  // `trailing`: what follows the value while a lookup of it is out or has failed, in the chip's look: `searching`, Searching… in the chip type in tertiary text; `failed`, the warning status glyph (`reason` on hover) and the Retry button, arrow.clockwise in the accent, a compact space apart, both at the small icon size.
   function MacIdentifierChip(props) {
     var st = props.state || 'on';
     var values = String(props.value || '').split(' · '), several = values.length > 1;
-    // A chip that toggles is one button, which VoiceOver reads as its parts with a comma between: "Barcode, 0 41234 56789 2".
-    var name = props.toggles ? [props.label, props.value].filter(Boolean).join(', ') : null;
+    // A chip that toggles is one button, which VoiceOver reads as its parts with a comma between: "Barcode, 0 41234 56789 2", then Searching… while a lookup is out.
+    var name = props.toggles ? [props.label, props.value, props.trailing === 'searching' ? 'Searching…' : null].filter(Boolean).join(', ') : null;
     var moreOpen = !!(props.moreShown || props.moreOpen);
     var label = function (key, text) { return h('span', { key: key, className: 'bae-m-idchip-name' }, text); };
     var fields = props.fields ? list(props.fields).map(function (f) { var q = f.split('='); return [label('n' + q[0], q[0]), h('input', { key: 'f' + q[0], type: 'text', className: 'bae-m-idchip-value bae-m-idchip-field', defaultValue: q[1] || '', 'aria-label': q[0], spellCheck: false })]; }) : null;
     var content = fields || [label('l', props.label),
       st === 'dash' ? h('span', { key: 'd', className: 'bae-m-idchip-dashmark' }) : h('span', { key: 'v', className: 'bae-m-idchip-value' }, values[0]),
       several ? h('span', { key: 'm', className: cx('bae-m-idchip-more', moreOpen && 'bae-m-idchip-more-open') }, h('button', { type: 'button', className: 'bae-plainbtn', 'aria-expanded': moreOpen }, '+' + (values.length - 1))) : null];
-    var chip = h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, 'aria-label': name, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, content);
+    var trail = props.trailing === 'searching' ? h('span', { key: 't', className: 'bae-m-idchip-wait' }, 'Searching…')
+      : props.trailing === 'failed' ? h('span', { key: 't', className: 'bae-m-idchip-failed' },
+          h('span', { className: 'bae-m-idchip-warn', title: props.reason || null }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small', weight: 'semibold', label: 'Failed' })),
+          h(Glyph, { set: 'mac', name: 'retry', size: 'small', className: 'bae-accent', button: 'Retry' }))
+      : null;
+    var look = cx('bae-m-idchip', 'bae-m-idchip-' + st);
+    // A chip that toggles and offers Retry is a box holding two buttons, the toggle (its label and value) and Retry, since one button can't hold another.
+    if (props.toggles && props.trailing === 'failed') return h('span', { className: look }, h('button', { type: 'button', 'aria-label': name, className: 'bae-plainbtn bae-m-idchip-toggle' }, content), trail);
+    var chip = h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, 'aria-label': name, className: cx(props.toggles && 'bae-plainbtn', look) }, content, trail);
     return props.moreShown && several ? h('span', { className: 'bae-m-idchip-shown' }, chip, valuesPopover(values)) : chip;
   }
   // The popover of every value of a chip, a line each in the value's type, hanging from the chip's open +N button. It is a window of its own, so it comes after everything in the window the button is in.
   function valuesPopover(values) {
     return h('span', { className: 'bae-m-idchip-pop' }, h(MacPopover, { width: 150, top: 10, right: -75, arrow: 75 }, h('div', { className: 'bae-m-idchip-codes' }, values.map(function (v, i) { return h('div', { key: i }, v); }))));
   }
-  // The identifier chips: "Label|value|state", comma-separated, each state `off`, `on`, `found` or `dash` (MacIdentifierChip). A Disc ID, Barcode or Catalog # chip that holds a value toggles. `titleSearch`: the words the run searches by, "artist|title|state", one chip after the others that reads Artist and Title, each followed by its field, `found` unless given.
+  // The identifier chips: "Label|value|state[|trailing]", comma-separated, each state `off`, `on`, `found` or `dash` and each trailing `searching` or `failed`, or `failed:reason` (MacIdentifierChip). A Disc ID, Barcode or Catalog # chip that holds a value toggles. `titleSearch`: the words the run searches by, "artist|title|state", one chip after the others that reads Artist and Title, each followed by its field, `found` unless given.
   // `offered`: the catalog numbers the folder offers that no release confirms, comma-separated, each an off Catalog # chip that puts its number into the run. The band folds them after the other chips, behind a "+N more" button with their count. `candidates`: `folded` (the default) or `shown`, which draws every one, then the button, which reads Show fewer. `open`: the label of the chip whose +N popover is drawn open, such as ISRC, after the band.
   var TOGGLED_IDENTIFIERS = ['Disc ID', 'Barcode', 'Catalog #'];
   function MacIdentifierBand(props) {
     var parts = list(props.chips).map(function (c) { return c.split('|'); });
-    var chip = function (p, i) { return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash', moreOpen: p[0] === props.open }); };
+    var chip = function (p, i) { var trail = String(p[3] || '').split(':'); return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], trailing: trail[0] || null, reason: trail[1] || null, toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash', moreOpen: p[0] === props.open }); };
     var opened = parts.filter(function (p) { return p[0] === props.open; })[0];
     var title = props.titleSearch ? String(props.titleSearch).split('|') : null;
     var offered = list(props.offered), shown = props.candidates === 'shown';
