@@ -1395,7 +1395,11 @@ tables = [
 [[database.domains]]
 name = "import origin"
 owner = "bae_import::tables::ImportTables"
-homes = ["bae-import/src/tables/import_origin.rs", "bae-import/src/tables/import_origin.sql"]
+homes = [
+    "bae-import/src/tables/import_origin.rs",
+    "bae-import/src/tables/import_origin.sql",
+    "bae-import/src/tables/import_origin/",
+]
 tables = ["local_release_origin"]
 
 [[database.domains]]
