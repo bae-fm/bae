@@ -54,8 +54,8 @@ extension ShotScene {
                     )
                     // The board puts the menu 330 pt down from the window's
                     // content, which starts 55 pt below the window's top.
-                    .padding(.leading, 640)
-                    .padding(.top, 385)
+                    .padding(.leading, 639.5)
+                    .padding(.top, 386)
                 },
                 images: images
             ) {

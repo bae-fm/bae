@@ -96,8 +96,8 @@ extension ShotScene {
                         },
                         highlighted: 0
                     )
-                    .padding(.leading, 234.5 - 141)
-                    .padding(.top, 119)
+                    .padding(.leading, 234.5 - 141 + 0.5)
+                    .padding(.top, 118)
                 }
             }
         }

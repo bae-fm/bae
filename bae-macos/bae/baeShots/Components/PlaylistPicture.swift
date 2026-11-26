@@ -40,6 +40,7 @@ extension ShotScene {
         -> some View
     {
         PlaylistPicture(cover: cover, size: 120)
-            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
+            // The component's preview rounds the picture by the artwork radius.
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
     }
 }
