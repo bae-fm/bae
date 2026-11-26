@@ -6,9 +6,9 @@
 //! read and write it.
 
 use bae_records::records::name_sort::sort_key_sql;
-use bae_store::statement_optional;
 use bae_store::DbError;
 use bae_store::Store;
+use bae_store::{statement_optional, statement_row};
 use coven::SqlReadContext;
 use rusqlite::params;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
@@ -60,6 +60,14 @@ sqlive_compose::read!(
 "#
 );
 
+sqlive_compose::read!(
+    PickerIsEmpty { is_empty: bool },
+    r#"
+    SELECT NOT EXISTS (SELECT 1 FROM cast_receiver)
+           AND NOT EXISTS (SELECT 1 FROM @crate::tables::now::Casting AS casting) AS is_empty
+"#
+);
+
 /// The picker's list: the receiver playback is cast to, then every other
 /// receiver discovery found, by name in the device's language.
 fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
@@ -85,8 +93,7 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
             })
         },
     )?;
-    // With nothing cast to, `found` holds every listed receiver.
-    let is_empty = casting.is_none() && found.is_empty();
+    let is_empty = statement_row(sql, &PickerIsEmptyParams {})?.is_empty;
     Ok(CastReceiverList { casting, found, is_empty })
 }
 
