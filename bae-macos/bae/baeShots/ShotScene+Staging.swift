@@ -125,21 +125,11 @@ extension ShotStage {
     /// A sheet that becomes key gives its first text field the keyboard,
     /// which draws that field focused. With `atRest`, the stage takes the
     /// keyboard from the sheet's field, for a board that draws every field
-    /// at rest. With `clearBackdrop`, the sheet's window draws nothing of
-    /// its own, so a scene that sets room round its dialog for something
-    /// drawn outside it shows that room empty.
-    func awaitingSheet(
-        atRest: Bool = false,
-        clearBackdrop: Bool = false
-    ) -> ShotStage {
+    /// at rest.
+    func awaitingSheet(atRest: Bool = false) -> ShotStage {
         ShotStage(view, isReady: isReady) { host in
             let sheet = host.window?.attachedSheet
             if atRest { sheet?.makeFirstResponder(nil) }
-            if clearBackdrop, let sheet {
-                sheet.isOpaque = false
-                sheet.backgroundColor = .clear
-                sheet.invalidateShadow()
-            }
             return isDrawn(host) && sheet != nil
         }
     }

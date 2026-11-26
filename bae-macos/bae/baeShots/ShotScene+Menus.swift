@@ -110,8 +110,11 @@ extension ShotScene {
                 .offset(x: 363, y: -22)
             }
             .padding(.vertical, 22)
+            // The sheet's own background would fill the room above and
+            // below the dialog, which holds only the menu.
+            .presentationBackground(.clear)
             return ShotStage(OverWindow.attachedSheet(sheet, over: window))
-                .awaitingSheet(atRest: true, clearBackdrop: true)
+                .awaitingSheet(atRest: true)
         }
     }
 }
