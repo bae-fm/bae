@@ -166,6 +166,7 @@ impl LibraryViews {
     }
 
     /// One window of the album list under `sort`, read by its offset.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_album_page(
         &self,
         sort: &[AlbumSortCriterion],
@@ -340,6 +341,7 @@ impl LibraryViews {
         Ok(rows.into_iter().map(crate::album_detail::AlbumSummary::from_raw).collect())
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
         self.store.read(|sql| album_count_on(&sql)).await
     }

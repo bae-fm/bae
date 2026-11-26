@@ -148,6 +148,7 @@ impl StorageRow {
 
 /// One page of storage rows. `total_count` is of the *filtered* subset, not the
 /// whole library — it's what tells the paginated list where the end is.
+#[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone)]
 pub struct StoragePage {
     pub rows: Vec<StorageRow>,

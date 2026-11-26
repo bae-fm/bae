@@ -22,6 +22,7 @@ impl LibraryViews {
 
     /// The release's rows as its detail reads them, unresolved; `None` when
     /// the release doesn't exist.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_db_release_detail(
         &self,
         release_id: &str,
@@ -183,6 +184,7 @@ impl ReleaseDetailColumns {
 /// The release's rows as its detail reads them, beside its entry in the
 /// download queue and the storage actions it offers; `None` when the release
 /// doesn't exist.
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn build_release_detail_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,

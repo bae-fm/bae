@@ -4,7 +4,9 @@
 //! Its tables and the triggers keeping them are `storage.sql`.
 
 use super::*;
-use crate::album_detail::{StoragePage, StorageRow};
+#[cfg(any(test, feature = "test-utils"))]
+use crate::album_detail::StoragePage;
+use crate::album_detail::StorageRow;
 use crate::storage_actions::{selection_action_columns, storage_action_columns};
 use bae_records::records::queued_uploads::{
     upload_queue_wait_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS, UPLOAD_QUEUE_HOLD,
@@ -12,6 +14,7 @@ use bae_records::records::queued_uploads::{
 
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
         self.store.read(move |sql| Ok(storage_counts_on(&sql, filter, None)?.0)).await
     }
@@ -19,12 +22,14 @@ impl LibraryViews {
     /// The size of every file of the storage rows matching `filter` — the
     /// storage-manager footer's "Total:", independent of how many pages have
     /// loaded.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
         self.store.read(move |sql| Ok(storage_counts_on(&sql, filter, None)?.1)).await
     }
 
     /// One page of the Storage Manager list, pre-sorted and pre-filtered.
     /// `total_count` counts the filtered subset, not the whole library.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_storage_page(
         &self,
         sort: &StorageSortCriterion,
@@ -40,6 +45,7 @@ impl LibraryViews {
 
     /// One page of the Storage Manager list as its rows read it,
     /// unresolved.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn get_db_storage_page(
         &self,
         sort: &StorageSortCriterion,
