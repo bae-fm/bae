@@ -197,11 +197,12 @@
 .bae-m-albumpanel-facts { display: flex; flex-direction: column; gap: var(--space-line); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-audio { padding-top: var(--space-related); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-facts > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* The facts as a button that opens the catalogs' card: the lines, then an ↗ on the first line's baseline. The hover plate is the button's own fill, so it is part of what the pointer presses, and reaches past the words without moving them. */
+/* The facts as a button that opens the catalogs' card: the lines, then an ↗ on the first line's baseline. The hover plate is drawn behind the button and reaches past its words, so the button keeps the box of its words. */
 .bae-m-albumfacts-anchor { display: flex; align-self: flex-start; min-width: 0; max-width: 100%; }
 .bae-m-albumfacts { display: inline-flex; align-items: baseline; gap: var(--space-inline); max-width: 100%; padding: 0; border: 0; background: none; text-align: start; cursor: default; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-m-albumfacts > .bae-m-albumpanel-facts { min-width: 0; }
-.bae-m-albumfacts-hover { max-width: calc(100% + 2 * var(--space-compact)); margin: calc(-1 * var(--space-line)) calc(-1 * var(--space-compact)); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); background: var(--hover); }
+.bae-m-albumfacts-hover { position: relative; isolation: isolate; }
+.bae-m-albumfacts-hover::before { content: ''; position: absolute; z-index: -1; inset: calc(-1 * var(--space-line)) calc(-1 * var(--space-compact)); border-radius: var(--radius-chip); background: var(--hover); }
 .bae-m-albumfacts-arrow { flex: none; color: var(--text-secondary); }
 /* The catalogs' popover is drawn after the header, or after the panel that holds it, and hangs from the open button: centred under it, its arrow's tip 2pt under it. The scope keeps each popover on its own button. */
 .bae-m-albumhead-open, .bae-m-albumpanel { position: relative; anchor-scope: --bae-albumfacts; }
