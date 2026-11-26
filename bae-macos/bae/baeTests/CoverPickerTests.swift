@@ -5,12 +5,8 @@ import Testing
 
 @testable import bae
 
-@MainActor
 @Suite("Cover picker")
 struct CoverPickerTests {
-    /// The stack the test's window presents its layers on.
-    let modals = ModalWindows()
-
     private actor CoverRecorder {
         var reads: [String] = []
         var selected: BridgeCoverSelection?
@@ -31,6 +27,7 @@ struct CoverPickerTests {
     @MainActor
     @Test("Persisted artwork is previewed and saved by library file ID")
     func persistedArtworkUsesLibraryIdentity() async throws {
+        let modals = ModalWindows()
         let release = persistedRelease()
         let recorder = CoverRecorder()
         let png = try imageBytes()
