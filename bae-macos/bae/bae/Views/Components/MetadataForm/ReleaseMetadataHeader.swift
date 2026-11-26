@@ -174,6 +174,15 @@ extension BridgeArtistsStanding {
             String(localized: "\(Int(count)) to choose")
         }
     }
+
+    /// The badge's tone: the accent for New, which says every artist is added
+    /// by the import, and neutral for each count.
+    var tone: StatusTone {
+        switch self {
+        case .new: .accent
+        case .library, .someNew, .choose, .someToChoose: .neutral
+        }
+    }
 }
 
 /// A closed artist field's text: the names as one localized list and the
@@ -182,6 +191,7 @@ extension BridgeArtistsStanding {
 struct ArtistAssignmentsSummary: Equatable {
     let names: String
     let identityLabel: String?
+    let identityTone: StatusTone
 
     /// `nil` when the field names no artist, so the field shows its
     /// placeholder.
@@ -189,6 +199,7 @@ struct ArtistAssignmentsSummary: Equatable {
         guard let field else { return nil }
         names = bridgeCreditLine(credits: field.credits.map(\.credited)).text
         identityLabel = field.standing.label
+        identityTone = field.standing.tone
     }
 }
 

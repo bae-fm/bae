@@ -85,7 +85,7 @@ struct MacAlbumArtistField: View {
                 Text(summary.names)
                     .cutLine(.prose)
                 if let label = summary.identityLabel {
-                    StatusChip(verbatim: label)
+                    StatusChip(verbatim: label, tone: summary.identityTone)
                         .fixedSize()
                 }
             }

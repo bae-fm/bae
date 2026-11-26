@@ -29,6 +29,7 @@ struct ArtistAssignmentsSummaryTests {
 
         #expect(summary.names == "Artist Name")
         #expect(summary.identityLabel == nil)
+        #expect(summary.identityTone == .neutral)
     }
 
     @Test("one new artist reads as its own name and badge")
@@ -51,6 +52,7 @@ struct ArtistAssignmentsSummaryTests {
 
         #expect(summary.names == "New Artist Name")
         #expect(summary.identityLabel == "New")
+        #expect(summary.identityTone == .accent)
     }
 
     @Test("a credit several library artists could be counts them")
@@ -70,6 +72,7 @@ struct ArtistAssignmentsSummaryTests {
         )
 
         #expect(summary.identityLabel == "2 in library")
+        #expect(summary.identityTone == .neutral)
     }
 
     @Test("several artists read as one list with one badge")
