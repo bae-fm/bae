@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Run the design measures check on component CSS and JavaScript that take
-their type, spacing and radii from tokens, and on CSS and JavaScript that write
-them as literals."""
+their type, spacing and radii from tokens, on CSS and JavaScript that write
+them as literals, and on text that leaves its line height to the browser."""
 
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 import unittest
@@ -15,6 +16,16 @@ ROOT = Path(__file__).resolve().parents[2]
 CHECK = ROOT / "scripts" / "check-design-measures.py"
 SOURCE = "design/system/components/src/10-a.css"
 SCRIPT = "design/system/components/src/10-a.js"
+# Type styles as tokens.json writes them: body and detail have a line height,
+# android-fine has none.
+TOKENS = {
+    "type": {
+        "groups": [
+            {"styles": [{"name": "body", "lineHeight": "16px"}, {"name": "detail", "lineHeight": "15px"}]},
+            {"styles": [{"name": "android-fine"}]},
+        ]
+    }
+}
 
 
 class DesignMeasuresTests(unittest.TestCase):
@@ -23,13 +34,16 @@ class DesignMeasuresTests(unittest.TestCase):
             file = Path(directory) / path
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_text(css)
+            tokens = Path(directory) / "design/system/tokens.json"
+            tokens.parent.mkdir(parents=True, exist_ok=True)
+            tokens.write_text(json.dumps(TOKENS))
             return subprocess.run(
                 ["python3", str(CHECK), path], cwd=directory, capture_output=True, text=True
             )
 
     def test_type_from_token_variables_passes(self) -> None:
         found = self.run_check(
-            ".a { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }\n"
+            ".a { font: var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans); }\n"
             ".b { font-size: var(--type-detail-size); line-height: var(--type-detail-line-height); }\n"
             ".c { font: inherit; line-height: normal; height: 20px; }\n"
             ".d { font: var(--type-body-weight) var(--type-body-size)/var(--h, var(--size-control)) var(--font-sans); }\n"
@@ -79,7 +93,7 @@ class DesignMeasuresTests(unittest.TestCase):
     def test_script_measures_from_tokens_or_other_measures_pass(self) -> None:
         found = self.run_check(
             "// fontSize: 11 in a comment is no measure\n"
-            "h('span', { style: { fontSize: 'var(--type-detail-size)', fontWeight: \"var(--type-chip-weight)\" } });\n"
+            "h('span', { style: { fontSize: 'var(--type-detail-size)', lineHeight: 'var(--type-detail-line-height)', fontWeight: \"var(--type-chip-weight)\" } });\n"
             "h('div', { style: { padding: '0 var(--space-related)', gap: 0, marginTop: 'calc(-1 * var(--space-line))' } });\n"
             "h(Artwork, { radius: 'radius-artwork', size: 56 });\n"
             "h('div', { style: { fontSize: s * 0.4, paddingLeft: 'calc(var(--space-related) + ' + hang + 'px)', borderRadius: 999 } });\n",
@@ -100,6 +114,35 @@ class DesignMeasuresTests(unittest.TestCase):
         self.assertEqual(found.returncode, 1)
         lines = [line.split(": ")[0] for line in found.stderr.splitlines()]
         self.assertEqual(lines, [f"{SCRIPT}:{n}" for n in range(1, 7)])
+
+    def test_text_that_leaves_its_line_height_to_the_browser_fails_at_its_rule(self) -> None:
+        found = self.run_check(
+            ".a { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }\n"
+            ".b { font: var(--type-detail-weight) var(--type-detail-size)/normal var(--font-sans); }\n"
+            ".c { font-size: var(--type-body-size); line-height: normal; }\n"
+            ".d { font-size: var(--type-detail-size); }\n"
+        )
+        self.assertEqual(found.returncode, 1)
+        lines = [line.split(": ")[0] for line in found.stderr.splitlines()]
+        self.assertEqual(lines, [f"{SOURCE}:{n}" for n in range(1, 5)])
+
+    def test_a_style_with_no_line_height_or_a_line_from_another_rule_passes(self) -> None:
+        found = self.run_check(
+            ".a { font: var(--type-android-fine-weight) var(--type-android-fine-size) var(--font-android); }\n"
+            ".bae-m-btn-small { font-size: var(--type-detail-size); }\n"
+        )
+        self.assertEqual((found.returncode, found.stderr), (0, ""))
+
+    def test_a_script_style_that_leaves_its_line_height_to_the_browser_fails(self) -> None:
+        found = self.run_check(
+            "h('div', { style: { font: 'var(--type-body-weight) var(--type-body-size) var(--font-sans)' } });\n"
+            "h('div', { style: { fontSize: 'var(--type-detail-size)' } });\n"
+            "h('div', { style: { font: 'var(--type-body-weight) var(--type-body-size)/var(--type-body-line-height) var(--font-sans)' } });\n",
+            path=SCRIPT,
+        )
+        self.assertEqual(found.returncode, 1)
+        lines = [line.split(": ")[0] for line in found.stderr.splitlines()]
+        self.assertEqual(lines, [f"{SCRIPT}:1", f"{SCRIPT}:2"])
 
     def test_files_outside_the_component_sources_are_not_read(self) -> None:
         found = self.run_check(".a { font-size: 11px; }\n", path="design/mocks/a.css")

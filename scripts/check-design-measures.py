@@ -12,6 +12,12 @@ token. A glyph drawn in a symbol font takes its size from an icon token
 `inherit` and `normal`, and nothing else that sets a size, weight or line
 height: no number and no weight word.
 
+A rule that takes its text size from a type style that tokens.json gives a
+line height also sets a line height from a variable, in a `line-height`
+declaration or after the size in its `font`, so the browser's own line height
+never sets a line of bae's text: the apps lay each style out on its own line,
+and a `font` that names no line height resets it to the browser's `normal`.
+
 Padding, margins and gaps take a spacing token (`--space-<role>`) and corner
 radii a radius token (`--radius-<role>`). Such a declaration may hold
 variables, factors in a calc() such as `-1 *` or `/ 2`, `0` and `auto`, and
@@ -22,7 +28,9 @@ The component JavaScript follows the same rules in its inline styles: a
 `fontSize`, `fontWeight`, `lineHeight` or `font`, a padding, margin or gap,
 a `borderRadius` and a component's `radius` prop each hold a variable, a
 token's name or a value computed from another measure, and no literal number
-or literal length. A number stands for that many px, as React reads it.
+or literal length. A number stands for that many px, as React reads it. A
+style object that takes its text size from a type style with a line height
+sets a `lineHeight` too, or names one in its `font`.
 
 The few declarations that draw something other than bae's own text and
 layout keep their own measures, each named in ALLOWED with why. An
@@ -36,11 +44,13 @@ With no file, the check reads every component CSS and JavaScript file.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
 
 SOURCES = "design/system/components/src/"
+TOKENS = "design/system/tokens.json"
 
 # (selector, property): why the declaration keeps a literal measure.
 ALLOWED = {
@@ -61,7 +71,13 @@ ALLOWED = {
     (".bae-a-keyboard-gesture::before", "border-radius"): "the drawn gesture bar is the system's",
 }
 
+# selector: why the rule's text takes its line height from another rule.
+LINE_FROM_ANOTHER_RULE = {
+    ".bae-m-btn-small": "a small button keeps the line MacButton's rule sets, the button's own height",
+}
+
 TYPE_PROPERTIES = ("font", "font-size", "font-weight", "line-height")
+TYPE_SIZE = re.compile(r"var\(--type-([\w-]+)-size\)")
 SPACING = re.compile(r"(?:padding|margin)(?:-[\w-]+)?|gap|row-gap|column-gap")
 RADIUS = re.compile(r"border(?:-[\w-]+)?-radius")
 COMMENT = re.compile(r"/\*.*?\*/", re.S)
@@ -117,9 +133,15 @@ def css_property(key: str) -> str:
     return re.sub(r"[A-Z]", lambda m: "-" + m.group().lower(), key)
 
 
-def script_problems(path: str, text: str) -> list[str]:
-    """Each literal measure in the component JavaScript <text> of <path>, as
-    `path:line: why`."""
+# A style object with no object inside it, and a key of it that holds a string.
+STYLE_OBJECT = re.compile(r"\{[^{}]*\}")
+SCRIPT_TYPE_KEY = re.compile(r"(?<![\w$.'\"-])(fontSize|font|lineHeight)\s*:\s*'((?:\\.|[^'\\\n])*)'")
+
+
+def script_problems(path: str, text: str, lined: set[str]) -> list[str]:
+    """Each literal measure in the component JavaScript <text> of <path>, and
+    each style object that takes a size from a style in <lined> with no line
+    height, as `path:line: why`."""
     blank = SCRIPT_COMMENT.sub(lambda m: re.sub(r"[^\n]", " ", m.group()), text)
     found = []
     for measure in SCRIPT_MEASURE.finditer(blank):
@@ -135,11 +157,22 @@ def script_problems(path: str, text: str) -> list[str]:
         if why:
             line = blank.count("\n", 0, measure.start()) + 1
             found.append(f"{path}:{line}: sets {measure.group()}; {why}")
+    for style_object in STYLE_OBJECT.finditer(blank):
+        keys = {key: value for key, value in SCRIPT_TYPE_KEY.findall(style_object.group())}
+        style = lineless_style(keys.get("font"), keys.get("fontSize"), keys.get("lineHeight"), lined)
+        if style:
+            line = blank.count("\n", 0, style_object.start()) + 1
+            found.append(
+                f"{path}:{line}: a style takes the {style} style's size and leaves its line height to the browser; "
+                f"set lineHeight: 'var(--type-{style}-line-height)'"
+            )
     return found
 
 
-def problems(path: str, text: str) -> list[str]:
-    """Each literal measure in the CSS <text> of <path>, as `path:line: why`."""
+def problems(path: str, text: str, lined: set[str]) -> list[str]:
+    """Each literal measure in the CSS <text> of <path>, and each rule that
+    takes a size from a style in <lined> with no line height, as
+    `path:line: why`."""
     blank = COMMENT.sub(lambda m: re.sub(r"[^\n]", " ", m.group()), text)
     found = []
     for rule in RULE.finditer(blank):
@@ -147,7 +180,8 @@ def problems(path: str, text: str) -> list[str]:
         selector = " ".join(rule.group(1).split(";")[-1].split())
         if selector == "@font-face":
             continue
-        for declaration in DECLARATION.finditer(rule.group(2)):
+        declarations = list(DECLARATION.finditer(rule.group(2)))
+        for declaration in declarations:
             prop, value = declaration.group(1), declaration.group(2).strip()
             if (selector, prop) in ALLOWED:
                 continue
@@ -155,18 +189,52 @@ def problems(path: str, text: str) -> list[str]:
             if why:
                 line = blank.count("\n", 0, rule.start(2) + declaration.start(1)) + 1
                 found.append(f"{path}:{line}: `{selector}` sets {prop}: {value}; {why}")
+        values = {d.group(1): d.group(2).strip() for d in declarations}
+        style = lineless_style(values.get("font"), values.get("font-size"), values.get("line-height"), lined)
+        if style and selector not in LINE_FROM_ANOTHER_RULE:
+            line = blank.count("\n", 0, rule.start(2)) + 1
+            found.append(
+                f"{path}:{line}: `{selector}` takes the {style} style's size and leaves its line height to the browser; "
+                f"set line-height: var(--type-{style}-line-height)"
+            )
     return found
+
+
+def lined_styles() -> set[str]:
+    """The type styles that tokens.json gives a line height."""
+    tokens = json.loads(Path(TOKENS).read_text())
+    return {
+        style["name"]
+        for group in tokens["type"]["groups"]
+        for style in group["styles"]
+        if "lineHeight" in style
+    }
+
+
+def lineless_style(font: str | None, size: str | None, line: str | None, lined: set[str]) -> str | None:
+    """The type style whose size a rule or style object takes, from its `font`
+    or its `font-size`, when the style has a line height and the rule sets none
+    from a variable: none in <line>, its `line-height`, and none after the size
+    in <font>."""
+    taken = TYPE_SIZE.search(font or "") or TYPE_SIZE.search(size or "")
+    if not taken or taken.group(1) not in lined:
+        return None
+    after_size = (font or "").partition("/")[2].lstrip()
+    if (line or "").startswith("var(") or after_size.startswith("var("):
+        return None
+    return taken.group(1)
 
 
 def main(paths: list[str]) -> int:
     if not paths:
         paths = sorted(str(path) for suffix in ("css", "js") for path in Path(SOURCES).glob(f"*.{suffix}"))
     found = []
+    lined = lined_styles()
     for path in paths:
         if path.startswith(SOURCES) and path.endswith(".css"):
-            found += problems(path, Path(path).read_text())
+            found += problems(path, Path(path).read_text(), lined)
         elif path.startswith(SOURCES) and path.endswith(".js"):
-            found += script_problems(path, Path(path).read_text())
+            found += script_problems(path, Path(path).read_text(), lined)
     for problem in found:
         print(problem, file=sys.stderr)
     return 1 if found else 0
