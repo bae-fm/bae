@@ -36,11 +36,11 @@ extension ShotScene {
         component(
             "mac.component.find-online.working",
             width: 842,
-            height: 289,
+            height: 256,
             images: PreviewData.artImageStore()
         ) {
             findOnline(
-                height: 289,
+                height: 256,
                 state: PreviewData.searchState(
                     identifyState: .triangulating(
                         run: PreviewData.identifyRunNothingFound,
@@ -56,11 +56,11 @@ extension ShotScene {
         component(
             "mac.component.find-online.failed",
             width: 842,
-            height: 289,
+            height: 256,
             images: PreviewData.artImageStore()
         ) {
             findOnline(
-                height: 289,
+                height: 256,
                 state: PreviewData.searchState(
                     identifyState: .failed(
                         run: PreviewData.identifyRunNothingFound,
