@@ -101,7 +101,8 @@ struct ShotElementList: Encodable {
         let windowRoot = tree.nodes.lastIndex { $0.parent == nil }
         for panel in modals.panels
         where !layers.contains(where: {
-            modals.parent(of: $0) === panel && modals.coversPartOfWindow($0)
+            modals.parent(of: $0) === panel
+                && modals.cover(ofLayer: $0) == .presentingView
         }) {
             let player = Self.playerStart(in: tree, root: windowRoot)
             tree = tree.adding(

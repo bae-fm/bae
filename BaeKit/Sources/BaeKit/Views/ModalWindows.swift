@@ -31,21 +31,34 @@
     @MainActor
     struct LayerPlacement {
         weak var view: NSView?
-        let wholeWindow: Bool
+        let cover: MacLayer.Cover
 
         /// The radius of the shape the layer covers: the window's corners, or
         /// the sheet face's.
         var cornerRadius: CGFloat {
-            wholeWindow ? windowRadius : ThemeRadius.panel
+            switch cover {
+            case .window: windowRadius
+            case .presentingView: ThemeRadius.panel
+            }
         }
 
         /// The screen frame the layer covers, when `parent` is the window
-        /// it sits over.
+        /// it sits over. A layer is withdrawn before the view that presents
+        /// it leaves its window.
         func frame(over parent: NSWindow) -> NSRect {
-            guard !wholeWindow, let view, let window = view.window else {
+            switch cover {
+            case .window:
                 return parent.frame
+            case .presentingView:
+                guard let view, let window = view.window else {
+                    preconditionFailure(
+                        "A layer is up over a view that is in no window"
+                    )
+                }
+                return window.convertToScreen(
+                    view.convert(view.bounds, to: nil)
+                )
             }
-            return window.convertToScreen(view.convert(view.bounds, to: nil))
         }
     }
 
@@ -171,19 +184,27 @@
         /// Whether layers fade in and out.
         public var fades = true
 
+        /// What an entry is.
+        private enum Kind {
+            /// An alert, over the window that dims and shields its parent,
+            /// which replaces the alert of its replacement group.
+            case alert(shield: ScrimWindow, replacementGroup: UUID?)
+            /// A layer, whose panel draws `model` over what `cover` names.
+            case layer(model: LayerModel, cover: MacLayer.Cover)
+        }
+
         private struct Shown {
             let id: UUID
-            let replacementGroup: UUID?
             let panel: NSPanel
-            /// The window that dims and shields the parent, for an alert.
-            let shield: ScrimWindow?
             let parent: NSWindow
             let observers: [NSObjectProtocol]
-            /// For a layer, what its panel draws.
-            let model: LayerModel?
-            /// Whether the entry covers only the frame of the view that
-            /// presents it, not the whole window.
-            var coversPartOfWindow = false
+            let kind: Kind
+
+            /// The group whose alert this alert replaces; a layer is in none.
+            var replacementGroup: UUID? {
+                guard case .alert(_, let group) = kind else { return nil }
+                return group
+            }
         }
 
         private var shown: [Shown] = []
@@ -277,12 +298,13 @@
             shown.append(
                 Shown(
                     id: id,
-                    replacementGroup: replacementGroup,
                     panel: panel,
-                    shield: shield,
                     parent: parent,
                     observers: observers,
-                    model: nil
+                    kind: .alert(
+                        shield: shield,
+                        replacementGroup: replacementGroup
+                    )
                 )
             )
             shield.show()
@@ -333,13 +355,10 @@
             shown.append(
                 Shown(
                     id: id,
-                    replacementGroup: nil,
                     panel: panel,
-                    shield: nil,
                     parent: parent,
                     observers: observers,
-                    model: model,
-                    coversPartOfWindow: !placement.wholeWindow
+                    kind: .layer(model: model, cover: placement.cover)
                 )
             )
             parent.addChildWindow(panel, ordered: .above)
@@ -371,7 +390,7 @@
         /// appearance its parent has now, after either changed.
         func refreshLayer(id: UUID, placement: LayerPlacement) {
             guard let layer = shown.first(where: { $0.id == id }) else {
-                return
+                preconditionFailure("The layer \(id) is not showing")
             }
             layer.panel.appearance = layer.parent.effectiveAppearance
             layer.panel.setFrame(
@@ -408,8 +427,10 @@
             let entry = shown.remove(at: index)
             entry.observers.forEach(NotificationCenter.default.removeObserver)
             hadKey = hadKey || entry.panel.isKeyWindow
-            entry.shield?.hide()
-            if let model = entry.model, model.fades, fades, model.shown {
+            if case .alert(let shield, _) = entry.kind { shield.hide() }
+            if case .layer(let model, _) = entry.kind, model.fades, fades,
+                model.shown
+            {
                 // Fade out, then take the panel away: it takes no click or key
                 // meanwhile.
                 entry.panel.ignoresMouseEvents = true
@@ -436,24 +457,44 @@
             }
             return hadKey
         }
+    }
 
+    // MARK: - What the stack shows
+
+    extension ModalWindows {
         /// The panels showing now, the last over the others.
         public var panels: [NSPanel] { shown.map(\.panel) }
 
         /// The panels of layers showing now, in the same order.
         public var layerPanels: [NSPanel] {
-            shown.filter { $0.model != nil }.map(\.panel)
+            shown.compactMap { entry in
+                guard case .layer = entry.kind else { return nil }
+                return entry.panel
+            }
         }
 
         /// The windows that take the pointer for the alerts showing now, in
         /// the same order.
-        public var shields: [NSWindow] { shown.compactMap(\.shield) }
+        public var shields: [NSWindow] {
+            shown.compactMap { entry in
+                guard case .alert(let shield, _) = entry.kind else {
+                    return nil
+                }
+                return shield
+            }
+        }
 
-        /// Whether `panel` is a layer that covers only the frame of the view
-        /// that presents it, such as the lightbox over the gallery of the
-        /// Change cover sheet.
-        public func coversPartOfWindow(_ panel: NSPanel) -> Bool {
-            shown.first { $0.panel === panel }?.coversPartOfWindow ?? false
+        /// What the layer whose panel is `panel` covers: the whole window, or
+        /// only the frame of the view that presents it, as the lightbox over
+        /// the gallery of the Change cover sheet does.
+        public func cover(ofLayer panel: NSPanel) -> MacLayer.Cover {
+            guard
+                let entry = shown.first(where: { $0.panel === panel }),
+                case .layer(_, let cover) = entry.kind
+            else {
+                preconditionFailure("The panel is no layer this stack shows")
+            }
+            return cover
         }
 
         /// The window each of the panels showing now sits over.

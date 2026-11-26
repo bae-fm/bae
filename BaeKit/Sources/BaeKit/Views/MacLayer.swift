@@ -84,6 +84,14 @@
     private final class LayerAnchorView: NSView {
         weak var coordinator: LayerCoordinator?
 
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            super.viewWillMove(toWindow: newWindow)
+            // A layer is withdrawn before its view leaves the window it
+            // covers part of, and shown again once the view is in one.
+            guard newWindow == nil else { return }
+            MainActor.assumeIsolated { coordinator?.withdrawShown() }
+        }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard window != nil else { return }
@@ -152,10 +160,7 @@
             }
             order.removeAll { !wanted.contains($0) }
             for layer in latest.layers {
-                let placement = LayerPlacement(
-                    view: view,
-                    wholeWindow: layer.cover == .window
-                )
+                let placement = LayerPlacement(view: view, cover: layer.cover)
                 if let shown = live[layer.id], modals.isShowing(id: shown.id) {
                     shown.model.content = layer.content
                     shown.model.environment = latest.environment
@@ -186,8 +191,8 @@
             }
         }
 
-        func withdrawAll() {
-            gone = true
+        /// Withdraws the layers showing now, the last first.
+        func withdrawShown() {
             for key in order.reversed() {
                 if let layer = live[key] {
                     ModalWindows.shared.withdraw(id: layer.id)
@@ -195,6 +200,13 @@
             }
             live = [:]
             order = []
+        }
+
+        /// Withdraws the layers for good, once the view that presents them is
+        /// gone.
+        func withdrawAll() {
+            gone = true
+            withdrawShown()
         }
     }
 
