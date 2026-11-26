@@ -181,10 +181,14 @@
       // Android scales its bitmap to that side with no filtering, so each device pixel takes the module under its centre.
       if (props.bitmap) return h('div', { className: 'bae-scan-qr bae-scan-qr-bitmap', role: 'img', 'aria-label': 'QR code' },
         h('img', { src: qrBitmap(rows), width: side, height: side, alt: '', style: { display: 'block', imageRendering: 'pixelated' } }));
-      // The Mac shares the side out among the modules.
-      var m = side / whole;
-      return h('div', { className: 'bae-scan-qr bae-scan-qr-modules', role: 'img', 'aria-label': 'QR code', style: { padding: QR_QUIET * m } },
-        h('svg', { width: n * m, height: n * m, viewBox: '0 0 ' + n + ' ' + n, 'aria-hidden': true, shapeRendering: 'crispEdges' }, qrCells(rows)));
+      // The Mac's QRCode puts each module's edges on the pixel grid: edge i, counted from the code's corner with the quiet zone's modules, is i modules from the corner, rounded to the pixel.
+      var edge = function (i) { return Math.round(i * props.module * 2) / 2; }, cells = [];
+      for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (rows[y].charAt(x) === '1') {
+        var left = edge(x + QR_QUIET), top = edge(y + QR_QUIET);
+        cells.push(h('rect', { key: x + '-' + y, x: left, y: top, width: edge(x + QR_QUIET + 1) - left, height: edge(y + QR_QUIET + 1) - top }));
+      }
+      return h('div', { className: 'bae-scan-qr bae-scan-qr-modules', role: 'img', 'aria-label': 'QR code' },
+        h('svg', { width: side, height: side, viewBox: '0 0 ' + side + ' ' + side, 'aria-hidden': true, shapeRendering: 'crispEdges' }, cells));
     }
     var size = Number(props.size || 200);
     return h('div', { className: 'bae-scan-qr' },
