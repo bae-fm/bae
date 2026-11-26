@@ -4593,6 +4593,22 @@
    "w": 1200,
    "x": 7480,
    "y": 1636
+  },
+  "mac.import.identify.searching.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Identify, Automatic still searching",
+   "w": 1400,
+   "x": 6436,
+   "y": 4700
+  },
+  "mac.import.identify.lookup-failed.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Identify, a lookup failed",
+   "w": 1400,
+   "x": 7916,
+   "y": 4700
   }
  },
  "createdOnFiles": {
@@ -6627,6 +6643,8 @@
   "mac.import.list.folder-not-watched.dc.html",
   "mac.import.folder.audio-left-out.dc.html",
   "mac.import.identify.long-catalog.dc.html",
+  "mac.import.identify.searching.dc.html",
+  "mac.import.identify.lookup-failed.dc.html",
   "mac.playback.casting.no-volume.dc.html",
   "android.playback.full-player.no-volume.dc.html",
   "mac.welcome.libraries.damaged-join.dc.html",
