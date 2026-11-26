@@ -10,7 +10,7 @@
 //! text of each card and row beside it.
 
 use super::match_record::load_search_run_matches_on;
-use super::match_rows::{ordinal_column, store_album_link_rows, MatchOwner};
+use super::match_rows::{ordinal_column, store_album_link_rows, MatchId, MatchOwner};
 use super::search_rows::load_picks_on;
 use super::*;
 use crate::tables::album_link_rows::album_links_column;
@@ -413,11 +413,11 @@ pub(super) fn lay_out_search_on(
     let groups = group_results(unranked(results.clone()), None);
     let layout = ListLayout::of(&results, &groups, "returned");
     for ((row, result), place) in rows.iter().zip(&results).zip(&layout.places) {
-        sql.execute(
+        let match_id = sql.query_row(
             "UPDATE import_candidate_match \
              SET pressing = ?, card = ?, record_order = ?, section = ?, row_order = ?, \
                  album_links = ? \
-             WHERE search_run = ? AND position = ?",
+             WHERE search_run = ? AND position = ? RETURNING match_id",
             params![
                 place.pressing,
                 place.card,
@@ -428,12 +428,13 @@ pub(super) fn lay_out_search_on(
                 run,
                 row.position
             ],
+            |row| row.get::<_, MatchId>(0),
         )?;
         sql.execute(
-            "DELETE FROM import_candidate_match_album_link WHERE search_run = ? AND position = ?",
-            params![run, row.position],
+            "DELETE FROM import_candidate_match_album_link WHERE match_id = ?",
+            params![match_id],
         )?;
-        store_album_link_rows(sql, MatchOwner::Search(run), row.position, &result.album_links)?;
+        store_album_link_rows(sql, match_id, &result.album_links)?;
     }
     store_list_text(
         sql,

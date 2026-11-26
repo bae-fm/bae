@@ -220,7 +220,7 @@ async fn discogs_answer_after_a_pick_joins_the_cards_by_what_both_print() {
                         || COALESCE(link.catalog || ':' || link.key, '') \
                  FROM import_candidate_match AS found \
                  LEFT JOIN import_candidate_match_album_link AS link \
-                   ON link.search_run = found.search_run AND link.position = found.position \
+                   ON link.match_id = found.match_id \
                  WHERE found.search_run = ? ORDER BY found.release_id",
                 [run.number()],
                 |row| row.get::<_, String>(0),

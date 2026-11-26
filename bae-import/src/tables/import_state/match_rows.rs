@@ -31,6 +31,23 @@ pub(super) fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
         .ok_or_else(|| DbError::unreadable("import_candidate_match.cover_standing", stored))
 }
 
+/// The id of an `import_candidate_match` row, which every row under the
+/// match names it by.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct MatchId(i64);
+
+impl rusqlite::types::FromSql for MatchId {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        i64::column_result(value).map(Self)
+    }
+}
+
+impl rusqlite::ToSql for MatchId {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        self.0.to_sql()
+    }
+}
+
 /// Whose match rows these are: a verdict-shaped owner's — a candidate's
 /// verdict or a run in flight — or a typed search's, whose rows hang off the
 /// catalog part that returned them.
@@ -95,9 +112,8 @@ pub(super) enum Written<'a> {
 /// it. The rows under the match that stood there are already gone. Only a
 /// search writes a returned release, and only a verdict-shaped owner a listed
 /// or unlisted one.
-/// Delete the rows below every match the verdict `owner` holds, which name
-/// each match by its owner and position, so the matches a write stores next
-/// carry only their own.
+/// Delete the rows below every match the verdict `owner` holds, so the
+/// matches a write stores next carry only their own.
 pub(super) fn delete_verdict_match_entries(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -111,7 +127,13 @@ pub(super) fn delete_verdict_match_entries(
         "import_candidate_match_link",
         "import_candidate_match_album_link",
     ] {
-        sql.execute(&format!("DELETE FROM {table} WHERE {column} = ?"), params![owner])?;
+        sql.execute(
+            &format!(
+                "DELETE FROM {table} WHERE match_id IN \
+                 (SELECT match_id FROM import_candidate_match WHERE {column} = ?)"
+            ),
+            params![owner],
+        )?;
     }
     Ok(())
 }
@@ -149,7 +171,7 @@ pub(super) fn store_match(
     position: usize,
     result: &MetadataResult,
     listing: Written<'_>,
-) -> Result<(), DbError> {
+) -> Result<MatchId, DbError> {
     let position = ordinal_column(position)?;
     // `store_match` writes a search's release into its own row and card, and
     // the same write then groups the whole list again before it ends.
@@ -216,7 +238,7 @@ pub(super) fn store_match(
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
     let (content_hash, run, search, column) =
         (owner.content_hash(), owner.run(), owner.search(), owner.column());
-    sql.execute(
+    let match_id = MatchId(sql.query_row(
         &format!(
             "INSERT INTO import_candidate_match \
              (content_hash, identify_run, search_run, search_state, position, pressing, card, \
@@ -252,7 +274,8 @@ pub(super) fn store_match(
              listing = excluded.listing, \
              document_failure = excluded.document_failure, \
              document_failure_status = excluded.document_failure_status, \
-             named_note = excluded.named_note"
+             named_note = excluded.named_note \
+         RETURNING match_id"
         ),
         params![
             content_hash,
@@ -297,37 +320,26 @@ pub(super) fn store_match(
             document_failure.status,
             named_note,
         ],
-    )?;
+        |row| row.get(0),
+    )?);
     if let Some(cover) = cover {
         for copy in &cover.image.downscaled {
             sql.execute(
                 "INSERT INTO import_candidate_match_cover_copy \
-                     (content_hash, identify_run, search_run, position, cover_url, max_edge, \
-                      url) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    content_hash,
-                    run,
-                    search,
-                    position,
-                    cover.image.url,
-                    copy.max_edge,
-                    copy.url
-                ],
+                     (match_id, cover_url, max_edge, url) \
+                 VALUES (?, ?, ?, ?)",
+                params![match_id, cover.image.url, copy.max_edge, copy.url],
             )?;
         }
     }
     for (ordinal, label) in result.labels.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_label \
-                 (content_hash, identify_run, search_run, position, ordinal, name, \
-                  catalog_number, musicbrainz_label_id, discogs_label_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 (match_id, ordinal, name, catalog_number, musicbrainz_label_id, \
+                  discogs_label_id) \
+             VALUES (?, ?, ?, ?, ?, ?)",
             params![
-                content_hash,
-                run,
-                search,
-                position,
+                match_id,
                 ordinal_column(ordinal)?,
                 label.name(),
                 label.catalog_number(),
@@ -339,22 +351,17 @@ pub(super) fn store_match(
     for (ordinal, barcode) in result.barcodes.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_barcode \
-                 (content_hash, identify_run, search_run, position, ordinal, barcode) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![content_hash, run, search, position, ordinal_column(ordinal)?, barcode],
+                 (match_id, ordinal, barcode) VALUES (?, ?, ?)",
+            params![match_id, ordinal_column(ordinal)?, barcode],
         )?;
     }
     for (ordinal, (medium, quantity)) in media_entries.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_medium \
-                 (content_hash, identify_run, search_run, position, media_kind, ordinal, medium, \
-                  quantity) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                 (match_id, media_kind, ordinal, medium, quantity) \
+             VALUES (?, ?, ?, ?, ?)",
             params![
-                content_hash,
-                run,
-                search,
-                position,
+                match_id,
                 media_kind,
                 ordinal_column(ordinal)?,
                 medium.map(Medium::key),
@@ -365,43 +372,25 @@ pub(super) fn store_match(
     for (ordinal, link) in result.links.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_link \
-                 (content_hash, identify_run, search_run, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                run,
-                search,
-                position,
-                ordinal_column(ordinal)?,
-                link.catalog.as_str(),
-                link.key
-            ],
+                 (match_id, ordinal, catalog, key) VALUES (?, ?, ?, ?)",
+            params![match_id, ordinal_column(ordinal)?, link.catalog.as_str(), link.key],
         )?;
     }
-    store_album_link_rows(sql, owner, position, &result.album_links)
+    store_album_link_rows(sql, match_id, &result.album_links)?;
+    Ok(match_id)
 }
 
-/// The album link rows of the match at `position`, which holds none yet.
+/// The album link rows of the match `match_id`, which holds none yet.
 pub(super) fn store_album_link_rows(
     sql: &CovenWrite<'_>,
-    owner: MatchOwner<'_>,
-    position: i64,
+    match_id: MatchId,
     links: &AlbumLinks,
 ) -> Result<(), DbError> {
     for (ordinal, album) in links.read().iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_album_link \
-                 (content_hash, identify_run, search_run, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
-            params![
-                owner.content_hash(),
-                owner.run(),
-                owner.search(),
-                position,
-                ordinal_column(ordinal)?,
-                album.catalog.as_str(),
-                album.key,
-            ],
+                 (match_id, ordinal, catalog, key) VALUES (?, ?, ?, ?)",
+            params![match_id, ordinal_column(ordinal)?, album.catalog.as_str(), album.key],
         )?;
     }
     Ok(())

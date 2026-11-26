@@ -25,10 +25,7 @@ pub(super) fn match_record_sql(found: &str) -> String {
     let child = |table: &str, value: &str, order: &str| {
         format!(
             "json((SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
-                   WHERE entry.content_hash IS {found}.content_hash \
-                     AND entry.identify_run IS {found}.identify_run \
-                     AND entry.search_run IS {found}.search_run \
-                     AND entry.position = {found}.position))"
+                   WHERE entry.match_id = {found}.match_id))"
         )
     };
     let columns = [
@@ -55,12 +52,7 @@ pub(super) fn match_record_sql(found: &str) -> String {
         "json({})",
         crate::tables::downscaled_copies::copies_json_sql(
             "import_candidate_match_cover_copy",
-            &format!(
-                "copy.content_hash IS {found}.content_hash \
-                 AND copy.identify_run IS {found}.identify_run \
-                 AND copy.search_run IS {found}.search_run \
-                 AND copy.position = {found}.position"
-            ),
+            &format!("copy.match_id = {found}.match_id"),
         )
     );
     format!(
