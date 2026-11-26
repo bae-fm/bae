@@ -79,6 +79,7 @@ enum ShotRenderer {
         defer {
             if let sheet = window.attachedSheet {
                 window.endSheet(sheet)
+                sheet.orderOut(nil)
             }
             window.contentViewController = nil
             window.contentView = nil

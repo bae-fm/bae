@@ -74,7 +74,11 @@ extension ShotRenderer {
     /// sheet left up would be, and every capture after it draws the alert
     /// over that sheet.
     static func closeStrayWindows(before scene: ShotScene) {
-        for stray in NSApp.windows where stray.isVisible {
+        // A sheet's presentation window can be gone from AppKit's view while
+        // the window server still shows it, so it counts whether or not
+        // AppKit calls it visible.
+        for stray in NSApp.windows
+        where stray.isVisible || stray.isSheetPresentation {
             logger.error(
                 "A window is still up before scene \(scene.id): \(stray.className) \"\(stray.title)\" with frame \(stray.frame), sheet of \(stray.sheetParent?.title ?? "none")."
             )
@@ -275,5 +279,12 @@ extension ShotRenderer {
             throw ShotError.pngEncodingFailed(sceneId)
         }
         return data
+    }
+}
+
+extension NSWindow {
+    /// SwiftUI's window for a sheet it presents.
+    fileprivate var isSheetPresentation: Bool {
+        className.contains("SheetPresentationWindow")
     }
 }
