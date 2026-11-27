@@ -253,17 +253,14 @@ struct AlbumGridResizeTests {
             list: list
         )
         let before = place()
-        // The slot on top is the open detail, or else album 100's card, and
-        // a column change lines it up with the top of the visible area.
         let slotTop = {
-            try detailOpen
-                ? #require(stage.detailTop)
-                : Self.centeredCardTop(in: hosted.window)
+            try await Self.slotTop(stage, in: hosted, detailOpen: detailOpen)
         }
 
         try await move(true)
         let narrowed = place()
-        #expect(try abs(slotTop()) < 1)
+        let narrowedTop = try await slotTop()
+        #expect(abs(narrowedTop) < 1)
         if !detailOpen {
             // Fewer columns put the slot on top further down the content.
             #expect(narrowed > before)
@@ -272,13 +269,30 @@ struct AlbumGridResizeTests {
         try await move(false)
         let back = place()
         // Back at five columns the slot on top is the one that was.
-        #expect(try abs(slotTop()) < 1)
+        let backTop = try await slotTop()
+        #expect(abs(backTop) < 1)
 
         // Going back and forth again returns to the same places.
         try await move(true)
         #expect(abs(place() - narrowed) < 1)
         try await move(false)
         #expect(abs(place() - back) < 1)
+    }
+
+    /// How far the slot a column change keeps sits below the top of the
+    /// grid's visible area: the open detail, or else the card of the album
+    /// the scenes center on.
+    private static func slotTop(
+        _ stage: Stage,
+        in hosted: HostedAlbumGrid,
+        detailOpen: Bool
+    ) async throws -> Double {
+        if detailOpen { return try #require(stage.detailTop) }
+        let cardTop = { try centeredCardTop(in: hosted.window) }
+        // The accessibility tree takes a layout's places some turns of the
+        // run loop after the layout.
+        try await Wait.untilSteady { try cardTop() }
+        return try cardTop()
     }
 
     /// How far the card of the album the scenes center on sits below the top
