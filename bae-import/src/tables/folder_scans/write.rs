@@ -268,8 +268,9 @@ fn insert_candidate(
     Ok(())
 }
 
-// A candidate's row, written over the one stored under its key, column for
-// column.
+// A candidate's row, valid or invalid, written over the one stored under its
+// key, column for column. Only an invalid candidate has the `invalid_*`
+// columns, and it has no content hash.
 sqlive_compose::write!(
     UpsertCandidateRow(
         watched_folder_path: &'p [u8],
@@ -281,17 +282,23 @@ sqlive_compose::write!(
         folder: Vec<u8>,
         file_root: Vec<u8>,
         scope: &'static str,
-        content_hash: String,
+        content_hash: Option<String>,
         file_edit_revision: i64,
         grouping_key: Option<&'p crate::CandidateKey>,
         source_kind: &'p str,
+        blank_cover_file: Option<String>,
+        invalid_reason: Option<&'static str>,
+        invalid_shared_name: Option<String>,
+        invalid_damaged_audio: Option<u32>,
     ),
     r#"
     INSERT INTO scan_candidate
         (watched_folder_path, path, generation, kind, name, relative_folder, folder, file_root,
-         scope, content_hash, file_edit_revision, grouping_key, source_kind)
+         scope, content_hash, file_edit_revision, grouping_key, source_kind, blank_cover_file,
+         invalid_reason, invalid_shared_name, invalid_damaged_audio)
     VALUES (:watched_folder_path, :path, :generation, :kind, :name, :relative_folder, :folder,
-        :file_root, :scope, :content_hash, :file_edit_revision, :grouping_key, :source_kind)
+        :file_root, :scope, :content_hash, :file_edit_revision, :grouping_key, :source_kind,
+        :blank_cover_file, :invalid_reason, :invalid_shared_name, :invalid_damaged_audio)
     ON CONFLICT (watched_folder_path, path) DO UPDATE SET
         generation = excluded.generation, kind = excluded.kind, name = excluded.name,
         relative_folder = excluded.relative_folder, folder = excluded.folder,
@@ -344,13 +351,18 @@ pub(crate) fn insert_candidate_row(
         folder: coven::path_bytes(&candidate.path),
         file_root: coven::path_bytes(&candidate.file_root),
         scope: scope_text(candidate.scope),
-        content_hash: candidate.files.content_hash(),
+        content_hash: Some(candidate.files.content_hash()),
         file_edit_revision: to_i64(
             candidate.file_edit_revision,
             "a candidate's file edit revision",
         )?,
         grouping_key: candidate.grouping.as_ref(),
         source_kind,
+        // `insert_candidate_files` sets it from the files it stores.
+        blank_cover_file: None,
+        invalid_reason: None,
+        invalid_shared_name: None,
+        invalid_damaged_audio: None,
     })?;
     for (position, part) in candidate.files.parts.iter().enumerate() {
         sql.run(&InsertCandidatePartParams {
@@ -363,46 +375,6 @@ pub(crate) fn insert_candidate_row(
     }
     Ok(())
 }
-
-// An invalid candidate's row, written over the one stored under its key,
-// column for column. It has no content hash and no file decisions.
-sqlive_compose::write!(
-    UpsertInvalidCandidateRow(
-        watched_folder_path: &'p [u8],
-        path: &'p crate::CandidateKey,
-        generation: i64,
-        name: &'p str,
-        relative_folder: &'p crate::RelativeFolder,
-        folder: &'p [u8],
-        scope: &'static str,
-        grouping_key: Option<&'p crate::CandidateKey>,
-        source_kind: &'p str,
-        blank_cover_file: Option<String>,
-        invalid_reason: &'static str,
-        invalid_shared_name: Option<String>,
-        invalid_damaged_audio: Option<u32>,
-    ),
-    r#"
-    INSERT INTO scan_candidate
-        (watched_folder_path, path, generation, kind, name, relative_folder, folder, file_root,
-         scope, content_hash, file_edit_revision, grouping_key, source_kind, blank_cover_file,
-         invalid_reason, invalid_shared_name, invalid_damaged_audio)
-    VALUES (:watched_folder_path, :path, :generation, 'invalid', :name, :relative_folder, :folder,
-        :folder, :scope, NULL, 0, :grouping_key, :source_kind, :blank_cover_file,
-        :invalid_reason, :invalid_shared_name, :invalid_damaged_audio)
-    ON CONFLICT (watched_folder_path, path) DO UPDATE SET
-        generation = excluded.generation, kind = excluded.kind, name = excluded.name,
-        relative_folder = excluded.relative_folder, folder = excluded.folder,
-        file_root = excluded.file_root, scope = excluded.scope,
-        content_hash = excluded.content_hash,
-        file_edit_revision = excluded.file_edit_revision,
-        grouping_key = excluded.grouping_key, source_kind = excluded.source_kind,
-        blank_cover_file = excluded.blank_cover_file,
-        invalid_reason = excluded.invalid_reason,
-        invalid_shared_name = excluded.invalid_shared_name,
-        invalid_damaged_audio = excluded.invalid_damaged_audio
-"#
-);
 
 sqlive_compose::write!(
     InsertSkippedFile(
@@ -454,22 +426,26 @@ fn insert_invalid(
         InvalidReason::NoValidAudio => ("no_valid_audio", None, None),
     };
     let watched_folder_path = coven::path_bytes(watched_folder_path);
-    sql.run(&UpsertInvalidCandidateRowParams {
+    sql.run(&UpsertCandidateRowParams {
         watched_folder_path: &watched_folder_path,
         path: &key,
         generation,
+        kind: "invalid",
         name: &candidate.name,
         relative_folder: &candidate.relative_folder,
-        folder: &folder,
+        folder: folder.clone(),
+        file_root: folder,
         scope: scope_text(if candidate.grouping.is_some() {
             crate::folder_scanner::ReleaseFileScope::Recursive
         } else {
             crate::folder_scanner::ReleaseFileScope::Direct
         }),
+        content_hash: None,
+        file_edit_revision: 0,
         grouping_key: candidate.grouping.as_ref(),
         source_kind,
         blank_cover_file: candidate.cover_file(),
-        invalid_reason: reason,
+        invalid_reason: Some(reason),
         invalid_shared_name: shared_name,
         invalid_damaged_audio: damaged_audio,
     })?;
