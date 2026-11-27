@@ -10,20 +10,14 @@ use crate::{
 use bae_catalogs::catalog::Catalog;
 use coven::CovenWrite;
 
-/// A library row's id: a UUID naming its table by `kind` and its row by `i`,
-/// as an SQL expression over `i`, for the other domains' rows that name it.
-fn row_id_sql(kind: u32) -> String {
-    format!("printf('%08x-{kind:04x}-4000-8000-%012x', i, i)")
-}
-
-/// Row `i`'s id in the table `kind` names, as [`row_id_sql`] writes it.
+/// A library row's id: a UUID naming its table by `kind` and its row by `i`.
 fn row_id(kind: u32, i: u64) -> String {
     format!("{i:08x}-{kind:04x}-4000-8000-{i:012x}")
 }
 
-/// Track `i`'s id, as an SQL expression over `i`.
-pub fn track_id_sql() -> String {
-    row_id_sql(6)
+/// Track `i`'s id.
+pub fn track_id(i: u64) -> String {
+    row_id(6, i)
 }
 
 /// Release `i`'s id.

@@ -35,7 +35,13 @@ pub fn statement_optional<Q: Read<Handle = Writer>>(
     sql: &impl WriterRead,
     statement: &Q,
 ) -> Result<Option<Q::Row>, DbError> {
-    let mut rows = statement_rows(sql, statement)?.into_iter();
+    at_most_one::<Q, _>(statement_rows(sql, statement)?)
+}
+
+/// The row among `rows`, all that the statement `Q` returned, where it
+/// returns at most one; a second row is an error.
+pub(crate) fn at_most_one<Q, Row>(rows: Vec<Row>) -> Result<Option<Row>, DbError> {
+    let mut rows = rows.into_iter();
     let first = rows.next();
     match rows.count() {
         0 => Ok(first),

@@ -2,7 +2,7 @@
 //! write's, by the write itself or by the before-commit function coven runs
 //! last in it.
 
-use crate::read_statement::row_count;
+use crate::read_statement::{at_most_one, row_count};
 use crate::DbError;
 use coven::{BulkSqlContext, CommitSql, CovenWrite, JoiningWrite, MemberWrite};
 use sqlive_compose::{Write, WriteReturning};
@@ -18,11 +18,16 @@ pub trait WriteStatements {
     /// Run `statement`, whose RETURNING gives exactly one row, and return
     /// it; any other number of rows is an error.
     fn returning_one<Q: WriteReturning>(&self, statement: &Q) -> Result<Q::Row, DbError> {
-        let mut rows = self.returning(statement)?.into_iter();
-        match (rows.next(), rows.count()) {
-            (Some(row), 0) => Ok(row),
-            (first, more) => Err(row_count::<Q>(usize::from(first.is_some()) + more)),
-        }
+        self.returning_optional(statement)?.ok_or_else(|| row_count::<Q>(0))
+    }
+
+    /// Run `statement`, which changes at most one row, and return the row
+    /// its RETURNING gives; a second row is an error.
+    fn returning_optional<Q: WriteReturning>(
+        &self,
+        statement: &Q,
+    ) -> Result<Option<Q::Row>, DbError> {
+        at_most_one::<Q, _>(self.returning(statement)?)
     }
 }
 

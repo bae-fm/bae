@@ -2,6 +2,7 @@
 //! resumes it.
 
 use super::*;
+use bae_store::WriteStatements;
 
 /// The single device-local `playback_state` row: where playback stood, so a
 /// restart resumes it. The queue it plays from is in the queue tables, and
@@ -85,6 +86,38 @@ pub async fn playback_start(store: &Store) -> Result<PlaybackStart, DbError> {
         resume: row.saved.map(SavedResume::into_row).transpose(),
         context_tracks: row.context_tracks,
     })
+}
+
+sqlive_compose::write!(
+    SaveResume(
+        current_entry: Option<&'p str>,
+        current_track_id: Option<&'p str>,
+        position_ms: Option<u64>,
+    ),
+    r#"
+    INSERT OR REPLACE INTO playback_state (id, current_entry, current_track_id, position_ms)
+    VALUES ('current', :current_entry, :current_track_id, :position_ms)
+"#
+);
+
+sqlive_compose::write!(DeleteResume, r#"DELETE FROM playback_state"#);
+
+/// Write the single device-local `playback_state` row (id = 'current'),
+/// replacing any existing one. Never synced.
+pub(super) fn save_resume_on(
+    sql: &CovenWrite<'_>,
+    state: &PlaybackResumeRow,
+) -> Result<(), DbError> {
+    let (current_entry, current_track_id) = match &state.current {
+        Some(current) => (Some(current.id.to_string()), Some(current.track_id.as_str())),
+        None => (None, None),
+    };
+    sql.run(&SaveResumeParams {
+        current_entry: current_entry.as_deref(),
+        current_track_id,
+        position_ms: state.position_ms,
+    })?;
+    Ok(())
 }
 
 /// Whether a resume row is stored.

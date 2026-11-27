@@ -9,13 +9,15 @@
 //! included, are `queue.sql`.
 
 use super::queue_fill::{fill_on, ContextFill, ContextFilled};
+use super::queue_order::{lane_top_on, reorder_on, shift_on, LaneOrder};
 use super::*;
 use crate::{QueueEntry, QueueEntryId, QueueLane, RepeatMode};
+use bae_store::WriteStatements;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 
 /// The table holding each lane's rows and how the lane orders them.
 impl QueueLane {
-    fn table(self) -> &'static str {
+    pub(super) fn table(self) -> &'static str {
         match self {
             QueueLane::Manual => "playback_manual",
             QueueLane::Context => "playback_context",
@@ -50,7 +52,7 @@ pub(super) fn context_order_column(shuffled: bool) -> &'static str {
 }
 
 /// The lane an entry id names and the entry number of its row there.
-fn row_key(id: &QueueEntryId) -> (QueueLane, i64) {
+pub(super) fn row_key(id: &QueueEntryId) -> (QueueLane, i64) {
     match id {
         QueueEntryId::Manual(entry) => (QueueLane::Manual, *entry),
         QueueEntryId::Context(entry) => (QueueLane::Context, *entry),
@@ -79,6 +81,170 @@ impl PlaybackQueueTables {
     }
 }
 
+sqlive_compose::write!(ClearUpNext, r#"DELETE FROM playback_manual"#);
+
+sqlive_compose::write!(ClearContextLane, r#"DELETE FROM playback_context"#);
+
+// What the context lane plays from cleared: its source and its cursor, which
+// the schema keeps NULL together exactly while the lane is empty. The shuffle
+// mode stays.
+sqlive_compose::write!(
+    ClearContextSource,
+    r#"
+    UPDATE playback_queue
+    SET source_kind = NULL, source_release_id = NULL, ordered_cursor = NULL,
+        shuffled_cursor = NULL
+"#
+);
+
+// [`ClearContextSource`] where the lane is empty. The schema's
+// `tracks_leave_playback_queue` trigger writes the same clear when a deleted
+// track was the lane's last.
+sqlive_compose::write!(
+    ClearEmptiedContextSource,
+    r#"
+    UPDATE playback_queue
+    SET source_kind = NULL, source_release_id = NULL, ordered_cursor = NULL,
+        shuffled_cursor = NULL
+    WHERE source_kind IS NOT NULL AND NOT EXISTS (SELECT 1 FROM playback_context)
+"#
+);
+
+sqlive_compose::write!(
+    ResetQueueModes,
+    r#"UPDATE playback_queue SET repeat = 'off', shuffled = 0"#
+);
+
+sqlive_compose::write!(
+    SetRepeat(repeat: &'static str),
+    r#"UPDATE playback_queue SET repeat = :repeat"#
+);
+
+sqlive_compose::write!(
+    SetShuffle(shuffled: bool),
+    r#"UPDATE playback_queue SET shuffled = :shuffled"#
+);
+
+sqlive_compose::write!(
+    SetNextEntry(next_entry: i64),
+    r#"UPDATE playback_queue SET next_entry = :next_entry"#
+);
+
+sqlive_compose::write!(
+    RemoveFromUpNext(entry: i64),
+    r#"DELETE FROM playback_manual WHERE entry = :entry RETURNING track_id"#
+);
+
+sqlive_compose::write!(
+    RemoveFromContextLane(entry: i64),
+    r#"DELETE FROM playback_context WHERE entry = :entry RETURNING track_id"#
+);
+
+sqlive_compose::write!(
+    DeleteUpNextAt(position: i64),
+    r#"DELETE FROM playback_manual WHERE position = :position"#
+);
+
+sqlive_compose::write!(
+    DeleteUpNextThrough(position: i64),
+    r#"DELETE FROM playback_manual WHERE position <= :position"#
+);
+
+sqlive_compose::write!(
+    PlayContextEntry(entry: i64),
+    r#"
+    UPDATE playback_queue
+    SET ordered_cursor = (SELECT ordered FROM playback_context WHERE entry = :entry),
+        shuffled_cursor = (SELECT shuffled FROM playback_context WHERE entry = :entry)
+"#
+);
+
+// The playing row's place in the shuffled order whose places start above `top`,
+// where the rows up to `cursor` in the lane's own order come first.
+sqlive_compose::write!(
+    PlayShuffledAfter(top: i64, cursor: i64),
+    r#"
+    UPDATE playback_queue
+    SET shuffled_cursor =
+        :top + (SELECT count(*) FROM playback_context WHERE ordered <= :cursor)
+"#
+);
+
+sqlive_compose::write!(
+    ShuffleWholeLane(top: i64),
+    r#"
+    UPDATE playback_context SET shuffled = :top + placed.k
+    FROM (SELECT entry, row_number() OVER (ORDER BY random()) AS k
+          FROM playback_context) AS placed
+    WHERE playback_context.entry = placed.entry
+"#
+);
+
+sqlive_compose::write!(
+    ShuffleLaneAfter(top: i64, cursor: i64),
+    r#"
+    UPDATE playback_context SET shuffled = :top + placed.k
+    FROM (SELECT entry,
+                 row_number() OVER (
+                     ORDER BY ordered > :cursor,
+                         CASE WHEN ordered > :cursor THEN random() ELSE ordered END) AS k
+          FROM playback_context) AS placed
+    WHERE playback_context.entry = placed.entry
+"#
+);
+
+// The tracks of the JSON array `tracks` that the library holds, in the array's
+// order, as Up Next's entries numbered from `base` at places from `start`.
+sqlive_compose::write!(
+    QueueGivenTracks(tracks: &'p str, base: i64, start: i64),
+    r#"
+    INSERT INTO playback_manual (entry, position, track_id)
+    SELECT :base + added.k, :start + added.k, added.track_id
+    FROM (
+        SELECT track.track_id AS track_id,
+               row_number() OVER (ORDER BY given.key) - 1 AS k
+        FROM json_each(:tracks) AS given
+        JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+            ON track.track_id = given.value) AS added
+"#
+);
+
+// [`QueueGivenTracks`] for picked tracks, in the order their releases list
+// them.
+sqlive_compose::write!(
+    QueuePickedTracks(tracks: &'p str, base: i64, start: i64),
+    r#"
+    INSERT INTO playback_manual (entry, position, track_id)
+    SELECT :base + added.k, :start + added.k, added.track_id
+    FROM (
+        SELECT track.track_id AS track_id,
+               row_number() OVER (
+                   ORDER BY track.release_id, track.position, track.track_id) - 1 AS k
+        FROM json_each(:tracks) AS picked
+        JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+            ON track.track_id = picked.value) AS added
+"#
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::write!(
+    SeedContextLane(tracks: &'p str, start: u64),
+    r#"
+    INSERT INTO playback_context (entry, ordered, shuffled, track_id)
+    SELECT :start + seeded.key, :start + seeded.key, :start + seeded.key, seeded.value
+    FROM json_each(:tracks) AS seeded
+"#
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::write!(
+    SeedLibraryPlayback,
+    r#"
+    UPDATE playback_queue
+    SET source_kind = 'library', shuffled = 0, ordered_cursor = -1, shuffled_cursor = -1
+"#
+);
+
 /// Empty the queue and the resume row unless the resume row is kept: what
 /// starting playback with a library does when it will not resume what it
 /// played. A library with nothing to resume opens with an empty queue, and
@@ -96,10 +262,10 @@ pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), Db
             if resume && stored {
                 return Ok(());
             }
-            sql.execute("DELETE FROM playback_state", [])?;
-            sql.execute("DELETE FROM playback_manual", [])?;
+            sql.run(&super::resume::DeleteResumeParams {})?;
+            sql.run(&ClearUpNextParams {})?;
             clear_context_on(sql)?;
-            sql.execute("UPDATE playback_queue SET repeat = 'off', shuffled = 0", [])?;
+            sql.run(&ResetQueueModesParams {})?;
             Ok(())
         })
         .await
@@ -129,7 +295,7 @@ impl PlaybackQueueTables {
     pub async fn clear_manual(&self) -> Result<(), DbError> {
         self.store
             .call_bulk(|sql| {
-                sql.execute("DELETE FROM playback_manual", [])?;
+                sql.run(&ClearUpNextParams {})?;
                 Ok(())
             })
             .await
@@ -160,7 +326,7 @@ impl PlaybackQueueTables {
     pub async fn set_repeat(&self, mode: RepeatMode) -> Result<(), DbError> {
         self.store
             .call(move |sql| {
-                sql.execute("UPDATE playback_queue SET repeat = ?", [repeat_column(mode)])?;
+                sql.run(&SetRepeatParams { repeat: repeat_column(mode) })?;
                 Ok(())
             })
             .await
@@ -171,29 +337,21 @@ impl PlaybackQueueTables {
         self.store
             .call(move |sql| {
                 let (lane, entry) = row_key(&id);
-                let removed = sql
-                    .query_row(
-                        &format!(
-                            "DELETE FROM {table} WHERE entry = ? RETURNING track_id",
-                            table = lane.table()
-                        ),
-                        [entry],
-                        |row| row.get::<_, String>(0),
-                    )
-                    .optional()?;
+                let removed = match lane {
+                    QueueLane::Manual => sql
+                        .returning_optional(&RemoveFromUpNextParams { entry })?
+                        .map(|row| row.track_id),
+                    QueueLane::Context => sql
+                        .returning_optional(&RemoveFromContextLaneParams { entry })?
+                        .map(|row| row.track_id),
+                };
                 let Some(track_id) = removed else {
                     return Ok(None);
                 };
                 if lane == QueueLane::Context {
                     // The lane's last row takes what it played from with it,
                     // as a deleted track does (`tracks_leave_playback_queue`).
-                    sql.execute(
-                        &format!(
-                            "{CONTEXT_SOURCE_CLEARED} WHERE source_kind IS NOT NULL \
-                             AND NOT EXISTS (SELECT 1 FROM playback_context)"
-                        ),
-                        [],
-                    )?;
+                    sql.run(&ClearEmptiedContextSourceParams {})?;
                 }
                 Ok(Some(QueueEntry { id, track_id }))
             })
@@ -225,10 +383,7 @@ impl PlaybackQueueTables {
                 };
                 match located.lane {
                     QueueLane::Manual => {
-                        sql.execute(
-                            "DELETE FROM playback_manual WHERE position <= ?",
-                            [located.position],
-                        )?;
+                        sql.run(&DeleteUpNextThroughParams { position: located.position })?;
                     }
                     QueueLane::Context => set_cursor_on(sql, row_key(&located.entry.id).1)?,
                 }
@@ -323,38 +478,28 @@ pub(super) fn queue_row_on(sql: &impl bae_store::WriterRead) -> rusqlite::Result
 
 /// Make the context row `entry` the playing one, in both of the lane's orders.
 fn set_cursor_on(sql: &CovenWrite<'_>, entry: i64) -> rusqlite::Result<()> {
-    sql.execute(
-        "UPDATE playback_queue SET \
-             ordered_cursor = (SELECT ordered FROM playback_context WHERE entry = ?1), \
-             shuffled_cursor = (SELECT shuffled FROM playback_context WHERE entry = ?1)",
-        [entry],
-    )?;
+    sql.run(&PlayContextEntryParams { entry })?;
     Ok(())
 }
 
-/// What the context lane plays from cleared: its source and its cursor, which
-/// the schema keeps NULL together exactly while the lane is empty. The shuffle
-/// mode stays. The schema's `tracks_leave_playback_queue` trigger writes the same
-/// clear when a deleted track was the lane's last.
-const CONTEXT_SOURCE_CLEARED: &str = "UPDATE playback_queue \
-     SET source_kind = NULL, source_release_id = NULL, ordered_cursor = NULL, \
-         shuffled_cursor = NULL";
-
 /// Empty the context lane and clear what it played from, in the same write.
 fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
-    sql.execute("DELETE FROM playback_context", [])?;
-    sql.execute(CONTEXT_SOURCE_CLEARED, [])?;
+    sql.run(&ClearContextLaneParams {})?;
+    sql.run(&ClearContextSourceParams {})?;
     Ok(())
 }
 
 /// An entry and where it sits.
-struct Located {
-    entry: QueueEntry,
-    lane: QueueLane,
+pub(super) struct Located {
+    pub(super) entry: QueueEntry,
+    pub(super) lane: QueueLane,
     position: i64,
 }
 
-fn locate_on(sql: &CovenWrite<'_>, id: QueueEntryId) -> rusqlite::Result<Option<Located>> {
+pub(super) fn locate_on(
+    sql: &CovenWrite<'_>,
+    id: QueueEntryId,
+) -> rusqlite::Result<Option<Located>> {
     let (lane, entry) = row_key(&id);
     let column = lane.order_column(queue_row_on(sql)?.shuffled);
     sql.query_row(
@@ -387,62 +532,16 @@ pub(super) fn context_from_row(row: &Row<'_>) -> rusqlite::Result<(QueueEntry, i
     entry_from_row(QueueLane::Context, row)
 }
 
-/// The highest place in `lane`'s `column`, `None` when it is empty.
-fn lane_top_on(
-    sql: &CovenWrite<'_>,
-    lane: QueueLane,
-    column: &str,
-) -> rusqlite::Result<Option<i64>> {
-    sql.query_row(&format!("SELECT max({column}) FROM {}", lane.table()), [], |row| row.get(0))
-}
-
-/// Move `lane`'s rows at places `low..=high` of `column` by `delta`. Places
-/// are unique in a lane at every statement, so the rows first go above every
-/// place the lane holds, then come down to where they belong. The caller has
-/// left the places they come down to free.
-fn shift_on(
-    sql: &CovenWrite<'_>,
-    lane: QueueLane,
-    column: &str,
-    low: i64,
-    high: i64,
-    delta: i64,
-) -> rusqlite::Result<()> {
-    if low > high {
-        return Ok(());
-    }
-    let Some(top) = lane_top_on(sql, lane, column)? else {
-        return Ok(());
-    };
-    let lift = top - low + delta.abs() + 1;
-    sql.execute(
-        &format!(
-            "UPDATE {} SET {column} = {column} + ?1 WHERE {column} BETWEEN ?2 AND ?3",
-            lane.table()
-        ),
-        params![lift, low, high],
-    )?;
-    sql.execute(
-        &format!("UPDATE {} SET {column} = {column} - ?1 + ?2 WHERE {column} >= ?3", lane.table()),
-        params![lift, delta, low + lift],
-    )?;
-    Ok(())
-}
-
 /// Give every row of the context lane a new place in the shuffled order, above
-/// every place it holds, in the order `order` sorts them by, and answer the
-/// highest place the lane held before.
-fn place_shuffled_on(sql: &CovenWrite<'_>, order: &str) -> rusqlite::Result<i64> {
-    let top = lane_top_on(sql, QueueLane::Context, "shuffled")?.unwrap_or(0);
-    sql.execute(
-        &format!(
-            "UPDATE playback_context SET shuffled = ?1 + placed.k \
-             FROM (SELECT entry, row_number() OVER (ORDER BY {order}) AS k \
-                   FROM playback_context) AS placed \
-             WHERE playback_context.entry = placed.entry"
-        ),
-        [top],
-    )?;
+/// every place it holds, in random order, and answer the highest place the
+/// lane held before. With `keep_through`, a place in the lane's own order, the
+/// rows up to it keep their order and come first.
+fn place_shuffled_on(sql: &CovenWrite<'_>, keep_through: Option<i64>) -> rusqlite::Result<i64> {
+    let top = lane_top_on(sql, LaneOrder::Shuffled)?.unwrap_or(0);
+    match keep_through {
+        Some(cursor) => sql.run(&ShuffleLaneAfterParams { top, cursor })?,
+        None => sql.run(&ShuffleWholeLaneParams { top })?,
+    };
     Ok(top)
 }
 
@@ -462,7 +561,7 @@ fn add_manual_on(
     }
     let bottom: Option<i64> =
         sql.query_row("SELECT min(position) FROM playback_manual", [], |row| row.get(0))?;
-    let top = lane_top_on(sql, QueueLane::Manual, "position")?;
+    let top = lane_top_on(sql, LaneOrder::UpNext)?;
     let end = top.map_or(1, |top| top + 1);
     let start = match place {
         ManualPlace::End => end,
@@ -477,7 +576,7 @@ fn add_manual_on(
                 .optional()?;
             match at {
                 Some(at) => {
-                    shift_on(sql, QueueLane::Manual, "position", at, end - 1, count)?;
+                    shift_on(sql, LaneOrder::UpNext, at, end - 1, count)?;
                     at
                 }
                 None => end,
@@ -485,17 +584,15 @@ fn add_manual_on(
         }
     };
     let base = queue_row_on(sql)?.next_entry;
-    sql.execute(
-        &format!(
-            "INSERT INTO playback_manual (entry, position, track_id) \
-             SELECT ?2 + k, ?3 + k, track_id FROM ( \
-                 SELECT t.id AS track_id, row_number() OVER (ORDER BY {order}) - 1 AS k \
-                 FROM json_each(?1) j JOIN tracks t ON t.id = j.value)",
-            order = tracks.order_sql(),
-        ),
-        params![track_ids, base, start],
-    )?;
-    sql.execute("UPDATE playback_queue SET next_entry = ?", params![base + count])?;
+    match tracks {
+        bae_records::TrackList::Given(_) => {
+            sql.run(&QueueGivenTracksParams { tracks: &track_ids, base, start })?
+        }
+        bae_records::TrackList::Picked(_) => {
+            sql.run(&QueuePickedTracksParams { tracks: &track_ids, base, start })?
+        }
+    };
+    sql.run(&SetNextEntryParams { next_entry: base + count })?;
     Ok(count as usize)
 }
 
@@ -506,152 +603,17 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
     }
     // With nothing playing the mode is all there is to change.
     let Some(cursor) = row.cursor else {
-        sql.execute("UPDATE playback_queue SET shuffled = ?", [on])?;
+        sql.run(&SetShuffleParams { shuffled: on })?;
         return Ok(());
     };
     if on {
         // The rows up to the playing one keep their order and come first; the
         // rows after it follow in random order. The lane was reading in its
         // own order, so `cursor` is the playing row's place there.
-        let top = place_shuffled_on(
-            sql,
-            &format!(
-                "ordered > {cursor}, CASE WHEN ordered > {cursor} THEN random() ELSE ordered END"
-            ),
-        )?;
-        sql.execute(
-            "UPDATE playback_queue SET shuffled_cursor = ?1 + \
-                 (SELECT count(*) FROM playback_context WHERE ordered <= ?2)",
-            [top, cursor],
-        )?;
+        let top = place_shuffled_on(sql, Some(cursor))?;
+        sql.run(&PlayShuffledAfterParams { top, cursor })?;
     }
-    sql.execute("UPDATE playback_queue SET shuffled = ?", [on])?;
-    Ok(())
-}
-
-fn reorder_on(
-    sql: &CovenWrite<'_>,
-    id: QueueEntryId,
-    target: QueueLane,
-    position: u64,
-) -> Result<bool, DbError> {
-    let Some(moving) = locate_on(sql, id.clone())? else {
-        warn!("reorder: queue entry id not found: {id}");
-        return Ok(false);
-    };
-    let lane = moving.lane;
-    if lane != target {
-        warn!("reorder: entry {id} is not in the {target:?} lane the caller asked to move it in");
-        return Ok(false);
-    }
-    let (_, entry) = row_key(&id);
-    let before = entry_after_place_on(sql, lane, entry, position)?;
-    match lane {
-        QueueLane::Manual => move_entry_on(sql, lane, "position", None, entry, before)?,
-        QueueLane::Context => {
-            // The row moves in its own order, and also in the shuffled one
-            // while shuffle is on, so a move made while shuffled is still
-            // there when shuffle is off.
-            move_entry_on(sql, lane, "ordered", Some("ordered_cursor"), entry, before)?;
-            if queue_row_on(sql)?.shuffled {
-                move_entry_on(sql, lane, "shuffled", Some("shuffled_cursor"), entry, before)?;
-            }
-        }
-    }
-    Ok(true)
-}
-
-/// Find the entry that a row moved to `position` goes before. The function
-/// counts `lane`'s rows in the order the screens show them, skips the moved
-/// row `entry`, and returns none when `position` is past the lane's end.
-fn entry_after_place_on(
-    sql: &CovenWrite<'_>,
-    lane: QueueLane,
-    entry: i64,
-    position: u64,
-) -> Result<Option<i64>, DbError> {
-    let offset = i64::try_from(position).unwrap_or(i64::MAX);
-    let shuffled = queue_row_on(sql)?.shuffled;
-    // The context lane's rows as the screens show them start after its
-    // playing track; Up Next shows every row.
-    match lane {
-        QueueLane::Manual => Ok(sql
-            .query_row(
-                "SELECT entry FROM playback_manual WHERE entry <> ?1 \
-                 ORDER BY position LIMIT 1 OFFSET ?2",
-                params![entry, offset],
-                |row| row.get(0),
-            )
-            .optional()?),
-        QueueLane::Context => {
-            super::queue_upcoming::upcoming_entry_at_on(sql, shuffled, entry, offset)
-        }
-    }
-}
-
-/// Move the entry to just before `before`, or to the end of its lane without
-/// one, in the lane's `column`. A context cursor in `cursor_column` moves so
-/// it stays on the same track or between the same two.
-fn move_entry_on(
-    sql: &CovenWrite<'_>,
-    lane: QueueLane,
-    column: &str,
-    cursor_column: Option<&str>,
-    entry: i64,
-    before: Option<i64>,
-) -> rusqlite::Result<()> {
-    let table = lane.table();
-    let place_of = |entry: i64| {
-        sql.query_row(&format!("SELECT {column} FROM {table} WHERE entry = ?"), [entry], |row| {
-            row.get::<_, i64>(0)
-        })
-    };
-    let from = place_of(entry)?;
-    let to = before.map(place_of).transpose()?;
-    let top = lane_top_on(sql, lane, column)?.expect("the lane holds the entry being moved");
-    let park = |place: i64| {
-        sql.execute(
-            &format!("UPDATE {table} SET {column} = ? WHERE entry = ?"),
-            params![place, entry],
-        )
-    };
-    // Where the entry lands, and how a cursor between the two places moves.
-    let (landing, cursor_shift): (i64, Option<(i64, i64, i64)>) = match to {
-        None => {
-            park(top + 1)?;
-            (top + 1, None)
-        }
-        Some(to) if to == from => (from, None),
-        Some(to) if to < from => {
-            park(top + 1)?;
-            shift_on(sql, lane, column, to, from - 1, 1)?;
-            park(to)?;
-            (to, Some((to, from - 1, 1)))
-        }
-        Some(to) => {
-            park(top + 1)?;
-            shift_on(sql, lane, column, from + 1, to - 1, -1)?;
-            park(to - 1)?;
-            (to - 1, Some((from + 1, to - 1, -1)))
-        }
-    };
-    if let Some(cursor_column) = cursor_column {
-        let cursor: i64 =
-            sql.query_row(&format!("SELECT {cursor_column} FROM playback_queue"), [], |row| {
-                row.get(0)
-            })?;
-        let moved_cursor = if cursor == from {
-            landing
-        } else {
-            match cursor_shift {
-                Some((low, high, delta)) if (low..=high).contains(&cursor) => cursor + delta,
-                _ => cursor,
-            }
-        };
-        if moved_cursor != cursor {
-            sql.execute(&format!("UPDATE playback_queue SET {cursor_column} = ?"), [moved_cursor])?;
-        }
-    }
+    sql.run(&SetShuffleParams { shuffled: on })?;
     Ok(())
 }
 
@@ -664,7 +626,7 @@ fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
         )
         .optional()?;
     if let Some((entry, position)) = manual_front {
-        sql.execute("DELETE FROM playback_manual WHERE position = ?", [position])?;
+        sql.run(&DeleteUpNextAtParams { position })?;
         return Ok(Some(entry));
     }
     let row = queue_row_on(sql)?;
@@ -694,7 +656,7 @@ fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
     if row.shuffled {
         // A new pass in a new order over the rows the lane holds now. The
         // lane's own order is as it was.
-        place_shuffled_on(sql, "random()")?;
+        place_shuffled_on(sql, None)?;
     }
     let (first, _) = sql.query_row(
         &format!(
@@ -767,53 +729,27 @@ impl FromSql for RepeatMode {
     }
 }
 
-/// The context lane holding the tracks `start..end`, track `i` at place `i`
-/// and named by `track_id_sql`, an SQL expression over `i`, and the queue
-/// playing the library from before the lane's first track. The lane goes in
-/// by one set-based statement, at the sizes the lists' window costs are
-/// measured at.
+/// The context lane holding `tracks`, the one at index `i` at place
+/// `start + i`, and the queue playing the library from before the lane's first
+/// track. The lane goes in by one set-based statement, at the sizes the lists'
+/// window costs are measured at.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn fill_context_lane_on(
     sql: &CovenWrite<'_>,
     start: u64,
-    end: u64,
-    track_id_sql: &str,
+    tracks: &[String],
 ) -> Result<(), DbError> {
-    let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
-    sql.execute_batch(&format!(
-        "{rows} INSERT INTO playback_context (entry, ordered, shuffled, track_id) \
-             SELECT i, i, i, {track_id_sql} FROM k;
-         UPDATE playback_queue \
-         SET source_kind = 'library', shuffled = 0, ordered_cursor = -1, shuffled_cursor = -1;"
-    ))?;
+    let tracks = serde_json::to_string(tracks).expect("serializing track ids cannot fail");
+    sql.run(&SeedContextLaneParams { tracks: &tracks, start })?;
+    sql.run(&SeedLibraryPlaybackParams {})?;
     Ok(())
 }
 
 impl PlaybackQueueTables {
-    /// Write the single device-local `playback_state` row (id = 'current'),
-    /// replacing any existing one. Never synced.
+    /// Write the resume row. Never synced.
     pub async fn save_playback_state(&self, state: &PlaybackResumeRow) -> Result<(), DbError> {
         let state = state.clone();
-        self.store
-            .call(move |conn| {
-                let (current_entry, current_track_id) = match &state.current {
-                    Some(current) => (Some(current.id.to_string()), Some(current.track_id.clone())),
-                    None => (None, None),
-                };
-                conn.execute(
-                    "INSERT OR REPLACE INTO playback_state \
-                     (id, current_entry, current_track_id, position_ms) \
-                     VALUES ('current', ?, ?, ?)",
-                    params![
-                        current_entry,
-                        current_track_id,
-                        state.position_ms.map(|position| position as i64),
-                    ],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
+        self.store.call(move |sql| super::resume::save_resume_on(sql, &state)).await
     }
 
     /// Delete the device-local `playback_state` row (playback stopped).
@@ -828,8 +764,9 @@ impl PlaybackQueueTables {
             return Ok(());
         }
         self.store
-            .call(move |conn| {
-                conn.execute("DELETE FROM playback_state", []).map(|_| ()).map_err(DbError::from)
+            .call(|sql| {
+                sql.run(&super::resume::DeleteResumeParams {})?;
+                Ok(())
             })
             .await
     }

@@ -668,12 +668,8 @@ mod window_cost {
             bulk_library::insert_on(&sql, start, end)?;
             let releases: Vec<String> = (start..end).map(bulk_library::release_id).collect();
             bae_transfers::tables::bulk::queue_downloads_on(&sql, start, &releases)?;
-            bae_playback::tables::fill_context_lane_on(
-                &sql,
-                start,
-                end,
-                &bulk_library::track_id_sql(),
-            )?;
+            let tracks: Vec<String> = (start..end).map(bulk_library::track_id).collect();
+            bae_playback::tables::fill_context_lane_on(&sql, start, &tracks)?;
             Ok::<(), bae_records::IdentityWriteError>(())
         })
         .await
