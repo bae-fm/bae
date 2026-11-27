@@ -73,6 +73,7 @@ sqlive_compose::fragment!(
 );
 
 /// One pressing's facts as column values.
+#[derive(PartialEq)]
 pub struct FactColumns {
     pub country: Option<&'static str>,
     pub region: Option<&'static str>,

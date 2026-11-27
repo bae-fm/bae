@@ -21,27 +21,18 @@ pub(super) struct FormColumns {
     pub(super) album_title: String,
     pub(super) album_year: String,
     pub(super) year: String,
-    pub(super) country: Option<&'static str>,
-    pub(super) region: Option<&'static str>,
     pub(super) media: String,
-    pub(super) status: Option<&'static str>,
-    pub(super) packaging: Option<&'static str>,
-    pub(super) discogs_details: String,
+    pub(super) facts: bae_records::records::pressing_columns::FactColumns,
 }
 
 impl FormColumns {
     pub(super) fn of(form: &RawReleaseEdit) -> Self {
-        let facts = bae_records::records::pressing_columns::FactColumns::of(&form.pressing.facts);
         Self {
             album_title: form.album_title.clone(),
             album_year: form.album_year.clone(),
             year: form.pressing.year.clone(),
-            country: facts.country,
-            region: facts.region,
             media: bae_records::records::pressing_columns::media_column(&form.pressing.facts.media),
-            status: facts.status,
-            packaging: facts.packaging,
-            discogs_details: facts.discogs_details,
+            facts: bae_records::records::pressing_columns::FactColumns::of(&form.pressing.facts),
         }
     }
 }

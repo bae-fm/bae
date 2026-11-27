@@ -10,7 +10,7 @@
 //! text of each card and row beside it.
 
 use super::match_record::load_search_run_matches_on;
-use super::match_rows::{ordinal_column, store_album_link_rows, MatchId, MatchOwner};
+use super::match_rows::{ordinal_column, store_album_link_rows, MatchOwner};
 use super::search_rows::load_picks_on;
 use super::*;
 use crate::tables::album_link_rows::album_links_column;
@@ -457,7 +457,7 @@ sqlive_compose::write!(
         album_links: &'static str,
         search_run: i64,
         position: i64,
-    ),
+    ) { match_id: super::match_rows::MatchId },
     r#"
     UPDATE import_candidate_match
     SET pressing = :pressing, card = :card, record_order = :record_order, section = :section,
@@ -501,8 +501,8 @@ pub(super) fn lay_out_search_on(
     let groups = group_results(unranked(results.clone()), None);
     let layout = ListLayout::of(&results, &groups, "returned");
     for ((row, result), place) in rows.iter().zip(&results).zip(&layout.places) {
-        let match_id = MatchId(
-            sql.returning_one(&PlaceSearchMatchParams {
+        let match_id = sql
+            .returning_one(&PlaceSearchMatchParams {
                 pressing: place.pressing,
                 card: place.card,
                 record_order: place.record_order,
@@ -512,8 +512,7 @@ pub(super) fn lay_out_search_on(
                 search_run: run,
                 position: row.position,
             })?
-            .match_id,
-        );
+            .match_id;
         sql.run(&DeleteMatchAlbumLinksParams { match_id })?;
         store_album_link_rows(sql, match_id, &result.album_links)?;
     }

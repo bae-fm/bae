@@ -35,7 +35,7 @@ pub(super) fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
 /// The id of an `import_candidate_match` row, which every row under the
 /// match names it by.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct MatchId(pub(super) i64);
+pub(super) struct MatchId(i64);
 
 impl rusqlite::types::FromSql for MatchId {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
@@ -236,7 +236,7 @@ sqlive_compose::write!(
         document_failure: Option<&'static str>,
         document_failure_status: Option<i64>,
         named_note: Option<&'p str>,
-    ),
+    ) { match_id: super::match_rows::MatchId },
     r#"
     INSERT INTO import_candidate_match
         (verdict_id, search_run, search_state, position, pressing, card, record_order, section,
@@ -419,8 +419,8 @@ pub(super) fn store_match(
     let document_failure =
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
     let (verdict, search) = (owner.verdict(), owner.search());
-    let match_id = MatchId(
-        sql.returning_one(&UpsertMatchParams {
+    let match_id = sql
+        .returning_one(&UpsertMatchParams {
             verdict_id: verdict,
             search_run: search,
             search_state,
@@ -462,8 +462,7 @@ pub(super) fn store_match(
             document_failure_status: document_failure.status,
             named_note,
         })?
-        .match_id,
-    );
+        .match_id;
     if let Some(cover) = cover {
         for copy in &cover.image.downscaled {
             sql.run(&InsertMatchCoverCopyParams {
