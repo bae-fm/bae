@@ -306,6 +306,29 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
     assert!(load_playback_state(&db).await.unwrap().is_none());
 }
 
+/// What a service takes up as it starts is one statement, with no resume row
+/// stored and with one.
+#[tokio::test]
+async fn the_playback_start_state_is_one_statement() {
+    let (db, _tmp, _tracks) = release_db(2).await;
+    let current = play(&db, ReleaseStart::First).await;
+
+    let counter = db.track_work_for_test().await.unwrap();
+    let start = playback_start(&db).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert_eq!(start.resume.unwrap(), None);
+    assert_eq!(start.context_tracks, 2);
+
+    let state = PlaybackResumeRow { current: Some(current), position_ms: Some(7_000) };
+    PlaybackQueueTables::new(db.clone()).save_playback_state(&state).await.unwrap();
+    let counter = db.track_work_for_test().await.unwrap();
+    let start = playback_start(&db).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert_eq!(start.resume.unwrap(), Some(state));
+    assert_eq!(start.level.unwrap(), (crate::Volume::new(1.0).unwrap(), false));
+    assert_eq!(start.repeat, crate::RepeatMode::Off);
+}
+
 /// Opening keeps the queue only when it will be resumed: "restore on launch"
 /// on and a resume row stored. Otherwise the queue and the row are emptied.
 /// Either way what playback is doing starts stopped; its volume and mute are
@@ -347,10 +370,7 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
     assert_eq!(playback_level(&db).await.unwrap(), (crate::Volume::new(1.0).unwrap(), false));
     assert!(queue_value(&db).await.unwrap().context.is_none(), "restore off empties it");
     assert!(load_playback_state(&db).await.unwrap().is_none());
-    assert_eq!(
-        PlaybackQueueTables::new(db.clone()).repeat().await.unwrap(),
-        crate::RepeatMode::Off
-    );
+    assert_eq!(playback_start(&db).await.unwrap().repeat, crate::RepeatMode::Off);
 
     play(&db, ReleaseStart::First).await;
     settle_playback_queue(&db, true).await.unwrap();

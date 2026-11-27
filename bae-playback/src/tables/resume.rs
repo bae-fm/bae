@@ -14,7 +14,86 @@ pub struct PlaybackResumeRow {
     pub position_ms: Option<u64>,
 }
 
+// The `playback_state` row.
+sqlive_compose::fragment!(
+    SavedResume { position_ms: Option<u64> },
+    r#"
+    SELECT saved.id, saved.current_entry, saved.current_track_id, saved.position_ms
+    FROM playback_state AS saved
+    WHERE saved.id = 'current'
+"#
+);
+
+impl SavedResume {
+    /// The row, or why the entry it names can't be read.
+    fn into_row(self) -> Result<PlaybackResumeRow, DbError> {
+        let current = match self.current_entry.zip(self.current_track_id) {
+            Some((entry, track_id)) => Some(crate::QueueEntry {
+                id: entry.parse().map_err(|problem: String| {
+                    DbError::unreadable("playback_state.current_entry", problem)
+                })?,
+                track_id,
+            }),
+            None => None,
+        };
+        Ok(PlaybackResumeRow { current, position_ms: self.position_ms })
+    }
+}
+
+sqlive_compose::read!(
+    StoredResume,
+    r#"
+    SELECT saved.*
+    FROM @crate::tables::resume::SavedResume AS saved
+"#
+);
+
+// What a playback service takes up as it starts: the kept volume, how the
+// queue repeats, the resume row while one is stored, and how many tracks the
+// context lane holds, played or not.
+sqlive_compose::read!(
+    PlaybackStartRead { context_tracks: u64 },
+    r#"
+    SELECT level.*, queue.*, saved.*,
+           (SELECT COUNT(*) FROM playback_context) AS context_tracks
+    FROM @crate::tables::now::KeptLevel AS level
+    JOIN @crate::tables::queue_reads::QueueRepeat AS queue ON 1
+    LEFT JOIN @crate::tables::resume::SavedResume AS saved ON 1
+"#
+);
+
+/// What a playback service takes up as it starts. The volume and the resume
+/// row's entry each say for themselves why they can't be read, so one that
+/// can't leaves the rest to take up.
+#[derive(Debug)]
+pub struct PlaybackStart {
+    /// The kept volume and whether it is muted.
+    pub level: Result<(crate::Volume, bool), DbError>,
+    pub repeat: crate::RepeatMode,
+    /// The resume row, `None` when none is stored.
+    pub resume: Result<Option<PlaybackResumeRow>, DbError>,
+    /// How many tracks the context lane holds, played or not.
+    pub context_tracks: u64,
+}
+
+/// Read what a playback service takes up as it starts.
+pub async fn playback_start(store: &Store) -> Result<PlaybackStart, DbError> {
+    let row = store.read_row(PlaybackStartReadParams {}).await?;
+    Ok(PlaybackStart {
+        level: row.level.into_level(),
+        repeat: row.queue.into_mode(),
+        resume: row.saved.map(SavedResume::into_row).transpose(),
+        context_tracks: row.context_tracks,
+    })
+}
+
+/// Whether a resume row is stored.
+pub(super) fn resume_stored_on(sql: &impl coven::SqlRead) -> Result<bool, DbError> {
+    Ok(statement_optional(sql, &StoredResumeParams {})?.is_some())
+}
+
 /// Read the device-local `playback_state` row, `None` when none is stored.
+#[cfg(any(test, feature = "test-utils"))]
 pub async fn load_playback_state(store: &Store) -> Result<Option<PlaybackResumeRow>, DbError> {
     store.read(|sql| playback_state_on(&sql)).await
 }
@@ -29,33 +108,9 @@ pub fn subscribe_playback_state(
 }
 
 /// The `playback_state` row `sql` reads, `None` when none is stored.
+#[cfg(any(test, feature = "test-utils"))]
 fn playback_state_on(sql: &SqlReadContext<'_>) -> Result<Option<PlaybackResumeRow>, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT current_entry, current_track_id, position_ms \
-                 FROM playback_state WHERE id = 'current'",
-            [],
-            |row| {
-                let entry: Option<String> = row.get("current_entry")?;
-                let track_id: Option<String> = row.get("current_track_id")?;
-                // The schema keeps `position_ms` non-negative.
-                let position_ms: Option<i64> = row.get("position_ms")?;
-                let current = match entry.zip(track_id) {
-                    Some((entry, track_id)) => Some(crate::QueueEntry {
-                        id: entry.parse().map_err(|e: String| {
-                            column_conversion_error(row, "current_entry", e)
-                        })?,
-                        track_id,
-                    }),
-                    None => None,
-                };
-                Ok(PlaybackResumeRow {
-                    current,
-                    position_ms: position_ms.map(|position| position as u64),
-                })
-            },
-        )
-        .optional()?)
+    statement_optional(sql, &StoredResumeParams {})?.map(|row| row.saved.into_row()).transpose()
 }
 
 /// Plant damage for a test: the resume row names an entry no queue entry id

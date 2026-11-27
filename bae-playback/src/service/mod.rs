@@ -39,7 +39,7 @@ use crate::preview_player::PreviewPlayer;
 use crate::progress::emit_progress;
 use crate::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::tables::{
-    ContextFill, ContextFilled, LeftOut, ManualPlace, PlaybackResumeRow, ReleaseStart, TracksStart,
+    ContextFill, ContextFilled, LeftOut, ManualPlace, PlaybackStart, ReleaseStart, TracksStart,
 };
 use bae_audio::DecodeError;
 use bae_diagnostics::{
@@ -538,7 +538,10 @@ pub struct PlaybackService {
     /// the person set. Nothing plays until a read of the level works or the
     /// person sets one.
     level_unread: bool,
-    /// The resume row, or the queue it resumes over, could not be read, so
+    /// How the queue repeats could not be read, so the queue may repeat other
+    /// than its table says. Nothing plays until a read of it works.
+    repeat_unread: bool,
+    /// The resume row, or what it resumes with, could not be read, so
     /// the row still holds a resume point playback never took up. Playback
     /// leaves the row alone until it saves a track of its own.
     resume_unread: bool,

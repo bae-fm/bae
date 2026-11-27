@@ -45,9 +45,10 @@ impl PlaybackService {
         // teardown/prepare work, so the measured wait covers the whole path to
         // Playing.
         let play_started_at = std::time::Instant::now();
-        // The output opened at full volume. Nothing plays until the level the
-        // person set is known: a failed read is told, and playback stops.
-        if self.level_unread && !self.take_up_level().await {
+        // The output opened at full volume and the queue repeating off. Nothing
+        // plays until what the person set is known: a failed read is told, and
+        // playback stops.
+        if (self.level_unread || self.repeat_unread) && !self.take_up_unread_settings().await {
             self.stop().await;
             return;
         }

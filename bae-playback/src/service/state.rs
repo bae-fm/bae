@@ -207,27 +207,16 @@ impl PlaybackService {
         }
     }
 
-    /// Take up what the tables and rows hold after another service ended:
-    /// what [`Self::restore`] resumes when the resume row holds an entry, and
-    /// otherwise the repeat mode and the volume, which outlive a stop.
-    /// "Restore on launch" has no say: the queue is the one in use.
-    pub(super) async fn restore_after_an_end(&mut self) {
-        match self.read_resume_row().await {
-            Some(state) => self.restore(state).await,
-            None => {
-                self.take_up_queue_and_level(None).await;
-            }
-        }
-    }
-
-    /// The resume row's entry; `None` when it holds none, or when it can't be
-    /// read, which is told as a playback error and keeps playback off the row
-    /// until it saves a track of its own.
-    pub(super) async fn read_resume_row(&mut self) -> Option<PlaybackResumeRow> {
-        match crate::tables::load_playback_state(&self.store).await {
-            Ok(state) => state,
+    /// Read what the tables hold for a service to take up. A failed read is
+    /// told as a playback error and leaves the volume and the repeat mode
+    /// unread: the output stays as it opened, and [`Self::play_track`] reads
+    /// them again before anything plays.
+    async fn read_start(&mut self) -> Option<PlaybackStart> {
+        match crate::tables::playback_start(&self.store).await {
+            Ok(start) => Some(start),
             Err(e) => {
-                self.resume_unread = true;
+                self.level_unread = true;
+                self.repeat_unread = true;
                 self.report_unread("read the saved playback state", e);
                 None
             }
@@ -244,11 +233,17 @@ impl PlaybackService {
         );
     }
 
-    /// Take up the volume and mute `playback_now` kept. A failed read is told
-    /// as a playback error and leaves the level unread: the output stays as it
-    /// opened, and [`Self::play_track`] reads it again before anything plays.
-    pub(super) async fn take_up_level(&mut self) -> bool {
-        let (volume, is_muted) = match crate::tables::playback_level(&self.store).await {
+    /// Take up how the table says the queue repeats.
+    fn take_up_repeat(&mut self, repeat: RepeatMode) {
+        self.playback_queue.take_up_repeat(repeat);
+        self.repeat_unread = false;
+    }
+
+    /// Take up the volume and mute `playback_now` kept; whether they could be
+    /// read. A level that couldn't is told as a playback error and stays
+    /// unread.
+    fn take_up_level(&mut self, level: Result<(crate::Volume, bool), bae_store::DbError>) -> bool {
+        let (volume, is_muted) = match level {
             Ok(level) => level,
             Err(e) => {
                 self.level_unread = true;
@@ -268,37 +263,50 @@ impl PlaybackService {
         true
     }
 
-    /// Take up the queue the tables hold, playing `current`, and the volume
-    /// and mute `playback_now` kept; whether both reads worked. Each failed
-    /// read is told as a playback error.
-    async fn take_up_queue_and_level(&mut self, current: Option<crate::QueueEntry>) -> bool {
-        let level = self.take_up_level().await;
-        let queue = match self.playback_queue.restore(current).await {
-            Ok(()) => true,
-            Err(e) => {
-                self.report_unread("read the queue to resume", e);
-                false
-            }
+    /// Read again what a failed read left unread of the repeat mode and the
+    /// volume; whether nothing is left unread. A level the person set since
+    /// stays.
+    pub(super) async fn take_up_unread_settings(&mut self) -> bool {
+        let Some(start) = self.read_start().await else {
+            return false;
         };
-        level && queue
+        self.take_up_repeat(start.repeat);
+        !self.level_unread || self.take_up_level(start.level)
     }
 
-    /// Resume playback from the device-local resume row over the queue the
-    /// tables hold: the repeat mode, the volume `playback_now` kept, and the
-    /// entry playing, loaded paused at its saved position. A deleted track
-    /// left no entry to resume. A failed read of the level or the queue
-    /// resumes nothing, tells why, and leaves the resume row as it is.
-    pub(super) async fn restore(&mut self, state: PlaybackResumeRow) {
-        info!("Restoring playback state: entry={:?}", state.current);
-        if !self.take_up_queue_and_level(state.current).await {
+    /// Take up what the tables and rows hold, as the library opens or after
+    /// another service ended: the repeat mode and the volume, which outlive a
+    /// stop, and the entry the resume row holds, loaded paused at its saved
+    /// position over the queue the tables hold. A deleted track left no entry
+    /// to resume. When the row or the volume can't be read, nothing resumes,
+    /// the person is told why, and the row stays as it is.
+    pub(super) async fn restore_saved_playback(&mut self) {
+        let Some(start) = self.read_start().await else {
+            self.resume_unread = true;
+            return;
+        };
+        self.take_up_repeat(start.repeat);
+        let level_taken_up = self.take_up_level(start.level);
+        let resume = match start.resume {
+            Ok(Some(resume)) => resume,
+            Ok(None) => return,
+            Err(e) => {
+                self.resume_unread = true;
+                self.report_unread("read the saved playback state", e);
+                return;
+            }
+        };
+        if !level_taken_up {
             self.resume_unread = true;
             return;
         }
 
+        info!("Restoring playback state: entry={:?}", resume.current);
+        self.playback_queue.take_up_current(resume.current);
         // Start the current track paused at the saved position, or at its start
         // without one; loading it paused shows that position.
         if let Some(track_id) = self.playback_queue.current_track_id().map(str::to_string) {
-            let start = state
+            let track_start = resume
                 .position_ms
                 .map(|position| TrackStart::Position(StreamPosition::from_millis(position)))
                 .unwrap_or(TrackStart::Direct);
@@ -306,7 +314,7 @@ impl PlaybackService {
             // transition here is unused — a manual restore into pause.
             self.play_track(
                 &track_id,
-                start,
+                track_start,
                 PlayTarget::Paused(PausePhase::Manual),
                 TrackTransition::Manual,
             )
@@ -318,10 +326,9 @@ impl PlaybackService {
         self.persist_playback_state().await;
 
         info!("Playback state restored");
-        match self.playback_queue.context_track_count().await {
-            Ok(count) => self.telemetry_playback_started(PlaybackStartSource::Restored, count),
-            Err(e) => warn!("couldn't count the resumed context lane: {e}"),
-        }
+        let context_tracks =
+            usize::try_from(start.context_tracks).expect("the context lane's rows fit a usize");
+        self.telemetry_playback_started(PlaybackStartSource::Restored, context_tracks);
     }
 
     /// Build the device-local `playback_state` row from the entry playing and

@@ -319,6 +319,7 @@ pub(super) fn playback_service_and_commands_over(
         starvation_episode: None,
         persisted_position: None,
         level_unread: false,
+        repeat_unread: false,
         resume_unread: false,
         first_audio_pending: None,
         renderer: Renderer::Local,

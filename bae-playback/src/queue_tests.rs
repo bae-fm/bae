@@ -407,7 +407,9 @@ async fn test_restore_takes_up_the_stored_order() {
     let value = f.value().await;
 
     let mut restored = PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(f.db.clone()));
-    restored.restore(current.clone()).await.unwrap();
+    let start = crate::tables::playback_start(&f.db).await.unwrap();
+    restored.take_up_repeat(start.repeat);
+    restored.take_up_current(current.clone());
     f.queue = restored;
 
     assert_eq!(f.queue.current().cloned(), current);

@@ -28,11 +28,9 @@ async fn pure_reads_use_the_read_connection() {
     records.get_track_ids_for_release("missing").await.unwrap();
     records.find_release_by_id("missing").await.unwrap();
     records.get_release_records("missing").await.unwrap();
-    bae_playback::tables::load_playback_state(&db).await.unwrap();
+    bae_playback::tables::playback_start(&db).await.unwrap();
     bae_playback::tables::queue_value(&db).await.unwrap();
     let queue = bae_playback::tables::PlaybackQueueTables::new(db.clone());
-    queue.repeat().await.unwrap();
-    queue.context_track_count().await.unwrap();
     queue.front().await.unwrap();
     queue.next_in_order().await.unwrap();
     records.has_pending_cloud_upload("missing").await.unwrap();

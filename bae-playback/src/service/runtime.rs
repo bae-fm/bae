@@ -256,17 +256,6 @@ impl PlaybackService {
         self.diagnostics.event(event);
     }
 
-    /// Restore playback from the device-local resume row at startup: a stored
-    /// row resumes its track over the queue the tables hold; an absent row
-    /// resumes nothing, and the library opened with the queue emptied
-    /// (`settle_playback_queue`).
-    /// A row that can't be read resumes nothing, tells why, and stays as it is.
-    pub(super) async fn restore_from_cache(&mut self) {
-        if let Some(state) = self.read_resume_row().await {
-            self.restore(state).await;
-        }
-    }
-
     /// A queue table write or read failed: the queue is as it was before the
     /// command, and the command does nothing more.
     pub(super) fn queue_failed(&self, doing: &str, error: &bae_store::DbError) {

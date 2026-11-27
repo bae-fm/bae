@@ -238,7 +238,7 @@ impl PlaybackThread {
                 self.service(rt.handle().clone(), commands, audio_device, audio_output);
             let (taken_up, starter) = match start {
                 ServiceStart::Launch { restore_playback: true } => {
-                    (caught("restore playback", service.restore_from_cache()).await, None)
+                    (caught("restore playback", service.restore_saved_playback()).await, None)
                 }
                 // "Restore on launch" off starts with nothing in playback;
                 // opening the library emptied the queue for it.
@@ -247,7 +247,7 @@ impl PlaybackThread {
                     (Ok(()), None)
                 }
                 ServiceStart::AfterAnEnd { starter } => {
-                    let taken_up = service.restore_after_an_end();
+                    let taken_up = service.restore_saved_playback();
                     (caught("take up what the ended service left", taken_up).await, Some(starter))
                 }
             };
@@ -307,6 +307,7 @@ impl PlaybackThread {
             starvation_episode: None,
             persisted_position: None,
             level_unread: false,
+            repeat_unread: false,
             resume_unread: false,
             first_audio_pending: None,
             renderer: Renderer::Local,

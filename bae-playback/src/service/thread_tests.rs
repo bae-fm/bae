@@ -56,7 +56,7 @@ async fn a_fresh_service_takes_up_the_repeat_mode_and_level_of_a_stopped_queue()
         .await
         .unwrap();
 
-    service.restore_after_an_end().await;
+    service.restore_saved_playback().await;
 
     assert_eq!(service.playback_queue.repeat_mode(), RepeatMode::Track);
     assert_eq!(

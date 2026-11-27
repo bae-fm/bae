@@ -266,7 +266,7 @@ async fn a_failed_read_of_the_volume_fails_the_resume_and_keeps_the_resume_row()
         .expect("the row was saved");
     crate::tables::lose_playback_level_for_test(home.directory());
 
-    service.restore(saved.clone()).await;
+    service.restore_saved_playback().await;
     service.persist_playback_state().await;
 
     assert!(matches!(service.slot, PlaybackSlot::Stopped), "nothing resumes");
@@ -285,9 +285,8 @@ async fn nothing_plays_while_the_volume_is_unread() {
     let (home, mut service, mut progress_rx) =
         seeded_playback_service(&[(RESUME_RELEASE, &[TRACK_T])]).await;
     fill_test_release(&mut service, RESUME_RELEASE).await;
-    let resume = crate::tables::PlaybackResumeRow { current: None, position_ms: None };
     crate::tables::lose_playback_level_for_test(home.directory());
-    service.restore(resume).await;
+    service.restore_saved_playback().await;
     assert!(drained_a_playback_error(&mut progress_rx));
 
     service
@@ -303,6 +302,28 @@ async fn nothing_plays_while_the_volume_is_unread() {
     assert!(drained_a_playback_error(&mut progress_rx), "the failure reaches the person");
 }
 
+/// A launch whose resume row can't be read still takes up the saved volume and
+/// repeat mode, so a play after it is no louder than the person set.
+#[tokio::test]
+async fn an_unreadable_resume_row_still_takes_up_the_level() {
+    let (home, mut service, _progress) =
+        seeded_playback_service(&[(RESUME_RELEASE, &[TRACK_T])]).await;
+    crate::tables::PlaybackQueueTables::new(home.store().clone())
+        .set_repeat(RepeatMode::Context)
+        .await
+        .unwrap();
+    crate::tables::PlaybackNowRow::new(home.store().clone())
+        .apply(&crate::progress::PlaybackChange::Volume(0.3))
+        .await
+        .unwrap();
+    crate::tables::plant_unreadable_resume_row_for_test(home.directory());
+
+    service.restore_saved_playback().await;
+
+    assert_eq!(service.volume, OutputVolume::Audible(crate::Volume::new(0.3).expect("a level")));
+    assert_eq!(service.playback_queue.repeat_mode(), RepeatMode::Context);
+}
+
 /// A resume row that can't be read resumes nothing, tells the person, and is
 /// not cleared by the stop that follows.
 #[tokio::test]
@@ -311,7 +332,7 @@ async fn a_failed_read_of_the_resume_row_keeps_it() {
         seeded_playback_service(&[(RESUME_RELEASE, &[TRACK_T])]).await;
     crate::tables::plant_unreadable_resume_row_for_test(home.directory());
 
-    service.restore_from_cache().await;
+    service.restore_saved_playback().await;
     service.persist_playback_state().await;
 
     assert!(matches!(service.slot, PlaybackSlot::Stopped));

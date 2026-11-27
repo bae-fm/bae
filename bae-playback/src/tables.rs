@@ -13,7 +13,7 @@ mod queue;
 mod queue_fill;
 pub mod queue_reads;
 mod queue_upcoming;
-mod resume;
+pub mod resume;
 mod timeline;
 mod track_display;
 
@@ -21,8 +21,10 @@ mod track_display;
 pub use now::lose_playback_level_for_test;
 #[cfg(any(test, feature = "test-utils"))]
 pub use now::now_playing;
+#[cfg(any(test, feature = "test-utils"))]
+pub use now::playback_level;
 pub use now::subscribe_now_playing;
-pub use now::{dismiss_playback_failure, playback_level, PlaybackNowRow};
+pub use now::{dismiss_playback_failure, PlaybackNowRow};
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue::fail_queue_writes_for_test;
 #[cfg(any(test, feature = "test-utils"))]
@@ -43,8 +45,8 @@ pub use queue_upcoming::{
 #[cfg(any(test, feature = "test-utils"))]
 pub use resume::plant_unreadable_resume_row_for_test;
 #[cfg(any(test, feature = "test-utils"))]
-pub use resume::subscribe_playback_state;
-pub use resume::{load_playback_state, PlaybackResumeRow};
+pub use resume::{load_playback_state, subscribe_playback_state};
+pub use resume::{playback_start, PlaybackResumeRow, PlaybackStart};
 #[cfg(any(test, feature = "test-utils"))]
 pub use timeline::playback_timeline;
 pub use timeline::subscribe_playback_timeline;
@@ -57,7 +59,6 @@ mod tests;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod window_cost;
 
-use bae_store::read::*;
 use bae_store::*;
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, OptionalExtension, Row};

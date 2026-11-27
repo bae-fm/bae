@@ -80,16 +80,19 @@ pub struct PlaybackQueue {
 
 impl PlaybackQueue {
     /// The queue over `tables`, with nothing playing and repeat off: what an
-    /// opened library's tables hold until [`Self::restore`] reads them.
+    /// opened library's tables hold until the service takes up what they hold.
     pub fn new(tables: PlaybackQueueTables) -> Self {
         Self { tables, current: None, repeat: RepeatMode::Off }
     }
 
-    /// Take up the queue the tables hold, playing `current`.
-    pub async fn restore(&mut self, current: Option<QueueEntry>) -> Result<(), DbError> {
-        self.repeat = self.tables.repeat().await?;
+    /// Take up how the tables say the queue repeats.
+    pub fn take_up_repeat(&mut self, repeat: RepeatMode) {
+        self.repeat = repeat;
+    }
+
+    /// Play `current` again, the entry the resume row recorded.
+    pub fn take_up_current(&mut self, current: Option<QueueEntry>) {
         self.current = current;
-        Ok(())
     }
 
     /// Record that this queue is playing its current entry, `position_ms`
@@ -103,11 +106,6 @@ impl PlaybackQueue {
     /// Forget what the resume row recorded: nothing is playing.
     pub async fn clear_playback_state(&self) -> Result<(), DbError> {
         self.tables.clear_playback_state().await
-    }
-
-    /// How many tracks the context lane holds, played or not.
-    pub async fn context_track_count(&self) -> Result<usize, DbError> {
-        self.tables.context_track_count().await
     }
 
     // -- Up Next ---------------------------------------------------------------

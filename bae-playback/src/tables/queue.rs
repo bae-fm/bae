@@ -106,26 +106,6 @@ pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), Db
 }
 
 impl PlaybackQueueTables {
-    /// How the queue repeats.
-    pub async fn repeat(&self) -> Result<RepeatMode, DbError> {
-        self.store
-            .read(|sql| {
-                Ok(sql.query_row("SELECT repeat FROM playback_queue", [], |row| row.get(0))?)
-            })
-            .await
-    }
-
-    /// How many tracks the context lane holds, played or not.
-    pub async fn context_track_count(&self) -> Result<usize, DbError> {
-        self.store
-            .read(|sql| {
-                let count: i64 =
-                    sql.query_row("SELECT count(*) FROM playback_context", [], |row| row.get(0))?;
-                Ok(count as usize)
-            })
-            .await
-    }
-
     /// Replace the whole queue with what `fill` names: Up Next empties, and the
     /// context lane holds the tracks in play order, playing the first. A bulk
     /// write: a play takes out and puts in up to a library's worth of rows.
@@ -843,15 +823,7 @@ impl PlaybackQueueTables {
     /// a delete over an empty table is a transaction that changes nothing, and
     /// those belong off the sync journal.
     pub async fn clear_playback_state(&self) -> Result<(), DbError> {
-        let stored = self
-            .store
-            .read(move |sql| {
-                Ok(sql
-                    .query_row("SELECT 1 FROM playback_state", [], |_| Ok(()))
-                    .optional()?
-                    .is_some())
-            })
-            .await?;
+        let stored = self.store.read(|sql| super::resume::resume_stored_on(&sql)).await?;
         if !stored {
             return Ok(());
         }

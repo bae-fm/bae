@@ -56,13 +56,14 @@ sqlive_compose::fragment!(
 
 impl KeptLevel {
     /// The volume and whether it is muted.
-    fn into_level(self) -> Result<(crate::Volume, bool), DbError> {
+    pub(super) fn into_level(self) -> Result<(crate::Volume, bool), DbError> {
         let volume = crate::Volume::new(self.volume)
             .ok_or_else(|| DbError::unreadable("playback_now.volume", self.volume))?;
         Ok((volume, self.is_muted))
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     PlaybackLevel,
     r#"
@@ -72,6 +73,7 @@ sqlive_compose::read!(
 );
 
 /// The volume and mute the row holds, which resuming playback restores.
+#[cfg(any(test, feature = "test-utils"))]
 pub async fn playback_level(store: &Store) -> Result<(crate::Volume, bool), DbError> {
     store.read_row(PlaybackLevelParams {}).await?.kept.into_level()
 }
