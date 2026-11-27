@@ -31,9 +31,15 @@ const wordWidth = Math.round(size * form.word);
 const wordStyle = `width:${wordWidth}px;height:${Math.round(wordWidth / WORD_ASPECT)}px;background:currentColor;-webkit-mask:${wordMask};mask:${wordMask}`;
 const sheepStyle = 'display:block;height:auto;object-fit:contain';
 ---
-{kind === 'sheep' && (
-  <img src={sheepUrl} alt="bae" width={size} style={sheepStyle} decoding="async" />
-)}
+{kind === 'sheep' && (glow ? (
+  <div style="position:relative;isolation:isolate">
+    <div class="bae-logo-glow"></div>
+    <div class="bae-logo-pool"></div>
+    <img src={sheepUrl} alt="bae" width={size} class:list={[{ 'bae-sheep-bob': bob }]} style={sheepStyle} decoding="async" />
+  </div>
+) : (
+  <img src={sheepUrl} alt="bae" width={size} class:list={[{ 'bae-sheep-bob': bob }]} style={sheepStyle} decoding="async" />
+))}
 {kind === 'inline' && (
   <div style={`display:flex;align-items:center;gap:${Math.round(size * form.gap)}px`}>
     <img src={sheepUrl} alt="" width={size} style={sheepStyle} decoding="async" />
