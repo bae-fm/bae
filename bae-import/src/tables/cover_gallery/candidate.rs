@@ -6,7 +6,7 @@
 //! refetch replaces them.
 
 use super::*;
-use bae_store::statement_optional;
+use bae_store::{statement_optional, WriteStatements};
 
 // Each candidate's link as one JSON value, by the content hash it is the link
 // of: its kind, catalog and release, its partners and its albums. A fetch of a
@@ -117,6 +117,32 @@ sqlive_compose::read!(
 "#
 );
 
+sqlive_compose::write!(
+    DeleteCandidateCoverFetch(content_hash: &'p str),
+    r#"DELETE FROM candidate_cover_fetch WHERE content_hash = :content_hash"#
+);
+
+sqlive_compose::write!(
+    InsertCandidateCoverFetch(content_hash: &'p str, link: Option<&'p str>, linked: bool),
+    r#"
+    INSERT INTO candidate_cover_fetch (content_hash, link, linked)
+    VALUES (:content_hash, :link, :linked)
+"#
+);
+
+sqlive_compose::write!(
+    InsertCandidateCoverEntry(
+        content_hash: &'p str,
+        position: i64,
+        source: &'static str,
+        cover: &'p str,
+    ),
+    r#"
+    INSERT INTO candidate_cover_entry (content_hash, position, source, cover)
+    VALUES (:content_hash, :position, :source, :cover)
+"#
+);
+
 impl ImportTables {
     /// The link of the candidate `content_hash` as a fetch of its covers
     /// stores it beside them ([`CandidateCoverLink`]); `None` when it is
@@ -147,26 +173,20 @@ impl ImportTables {
         let content_hash = content_hash.to_string();
         self.store
             .write(move |sql| {
-                sql.execute(
-                    "DELETE FROM candidate_cover_fetch WHERE content_hash = ?",
-                    [&content_hash],
-                )?;
-                sql.execute(
-                    "INSERT INTO candidate_cover_fetch (content_hash, link, linked) VALUES (?, ?, ?)",
-                    params![content_hash, link, covers.is_some()],
-                )?;
+                sql.run(&DeleteCandidateCoverFetchParams { content_hash: &content_hash })?;
+                sql.run(&InsertCandidateCoverFetchParams {
+                    content_hash: &content_hash,
+                    link: link.as_deref(),
+                    linked: covers.is_some(),
+                })?;
                 for (position, cover) in covers.iter().flatten().enumerate() {
-                    sql.execute(
-                        "INSERT INTO candidate_cover_entry (content_hash, position, source, cover) \
-                         VALUES (?, ?, ?, ?)",
-                        params![
-                            content_hash,
-                            position as i64,
-                            cover.source.as_str(),
-                            serde_json::to_string(cover)
-                                .map_err(|error| DbError::encode("a gallery cover", error))?,
-                        ],
-                    )?;
+                    sql.run(&InsertCandidateCoverEntryParams {
+                        content_hash: &content_hash,
+                        position: position as i64,
+                        source: cover.source.as_str(),
+                        cover: &serde_json::to_string(cover)
+                            .map_err(|error| DbError::encode("a gallery cover", error))?,
+                    })?;
                 }
                 Ok(())
             })

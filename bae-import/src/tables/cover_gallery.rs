@@ -12,7 +12,7 @@ use super::*;
 use crate::{CoverImageSource, CoverSelection};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::{CoverLabel, RemoteCover};
-use bae_store::statement_row;
+use bae_store::{statement_row, WriteStatements};
 
 mod candidate;
 mod walk;
@@ -182,6 +182,24 @@ sqlive_compose::read!(
 "#
 );
 
+sqlive_compose::write!(
+    DeleteReleaseCoverFetch(release: &'p str),
+    r#"DELETE FROM release_cover_fetch WHERE release_id = :release"#
+);
+
+sqlive_compose::write!(
+    InsertReleaseCoverFetch(release: &'p str, linked: bool),
+    r#"INSERT INTO release_cover_fetch (release_id, linked) VALUES (:release, :linked)"#
+);
+
+sqlive_compose::write!(
+    InsertReleaseCoverEntry(release: &'p str, position: i64, source: &'static str, cover: &'p str),
+    r#"
+    INSERT INTO release_cover_entry (release_id, position, source, cover)
+    VALUES (:release, :position, :source, :cover)
+"#
+);
+
 /// Whose covers a picker shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoverGalleryOwner {
@@ -279,23 +297,19 @@ impl ImportTables {
         let release_id = release_id.to_string();
         self.store
             .write(move |sql| {
-                sql.execute("DELETE FROM release_cover_fetch WHERE release_id = ?", [&release_id])?;
-                sql.execute(
-                    "INSERT INTO release_cover_fetch (release_id, linked) VALUES (?, ?)",
-                    params![release_id, covers.is_some()],
-                )?;
+                sql.run(&DeleteReleaseCoverFetchParams { release: &release_id })?;
+                sql.run(&InsertReleaseCoverFetchParams {
+                    release: &release_id,
+                    linked: covers.is_some(),
+                })?;
                 for (position, cover) in covers.iter().flatten().enumerate() {
-                    sql.execute(
-                        "INSERT INTO release_cover_entry (release_id, position, source, cover) \
-                         VALUES (?, ?, ?, ?)",
-                        params![
-                            release_id,
-                            position as i64,
-                            cover.source.as_str(),
-                            serde_json::to_string(cover)
-                                .map_err(|error| DbError::encode("a gallery cover", error))?,
-                        ],
-                    )?;
+                    sql.run(&InsertReleaseCoverEntryParams {
+                        release: &release_id,
+                        position: position as i64,
+                        source: cover.source.as_str(),
+                        cover: &serde_json::to_string(cover)
+                            .map_err(|error| DbError::encode("a gallery cover", error))?,
+                    })?;
                 }
                 Ok(())
             })
