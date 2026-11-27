@@ -38,7 +38,7 @@ sqlive_compose::read!(
 // The card of the album `album`, as the album grid lists it; no row for an
 // album the grid doesn't list.
 sqlive_compose::read!(
-    ListedAlbumCard(album: String),
+    writer ListedAlbumCard(album: String),
     r#"
     SELECT card.*
     FROM album_listing AS listing

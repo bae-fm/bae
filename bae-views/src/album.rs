@@ -410,7 +410,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
 
 // The track `track` of the release `release`, as playback shows a track.
 sqlive_compose::read!(
-    ReleaseTrack(release: String, track: String),
+    writer ReleaseTrack(release: String, track: String),
     r#"
     SELECT shown.*
     FROM @bae_records::records::track_display::DisplayedTrack AS shown

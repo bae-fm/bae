@@ -288,7 +288,7 @@ impl ListedComposer {
 // The composer `artist`, as the composer list shows it; no row for an artist
 // the list doesn't show.
 sqlive_compose::read!(
-    ListedComposerById(artist: String),
+    writer ListedComposerById(artist: String),
     r#"
     SELECT shown.*
     FROM @crate::composer::ListedComposer AS shown
