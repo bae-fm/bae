@@ -22,6 +22,61 @@ pub(crate) fn no_namespaces() -> Vec<coven::Namespace> {
 
 use super::*;
 use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
+use bae_store::WriteStatements;
+
+sqlive_compose::write!(
+    InsertSheetPlace(
+        sheet_file_id: &'p str,
+        place: &'static str,
+        medium: Option<u32>,
+        side: Option<u32>,
+    ),
+    r#"
+    INSERT INTO release_sheet_places (sheet_file_id, place, medium, side)
+    VALUES (:sheet_file_id, :place, :medium, :side)
+"#
+);
+
+sqlive_compose::write!(
+    ReplaceSheetPlace(
+        sheet_file_id: &'p str,
+        place: &'static str,
+        medium: Option<u32>,
+        side: Option<u32>,
+    ),
+    r#"
+    INSERT INTO release_sheet_places (sheet_file_id, place, medium, side)
+    VALUES (:sheet_file_id, :place, :medium, :side)
+    ON CONFLICT (sheet_file_id) DO UPDATE SET
+        place = excluded.place, medium = excluded.medium, side = excluded.side
+"#
+);
+
+sqlive_compose::write!(
+    InsertSheetBinding(
+        sheet_file_id: &'p str,
+        file_reference: &'p str,
+        audio_file_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id)
+    VALUES (:sheet_file_id, :file_reference, :audio_file_id)
+"#
+);
+
+sqlive_compose::write!(
+    ReplaceSheetBinding(
+        sheet_file_id: &'p str,
+        file_reference: &'p str,
+        audio_file_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id)
+    VALUES (:sheet_file_id, :file_reference, :audio_file_id)
+    ON CONFLICT (sheet_file_id, file_reference)
+    DO UPDATE SET audio_file_id = excluded.audio_file_id
+"#
+);
 
 /// Write the sheet decisions in `decided`, which name files by their path in
 /// the release, as rows over the release's files `file_ids` (each path with
@@ -45,11 +100,7 @@ pub(super) fn store_on(
     for (sheet, place) in decided.sheet_places.iter() {
         let sheet_file_id = file_id(sheet)?;
         let (kind, medium, side) = place.columns();
-        sql.execute(
-            "INSERT INTO release_sheet_places (sheet_file_id, place, medium, side) \
-             VALUES (?, ?, ?, ?)",
-            params![sheet_file_id, kind, medium, side],
-        )?;
+        sql.run(&InsertSheetPlaceParams { sheet_file_id, place: kind, medium, side })?;
     }
     for (sheet, references) in decided.sheet_bindings.iter() {
         let sheet_file_id = file_id(sheet)?;
@@ -58,11 +109,11 @@ pub(super) fn store_on(
                 continue;
             }
             let audio_file_id = decision.stored_file().map(file_id).transpose()?;
-            sql.execute(
-                "INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id) \
-                 VALUES (?, ?, ?)",
-                params![sheet_file_id, reference, audio_file_id],
-            )?;
+            sql.run(&InsertSheetBindingParams {
+                sheet_file_id,
+                file_reference: reference,
+                audio_file_id,
+            })?;
         }
     }
     Ok(())
@@ -77,13 +128,7 @@ pub(super) fn store_sheet_place_decisions_on<'a>(
 ) -> Result<(), DbError> {
     for (sheet_file_id, place) in places {
         let (kind, medium, side) = place.columns();
-        sql.execute(
-            "INSERT INTO release_sheet_places (sheet_file_id, place, medium, side) \
-             VALUES (?, ?, ?, ?) \
-             ON CONFLICT (sheet_file_id) DO UPDATE SET place = excluded.place, \
-                 medium = excluded.medium, side = excluded.side",
-            params![sheet_file_id, kind, medium, side],
-        )?;
+        sql.run(&ReplaceSheetPlaceParams { sheet_file_id, place: kind, medium, side })?;
     }
     Ok(())
 }
@@ -97,13 +142,11 @@ pub(super) fn store_sheet_binding_decisions_on(
     picks: &[bae_records::records::sheet_files::SheetFilePick],
 ) -> Result<(), DbError> {
     for pick in picks {
-        sql.execute(
-            "INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id) \
-             VALUES (?, ?, ?) \
-             ON CONFLICT (sheet_file_id, file_reference) \
-             DO UPDATE SET audio_file_id = excluded.audio_file_id",
-            params![pick.sheet_file_id, pick.file_reference, pick.audio_file_id],
-        )?;
+        sql.run(&ReplaceSheetBindingParams {
+            sheet_file_id: &pick.sheet_file_id,
+            file_reference: &pick.file_reference,
+            audio_file_id: pick.audio_file_id.as_deref(),
+        })?;
     }
     Ok(())
 }
