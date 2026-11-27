@@ -5,8 +5,7 @@
 
 use crate::library_documents::{LibraryDocumentError, LibraryDocuments};
 use bae_diagnostics::Diagnostics;
-use bae_records::LibraryImageType;
-use bae_records::Records;
+use bae_records::{Records, ReleaseWithFiles};
 use bae_store::DbError;
 use bae_util::task_failure::TaskFailed;
 use std::path::PathBuf;
@@ -24,8 +23,6 @@ pub struct ReleaseIdentity {
 pub enum ReleaseIdentityError {
     #[error(transparent)]
     Database(#[from] DbError),
-    #[error("release '{release_id}' not found")]
-    NotFound { release_id: String },
     /// One of the release's rip files could not be read.
     #[error(transparent)]
     Document(#[from] LibraryDocumentError),
@@ -63,7 +60,7 @@ impl ReleaseIdentity {
     }
 }
 
-/// Read the release's files the way a folder's scan reads its rip files
+/// Read the files of `release`, the release `release_id`, the way a folder's scan reads its rip files
 /// (`folder_scanner::categorize_library_files`), so the function binds each
 /// sheet to the audio the person chose for it, or else to the audio the scan
 /// would choose, and the release hashes the discs its folder did. The track
@@ -84,23 +81,22 @@ pub async fn resolve_release_identity(
     budget: &coven::FileBudget,
     diagnostics: &Diagnostics,
     release_id: &str,
+    release: &ReleaseWithFiles,
 ) -> Result<ReleaseIdentity, ReleaseIdentityError> {
-    records
-        .find_release_by_id(release_id)
-        .await?
-        .ok_or_else(|| ReleaseIdentityError::NotFound { release_id: release_id.to_string() })?;
-    let files = records.get_files_for_release(release_id).await?;
     let tracks = records.get_tracks_for_release(release_id).await?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
     let sheet_decisions = tables.load_release_sheet_decisions(release_id).await?;
     let lease = bae_store::lease_one(budget).await;
-    let read: Vec<&bae_records::DbFile> =
-        files.iter().filter(|file| crate::rip_reading::opens_library_file(&file.role)).collect();
+    let read: Vec<&bae_records::DbFile> = release
+        .files
+        .iter()
+        .filter(|file| crate::rip_reading::opens_library_file(&file.role))
+        .collect();
     let documents = LibraryDocuments::read(records, &lease, &read).await?;
     drop(lease);
-    let library_files: Vec<_> = files.into_iter().map(library_file).collect();
+    let library_files: Vec<_> = release.files.iter().cloned().map(library_file).collect();
     let (rip, formats) = diagnostics
         .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
@@ -158,23 +154,21 @@ pub(crate) enum LibraryImageFile {
     ReleaseFile { file: coven::FileId, name: String },
 }
 
-/// The artwork the re-identify OCR pass reads: the release's cover, plus every
-/// image file of the release, each named by where coven has it. The pass
-/// reads each one's bytes as it reaches it ([`read_library_image`]).
+/// The artwork the re-identify OCR pass reads of `release`: its cover, plus
+/// every image file of it, each named by where coven has it. The pass reads
+/// each one's bytes as it reaches it ([`read_library_image`]).
 pub(crate) async fn resolve_release_artwork(
-    records: &Records,
-    release_id: &str,
+    store: &bae_store::Store,
+    release: &ReleaseWithFiles,
 ) -> Result<Vec<(PathBuf, LibraryImageFile)>, ReleaseArtworkError> {
-    let files = records.get_files_for_release(release_id).await?;
     let mut images = Vec::new();
-    match records.library_image_file(release_id, &LibraryImageType::Cover).await? {
-        Some(file) => images.push((PathBuf::from("cover"), LibraryImageFile::Cover(file))),
-        None => {
-            debug!("artwork OCR: release {release_id} has no cover file; skipping the cover");
-        }
+    match release.cover_file {
+        Some(file) => images
+            .push((PathBuf::from("cover"), LibraryImageFile::Cover(store.file_ref(file).await?))),
+        None => debug!("artwork OCR: the release has no cover; skipping it"),
     }
     // In-folder artwork (cover.jpg and the like).
-    for file in files.iter().filter(|file| file.content_type.is_image()) {
+    for file in release.files.iter().filter(|file| file.content_type.is_image()) {
         images.push((
             PathBuf::from(&file.original_filename),
             LibraryImageFile::ReleaseFile { file: file.file, name: file.original_filename.clone() },

@@ -112,17 +112,26 @@ async fn insert_two_tracks(records: &Records, release_id: &str) {
     }
 }
 
+async fn release_with_files(
+    records: &bae_records::Records,
+    release_id: &str,
+) -> bae_records::ReleaseWithFiles {
+    records.find_release_with_files(release_id).await.unwrap().expect("the release")
+}
+
 /// Re-identify's reading of the release `release_id` in `db`.
 async fn identity_of(
     db: &Store,
     release_id: &str,
 ) -> Result<ReleaseIdentity, ReleaseIdentityError> {
+    let records = bae_records::test_fixtures::test_records(db);
     resolve_release_identity(
         &crate::tables::ImportTables::new(db.clone()),
-        &bae_records::test_fixtures::test_records(db),
+        &records,
         db.test_sources().files(),
         &bae_diagnostics::Diagnostics::noop(),
         release_id,
+        &release_with_files(&records, release_id).await,
     )
     .await
 }
@@ -160,7 +169,9 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
     records.insert_file_for_test(&file, &original).await.unwrap();
     temp.remove(&original);
 
-    let images = resolve_release_artwork(&records, &release_id).await.unwrap();
+    let images = resolve_release_artwork(&db, &release_with_files(&records, &release_id).await)
+        .await
+        .unwrap();
     let (_, image) = &images[0];
     let result = read_library_image(&db, &records, db.test_sources().files(), image).await;
 
@@ -203,7 +214,9 @@ async fn the_artwork_listing_names_each_image_and_coven_reads_its_bytes() {
         .await
         .unwrap();
 
-    let images = resolve_release_artwork(&records, &release_id).await.unwrap();
+    let images = resolve_release_artwork(&db, &release_with_files(&records, &release_id).await)
+        .await
+        .unwrap();
 
     assert_eq!(images.len(), 1, "one image and no cover: {images:?}");
     assert_eq!(images[0].0, std::path::Path::new("Scans/back.jpg"));
@@ -428,6 +441,7 @@ async fn folder_and_library_disc_ids_with_decisions(
         db.test_sources().files(),
         &bae_diagnostics::Diagnostics::noop(),
         &release_id,
+        &release_with_files(&records, &release_id).await,
     )
     .await
     .unwrap();

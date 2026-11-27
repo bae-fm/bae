@@ -61,19 +61,21 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<bae_catalogs::reading::ReadAudio, LibraryError> {
         use bae_import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
+        let release =
+            self.records.find_release_with_files(release_id).await?.ok_or_else(|| {
+                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
+            })?;
         resolve_release_identity(
             &self.import_tables,
             &self.records,
             &self.files,
             &self.diagnostics,
             release_id,
+            &release,
         )
         .await
         .map_err(|error| match error {
             ReleaseIdentityError::Database(error) => LibraryError::Database(error),
-            ReleaseIdentityError::NotFound { release_id } => {
-                LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
-            }
             ReleaseIdentityError::Document(bae_import::LibraryDocumentError::Coven {
                 name,
                 error,

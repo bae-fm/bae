@@ -345,12 +345,34 @@ async fn extract(
         // A library release has no folder text; its rip files and artwork come
         // from the library.
         ExtractionSource::Release { release_id } => {
+            // The identity and the artwork both take the release's files from
+            // this one read.
+            let read = match inner.records.find_release_with_files(&release_id).await {
+                Ok(Some(release)) => Ok(release),
+                Ok(None) => Err("the library holds no such release".to_string()),
+                Err(error) => Err(error.to_string()),
+            };
+            let release = match read {
+                Ok(release) => release,
+                Err(error) => {
+                    let failure =
+                        InternalFailure::logged(&format!("reading release {release_id}"), error);
+                    emit_aborted_signals(
+                        inner,
+                        extraction,
+                        DiscIdSignal::Failed { failure: failure.clone() },
+                        failure,
+                    );
+                    return;
+                }
+            };
             let (origin, audio, disc_id) = match resolve_release_identity(
                 &inner.tables,
                 &inner.records,
                 &inner.files,
                 &inner.diagnostics,
                 &release_id,
+                &release,
             )
             .await
             {
@@ -376,7 +398,7 @@ async fn extract(
             // the extraction aborts.
             let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
             let artwork = if let Some(analyzer) = analyzer {
-                match resolve_release_artwork(&inner.records, &release_id).await {
+                match resolve_release_artwork(&inner.store, &release).await {
                     Ok(images) => Artwork::read(
                         analyzer,
                         images
