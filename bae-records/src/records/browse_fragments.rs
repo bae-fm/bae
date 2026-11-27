@@ -10,7 +10,9 @@ use bae_types::pressing::MediaCount;
 use time::UtcDateTime;
 
 use crate::credits::CreditName;
-use crate::{DbAlbum, DbArtist, DbReleaseArtistRole, DbTrack, DbTrackArtistRole, DbWork};
+use crate::{
+    DbAlbum, DbArtist, DbReleaseArtistRole, DbTrack, DbTrackArtistRole, DbTrackWork, DbWork,
+};
 
 sqlive_compose::fragment!(
     ArtistRecord,
@@ -36,13 +38,30 @@ impl ArtistRecord {
     }
 }
 
+// The releases that perform each work, each once, with the values their order
+// reads: by album title, compared by the title's sort key in the device's
+// language, then album id, so two albums sharing a title don't interleave,
+// then the album's own order of releases, then release id.
+sqlive_compose::fragment!(
+    WorkPerformingReleases { title_key: Vec<u8> },
+    r#"
+    SELECT DISTINCT performed.work_id, release.id AS release_id,
+           bae_name_key(album.title, (
+               SELECT sort.language
+               FROM @crate::records::name_sort::NameSortLanguage AS sort)) AS title_key,
+           album.id AS album_id, release.album_order
+    FROM track_works AS performed
+    JOIN tracks AS track ON track.id = performed.track_id
+    JOIN releases AS release ON release.id = track.release_id
+    JOIN albums AS album ON album.id = release.album_id
+"#
+);
+
 // Each work as a row shows it: its own fields, its composers' names in credit
 // order, how many releases perform it, and the release whose cover it shows.
-// That release is the first of those performing it by album title, compared by
-// the title's sort key in the device's language, then album id, so two albums
-// sharing a title don't interleave, then the album's own order of releases:
-// the first album's primary release when it performs the work, otherwise its
-// first release in album order that does.
+// That release is the first of those performing it in the order of
+// [`WorkPerformingReleases`]: the first album's primary release when it
+// performs the work, otherwise its first release in album order that does.
 sqlive_compose::fragment!(
     WorkSummary {
         linked_release_count: i64,
@@ -56,16 +75,10 @@ sqlive_compose::fragment!(
             FROM track_works AS linked
             JOIN tracks AS performing ON performing.id = linked.track_id
             WHERE linked.work_id = work.id) AS linked_release_count,
-           (SELECT shown.id
-            FROM track_works AS performed
-            JOIN tracks AS track ON track.id = performed.track_id
-            JOIN releases AS shown ON shown.id = track.release_id
-            JOIN albums AS album ON album.id = shown.album_id
-            WHERE performed.work_id = work.id
-            ORDER BY bae_name_key(album.title, (
-                         SELECT sort.language
-                         FROM @crate::records::name_sort::NameSortLanguage AS sort)),
-                     album.id, shown.album_order, shown.id
+           (SELECT shown.release_id
+            FROM @crate::records::browse_fragments::WorkPerformingReleases AS shown
+            WHERE shown.work_id = work.id
+            ORDER BY shown.title_key, shown.album_id, shown.album_order, shown.release_id
             LIMIT 1) AS representative_release_id
     FROM works AS work
 "#
@@ -105,10 +118,9 @@ impl WorkSummary {
 
 // The children of the work `work`, one row each, with the values their order
 // reads: its parts (`section` 0), by their place among the work's parts, then
-// by title; then the releases performing it (`section` 1), by album title,
-// album id, the album's own order of releases and release id. Titles compare
-// by their sort keys in the device's language. `item_id` is the part's work or
-// the release.
+// by title; then the releases performing it (`section` 1), in the order of
+// [`WorkPerformingReleases`]. Titles compare by their sort keys in the
+// device's language. `item_id` is the part's work or the release.
 sqlive_compose::fragment!(
     WorkChildren(work: String) {
         section: i64,
@@ -128,16 +140,9 @@ sqlive_compose::fragment!(
     JOIN works AS child ON child.id = part.child_work_id
     WHERE part.parent_work_id = :work
     UNION ALL
-    SELECT DISTINCT 1, NULL,
-           bae_name_key(album.title, (
-               SELECT sort.language
-               FROM @crate::records::name_sort::NameSortLanguage AS sort)),
-           album.id, release.album_order, release.id
-    FROM track_works AS performed
-    JOIN tracks AS track ON track.id = performed.track_id
-    JOIN releases AS release ON release.id = track.release_id
-    JOIN albums AS album ON album.id = release.album_id
-    WHERE performed.work_id = :work
+    SELECT 1, NULL, shown.title_key, shown.album_id, shown.album_order, shown.release_id
+    FROM @crate::records::browse_fragments::WorkPerformingReleases AS shown
+    WHERE shown.work_id = :work
 "#
 );
 
@@ -411,6 +416,37 @@ sqlive_compose::fragment!(
     FROM artist_shown_as AS shown
 "#
 );
+
+// Each track's link to a work it performs, with the release the track is on
+// and the track's place in that release's playing order.
+sqlive_compose::fragment!(
+    TrackWorkLink { position: i32 },
+    r#"
+    SELECT link.id AS link_id, link.track_id, link.work_id, link.position, link.source,
+           link.created_at, track.release_id AS performed_release_id,
+           track.position AS track_position
+    FROM track_works AS link
+    JOIN tracks AS track ON track.id = link.track_id
+"#
+);
+
+impl TrackWorkLink {
+    /// The link.
+    pub fn into_link(self) -> Result<DbTrackWork, DbError> {
+        let source = self.source.parse().map_err(|_error| {
+            DbError::unreadable(format!("track work link {} source", self.link_id), &self.source)
+        })?;
+        let created_at = timestamp("a track work link's created_at", &self.created_at)?;
+        Ok(DbTrackWork {
+            id: self.link_id,
+            track_id: self.track_id,
+            work_id: self.work_id,
+            position: self.position,
+            source,
+            created_at,
+        })
+    }
+}
 
 /// The time the text `value` of the column `column` names.
 fn timestamp(column: &'static str, value: &str) -> Result<UtcDateTime, DbError> {

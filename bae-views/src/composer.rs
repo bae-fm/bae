@@ -197,47 +197,18 @@ fn find_work_detail_on(
         .into_iter()
         .map(|row| work_release(row.release, row.cover))
         .collect::<Result<_, _>>()?;
-    let tracks_query = format!(
-        "SELECT tw.id AS track_work_id, tw.work_id,
-                tw.position, tw.source AS link_source, tw.created_at,
-                t.id AS track_id, t.release_id AS track_release_id,
-                t.title AS track_title, t.medium_id AS track_medium_id, t.side AS track_side,
-                t.track_number AS track_track_number,
-                t.duration_ms AS track_duration_ms,
-                t.stated_length_ms AS track_stated_length_ms,
-                t.created_at AS track_created_at,
-                a.id AS album_id, a.title AS album_title,
-                a.year AS album_year,
-                a.is_compilation AS album_is_compilation,
-                a.created_at AS album_created_at
-         FROM track_works tw
-         JOIN tracks t ON t.id = tw.track_id
-         JOIN releases r ON r.id = t.release_id
-         JOIN albums a ON a.id = r.album_id
-         WHERE tw.work_id = ?1
-         ORDER BY {album_title}, a.id, r.album_order, r.id, t.position, tw.position",
-        album_title = crate::sort_key_sql("a.title"),
-    );
-    let tracks = sql.query(&tracks_query, params![work_id], |row| {
-        Ok(DbWorkTrackSummary {
-            link: DbTrackWork {
-                id: row.get("track_work_id")?,
-                track_id: row.get("track_id")?,
-                work_id: row.get("work_id")?,
-                position: row.get("position")?,
-                source: parsed_column(row, "link_source")?,
-                created_at: rfc3339_column(row, "created_at")?,
-            },
-            track: row_to_track_with_prefix(row, "track_")?,
-            album: row_to_album_with_prefix(row, "album_")?,
+    let performed = statement_rows(sql, &WorkTrackRowsParams { work: work() })?;
+    let track_count = list_count(performed.first().map_or(0, |track| track.listed))?;
+    let tracks = performed
+        .into_iter()
+        .map(|row| {
+            Ok(DbWorkTrackSummary {
+                link: row.link.into_link()?,
+                track: row.track.into_track()?,
+                album: row.album.into_album()?,
+            })
         })
-    })?;
-    // The count counts the rows of the tracks' statement above.
-    let track_count: i64 = sql.query_row(
-        &format!("SELECT COUNT(*) FROM ({tracks_query})"),
-        params![work_id],
-        |row| row.get(0),
-    )?;
+        .collect::<Result<_, DbError>>()?;
     Ok(Some(DbWorkDetail {
         work: work_summary(found.work, found.cover)?,
         child_works,
@@ -245,7 +216,7 @@ fn find_work_detail_on(
         tracks,
         child_work_count,
         release_count,
-        track_count: track_count as u64,
+        track_count,
     }))
 }
 
@@ -708,6 +679,26 @@ sqlive_compose::read!(
            ON cover.id = release.release_id
     WHERE child.section = 1
     ORDER BY child.title_key, child.album_id, child.album_order, child.item_id
+"#
+);
+
+// The tracks that perform the work `work`, each beside how many there are:
+// release by release in its page's order, each release's tracks in playing
+// order.
+sqlive_compose::read!(
+    WorkTrackRows(work: String) { listed: i64 },
+    r#"
+    SELECT link.*, track.*, album.*, COUNT(*) OVER () AS listed
+    FROM @bae_records::records::browse_fragments::WorkPerformingReleases AS shown
+    JOIN @bae_records::records::browse_fragments::TrackWorkLink AS link
+      ON link.work_id = shown.work_id AND link.performed_release_id = shown.release_id
+    JOIN @bae_records::records::browse_fragments::TrackRecord AS track
+      ON track.track_id = link.track_id
+    JOIN @bae_records::records::browse_fragments::AlbumRecord AS album
+      ON album.album_id = shown.album_id
+    WHERE shown.work_id = :work
+    ORDER BY shown.title_key, shown.album_id, shown.album_order, shown.release_id,
+             link.track_position, link.position
 "#
 );
 
