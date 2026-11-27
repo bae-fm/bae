@@ -124,8 +124,11 @@ fn track_audio_count(source: &Path, quantity: &str, raw: i64) -> Result<NonZeroU
     })
 }
 
+/// The most bits per sample audio can state for bae to import it.
+pub(crate) const MAX_BIT_DEPTH: u32 = 32;
+
 /// A track's bit depth as its audio format row stores it: none for lossy
-/// audio, else 1 to 32.
+/// audio, else 1 to [`MAX_BIT_DEPTH`].
 pub(crate) fn track_bit_depth(
     source: &Path,
     raw: Option<i64>,
@@ -133,7 +136,7 @@ pub(crate) fn track_bit_depth(
     raw.map(|raw| {
         u32::try_from(raw)
             .ok()
-            .filter(|bits| (1..=32).contains(bits))
+            .filter(|bits| (1..=MAX_BIT_DEPTH).contains(bits))
             .and_then(NonZeroU32::new)
             .ok_or_else(|| ImportError::UnusableFile {
                 detail: format!(

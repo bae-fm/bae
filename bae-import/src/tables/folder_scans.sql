@@ -97,13 +97,17 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     blank_cover_file               TEXT,
     -- Why the scan read a release as one bae can't import, which the Skipped
     -- tab shows (`InvalidReason`): a name two of its files show, else audio
-    -- bae can't play, else no audio bae plays. The scan writes it in the same
+    -- bae can't play, else audio deeper than bae imports, else no audio bae
+    -- plays. The scan writes it in the same
     -- write as the release's files; NULL for a release of any other kind.
-    invalid_reason                 TEXT CHECK (invalid_reason IN ('same_name', 'damaged_audio', 'no_valid_audio')),
-    -- The name two of its files show, for 'same_name'.
-    invalid_shared_name            TEXT,
+    invalid_reason                 TEXT CHECK (invalid_reason IN ('same_name', 'damaged_audio', 'deep_audio', 'no_valid_audio')),
+    -- The name two of its files show, for 'same_name', or the name of the
+    -- audio file that is too deep, for 'deep_audio'.
+    invalid_file_name              TEXT,
     -- How many of its audio files bae can't play, for 'damaged_audio'.
     invalid_damaged_audio          INTEGER CHECK (invalid_damaged_audio > 0),
+    -- The bits per sample that file states, for 'deep_audio'.
+    invalid_audio_bits             INTEGER CHECK (invalid_audio_bits > 32),
     PRIMARY KEY (watched_folder_path, path),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
     -- A release a grouping reads as one leaves the queue with its grouping.
@@ -113,7 +117,8 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
         ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
     CHECK ((kind = 'invalid') = (content_hash IS NULL)),
     CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
-    CHECK ((invalid_reason IS 'same_name') = (invalid_shared_name IS NOT NULL)),
+    CHECK (coalesce(invalid_reason IN ('same_name', 'deep_audio'), 0) = (invalid_file_name IS NOT NULL)),
+    CHECK ((invalid_reason IS 'deep_audio') = (invalid_audio_bits IS NOT NULL)),
     CHECK ((invalid_reason IS 'damaged_audio') = (invalid_damaged_audio IS NOT NULL)),
     CHECK ((source_kind = 'grouping') <= (grouping_key IS NOT NULL))
 ) STRICT;
@@ -155,7 +160,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     audio_container       TEXT,
     audio_duration_ms     INTEGER CHECK (audio_duration_ms IS NULL OR audio_duration_ms >= 0),
     audio_sample_rate_hz  INTEGER CHECK (audio_sample_rate_hz IS NULL OR audio_sample_rate_hz > 0),
-    audio_bits_per_sample INTEGER CHECK (audio_bits_per_sample IS NULL OR audio_bits_per_sample > 0),
+    audio_bits_per_sample INTEGER CHECK (audio_bits_per_sample IS NULL OR audio_bits_per_sample BETWEEN 1 AND 32),
     audio_bitrate_kbps    INTEGER CHECK (audio_bitrate_kbps IS NULL OR audio_bitrate_kbps > 0),
     audio_channels        INTEGER CHECK (audio_channels IS NULL OR audio_channels > 0),
     file_name             TEXT NOT NULL,
@@ -283,8 +288,8 @@ CREATE TABLE IF NOT EXISTS scan_candidate_part (
 
 -- Every file of a release that failed validation, in name order, as the scan
 -- read it: by its name, and for audio and images by its bytes. A name two of
--- its files show, else its damaged audio, is why it failed, and is the reason
--- the Skipped tab gives. Names and paths are as in `scan_candidate_file`; two
+-- its files show, else its damaged audio, else its too deep audio, is why it
+-- failed, and is the reason the Skipped tab gives. Names and paths are as in `scan_candidate_file`; two
 -- files can show one name, and only the path is one file's.
 CREATE TABLE IF NOT EXISTS scan_skipped_file (
     watched_folder_path BLOB NOT NULL,
@@ -294,9 +299,11 @@ CREATE TABLE IF NOT EXISTS scan_skipped_file (
     absolute_path       BLOB NOT NULL,
     size                INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
-    role                TEXT NOT NULL CHECK (role IN ('audio', 'damaged_audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
+    role                TEXT NOT NULL CHECK (role IN ('audio', 'damaged_audio', 'deep_audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
     -- Why a damaged track can't be played: it holds no bytes, or no stream bae plays.
     audio_damage        TEXT CHECK (audio_damage IS NULL OR audio_damage IN ('empty', 'unreadable')),
+    -- The bits per sample of audio deeper than bae imports.
+    audio_bits          INTEGER CHECK (audio_bits > 32),
     -- Which document the file is, as in `scan_candidate_file`.
     document_kind       TEXT CHECK (document_kind IS NULL OR document_kind IN ('cue_sheet', 'rip_log', 'accuraterip_report', 'playlist', 'text')),
     PRIMARY KEY (watched_folder_path, candidate_path, position),
@@ -304,6 +311,7 @@ CREATE TABLE IF NOT EXISTS scan_skipped_file (
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
     CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL)),
+    CHECK ((role = 'deep_audio') = (audio_bits IS NOT NULL)),
     CHECK ((role = 'document') = (document_kind IS NOT NULL))
 ) STRICT;
 

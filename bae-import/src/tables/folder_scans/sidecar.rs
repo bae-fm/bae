@@ -96,6 +96,7 @@ pub(super) fn sidecar_of(row: Sidecars) -> Result<FolderSidecar, DbError> {
                         role: proposed_role_of(
                             &row.role,
                             row.audio_damage.as_deref(),
+                            None,
                             row.document_kind.as_deref(),
                         )?,
                     })
@@ -220,7 +221,10 @@ pub(super) fn write_sidecar(
             .map(|file| {
                 let columns = proposed_role_columns(file.role);
                 assert!(
-                    !matches!(file.role, ProposedRole::Audio | ProposedRole::Cue),
+                    !matches!(
+                        file.role,
+                        ProposedRole::Audio | ProposedRole::DeepAudio { .. } | ProposedRole::Cue
+                    ),
                     "{} is a sidecar file read as a track or a sheet",
                     coven::path_text(&file.file.path)
                 );

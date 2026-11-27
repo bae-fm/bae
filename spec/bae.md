@@ -418,7 +418,8 @@ Each track records:
 
 A track's sample rate and channel count are above zero, and its bit depth is
 absent (lossy audio) or 1 to 32; the database refuses any other value. Import
-refuses audio that states a deeper one, naming the file. A stored value that
+refuses audio that states a deeper one: the scan lists its folder as one bae
+can't import, naming the file and its bit depth (§3.1). A stored value that
 breaks these rules fails reading the track with an error naming it.
 
 Each file records what the scan read of it: the role it plays (audio, track
@@ -1096,12 +1097,17 @@ statement.
 
 **Edge cases.**
 
-- **A broken folder.** A folder with corrupt or zero-byte audio, or no valid
-  audio at all, is listed as skipped with its reason. It can't be imported.
-  The scan reads every file before judging it, so it stores each file of the
-  folder with what it made of it — each damaged track with why: it is empty,
-  or holds no audio bae can read — and the album title and artist its
-  playable tracks' tags agree on, read as a draft's are. The scan also
+- **A broken folder.** A folder with corrupt or zero-byte audio, audio of more
+  than 32 bits per sample, such as a 64-bit WAV, whether or not a CUE sheet
+  splits it into tracks, or no valid audio at all, is listed as skipped with
+  its reason. It can't be imported, and the scan goes on with the rest of the
+  watched folder. The reason for audio too deep names the first such file and
+  its bit depth, where no audio in the folder is damaged. The scan reads every
+  file before judging it, so it stores each file of the folder with what it
+  made of it — each damaged track with why: it is empty, or holds no audio bae
+  can read; each too deep one with its bit depth — and the album title and
+  artist the tags of the tracks bae can import agree on, read as a draft's
+  are. The scan also
   stores with them why bae can't import the folder and the folder's cover
   image, which its row and pane show.
 - **A file whose name isn't valid UTF-8**, which Linux allows (a Latin-1
@@ -1441,7 +1447,10 @@ its path and the error, and reports it to the crash reporter (§11.2). bae
 doesn't keep a folder's reading that left an input out for later runs, so the
 next run reads that input again. A rip log with no table of contents at all
 states no disc, which is no error. A failed lookup at a catalog is no input of
-the folder: the run shows it and offers Retry.
+the folder: the run shows it and offers Retry. An error of the library
+database, or of the run itself, is no input's, and fails the run. A folder
+holding audio of more than 32 bits per sample is one bae can't import (§3.1),
+so identification never reads it.
 
 Identification reads the audio's tags from the files on every run, so the
 scan's stored reading keeps none of the ISRCs, labels, copyright lines or

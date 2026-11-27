@@ -577,6 +577,7 @@ struct SkippedFileRow {
     modified_at_ns: i64,
     role: String,
     audio_damage: Option<String>,
+    audio_bits: Option<i64>,
     document_kind: Option<String>,
 }
 
@@ -598,6 +599,7 @@ fn skipped_files_of(
                 role: proposed_role_of(
                     &row.role,
                     row.audio_damage.as_deref(),
+                    row.audio_bits,
                     row.document_kind.as_deref(),
                 )?,
             })

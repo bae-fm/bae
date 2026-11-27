@@ -2,7 +2,7 @@
 //! as the columns the rows are shaped from.
 
 use super::*;
-use crate::tables::folder_scans::{CoverVersionColumns, InvalidColumns, StoredImage};
+use crate::tables::folder_scans::{CoverVersionColumns, InvalidColumns, StoredImage, StoredReason};
 use crate::tables::import_state::{
     RuntimeFactColumns, StoredCover, StoredProvenance, StoredReleaseLink,
 };
@@ -35,8 +35,9 @@ struct InvalidDocument {
     folder: PathBuf,
     separable: i64,
     reason: String,
-    shared_name: Option<String>,
+    file_name: Option<String>,
     damaged_audio: Option<i64>,
+    audio_bits: Option<i64>,
     /// The album title and the stored credits.
     tags: Option<(String, Option<String>)>,
     cover: Option<StoredImage>,
@@ -170,7 +171,12 @@ fn invalid_columns(invalid: InvalidDocument) -> Result<InvalidColumns, DbError> 
     InvalidColumns::new(
         invalid.folder,
         invalid.separable != 0,
-        (invalid.reason, invalid.shared_name, invalid.damaged_audio),
+        StoredReason {
+            kind: invalid.reason,
+            file_name: invalid.file_name,
+            damaged_audio: invalid.damaged_audio,
+            audio_bits: invalid.audio_bits,
+        },
         invalid.tags,
         invalid.cover,
     )

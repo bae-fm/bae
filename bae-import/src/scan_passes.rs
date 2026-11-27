@@ -292,3 +292,7 @@ fn spawn_root_scan(
 #[cfg(test)]
 #[path = "scan_passes_tests.rs"]
 pub(crate) mod tests;
+
+#[cfg(test)]
+#[path = "scan_passes/unimportable_audio_tests.rs"]
+mod unimportable_audio_tests;

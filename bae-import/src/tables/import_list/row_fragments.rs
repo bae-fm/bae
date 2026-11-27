@@ -95,8 +95,9 @@ sqlive_compose::fragment!(
             'folder', hex(scan.listed_folder),
             'separable', scan.listed_grouping_key IS NOT NULL,
             'reason', scan.listed_invalid_reason,
-            'shared_name', scan.listed_shared_name,
+            'file_name', scan.listed_invalid_file_name,
             'damaged_audio', scan.listed_damaged_audio,
+            'audio_bits', scan.listed_audio_bits,
             'tags', json(scan.listed_invalid_tags),
             'cover', json(scan.listed_invalid_cover))),
         'imported', iif(origin.origin_release_id IS NULL, NULL, json_object(

@@ -38,12 +38,22 @@ fn leading_image(
     Ok(stored_json::<Option<StoredImage>>("a skipped folder's image", json)?.flatten())
 }
 
+/// Why a folder failed validation, as the `invalid_*` columns of its scan row
+/// store it.
+#[derive(Clone, PartialEq)]
+pub(crate) struct StoredReason {
+    pub(crate) kind: String,
+    pub(crate) file_name: Option<String>,
+    pub(crate) damaged_audio: Option<i64>,
+    pub(crate) audio_bits: Option<i64>,
+}
+
 /// A folder that failed validation, as its scan row stores it.
 #[derive(Clone, PartialEq)]
 pub(crate) struct InvalidColumns {
     folder: PathBuf,
     separable: bool,
-    reason: (String, Option<String>, Option<i64>),
+    reason: StoredReason,
     tags: Option<SkippedTags>,
     cover: Option<(PathBuf, i64, i64)>,
 }
@@ -55,7 +65,7 @@ impl InvalidColumns {
     pub(crate) fn new(
         folder: PathBuf,
         separable: bool,
-        reason: (String, Option<String>, Option<i64>),
+        reason: StoredReason,
         tags: Option<(String, Option<String>)>,
         cover: Option<StoredImage>,
     ) -> Result<Self, DbError> {
@@ -91,7 +101,12 @@ impl InvalidColumns {
         Self::new(
             path_column::decode(scan.invalid_folder.clone())?,
             scan.invalid_separable,
-            (reason, scan.invalid_shared_name.clone(), scan.invalid_damaged_audio),
+            StoredReason {
+                kind: reason,
+                file_name: scan.invalid_file_name.clone(),
+                damaged_audio: scan.invalid_damaged_audio,
+                audio_bits: scan.invalid_audio_bits,
+            },
             tags,
             cover,
         )
@@ -111,14 +126,27 @@ impl InvalidColumns {
         folder_name: String,
         watched_folder_path: PathBuf,
     ) -> Result<InvalidRow, DbError> {
-        let reason = match self.reason {
-            (kind, Some(name), None) if kind == "same_name" => InvalidReason::SameName { name },
-            (kind, None, Some(count)) if kind == "damaged_audio" => InvalidReason::DamagedAudio {
-                count: u32::try_from(count).map_err(|_too_large| {
-                    DbError::unreadable("scan_candidate.invalid_damaged_audio", count)
-                })?,
-            },
-            (kind, None, None) if kind == "no_valid_audio" => InvalidReason::NoValidAudio,
+        let StoredReason { kind, file_name, damaged_audio, audio_bits } = self.reason;
+        let reason = match (kind, file_name, damaged_audio, audio_bits) {
+            (kind, Some(name), None, None) if kind == "same_name" => {
+                InvalidReason::SameName { name }
+            }
+            (kind, None, Some(count), None) if kind == "damaged_audio" => {
+                InvalidReason::DamagedAudio {
+                    count: u32::try_from(count).map_err(|_too_large| {
+                        DbError::unreadable("scan_candidate.invalid_damaged_audio", count)
+                    })?,
+                }
+            }
+            (kind, Some(name), None, Some(bits)) if kind == "deep_audio" => {
+                InvalidReason::DeepAudio {
+                    name,
+                    bits: u32::try_from(bits).map_err(|_too_large| {
+                        DbError::unreadable("scan_candidate.invalid_audio_bits", bits)
+                    })?,
+                }
+            }
+            (kind, None, None, None) if kind == "no_valid_audio" => InvalidReason::NoValidAudio,
             other => return Err(DbError::unreadable("scan_candidate.invalid_reason", other)),
         };
         let cover = match self.cover {
@@ -178,7 +206,12 @@ pub(crate) fn load_invalid_row(
     let columns = InvalidColumns::new(
         path_column::decode(scan.listed_folder)?,
         scan.listed_grouping_key.is_some(),
-        (reason, scan.listed_shared_name, scan.listed_damaged_audio),
+        StoredReason {
+            kind: reason,
+            file_name: scan.listed_invalid_file_name,
+            damaged_audio: scan.listed_damaged_audio,
+            audio_bits: scan.listed_audio_bits,
+        },
         tags,
         cover,
     )?;
@@ -195,11 +228,13 @@ sqlive_compose::read!(
         size: i64,
         role: String,
         audio_damage: Option<String>,
+        audio_bits: Option<i64>,
         document_kind: Option<String>,
         previewing: bool
     },
     r#"
-    SELECT f.relative_path, f.absolute_path, f.size, f.role, f.audio_damage, f.document_kind,
+    SELECT f.relative_path, f.absolute_path, f.size, f.role, f.audio_damage, f.audio_bits,
+           f.document_kind,
            previewed.previewed_state IS NOT NULL AS previewing
     FROM scan_candidate AS c
     JOIN scan_skipped_file AS f
@@ -270,6 +305,7 @@ pub(crate) fn load_invalid_detail(
             let role = mapping_role(proposed_role_of(
                 &file.role,
                 file.audio_damage.as_deref(),
+                file.audio_bits,
                 file.document_kind.as_deref(),
             )?);
             let path = path_column::decode(file.absolute_path)?;
@@ -293,7 +329,7 @@ pub(crate) fn load_invalid_detail(
 /// sheet as a document.
 fn mapping_role(role: ProposedRole) -> MappingRole {
     match role {
-        ProposedRole::Audio => MappingRole::Audio,
+        ProposedRole::Audio | ProposedRole::DeepAudio { .. } => MappingRole::Audio,
         ProposedRole::DamagedAudio { damage } => MappingRole::DamagedAudio { damage },
         ProposedRole::Cue | ProposedRole::Document { .. } => MappingRole::Document,
         ProposedRole::Image => MappingRole::Image,

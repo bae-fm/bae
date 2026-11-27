@@ -41,6 +41,12 @@ pub enum BridgeInvalidReason {
     DamagedAudio {
         count: u32,
     },
+    /// The audio file `name`, its path within the folder, states `bits` bits
+    /// per sample, more than the 32 bae imports.
+    DeepAudio {
+        name: String,
+        bits: u32,
+    },
     NoValidAudio,
 }
 
@@ -49,6 +55,7 @@ impl BridgeInvalidReason {
         match self {
             Self::SameName { .. } => "core.import.invalid.same_name",
             Self::DamagedAudio { .. } => "core.import.invalid.damaged_audio",
+            Self::DeepAudio { .. } => "core.import.invalid.deep_audio",
             Self::NoValidAudio => "core.import.invalid.no_valid_audio",
         }
     }
@@ -61,6 +68,7 @@ mirror_enum! {
     variants: {
         SameName { name },
         DamagedAudio { count },
+        DeepAudio { name, bits },
         NoValidAudio,
     },
 }

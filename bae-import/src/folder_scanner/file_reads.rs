@@ -33,14 +33,24 @@ pub(super) const HELD_COVER_BYTES: usize = 64 * 1024 * 1024;
 /// Whether one track plays, as FFmpeg reads it.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum Playability {
-    /// It holds no stream bae plays.
-    Unplayable,
+    /// A release can't take the track in.
+    Refused(Refusal),
     /// A stream bae plays, as the probe measured it.
     Measured(ScannedAudio),
     /// A stream bae plays, as the row of a folder that can't be imported says.
     /// Such a row keeps no measurements, so a release that takes the track in
     /// measures it.
     Playable,
+}
+
+/// Why a release can't take a track in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Refusal {
+    /// It holds no stream bae plays.
+    Unplayable,
+    /// Its stream states `bits` bits per sample, more than
+    /// [`MAX_BIT_DEPTH`].
+    TooDeep { bits: u32 },
 }
 
 /// What is known of one track. Its stream and its tags are known apart: a
@@ -241,15 +251,15 @@ impl FileReads {
     }
 
     /// The track `file`'s measurements, probed now when all that is known is
-    /// that it plays; `None` when it plays nothing.
+    /// that it plays, or why a release can't take it in.
     pub(super) fn measured(
         &self,
         file: &ScannedFile,
-    ) -> Result<Option<ScannedAudio>, FolderScanError> {
+    ) -> Result<Result<ScannedAudio, Refusal>, FolderScanError> {
         let stream = match self.stream(file)? {
             Playability::Playable => {
                 let stream = self.probe(file)?;
-                if stream == Playability::Unplayable {
+                if stream == Playability::Refused(Refusal::Unplayable) {
                     tracing::warn!(
                         "{} was stored as playable, and FFmpeg finds no stream bae plays in it",
                         file.version.path.display()
@@ -259,10 +269,14 @@ impl FileReads {
             }
             stream => stream,
         };
-        Ok(match stream {
-            Playability::Measured(audio) => Some(audio),
-            Playability::Unplayable | Playability::Playable => None,
-        })
+        match stream {
+            Playability::Measured(audio) => Ok(Ok(audio)),
+            Playability::Refused(refusal) => Ok(Err(refusal)),
+            Playability::Playable => Err(FolderScanError::Other(format!(
+                "a probe of {} measured nothing",
+                file.version.path.display()
+            ))),
+        }
     }
 
     /// Probe the track `file` now, reading its tags beside it when it plays
@@ -678,8 +692,15 @@ impl Known {
                 FileRead::Track(TrackRead { stream: Some(Playability::Playable), tags: None })
             }
             ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable } => {
-                FileRead::Track(TrackRead { stream: Some(Playability::Unplayable), tags: None })
+                FileRead::Track(TrackRead {
+                    stream: Some(Playability::Refused(Refusal::Unplayable)),
+                    tags: None,
+                })
             }
+            ProposedRole::DeepAudio { bits } => FileRead::Track(TrackRead {
+                stream: Some(Playability::Refused(Refusal::TooDeep { bits })),
+                tags: None,
+            }),
             ProposedRole::Image => FileRead::Image { decodes: true },
             ProposedRole::DamagedImage if file.file.size > 0 => FileRead::Image { decodes: false },
             // An empty track or image is damaged before its bytes are looked
@@ -799,13 +820,17 @@ fn probe(
         }
         Err(bae_audio::ProbeError::NotAudio(reason)) => {
             info!("Invalid candidate: {} is no audio: {reason}", file.relative_path);
-            Playability::Unplayable
+            Playability::Refused(Refusal::Unplayable)
         }
-        Ok(probe) => match scanned_audio(&probe) {
-            Some(audio) => Playability::Measured(audio),
-            None => {
+        Ok(probe) => match (scanned_audio(&probe), probe.bits_per_sample) {
+            (Some(_), Some(bits)) if bits > MAX_BIT_DEPTH => {
+                info!("Invalid candidate: {} is {bits}-bit audio", file.relative_path);
+                Playability::Refused(Refusal::TooDeep { bits })
+            }
+            (Some(audio), _) => Playability::Measured(audio),
+            (None, _) => {
                 info!("Invalid candidate: {} is no audio stream bae plays", file.relative_path);
-                Playability::Unplayable
+                Playability::Refused(Refusal::Unplayable)
             }
         },
     };

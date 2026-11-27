@@ -81,35 +81,42 @@ pub(super) fn scope_of(stored: &str) -> Result<ReleaseFileScope, DbError> {
     }
 }
 
-/// A skipped file's role, the damage a damaged track names and the kind a
-/// document is, as the three columns store them. The roles a release's files
+/// A skipped file's role, the damage a damaged track names, the bits per
+/// sample of a too deep one and the kind a document is, as the four columns
+/// store them. The roles a release's files
 /// share are spelled as [`role_columns`] spells them.
 pub(super) struct ProposedRoleColumns {
     pub(super) role: &'static str,
     pub(super) audio_damage: Option<&'static str>,
+    pub(super) audio_bits: Option<u32>,
     pub(super) document_kind: Option<&'static str>,
 }
 
 pub(super) fn proposed_role_columns(role: ProposedRole) -> ProposedRoleColumns {
-    let plain = |role| ProposedRoleColumns { role, audio_damage: None, document_kind: None };
+    let plain = |role| ProposedRoleColumns {
+        role,
+        audio_damage: None,
+        audio_bits: None,
+        document_kind: None,
+    };
     match role {
         ProposedRole::Audio => plain("audio"),
         ProposedRole::DamagedAudio { damage } => ProposedRoleColumns {
-            role: "damaged_audio",
             audio_damage: Some(match damage {
                 AudioDamage::Empty => "empty",
                 AudioDamage::Unreadable => "unreadable",
             }),
-            document_kind: None,
+            ..plain("damaged_audio")
         },
+        ProposedRole::DeepAudio { bits } => {
+            ProposedRoleColumns { audio_bits: Some(bits), ..plain("deep_audio") }
+        }
         ProposedRole::Cue => plain("track_sheet"),
         ProposedRole::Image => plain("artwork"),
         ProposedRole::DamagedImage => plain("damaged_image"),
-        ProposedRole::Document { kind } => ProposedRoleColumns {
-            role: "document",
-            audio_damage: None,
-            document_kind: Some(kind.as_str()),
-        },
+        ProposedRole::Document { kind } => {
+            ProposedRoleColumns { document_kind: Some(kind.as_str()), ..plain("document") }
+        }
         ProposedRole::Other => plain("other"),
     }
 }
@@ -117,28 +124,34 @@ pub(super) fn proposed_role_columns(role: ProposedRole) -> ProposedRoleColumns {
 pub(super) fn proposed_role_of(
     stored: &str,
     damage: Option<&str>,
+    bits: Option<i64>,
     document_kind: Option<&str>,
 ) -> Result<ProposedRole, DbError> {
-    // The table pairs the columns, so only a damaged track names damage, and
-    // only a document a kind.
-    match (stored, damage, document_kind) {
-        ("audio", None, None) => Ok(ProposedRole::Audio),
-        ("damaged_audio", Some("empty"), None) => {
+    // The table pairs the columns, so only a damaged track names damage, only
+    // a too deep one its bits, and only a document a kind.
+    match (stored, damage, bits, document_kind) {
+        ("audio", None, None, None) => Ok(ProposedRole::Audio),
+        ("damaged_audio", Some("empty"), None, None) => {
             Ok(ProposedRole::DamagedAudio { damage: AudioDamage::Empty })
         }
-        ("damaged_audio", Some("unreadable"), None) => {
+        ("damaged_audio", Some("unreadable"), None, None) => {
             Ok(ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable })
         }
-        ("track_sheet", None, None) => Ok(ProposedRole::Cue),
-        ("artwork", None, None) => Ok(ProposedRole::Image),
-        ("damaged_image", None, None) => Ok(ProposedRole::DamagedImage),
-        ("document", None, Some(kind)) => {
+        ("deep_audio", None, Some(bits), None) => Ok(ProposedRole::DeepAudio {
+            bits: u32::try_from(bits)
+                .map_err(|error| DbError::unreadable("a skipped file's bit depth", error))?,
+        }),
+        ("track_sheet", None, None, None) => Ok(ProposedRole::Cue),
+        ("artwork", None, None, None) => Ok(ProposedRole::Image),
+        ("damaged_image", None, None, None) => Ok(ProposedRole::DamagedImage),
+        ("document", None, None, Some(kind)) => {
             Ok(ProposedRole::Document { kind: document_kind_of(kind)? })
         }
-        ("other", None, None) => Ok(ProposedRole::Other),
-        stored => {
-            Err(DbError::unreadable("a skipped file's role, damage and document kind", stored))
-        }
+        ("other", None, None, None) => Ok(ProposedRole::Other),
+        stored => Err(DbError::unreadable(
+            "a skipped file's role, damage, bit depth and document kind",
+            stored,
+        )),
     }
 }
 

@@ -35,7 +35,7 @@ use categorize::*;
 pub(crate) use categorize::{categorize_library_files, is_hidden_entry};
 pub use file_decisions::*;
 pub(crate) use file_reads::FileReads;
-use file_reads::Playability;
+use file_reads::{Playability, Refusal};
 pub use files::*;
 pub use folder_times::FolderDate;
 pub(crate) use folder_times::FolderTimes;

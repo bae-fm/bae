@@ -288,17 +288,19 @@ sqlive_compose::write!(
         source_kind: &'p str,
         blank_cover_file: Option<String>,
         invalid_reason: Option<&'static str>,
-        invalid_shared_name: Option<String>,
+        invalid_file_name: Option<String>,
         invalid_damaged_audio: Option<u32>,
+        invalid_audio_bits: Option<u32>,
     ),
     r#"
     INSERT INTO scan_candidate
         (watched_folder_path, path, generation, kind, name, relative_folder, folder, file_root,
          scope, content_hash, file_edit_revision, grouping_key, source_kind, blank_cover_file,
-         invalid_reason, invalid_shared_name, invalid_damaged_audio)
+         invalid_reason, invalid_file_name, invalid_damaged_audio, invalid_audio_bits)
     VALUES (:watched_folder_path, :path, :generation, :kind, :name, :relative_folder, :folder,
         :file_root, :scope, :content_hash, :file_edit_revision, :grouping_key, :source_kind,
-        :blank_cover_file, :invalid_reason, :invalid_shared_name, :invalid_damaged_audio)
+        :blank_cover_file, :invalid_reason, :invalid_file_name, :invalid_damaged_audio,
+        :invalid_audio_bits)
     ON CONFLICT (watched_folder_path, path) DO UPDATE SET
         generation = excluded.generation, kind = excluded.kind, name = excluded.name,
         relative_folder = excluded.relative_folder, folder = excluded.folder,
@@ -308,8 +310,9 @@ sqlive_compose::write!(
         grouping_key = excluded.grouping_key, source_kind = excluded.source_kind,
         blank_cover_file = excluded.blank_cover_file,
         invalid_reason = excluded.invalid_reason,
-        invalid_shared_name = excluded.invalid_shared_name,
-        invalid_damaged_audio = excluded.invalid_damaged_audio
+        invalid_file_name = excluded.invalid_file_name,
+        invalid_damaged_audio = excluded.invalid_damaged_audio,
+        invalid_audio_bits = excluded.invalid_audio_bits
 "#
 );
 
@@ -361,8 +364,9 @@ pub(crate) fn insert_candidate_row(
         // `insert_candidate_files` sets it from the files it stores.
         blank_cover_file: None,
         invalid_reason: None,
-        invalid_shared_name: None,
+        invalid_file_name: None,
         invalid_damaged_audio: None,
+        invalid_audio_bits: None,
     })?;
     for (position, part) in candidate.files.parts.iter().enumerate() {
         sql.run(&InsertCandidatePartParams {
@@ -387,14 +391,15 @@ sqlive_compose::write!(
         modified_at_ns: i64,
         role: &'static str,
         audio_damage: Option<&'static str>,
+        audio_bits: Option<u32>,
         document_kind: Option<&'static str>,
     ),
     r#"
     INSERT INTO scan_skipped_file
         (watched_folder_path, candidate_path, position, relative_path, absolute_path, size,
-         modified_at_ns, role, audio_damage, document_kind)
+         modified_at_ns, role, audio_damage, audio_bits, document_kind)
     VALUES (:watched_folder_path, :candidate_path, :position, :relative_path, :absolute_path,
-        :size, :modified_at_ns, :role, :audio_damage, :document_kind)
+        :size, :modified_at_ns, :role, :audio_damage, :audio_bits, :document_kind)
 "#
 );
 
@@ -420,10 +425,11 @@ fn insert_invalid(
 ) -> Result<(), DbError> {
     let folder = coven::path_bytes(&candidate.path);
     let key = candidate.key();
-    let (reason, shared_name, damaged_audio) = match candidate.reason() {
-        InvalidReason::SameName { name } => ("same_name", Some(name), None),
-        InvalidReason::DamagedAudio { count } => ("damaged_audio", None, Some(count)),
-        InvalidReason::NoValidAudio => ("no_valid_audio", None, None),
+    let (reason, file_name, damaged_audio, audio_bits) = match candidate.reason() {
+        InvalidReason::SameName { name } => ("same_name", Some(name), None, None),
+        InvalidReason::DamagedAudio { count } => ("damaged_audio", None, Some(count), None),
+        InvalidReason::DeepAudio { name, bits } => ("deep_audio", Some(name), None, Some(bits)),
+        InvalidReason::NoValidAudio => ("no_valid_audio", None, None, None),
     };
     let watched_folder_path = coven::path_bytes(watched_folder_path);
     sql.run(&UpsertCandidateRowParams {
@@ -446,8 +452,9 @@ fn insert_invalid(
         source_kind,
         blank_cover_file: candidate.cover_file(),
         invalid_reason: Some(reason),
-        invalid_shared_name: shared_name,
+        invalid_file_name: file_name,
         invalid_damaged_audio: damaged_audio,
+        invalid_audio_bits: audio_bits,
     })?;
     for (position, file) in candidate.files.iter().enumerate() {
         let columns = proposed_role_columns(file.role);
@@ -461,6 +468,7 @@ fn insert_invalid(
             modified_at_ns: file.file.modified_at_ns,
             role: columns.role,
             audio_damage: columns.audio_damage,
+            audio_bits: columns.audio_bits,
             document_kind: columns.document_kind,
         })?;
     }

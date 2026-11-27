@@ -45,8 +45,9 @@ sqlive_compose::fragment!(
         invalid_folder: Vec<u8>,
         invalid_separable: bool,
         invalid_reason: Option<String>,
-        invalid_shared_name: Option<String>,
+        invalid_file_name: Option<String>,
         invalid_damaged_audio: Option<i64>,
+        invalid_audio_bits: Option<i64>,
         invalid_album_title: Option<String>,
         invalid_credits: Option<String>
     },
@@ -115,15 +116,17 @@ sqlive_compose::fragment!(
         SELECT json_group_array(json_object('relative_path', skipped.relative_path,
             'absolute_path', hex(skipped.absolute_path), 'size', skipped.size,
             'modified_at_ns', skipped.modified_at_ns, 'role', skipped.role, 'audio_damage',
-            skipped.audio_damage, 'document_kind', skipped.document_kind) ORDER BY
+            skipped.audio_damage, 'audio_bits', skipped.audio_bits, 'document_kind',
+            skipped.document_kind) ORDER BY
             skipped.position)
         FROM scan_skipped_file AS skipped
         WHERE skipped.watched_folder_path = candidate.watched_folder_path AND
             skipped.candidate_path = candidate.path
     ) AS skipped_files, candidate.folder AS invalid_folder, candidate.grouping_key IS NOT
         NULL AS invalid_separable, candidate.invalid_reason AS invalid_reason,
-        candidate.invalid_shared_name AS invalid_shared_name,
-        candidate.invalid_damaged_audio AS invalid_damaged_audio, invalid_tags.album_title
+        candidate.invalid_file_name AS invalid_file_name,
+        candidate.invalid_damaged_audio AS invalid_damaged_audio,
+        candidate.invalid_audio_bits AS invalid_audio_bits, invalid_tags.album_title
         AS invalid_album_title, invalid_tags.credits AS invalid_credits,
         @crate::tables::folder_scans::fragments::LeadingImage(parent: candidate)
             AS invalid_cover

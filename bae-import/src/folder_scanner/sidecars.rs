@@ -38,7 +38,9 @@ pub(super) fn categorize_sidecar(
             ProposedRole::Document { kind } => Some(FileRole::Document { kind }),
             ProposedRole::Cue => Some(FileRole::Document { kind: DocumentKind::CueSheet }),
             ProposedRole::Other => Some(FileRole::Other),
-            ProposedRole::DamagedAudio { .. } | ProposedRole::Audio => None,
+            ProposedRole::DamagedAudio { .. }
+            | ProposedRole::DeepAudio { .. }
+            | ProposedRole::Audio => None,
         };
         match release_role {
             Some(role) => {

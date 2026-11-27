@@ -598,6 +598,40 @@ da = "{count, plural, one {# lydfil er beskadiget} other {# lydfiler er beskadig
 nb = "{count, plural, one {# lydfil er skadet} other {# lydfiler er skadet}}"
 fi = "{count, plural, one {# äänitiedosto on vioittunut} other {# äänitiedostoa on vioittunut}}"
 
+[messages."core.import.invalid.deep_audio"]
+comment = "Import list, Skipped tab: why a folder can't be imported — one of its audio files states more bits per sample than bae imports. {name} is the file's path within the folder and {bits} the bits per sample it states, such as 64. Shown on the folder's row and where its Import button would be."
+args = { name = "Str", bits = "Int" }
+value = "{name} is {bits}-bit audio; bae imports up to 32 bits"
+
+[messages."core.import.invalid.deep_audio".translations]
+es = "{name} es audio de {bits} bits; bae importa audio de hasta 32 bits"
+fr = "{name} est un audio de {bits} bits ; bae importe jusqu’à 32 bits"
+de = "{name} ist Audio mit {bits} Bit; bae importiert höchstens 32 Bit"
+pt-BR = "{name} é um áudio de {bits} bits; o bae importa até 32 bits"
+ja = "{name} は {bits} ビットのオーディオです。bae がインポートできるのは 32 ビットまでです"
+ko = "{name} 파일은 {bits}비트 오디오입니다. bae는 32비트까지 가져옵니다"
+zh-Hans = "{name} 是 {bits} 位音频；bae 最多导入 32 位"
+ar = "{name} صوت بدقة {bits} بت، ويستورد bae حتى 32 بت"
+he = "{name} הוא שמע של {bits} סיביות; bae מייבא עד 32 סיביות"
+uk = "{name} — аудіо з розрядністю {bits} біт; bae імпортує щонайбільше 32 біти"
+bg = "{name} е {bits}-битово аудио; bae импортира до 32 бита"
+pl = "{name} to dźwięk {bits}-bitowy; bae importuje najwyżej 32 bity"
+cs = "{name} je {bits}bitový zvuk; bae importuje nejvýše 32 bitů"
+hr = "{name} je {bits}-bitni zvuk; bae uvozi najviše 32 bita"
+zh-Hant = "{name} 是 {bits} 位元音訊；bae 最多匯入 32 位元"
+it = "{name} è audio a {bits} bit; bae importa fino a 32 bit"
+tr = "{name} {bits} bit ses; bae en fazla 32 bit içe aktarır"
+nl = "{name} is {bits}-bits audio; bae importeert tot 32 bits"
+sk = "{name} je {bits}-bitový zvuk; bae importuje najviac 32 bitov"
+hu = "A(z) {name} {bits} bites hang; a bae legfeljebb 32 biteset importál"
+ro = "{name} este audio pe {bits} de biți; bae importă cel mult 32 de biți"
+el = "Το {name} είναι ήχος {bits} bit· το bae εισάγει έως 32 bit"
+pt-PT = "{name} é áudio de {bits} bits; o bae importa até 32 bits"
+sv = "{name} är {bits}-bitarsljud; bae importerar högst 32 bitar"
+da = "{name} er {bits}-bit lyd; bae importerer højst 32 bit"
+nb = "{name} er {bits}-biters lyd; bae importerer opptil 32 biter"
+fi = "{name} on {bits}-bittistä ääntä; bae tuo enintään 32-bittistä"
+
 [messages."core.import.invalid.no_valid_audio"]
 comment = "Import list, Skipped tab: why a folder can't be imported — it holds no audio files. Shown on the folder's row and where its Import button would be."
 value = "No audio files"

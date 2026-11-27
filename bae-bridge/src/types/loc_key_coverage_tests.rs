@@ -251,6 +251,7 @@ fn produced_keys() -> Vec<String> {
     for r in [
         BridgeInvalidReason::SameName { name: "Track.flac".to_string() },
         BridgeInvalidReason::DamagedAudio { count: 2 },
+        BridgeInvalidReason::DeepAudio { name: "album.wav".to_string(), bits: 64 },
         BridgeInvalidReason::NoValidAudio,
     ] {
         keys.push(bridge_invalid_reason_key(r));

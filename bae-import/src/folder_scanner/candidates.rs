@@ -6,8 +6,8 @@ use crate::RelativeFolder;
 /// as its skipped files say. The UI localizes the typed variant for the
 /// Skipped tab.
 ///
-/// Only real defects invalidate: a name two files show, and audio bae can't
-/// play. A sheet that disagrees with what is on disk —
+/// Only the files themselves invalidate: a name two files show, audio bae can't
+/// play, and audio deeper than bae imports. A sheet that disagrees with what is on disk —
 /// naming absent audio, failing to parse, or naming a codec bae can't play from
 /// a single-file CUE — leaves the sheet unbound and the folder importable, and
 /// an image that will not decode is carried as a damaged one.
@@ -22,6 +22,10 @@ pub enum InvalidReason {
     /// `count` of its audio files can't be played: never zero.
     #[error("{count} damaged audio files")]
     DamagedAudio { count: u32 },
+    /// The audio file `name`, its path within the folder, states `bits` bits
+    /// per sample: more than [`MAX_BIT_DEPTH`], which is all bae imports.
+    #[error("{name} is {bits}-bit audio")]
+    DeepAudio { name: String, bits: u32 },
     #[error("no valid audio files")]
     NoValidAudio,
 }
@@ -35,8 +39,8 @@ pub(crate) fn shared_name<'a>(names: impl IntoIterator<Item = &'a str>) -> Optio
 
 impl InvalidReason {
     /// The reason `files` give: a name two of them show, else the audio among
-    /// them bae can't play, or, with none of that, that they hold no audio at
-    /// all.
+    /// them bae can't play, else the first of them deeper than bae imports,
+    /// or, with none of that, that they hold no audio at all.
     pub fn of(files: &[SkippedFile]) -> Self {
         if let Some(name) = shared_name(files.iter().map(|file| file.relative_path.as_str())) {
             return Self::SameName { name: name.to_string() };
@@ -46,7 +50,15 @@ impl InvalidReason {
             .filter(|file| matches!(file.role, ProposedRole::DamagedAudio { .. }))
             .count();
         match u32::try_from(damaged).expect("a folder's file count fits u32") {
-            0 => Self::NoValidAudio,
+            0 => files
+                .iter()
+                .find_map(|file| match file.role {
+                    ProposedRole::DeepAudio { bits } => {
+                        Some(Self::DeepAudio { name: file.relative_path.clone(), bits })
+                    }
+                    _ => None,
+                })
+                .unwrap_or(Self::NoValidAudio),
             count => Self::DamagedAudio { count },
         }
     }
@@ -73,6 +85,10 @@ pub enum ProposedRole {
     /// Named as audio, and bae can't play it.
     DamagedAudio {
         damage: AudioDamage,
+    },
+    /// Audio stating `bits` bits per sample, more than [`MAX_BIT_DEPTH`].
+    DeepAudio {
+        bits: u32,
     },
     /// A `.cue`, before it is parsed.
     Cue,
@@ -167,8 +183,8 @@ pub struct InvalidCandidate {
     /// The grouping this row reads several folders as, when it is one. The
     /// row's key is then the grouping's, not the folder's.
     pub grouping: Option<CandidateKey>,
-    /// Every file it holds, in name order, as the scan read it; the damaged
-    /// ones are why it failed.
+    /// Every file it holds, in name order, as the scan read it;
+    /// [`InvalidReason::of`] reads from them why it failed.
     pub files: Vec<SkippedFile>,
     /// What its tags call the release. `None` when none of its playable files
     /// states an album title, and for a grouping, which is built from stored

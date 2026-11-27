@@ -12,6 +12,8 @@ extension BridgeInvalidReason {
             return localizedCoreString(key, name)
         case .damagedAudio(let count):
             return localizedCoreString(key, Int(count))
+        case .deepAudio(let name, let bits):
+            return localizedCoreString(key, name, Int(bits))
         case .noValidAudio:
             return localizedCoreString(key)
         }

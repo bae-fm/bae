@@ -14,8 +14,9 @@ sqlive_compose::fragment!(
         scan.name AS listed_name, scan.content_hash AS listed_content_hash,
         scan.file_edit_revision AS listed_revision, scan.grouping_key AS listed_grouping_key,
         scan.folder AS listed_folder, scan.invalid_reason AS listed_invalid_reason,
-        scan.invalid_shared_name AS listed_shared_name,
+        scan.invalid_file_name AS listed_invalid_file_name,
         scan.invalid_damaged_audio AS listed_damaged_audio,
+        scan.invalid_audio_bits AS listed_audio_bits,
         (SELECT json_array(tags.album_title, tags.credits)
          FROM scan_skipped_tags AS tags
          WHERE tags.watched_folder_path = scan.watched_folder_path

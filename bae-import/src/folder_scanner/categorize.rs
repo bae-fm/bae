@@ -219,22 +219,29 @@ pub(super) fn categorize_files_from_tree(
     cancellation: &ScanCancellation,
     reads: &FileReads,
 ) -> Result<CategorizeOutcome, FolderScanError> {
-    let unreadable = |file: &ScannedFile| {
-        info!("{} holds no audio bae can play", file.relative_path);
-        ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable }
+    let refused = |file: &ScannedFile, refusal: Refusal| match refusal {
+        Refusal::Unplayable => {
+            info!("{} holds no audio bae can play", file.relative_path);
+            ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable }
+        }
+        Refusal::TooDeep { bits } => ProposedRole::DeepAudio { bits },
     };
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
     for entry in tree.all_files_under(release_root) {
         cancellation.check()?;
         let (file, mut role) = propose_file(entry, release_root, fs_root, reads)?;
-        if role == ProposedRole::Audio && reads.stream(&file)? == Playability::Unplayable {
-            role = unreadable(&file);
+        if role == ProposedRole::Audio {
+            if let Playability::Refused(refusal) = reads.stream(&file)? {
+                role = refused(&file, refusal);
+            }
         }
         proposed.push((file, role));
     }
     let releasable = |proposed: &[(ScannedFile, ProposedRole)]| {
         shared_name(proposed.iter().map(|(file, _)| file.relative_path.as_str())).is_none()
-            && !proposed.iter().any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }))
+            && !proposed.iter().any(|(_, role)| {
+                matches!(role, ProposedRole::DamagedAudio { .. } | ProposedRole::DeepAudio { .. })
+            })
             && proposed.iter().any(|(_, role)| *role == ProposedRole::Audio)
     };
     // A folder that would be a release needs each track's measurements. A
@@ -245,8 +252,8 @@ pub(super) fn categorize_files_from_tree(
                 continue;
             }
             match reads.measured(file)? {
-                Some(audio) => file.source_audio = Some(audio),
-                None => *role = unreadable(file),
+                Ok(audio) => file.source_audio = Some(audio),
+                Err(refusal) => *role = refused(file, refusal),
             }
         }
     }
@@ -254,7 +261,7 @@ pub(super) fn categorize_files_from_tree(
     // Every file is read before the folder is judged, so a folder that fails
     // is listed with each of its damaged files, not only the first.
     if !releasable(&proposed) {
-        info!("Invalid candidate: two of its files show one name, its audio is damaged, or it has none");
+        info!("Invalid candidate: two of its files show one name, its audio is damaged or too deep, or it has none");
         return Ok(CategorizeOutcome::Invalid {
             tags: skipped_tags(&proposed, reads)?,
             files: skipped_files(&proposed),
@@ -321,8 +328,8 @@ pub(super) fn categorize_files_from_tree(
             ProposedRole::DamagedImage => FileRole::DamagedImage,
             ProposedRole::Document { kind } => FileRole::Document { kind },
             ProposedRole::Other => FileRole::Other,
-            ProposedRole::DamagedAudio { .. } => {
-                unreachable!("a folder holding damaged audio was judged invalid above")
+            ProposedRole::DamagedAudio { .. } | ProposedRole::DeepAudio { .. } => {
+                unreachable!("a folder holding damaged or too deep audio was judged invalid above")
             }
         };
         files.push(CandidateFile { file, role });
