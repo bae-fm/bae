@@ -31,7 +31,7 @@ impl crate::LibraryViews {
     /// that trigger apart from the rewrite it checks.
     pub(crate) async fn plant_keys_of_earlier_data(&self) -> Result<(), bae_store::DbError> {
         self.store
-            .call_bulk(|sql| {
+            .call(|sql| {
                 sql.run(&PlantEarlierAlbumKeysParams {})?;
                 sql.run(&PlantEarlierArtistKeysParams {})?;
                 sql.run(&PlantEarlierLinkKeysParams {})?;
