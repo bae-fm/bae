@@ -132,14 +132,18 @@ sqlive_compose::read!(
 // The watched folders inside a folder, not the folder itself, in their order:
 // those whose key is in the range of paths below it, from `first` to `past`.
 sqlive_compose::read!(
-    WatchedBelow(first: Vec<u8>, past: Vec<u8>, folder: Vec<u8>),
+    WatchedBelow(first: Vec<u8>, past: Vec<u8>, folder: Vec<u8>, most: i64),
     r#"
     SELECT watched.path
     FROM watched_import_folders AS watched
     WHERE watched.path >= :first AND watched.path < :past AND watched.path <> :folder
     ORDER BY watched.position
+    LIMIT :most
 "#
 );
+
+/// A `LIMIT` that takes every row.
+const ALL: i64 = -1;
 
 /// The watched folder among `folders`, each looked up by the watched
 /// folders' key. Watched folders never overlap, so the ancestors of one
@@ -199,16 +203,18 @@ fn overlapping_watched_folder_on(
     if let Some(above) = watched_folder_among_on(sql, folder.ancestors().skip(1))? {
         return Ok(Some(above));
     }
-    Ok(watched_folders_below_on(sql, folder)?.into_iter().next())
+    Ok(watched_folders_below_on(sql, folder, 1)?.pop())
 }
 
-/// The watched folders inside `folder`, not `folder` itself, in their order.
+/// The watched folders inside `folder`, not `folder` itself, in their order:
+/// the first `most` of them, or all where `most` is [`ALL`].
 fn watched_folders_below_on(
     sql: &impl coven::SqlRead,
     folder: &Path,
+    most: i64,
 ) -> Result<Vec<PathBuf>, DbError> {
     let (first, past) = crate::tables::watched_path::paths_below(folder);
-    let request = WatchedBelowParams { first, past, folder: coven::path_bytes(folder) };
+    let request = WatchedBelowParams { first, past, folder: coven::path_bytes(folder), most };
     statement_rows(sql, &request)?.into_iter().map(|row| path_column::decode(row.path)).collect()
 }
 
@@ -255,7 +261,7 @@ impl ImportTables {
     /// those whose key lies in the range of paths below it.
     pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {
         let path = path.to_path_buf();
-        self.store.read(move |sql| watched_folders_below_on(&sql, &path)).await
+        self.store.read(move |sql| watched_folders_below_on(&sql, &path, ALL)).await
     }
 
     /// Watch the folder `path` names, keyed by its canonical spelling, and
