@@ -276,19 +276,10 @@ impl PlaybackService {
         if !self.side_pause_enabled().await? {
             return Ok(None);
         }
-        let current = self.playback_track_info(current_id).await?;
-        let next = self.playback_track_info(next_id).await?;
-        Ok(side_boundary_between(&current, &next))
-    }
-
-    /// `track_id`'s release and side as the library holds them now.
-    async fn playback_track_info(
-        &self,
-        track_id: &str,
-    ) -> Result<PlaybackTrackInfo, PlaybackError> {
-        PlaybackTrackInfo::read(&self.records, track_id)
+        let [current, next] = PlaybackTrackInfo::read_pair(&self.records, [current_id, next_id])
             .await?
-            .ok_or_else(|| PlaybackError::not_found("Track", track_id))
+            .map_err(|missing| PlaybackError::not_found("Track", missing))?;
+        Ok(side_boundary_between(&current, &next))
     }
 
     pub(super) async fn side_pause_enabled(&self) -> Result<bool, bae_store::DbError> {

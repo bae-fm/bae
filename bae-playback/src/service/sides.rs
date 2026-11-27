@@ -24,6 +24,25 @@ impl PlaybackTrackInfo {
         Ok(records.track_places(&[track_id.to_string()]).await?.into_iter().next().map(Self::of))
     }
 
+    /// The facts of the two tracks `ids`, both read at once, or the first of
+    /// them the library does not hold.
+    pub(crate) async fn read_pair<'a>(
+        records: &bae_records::Records,
+        ids: [&'a str; 2],
+    ) -> Result<Result<[Self; 2], &'a str>, bae_store::DbError> {
+        let places = records.track_places(&ids.map(str::to_string)).await?;
+        let infos: Vec<Self> = places.into_iter().map(Self::of).collect();
+        // The places come in the ids' order, leaving out a track the library
+        // does not hold.
+        Ok(<[Self; 2]>::try_from(infos).map_err(|held| {
+            if held.first().is_some_and(|info| info.track_id == ids[0]) {
+                ids[1]
+            } else {
+                ids[0]
+            }
+        }))
+    }
+
     /// The facts of the track at `place`. A track on a medium with no
     /// physical carrier (a download, a disc of unstated carrier) is on no
     /// side playback pauses at.
