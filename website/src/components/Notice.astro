@@ -1,7 +1,7 @@
 ---
 // A notice, as the design system's notices draw one: a box in its tone's
-// notice fill (in dark, the neutral one), the tone's status glyph at the top
-// left, level with the first line, then the title, bold over a subtitle, and
+// notice fill (in dark, the neutral one), the tone's status ring at the top
+// left, 1.19 times the text and level with the first line, then the title, bold over a subtitle, and
 // the subtitle in secondary text. Other content goes before the title.
 import StatusGlyph, { type Tone } from './StatusGlyph.astro';
 
@@ -15,7 +15,7 @@ interface Props {
 const { tone, title, subtitle, label } = Astro.props;
 ---
 <div class={`notice notice-${tone} web-body`} role="status" aria-label={label}>
-  <span class="notice-icon"><StatusGlyph tone={tone} size={17} /></span>
+  <span class="notice-icon"><StatusGlyph tone={tone} size="inline" ring /></span>
   <div class="notice-body">
     <slot />
     <div class:list={['notice-title', { 'notice-title-strong': subtitle }]}>{title}</div>

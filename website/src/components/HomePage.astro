@@ -322,7 +322,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     <details class="navpopup desktoplang" data-nav-popup>
       <summary class="btn languagebtn web-label" aria-label={text.languageLabel}>
         <span>{currentLocaleLabel}</span>
-        <Symbol name="expand_more" size={20} />
+        <Symbol name="expand_more" size="medium" />
       </summary>
       <div class="langpanel">
         <div class="langmenu">
@@ -333,14 +333,14 @@ const macUrl = macFullUrl ?? href('/guide/installation');
       </div>
     </details>
     <details class="navpopup navmenu" data-nav-popup>
-      <summary class="iconbtn menubtn" aria-label={`${text.navDocs}, GitHub, ${text.languageLabel}`}><Symbol name="menu" size={24} /></summary>
+      <summary class="iconbtn menubtn" aria-label={`${text.navDocs}, GitHub, ${text.languageLabel}`}><Symbol name="menu" size="large" /></summary>
       <div class="navpanel">
         <div class="menulinks">
           <a class="web-label" href={href('/guide/installation')}>{text.navDocs}</a>
           <a class="web-label" href="https://github.com/bae-fm/bae">GitHub</a>
         </div>
         <details class="menulang">
-          <summary class="languageitem web-label">{text.languageLabel}<Symbol name="expand_more" size={20} class="languagemark" /></summary>
+          <summary class="languageitem web-label">{text.languageLabel}<Symbol name="expand_more" size="medium" class="languagemark" /></summary>
           <div class="langtitle web-eyebrow">{currentLocaleLabel}</div>
           <div class="langmenu">
             {localeLinks.map((entry) => (
@@ -377,7 +377,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     </div>
     <div class="herosheep r d2">
       <Logo kind="pair" size={320} bob glow />
-      <div class="note one"><span class="notehead web-detail-strong"><StatusGlyph tone="success" size={15} />{text.noteSynced}</span><span class="s web-mono">{text.noteSyncedSub}</span></div>
+      <div class="note one"><span class="notehead web-detail-strong"><StatusGlyph tone="success" size="small" />{text.noteSynced}</span><span class="s web-mono">{text.noteSyncedSub}</span></div>
       <div class="note two"><span class="web-detail-strong">{text.noteCloud}</span><span class="s web-mono">{text.noteCloudSub}</span></div>
     </div>
   </div>

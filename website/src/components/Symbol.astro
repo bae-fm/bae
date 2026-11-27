@@ -1,15 +1,19 @@
 ---
 // One of the design system's symbols (design/system/assets/Symbols), drawn
-// as a mask in the colour of the text around it, `size` pixels square.
+// as a mask in the colour of the text around it. `size` is an Android icon
+// role, drawn at `--icon-android-<role>`, or `inline`, 1.19 times the text
+// beside it, as the design system draws a glyph that leads a line.
 const drawings = import.meta.glob<string>('../../../design/system/assets/Symbols/*.svg', {
   query: '?url',
   import: 'default',
   eager: true,
 });
 
+export type SymbolSize = 'badge' | 'small' | 'medium' | 'large' | 'inline';
+
 interface Props {
   name: string;
-  size: number;
+  size: SymbolSize;
   class?: string;
 }
 
@@ -17,11 +21,12 @@ const { name, size, class: className } = Astro.props;
 const url = drawings[`../../../design/system/assets/Symbols/${name}.svg`];
 if (!url) throw new Error(`the design system has no symbol \`${name}\``);
 const mask = `url("${url}") center / contain no-repeat`;
+const side = size === 'inline' ? 'round(1.19em, 0.5px)' : `var(--icon-android-${size})`;
 ---
 <span
   class:list={['symbol', className]}
   aria-hidden="true"
-  style={`width:${size}px;height:${size}px;-webkit-mask:${mask};mask:${mask}`}
+  style={`width:${side};height:${side};-webkit-mask:${mask};mask:${mask}`}
 ></span>
 
 <style>
