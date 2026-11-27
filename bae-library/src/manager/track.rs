@@ -6,21 +6,11 @@ impl LibraryManager {
     /// Resolve a mix of album and track IDs into track IDs. An album expands to the
     /// tracks of its primary release, its lowest-ordered one.
     pub async fn resolve_to_track_ids(&self, ids: &[String]) -> Result<Vec<String>, LibraryError> {
-        let mut track_ids = Vec::new();
-        for id in ids {
-            if let Some(album_track_ids) =
-                self.records.get_primary_release_track_ids_for_album(id).await?
-            {
-                track_ids.extend(album_track_ids);
-            } else if self.records.find_track_by_id(id).await?.is_some() {
-                track_ids.push(id.clone());
-            } else {
-                return Err(LibraryError::TrackMapping(format!(
-                    "ID not found as album or track: {id}"
-                )));
-            }
-        }
-        Ok(track_ids)
+        self.records.track_ids_of_albums_and_tracks(ids).await?.map_err(
+            |bae_records::UnknownTrackSource(id)| {
+                LibraryError::TrackMapping(format!("ID not found as album or track: {id}"))
+            },
+        )
     }
 
     /// Follow the queue as its screens show it.

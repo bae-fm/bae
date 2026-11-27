@@ -300,6 +300,36 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     assert_eq!(resolved.len(), 2);
 }
 
+/// Ids resolve in their own order, a track as itself and an album as its
+/// release's tracks in playing order, an album with no track as none, and a
+/// repeated id each time it is asked.
+#[tokio::test]
+async fn resolve_to_track_ids_keeps_the_ids_order() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let tracks = seed_release_tracks(manager, 3).await;
+    let album_id = manager.records.find_track_by_id(&tracks[0]).await.unwrap().unwrap().release_id;
+    let album_id = manager.records.find_album_id_for_release(&album_id).await.unwrap().unwrap();
+    let empty = create_test_album();
+    manager.records.insert_album(&empty).await.unwrap();
+
+    let resolved = manager
+        .resolve_to_track_ids(&[tracks[2].clone(), empty.id.clone(), album_id, tracks[2].clone()])
+        .await
+        .unwrap();
+
+    assert_eq!(
+        resolved,
+        [
+            tracks[2].clone(),
+            tracks[0].clone(),
+            tracks[1].clone(),
+            tracks[2].clone(),
+            tracks[2].clone(),
+        ]
+    );
+}
+
 #[tokio::test]
 async fn resolve_to_track_ids_rejects_unknown_id() {
     let (test, _temp_dir) = setup_test_manager().await;

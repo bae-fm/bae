@@ -1,6 +1,59 @@
 use super::*;
 
+// The tracks the JSON array `ids` of album and track ids names, in the
+// array's order: an album's are the tracks of its primary release, in playing
+// order, and a track's is itself. A row with no `track_id` is for an album
+// whose primary release has no track, `album_id` naming it, or for an id of
+// no album and no track.
+sqlive_compose::read!(
+    NamedTrackIds(ids: String) {
+        asked_id: Option<String>,
+        track_id: Option<String>,
+    },
+    r#"
+    SELECT asked.value AS asked_id, album.id AS album_id,
+           COALESCE(held.id, lone.id) AS track_id
+    FROM json_each(:ids) AS asked
+    LEFT JOIN albums AS album ON album.id = asked.value
+    LEFT JOIN tracks AS held
+           ON held.release_id =
+              @crate::records::fragments::AlbumPrimaryRelease(parent: album)
+    LEFT JOIN tracks AS lone ON lone.id = asked.value AND album.id IS NULL
+    ORDER BY asked.key, held.position, held.id
+"#
+);
+
+/// An id that names no album and no track the library holds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnknownTrackSource(pub String);
+
 impl Records {
+    /// The track ids that `ids`, of albums and tracks, name, in their order:
+    /// an album's are the tracks of its primary release, none when it has no
+    /// release or that release no track. The first id of no album and no
+    /// track the library holds is the answer instead.
+    pub async fn track_ids_of_albums_and_tracks(
+        &self,
+        ids: &[String],
+    ) -> Result<Result<Vec<String>, UnknownTrackSource>, DbError> {
+        let statement = NamedTrackIdsParams { ids: serde_json::json!(ids).to_string() };
+        let rows = self.store.read_rows(statement).await?;
+        let mut track_ids = Vec::with_capacity(rows.len());
+        for row in rows {
+            match (row.track_id, row.album_id) {
+                (Some(track_id), _) => track_ids.push(track_id),
+                (None, Some(_album_without_tracks)) => {}
+                (None, None) => {
+                    let id = row.asked_id.ok_or_else(|| {
+                        DbError::unreadable("a list of ids", "an entry that is NULL")
+                    })?;
+                    return Ok(Err(UnknownTrackSource(id)));
+                }
+            }
+        }
+        Ok(Ok(track_ids))
+    }
+
     /// Write one medium row of a release, for a test that builds a release row
     /// by row.
     #[cfg(any(test, feature = "test-utils"))]
@@ -57,6 +110,7 @@ impl Records {
     }
 
     /// Find track by ID. Caller-provided ID — may not exist.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
         self.store

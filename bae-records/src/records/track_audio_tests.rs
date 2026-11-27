@@ -165,6 +165,9 @@ async fn a_save_reads_a_track_beside_the_next_and_a_release_in_order() {
     assert_eq!(counter.take().app_read_statements, 1);
     records.track_tags(TRACK_B).await.unwrap();
     assert_eq!(counter.take().app_read_statements, 1);
+    let ids = [TRACK_B.to_string(), TRACK_A.to_string()];
+    records.track_ids_of_albums_and_tracks(&ids).await.unwrap().unwrap();
+    assert_eq!(counter.take().app_read_statements, 1);
     drop(counter);
     let tagged: Vec<_> = release
         .iter()

@@ -23,33 +23,6 @@ impl bae_util::task_failure::ReportedBug for PrimaryReleaseError {
 }
 
 impl Records {
-    /// Track ids for an album's primary release. `None` means no album carries
-    /// this id; `Some(vec![])` means the album exists but holds no release, or
-    /// its primary release has no tracks.
-    pub async fn get_primary_release_track_ids_for_album(
-        &self,
-        album_id: &str,
-    ) -> Result<Option<Vec<String>>, DbError> {
-        let album_id = album_id.to_string();
-        let primary: Option<Option<String>> = self
-            .store
-            .read(move |sql| {
-                sql.query_row(
-                    &format!("SELECT {} FROM albums a WHERE a.id = ?", album_primary_release_sql()),
-                    params![album_id],
-                    |row| row.get(0),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await?;
-        match primary {
-            None => Ok(None),
-            Some(None) => Ok(Some(Vec::new())),
-            Some(Some(release_id)) => self.get_track_ids_for_release(&release_id).await.map(Some),
-        }
-    }
-
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
         let album = album.clone();

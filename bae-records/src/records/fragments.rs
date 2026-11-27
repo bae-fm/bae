@@ -179,6 +179,20 @@ sqlive_compose::fragment!(
     LIMIT 1
 "#);
 
+// The album's primary release: its lowest-ordered release, ties broken by
+// release id, so every device that holds the same rows names the same one. No
+// row for an album that holds no release.
+sqlive_compose::fragment!(
+    AlbumPrimaryRelease on albums { release_id: String },
+    r#"
+    SELECT lowest.id AS release_id
+    FROM releases AS lowest
+    WHERE lowest.album_id = @parent.id
+    ORDER BY lowest.album_order, lowest.id
+    LIMIT 1
+"#
+);
+
 sqlive_compose::fragment!(
     AlbumTitle,
     r#"

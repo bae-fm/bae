@@ -381,10 +381,10 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
 
     // The primary release is the lowest-ordered one left: release_beta.
     let resolved_track_ids =
-        manager.records.get_primary_release_track_ids_for_album(&album_a.id).await.unwrap();
+        manager.resolve_to_track_ids(std::slice::from_ref(&album_a.id)).await.unwrap();
     assert_eq!(
         resolved_track_ids,
-        Some(vec![beta_track_id.clone()]),
+        vec![beta_track_id.clone()],
         "the release left in the album is its primary",
     );
 }

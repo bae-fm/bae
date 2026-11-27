@@ -128,6 +128,7 @@ pub use seeded_albums::{SeededAlbum, SeededAudio};
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 mod track;
+pub use track::UnknownTrackSource;
 pub mod track_audio;
 pub use track_audio::{DbTrackTags, TrackForSave, TrackSaveRead};
 
