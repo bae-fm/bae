@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::{CatalogApplyId, CatalogApplyStep};
-use bae_store::statement_optional;
+use bae_store::{statement_optional, WriteStatements};
 
 /// The stored `step` value of `step`, and its catalog.
 fn step_columns(step: CatalogApplyStep) -> (&'static str, Catalog) {
@@ -47,6 +47,22 @@ fn load_step_on(
     }
 }
 
+sqlive_compose::write!(
+    KeepApplyStep(apply: &'p str, step: &'static str, catalog: &'static str),
+    r#"
+    INSERT INTO import_catalog_apply_step (apply_id, step, catalog)
+    VALUES (:apply, :step, :catalog)
+    ON CONFLICT (apply_id) DO UPDATE SET step = excluded.step, catalog = excluded.catalog
+"#
+);
+
+sqlive_compose::write!(
+    DeleteApplyStep(apply: &'p str),
+    r#"DELETE FROM import_catalog_apply_step WHERE apply_id = :apply"#
+);
+
+sqlive_compose::write!(DeleteAllApplySteps, r#"DELETE FROM import_catalog_apply_step"#);
+
 impl ImportTables {
     /// Write that `apply` waits on `step` now, in place of any step its row
     /// holds.
@@ -59,13 +75,11 @@ impl ImportTables {
         let (step, catalog) = step_columns(step);
         self.store
             .call(move |sql| {
-                sql.execute(
-                    "INSERT INTO import_catalog_apply_step (apply_id, step, catalog) \
-                     VALUES (?, ?, ?) \
-                     ON CONFLICT (apply_id) DO UPDATE SET \
-                         step = excluded.step, catalog = excluded.catalog",
-                    params![apply.as_str(), step, catalog.as_str()],
-                )?;
+                sql.run(&KeepApplyStepParams {
+                    apply: apply.as_str(),
+                    step,
+                    catalog: catalog.as_str(),
+                })?;
                 Ok(())
             })
             .await
@@ -79,10 +93,7 @@ impl ImportTables {
         let apply = apply.clone();
         self.store
             .call(move |sql| {
-                sql.execute(
-                    "DELETE FROM import_catalog_apply_step WHERE apply_id = ?",
-                    [apply.as_str()],
-                )?;
+                sql.run(&DeleteApplyStepParams { apply: apply.as_str() })?;
                 Ok(())
             })
             .await
@@ -93,7 +104,7 @@ impl ImportTables {
     pub(crate) async fn clear_catalog_apply_steps(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {
-                sql.execute("DELETE FROM import_catalog_apply_step", [])?;
+                sql.run(&DeleteAllApplyStepsParams {})?;
                 Ok(())
             })
             .await
