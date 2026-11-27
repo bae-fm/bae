@@ -664,17 +664,17 @@ fn top_album_track_statement() -> String {
     )
 }
 
-// The album `album` above its releases: its row, its credits, and the
-// library's rating system for albums with the ratings it shows, *Heart*
-// showing those of `heart_minimum` stars or more; no row for an album the
-// library does not hold.
+// The album `album` above its releases: its row, its credits and whether it
+// has releases to choose among, and the library's rating system for albums with
+// the ratings it shows, *Heart* showing those of `heart_minimum` stars or
+// more; no row for an album the library does not hold.
 sqlive_compose::read!(
     writer AlbumDetailHead(album: String, heart_minimum: i64),
     r#"
-    SELECT album.*, credits.*, ratings.*
+    SELECT album.*, detailed.*, ratings.*
     FROM @bae_records::records::fragments::AlbumRow AS album
-    JOIN @bae_records::records::fragments::CreditedAlbum AS credits
-      ON credits.credited_album_id = :album
+    JOIN @bae_records::records::fragments::DetailedAlbum AS detailed
+      ON detailed.detailed_album_id = :album
     JOIN @bae_people::people::fragments::AlbumRatingsShown(
              album: :album, heart_minimum: :heart_minimum) AS ratings ON 1
     WHERE album.row_album_id = :album
@@ -735,12 +735,13 @@ impl AlbumDetailRows {
         let shown_release_index = u32::try_from(shown)
             .map_err(|_error| DbError::unreadable("an album's count of releases", shown))?;
         let (album_rating_system, ratings) = head.ratings.into_ratings()?;
+        let shows_release_choices = head.detailed.has_release_choices();
         Ok(Some(DbAlbumDetail {
             album: head.album.into_album()?,
-            artists: head.credits.into_credits()?,
+            artists: head.detailed.into_credits()?,
             shown_release_index,
             shown_release_can_become_primary: shown_release_index > 0,
-            shows_release_choices: releases.len() > 1,
+            shows_release_choices,
             releases,
             primary_release_id,
             primary_cover_version,

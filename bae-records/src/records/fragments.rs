@@ -107,22 +107,31 @@ impl MediaOfRelease {
     }
 }
 
-// Each album's credits ([`AlbumCredits`]), by the album.
+// What an album's page says above its releases of the records that hold them,
+// by the album: its credits ([`AlbumCredits`]), and whether it has more than
+// one release to choose among.
 sqlive_compose::fragment!(
-    CreditedAlbum,
+    DetailedAlbum { has_release_choices: bool },
     r#"
-    SELECT album.id AS credited_album_id,
-           @crate::records::fragments::AlbumCredits(parent: album) AS album_credits
+    SELECT album.id AS detailed_album_id,
+           @crate::records::fragments::AlbumCredits(parent: album) AS album_credits,
+           (SELECT COUNT(*) > 1 FROM releases AS held WHERE held.album_id = album.id)
+               AS has_release_choices
     FROM albums AS album
 "#
 );
 
-impl CreditedAlbum {
+impl DetailedAlbum {
+    /// Whether the album has more than one release.
+    pub fn has_release_choices(&self) -> bool {
+        self.has_release_choices
+    }
+
     /// The album's credits, in list order.
     pub fn into_credits(self) -> Result<Vec<crate::credits::LibraryCredit>, DbError> {
         let credits = self.album_credits.ok_or_else(|| {
             DbError::unreadable(
-                format!("the credits of album {}", self.credited_album_id),
+                format!("the credits of album {}", self.detailed_album_id),
                 None::<String>,
             )
         })?;
