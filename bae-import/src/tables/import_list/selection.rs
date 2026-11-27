@@ -210,24 +210,33 @@ sqlive_compose::read!(
 "#
 );
 
-// Each of `keys`, a JSON array of release keys in hex, with its place in the
-// list; no place where the list does not show it.
+// Where a list opens for `keys`, a JSON array of release keys in hex: the
+// place of the first of them the list shows, none when it shows none; and
+// those it doesn't show, in their order.
 sqlive_compose::read!(
-    ShownPlaces(
+    Opening(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
         opened: Option<crate::CandidateKey>, keys: String
-    ) { key: Option<Vec<u8>>, position: Option<i64> },
+    ) {
+        struct Left { key: hex }
+        first_position: Option<i64>, left_keys: json<Vec<Left>>
+    },
     r#"
     WITH listed(release_key, release_position) AS (
         SELECT shown.release_key, shown.release_position
         FROM @crate::tables::import_list::list_items::ShownReleases(
             list_order: :list_order, tab: :tab, filter: :filter, filter_text: :filter_text,
             folds_only: :folds_only, folded: :folded, opened: :opened) AS shown
+    ), asked(position, key, at) AS (
+        SELECT listed.release_position, unhex(named.value), named.key
+        FROM json_each(:keys) AS named
+        LEFT JOIN listed ON listed.release_key = unhex(named.value)
     )
-    SELECT unhex(asked.value) AS key, listed.release_position AS position
-    FROM json_each(:keys) AS asked
-    LEFT JOIN listed ON listed.release_key = unhex(asked.value)
+    SELECT (SELECT MIN(asked.position) FROM asked) AS first_position,
+        (SELECT json_group_array(json_object('key', hex(asked.key)) ORDER BY asked.at)
+         FROM asked
+         WHERE asked.position IS NULL) AS left_keys
 "#
 );
 
@@ -392,23 +401,15 @@ fn opening(
     keys: &[CandidateKey],
 ) -> Result<ImportListViewChange, DbError> {
     let params =
-        shown_params!(ShownPlacesParams, request, keys: crate::tables::key_hex_list(keys.iter()));
-    let mut first = None;
-    let mut left = Vec::new();
-    for row in statement_rows(sql, &params)? {
-        let key = row.key.ok_or_else(|| DbError::unreadable("a selected key", None::<String>))?;
-        match row.position {
-            Some(position) => {
-                let position = to_u64(position, "an import list position")?;
-                first = Some(first.map_or(position, |first: u64| first.min(position)));
-            }
-            None => left.push(key.into()),
+        shown_params!(OpeningParams, request, keys: crate::tables::key_hex_list(keys.iter()));
+    let row = statement_row(sql, &params)?;
+    let opening = match row.first_position {
+        Some(position) => {
+            ImportListOpening::At { position: to_u64(position, "an import list position")? }
         }
-    }
-    let opening = match first {
-        Some(position) => ImportListOpening::At { position },
         None => ImportListOpening::Top,
     };
+    let left = row.left_keys.into_iter().map(|left| CandidateKey::from(left.key)).collect();
     Ok(ImportListViewChange { opening, left })
 }
 
