@@ -220,6 +220,7 @@ sqlive_compose::read!(
     FROM @crate::tables::folder_scans::fragments::FolderReaders(covered: (
         SELECT 0 AS at, :root AS root, :folder AS folder, :above AS above,
             :below_first AS below_first, :below_past AS below_past, :besides AS besides)) AS reader
+    ORDER BY +reader.reader_key
 "#
 );
 
@@ -250,12 +251,7 @@ pub(crate) fn entries_reading(
             Readers::Besides(key) => Some(key.clone()),
         },
     };
-    let mut keys: Vec<CandidateKey> =
-        statement_rows(sql, &request)?.into_iter().map(|row| row.reader.reader_key).collect();
-    // Sorted here: an `ORDER BY` has SQLite read each part in key order, a
-    // pass over every entry under the root.
-    keys.sort();
-    Ok(keys)
+    Ok(statement_rows(sql, &request)?.into_iter().map(|row| row.reader.reader_key).collect())
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────
