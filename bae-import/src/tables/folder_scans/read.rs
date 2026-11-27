@@ -77,20 +77,37 @@ pub(crate) struct StoredScanItem {
     pub(crate) item: ScanItem,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::read!(
+    ItemsUnderRoot(root: Vec<u8>, grouping_releases: bool),
+    r#"
+    SELECT item.*
+    FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (
+        SELECT candidate.path AS candidate_key
+        FROM scan_candidate AS candidate
+        WHERE candidate.watched_folder_path = :root)) AS item
+    WHERE item.watched_folder_path = :root
+        AND (:grouping_releases OR item.source_kind = 'folder')
+    ORDER BY item.path
+"#
+);
+
 /// Every entry stored under one watched root, in key order, as a test reads
 /// them.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn load_items(
     sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
-    let keys = sql.query(
-        "SELECT path FROM scan_candidate WHERE watched_folder_path = ?",
-        [coven::path_bytes(watched_folder_path)],
-        |row| row.get::<_, CandidateKey>(0),
-    )?;
-    let rows = rows_at_keys(sql, keys.iter(), sources)?;
+    let request = ItemsUnderRootParams {
+        root: coven::path_bytes(watched_folder_path),
+        grouping_releases: sources.takes_grouping_releases(),
+    };
+    let rows = statement_rows(sql, &request)?
+        .into_iter()
+        .map(|row| CandidateRow::of(row.item))
+        .collect::<Result<Vec<_>, _>>()?;
     let root_generation = super::root_generation_on(sql, watched_folder_path)?;
     Ok(Box::new(move || {
         let items =
