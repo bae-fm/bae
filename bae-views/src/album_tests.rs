@@ -940,8 +940,8 @@ async fn a_limited_search_keeps_the_first_titles() {
 
 /// A search reads its first tracks and works in title order from their
 /// entries' title indexes, so it stops at its limit: the read that picks them
-/// computes no title's key and sorts nothing, and the statement that reads
-/// what each shows keeps that order without sorting again.
+/// computes no title's key and sorts nothing. The works' statement, which counts
+/// what it lists, then sorts those works alone once more.
 #[tokio::test]
 async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
     let (db, _tmp) = crate::tests::library().await;
@@ -955,9 +955,8 @@ async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
             .unwrap()
         }
     };
-    for (kind, statement) in
-        [("track", first_tracks_found_sql()), ("work", first_works_found_sql())]
-    {
+    let works = FirstWorksFound::SQL.to_string();
+    for (kind, statement) in [("track", first_tracks_found_sql()), ("work", works)] {
         let found = first_entries_found_sql(kind);
         assert!(!found.contains("bae_name_key"), "{found}");
         let steps = plan(found).await;
@@ -967,7 +966,13 @@ async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
 
         let steps = plan(statement).await;
         assert!(steps.iter().any(|step| step.detail.contains(&index)), "{steps:?}");
-        assert!(!crate::tests::scans_or_sorts(&steps), "{kind}: {steps:?}");
+        if kind == "track" {
+            assert!(!crate::tests::scans_or_sorts(&steps), "{kind}: {steps:?}");
+            continue;
+        }
+        // The steps that pick the works run before the first read of a work.
+        let picking = steps.iter().take_while(|step| !step.detail.starts_with("SEARCH work "));
+        assert!(!picking.into_iter().any(|step| step.detail.contains("B-TREE")), "{steps:?}");
     }
 }
 

@@ -40,6 +40,15 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
     position    INTEGER,
     -- The work or the credit the row shows.
     item_id     TEXT NOT NULL,
+    -- The page's sort terms for the columns above that can be NULL, each
+    -- never NULL, so a window starts at a row by one comparison of row
+    -- values. A column is NULL either in every row of a part or in none, so
+    -- the value standing for NULL orders no two rows.
+    sort_group_album TEXT NOT NULL GENERATED ALWAYS AS (COALESCE(group_album, '')) VIRTUAL,
+    sort_group_order REAL NOT NULL GENERATED ALWAYS AS (COALESCE(group_order, 0)) VIRTUAL,
+    sort_place INTEGER NOT NULL GENERATED ALWAYS AS (COALESCE(place, 0)) VIRTUAL,
+    sort_title BLOB NOT NULL GENERATED ALWAYS AS (COALESCE(title_sort_key, X'')) VIRTUAL,
+    sort_position INTEGER NOT NULL GENERATED ALWAYS AS (COALESCE(position, 0)) VIRTUAL,
     UNIQUE (artist_id, section, group_id, item_id),
     CHECK ((section = 0) = (title_sort_key IS NOT NULL)),
     CHECK ((section = 0) = (group_album IS NULL)),
@@ -50,7 +59,7 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_composer_detail_row_order ON composer_detail_row
-    (artist_id, section, group_title_sort_key, group_album, group_order, group_id, place, title_sort_key, position, item_id);
+    (artist_id, section, group_title_sort_key, sort_group_album, sort_group_order, group_id, sort_place, sort_title, sort_position, item_id);
 
 CREATE INDEX IF NOT EXISTS idx_composer_detail_row_item ON composer_detail_row (item_id);
 

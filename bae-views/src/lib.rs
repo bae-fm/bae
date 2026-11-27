@@ -73,10 +73,7 @@ pub use release::ReleaseDetailProjection;
 pub use storage::StorageCounts;
 
 use artist::{artist_listing_query, row_to_artist_summary};
-use composer::{
-    composer_listing_query, row_to_composer_summary, row_to_work_summary, work_summary_columns,
-    work_summary_query,
-};
+use composer::{composer_listing_query, row_to_composer_summary, work_summary};
 use release::{build_album_release_details_on, ReleaseDetailRows};
 
 use album_search::*;
@@ -124,6 +121,11 @@ impl LibraryViews {
     pub fn new(store: Store) -> Self {
         Self { store }
     }
+}
+
+/// The count `count` a `COUNT(*)` read.
+fn list_count(count: i64) -> Result<u64, DbError> {
+    u64::try_from(count).map_err(|_error| DbError::unreadable("a list's count", count))
 }
 
 /// `keyed`'s key columns after a select list's last column, or nothing.

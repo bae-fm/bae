@@ -95,6 +95,7 @@ mod emptied;
 pub mod layout;
 pub mod sheet_files;
 use emptied::Emptiable;
+pub mod browse_fragments;
 pub mod credit_fragments;
 #[cfg(desktop)]
 pub mod editor_files;

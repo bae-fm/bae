@@ -72,6 +72,13 @@ sqlive_compose::fragment!(
 "#
 );
 
+impl WorkComposerNames {
+    /// The names joined in credit order; `None` for a work with no composer.
+    pub(crate) fn into_names(self) -> Option<String> {
+        self.composer_names
+    }
+}
+
 // The credits a release's detail lists, each with the release it is on: the
 // release's own (`part` 0), each track's own, and the credits in a role other
 // than a writing one (a work's writing credits are its composers, named with

@@ -55,6 +55,13 @@ sqlive_compose::fragment!(
 "#
 );
 
+impl ReleaseMedia {
+    /// The carriers and their counts.
+    pub(crate) fn counts(&self) -> Result<Vec<MediaCount>, bae_store::DbError> {
+        document("a release's media", &self.media)
+    }
+}
+
 // The library release's Discogs details as one JSON array of keys, in order.
 sqlive_compose::fragment!(
     ReleaseDiscogsDetails on releases { discogs_details: String },

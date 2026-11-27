@@ -7,8 +7,9 @@
 
 use super::*;
 use crate::album_detail::{ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading};
-use crate::composer::work_summary_columns;
-use bae_records::records::read::{credit_name_column, credit_name_join};
+use crate::composer::work_summary;
+use bae_store::list_windows::SortValue;
+use bae_store::{statement_optional, statement_row, statement_rows};
 
 impl LibraryViews {
     pub(crate) async fn find_composer_detail(
@@ -52,25 +53,12 @@ impl LibraryViews {
         limit: u64,
     ) -> Result<Vec<DbComposerDetailRow>, DbError> {
         let artist_id = artist_id.to_string();
-        self.store
-            .read(move |sql| {
-                let order = composer_detail_order("listing");
-                Ok(composer_detail_rows_on(
-                    &sql,
-                    &artist_id,
-                    &order,
-                    &order.at_offset(offset),
-                    limit,
-                )?
-                .into_iter()
-                .map(|(row, _)| row)
-                .collect())
-            })
-            .await
+        let page = ListPage { offset, limit };
+        self.store.read(move |sql| composer_page_on(&sql, &artist_id, page)).await
     }
 
-    /// Follow one window of `artist_id`'s page: a range of its order
-    /// (`list_windows`), which coven reruns for a write inside it alone.
+    /// Follow one window of `artist_id`'s page: the rows at or after a key of
+    /// its order, which coven reruns for a write at or before the last of them.
     pub fn subscribe_composer_detail_window(
         &self,
         artist_id: &str,
@@ -81,10 +69,8 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         let artist_id = artist_id.to_string();
-        let order = composer_detail_order("listing");
-        let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
-            composer_detail_rows_on(sql, &artist_id, &read_order, seek, limit)
+        self.store.subscribe_reconfigurable(initial, move |window, sql| {
+            composer_page_window_on(&sql, &artist_id, window)
         })
     }
 
@@ -96,17 +82,9 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let artist_id = artist_id.to_string();
-        let order = composer_detail_order("listing");
-        let read_order = order.clone();
-        self.store.subscribe_list_page(
-            page,
-            order,
-            composer_detail_rows_query,
-            move |sql, seek, limit| {
-                composer_detail_rows_on(sql, &artist_id, &read_order, seek, limit)
-            },
-            |rows| Ok(composer_detail_rows(rows)),
-        )
+        self.store
+            .subscribe(move |sql| composer_page_on(&sql, &artist_id, page))
+            .process(|rows| Ok(composer_detail_rows(rows)))
     }
 
     /// Follow how many rows `artist_id`'s page holds. The count runs as a
@@ -116,21 +94,19 @@ impl LibraryViews {
         artist_id: &str,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
         let artist_id = artist_id.to_string();
-        self.store.subscribe(move |sql| composer_detail_row_count_on(&sql, &artist_id))
+        self.store.subscribe(move |sql| composer_page_length_on(&sql, &artist_id))
     }
 
     /// Follow how many rows of `artist_id`'s page come before the row at a
-    /// key, a count over index ranges; the caller changes the key on the same
-    /// query.
+    /// key; the caller changes the key on the same query.
     pub fn subscribe_composer_detail_position(
         &self,
         artist_id: &str,
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let artist_id = artist_id.to_string();
-        let order = composer_detail_order("listing");
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            composer_detail_rows_before_on(&sql, &artist_id, &order, key)
+            composer_page_rows_before_on(&sql, &artist_id, key)
         })
     }
 
@@ -142,14 +118,7 @@ impl LibraryViews {
         position: u64,
     ) -> Result<Option<OrderKey>, DbError> {
         let artist_id = artist_id.to_string();
-        let order = composer_detail_order("listing");
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    composer_detail_rows_on(&sql, &artist_id, &order, seek, limit)
-                })
-            })
-            .await
+        self.store.read(move |sql| composer_page_key_at_on(&sql, &artist_id, position)).await
     }
 }
 
@@ -193,7 +162,7 @@ fn composer_detail_row_of(raw: DbComposerDetailRow) -> ComposerDetailRow {
 
 /// Where a composer's page puts its headings: one over each of its parts
 /// (`composer_detail_row.section`), opened by the part's first row
-/// ([`opens_heading_sql`]), worded by what the part lists.
+/// ([`ComposerPageEntry`]), worded by what the part lists.
 fn heading_over(item: &ComposerDetailItem) -> ComposerHeading {
     match item {
         ComposerDetailItem::Work { .. } => ComposerHeading::Works,
@@ -202,33 +171,338 @@ fn heading_over(item: &ComposerDetailItem) -> ComposerHeading {
     }
 }
 
-/// Whether the row `listing` is the first of its part of the page, which
-/// opens the part's heading ([`heading_over`]): one index seek per row.
-fn opens_heading_sql() -> String {
-    format!(
-        "((SELECT first.entry FROM composer_detail_row first
-           WHERE first.artist_id = listing.artist_id AND first.section = listing.section
-           ORDER BY {} LIMIT 1) = listing.entry)",
-        composer_detail_order("first").clause()
-    )
+// What each row of a composer's page shows, by the row's number: a work with
+// its summary and cover, or a credit with its role and its release's album,
+// and for a track credit its track and the composer; and whether the row is
+// the first of its part of the page, which opens the part's heading.
+sqlive_compose::fragment!(
+    ComposerPageEntry { opens_heading: bool },
+    r#"
+    SELECT listing.entry AS row_entry, listing.section AS part, listing.place AS indent,
+           ((SELECT first.entry FROM composer_detail_row AS first
+             WHERE first.artist_id = listing.artist_id AND first.section = listing.section
+             ORDER BY first.section, first.group_title_sort_key, first.sort_group_album, first.sort_group_order, first.group_id, first.sort_place, first.sort_title, first.sort_position, first.item_id
+             LIMIT 1) = listing.entry) AS opens_heading,
+           work.*, work_cover.*, release_credit.*, track_credit.*, track.*, release.*,
+           album.*, composer.*
+    FROM composer_detail_row AS listing
+    LEFT JOIN @bae_records::records::browse_fragments::WorkSummary AS work
+           ON listing.section = 0 AND work.work_id = listing.item_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS work_cover
+           ON work_cover.id = work.representative_release_id
+    LEFT JOIN @bae_records::records::browse_fragments::ReleaseRoleCredit AS release_credit
+           ON listing.section = 1 AND release_credit.role_id = listing.item_id
+    LEFT JOIN @bae_records::records::browse_fragments::TrackRoleCredit AS track_credit
+           ON listing.section = 2 AND track_credit.role_id = listing.item_id
+    LEFT JOIN @bae_records::records::browse_fragments::TrackRecord AS track
+           ON track.track_id = track_credit.track_id
+    LEFT JOIN @bae_records::records::fragments::ReleaseAlbum AS release
+           ON listing.section <> 0 AND release.release_id = listing.group_id
+    LEFT JOIN @bae_records::records::browse_fragments::AlbumRecord AS album
+           ON album.album_id = release.album_id
+    LEFT JOIN @bae_records::records::browse_fragments::ArtistRecord AS composer
+           ON listing.section = 2 AND composer.artist_id = listing.artist_id
+"#
+);
+
+// The rows of the composer `artist`'s page at or after a key of its order, at
+// most `limit`, each with its key. The order is the page's index's: its terms
+// after the artist, which end with terms that tell every row of a page apart.
+sqlive_compose::read!(
+    ComposerPageWindow(
+        artist: String,
+        order_key_0: SortValue,
+        order_key_1: SortValue,
+        order_key_2: SortValue,
+        order_key_3: SortValue,
+        order_key_4: SortValue,
+        order_key_5: SortValue,
+        order_key_6: SortValue,
+        order_key_7: SortValue,
+        order_key_8: SortValue,
+        limit: i64
+    ) { order_key_0: SortValue, order_key_1: SortValue, order_key_2: SortValue, order_key_3: SortValue, order_key_4: SortValue, order_key_5: SortValue, order_key_6: SortValue, order_key_7: SortValue, order_key_8: SortValue },
+    r#"
+    SELECT listing.section AS order_key_0,
+           listing.group_title_sort_key AS order_key_1,
+           listing.sort_group_album AS order_key_2,
+           listing.sort_group_order AS order_key_3,
+           listing.group_id AS order_key_4,
+           listing.sort_place AS order_key_5,
+           listing.sort_title AS order_key_6,
+           listing.sort_position AS order_key_7,
+           listing.item_id AS order_key_8,
+           shown.*
+    FROM composer_detail_row AS listing
+    CROSS JOIN @crate::composer_detail::ComposerPageEntry AS shown
+            ON shown.row_entry = listing.entry
+    WHERE listing.artist_id = :artist
+      AND (listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id)
+          >= (:order_key_0, :order_key_1, :order_key_2, :order_key_3, :order_key_4, :order_key_5, :order_key_6, :order_key_7, :order_key_8)
+    ORDER BY listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id
+    LIMIT :limit
+"#
+);
+
+// The rows of the composer `artist`'s page at the places from `offset`, at
+// most `limit`.
+sqlive_compose::read!(
+    ComposerPageRows(artist: String, offset: i64, limit: i64),
+    r#"
+    SELECT shown.*
+    FROM composer_detail_row AS listing
+    CROSS JOIN @crate::composer_detail::ComposerPageEntry AS shown
+            ON shown.row_entry = listing.entry
+    WHERE listing.artist_id = :artist
+    ORDER BY listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id
+    LIMIT :limit OFFSET :offset
+"#
+);
+
+// How many rows the composer `artist`'s page lists.
+sqlive_compose::read!(
+    ComposerPageLength(artist: String) { entries: i64 },
+    r#"
+    SELECT COUNT(*) AS entries
+    FROM composer_detail_row AS listing
+    WHERE listing.artist_id = :artist
+"#
+);
+
+// How many rows of the composer `artist`'s page come before a key of its
+// order.
+sqlive_compose::read!(
+    ComposerPageRowsBefore(
+        artist: String,
+        order_key_0: SortValue,
+        order_key_1: SortValue,
+        order_key_2: SortValue,
+        order_key_3: SortValue,
+        order_key_4: SortValue,
+        order_key_5: SortValue,
+        order_key_6: SortValue,
+        order_key_7: SortValue,
+        order_key_8: SortValue
+    ) { entries: i64 },
+    r#"
+    SELECT COUNT(*) AS entries
+    FROM composer_detail_row AS listing
+    WHERE listing.artist_id = :artist
+      AND (listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id)
+          < (:order_key_0, :order_key_1, :order_key_2, :order_key_3, :order_key_4, :order_key_5, :order_key_6, :order_key_7, :order_key_8)
+"#
+);
+
+// The key of the row at the place `index` of the composer `artist`'s page, or
+// of its last row when the page ends before it. SQLite reads the offset -1 of
+// an empty page as 0, where there is no row.
+sqlive_compose::read!(
+    ComposerPageKeyAt(artist: String, index: i64) { order_key_0: SortValue, order_key_1: SortValue, order_key_2: SortValue, order_key_3: SortValue, order_key_4: SortValue, order_key_5: SortValue, order_key_6: SortValue, order_key_7: SortValue, order_key_8: SortValue },
+    r#"
+    SELECT listing.section AS order_key_0,
+           listing.group_title_sort_key AS order_key_1,
+           listing.sort_group_album AS order_key_2,
+           listing.sort_group_order AS order_key_3,
+           listing.group_id AS order_key_4,
+           listing.sort_place AS order_key_5,
+           listing.sort_title AS order_key_6,
+           listing.sort_position AS order_key_7,
+           listing.item_id AS order_key_8
+    FROM composer_detail_row AS listing
+    WHERE listing.artist_id = :artist
+    ORDER BY listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id
+    LIMIT 1 OFFSET min(
+        :index,
+        (SELECT COUNT(*) FROM composer_detail_row AS counted
+         WHERE counted.artist_id = :artist) - 1)
+"#
+);
+
+// The first work the composer `artist`'s page lists.
+sqlive_compose::read!(
+    FirstListedWork(artist: String),
+    r#"
+    SELECT listing.item_id
+    FROM composer_detail_row AS listing
+    WHERE listing.artist_id = :artist AND listing.section = 0
+    ORDER BY listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id
+    LIMIT 1
+"#
+);
+
+/// A key before every row of a composer's page: a part before the first.
+fn top_of_page() -> [SortValue; 9] {
+    let text = || SortValue::Text(String::new());
+    let blob = || SortValue::Blob(Vec::new());
+    let zero = || SortValue::Integer(0);
+    [
+        SortValue::Integer(-1),
+        blob(),
+        text(),
+        SortValue::Real(0.0),
+        text(),
+        zero(),
+        blob(),
+        zero(),
+        text(),
+    ]
 }
 
-/// The page's order over `composer_detail_row` aliased `alias`: the order its
-/// index (`idx_composer_detail_row_order`) holds after the artist, which ends
-/// with terms that tell every row of a page apart.
-pub(crate) fn composer_detail_order(alias: &str) -> ListOrder {
-    let term = |column: &str| format!("{alias}.{column}");
-    ListOrder::new(vec![
-        SortTerm::ascending(term("section")),
-        SortTerm::ascending(term("group_title_sort_key")),
-        SortTerm::ascending(term("group_album")).nullable(),
-        SortTerm::ascending(term("group_order")).nullable(),
-        SortTerm::ascending(term("group_id")),
-        SortTerm::ascending(term("place")).nullable(),
-        SortTerm::ascending(term("title_sort_key")).nullable(),
-        SortTerm::ascending(term("position")).nullable(),
-        SortTerm::ascending(term("item_id")),
-    ])
+/// The nine values of the page's order `key` holds. Only the page's reads make
+/// its keys.
+fn page_key_values(key: &OrderKey) -> Result<[SortValue; 9], DbError> {
+    <[SortValue; 9]>::try_from(key.values().to_vec())
+        .map_err(|values| DbError::unreadable("a composer page key", values))
+}
+
+/// The `window` of `artist_id`'s page, each row with its key.
+fn composer_page_window_on(
+    sql: &SqlReadContext<'_>,
+    artist_id: &str,
+    window: &ListWindow,
+) -> Result<WindowRead<DbComposerDetailRow>, DbError> {
+    let from = window.from.as_ref().map(page_key_values).transpose()?;
+    let [order_key_0, order_key_1, order_key_2, order_key_3, order_key_4, order_key_5, order_key_6, order_key_7, order_key_8] =
+        from.unwrap_or_else(top_of_page);
+    let statement = ComposerPageWindowParams {
+        artist: artist_id.to_string(),
+        order_key_0,
+        order_key_1,
+        order_key_2,
+        order_key_3,
+        order_key_4,
+        order_key_5,
+        order_key_6,
+        order_key_7,
+        order_key_8,
+        limit: bae_store::list_windows::sql_bound(window.limit),
+    };
+    let rows = statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| {
+            let key = OrderKey::new(vec![
+                row.order_key_0,
+                row.order_key_1,
+                row.order_key_2,
+                row.order_key_3,
+                row.order_key_4,
+                row.order_key_5,
+                row.order_key_6,
+                row.order_key_7,
+                row.order_key_8,
+            ]);
+            Ok((row_of_entry(row.shown)?, key))
+        })
+        .collect::<Result<_, DbError>>()?;
+    Ok(WindowRead { window: window.clone(), rows })
+}
+
+/// The rows of `artist_id`'s page at `page`'s places.
+fn composer_page_on(
+    sql: &SqlReadContext<'_>,
+    artist_id: &str,
+    page: ListPage,
+) -> Result<Vec<DbComposerDetailRow>, DbError> {
+    let statement = ComposerPageRowsParams {
+        artist: artist_id.to_string(),
+        offset: bae_store::list_windows::sql_bound(page.offset),
+        limit: bae_store::list_windows::sql_bound(page.limit),
+    };
+    statement_rows(sql, &statement)?.into_iter().map(|row| row_of_entry(row.shown)).collect()
+}
+
+/// How many rows `artist_id`'s page lists.
+fn composer_page_length_on(sql: &SqlReadContext<'_>, artist_id: &str) -> Result<u64, DbError> {
+    let statement = ComposerPageLengthParams { artist: artist_id.to_string() };
+    list_count(statement_row(sql, &statement)?.entries)
+}
+
+/// How many rows of `artist_id`'s page come before the row at `key`.
+fn composer_page_rows_before_on(
+    sql: &SqlReadContext<'_>,
+    artist_id: &str,
+    key: &OrderKey,
+) -> Result<u64, DbError> {
+    let [order_key_0, order_key_1, order_key_2, order_key_3, order_key_4, order_key_5, order_key_6, order_key_7, order_key_8] =
+        page_key_values(key)?;
+    let statement = ComposerPageRowsBeforeParams {
+        artist: artist_id.to_string(),
+        order_key_0,
+        order_key_1,
+        order_key_2,
+        order_key_3,
+        order_key_4,
+        order_key_5,
+        order_key_6,
+        order_key_7,
+        order_key_8,
+    };
+    list_count(statement_row(sql, &statement)?.entries)
+}
+
+/// The key of the row at `position` of `artist_id`'s page, or of its last row.
+fn composer_page_key_at_on(
+    sql: &SqlReadContext<'_>,
+    artist_id: &str,
+    position: u64,
+) -> Result<Option<OrderKey>, DbError> {
+    let statement = ComposerPageKeyAtParams {
+        artist: artist_id.to_string(),
+        index: bae_store::list_windows::sql_bound(position),
+    };
+    Ok(statement_optional(sql, &statement)?.map(|row| {
+        OrderKey::new(vec![
+            row.order_key_0,
+            row.order_key_1,
+            row.order_key_2,
+            row.order_key_3,
+            row.order_key_4,
+            row.order_key_5,
+            row.order_key_6,
+            row.order_key_7,
+            row.order_key_8,
+        ])
+    }))
+}
+
+/// A row of a composer's page, read by its part of the page: the works (0),
+/// the release credits (1) or the track credits (2).
+fn row_of_entry(entry: ComposerPageEntry) -> Result<DbComposerDetailRow, DbError> {
+    let ComposerPageEntry {
+        row_entry,
+        part,
+        indent,
+        opens_heading,
+        work,
+        work_cover,
+        release_credit,
+        track_credit,
+        track,
+        release: _,
+        album,
+        composer,
+    } = entry;
+    let missing = |what: &str| {
+        DbError::unreadable(format!("the {what} of composer page row {row_entry}"), part)
+    };
+    let item = match part {
+        0 => DbComposerDetailItem::Work {
+            work: work_summary(work.ok_or_else(|| missing("work"))?, work_cover)?,
+            part: indent == Some(1),
+        },
+        1 => DbComposerDetailItem::ReleaseCredit(DbReleaseRoleSummary {
+            role: release_credit.ok_or_else(|| missing("credit"))?.into_role()?,
+            album: album.ok_or_else(|| missing("album"))?.into_album()?,
+        }),
+        2 => DbComposerDetailItem::TrackCredit(DbTrackRoleSummary {
+            role: track_credit.ok_or_else(|| missing("credit"))?.into_role()?,
+            track: track.ok_or_else(|| missing("track"))?.into_track()?,
+            album: album.ok_or_else(|| missing("album"))?.into_album()?,
+            artist: composer.ok_or_else(|| missing("composer"))?.into_artist()?,
+        }),
+        other => return Err(DbError::unreadable("a composer page row's section", other)),
+    };
+    Ok(DbComposerDetailRow { entry: row_entry, opens_heading, item })
 }
 
 /// The composer `artist_id` names, with the first work its page lists;
@@ -247,201 +521,9 @@ fn find_composer_detail_on(
     let Some(composer) = composer else {
         return Ok(None);
     };
-    let default_work_id = sql
-        .query_row(
-            &format!(
-                "SELECT listing.item_id FROM composer_detail_row listing
-                 WHERE listing.artist_id = ? AND listing.section = 0
-                 ORDER BY {} LIMIT 1",
-                composer_detail_order("listing").clause()
-            ),
-            params![artist_id],
-            |row| row.get(0),
-        )
-        .optional()?;
+    let statement = FirstListedWorkParams { artist: artist_id.to_string() };
+    let default_work_id = statement_optional(sql, &statement)?.map(|row| row.item_id);
     Ok(Some(DbComposerDetail { composer, default_work_id }))
-}
-
-/// How many rows of `artist_id`'s page come before the row at `key`.
-fn composer_detail_rows_before_on(
-    sql: &SqlReadContext<'_>,
-    artist_id: &str,
-    order: &ListOrder,
-    key: &OrderKey,
-) -> Result<u64, DbError> {
-    bae_store::list_windows::rows_before_on(
-        sql,
-        "FROM composer_detail_row listing",
-        Some("listing.artist_id = :artist_id"),
-        &[(":artist_id", &artist_id)],
-        order,
-        key,
-    )
-}
-
-fn composer_detail_row_count_on(sql: &SqlReadContext<'_>, artist_id: &str) -> Result<u64, DbError> {
-    sql.query_row(
-        "SELECT COUNT(*) FROM composer_detail_row WHERE artist_id = ?",
-        params![artist_id],
-        |row| row.get::<_, i64>(0),
-    )
-    .map(|count| count as u64)
-    .map_err(DbError::from)
-}
-
-/// The statement reading the rows of one page `seek` reads in `order`, at most
-/// `:limit`, each with what it shows and its key: a work with
-/// its summary, a credit with its role, album, and for a track credit its
-/// track and the composer.
-pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> String {
-    format!(
-        "SELECT listing.entry, listing.section, listing.place,
-                {opens} AS opens_heading,
-                {work},
-                rar.id AS release_role_id,
-                rar.release_id AS release_role_release_id,
-                rar.artist_id AS release_role_artist_id,
-                rar.position AS release_role_position,
-                rar.source AS release_role_source,
-                rar.role AS release_role_role, rar.role_words AS release_role_role_words,
-                rar.qualifiers AS release_role_qualifiers,
-                release_credit.name_key AS release_role_credit_key,
-                release_credit.name AS release_role_credit_name,
-                rar.created_at AS release_role_created_at,
-                tar.id AS track_role_id,
-                tar.track_id AS track_role_track_id,
-                tar.artist_id AS track_role_artist_id,
-                tar.position AS track_role_position,
-                tar.source AS track_role_source,
-                tar.role AS track_role_role, tar.role_words AS track_role_role_words,
-                tar.qualifiers AS track_role_qualifiers,
-                track_credit.name_key AS track_role_credit_key,
-                track_credit.name AS track_role_credit_name,
-                tar.created_at AS track_role_created_at,
-                t.id AS track_id, t.release_id AS track_release_id, t.title AS track_title,
-                t.medium_id AS track_medium_id, t.side AS track_side,
-                t.track_number AS track_track_number, t.duration_ms AS track_duration_ms,
-                t.stated_length_ms AS track_stated_length_ms,
-                t.created_at AS track_created_at,
-                album.id AS album_id, album.title AS album_title, album.year AS album_year,
-                album.is_compilation AS album_is_compilation,
-                album.created_at AS album_created_at,
-                composer.id AS artist_id, composer.name AS artist_name,
-                composer.sort_name AS artist_sort_name,
-                composer.discogs_artist_id AS artist_discogs_artist_id,
-                composer.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
-                composer.created_at AS artist_created_at,
-                {keys}
-         FROM composer_detail_row listing
-         LEFT JOIN works w ON listing.section = 0 AND w.id = listing.item_id
-         LEFT JOIN release_artist_roles rar ON listing.section = 1 AND rar.id = listing.item_id
-         LEFT JOIN track_artist_roles tar ON listing.section = 2 AND tar.id = listing.item_id
-         {release_credit}
-         {track_credit}
-         LEFT JOIN tracks t ON t.id = tar.track_id
-         LEFT JOIN releases r ON listing.section <> 0 AND r.id = listing.group_id
-         LEFT JOIN albums album ON album.id = r.album_id
-         LEFT JOIN artists composer ON listing.section = 2 AND composer.id = listing.artist_id
-         WHERE listing.artist_id = :artist_id AND {condition}
-         ORDER BY {ordering} {limit}",
-        release_credit = credit_name_join("rar", "release_credit"),
-        track_credit = credit_name_join("tar", "track_credit"),
-        opens = opens_heading_sql(),
-        work = work_summary_columns(),
-        keys = order.key_columns(),
-        condition = order.condition(seek),
-        ordering = order.ordering(seek),
-        limit = seek.limit_clause(),
-    )
-}
-
-/// The rows of `artist_id`'s page `seek` reads in `order`, at most `limit`,
-/// each with its key.
-pub(crate) fn composer_detail_rows_on(
-    sql: &SqlReadContext<'_>,
-    artist_id: &str,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbComposerDetailRow>>, DbError> {
-    let statement = composer_detail_rows_query(order, seek);
-    Ok(seek.bound(limit, |params| {
-        let mut params = params.to_vec();
-        params.push((":artist_id", &artist_id as &dyn rusqlite::ToSql));
-        sql.query(&statement, params.as_slice(), |row| {
-            Ok((row_to_composer_detail_row(row)?, order.key_of(row)?))
-        })
-    })?)
-}
-
-/// The role a row's `{prefix}_role`, `{prefix}_role_words` and
-/// `{prefix}_qualifiers` columns hold.
-fn credited_as_column(
-    row: &Row<'_>,
-    prefix: &str,
-) -> rusqlite::Result<bae_types::credit_role::CreditedAs> {
-    let role: String = row.get(format!("{prefix}_role").as_str())?;
-    let words: Option<String> = row.get(format!("{prefix}_role_words").as_str())?;
-    let qualifiers: String = row.get(format!("{prefix}_qualifiers").as_str())?;
-    bae_types::credit_role::CreditedAs::from_columns(&role, words, &qualifiers).map_err(|error| {
-        column_conversion_error(row, format!("{prefix}_role").as_str(), error.to_string())
-    })
-}
-
-/// A row of a composer's page, read by its part of the page: the works
-/// (0), the release credits (1) or the track credits (2).
-fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetailRow> {
-    let section: i64 = row.get("section")?;
-    let item = match section {
-        0 => DbComposerDetailItem::Work {
-            work: row_to_work_summary(row)?,
-            part: row.get::<_, i64>("place")? == 1,
-        },
-        1 => DbComposerDetailItem::ReleaseCredit(DbReleaseRoleSummary {
-            role: DbReleaseArtistRole {
-                id: row.get("release_role_id")?,
-                release_id: row.get("release_role_release_id")?,
-                artist_id: row.get("release_role_artist_id")?,
-                position: row.get("release_role_position")?,
-                source: parsed_column(row, "release_role_source")?,
-                role: credited_as_column(row, "release_role")?,
-                credit: credit_name_column(
-                    row,
-                    "release_role_credit_key",
-                    "release_role_credit_name",
-                )?,
-                created_at: rfc3339_column(row, "release_role_created_at")?,
-            },
-            album: row_to_album_with_prefix(row, "album_")?,
-        }),
-        2 => DbComposerDetailItem::TrackCredit(DbTrackRoleSummary {
-            role: DbTrackArtistRole {
-                id: row.get("track_role_id")?,
-                track_id: row.get("track_role_track_id")?,
-                artist_id: row.get("track_role_artist_id")?,
-                position: row.get("track_role_position")?,
-                source: parsed_column(row, "track_role_source")?,
-                role: credited_as_column(row, "track_role")?,
-                credit: credit_name_column(row, "track_role_credit_key", "track_role_credit_name")?,
-                created_at: rfc3339_column(row, "track_role_created_at")?,
-            },
-            track: row_to_track_with_prefix(row, "track_")?,
-            album: row_to_album_with_prefix(row, "album_")?,
-            artist: row_to_artist_with_prefix(row, "artist_")?,
-        }),
-        other => {
-            return Err(column_conversion_error(
-                row,
-                "section",
-                format!("composer_detail_row section {other} names no part of the page"),
-            ))
-        }
-    };
-    Ok(DbComposerDetailRow {
-        entry: row.get("entry")?,
-        opens_heading: row.get("opens_heading")?,
-        item,
-    })
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -5,6 +5,9 @@
 
 use super::*;
 use crate::album_detail::{WorkChild, WorkDetail, WorkReleaseSummary};
+use bae_records::records::browse_fragments::{WorkReleaseRow, WorkSummary};
+use bae_records::records::files::CoverVersion;
+use bae_store::{statement_optional, statement_row, statement_rows};
 
 impl LibraryViews {
     #[cfg(test)]
@@ -131,15 +134,9 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let work_id = work_id.to_string();
-        let order = work_child_order();
-        let read_order = order.clone();
-        self.store.subscribe_list_page(
-            page,
-            order,
-            work_child_statement,
-            move |sql, seek, limit| work_child_rows_on(sql, &work_id, &read_order, seek, limit),
-            |rows| Ok(work_child_rows(rows)),
-        )
+        self.store
+            .subscribe(move |sql| work_child_page_on(&sql, &work_id, page))
+            .process(|rows| Ok(work_child_rows(rows)))
     }
 
     /// Follow how many children the work `work_id` has. The count runs as a
@@ -150,11 +147,8 @@ impl LibraryViews {
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
         let work_id = work_id.to_string();
         self.store.subscribe(move |sql| {
-            Ok(sql.query_row(
-                &format!("SELECT COUNT(*) AS count FROM ({}) child", work_children_sql()),
-                rusqlite::named_params! { ":work_id": work_id },
-                |row| count_column::<u64>(row, "count"),
-            )?)
+            let statement = WorkChildCountParams { work: work_id.clone() };
+            list_count(statement_row(&sql, &statement)?.children)
         })
     }
 }
@@ -200,25 +194,22 @@ fn find_work_detail_on(
     sql: &SqlReadContext<'_>,
     work_id: &str,
 ) -> Result<Option<DbWorkDetail>, DbError> {
-    let work = sql
-        .query_row(
-            &work_summary_query(Some("WHERE w.id = ?"), None),
-            params![work_id],
-            row_to_work_summary,
-        )
-        .optional()?;
-    let Some(work) = work else {
+    let work = || work_id.to_string();
+    let Some(found) = statement_optional(sql, &WorkByIdParams { work: work() })? else {
         return Ok(None);
     };
-    // Each section's statement reads the work keyed `?1`.
-    let child_works_query = work_summary_query(
-        Some("JOIN work_parts wp ON wp.child_work_id = w.id AND wp.parent_work_id = ?1"),
-        Some(&{
-            let parts = WorkPartOrder::over("wp", "w");
-            format!("ORDER BY {}, {}", parts.place, parts.title)
-        }),
-    );
-    let releases_query = work_releases_query();
+    let parts = statement_rows(sql, &WorkPartRowsParams { work: work() })?;
+    // Each section's statement counts its own rows beside them; a section
+    // with no rows counts zero.
+    let child_work_count = list_count(parts.first().map_or(0, |part| part.children))?;
+    let child_works =
+        parts.into_iter().map(|row| work_summary(row.part, row.cover)).collect::<Result<_, _>>()?;
+    let performing = statement_rows(sql, &WorkReleaseRowsParams { work: work() })?;
+    let release_count = list_count(performing.first().map_or(0, |release| release.children))?;
+    let releases = performing
+        .into_iter()
+        .map(|row| work_release(row.release, row.cover))
+        .collect::<Result<_, _>>()?;
     let tracks_query = format!(
         "SELECT tw.id AS track_work_id, tw.work_id,
                 tw.position, tw.source AS link_source, tw.created_at,
@@ -232,13 +223,14 @@ fn find_work_detail_on(
                 a.year AS album_year,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
-         {WORK_RELEASES_FROM}
+         FROM track_works tw
+         JOIN tracks t ON t.id = tw.track_id
+         JOIN releases r ON r.id = t.release_id
+         JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?1
-         ORDER BY {releases}, t.position, tw.position",
-        releases = work_release_order("a", "r"),
+         ORDER BY {album_title}, a.id, r.album_order, r.id, t.position, tw.position",
+        album_title = crate::sort_key_sql("a.title"),
     );
-    let child_works = sql.query(&child_works_query, params![work_id], row_to_work_summary)?;
-    let releases = sql.query(&releases_query, params![work_id], row_to_work_release_summary)?;
     let tracks = sql.query(&tracks_query, params![work_id], |row| {
         Ok(DbWorkTrackSummary {
             link: DbTrackWork {
@@ -253,23 +245,19 @@ fn find_work_detail_on(
             album: row_to_album_with_prefix(row, "album_")?,
         })
     })?;
-    // Each count counts the rows of its section's statement above.
-    let (child_work_count, release_count, track_count): (i64, i64, i64) = sql.query_row(
-        &format!(
-            "SELECT (SELECT COUNT(*) FROM ({child_works_query})),
-                    (SELECT COUNT(*) FROM ({releases_query})),
-                    (SELECT COUNT(*) FROM ({tracks_query}))"
-        ),
+    // The count counts the rows of the tracks' statement above.
+    let track_count: i64 = sql.query_row(
+        &format!("SELECT COUNT(*) FROM ({tracks_query})"),
         params![work_id],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        |row| row.get(0),
     )?;
     Ok(Some(DbWorkDetail {
-        work,
+        work: work_summary(found.work, found.cover)?,
         child_works,
         releases,
         tracks,
-        child_work_count: child_work_count as u64,
-        release_count: release_count as u64,
+        child_work_count,
+        release_count,
         track_count: track_count as u64,
     }))
 }
@@ -344,147 +332,6 @@ pub(crate) fn composer_listing_query(
     query
 }
 
-/// The order a work's releases take over the album `album` and its release
-/// `release`: albums by title, compared by sort key as the composer page
-/// compares titles, then by id, so two albums sharing a title don't
-/// interleave; each album's releases in album order. The work's page lists
-/// its releases and their tracks in it, its cover is the first, and a media
-/// browser lists its releases in it ([`work_children_sql`]).
-struct WorkReleaseOrder {
-    album_title: String,
-    album_id: String,
-    album_order: String,
-    release_id: String,
-}
-
-impl WorkReleaseOrder {
-    fn over(album: &str, release: &str) -> Self {
-        Self {
-            album_title: crate::sort_key_sql(&format!("{album}.title")),
-            album_id: format!("{album}.id"),
-            album_order: format!("{release}.album_order"),
-            release_id: format!("{release}.id"),
-        }
-    }
-}
-
-/// [`WorkReleaseOrder`] as an ORDER BY list.
-fn work_release_order(album: &str, release: &str) -> String {
-    let order = WorkReleaseOrder::over(album, release);
-    format!(
-        "{}, {}, {}, {}",
-        order.album_title, order.album_id, order.album_order, order.release_id
-    )
-}
-
-/// The order a work's parts take over the link `part` (`work_parts`) and the
-/// part's work `work`: by their place among the work's parts, then by title.
-/// The work's page and a media browser both list its parts in it.
-struct WorkPartOrder {
-    place: String,
-    title: String,
-}
-
-impl WorkPartOrder {
-    fn over(part: &str, work: &str) -> Self {
-        Self {
-            place: format!("{part}.position"),
-            title: crate::sort_key_sql(&format!("{work}.title")),
-        }
-    }
-}
-
-/// The tables a work's releases come from: each track `t` linked to a work
-/// by `tw` (`track_works`), its release `r` and the release's album `a`.
-/// Each release appears once per linked track, so a read of the releases
-/// alone selects DISTINCT.
-const WORK_RELEASES_FROM: &str = "FROM track_works tw
-         JOIN tracks t ON t.id = tw.track_id
-         JOIN releases r ON r.id = t.release_id
-         JOIN albums a ON a.id = r.album_id";
-
-/// The release whose cover a work shows (a SQL expression over `w`): the
-/// first of the releases performing it in [`work_release_order`]. That is the
-/// first album's primary release when it performs the work, otherwise its
-/// first release in album order that does: the primary release is first in
-/// album order.
-fn work_representative_release() -> String {
-    format!(
-        "(
-                    SELECT r_cover.id
-                    FROM track_works tw_cover
-                    JOIN tracks tr ON tr.id = tw_cover.track_id
-                    JOIN releases r_cover ON r_cover.id = tr.release_id
-                    JOIN albums a_cover ON a_cover.id = r_cover.album_id
-                    WHERE tw_cover.work_id = w.id
-                    ORDER BY {order}
-                    LIMIT 1
-                )",
-        order = work_release_order("a_cover", "r_cover"),
-    )
-}
-
-/// The columns [`row_to_work_summary`] reads of the work `w`: its own, the
-/// release whose cover it shows, its composers' names in credit order, and how
-/// many releases perform it.
-pub(crate) fn work_summary_columns() -> String {
-    format!(
-        "w.id AS work_id,
-                w.title AS work_title,
-                w.disambiguation AS work_disambiguation,
-                w.work_type AS work_type,
-                w.musicbrainz_work_id AS work_musicbrainz_id,
-                w.created_at AS work_created_at,
-                {representative_release} AS representative_release_id,
-                {representative_cover} AS representative_cover_version,
-                {composer_names} AS composer_names,
-                (
-                    SELECT COUNT(DISTINCT tr.release_id)
-                    FROM track_works tw
-                    JOIN tracks tr ON tr.id = tw.track_id
-                    WHERE tw.work_id = w.id
-                ) AS linked_release_count",
-        composer_names = work_composer_names_sql("w.id"),
-        representative_release = work_representative_release(),
-        representative_cover = cover_version_sql(&work_representative_release()),
-    )
-}
-
-/// The works `filter` names, each as [`row_to_work_summary`] reads it;
-/// `filter` follows `FROM works w` and `tail` follows it.
-pub(crate) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
-    let mut query = format!("SELECT {}\n         FROM works w\n         ", work_summary_columns());
-    if let Some(filter) = filter {
-        query.push_str(filter);
-    }
-    if let Some(tail) = tail {
-        query.push('\n');
-        query.push_str(tail);
-    }
-    query
-}
-
-pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
-    let representative_release_id: Option<String> = row.get("representative_release_id")?;
-    let representative_cover = match &representative_release_id {
-        Some(id) => bae_records::cover_ref(id, row.get("representative_cover_version")?),
-        None => None,
-    };
-    Ok(DbWorkSummary {
-        work: DbWork {
-            id: row.get("work_id")?,
-            title: row.get("work_title")?,
-            disambiguation: row.get("work_disambiguation")?,
-            work_type: row.get("work_type")?,
-            musicbrainz_work_id: row.get("work_musicbrainz_id")?,
-            created_at: rfc3339_column(row, "work_created_at")?,
-        },
-        representative_cover,
-        composer_names: row.get("composer_names")?,
-        linked_release_count: row.get("linked_release_count")?,
-    })
-}
-
 pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbComposerSummary {
@@ -492,50 +339,6 @@ pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
         artist,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
-    })
-}
-
-/// The columns [`row_to_work_release_summary`] reads of the release `r`, its
-/// album `a` and its place among the album's releases `number`.
-fn work_release_columns() -> String {
-    format!(
-        "r.id AS release_id,
-            r.album_id,
-            a.title AS album_title,
-            r.release_name,
-            r.year AS release_year,
-            {media} AS release_media,
-            number.number AS release_number,
-            {cover} AS cover_version",
-        cover = cover_version_sql("r.id"),
-        media = release_media_sql("r.id"),
-    )
-}
-
-/// The releases holding a recording of the work keyed `?1`, in
-/// [`work_release_order`], as [`row_to_work_release_summary`] reads them.
-fn work_releases_query() -> String {
-    format!(
-        "SELECT DISTINCT {columns}
-         {WORK_RELEASES_FROM}
-         JOIN release_number_in_album number ON number.release_id = r.id
-         WHERE tw.work_id = ?1
-         ORDER BY {order}",
-        columns = work_release_columns(),
-        order = work_release_order("a", "r"),
-    )
-}
-
-fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseSummary> {
-    Ok(DbWorkReleaseSummary {
-        release_id: row.get("release_id")?,
-        album_id: row.get("album_id")?,
-        album_title: row.get("album_title")?,
-        release_name: row.get("release_name")?,
-        year: row.get("release_year")?,
-        media: read_media(row, "release_media")?,
-        release_number: row.get("release_number")?,
-        cover_version: row.get("cover_version")?,
     })
 }
 
@@ -561,99 +364,143 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
     ListOrder::named(terms, ordered_by_name, "listing.name_sort_key", "listing.artist_id")
 }
 
-/// The children of the work the parameter `:work_id` names, one row each,
-/// with the columns its order ([`work_child_order`]) reads: its parts
-/// (`section` 0) in [`WorkPartOrder`], then the releases performing it
-/// (`section` 1) in [`WorkReleaseOrder`]. `item_id` is the part's
-/// work or the release, which ends the order with a term no two children
-/// share.
-fn work_children_sql() -> String {
-    let part = WorkPartOrder::over("part", "w");
-    let release = WorkReleaseOrder::over("a", "r");
-    format!(
-        "SELECT 0 AS section, {place} AS place, {part_title} AS title_key,
-                NULL AS album_id, NULL AS album_order, part.child_work_id AS item_id
-         FROM work_parts part
-         JOIN works w ON w.id = part.child_work_id
-         WHERE part.parent_work_id = :work_id
-         UNION ALL
-         SELECT DISTINCT 1, NULL, {album_title}, {album_id}, {album_order}, {release_id}
-         {WORK_RELEASES_FROM}
-         WHERE tw.work_id = :work_id",
-        place = part.place,
-        part_title = part.title,
-        album_title = release.album_title,
-        album_id = release.album_id,
-        album_order = release.album_order,
-        release_id = release.release_id,
-    )
+// The work `work`, as its rows show it, with its cover.
+sqlive_compose::read!(
+    WorkById(work: String),
+    r#"
+    SELECT work.*, cover.*
+    FROM @bae_records::records::browse_fragments::WorkSummary AS work
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
+           ON cover.id = work.representative_release_id
+    WHERE work.work_id = :work
+"#
+);
+
+// The works that are parts of the work `work`, in its page's order, each
+// beside how many there are.
+sqlive_compose::read!(
+    WorkPartRows(work: String) { children: i64 },
+    r#"
+    SELECT part.*, cover.*, COUNT(*) OVER () AS children
+    FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
+    JOIN @bae_records::records::browse_fragments::WorkSummary AS part
+      ON part.work_id = child.item_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
+           ON cover.id = part.representative_release_id
+    WHERE child.section = 0
+    ORDER BY child.place, child.title_key, child.item_id
+"#
+);
+
+// The releases that perform the work `work`, in its page's order, each beside
+// how many there are.
+sqlive_compose::read!(
+    WorkReleaseRows(work: String) { children: i64 },
+    r#"
+    SELECT release.*, cover.*, COUNT(*) OVER () AS children
+    FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
+    JOIN @bae_records::records::browse_fragments::WorkReleaseRow AS release
+      ON release.release_id = child.item_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
+           ON cover.id = release.release_id
+    WHERE child.section = 1
+    ORDER BY child.title_key, child.album_id, child.album_order, child.item_id
+"#
+);
+
+// The children of the work `work` at the places from `offset`, at most
+// `limit`, in their order: its parts, then the releases that perform it, each
+// with what it shows.
+sqlive_compose::read!(
+    WorkChildRows(work: String, offset: i64, limit: i64),
+    r#"
+    SELECT child.*, part.*, part_cover.*, release.*, release_cover.*
+    FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
+    LEFT JOIN @bae_records::records::browse_fragments::WorkSummary AS part
+           ON child.section = 0 AND part.work_id = child.item_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS part_cover
+           ON part_cover.id = part.representative_release_id
+    LEFT JOIN @bae_records::records::browse_fragments::WorkReleaseRow AS release
+           ON child.section = 1 AND release.release_id = child.item_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS release_cover
+           ON release_cover.id = release.release_id
+    ORDER BY child.section, child.place, child.title_key, child.album_id, child.album_order,
+             child.item_id
+    LIMIT :limit OFFSET :offset
+"#
+);
+
+// How many children the work `work` has.
+sqlive_compose::read!(
+    WorkChildCount(work: String) { children: i64 },
+    r#"
+    SELECT COUNT(*) AS children
+    FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
+"#
+);
+
+/// A work as its rows show it, with the cover [`CoverVersion`] read for the
+/// release whose cover it shows.
+pub(crate) fn work_summary(
+    work: WorkSummary,
+    cover: Option<CoverVersion>,
+) -> Result<DbWorkSummary, DbError> {
+    let summarized = work.into_summarized()?;
+    let representative_cover = match &summarized.representative_release_id {
+        Some(id) => bae_records::cover_ref(id, cover.and_then(CoverVersion::into_version)),
+        None => None,
+    };
+    Ok(DbWorkSummary {
+        work: summarized.work,
+        representative_cover,
+        composer_names: summarized.composer_names,
+        linked_release_count: summarized.linked_release_count,
+    })
 }
 
-/// The order of a work's children over [`work_children_sql`] aliased
-/// `child`: its parts, then its releases, each in their own order.
-fn work_child_order() -> ListOrder {
-    let term = |column: &str| format!("child.{column}");
-    ListOrder::new(vec![
-        SortTerm::ascending(term("section")),
-        SortTerm::ascending(term("place")).nullable(),
-        SortTerm::ascending(term("title_key")),
-        SortTerm::ascending(term("album_id")).nullable(),
-        SortTerm::ascending(term("album_order")).nullable(),
-        SortTerm::ascending(term("item_id")),
-    ])
+/// A release that performs a work, with its cover.
+fn work_release(
+    release: WorkReleaseRow,
+    cover: Option<CoverVersion>,
+) -> Result<DbWorkReleaseSummary, DbError> {
+    let release = release.into_release()?;
+    Ok(DbWorkReleaseSummary {
+        release_id: release.release_id,
+        album_id: release.album_id,
+        album_title: release.album_title,
+        release_name: release.release_name,
+        year: release.year,
+        media: release.media,
+        release_number: release.release_number,
+        cover_version: cover.and_then(CoverVersion::into_version),
+    })
 }
 
-/// The statement reading the work `:work_id`'s children `seek` holds, in
-/// `order`, each with its key.
-fn work_child_statement(order: &ListOrder, seek: &Seek) -> String {
-    format!(
-        "SELECT child.section, {work}, {release}, {keys}
-         FROM ({children}) child
-         LEFT JOIN works w ON child.section = 0 AND w.id = child.item_id
-         LEFT JOIN releases r ON child.section = 1 AND r.id = child.item_id
-         LEFT JOIN release_number_in_album number ON number.release_id = r.id
-         LEFT JOIN albums a ON a.id = r.album_id
-         WHERE {condition}
-         ORDER BY {ordering} {limit}",
-        work = work_summary_columns(),
-        release = work_release_columns(),
-        children = work_children_sql(),
-        keys = order.key_columns(),
-        condition = order.condition(seek),
-        ordering = order.ordering(seek),
-        limit = seek.limit_clause(),
-    )
-}
-
-/// The work `work_id`'s children that `seek` reads in `order`, at most
-/// `limit`, each with its key and what it shows: a part's summary or a
-/// release's.
-fn work_child_rows_on(
+/// The children of the work `work_id` at `page`'s places.
+fn work_child_page_on(
     sql: &SqlReadContext<'_>,
     work_id: &str,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbWorkChild>>, DbError> {
-    let statement = work_child_statement(order, seek);
-    Ok(seek.bound(limit, |params| {
-        let mut params = params.to_vec();
-        params.push((":work_id", &work_id as &dyn rusqlite::ToSql));
-        sql.query(&statement, params.as_slice(), |row| {
-            let child = match row.get::<_, i64>("section")? {
-                0 => DbWorkChild::Part(row_to_work_summary(row)?),
-                1 => DbWorkChild::Release(row_to_work_release_summary(row)?),
-                other => {
-                    return Err(column_conversion_error(
-                        row,
-                        "section",
-                        format!("work child section {other} names no kind of child"),
-                    ))
-                }
-            };
-            Ok((child, order.key_of(row)?))
+    page: ListPage,
+) -> Result<Vec<DbWorkChild>, DbError> {
+    let statement = WorkChildRowsParams {
+        work: work_id.to_string(),
+        offset: bae_store::list_windows::sql_bound(page.offset),
+        limit: bae_store::list_windows::sql_bound(page.limit),
+    };
+    statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| {
+            let missing =
+                || DbError::unreadable("a work child with nothing to show", row.child.clone());
+            Ok(if row.child.is_part()? {
+                let part = row.part.ok_or_else(missing)?;
+                DbWorkChild::Part(work_summary(part, row.part_cover)?)
+            } else {
+                let release = row.release.ok_or_else(missing)?;
+                DbWorkChild::Release(work_release(release, row.release_cover)?)
+            })
         })
-    })?)
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -299,3 +299,31 @@ async fn the_page_rows_follow_writes_in_their_windows() {
         .unwrap();
     assert_eq!(other, 1);
 }
+
+/// The page's window seeks to its key through the page's index and sorts
+/// nothing there, and reads each row's work or credit by its key, so a window
+/// costs its own rows however long the page is.
+#[tokio::test]
+async fn a_composer_page_window_seeks_the_pages_index_and_builds_no_whole_table() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    write_page(&db).await;
+    let statement = crate::composer_detail::ComposerPageWindow::SQL.to_string();
+    let steps = db
+        .read(move |sql| {
+            let params = rusqlite::params![COMPOSER, 0, [0_u8], "", 0.0, "", 0, [0_u8], 0, "", 50];
+            crate::tests::plan_steps(&sql, &statement, params)
+        })
+        .await
+        .unwrap();
+    let seeks = steps.iter().any(|step| {
+        step.detail.starts_with("SEARCH listing USING")
+            && step.detail.contains("idx_composer_detail_row_order")
+    });
+    assert!(seeks, "{steps:?}");
+    assert!(
+        !steps.iter().any(|step| step.detail.starts_with("MATERIALIZE")
+            || (step.own && step.detail.contains("TEMP B-TREE"))
+            || step.detail.starts_with("SCAN work")),
+        "{steps:?}"
+    );
+}

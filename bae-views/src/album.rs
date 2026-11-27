@@ -552,8 +552,7 @@ fn search_library_on(
         params![pattern, limit],
         row_to_composer_summary,
     )?;
-    let (works, work_count) =
-        counted_rows(sql, &first_works_found_sql(), params![pattern, limit], row_to_work_summary)?;
+    let (works, work_count) = first_works_found_on(sql, pattern, limit)?;
     // This query checks whether any album, track, artist, composer or work
     // matches, through the statements that list each kind, and stops at the
     // first match.
@@ -562,7 +561,7 @@ fn search_library_on(
             "SELECT EXISTS (SELECT 1 FROM albums a WHERE {album_matches}) \
                  OR EXISTS (SELECT 1 FROM tracks t \
                             WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)) \
-                 OR EXISTS ({artists}) OR EXISTS ({composers}) OR EXISTS ({works})",
+                 OR EXISTS ({artists}) OR EXISTS ({composers})",
             album_matches = album_matches_sql("a.id", "?1"),
             artists = artist_listing_query(
                 None,
@@ -574,14 +573,10 @@ fn search_library_on(
                 Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
                 Some("LIMIT 1"),
             ),
-            works = work_summary_query(
-                Some("WHERE w.id IN (SELECT work_id FROM work_search WHERE title GLOB ?1)"),
-                Some("LIMIT 1"),
-            ),
         ),
         params![pattern],
-        |row| row.get(0),
-    )?;
+        |row| row.get::<_, bool>(0),
+    )? || work_count > 0;
     let section_counts = crate::SearchSectionCounts {
         albums: album_count,
         artists: artist_count,
@@ -629,17 +624,43 @@ fn first_tracks_found_sql() -> String {
     )
 }
 
-/// The work summaries of the first `?2` works whose title holds the search
-/// pattern `?1`, in title order, ties going by id.
-fn first_works_found_sql() -> String {
-    format!(
-        "SELECT {columns} \
-         FROM ({found}) found \
-         CROSS JOIN works w ON w.id = found.work_id \
-         ORDER BY found.title_sort_key, found.work_id",
-        columns = work_summary_columns(),
-        found = first_entries_found_sql("work"),
-    )
+// The first `limit` works whose title holds the search `pattern`, in title
+// order, ties going by id, each beside how many rows the statement lists. The
+// read walks the entries' title index, tests each entry against the titles the
+// search finds, and stops at the `limit`th, as [`first_entries_found_sql`]
+// does for tracks; it reads what each work shows for those works alone.
+sqlive_compose::read!(
+    FirstWorksFound(pattern: String, limit: i64) { listed: i64 },
+    r#"
+    SELECT work.*, cover.*, COUNT(*) OVER () AS listed
+    FROM (SELECT entry.work_id, entry.title_sort_key
+          FROM work_search_entry AS entry INDEXED BY idx_work_search_entry_title
+          WHERE entry.entry IN (
+              SELECT found_title.rowid FROM work_search AS found_title
+              WHERE found_title.title GLOB :pattern)
+          ORDER BY entry.title_sort_key, entry.work_id
+          LIMIT :limit) AS found
+    CROSS JOIN @bae_records::records::browse_fragments::WorkSummary AS work
+            ON work.work_id = found.work_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
+           ON cover.id = work.representative_release_id
+    ORDER BY found.title_sort_key, found.work_id
+"#
+);
+
+/// The works [`FirstWorksFound`] lists for `pattern`, at most `limit`, with
+/// how many it lists.
+fn first_works_found_on(
+    sql: &SqlReadContext<'_>,
+    pattern: &str,
+    limit: i64,
+) -> Result<(Vec<DbWorkSummary>, u64), DbError> {
+    let statement = FirstWorksFoundParams { pattern: pattern.to_string(), limit };
+    let rows = bae_store::statement_rows(sql, &statement)?;
+    let listed = list_count(rows.first().map_or(0, |row| row.listed))?;
+    let works =
+        rows.into_iter().map(|row| work_summary(row.work, row.cover)).collect::<Result<_, _>>()?;
+    Ok((works, listed))
 }
 
 /// The first track `pattern` finds, and failing that the first track of the
