@@ -4,6 +4,8 @@
 //! and to scroll a revealed album's card into view. A shift-click reads the
 //! albums of the cards between two cards.
 
+use super::listing::{album_ids_between_on, album_place_on};
+use super::order::AlbumOrder;
 use super::*;
 
 impl LibraryViews {
@@ -19,9 +21,9 @@ impl LibraryViews {
         group_by_artist: bool,
         section: Option<&str>,
     ) -> coven::LiveQuery<Option<AlbumPlace>, DbError> {
-        let query = album_place_query(sort, group_by_artist);
+        let order = AlbumOrder::new(sort, group_by_artist);
         let (album_id, section) = (album_id.to_string(), section.map(str::to_string));
-        self.store.subscribe(move |sql| album_place_on(&sql, &query, &album_id, section.as_deref()))
+        self.store.subscribe(move |sql| album_place_on(&sql, &order, &album_id, section.as_deref()))
     }
 
     /// The albums of the grid's cards from the card `from` to the card `to`,
@@ -37,26 +39,16 @@ impl LibraryViews {
         from: AlbumCard<'_>,
         to: AlbumCard<'_>,
     ) -> Result<Vec<String>, DbError> {
-        let query = format!(
-            "WITH card AS MATERIALIZED ({cards}), \
-             ends (low, high) AS ( \
-                 SELECT min(coalesce(f, t), t), max(coalesce(f, t), t) FROM ( \
-                     SELECT (SELECT idx FROM card {from}) AS f, \
-                            (SELECT idx FROM card {to}) AS t)) \
-             SELECT card.id FROM card JOIN ends ON card.idx BETWEEN ends.low AND ends.high \
-             GROUP BY card.id ORDER BY MIN(card.idx)",
-            cards = numbered_cards(sort, group_by_artist),
-            from = card_of("?1", "?2"),
-            to = card_of("?3", "?4"),
-        );
-        let params = (
-            from.album_id.to_string(),
-            from.section_id.map(str::to_string),
-            to.album_id.to_string(),
-            to.section_id.map(str::to_string),
-        );
+        let order = AlbumOrder::new(sort, group_by_artist);
+        let owned =
+            |card: AlbumCard<'_>| (card.album_id.to_string(), card.section_id.map(str::to_string));
+        let (from, to) = (owned(from), owned(to));
         self.store
-            .read(move |sql| Ok(sql.query(&query, params, |row| row.get::<_, String>(0))?))
+            .read(move |sql| {
+                let from = AlbumCard { album_id: &from.0, section_id: from.1.as_deref() };
+                let to = AlbumCard { album_id: &to.0, section_id: to.1.as_deref() };
+                album_ids_between_on(&sql, &order, from, to)
+            })
             .await
     }
 }
@@ -76,58 +68,6 @@ pub struct AlbumCard<'a> {
 pub struct AlbumPlace {
     pub position: u64,
     pub section_id: Option<String>,
-}
-
-/// The statement reading an album's card's place in the grid under `sort`:
-/// the album `?1`'s card in the group of the artist `?2` when that group
-/// holds one, else its first.
-fn album_place_query(sort: &[AlbumSortCriterion], group_by_artist: bool) -> String {
-    format!(
-        "SELECT idx, section FROM ({cards}) {card}",
-        cards = numbered_cards(sort, group_by_artist),
-        card = card_of("?1", "?2"),
-    )
-}
-
-/// Every card of the grid under `sort`: its album's `id`, the artist whose
-/// group holds it as `section`, and its position numbered in the grid's
-/// order as `idx`. The flat grid's cards are in no group.
-fn numbered_cards(sort: &[AlbumSortCriterion], group_by_artist: bool) -> String {
-    let (relation, order) = album_browse_order(sort, group_by_artist);
-    let section = if group_by_artist { "link.artist_id" } else { "NULL" };
-    format!(
-        "SELECT a.id AS id, {section} AS section, \
-            ROW_NUMBER() OVER (ORDER BY {order_by}) - 1 AS idx \
-         {relation}",
-        order_by = order.clause(),
-    )
-}
-
-/// The clauses that keep, of [`numbered_cards`], the card of the album
-/// `album` in the group of the artist `section` when that group holds one,
-/// else the album's first card.
-fn card_of(album: &str, section: &str) -> String {
-    format!(
-        "WHERE id = {album} ORDER BY {section} IS NOT NULL AND section = {section} DESC, idx LIMIT 1"
-    )
-}
-
-/// The place `query` ([`album_place_query`]) reads for the album
-/// `album_id`'s card in the group of `section`.
-fn album_place_on(
-    sql: &coven::SqlReadContext<'_>,
-    query: &str,
-    album_id: &str,
-    section: Option<&str>,
-) -> Result<Option<AlbumPlace>, DbError> {
-    Ok(sql
-        .query_row(query, params![album_id, section], |row| {
-            Ok(AlbumPlace {
-                position: bae_store::read::count_column::<u64>(row, "idx")?,
-                section_id: row.get("section")?,
-            })
-        })
-        .optional()?)
 }
 
 #[cfg(test)]

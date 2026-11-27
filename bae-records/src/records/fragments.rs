@@ -3,6 +3,7 @@
 //! and which album a release's records name. A read composes them as
 //! fragments, so no other crate reads a records table.
 
+use super::query::AlbumSummaryRow;
 use super::release_records::{library_status_from, StoredAlbumMatch};
 use crate::LibraryStatus;
 use bae_store::DbError;
@@ -87,6 +88,138 @@ sqlive_compose::fragment!(
          HAVING COUNT(*) > 0),
         '[]') AS credits
 "#);
+
+// The album's primary release: its lowest-ordered release, ties broken by
+// release id, so every device that holds the same rows names the same one; no
+// row for an album with no release.
+sqlive_compose::fragment!(
+    AlbumPrimaryRelease on albums,
+    r#"
+    SELECT first.id AS release_id
+    FROM releases AS first
+    WHERE first.album_id = @parent.id
+    ORDER BY first.album_order, first.id
+    LIMIT 1
+"#
+);
+
+// The ids of the album's releases in album order (the primary release first),
+// as a JSON array.
+sqlive_compose::fragment!(
+    AlbumReleaseIds on albums { release_ids: String },
+    r#"
+    SELECT json_group_array(held.id ORDER BY held.album_order, held.id) AS release_ids
+    FROM releases AS held
+    WHERE held.album_id = @parent.id
+"#
+);
+
+// What a list shows of each album: its title, year and whether it is a
+// compilation, its primary release with that release's cover version, its
+// credits and its releases.
+sqlive_compose::fragment!(
+    AlbumSummary { is_compilation: bool, cover_version: Option<String> },
+    r#"
+    SELECT album.id AS summary_album_id, album.title, album.year, album.is_compilation,
+           @crate::records::fragments::AlbumPrimaryRelease(parent: album) AS primary_release,
+           (SELECT cover.version
+            FROM @crate::records::files::CoverVersion AS cover
+            WHERE cover.id = @crate::records::fragments::AlbumPrimaryRelease(parent: album))
+               AS cover_version,
+           @crate::records::fragments::AlbumCredits(parent: album) AS credits,
+           @crate::records::fragments::AlbumReleaseIds(parent: album) AS releases
+    FROM albums AS album
+"#
+);
+
+impl AlbumSummary {
+    /// The summary as the row [`AlbumSummaryRow::process`] decodes. The
+    /// library lists an album only while it holds a release, and the credits'
+    /// own SQL yields a value for every album, so a missing one of either is
+    /// unreadable.
+    pub fn into_row(self) -> Result<AlbumSummaryRow, DbError> {
+        let missing = |what: &str| {
+            DbError::unreadable(
+                format!("{what} of album {}", self.summary_album_id),
+                None::<String>,
+            )
+        };
+        let primary_release_id =
+            self.primary_release.as_ref().ok_or_else(|| missing("the primary release"))?;
+        let primary_release_id = primary_release_id.release_id.clone();
+        let credits = self.credits.as_ref().ok_or_else(|| missing("the credits"))?.credits.clone();
+        let year = self
+            .year
+            .map(|year| {
+                i32::try_from(year).map_err(|_error| DbError::unreadable("an album's year", year))
+            })
+            .transpose()?;
+        Ok(AlbumSummaryRow {
+            id: self.summary_album_id,
+            title: self.title,
+            year,
+            is_compilation: self.is_compilation,
+            album_credits: credits,
+            release_ids_json: self.releases.release_ids,
+            primary_release_id,
+            primary_cover_version: self.cover_version,
+        })
+    }
+}
+
+// For each album and each artist, the album's credits that show another artist
+// than that one, as a JSON array in list order, NULL for none: what the row of
+// the album under that artist names beside it, in a list grouped by artist.
+sqlive_compose::fragment!(
+    AlbumCreditsBeside { credits: Option<String> },
+    r#"
+    SELECT album.id AS beside_album_id, grouping.id AS beside_artist_id,
+        (SELECT json_group_array(json(other.value) ORDER BY other.key)
+         FROM json_each(@crate::records::fragments::AlbumCredits(parent: album)) AS other
+         WHERE other.value ->> 'id' <> grouping.id
+         HAVING COUNT(*) > 0) AS credits
+    FROM albums AS album
+    CROSS JOIN artists AS grouping
+"#
+);
+
+impl AlbumCreditsBeside {
+    /// The line the other credits print; `None` when the album has none.
+    pub fn into_line(self) -> Result<Option<bae_types::credits::CreditLine>, DbError> {
+        self.credits.as_deref().map(crate::records::read::credit_line_of_json).transpose()
+    }
+}
+
+// Each album's row.
+sqlive_compose::fragment!(
+    AlbumRow { is_compilation: bool },
+    r#"
+    SELECT album.id AS row_album_id, album.title, album.year, album.is_compilation,
+           album.created_at
+    FROM albums AS album
+"#
+);
+
+impl AlbumRow {
+    /// The album the row holds.
+    pub fn into_album(self) -> Result<crate::DbAlbum, DbError> {
+        let year = self
+            .year
+            .map(|year| {
+                i32::try_from(year).map_err(|_error| DbError::unreadable("an album's year", year))
+            })
+            .transpose()?;
+        let created_at = bae_util::timestamp::parse_rfc3339(&self.created_at)
+            .map_err(|_unparsed| DbError::unreadable("an album's created_at", &self.created_at))?;
+        Ok(crate::DbAlbum {
+            id: self.row_album_id,
+            title: self.title,
+            year,
+            is_compilation: self.is_compilation,
+            created_at,
+        })
+    }
+}
 
 sqlive_compose::fragment!(
     LibraryStatusRows with checks(position INTEGER, release_id TEXT, catalog TEXT, group_id TEXT)

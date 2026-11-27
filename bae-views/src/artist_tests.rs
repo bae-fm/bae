@@ -370,8 +370,8 @@ async fn artist_detail_reads_its_albums_from_the_link_index() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::artist::artist_albums_query()),
-                [ARTIST_PRIMARY],
+                &format!("EXPLAIN QUERY PLAN {}", crate::album::ArtistAlbums::SQL),
+                &[(":artist", &ARTIST_PRIMARY as &dyn rusqlite::ToSql)][..],
                 |row| Ok((row.get::<_, i64>(1)?, row.get::<_, String>(3)?)),
             )
             .map_err(bae_store::DbError::from)
@@ -383,7 +383,7 @@ async fn artist_detail_reads_its_albums_from_the_link_index() {
         plan.iter().filter(|(parent, _)| *parent == 0).map(|(_, step)| step.as_str()).collect();
     assert_eq!(
         own.first().copied(),
-        Some("SEARCH link USING COVERING INDEX idx_album_artist_link_artist_page (artist_id=?)"),
+        Some("SEARCH link USING INDEX idx_album_artist_link_artist_page (artist_id=?)"),
         "{plan:?}"
     );
     assert!(!own.iter().any(|step| step.starts_with("USE TEMP B-TREE")), "{plan:?}");

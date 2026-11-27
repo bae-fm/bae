@@ -1,10 +1,22 @@
-//! The album grid's rows as the list reads them: their order, flat or
-//! grouped by artist, the artists' sections, and the rows of one window.
+//! The album grid's reads: its counts, its artists' sections and which chosen
+//! albums it no longer lists; and, for its order under a sort, its window, its
+//! page, the rows before a key, the key at a position, where an album's card
+//! is, the albums between two cards, chosen albums in its order and every
+//! album. Each is one compiled read.
 //!
 //! Its tables and the triggers keeping them are `listing.sql`.
 
+use super::order::{AlbumLead, AlbumOrder, SortCode};
 use super::*;
-use bae_store::{statement_row, statement_rows};
+use bae_records::records::query::AlbumSummaryRow;
+use bae_store::list_windows::sql_bound;
+use bae_store::{statement_optional, statement_row, statement_rows};
+
+use super::key_reads::*;
+use super::numbered_reads::*;
+use super::page_reads::*;
+use super::position_reads::*;
+use super::window_reads::*;
 
 // The flat grid's counts: its albums, each of which is one row, and whether
 // the library holds a track.
@@ -33,7 +45,7 @@ sqlive_compose::read!(
 
 /// How many rows the album grid has, flat or grouped by artist, and whether
 /// the library has a track to shuffle.
-pub(super) fn album_counts_on(
+pub(crate) fn album_counts_on(
     sql: &SqlReadContext<'_>,
     group_by_artist: bool,
 ) -> Result<AlbumCounts, DbError> {
@@ -53,23 +65,6 @@ pub(super) fn album_counts_on(
         can_shuffle: row.can_shuffle,
         grouped: false,
     })
-}
-
-/// How many rows of the album grid come before the row at `key`.
-pub(crate) fn album_rows_before_on(
-    sql: &SqlReadContext<'_>,
-    group_by_artist: bool,
-    order: &ListOrder,
-    key: &OrderKey,
-) -> Result<u64, DbError> {
-    bae_store::list_windows::rows_before_on(
-        sql,
-        album_order_tables(group_by_artist),
-        None,
-        &[],
-        order,
-        key,
-    )
 }
 
 // The sections of the grid grouped by artist with the artists ascending: each
@@ -110,7 +105,7 @@ sqlive_compose::read!(
 );
 
 /// The sections of the grid grouped by artist, the artists in `direction`.
-pub(super) fn album_sections_on(
+pub(crate) fn album_sections_on(
     sql: &SqlReadContext<'_>,
     direction: SortDirection,
 ) -> Result<Vec<crate::LibraryBrowseSection>, DbError> {
@@ -169,7 +164,7 @@ sqlive_compose::read!(
 );
 
 /// The albums of `requested` that the grid does not show, by id.
-pub(super) fn unshown_albums_on(
+pub(crate) fn unshown_albums_on(
     sql: &SqlReadContext<'_>,
     requested: &std::collections::BTreeSet<String>,
 ) -> Result<Vec<String>, DbError> {
@@ -180,287 +175,302 @@ pub(super) fn unshown_albums_on(
         .collect())
 }
 
-/// The table holding every term of the album list's order, flat or grouped
-/// by artist: the albums' listing rows, or their links to each artist their
-/// credits show.
-fn album_order_tables(group_by_artist: bool) -> &'static str {
-    if group_by_artist {
-        "FROM album_artist_link link"
-    } else {
-        "FROM album_listing listing"
-    }
-}
-
-/// The columns of an album card: the album's summary taken from its primary
-/// release's storage row (`primary_storage`, which [`primary_storage_join`]
-/// joins), and whether another device alone holds that release's audio.
-pub(crate) fn album_card_columns() -> String {
-    format!(
-        "{album}, primary_storage.audio_elsewhere_device IS NOT NULL AS primary_release_unplayable",
-        album = album_summary_columns_for_primary("primary_storage.release_id"),
-    )
-}
-
-/// The join of album `a` to its primary release's storage row, as
-/// `primary_storage`.
-pub(crate) fn primary_storage_join() -> String {
-    format!(
-        "LEFT JOIN ({storage}) AS primary_storage ON primary_storage.release_id = {primary}",
-        storage = bae_records::release_storage::ReleaseStorageRows::SQL,
-        primary = album_primary_release_sql(),
-    )
-}
-
-/// The statement reading the album list's rows `seek` reads (grouped by
-/// artist or not) in `order`, at most `:limit`, each with the artist whose
-/// group lists it and its key.
-///
-/// A window's statement is one SELECT over the table holding the order's
-/// terms, joined to each row's album, returning the order's terms as its key
-/// columns, so coven reruns it for a write at or before its last row alone.
-/// A read by offset picks its rows in an inner statement that reads only the
-/// ids of its rows from the table holding the order's terms, so a row
-/// `:offset` skips costs its place in the order's indexes and nothing else:
-/// every link has its listing row and every listing row its album, as their
-/// foreign keys hold. Its outer statement reads the columns of just the
-/// picked rows, in the same order.
-pub(crate) fn album_window_statement(
-    group_by_artist: bool,
-    order: &ListOrder,
-    seek: &Seek,
-) -> String {
-    let album = album_card_columns();
-    let primary_storage = primary_storage_join();
-    if !seek.by_offset() {
-        let listing = if group_by_artist {
-            "CROSS JOIN album_listing listing ON listing.album_id = link.album_id"
-        } else {
-            ""
-        };
-        return format!(
-            "SELECT {album}, {beside} AS credited_with, {keys} \
-             {tables} {listing} \
-             JOIN albums a ON a.id = listing.album_id \
-             {primary_storage} \
-             WHERE {condition} \
-             ORDER BY {ordering} {limit}",
-            beside = album_credits_beside_sql(group_by_artist),
-            keys = order.key_columns(),
-            tables = album_order_tables(group_by_artist),
-            condition = order.condition(seek),
-            ordering = order.ordering(seek),
-            limit = seek.limit_clause(),
-        );
-    }
-    let (picked, picked_ids) = if group_by_artist {
-        (
-            "link.artist_id AS picked_artist_id, link.album_id AS picked_album_id",
-            "CROSS JOIN album_artist_link link ON link.artist_id = picked.picked_artist_id \
-                 AND link.album_id = picked.picked_album_id \
-             CROSS JOIN album_listing listing ON listing.album_id = picked.picked_album_id",
-        )
-    } else {
-        (
-            "listing.album_id AS picked_album_id",
-            "CROSS JOIN album_listing listing ON listing.album_id = picked.picked_album_id",
-        )
+/// The key a row of a read with the columns `key_0` on says it is at.
+macro_rules! key_of {
+    ($row:ident) => {
+        OrderKey::new(vec![
+            $row.key_0, $row.key_1, $row.key_2, $row.key_3, $row.key_4, $row.key_5, $row.key_6,
+            $row.key_7,
+        ])
     };
-    format!(
-        "SELECT {album}, {beside} AS credited_with, {keys} \
-         FROM (SELECT {picked} {tables} WHERE {condition} \
-               ORDER BY {ordering} {limit}) picked \
-         {picked_ids} \
-         JOIN albums a ON a.id = picked.picked_album_id \
-         {primary_storage} \
-         ORDER BY {ordering}",
-        beside = album_credits_beside_sql(group_by_artist),
-        tables = album_order_tables(group_by_artist),
-        keys = order.key_columns(),
-        condition = order.condition(seek),
-        ordering = order.ordering(seek),
-        limit = seek.limit_clause(),
-    )
 }
 
-/// The album list's rows `seek` reads (grouped by artist or not) in `order`,
-/// at most `limit`, each with its key.
-pub(crate) fn album_rows_on(
+/// The grid's rows in `window` under `order`, each with its key.
+pub(crate) fn album_window_on(
     sql: &SqlReadContext<'_>,
-    group_by_artist: bool,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<AlbumAppearanceRow>>, DbError> {
-    let statement = album_window_statement(group_by_artist, order, seek);
-    Ok(seek.bound(limit, |params| {
-        sql.query(&statement, params, |row| {
-            Ok((AlbumAppearanceRow::read(row)?, order.key_of(row)?))
-        })
-    })?)
-}
-
-/// One row of the album list as read: the album, and when the list is
-/// grouped by artist, the line of the album's credits that show another
-/// artist than the one whose group lists it (none when it has no others).
-#[derive(Clone, PartialEq)]
-pub(crate) struct AlbumAppearanceRow {
-    pub(crate) row: AlbumSummaryRow,
-    credited_with: Option<bae_types::credits::CreditLine>,
-    primary_release_unplayable: bool,
-}
-
-impl AlbumAppearanceRow {
-    /// The row of a statement selecting [`album_card_columns`] and
-    /// `credited_with`.
-    pub(crate) fn read(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            row: AlbumSummaryRow::read(row)?,
-            credited_with: optional_credit_line_column(row, "credited_with")?,
-            primary_release_unplayable: row.get("primary_release_unplayable")?,
-        })
-    }
-
-    pub(crate) fn process(self, group_by_artist: bool) -> Result<DbAlbumAppearance, DbError> {
-        let album = self.row.process()?;
-        let display_artist_line =
-            if group_by_artist { self.credited_with } else { Some(album.artist_line.clone()) };
-        Ok(DbAlbumAppearance {
-            album,
-            display_artist_line,
-            primary_release_unplayable: self.primary_release_unplayable,
-        })
-    }
-}
-
-/// Which rows an album listing's order reads.
-#[derive(Clone, Copy)]
-enum AlbumRows {
-    /// One row per album, `album_listing listing`: its Artist sort compares
-    /// the album's whole credit list (the listing's credit keys).
-    Flat,
-    /// One row per album under each artist its credits show (the browse
-    /// grouped by artist), `album_artist_link link`: its Artist sort compares
-    /// the link's copy of the sort key of the artist the row is listed under,
-    /// and the album's other sorts compare the link's copies of the album's
-    /// values, which its indexes hold.
-    ByArtist,
-}
-
-impl AlbumRows {
-    /// The alias of the table whose title, year, date added and album id the
-    /// order compares.
-    fn album_values(self) -> &'static str {
-        match self {
-            AlbumRows::Flat => "listing",
-            AlbumRows::ByArtist => "link",
-        }
-    }
-}
-
-/// The album list's relation and order, flat or grouped by artist: grouped
-/// rows are album appearances, flat rows distinct albums. The relation adds
-/// each row's `album_listing listing` and album `a` to the order's tables,
-/// for reveal and the selection's order; a window picks its rows from the
-/// order's tables alone (`album_window_statement`).
-pub(crate) fn album_browse_order(
-    sort: &[AlbumSortCriterion],
-    group_by_artist: bool,
-) -> (String, ListOrder) {
-    if !group_by_artist {
-        return (
-            format!("{} JOIN albums a ON a.id = listing.album_id", album_order_tables(false)),
-            album_order(sort, AlbumRows::Flat),
-        );
-    }
-    let direction = grouped_artist_direction(sort);
-    let mut grouped_sort = vec![AlbumSortCriterion { field: AlbumSortField::Artist, direction }];
-    grouped_sort.extend(sort.iter().filter(|c| c.field != AlbumSortField::Artist).cloned());
-    if sort.is_empty() {
-        grouped_sort.push(AlbumSortCriterion {
-            field: AlbumSortField::DateAdded,
-            direction: SortDirection::Descending,
-        });
-    }
-    (
-        format!(
-            "{} CROSS JOIN album_listing listing ON listing.album_id = link.album_id \
-             JOIN albums a ON a.id = listing.album_id",
-            album_order_tables(true)
-        ),
-        album_order(&grouped_sort, AlbumRows::ByArtist),
-    )
-}
-
-/// The direction the grid grouped by artist orders its artists in: its
-/// Artist criterion's, else ascending.
-pub(super) fn grouped_artist_direction(sort: &[AlbumSortCriterion]) -> SortDirection {
-    sort.iter()
-        .find(|c| c.field == AlbumSortField::Artist)
-        .map_or(SortDirection::Ascending, |c| c.direction)
-}
-
-/// The credits of each row of the album grid that show another artist than
-/// the one whose group lists it, as a JSON array (a SQL expression over
-/// `album_browse_order`'s relation): NULL when the album has none, and for
-/// every row of the flat grid.
-fn album_credits_beside_sql(group_by_artist: bool) -> String {
-    if group_by_artist {
-        bae_records::records::query::album_credits_beside_json_sql("link.artist_id")
-    } else {
-        "NULL".to_string()
-    }
-}
-
-/// The order of an album listing over `rows`. With no criteria the newest
-/// albums come first. An index of `album_listing` serves each one-field sort
-/// of the flat grid, and an index of `album_artist_link` each way of the
-/// artists with each way of the field after Artist grouped by artist.
-fn album_order(sort: &[AlbumSortCriterion], rows: AlbumRows) -> ListOrder {
-    let values = rows.album_values();
-    // Every order ends with the album id, a total order over albums. Without
-    // it rows sharing a sort value order arbitrarily — and a window read by
-    // its offset, one read from a row beside it and an album's place (a
-    // ROW_NUMBER window) are different query shapes, so SQLite could
-    // tie-break them differently and a reveal would scroll to the wrong
-    // album.
-    if sort.is_empty() {
-        return ListOrder::new(vec![
-            SortTerm::descending(format!("{values}.created_at")),
-            SortTerm::ascending(format!("{values}.album_id")),
-        ]);
-    }
-    let mut terms = sort
-        .iter()
-        .flat_map(|c| {
-            let dir = c.direction;
-            match c.field {
-                AlbumSortField::Title => {
-                    vec![SortTerm::running(format!("{values}.title_sort_key"), dir)]
-                }
-                AlbumSortField::Artist => match rows {
-                    AlbumRows::Flat => vec![
-                        SortTerm::running("listing.credit_sort_key", dir).nullable(),
-                        SortTerm::running("listing.credit_artist_ids", dir).nullable(),
-                    ],
-                    AlbumRows::ByArtist => vec![
-                        SortTerm::running("link.artist_sort_key", dir),
-                        SortTerm::running("link.artist_id", dir),
-                    ],
+    order: &AlbumOrder,
+    window: &ListWindow,
+) -> Result<WindowRead<AlbumAppearanceRow>, DbError> {
+    let from = match &window.from {
+        Some(key) => AlbumOrder::values_of(key)?,
+        None => order.top(),
+    };
+    macro_rules! window {
+        ($params:ident, |$row:ident| $beside:expr) => {{
+            let [first, second, third, fourth] = order.codes();
+            let [key_0, key_1, key_2, key_3, key_4, key_5, key_6, key_7] = from;
+            statement_rows(
+                sql,
+                &$params {
+                    first,
+                    second,
+                    third,
+                    fourth,
+                    limit: sql_bound(window.limit),
+                    key_0,
+                    key_1,
+                    key_2,
+                    key_3,
+                    key_4,
+                    key_5,
+                    key_6,
+                    key_7,
                 },
-                // An unknown year sorts as above every year: last ascending,
-                // first descending.
-                AlbumSortField::Year => vec![
-                    SortTerm::running(format!("{values}.year_missing"), dir),
-                    SortTerm::running(format!("{values}.year"), dir).nullable(),
-                ],
-                AlbumSortField::DateAdded => {
-                    vec![SortTerm::running(format!("{values}.created_at"), dir)]
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-    terms.push(SortTerm::ascending(format!("{values}.album_id")));
-    ListOrder::new(terms)
+            )?
+            .into_iter()
+            .map(|$row| {
+                let key = key_of!($row);
+                Ok((AlbumAppearanceRow::of($row.card, $beside)?, key))
+            })
+            .collect::<Result<Vec<_>, DbError>>()?
+        }};
+    }
+    macro_rules! flat {
+        ($params:ident) => {
+            window!($params, |row| None)
+        };
+    }
+    macro_rules! grouped {
+        ($params:ident) => {
+            window!($params, |row| row.beside.into_line()?)
+        };
+    }
+    let rows = match order.lead {
+        AlbumLead::Flat(SortCode::Title) => flat!(FlatWindowTitleParams),
+        AlbumLead::Flat(SortCode::TitleBack) => flat!(FlatWindowTitleBackParams),
+        AlbumLead::Flat(SortCode::Artist) => flat!(FlatWindowArtistParams),
+        AlbumLead::Flat(SortCode::ArtistBack) => flat!(FlatWindowArtistBackParams),
+        AlbumLead::Flat(SortCode::Year) => flat!(FlatWindowYearParams),
+        AlbumLead::Flat(SortCode::YearBack) => flat!(FlatWindowYearBackParams),
+        AlbumLead::Flat(SortCode::Added) => flat!(FlatWindowAddedParams),
+        AlbumLead::Flat(SortCode::AddedBack) => flat!(FlatWindowAddedBackParams),
+        AlbumLead::Grouped(SortDirection::Ascending) => grouped!(GroupedWindowArtistParams),
+        AlbumLead::Grouped(SortDirection::Descending) => grouped!(GroupedWindowArtistBackParams),
+    };
+    Ok(WindowRead { window: window.clone(), rows })
+}
+
+/// The albums of the flat grid sorted first by `first` under `order`, at the
+/// places `page` names.
+pub(crate) fn album_page_on(
+    sql: &SqlReadContext<'_>,
+    first_sort: SortCode,
+    order: &AlbumOrder,
+    page: ListPage,
+) -> Result<Vec<AlbumAppearanceRow>, DbError> {
+    macro_rules! page {
+        ($params:ident) => {{
+            let [first, second, third, fourth] = order.codes();
+            statement_rows(
+                sql,
+                &$params {
+                    first,
+                    second,
+                    third,
+                    fourth,
+                    offset: sql_bound(page.offset),
+                    limit: sql_bound(page.limit),
+                },
+            )?
+            .into_iter()
+            .map(|row| AlbumAppearanceRow::of(row.card, None))
+            .collect()
+        }};
+    }
+    match first_sort {
+        SortCode::Title => page!(FlatPageTitleParams),
+        SortCode::TitleBack => page!(FlatPageTitleBackParams),
+        SortCode::Artist => page!(FlatPageArtistParams),
+        SortCode::ArtistBack => page!(FlatPageArtistBackParams),
+        SortCode::Year => page!(FlatPageYearParams),
+        SortCode::YearBack => page!(FlatPageYearBackParams),
+        SortCode::Added => page!(FlatPageAddedParams),
+        SortCode::AddedBack => page!(FlatPageAddedBackParams),
+    }
+}
+
+/// How many rows of the grid under `order` come before the row at `key`.
+pub(crate) fn albums_before_on(
+    sql: &SqlReadContext<'_>,
+    order: &AlbumOrder,
+    key: &OrderKey,
+) -> Result<u64, DbError> {
+    let values = AlbumOrder::values_of(key)?;
+    macro_rules! before {
+        ($params:ident) => {{
+            let [first, second, third, fourth] = order.codes();
+            let [key_0, key_1, key_2, key_3, key_4, key_5, key_6, key_7] = values;
+            statement_row(
+                sql,
+                &$params {
+                    first,
+                    second,
+                    third,
+                    fourth,
+                    key_0,
+                    key_1,
+                    key_2,
+                    key_3,
+                    key_4,
+                    key_5,
+                    key_6,
+                    key_7,
+                },
+            )?
+            .rows_before
+        }};
+    }
+    Ok(match order.lead {
+        AlbumLead::Flat(SortCode::Title) => before!(FlatBeforeTitleParams),
+        AlbumLead::Flat(SortCode::TitleBack) => before!(FlatBeforeTitleBackParams),
+        AlbumLead::Flat(SortCode::Artist) => before!(FlatBeforeArtistParams),
+        AlbumLead::Flat(SortCode::ArtistBack) => before!(FlatBeforeArtistBackParams),
+        AlbumLead::Flat(SortCode::Year) => before!(FlatBeforeYearParams),
+        AlbumLead::Flat(SortCode::YearBack) => before!(FlatBeforeYearBackParams),
+        AlbumLead::Flat(SortCode::Added) => before!(FlatBeforeAddedParams),
+        AlbumLead::Flat(SortCode::AddedBack) => before!(FlatBeforeAddedBackParams),
+        AlbumLead::Grouped(SortDirection::Ascending) => before!(GroupedBeforeArtistParams),
+        AlbumLead::Grouped(SortDirection::Descending) => before!(GroupedBeforeArtistBackParams),
+    })
+}
+
+/// The key of the row at `position` of the grid under `order`, or of its last
+/// row when it ends before it; `None` for an empty grid.
+pub(crate) fn album_key_at_on(
+    sql: &SqlReadContext<'_>,
+    order: &AlbumOrder,
+    position: u64,
+) -> Result<Option<OrderKey>, DbError> {
+    macro_rules! key_at {
+        ($params:ident) => {{
+            let [first, second, third, fourth] = order.codes();
+            statement_optional(
+                sql,
+                &$params { first, second, third, fourth, position: sql_bound(position) },
+            )?
+            .map(|row| key_of!(row))
+        }};
+    }
+    Ok(match order.lead {
+        AlbumLead::Flat(SortCode::Title) => key_at!(FlatKeyAtTitleParams),
+        AlbumLead::Flat(SortCode::TitleBack) => key_at!(FlatKeyAtTitleBackParams),
+        AlbumLead::Flat(SortCode::Artist) => key_at!(FlatKeyAtArtistParams),
+        AlbumLead::Flat(SortCode::ArtistBack) => key_at!(FlatKeyAtArtistBackParams),
+        AlbumLead::Flat(SortCode::Year) => key_at!(FlatKeyAtYearParams),
+        AlbumLead::Flat(SortCode::YearBack) => key_at!(FlatKeyAtYearBackParams),
+        AlbumLead::Flat(SortCode::Added) => key_at!(FlatKeyAtAddedParams),
+        AlbumLead::Flat(SortCode::AddedBack) => key_at!(FlatKeyAtAddedBackParams),
+        AlbumLead::Grouped(SortDirection::Ascending) => key_at!(GroupedKeyAtArtistParams),
+        AlbumLead::Grouped(SortDirection::Descending) => key_at!(GroupedKeyAtArtistBackParams),
+    })
+}
+
+/// Runs the flat or the grouped one of two reads over the numbered cards, as
+/// `order` is, binding its sorts and the fields given.
+macro_rules! numbered {
+    ($run:ident, $sql:expr, $order:expr, $flat:ident, $grouped:ident
+     { $($field:ident: $value:expr),* }, $map:expr) => {{
+        let [first, second, third, fourth] = $order.codes();
+        match $order.lead {
+            AlbumLead::Flat(_) => $run(
+                $sql,
+                &$flat { first, second, third, fourth, $($field: $value),* },
+            )?
+            .into_iter()
+            .map($map)
+            .collect::<Vec<_>>(),
+            AlbumLead::Grouped(_) => $run(
+                $sql,
+                &$grouped { first, second, third, fourth, $($field: $value),* },
+            )?
+            .into_iter()
+            .map($map)
+            .collect::<Vec<_>>(),
+        }
+    }};
+}
+
+/// Where the album `album_id`'s card is in the grid under `order`: its card in
+/// the group of the artist `section` when that group holds one, else its first
+/// card. `None` when the grid shows no card of the album.
+pub(crate) fn album_place_on(
+    sql: &SqlReadContext<'_>,
+    order: &AlbumOrder,
+    album_id: &str,
+    section: Option<&str>,
+) -> Result<Option<AlbumPlace>, DbError> {
+    let [first, second, third, fourth] = order.codes();
+    let (album, section) = (album_id.to_string(), section.map(str::to_string));
+    Ok(match order.lead {
+        AlbumLead::Flat(_) => statement_optional(
+            sql,
+            &FlatAlbumPlaceReadParams { first, second, third, fourth, album, section },
+        )?
+        .map(|row| AlbumPlace { position: row.position, section_id: row.section_id }),
+        AlbumLead::Grouped(_) => statement_optional(
+            sql,
+            &GroupedAlbumPlaceReadParams { first, second, third, fourth, album, section },
+        )?
+        .map(|row| AlbumPlace { position: row.position, section_id: Some(row.section_id) }),
+    })
+}
+
+/// The albums of the grid's cards under `order` from the card `from` to the
+/// card `to`, both included, each album once.
+pub(crate) fn album_ids_between_on(
+    sql: &SqlReadContext<'_>,
+    order: &AlbumOrder,
+    from: AlbumCard<'_>,
+    to: AlbumCard<'_>,
+) -> Result<Vec<String>, DbError> {
+    let owned =
+        |card: AlbumCard<'_>| (card.album_id.to_string(), card.section_id.map(str::to_string));
+    let ((from_album, from_section), (to_album, to_section)) = (owned(from), owned(to));
+    Ok(numbered!(
+        statement_rows,
+        sql,
+        order,
+        FlatAlbumsBetweenParams,
+        GroupedAlbumsBetweenParams {
+            from_album: from_album,
+            from_section: from_section,
+            to_album: to_album,
+            to_section: to_section
+        },
+        |row| row.album_id
+    ))
+}
+
+/// The albums of `album_ids` the grid under `order` lists, each once at its
+/// first card, in the grid's order.
+pub(crate) fn albums_in_order_on(
+    sql: &SqlReadContext<'_>,
+    order: &AlbumOrder,
+    album_ids: &[String],
+) -> Result<Vec<AlbumSummaryRow>, DbError> {
+    let albums = serde_json::to_string(album_ids).expect("album ids serialize as JSON");
+    numbered!(
+        statement_rows,
+        sql,
+        order,
+        FlatAlbumsInOrderParams,
+        GroupedAlbumsInOrderParams { albums: albums },
+        |row| row.summary.into_row()
+    )
+    .into_iter()
+    .collect()
+}
+
+/// Every album, in the order of the flat grid under `order`.
+pub(crate) fn every_album_on(
+    sql: &SqlReadContext<'_>,
+    order: &AlbumOrder,
+) -> Result<Vec<DbAlbum>, DbError> {
+    let [first, second, third, fourth] = order.codes();
+    statement_rows(sql, &EveryAlbumParams { first, second, third, fourth })?
+        .into_iter()
+        .map(|row| row.album.into_album())
+        .collect()
 }
 
 #[cfg(test)]

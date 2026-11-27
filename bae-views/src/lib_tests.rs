@@ -449,27 +449,33 @@ mod window_cost {
                 ));
             }
         }
-        for group_by_artist in [false, true] {
-            let (list, rows, count): (&str, Rows<_>, Count) = if group_by_artist {
-                (
-                    "albums_by_artist",
-                    |sql, order, seek, limit| {
-                        crate::album::album_rows_on(sql, true, order, seek, limit)
-                    },
-                    |sql, order, key| crate::album::album_rows_before_on(sql, true, order, key),
-                )
-            } else {
-                (
-                    "albums",
-                    |sql, order, seek, limit| {
-                        crate::album::album_rows_on(sql, false, order, seek, limit)
-                    },
-                    |sql, order, key| crate::album::album_rows_before_on(sql, false, order, key),
-                )
-            };
+        // Every field stacked behind one that many albums tie on.
+        sorts.push((
+            "Year_stacked".into(),
+            [
+                (AlbumSortField::Year, SortDirection::Ascending),
+                (AlbumSortField::Artist, SortDirection::Descending),
+                (AlbumSortField::Title, SortDirection::Ascending),
+                (AlbumSortField::DateAdded, SortDirection::Descending),
+            ]
+            .map(|(field, direction)| AlbumSortCriterion { field, direction })
+            .into(),
+        ));
+        for (group_by_artist, list) in [(false, "albums"), (true, "albums_by_artist")] {
             for (name, sort) in &sorts {
-                let (_, order) = crate::album::album_browse_order(sort, group_by_artist);
-                measure(db, list, name, n, order, rows, count).await;
+                let order = crate::album::AlbumOrder::new(sort, group_by_artist);
+                measure_reads(
+                    db,
+                    list,
+                    name,
+                    n,
+                    move |sql, position| crate::album::album_key_at_on(sql, &order, position),
+                    move |sql, window| {
+                        Ok(crate::album::album_window_on(sql, &order, window)?.rows.len())
+                    },
+                    move |sql, key| crate::album::albums_before_on(sql, &order, key),
+                )
+                .await;
             }
         }
     }

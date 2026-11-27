@@ -13,3 +13,4 @@ sql = [
     "src/name_keys.sql",
 ]
 functions = ["bae_store::FOLD_CASE", "bae_store::NAME_KEY", "bae_store::NAME_LIST_KEY"]
+collations = ["bae_store::DESCENDING"]

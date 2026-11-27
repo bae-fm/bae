@@ -3,7 +3,7 @@
 //! Its tables and the triggers keeping them are `artist.sql`.
 
 use super::*;
-use crate::album::AlbumAppearanceRow;
+use crate::album::{artist_albums_on, AlbumAppearanceRow};
 use crate::album_detail::{AlbumAppearance, ArtistDetail};
 use crate::list_sort::{key, key_values, ListSort};
 use bae_records::records::files::ArtistImageVersion;
@@ -149,7 +149,7 @@ fn find_artist_detail_on(
         return Ok(None);
     };
     let artist = found.shown.into_summary()?;
-    let albums = sql.query(&artist_albums_query(), params![artist_id], AlbumAppearanceRow::read)?;
+    let albums = artist_albums_on(sql, artist_id)?;
     let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
         sql,
         artist_id,
@@ -166,22 +166,6 @@ fn find_artist_detail_on(
         |row| bae_store::read::count_column(row, "credit_name_count"),
     )?;
     Ok(Some(ArtistDetailRows { artist, credit_names, albums, credit_name_count }))
-}
-
-/// The albums of the artist `?1` names, in its page's order, which
-/// `album_artist_link`'s artist page index (`album/listing.sql`) holds, so
-/// the read sorts nothing.
-pub(crate) fn artist_albums_query() -> String {
-    format!(
-        "SELECT {columns}, NULL AS credited_with \
-         FROM album_artist_link link \
-         JOIN albums a ON a.id = link.album_id \
-         {primary_storage} \
-         WHERE link.artist_id = ?1 \
-         ORDER BY link.year_missing, link.year, link.title_sort_key, link.album_id",
-        columns = crate::album::album_card_columns(),
-        primary_storage = crate::album::primary_storage_join(),
-    )
 }
 
 #[derive(Clone, PartialEq)]

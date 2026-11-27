@@ -6,6 +6,7 @@ pub mod audio_container;
 pub mod content_type;
 pub mod content_type_hint;
 pub mod database_failure;
+pub mod descending_order;
 pub mod duration;
 pub mod error_text;
 pub mod fs;

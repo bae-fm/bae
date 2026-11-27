@@ -4,14 +4,26 @@
 //! an album's card is in the grid (`place`).
 
 use super::*;
+#[cfg(test)]
+pub(crate) use card::ArtistAlbums;
+pub(crate) use card::{artist_albums_on, AlbumAppearanceRow};
 pub(crate) use listing::{
-    album_browse_order, album_card_columns, album_rows_before_on, album_rows_on,
-    primary_storage_join, AlbumAppearanceRow,
+    album_counts_on, album_key_at_on, album_page_on, album_sections_on, album_window_on,
+    albums_before_on, albums_in_order_on, every_album_on, unshown_albums_on,
 };
-use listing::{album_counts_on, album_sections_on, grouped_artist_direction, unshown_albums_on};
+use order::grouped_artist_direction;
+pub(crate) use order::AlbumOrder;
 
+mod card;
+mod key_reads;
 mod listing;
+mod numbered_reads;
+mod order;
+pub mod order_fragments;
+mod page_reads;
 mod place;
+mod position_reads;
+mod window_reads;
 pub use place::{AlbumCard, AlbumPlace};
 mod search_albums;
 use search_albums::first_search_albums_on;
@@ -148,19 +160,8 @@ impl LibraryViews {
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
     /// `sort` is empty.
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {
-        let (relation, order) = album_browse_order(sort, false);
-
-        let query = format!(
-            "SELECT \
-                a.id, a.title, a.year, \
-                a.is_compilation, \
-                a.created_at \
-            {relation} \
-            ORDER BY {}",
-            order.clause()
-        );
-
-        self.store.read(move |sql| sql.query(&query, [], row_to_album).map_err(DbError::from)).await
+        let order = AlbumOrder::new(sort, false);
+        self.store.read(move |sql| every_album_on(&sql, &order)).await
     }
 
     /// One window of the album list under `sort`, read by its offset.
@@ -171,13 +172,13 @@ impl LibraryViews {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<crate::album_detail::AlbumSummary>, DbError> {
-        let (_, order) = album_browse_order(sort, false);
+        let (first, order) = AlbumOrder::flat(sort);
         let rows: Vec<DbAlbumSummary> = self
             .store
             .read(move |sql| {
-                Ok(album_rows_on(&sql, false, &order, &order.at_offset(offset), limit)?
+                Ok(album_page_on(&sql, first, &order, ListPage { offset, limit })?
                     .into_iter()
-                    .map(|(appearance, _)| appearance.row)
+                    .map(|appearance| appearance.row)
                     .collect::<Vec<_>>())
             })
             .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
@@ -186,8 +187,7 @@ impl LibraryViews {
     }
 
     /// Follow one window of the album list under `sort`, flat or grouped by
-    /// artist: a range of the grid's order (`list_windows`), which coven
-    /// reruns for a write inside it alone.
+    /// artist: the rows from the window's key on in the grid's order.
     pub fn subscribe_album_window(
         &self,
         sort: &[AlbumSortCriterion],
@@ -195,11 +195,10 @@ impl LibraryViews {
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbAlbumAppearance>, bae_store::DbError>
     {
-        let (_, order) = album_browse_order(sort, group_by_artist);
-        let read_order = order.clone();
+        let order = AlbumOrder::new(sort, group_by_artist);
         self.store
-            .subscribe_list_window(initial, order, move |sql, seek, limit| {
-                album_rows_on(sql, group_by_artist, &read_order, seek, limit)
+            .subscribe_reconfigurable(initial, move |window, sql| {
+                album_window_on(&sql, &order, window)
             })
             .process(move |window| window.try_map_rows(|row| row.process(group_by_artist)))
     }
@@ -211,19 +210,12 @@ impl LibraryViews {
         sort: &[AlbumSortCriterion],
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
-        let (_, order) = album_browse_order(sort, false);
-        let read_order = order.clone();
-        self.store.subscribe_list_page(
-            page,
-            order,
-            |order, seek| listing::album_window_statement(false, order, seek),
-            move |sql, seek, limit| album_rows_on(sql, false, &read_order, seek, limit),
-            |rows| {
-                Ok(album_rows(
-                    rows.into_iter().map(|row| row.process(false)).collect::<Result<_, _>>()?,
-                ))
-            },
-        )
+        let (first, order) = AlbumOrder::flat(sort);
+        self.store.subscribe(move |sql| album_page_on(&sql, first, &order, page)).process(|rows| {
+            Ok(album_rows(
+                rows.into_iter().map(|row| row.process(false)).collect::<Result<_, _>>()?,
+            ))
+        })
     }
 
     /// Follow how many rows the album grid has: its albums, and flat or
@@ -246,10 +238,9 @@ impl LibraryViews {
         group_by_artist: bool,
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        let (_, order) = album_browse_order(sort, group_by_artist);
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            album_rows_before_on(&sql, group_by_artist, &order, key)
-        })
+        let order = AlbumOrder::new(sort, group_by_artist);
+        self.store
+            .subscribe_reconfigurable(initial, move |key, sql| albums_before_on(&sql, &order, key))
     }
 
     /// The key of the row at `position` of the album grid, or of its last row
@@ -260,14 +251,8 @@ impl LibraryViews {
         group_by_artist: bool,
         position: u64,
     ) -> Result<Option<OrderKey>, DbError> {
-        let (_, order) = album_browse_order(sort, group_by_artist);
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    album_rows_on(&sql, group_by_artist, &order, seek, limit)
-                })
-            })
-            .await
+        let order = AlbumOrder::new(sort, group_by_artist);
+        self.store.read(move |sql| album_key_at_on(&sql, &order, position)).await
     }
 
     /// Follow the artist sections of the album grid grouped by artist under
@@ -302,24 +287,10 @@ impl LibraryViews {
         album_ids: Vec<String>,
         group_by_artist: bool,
     ) -> Result<Vec<crate::album_detail::AlbumSummary>, DbError> {
-        let (relation, order) = album_browse_order(sort, group_by_artist);
-        let order_by = order.clause();
-        let query = format!(
-            "WITH appearance (album_id, idx) AS ( \
-                 SELECT a.id, ROW_NUMBER() OVER (ORDER BY {order_by}) \
-                 {relation} \
-                 WHERE a.id IN (SELECT value FROM json_each(?1))) \
-             {select} \
-             FROM (SELECT album_id, MIN(idx) AS idx FROM appearance GROUP BY album_id) AS first \
-             JOIN album_listing listing ON listing.album_id = first.album_id \
-             JOIN albums a ON a.id = first.album_id \
-             ORDER BY first.idx",
-            select = album_summary_select(),
-        );
-        let album_ids = serde_json::to_string(&album_ids).expect("album ids serialize as JSON");
+        let order = AlbumOrder::new(sort, group_by_artist);
         let rows: Vec<DbAlbumSummary> = self
             .store
-            .read(move |sql| Ok(sql.query(&query, [album_ids], AlbumSummaryRow::read)?))
+            .read(move |sql| albums_in_order_on(&sql, &order, &album_ids))
             .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
             .await?;
         Ok(rows.into_iter().map(crate::album_detail::AlbumSummary::from_raw).collect())
@@ -853,6 +824,10 @@ fn album_track_rows_on(
 #[cfg(test)]
 #[path = "album/tracks_tests.rs"]
 mod track_list_tests;
+
+#[cfg(test)]
+#[path = "album/order_tests.rs"]
+mod stacked_sort_tests;
 
 #[cfg(test)]
 #[path = "album_tests.rs"]
