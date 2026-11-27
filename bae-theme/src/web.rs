@@ -2,15 +2,18 @@
 //! system's `tokens.css` names them: `--<colour token>` in one block per
 //! colour theme of tokens.json, the first theme's block on `:root` too and
 //! each block on `[data-theme="<id>"]`, then one `:root` block with every
-//! spacing, radius and opacity token as `--<token>` and every font stack of
-//! `type.families` as `--font-<family>`. Each value is the CSS tokens.json
+//! spacing, radius and opacity token as `--<token>`, every font stack of
+//! `type.families` as `--font-<family>` and each of the website's text styles
+//! as `--type-<style>-size`, `-weight`, `-line-height` and `-letter-spacing`,
+//! then one class per website text style, `.<style>`, which sets the style's
+//! font and metrics from those properties. Each value is the CSS tokens.json
 //! writes.
 
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::lengths::RawLengthFamily;
-use crate::{Colours, RawTokens};
+use crate::{is_web_family, Colours, RawTokens};
 
 /// The stylesheet, named relative to the output directory.
 pub const FILE: &str = "tokens.css";
@@ -24,6 +27,20 @@ pub struct Web {
     pub measures: Vec<(String, String)>,
     /// Each font family's stack, by its key.
     pub fonts: BTreeMap<String, String>,
+    /// The website's text styles, in tokens.json's order.
+    pub text: Vec<WebTextStyle>,
+}
+
+/// A text style the website draws: a style of a group in a web family.
+#[derive(Debug)]
+pub struct WebTextStyle {
+    pub name: String,
+    /// The key of its font stack in `type.families`.
+    pub family: String,
+    pub size: String,
+    pub weight: u16,
+    pub line_height: Option<String>,
+    pub letter_spacing: Option<String>,
 }
 
 /// One colour theme: every colour token's value in it, in tokens.json's order.
@@ -34,8 +51,9 @@ pub struct WebTheme {
 }
 
 /// The website's tokens of <raw>, with its colour tokens' <colours> in each
-/// theme.
-pub(crate) fn read(raw: &RawTokens, colours: &Colours) -> Web {
+/// theme. A problem is named for each website text style that names an app's
+/// family, a family with no font stack, an app role or an iOS style.
+pub(crate) fn read(raw: &RawTokens, colours: &Colours, problems: &mut Vec<String>) -> Web {
     let themes = raw
         .color
         .themes
@@ -59,7 +77,36 @@ pub(crate) fn read(raw: &RawTokens, colours: &Colours) -> Web {
         .flat_map(|family: &RawLengthFamily| &family.tokens)
         .map(|token| (token.name.clone(), token.value.clone()))
         .collect();
-    Web { themes, measures, fonts: raw.text.families.clone() }
+    let mut text = Vec::new();
+    for group in raw.text.groups.iter().filter(|group| is_web_family(&group.family)) {
+        for style in &group.styles {
+            let name = &style.name;
+            let family = style.family.as_ref().unwrap_or(&group.family);
+            if !is_web_family(family) {
+                problems.push(format!(
+                    "tokens.json text style `{name}` is the website's and names the app family `{family}`"
+                ));
+            } else if !raw.text.families.contains_key(family) {
+                problems.push(format!(
+                    "tokens.json text style `{name}` names the family `{family}`, which has no font stack"
+                ));
+            }
+            if style.role.is_some() || style.ios.is_some() {
+                problems.push(format!(
+                    "tokens.json text style `{name}` is the website's and names an app role or an ios style"
+                ));
+            }
+            text.push(WebTextStyle {
+                name: name.clone(),
+                family: family.clone(),
+                size: style.font_size.clone(),
+                weight: style.font_weight,
+                line_height: style.line_height.clone(),
+                letter_spacing: style.letter_spacing.clone(),
+            });
+        }
+    }
+    Web { themes, measures, fonts: raw.text.families.clone(), text }
 }
 
 pub fn css(web: &Web) -> String {
@@ -87,6 +134,36 @@ fn write_css(out: &mut String, web: &Web) -> std::fmt::Result {
     for (family, stack) in &web.fonts {
         writeln!(out, "  --font-{family}: {stack};")?;
     }
+    for style in &web.text {
+        for (_, suffix, value) in style.metrics() {
+            writeln!(out, "  --type-{}-{suffix}: {value};", style.name)?;
+        }
+    }
     out.push_str("}\n");
+    for style in &web.text {
+        write!(out, "\n.{} {{\n  font-family: var(--font-{});\n", style.name, style.family)?;
+        for (property, suffix, _) in style.metrics() {
+            writeln!(out, "  {property}: var(--type-{}-{suffix});", style.name)?;
+        }
+        out.push_str("}\n");
+    }
     Ok(())
+}
+
+impl WebTextStyle {
+    /// The style's metrics, each as the CSS property it sets, the suffix of
+    /// its `--type-<style>-` property and its value.
+    fn metrics(&self) -> Vec<(&'static str, &'static str, String)> {
+        let mut metrics = vec![
+            ("font-size", "size", self.size.clone()),
+            ("font-weight", "weight", self.weight.to_string()),
+        ];
+        if let Some(height) = &self.line_height {
+            metrics.push(("line-height", "line-height", height.clone()));
+        }
+        if let Some(spacing) = &self.letter_spacing {
+            metrics.push(("letter-spacing", "letter-spacing", spacing.clone()));
+        }
+        metrics
+    }
 }

@@ -11,13 +11,18 @@ The website (`website/`) is a theme-gen target too: `theme-gen emit --target
 web` writes `website/src/generated/tokens.css`, which the site's npm scripts
 run before Astro (`npm run theme`). It holds every colour token of tokens.json
 in each colour theme, the first theme (dark) on `:root` and each on
-`[data-theme="<id>"]`, then the spacing, radius and opacity tokens and every
-font stack of `type.families`, named as the design system's own `tokens.css`
-names them. The home page draws in the dark values; the docs follow
-Starlight's theme switch, which sets `data-theme`. tokens.json's `web-display`,
-`web-body` and `web-mono` families are the site's Mona Sans, Hanken Grotesk
-and JetBrains Mono. The site's own layout (its type sizes, line heights,
-widths, section paddings and letter spacing) stays in the page.
+`[data-theme="<id>"]`, then the spacing, radius and opacity tokens, every
+font stack of `type.families` and the website's text styles, named as the
+design system's own `tokens.css` names them. The home page draws in the dark
+values; the docs follow Starlight's theme switch, which sets `data-theme`.
+tokens.json's `web-display`, `web-body` and `web-mono` families are the site's
+Mona Sans, Hanken Grotesk and JetBrains Mono. The text styles of its Web group,
+in those families, are the website's: no app draws them, so they name no role
+and no iOS style, and a size that grows with the window is a CSS `clamp()`.
+theme-gen writes each as `--type-<style>-size`, `-weight`, `-line-height` and
+`-letter-spacing`, and as a class `.<style>` that sets the style from them.
+The site's own layout (its type sizes, line heights, widths, section paddings
+and letter spacing) stays in the page.
 
 Appearance settings have three independent choices: System/Light/Dark mode,
 Blue/Orchid/Pink/Lime/Mint/Sky accent, and

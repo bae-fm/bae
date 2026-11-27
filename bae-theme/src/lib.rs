@@ -1,8 +1,8 @@
 //! The apps' and the website's shared theme: `design/theme.toml` for the
 //! semantics and scales and `design/system/tokens.json` for the tones, the
 //! accents, the text styles, the opacities, the radii, the spacing, the icon
-//! and size roles and, for the website, every colour token and font stack,
-//! validated, and emitted as the typed Swift and Kotlin each platform
+//! and size roles and, for the website, every colour token, font stack and
+//! web text style, validated, and emitted as the typed Swift and Kotlin each platform
 //! compiles and as the CSS custom properties the website reads.
 
 pub mod android;
@@ -107,7 +107,8 @@ pub struct Theme {
     /// Recurring element sizes, by role.
     pub size: BTreeMap<String, PlatformLengths>,
     /// What the website reads: every colour token in each colour theme, the
-    /// spacing, radius and opacity tokens and the font stacks, as CSS.
+    /// spacing, radius and opacity tokens, the font stacks and the website's
+    /// text styles, as CSS.
     pub web: web::Web,
 }
 
@@ -277,7 +278,8 @@ struct RawType {
 }
 
 /// A group of text styles in one font family. The `android` family's styles
-/// are Android's sizes; every other family's are Apple's.
+/// are Android's sizes, a web family's are the website's, and every other
+/// family's are Apple's.
 #[derive(Deserialize)]
 struct RawTypeGroup {
     family: String,
@@ -285,13 +287,13 @@ struct RawTypeGroup {
 }
 
 /// A text style as tokens.json writes it for the design system's stylesheet,
-/// with the app role it draws and, on Apple, the Dynamic Type style iOS
-/// follows.
+/// with the app role it draws, which a website style has none of, and, on
+/// Apple, the Dynamic Type style iOS follows.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RawTextStyle {
     name: String,
-    role: String,
+    role: Option<String>,
     family: Option<String>,
     font_size: String,
     font_weight: u16,
@@ -304,6 +306,12 @@ struct RawTextStyle {
 const ANDROID_FAMILY: &str = "android";
 /// The family whose text styles draw in the platform's monospaced face.
 const MONO_FAMILY: &str = "mono";
+
+/// Whether <family> is one of the website's font families, whose text styles
+/// the website draws and no app does.
+fn is_web_family(family: &str) -> bool {
+    family.starts_with("web-")
+}
 
 #[derive(Deserialize)]
 struct RawColorTokens {
@@ -434,7 +442,7 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
         space: lengths::read_shared("space", &raw.spacing, lengths::shared_length, problems),
         icon: lengths::read_icons(&raw.icon, &raw.icon_android, problems),
         size: lengths::read_sizes(&raw.size, &raw.size_android, problems),
-        web: web::read(&raw, &colours),
+        web: web::read(&raw, &colours, problems),
     }
 }
 
@@ -483,9 +491,20 @@ struct PlatformStyle<'a> {
 /// Apple family and Android's from its style in the `android` family.
 fn read_text(raw: &RawType, problems: &mut Vec<String>) -> BTreeMap<String, TextRole> {
     let mut entries: Vec<RoleEntry<PlatformStyle>> = Vec::new();
-    for group in &raw.groups {
+    // The website's styles are read by web::read.
+    for group in raw.groups.iter().filter(|group| !is_web_family(&group.family)) {
         for style in &group.styles {
             let name = style.name.as_str();
+            if style.family.as_deref().is_some_and(is_web_family) {
+                problems.push(format!(
+                    "tokens.json text style `{name}` is an app's and names the website's family"
+                ));
+            }
+            let Some(role) = &style.role else {
+                problems
+                    .push(format!("tokens.json text style `{name}` is an app's and names no role"));
+                continue;
+            };
             let read = PlatformStyle {
                 name,
                 weight: css_weight(name, style.font_weight, problems),
@@ -502,7 +521,7 @@ fn read_text(raw: &RawType, problems: &mut Vec<String>) -> BTreeMap<String, Text
                 ios: style.ios.as_ref(),
             };
             entries.push(RoleEntry {
-                role: &style.role,
+                role,
                 name,
                 android: group.family == ANDROID_FAMILY,
                 value: read,

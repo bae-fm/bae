@@ -544,3 +544,65 @@ fn a_colour_token_needs_a_colour_in_each_theme() {
     let problems = Theme::from_sources(&format!("{STANDARD}\n{SEMANTICS}"), &tokens).unwrap_err();
     assert_eq!(problems, ["tokens.json `hairline` has no light colour"]);
 }
+
+/// The website's stylesheet gives each of its text styles its metrics as
+/// properties and a class that draws the style from them; the apps read none
+/// of them.
+#[test]
+fn the_website_takes_its_text_styles_as_properties_and_classes() {
+    let theme = from_toml(THEME).unwrap();
+    let css = web::css(&theme.web);
+    assert!(css.contains("  --type-web-headline-size: clamp(46px, 6.4vw, 82px);\n"));
+    assert!(css.contains("  --type-web-headline-letter-spacing: -0.035em;\n"));
+    assert!(css.contains(
+        "\n.web-label {\n  font-family: var(--font-web-body);\n  font-size: var(--type-web-label-size);\n  font-weight: var(--type-web-label-weight);\n  line-height: var(--type-web-label-line-height);\n}\n"
+    ));
+    assert!(css.contains("\n.web-eyebrow {\n  font-family: var(--font-web-mono);\n"));
+    assert!(!css.contains("--type-body-size"), "the apps' styles stay out of the website's");
+    assert!(!apple::swift(&theme).contains("web"));
+    assert!(!android::kotlin(&theme).contains("web"));
+}
+
+/// A text style of a web family is the website's: it names no app role or iOS
+/// style and draws in a web family that has a font stack. An app's style names
+/// a role and no web family.
+#[test]
+fn a_website_style_and_an_app_style_keep_to_their_own_families() {
+    let groups = |web: &str| {
+        BODY.replacen(
+            "[\n",
+            &format!("[\n  {{ \"family\": \"web-body\", \"styles\": [{web}] }},\n"),
+            1,
+        )
+    };
+    let theme = theme_with_text(&groups(
+        r#"{ "name": "web-label", "fontSize": "14px", "fontWeight": 600 }"#,
+    ));
+    assert_eq!(
+        theme.unwrap().web.text.iter().map(|style| style.family.as_str()).collect::<Vec<_>>(),
+        ["web-body"]
+    );
+    let theme = theme_with_text(&groups(
+        r#"{ "name": "web-label", "role": "body", "family": "sans", "fontSize": "14px", "fontWeight": 600, "ios": "body" },
+           { "name": "web-code", "family": "web-code", "fontSize": "14px", "fontWeight": 400 }"#,
+    ));
+    assert_eq!(
+        theme.unwrap_err(),
+        [
+            "tokens.json text style `web-label` is the website's and names the app family `sans`",
+            "tokens.json text style `web-label` is the website's and names an app role or an ios style",
+            "tokens.json text style `web-code` names the family `web-code`, which has no font stack",
+        ]
+    );
+    let theme = theme_with_text(&BODY.replace(
+        r#""role": "body", "fontSize": "13px""#,
+        r#""family": "web-body", "fontSize": "13px""#,
+    ));
+    assert_eq!(
+        theme.unwrap_err(),
+        [
+            "tokens.json text style `body` is an app's and names the website's family",
+            "tokens.json text style `body` is an app's and names no role",
+        ]
+    );
+}
