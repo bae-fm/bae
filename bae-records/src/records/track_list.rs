@@ -44,6 +44,20 @@ sqlive_compose::read!(
 "#
 );
 
+// Every id of a picked list in its order, those the library lacks first: they
+// have no place.
+sqlive_compose::read!(
+    writer NamedPickedTracks(tracks: &'p str) { track_id: String },
+    r#"
+    SELECT named.value AS track_id
+    FROM json_each(:tracks) AS named
+    LEFT JOIN @crate::records::track_list::PickedTracks(tracks: :tracks) AS held
+        ON held.track_id = named.value
+    WHERE named.value IS NOT NULL
+    ORDER BY held.place, named.key
+"#
+);
+
 /// The tracks an action names, and the order it puts them in: the order a
 /// caller gives, or, for tracks a person picked, the order their release
 /// lists them.
@@ -101,33 +115,28 @@ impl TrackList {
         sql: &impl bae_store::WriterRead,
         reading: TrackReading,
     ) -> Result<Vec<String>, DbError> {
-        Ok(match (self, reading) {
-            (Self::Given(ids), TrackReading::Named) => ids.clone(),
-            (Self::Picked(picked), TrackReading::Named) => {
-                let held = self.held_on(sql)?;
-                let found: BTreeSet<&String> = held.iter().collect();
-                let mut named: Vec<String> =
-                    picked.iter().filter(|id| !found.contains(id)).cloned().collect();
-                named.extend(held);
-                named
-            }
-            (_, TrackReading::Held) => self.held_on(sql)?,
-        })
-    }
-
-    /// The list's ids that the library holds, in the list's order.
-    fn held_on(&self, sql: &impl bae_store::WriterRead) -> Result<Vec<String>, DbError> {
         let ids = self.ids_json();
         let tracks = ids.as_str();
-        Ok(match self {
-            Self::Given(_) => statement_rows(sql, &HeldGivenTracksParams { tracks })?
-                .into_iter()
-                .map(|row| row.track_id)
-                .collect(),
-            Self::Picked(_) => statement_rows(sql, &HeldPickedTracksParams { tracks })?
-                .into_iter()
-                .map(|row| row.track_id)
-                .collect(),
+        Ok(match (self, reading) {
+            (Self::Given(ids), TrackReading::Named) => ids.clone(),
+            (Self::Given(_), TrackReading::Held) => {
+                statement_rows(sql, &HeldGivenTracksParams { tracks })?
+                    .into_iter()
+                    .map(|row| row.track_id)
+                    .collect()
+            }
+            (Self::Picked(_), TrackReading::Named) => {
+                statement_rows(sql, &NamedPickedTracksParams { tracks })?
+                    .into_iter()
+                    .map(|row| row.track_id)
+                    .collect()
+            }
+            (Self::Picked(_), TrackReading::Held) => {
+                statement_rows(sql, &HeldPickedTracksParams { tracks })?
+                    .into_iter()
+                    .map(|row| row.track_id)
+                    .collect()
+            }
         })
     }
 
