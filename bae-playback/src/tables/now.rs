@@ -145,25 +145,6 @@ impl PreviewedWindow {
     }
 }
 
-sqlive_compose::read!(
-    Previewed,
-    r#"
-    SELECT previewed.*
-    FROM @crate::tables::now::PreviewedWindow AS previewed
-"#
-);
-
-/// The stretch of a file the preview player holds, playing or paused, for
-/// another domain's read that marks the row of it; `None` while it previews
-/// nothing.
-pub fn previewed_target_on(sql: &impl coven::SqlRead) -> Result<Option<PreviewTarget>, DbError> {
-    bae_store::statement_rows(sql, &PreviewedParams {})?
-        .into_iter()
-        .next()
-        .map(|row| row.previewed.target())
-        .transpose()
-}
-
 impl PlaybackNowRow {
     /// Write `change` into the row. A state that plays clears the last
     /// failure, and a new failure replaces the one the row holds.
