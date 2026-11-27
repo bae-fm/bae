@@ -199,7 +199,7 @@ struct AlbumGridViewportTests {
                 offsets: 0...36290
             )
         )
-        viewport.placeRevealedRow(row)
+        #expect(!viewport.placeRevealedRow(row))
         for offset: CGFloat in [0, 18392] {
             viewport.setScroll(
                 AlbumGridScroll(
@@ -278,7 +278,7 @@ struct AlbumGridViewportRevealTests {
     func revealedRowByTrack() {
         let viewport = scrolled()
         let row = placedRow(CGRect(x: 0, y: 1900, width: 300, height: 40))
-        viewport.placeRevealedRow(row)
+        #expect(!viewport.placeRevealedRow(row))
         #expect(viewport.revealedRow(of: "t1") == row)
         #expect(viewport.revealedRow(of: "t2") == nil)
         // Laid out on the way to the album, it waits for the album's card to
@@ -289,7 +289,7 @@ struct AlbumGridViewportRevealTests {
         #expect(viewport.revealArrivedInPlace())
         #expect(viewport.revealedRow(of: "t1", arrived: true) == row)
 
-        viewport.placeRevealedRow(nil)
+        #expect(!viewport.placeRevealedRow(nil))
         #expect(viewport.revealedRow(of: "t1") == nil)
     }
 
@@ -297,7 +297,7 @@ struct AlbumGridViewportRevealTests {
     func shownRowEndsRevealScroll() {
         let viewport = scrolled()
         let row = placedRow(CGRect(x: 0, y: 1100, width: 300, height: 40))
-        viewport.placeRevealedRow(row)
+        #expect(!viewport.placeRevealedRow(row))
         place(.album("a9"), at: 0, in: viewport)
         #expect(viewport.revealScrolls(to: .album("a9")))
         #expect(viewport.revealedRow(of: "t1", arrived: true) == row)
@@ -379,6 +379,28 @@ struct AlbumGridViewportRevealTests {
         #expect(viewport.revealArrivedInPlace())
     }
 
+    @Test(
+        "an album arrives once the row's layout has the scroll at its top, with neither the card nor the scroll view reporting it"
+    )
+    func revealArrivesByTheRowsLayout() {
+        let viewport = scrolled()
+        place(.album("a9"), at: 151, in: viewport)
+        #expect(!viewport.revealScrolls(to: .album("a9")))
+        let row = PlacedTrackRow(
+            trackId: "t1",
+            frame: CGRect(x: 0, y: 2300, width: 300, height: 40),
+            scroll: AlbumGridScroll(
+                offset: 1151,
+                visibleHeight: 700,
+                offsets: 0...4300
+            )
+        )
+
+        #expect(viewport.placeRevealedRow(row))
+
+        #expect(viewport.revealedRow(of: "t1", arrived: true) == row)
+    }
+
     @Test("an album scrolled past the top since the last scroll report scrolls")
     func revealScrollsAnAlbumLeftBehind() {
         let viewport = scrolled()
@@ -393,7 +415,7 @@ struct AlbumGridViewportRevealTests {
         place(.album("a9"), at: 0, in: viewport)
         #expect(viewport.revealScrolls(to: .album("a9")))
         let below = placedRow(CGRect(x: 0, y: 1900, width: 300, height: 40))
-        viewport.placeRevealedRow(below)
+        #expect(!viewport.placeRevealedRow(below))
 
         viewport.revealScrollsToRow()
         #expect(viewport.revealedRow(of: "t1", arrived: true) == below)
@@ -407,7 +429,7 @@ struct AlbumGridViewportRevealTests {
                 offsets: 0...4200
             )
         )
-        viewport.placeRevealedRow(moved)
+        #expect(!viewport.placeRevealedRow(moved))
         #expect(viewport.revealedRow(of: "t1", arrived: true) == moved)
         #expect(moved.scrollOffset == nil, "in full view")
         // Not for another track.

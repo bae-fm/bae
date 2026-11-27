@@ -162,11 +162,13 @@ struct MacAlbumGrid<ExpansionContent: View>: View {
                         ) { proxy in
                             Self.placedTrackRow(row, in: proxy)
                         } action: { placed in
-                            viewport.placeRevealedRow(placed)
                             albumGridLogger.debug(
                                 "placed row changed: \(String(describing: placed))"
                             )
-                            if let placed,
+                            if viewport.placeRevealedRow(placed) {
+                                revealArrived()
+                            }
+                            else if let placed,
                                 viewport.revealedRow(
                                     of: placed.trackId,
                                     arrived: true

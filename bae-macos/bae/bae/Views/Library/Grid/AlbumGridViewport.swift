@@ -111,8 +111,9 @@ final class AlbumGridViewport {
     private var frames: [Placement: Shown] = [:]
     private var scroll = AlbumGridScroll()
     /// The offset the scroll stands at, by the last report of it: the scroll
-    /// view's own, or a cell's layout. When several layouts run in one frame,
-    /// SwiftUI can leave the last change of either unreported.
+    /// view's own, a cell's layout, or the revealed row's. When several
+    /// layouts run in one frame, SwiftUI can leave the last change of any of
+    /// them unreported.
     private var standingOffset: CGFloat = 0
     /// The slot the last change of column count, or the last reveal, put on
     /// top, held there until the grid scrolls another way, so changes back
@@ -196,8 +197,15 @@ final class AlbumGridViewport {
         standingOffset = scroll.offset
     }
 
-    func placeRevealedRow(_ row: PlacedTrackRow?) {
+    /// Takes the revealed track's row as a layout placed it, with where that
+    /// layout had the scroll. Returns whether this brings the grid to the
+    /// revealed album: the layout has the album's card on top, which neither
+    /// the card nor the scroll view may have reported.
+    func placeRevealedRow(_ row: PlacedTrackRow?) -> Bool {
         revealRow = row
+        guard let row else { return false }
+        standingOffset = row.scroll.offset
+        return revealArrivedInPlace()
     }
 
     /// The grid scrolls the revealed album's `card` to the top. Returns
