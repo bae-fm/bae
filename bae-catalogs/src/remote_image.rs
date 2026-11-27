@@ -7,6 +7,7 @@ use bae_util::task_failure::TaskFailed;
 #[cfg(desktop)]
 mod archive;
 mod cache;
+pub mod cached_rows;
 mod covers;
 mod fetch;
 

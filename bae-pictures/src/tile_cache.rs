@@ -19,6 +19,15 @@ use tracing::{debug, warn};
 use crate::tiles::{cut_tiles, tile_path, Pyramid};
 use crate::{CopyFormat, FlightError, Flights, IsCancelled, PictureOrigin, PicturesError};
 
+// The size of each picture's tiles that the cache keeps.
+sqlive_compose::fragment!(
+    CachedTileBytes,
+    r#"
+    SELECT tiles.bytes
+    FROM cached_tiles AS tiles
+"#
+);
+
 /// The bytes of tiles the cache keeps on a device.
 const TILE_CACHE_BUDGET: u64 = 512 * 1024 * 1024;
 

@@ -7,8 +7,8 @@ use bae_records::synced::RELEASE_FILES_NAMESPACE;
 
 /// The sums with nothing pinned, cached or kept from a reset: the audio
 /// budget at its default and the library's 700 bytes.
-fn summed() -> StorageSums {
-    StorageSums {
+fn summed() -> DeviceStorageSumsRow {
+    DeviceStorageSumsRow {
         audio_budget: Some(CacheLimit::Gb20.bytes()),
         pinned: 0,
         cache: 0,
@@ -27,7 +27,7 @@ fn a_part_with_no_bytes_is_left_out_but_the_library_never() {
     assert_eq!((nothing.total, nothing.cache, nothing.can_clear_cache), (700, 0, false));
     assert_eq!(nothing.before_reset, None);
 
-    let full = DeviceStorage::from_sums(&StorageSums {
+    let full = DeviceStorage::from_sums(&DeviceStorageSumsRow {
         pinned: 4060,
         cache: 235,
         total: 4995,
@@ -49,7 +49,7 @@ fn a_part_with_no_bytes_is_left_out_but_the_library_never() {
 /// From before the reset shows while an archive is here, last.
 #[test]
 fn the_archives_a_reset_kept_show_last() {
-    let sums = StorageSums { before_reset: Some(5000), total: 5700, ..summed() };
+    let sums = DeviceStorageSumsRow { before_reset: Some(5000), total: 5700, ..summed() };
     let storage = DeviceStorage::from_sums(&sums).unwrap();
     assert_eq!(
         storage.parts,
@@ -65,9 +65,9 @@ fn the_archives_a_reset_kept_show_last() {
 /// so is an audio cache coven has no budget for.
 #[test]
 fn a_budget_no_choice_names_fails_the_read() {
-    let odd = StorageSums { audio_budget: Some(12_345), ..summed() };
+    let odd = DeviceStorageSumsRow { audio_budget: Some(12_345), ..summed() };
     assert!(DeviceStorage::from_sums(&odd).is_err());
-    let none = StorageSums { audio_budget: None, ..summed() };
+    let none = DeviceStorageSumsRow { audio_budget: None, ..summed() };
     assert!(DeviceStorage::from_sums(&none).is_err());
 }
 

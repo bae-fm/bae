@@ -5,16 +5,22 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# The crates that depend on this one receive its fragments through this key.
+links = "bae_pictures_sql"
 
 [lib]
 name = "bae_pictures"
 path = "src/lib.rs"
 
 [build-dependencies]
+# Checks the crate's read fragments against the schema and writes the Rust they include.
+bae-fragments-build = { workspace = true }
 # Writes the schema this crate declares from its `schema.toml`.
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
+# The macros the read fragments are written with.
+sqlive-compose = { workspace = true }
 # Runs a picture's job under the reporter that tells of a panic in it.
 bae-diagnostics = { workspace = true }
 # The sizes a copy is made at, which the library's rows state too.

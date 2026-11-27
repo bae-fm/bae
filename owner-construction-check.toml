@@ -1062,7 +1062,11 @@ tables = ["cached_tiles"]
 [[database.domains]]
 name = "catalog image cache"
 owner = "bae_catalogs::remote_image::cache::DiskImageCache"
-homes = ["bae-catalogs/src/remote_image/cache.rs", "bae-catalogs/src/remote_image/cache.sql"]
+homes = [
+    "bae-catalogs/src/remote_image/cache.rs",
+    "bae-catalogs/src/remote_image/cache.sql",
+    "bae-catalogs/src/remote_image/cached_rows.rs",
+]
 tables = ["cached_image"]
 
 [[database.domains]]

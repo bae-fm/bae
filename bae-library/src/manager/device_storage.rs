@@ -48,61 +48,55 @@ pub enum StorageKind {
     BeforeReset,
 }
 
-/// The sums Settings → Storage shows, as its query computes them, in bytes.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StorageSums {
-    /// The audio cache's budget; `None` when coven has no row for it.
-    pub(crate) audio_budget: Option<u64>,
-    /// Pinned whole copies, and the partial downloads that stopped pins
-    /// left.
-    pub(crate) pinned: u64,
-    /// Cached chunks and headers, and the files of the catalog image cache
-    /// and the tile cache.
-    pub(crate) cache: u64,
-    /// The library's own files.
-    pub(crate) library: u64,
-    /// The archives that resets kept, while there is one.
-    pub(crate) before_reset: Option<u64>,
-    /// Every part's bytes together.
-    pub(crate) total: u64,
-}
-
-/// One row of [`StorageSums`], from coven's byte tables, the catalog image
-/// cache's `cached_image` and the tile cache's `cached_tiles`; `?1` is the
-/// audio namespace.
-const STORAGE_SUMS: &str = "\
-    WITH sums AS (SELECT \
-        (SELECT budget FROM coven_cache_bytes WHERE namespace = ?1) AS audio_budget, \
-        (SELECT COALESCE(SUM(pinned + pinning), 0) FROM coven_cache_bytes) AS pinned, \
-        (SELECT COALESCE(SUM(cached), 0) FROM coven_cache_bytes) \
-            + (SELECT COALESCE(SUM(bytes), 0) FROM cached_image) \
-            + (SELECT COALESCE(SUM(bytes), 0) FROM cached_tiles) AS cache, \
-        (SELECT COALESCE(SUM(bytes), 0) FROM coven_library_bytes) AS library, \
-        (SELECT SUM(bytes) FROM coven_archive_bytes) AS before_reset) \
-    SELECT audio_budget, pinned, cache, library, before_reset, \
-        pinned + cache + library + COALESCE(before_reset, 0) \
-    FROM sums";
+// The sums Settings → Storage shows, in bytes, from coven's byte tables, the
+// catalog image cache's files and the tile cache's: the audio cache's budget,
+// of the namespace `:audio`, NULL when coven has no row for it; the pinned
+// whole copies with the partial downloads that stopped pins left; the cached
+// chunks and headers with the two caches' files; the library's own files; the
+// archives that resets kept, NULL while there is none; and every part's bytes
+// together.
+sqlive_compose::read!(
+    DeviceStorageSums(audio: &'static str) {
+        audio_budget: Option<u64>,
+        pinned: u64,
+        cache: u64,
+        library: u64,
+        before_reset: Option<u64>,
+        total: u64
+    },
+    r#"
+    WITH sums AS (
+        SELECT
+            (SELECT counted.budget FROM coven_cache_bytes AS counted
+             WHERE counted.namespace = :audio) AS audio_budget,
+            (SELECT COALESCE(SUM(counted.pinned + counted.pinning), 0)
+             FROM coven_cache_bytes AS counted) AS pinned,
+            (SELECT COALESCE(SUM(counted.cached), 0) FROM coven_cache_bytes AS counted)
+                + (SELECT COALESCE(SUM(images.bytes), 0)
+                   FROM @bae_catalogs::remote_image::cached_rows::CachedImageBytes AS images)
+                + (SELECT COALESCE(SUM(tiles.bytes), 0)
+                   FROM @bae_pictures::tile_cache::CachedTileBytes AS tiles) AS cache,
+            (SELECT COALESCE(SUM(stored.bytes), 0)
+             FROM coven_library_bytes AS stored) AS library,
+            (SELECT SUM(archived.bytes)
+             FROM coven_archive_bytes AS archived) AS before_reset
+    )
+    SELECT sums.audio_budget, sums.pinned, sums.cache, sums.library, sums.before_reset,
+           sums.pinned + sums.cache + sums.library + COALESCE(sums.before_reset, 0) AS total
+    FROM sums
+"#
+);
 
 /// What this device keeps for the library, as the page shows it.
 fn device_storage_on(sql: coven::SqlReadContext<'_>) -> Result<DeviceStorage, DbError> {
-    let sums =
-        sql.query_row(STORAGE_SUMS, [bae_records::synced::RELEASE_FILES_NAMESPACE], |row| {
-            Ok(StorageSums {
-                audio_budget: row.get(0)?,
-                pinned: row.get(1)?,
-                cache: row.get(2)?,
-                library: row.get(3)?,
-                before_reset: row.get(4)?,
-                total: row.get(5)?,
-            })
-        })?;
-    DeviceStorage::from_sums(&sums)
+    let params = DeviceStorageSumsParams { audio: bae_records::synced::RELEASE_FILES_NAMESPACE };
+    DeviceStorage::from_sums(&bae_store::statement_row(&sql, &params)?)
 }
 
 impl DeviceStorage {
     /// The page's parts from its query's sums. Fails when the audio budget
     /// is one no choice names: no writer here sets another.
-    pub(crate) fn from_sums(sums: &StorageSums) -> Result<Self, DbError> {
+    pub(crate) fn from_sums(sums: &DeviceStorageSumsRow) -> Result<Self, DbError> {
         let cache_limit = sums
             .audio_budget
             .and_then(CacheLimit::from_bytes)
