@@ -437,7 +437,7 @@ mirror_enum! {
     variants: {
         Scanning { catalogs, free_text },
         Settled { catalogs, free_text },
-        Failed { failure: (crate::types::BridgeInternalFailure), catalogs, free_text },
+        Failed { failure: (crate::types::BridgeInternalFailure) },
     },
 }
 

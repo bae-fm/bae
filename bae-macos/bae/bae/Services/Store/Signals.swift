@@ -16,24 +16,26 @@ extension BridgeTextSignal {
     var catalogValues: [String] {
         switch self {
         case .scanning(let catalogs, _),
-            .settled(let catalogs, _),
-            .failed(_, let catalogs, _):
+            .settled(let catalogs, _):
             catalogs
+        case .failed:
+            []
         }
     }
 
     var freeText: [String] {
         switch self {
         case .scanning(_, let freeText),
-            .settled(_, let freeText),
-            .failed(_, _, let freeText):
+            .settled(_, let freeText):
             freeText
+        case .failed:
+            []
         }
     }
 
     /// How bae broke reading the text off the folder, where it did.
     var failure: BridgeInternalFailure? {
-        if case .failed(let failure, _, _) = self {
+        if case .failed(let failure) = self {
             return failure
         }
         return nil

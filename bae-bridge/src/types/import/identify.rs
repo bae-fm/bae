@@ -289,7 +289,7 @@ pub struct BridgeIdentifyRun {
 pub enum BridgeTextSignal {
     Scanning { catalogs: Vec<String>, free_text: Vec<String> },
     Settled { catalogs: Vec<String>, free_text: Vec<String> },
-    Failed { failure: BridgeInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
+    Failed { failure: BridgeInternalFailure },
 }
 
 /// The part of `bae_identify::signals::Signals` a surface reads: the text pools
