@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use bae_diagnostics::Diagnostics;
 use bae_store::query::to_i64;
-use bae_store::{DbError, Store};
+use bae_store::{DbError, Store, WriteStatements};
 use coven::CovenWrite;
 use tracing::{debug, warn};
 
@@ -432,13 +432,43 @@ fn pyramid_from(rows: Vec<(u32, u32, String)>) -> Result<Option<Pyramid>, DbErro
         .transpose()
 }
 
+sqlive_compose::write!(
+    MarkTilesUsed(folder: &'p str),
+    r#"
+    UPDATE cached_tiles SET used = (SELECT MAX(used) + 1 FROM cached_tiles)
+    WHERE folder = :folder
+"#
+);
+
+sqlive_compose::write!(
+    KeepTiles(folder: &'p str, width: u32, height: u32, format: &'static str, bytes: i64),
+    r#"
+    INSERT INTO cached_tiles (folder, width, height, format, bytes, used)
+    VALUES (:folder, :width, :height, :format, :bytes,
+        (SELECT COALESCE(MAX(used), 0) + 1 FROM cached_tiles))
+"#
+);
+
+// The least recently used rows that don't fit `budget` with the more recently
+// used ones, never the most recently used row.
+sqlive_compose::write!(
+    DeleteTilesOverBudget(budget: i64),
+    r#"
+    DELETE FROM cached_tiles WHERE folder IN (
+        SELECT folder FROM (
+            SELECT folder, SUM(bytes) OVER (ORDER BY used DESC) AS held FROM cached_tiles
+        ) WHERE held > :budget
+    ) AND used < (SELECT MAX(used) FROM cached_tiles)
+    RETURNING folder
+"#
+);
+
+sqlive_compose::write!(DeleteAllTiles, r#"DELETE FROM cached_tiles"#);
+
 /// Mark `folder`'s row as the most recently used, and return the pyramid it
 /// describes; none when there is no row.
 fn mark_used(sql: &CovenWrite<'_>, folder: &str) -> Result<Option<Pyramid>, DbError> {
-    sql.execute(
-        "UPDATE cached_tiles SET used = (SELECT MAX(used) + 1 FROM cached_tiles) WHERE folder = ?1",
-        [folder],
-    )?;
+    sql.run(&MarkTilesUsedParams { folder })?;
     pyramid_from(sql.query(PYRAMID, [folder], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?)
 }
 
@@ -452,31 +482,21 @@ fn keep(
     bytes: u64,
     budget: u64,
 ) -> Result<Vec<String>, DbError> {
-    sql.execute(
-        "INSERT INTO cached_tiles (folder, width, height, format, bytes, used) \
-         VALUES (?1, ?2, ?3, ?4, ?5, (SELECT COALESCE(MAX(used), 0) + 1 FROM cached_tiles))",
-        (
-            folder,
-            pyramid.width,
-            pyramid.height,
-            pyramid.format.stored_name(),
-            to_i64(bytes, "a picture's tiles' size")?,
-        ),
-    )?;
-    Ok(sql.query(
-        "DELETE FROM cached_tiles WHERE folder IN ( \
-             SELECT folder FROM ( \
-                 SELECT folder, SUM(bytes) OVER (ORDER BY used DESC) AS held FROM cached_tiles \
-             ) WHERE held > ?1 \
-         ) AND used < (SELECT MAX(used) FROM cached_tiles) RETURNING folder",
-        [to_i64(budget, "the tile cache's budget")?],
-        |row| row.get(0),
-    )?)
+    sql.run(&KeepTilesParams {
+        folder,
+        width: pyramid.width,
+        height: pyramid.height,
+        format: pyramid.format.stored_name(),
+        bytes: to_i64(bytes, "a picture's tiles' size")?,
+    })?;
+    let budget = to_i64(budget, "the tile cache's budget")?;
+    let deleted = sql.returning(&DeleteTilesOverBudgetParams { budget })?;
+    Ok(deleted.into_iter().map(|row| row.folder).collect())
 }
 
 /// Delete every row.
 fn forget_all(sql: &CovenWrite<'_>) -> Result<(), DbError> {
-    sql.execute("DELETE FROM cached_tiles", [])?;
+    sql.run(&DeleteAllTilesParams {})?;
     Ok(())
 }
 
