@@ -4,6 +4,7 @@
 //! an album's card is in the grid (`place`).
 
 use super::*;
+use bae_records::records::track_display::DisplayedTrack;
 #[cfg(test)]
 pub(crate) use card::ArtistAlbums;
 pub(crate) use card::{artist_albums_on, AlbumAppearanceRow};
@@ -105,25 +106,17 @@ impl LibraryViews {
     }
 
     /// The track `track_id` of the release `release_id` as a browse item shows
-    /// it; `None` when the release has no such track.
+    /// it, read once; `None` when the release has no such track.
     pub async fn find_release_track(
         &self,
         release_id: &str,
         track_id: &str,
     ) -> Result<Option<crate::album_detail::TrackSearchResult>, DbError> {
-        let release_id = release_id.to_string();
-        let track_id = track_id.to_string();
+        let statement =
+            ReleaseTrackParams { release: release_id.to_string(), track: track_id.to_string() };
         self.store
-            .read(move |sql| {
-                Ok(sql.query(
-                    &format!("{} WHERE t.release_id = ?1 AND t.id = ?2", TRACK_HIT_SELECT.as_str()),
-                    params![release_id, track_id],
-                    track_hit_row,
-                )?)
-            })
-            .process(|rows| {
-                Ok(rows.into_iter().next().map(crate::album_detail::TrackSearchResult::from_raw))
-            })
+            .read(move |sql| statement_optional(&sql, &statement))
+            .process(|row| row.map(|row| release_track(row.shown)).transpose())
             .await
     }
 
@@ -415,6 +408,33 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
     }
 }
 
+// The track `track` of the release `release`, as playback shows a track.
+sqlive_compose::read!(
+    ReleaseTrack(release: String, track: String),
+    r#"
+    SELECT shown.*
+    FROM @bae_records::records::track_display::DisplayedTrack AS shown
+    WHERE shown.display_track_id = :track AND shown.release_id = :release
+"#
+);
+
+/// The track `shown` as a media browser's item shows it.
+fn release_track(shown: DisplayedTrack) -> Result<crate::album_detail::TrackSearchResult, DbError> {
+    let id = shown.track_id().to_string();
+    let duration_ms = shown.duration_ms();
+    let display = shown.into_display()?;
+    Ok(crate::album_detail::TrackSearchResult {
+        id,
+        title: display.title,
+        duration_ms,
+        release_id: display.release_id,
+        album_id: display.album_id,
+        album_title: display.album_title,
+        artist_line: display.artist_line,
+        cover: display.cover_image,
+    })
+}
+
 /// What a track hit shows: the track, its release's album, its credit line and
 /// its release's cover version, as columns of [`TRACK_HIT_FROM`].
 static TRACK_HIT_COLUMNS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
@@ -436,11 +456,6 @@ const TRACK_HIT_JOINS: &str = "JOIN releases r ON t.release_id = r.id \
 /// release's album `a`.
 static TRACK_HIT_FROM: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| format!("FROM tracks t {TRACK_HIT_JOINS}"));
-
-/// A track hit's statement up to its WHERE clause.
-static TRACK_HIT_SELECT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    format!("SELECT {} {}", TRACK_HIT_COLUMNS.as_str(), TRACK_HIT_FROM.as_str())
-});
 
 fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
     Ok(DbTrackSearchResult {
@@ -820,6 +835,9 @@ fn album_track_rows_on(
         })
     })?)
 }
+
+#[cfg(test)]
+mod item_tests;
 
 #[cfg(test)]
 #[path = "album/tracks_tests.rs"]

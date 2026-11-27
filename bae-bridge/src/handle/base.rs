@@ -91,35 +91,37 @@ forward! { async this => {
             .map(crate::types::BridgeTopPlayable::from_core))
     }
 
-    /// One album's detail, read once; `None` when the album doesn't exist.
-    fn read_album_detail(album_id: String) -> Option<crate::types::BridgeAlbumDetail> {
+    /// One album as a browse item shows it, read once; `None` when the album
+    /// grid doesn't list it.
+    fn read_album_item(album_id: String) -> Option<BridgeAlbum> {
         Ok(this
             .services
-            .find_album_detail(&album_id)
+            .find_album_item(&album_id)
             .await
             .map_err(BridgeError::from)?
-            .map(crate::types::BridgeAlbumDetail::from_core))
+            .map(BridgeAlbum::from_core))
     }
 
-    /// One composer's page above its rows, read once; `None` when the composer
+    /// One composer as a browse item shows it, read once; `None` when the
+    /// composer list doesn't show it.
+    fn read_composer_item(artist_id: String) -> Option<crate::types::BridgeComposerSummary> {
+        Ok(this
+            .services
+            .find_composer_item(&artist_id)
+            .await
+            .map_err(BridgeError::from)?
+            .map(crate::types::BridgeComposerSummary::from_core))
+    }
+
+    /// One work as a browse item shows it, read once; `None` when the work
     /// doesn't exist.
-    fn read_composer_detail(artist_id: String) -> Option<crate::types::BridgeComposerDetail> {
+    fn read_work_item(work_id: String) -> Option<crate::types::BridgeWorkSummary> {
         Ok(this
             .services
-            .get_composer_detail(&artist_id)
+            .find_work_item(&work_id)
             .await
             .map_err(BridgeError::from)?
-            .map(crate::types::BridgeComposerDetail::from_core))
-    }
-
-    /// One work's detail, read once; `None` when the work doesn't exist.
-    fn read_work_detail(work_id: String) -> Option<crate::types::BridgeWorkDetail> {
-        Ok(this
-            .services
-            .get_work_detail(&work_id)
-            .await
-            .map_err(BridgeError::from)?
-            .map(crate::types::BridgeWorkDetail::from_core))
+            .map(crate::types::BridgeWorkSummary::from_core))
     }
 
     /// The albums of the grid's cards from the card of `from_album_id` to the

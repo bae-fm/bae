@@ -3,6 +3,7 @@
 
 use super::*;
 use bae_records::records::query::AlbumSummaryRow;
+use bae_store::statement_optional;
 use bae_types::credits::CreditLine;
 
 // Each album's card: its summary, and whether another device alone holds the
@@ -33,6 +34,39 @@ sqlive_compose::read!(
     ORDER BY link.sort_year, link.title_sort_key, link.album_id
 "#
 );
+
+// The card of the album `album`, as the album grid lists it; no row for an
+// album the grid doesn't list.
+sqlive_compose::read!(
+    ListedAlbumCard(album: String),
+    r#"
+    SELECT card.*
+    FROM album_listing AS listing
+    CROSS JOIN @crate::album::card::AlbumCardRow AS card ON card.summary_album_id = listing.album_id
+    WHERE listing.album_id = :album
+"#
+);
+
+impl LibraryViews {
+    /// The album `album_id` as a media browser's item shows it, read once;
+    /// `None` when the album grid doesn't list it.
+    pub async fn find_album_item(
+        &self,
+        album_id: &str,
+    ) -> Result<Option<crate::album_detail::AlbumSummary>, DbError> {
+        let statement = ListedAlbumCardParams { album: album_id.to_string() };
+        let row: Option<DbAlbumSummary> = self
+            .store
+            .read(move |sql| {
+                statement_optional(&sql, &statement)?
+                    .map(|row| row.card.summary.into_row())
+                    .transpose()
+            })
+            .process(|row| row.map(AlbumSummaryRow::process).transpose())
+            .await?;
+        Ok(row.map(crate::album_detail::AlbumSummary::from_raw))
+    }
+}
 
 /// One album card as read: the album, and in a list grouped by artist, the
 /// line of the album's credits that show another artist than the one whose

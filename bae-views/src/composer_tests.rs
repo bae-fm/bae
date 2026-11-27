@@ -70,6 +70,25 @@ async fn work_detail_lists_child_works_with_their_representative_release() {
     );
 }
 
+/// A media browser's composer and work items show what the lists' rows show,
+/// and there is none for an artist the composer list doesn't show or for an
+/// unknown work.
+#[tokio::test]
+async fn composer_and_work_items_are_read_by_id() {
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
+    write_cover(&test_records(&db), RELEASE_A, "cover bytes").await;
+    let views = crate::LibraryViews::new(db.clone());
+
+    let composer = views.find_composer_item(ARTIST_COMPOSER).await.unwrap().expect("composer");
+    assert_eq!(composer.artist.id, ARTIST_COMPOSER);
+    assert_eq!(vec![composer], views.get_composer_page(&[], 0, 10).await.unwrap());
+    let work = views.find_work_item(WORK_CHILD_A).await.unwrap().expect("work");
+    assert_eq!(work.work.id, WORK_CHILD_A);
+    assert_eq!(work.representative_cover.map(|cover| cover.id), Some(RELEASE_A.to_string()));
+    assert!(views.find_composer_item(WORK_CHILD_A).await.unwrap().is_none());
+    assert!(views.find_work_item(ARTIST_COMPOSER).await.unwrap().is_none());
+}
+
 #[tokio::test]
 async fn work_detail_release_rows_carry_album_release_display_fields() {
     let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;

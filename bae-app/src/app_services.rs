@@ -515,8 +515,9 @@ impl AppServices {
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);
     delegate_lib!(records, track_ids_between => track_ids_between(anchor_id: String, target_id: String) -> Vec<String>);
     delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<bae_views::album_detail::AlbumDetail>);
-    delegate_view!(get_composer_detail => get_composer_detail(artist_id: &str) -> Option<bae_views::album_detail::ComposerDetail>);
-    delegate_view!(get_work_detail => get_work_detail(work_id: &str) -> Option<bae_views::album_detail::WorkDetail>);
+    delegate_view!(find_album_item => find_album_item(album_id: &str) -> Option<bae_views::album_detail::AlbumSummary>);
+    delegate_view!(find_composer_item => find_composer_item(artist_id: &str) -> Option<bae_views::DbComposerSummary>);
+    delegate_view!(find_work_item => find_work_item(work_id: &str) -> Option<bae_views::DbWorkSummary>);
     delegate_view!(find_release_detail => find_release_detail(release_id: &str) -> Option<bae_views::album_detail::ReleaseDetail>);
     delegate_view!(get_albums => get_albums(sort: &[bae_views::AlbumSortCriterion]) -> Vec<bae_records::DbAlbum>);
     delegate_lib!(records, get_releases_for_album => get_releases_for_album(album_id: &str) -> Vec<bae_records::DbRelease>);

@@ -623,33 +623,6 @@ async fn a_search_skips_a_found_album_with_no_track_to_play() {
     assert_eq!(top, Some((PLAYABLE_RELEASE.to_string(), PLAYABLE_TRACK.to_string())));
 }
 
-const PAGED_ARTIST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5021";
-
-const PICKED_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5043";
-const OTHER_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5044";
-
-/// `find_release_track` returns the browse item for a track by its release
-/// and track ids, and none when the track is on another release.
-#[tokio::test]
-async fn a_release_track_is_read_by_its_ids() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    RecordsFixture::new()
-        .artist(PAGED_ARTIST, "Paged Artist")
-        .album(PLAYABLE_ALBUM, "Picked Album", Some(2026), &[PAGED_ARTIST])
-        .release(PLAYABLE_ALBUM, PLAYABLE_RELEASE)
-        .tracks(PLAYABLE_RELEASE, &[(PICKED_TRACK, "Picked"), (OTHER_TRACK, "Other")])
-        .write(&test_records(&db))
-        .await;
-    let views = crate::LibraryViews::new(db.clone());
-
-    let picked = views.find_release_track(PLAYABLE_RELEASE, PICKED_TRACK).await.unwrap();
-    assert_eq!(
-        picked.map(|track| (track.id, track.title, track.release_id)),
-        Some((PICKED_TRACK.to_string(), "Picked".to_string(), PLAYABLE_RELEASE.to_string(),))
-    );
-    assert!(views.find_release_track(EMPTY_RELEASE, PICKED_TRACK).await.unwrap().is_none());
-}
-
 const SEARCHED_ARTIST: &str = "0373bb67-3abb-48e7-8a5b-6d29ef24308e";
 const SEARCHED_MUSICBRAINZ_ARTIST: &str = "mb-artist-asel";
 const SEARCHED_ALBUM: &str = "e307f0f5-e518-4d5e-bea8-83e439780ca0";

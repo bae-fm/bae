@@ -12,21 +12,13 @@ use bae_store::list_windows::SortValue;
 use bae_store::{statement_optional, statement_row, statement_rows};
 
 impl LibraryViews {
+    #[cfg(test)]
     pub(crate) async fn find_composer_detail(
         &self,
         artist_id: &str,
     ) -> Result<Option<DbComposerDetail>, DbError> {
         let artist_id = artist_id.to_string();
         self.store.read(move |sql| find_composer_detail_on(&sql, &artist_id)).await
-    }
-
-    /// The composer's page above its rows, read once; `None` when the
-    /// composer doesn't exist.
-    pub async fn get_composer_detail(
-        &self,
-        artist_id: &str,
-    ) -> Result<Option<ComposerDetail>, DbError> {
-        Ok(self.find_composer_detail(artist_id).await?.map(composer_detail_of))
     }
 
     /// Follow the composer `initial` names, or none. The detail view moves to

@@ -191,19 +191,17 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Album -> {
-                reportingFailure(onQueryError) { handle.readAlbumDetail(id.albumId) }?.let {
-                    nodes.album(it.album.id, it.album.title, it.album.cover)
+                reportingFailure(onQueryError) { handle.readAlbumItem(id.albumId) }?.let {
+                    nodes.album(it.id, it.title, it.cover)
                 }
             }
 
             is BrowseId.Composer -> {
-                reportingFailure(onQueryError) { handle.readComposerDetail(id.artistId) }?.let {
-                    nodes.composer(it.composer)
-                }
+                reportingFailure(onQueryError) { handle.readComposerItem(id.artistId) }?.let(nodes::composer)
             }
 
             is BrowseId.Work -> {
-                reportingFailure(onQueryError) { handle.readWorkDetail(id.workId) }?.let { nodes.work(it.work) }
+                reportingFailure(onQueryError) { handle.readWorkItem(id.workId) }?.let(nodes::work)
             }
 
             is BrowseId.Track -> {

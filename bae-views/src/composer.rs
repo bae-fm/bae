@@ -89,6 +89,36 @@ impl LibraryViews {
         self.store.read(move |sql| composer_key_at_on(&sql, &sort, position)).await
     }
 
+    /// The composer `artist_id` as a media browser's item shows it, read
+    /// once; `None` when the composer list doesn't show it.
+    pub async fn find_composer_item(
+        &self,
+        artist_id: &str,
+    ) -> Result<Option<DbComposerSummary>, DbError> {
+        let statement = ListedComposerByIdParams { artist: artist_id.to_string() };
+        self.store
+            .read(move |sql| {
+                statement_optional(&sql, &statement)?
+                    .map(|row| row.shown.into_summary())
+                    .transpose()
+            })
+            .await
+    }
+
+    /// The work `work_id` as a media browser's item shows it, read once;
+    /// `None` for an unknown work.
+    pub async fn find_work_item(&self, work_id: &str) -> Result<Option<DbWorkSummary>, DbError> {
+        let statement = WorkByIdParams { work: work_id.to_string() };
+        self.store
+            .read(move |sql| {
+                statement_optional(&sql, &statement)?
+                    .map(|row| work_summary(row.work, row.cover))
+                    .transpose()
+            })
+            .await
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn find_work_detail(
         &self,
         work_id: &str,
@@ -98,6 +128,7 @@ impl LibraryViews {
     }
 
     /// The work's page as its view shows it; `None` for an unknown work.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_work_detail(&self, work_id: &str) -> Result<Option<WorkDetail>, DbError> {
         Ok(self.find_work_detail(work_id).await?.map(work_detail_of))
     }
@@ -253,6 +284,17 @@ impl ListedComposer {
         })
     }
 }
+
+// The composer `artist`, as the composer list shows it; no row for an artist
+// the list doesn't show.
+sqlive_compose::read!(
+    ListedComposerById(artist: String),
+    r#"
+    SELECT shown.*
+    FROM @crate::composer::ListedComposer AS shown
+    WHERE shown.listed_id = :artist
+"#
+);
 
 // The first `limit` composers library search finds for `pattern`, in name order,
 // ties going by id, each beside how many rows the statement lists.

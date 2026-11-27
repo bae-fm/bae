@@ -24,8 +24,8 @@ import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCacheLimitChoice
 import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
-import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
+import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCopyReset
 import uniffi.bae_bridge.BridgeCoverImageSource
@@ -79,7 +79,7 @@ import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeTopPlayable
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkChild
-import uniffi.bae_bridge.BridgeWorkDetail
+import uniffi.bae_bridge.BridgeWorkSummary
 import uniffi.bae_bridge.CastReceiversSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigSubscription
@@ -379,11 +379,11 @@ internal open class FakeAppHandle(
 
     override suspend fun readSearchTopPlayable(query: String): BridgeTopPlayable? = searchTopPlayable(query)
 
-    override suspend fun readAlbumDetail(albumId: String): BridgeAlbumDetail? = albumDetails[albumId]
+    override suspend fun readAlbumItem(albumId: String): BridgeAlbum? = albumDetails[albumId]?.album
 
-    override suspend fun readComposerDetail(artistId: String): BridgeComposerDetail? = null
+    override suspend fun readComposerItem(artistId: String): BridgeComposerSummary? = null
 
-    override suspend fun readWorkDetail(workId: String): BridgeWorkDetail? = null
+    override suspend fun readWorkItem(workId: String): BridgeWorkSummary? = null
 
     override suspend fun playRelease(
         releaseId: String,
