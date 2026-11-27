@@ -1,9 +1,8 @@
-//! A track's stored audio, read from its rows: its format, its segments and
-//! the files they name, and the loudness its release and it were measured at.
+//! A track's stored audio: its format, its segments with the size and
+//! container of the files they name, and the loudness its release and it were
+//! measured at, as playback, a save and a server of the track read it.
 
-#[cfg(desktop)]
-use super::DbFile;
-use super::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbRelease, DbTrack, Records};
+use super::{DbAudioSegmentRole, Records};
 use bae_store::DbError;
 
 /// Why a track's audio could not be read.
@@ -26,85 +25,7 @@ pub enum TrackAudioError {
     Database(#[from] DbError),
 }
 
-/// All DB data needed to play or serve a track: the internal aggregate behind
-/// [`ResolvedTrackAudio::resolve`], also carried inside `SaveTrackPlan` for the export
-/// decoder. Callers that only need resolved playback data use
-/// `ResolvedTrackAudio`; the export path still needs the raw rows (a segment's
-/// byte range, its CUE sample bounds) for whole-file decode, so this raw shape
-/// stays `pub(crate)`.
-#[derive(Clone)]
-pub struct TrackAudioMeta {
-    pub track: DbTrack,
-    pub release: DbRelease,
-    pub audio_format: DbAudioFormat,
-    /// The format's segments in segment order, each with its file's size and
-    /// its scrub points.
-    pub audio_segments: Vec<TrackAudioSegment>,
-    /// The release files the segments name, each once, which a save opens.
-    #[cfg(desktop)]
-    pub audio_files: Vec<DbFile>,
-}
-
-/// One segment of a track's audio, with the size and container of the file it
-/// names and the frames a scrub inside it can start at.
-#[derive(Clone)]
-pub struct TrackAudioSegment {
-    pub segment: DbAudioSegment,
-    pub file_size: u64,
-    pub container: bae_util::audio_container::AudioContainer,
-    pub scrub_points: Vec<crate::ScrubPoint>,
-}
-
-impl TrackAudioMeta {
-    pub async fn resolve(records: &Records, track_id: &str) -> Result<Self, TrackAudioError> {
-        let track = records
-            .find_track_by_id(track_id)
-            .await?
-            .ok_or_else(|| TrackAudioError::TrackNotFound(track_id.to_string()))?;
-
-        let audio_format = records
-            .find_audio_format_by_track_id(track_id)
-            .await?
-            .ok_or_else(|| TrackAudioError::NoAudioFormat(track_id.to_string()))?;
-
-        let release = records.get_release_for_track(&track).await?;
-
-        let audio_segments = records
-            .get_track_audio_segments(&audio_format.id)
-            .await?
-            .into_iter()
-            .map(|row| {
-                let file_size = row
-                    .file_size
-                    .ok_or_else(|| TrackAudioError::FileNotFound(row.segment.file_id.clone()))?;
-                let container = row
-                    .file_container
-                    .ok_or_else(|| TrackAudioError::NotAudio(row.segment.file_id.clone()))?;
-                Ok(TrackAudioSegment {
-                    file_size,
-                    container,
-                    segment: row.segment,
-                    scrub_points: row.scrub_points,
-                })
-            })
-            .collect::<Result<Vec<_>, TrackAudioError>>()?;
-        if audio_segments.is_empty() {
-            return Err(TrackAudioError::NoSegments(track_id.to_string()));
-        }
-        #[cfg(desktop)]
-        let audio_files = records.get_audio_files_for_format(&audio_format.id).await?;
-
-        Ok(Self {
-            track,
-            release,
-            audio_format,
-            audio_segments,
-            #[cfg(desktop)]
-            audio_files,
-        })
-    }
-}
-
+#[derive(Clone, Debug)]
 pub struct ResolvedTrackAudioSegment {
     pub role: DbAudioSegmentRole,
     pub file_id: String,
@@ -118,11 +39,11 @@ pub struct ResolvedTrackAudioSegment {
     pub scrub_points: crate::ScrubPoints,
 }
 
-/// All resolved data needed to set up a playback reader for a track.
+/// All resolved data needed to play, save or serve a track.
 ///
-/// Resolved from a track's rows by [`ResolvedTrackAudio::resolve`] — no raw
-/// `Db*` types exposed. The track's sample window is resolved from the stored bounds, so the
-/// playback service never reads raw audio format fields.
+/// Read from a track's rows by [`ResolvedTrackAudio::resolve`], or beside its
+/// tags by a save's reads.
+#[derive(Clone, Debug)]
 pub struct ResolvedTrackAudio {
     pub track_id: String,
     pub release_id: String,
@@ -136,7 +57,7 @@ pub struct ResolvedTrackAudio {
     /// where the source has no fixed sample depth. Carried so callers that
     /// describe the audio to a client (the Subsonic server's `bitDepth`) don't
     /// re-fetch the raw audio-format row.
-    pub bits_per_sample: Option<u32>,
+    pub bits_per_sample: Option<std::num::NonZeroU32>,
     /// This track's audio codec, as stored at import. Playback dispatches the
     /// track-start seek on it: FLAC/lossless byte-seek to `start_byte`; APE
     /// sample-seeks its mandatory index and also prefetches the file's end (its
@@ -154,39 +75,7 @@ pub struct ResolvedTrackAudio {
 impl ResolvedTrackAudio {
     /// `track_id`'s audio as the library stores it now.
     pub async fn resolve(records: &Records, track_id: &str) -> Result<Self, TrackAudioError> {
-        Ok(Self::from_meta(&TrackAudioMeta::resolve(records, track_id).await?))
-    }
-
-    /// Carry each segment's file and its size with the playback parameters.
-    fn from_meta(meta: &TrackAudioMeta) -> Self {
-        let segments = meta
-            .audio_segments
-            .iter()
-            .map(|entry| ResolvedTrackAudioSegment {
-                role: entry.segment.role.clone(),
-                file_id: entry.segment.file_id.clone(),
-                file_size: entry.file_size,
-                container: entry.container.clone(),
-                span: entry.segment.span(),
-                scrub_points: crate::ScrubPoints::new(entry.scrub_points.clone()),
-            })
-            .collect();
-        Self {
-            track_id: meta.track.id.clone(),
-            release_id: meta.track.release_id.clone(),
-            segments,
-            duration_ms: meta.track.duration_ms,
-            pregap_samples: meta.audio_format.pregap_samples,
-            generated_pregap_samples: meta.audio_format.generated_pregap_samples,
-            sample_rate: meta.audio_format.sample_rate,
-            channels: meta.audio_format.channels,
-            bits_per_sample: meta.audio_format.bits_per_sample.map(std::num::NonZeroU32::get),
-            content_type: meta.audio_format.content_type.clone(),
-            track_loudness_lufs: meta.audio_format.track_loudness_lufs,
-            track_peak_linear: meta.audio_format.track_peak_linear,
-            album_loudness_lufs: meta.release.album_loudness_lufs,
-            album_peak_linear: meta.release.album_peak_linear,
-        }
+        records.track_audio(track_id).await
     }
 
     /// The stored file that is the track's stream, when one is: a single main

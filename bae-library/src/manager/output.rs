@@ -240,7 +240,7 @@ impl LibraryManager {
                     "Writing release output"
                 );
                 self.save_release_tracks_to_dir(
-                    &release,
+                    release_id,
                     preset,
                     &filename_pattern,
                     extras,

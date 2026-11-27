@@ -111,7 +111,7 @@ pub use release_detail::release_files_on;
 pub use release_detail::{
     release_editor_rows_on, OtherDeviceError, ReleaseEditorFacts, ReleaseEditorRows,
 };
-mod export_numbers;
+pub mod export_numbers;
 mod release_file;
 mod release_locality;
 mod release_tracks;
@@ -128,6 +128,8 @@ pub use seeded_albums::{SeededAlbum, SeededAudio};
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 mod track;
+pub mod track_audio;
+pub use track_audio::{DbTrackTags, TrackForSave, TrackSaveRead};
 
 #[cfg(test)]
 #[path = "records_tests.rs"]

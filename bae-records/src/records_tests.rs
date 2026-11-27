@@ -95,49 +95,6 @@ async fn release_records_are_read_in_catalog_order() {
     );
 }
 
-/// A track's place in its release's order is read on the index of each
-/// release's track positions: whether it is the first, the track after it,
-/// and how many the release has.
-#[tokio::test]
-async fn a_tracks_neighbors_are_read_from_the_positions_index() {
-    let (db, _tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let records = crate::test_fixtures::test_records(&db);
-    assert_eq!(
-        records.track_neighbors(TRACK_A).await.unwrap(),
-        Some(crate::records::track::TrackNeighbors {
-            is_first: true,
-            next: Some(TRACK_B.to_string()),
-        })
-    );
-    assert_eq!(
-        records.track_neighbors(TRACK_B).await.unwrap(),
-        Some(crate::records::track::TrackNeighbors { is_first: false, next: None })
-    );
-    assert_eq!(records.count_tracks_for_release(RELEASE_A).await.unwrap(), 2);
-
-    let plan = db
-        .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::records::track::TRACK_NEIGHBORS),
-                [TRACK_A],
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
-    assert!(
-        plan.iter()
-            .filter(|step| step.contains("earlier") || step.contains("later"))
-            .all(|step| step.contains("tracks_release_position")),
-        "the neighbors are read on the positions index: {plan:?}"
-    );
-    assert!(
-        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-        "the read sorts after reading: {plan:?}"
-    );
-}
-
 /// A release's files come back in natural order of their names, case aside,
 /// from the read itself, which SQLite orders by walking the index of each
 /// release's files in that order: the release's file list and the read under

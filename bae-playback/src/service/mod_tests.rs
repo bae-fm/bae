@@ -843,7 +843,7 @@ fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
         generated_pregap_samples: None,
         sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),
         channels: std::num::NonZeroU32::new(2).unwrap(),
-        bits_per_sample: Some(16),
+        bits_per_sample: std::num::NonZeroU32::new(16),
         content_type: bae_util::content_type::ContentType::Flac,
         track_loudness_lufs: None,
         track_peak_linear: None,

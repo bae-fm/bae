@@ -1,61 +1,5 @@
 use super::*;
 
-/// Whether the track `?1` is its release's first, and the track after it.
-pub(super) const TRACK_NEIGHBORS: &str = "SELECT \
-        NOT EXISTS (SELECT 1 FROM tracks AS earlier \
-                    WHERE earlier.release_id = track.release_id \
-                      AND earlier.position < track.position), \
-        (SELECT later.id FROM tracks AS later \
-         WHERE later.release_id = track.release_id AND later.position > track.position \
-         ORDER BY later.position LIMIT 1) \
-     FROM tracks AS track WHERE track.id = ?1";
-
-/// Each segment of the audio format `?1`, in segment order, with the size and
-/// container of the release file it names and its scrub points' blob, each
-/// joined by key. A release file's `file` always names a record in
-/// `coven_files` (coven 17.2), so the size is NULL only when no release file
-/// has the segment's id.
-const TRACK_AUDIO_SEGMENTS: &str = "SELECT s.*, coven.size AS file_size, \
-     f.source_audio_container AS file_container, p.points AS scrub_points \
-     FROM audio_format_segments AS s \
-     LEFT JOIN (release_files AS f JOIN coven_files AS coven ON coven.id = f.file) \
-       ON f.id = s.file_id \
-     LEFT JOIN audio_segment_scrub_points AS p ON p.audio_format_segment_id = s.id \
-     WHERE s.audio_format_id = ?1 \
-     ORDER BY s.segment_index";
-
-/// One segment of an audio format as playback and saving read it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbTrackAudioSegment {
-    pub segment: DbAudioSegment,
-    /// The size of the release file the segment names; `None` when no release
-    /// file has that id.
-    pub file_size: Option<u64>,
-    /// The container of the release file the segment names; `None` when no
-    /// release file has that id or the file states no audio facts.
-    pub file_container: Option<bae_util::audio_container::AudioContainer>,
-    /// The frames a scrub inside the segment can start at, in sample order;
-    /// none when it stores none.
-    pub scrub_points: Vec<crate::ScrubPoint>,
-}
-
-/// One row of [`TRACK_AUDIO_SEGMENTS`], its scrub points still the stored
-/// blob.
-struct SegmentRow {
-    segment: DbAudioSegment,
-    file_size: Option<u64>,
-    file_container: Option<bae_util::audio_container::AudioContainer>,
-    scrub_points: Option<Vec<u8>>,
-}
-
-/// Where a track sits in its release's order.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrackNeighbors {
-    pub is_first: bool,
-    /// The id of the track after it, `None` for the last.
-    pub next: Option<String>,
-}
-
 impl Records {
     /// Write one medium row of a release, for a test that builds a release row
     /// by row.
@@ -226,36 +170,6 @@ impl Records {
             .await
     }
 
-    /// How many tracks the release has, counted on its tracks' index.
-    pub async fn count_tracks_for_release(&self, release_id: &str) -> Result<usize, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT COUNT(*) FROM tracks WHERE release_id = ?",
-                    params![release_id],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
-    }
-
-    /// Where the track `track_id` sits in its release's order: whether it is
-    /// the first, and the id of the one after it; `None` when there is no such
-    /// track. Read on the index of each release's track positions.
-    pub async fn track_neighbors(&self, track_id: &str) -> Result<Option<TrackNeighbors>, DbError> {
-        let track_id = track_id.to_string();
-        self.store
-            .read(move |sql| {
-                Ok(sql
-                    .query_row(TRACK_NEIGHBORS, params![track_id], |row| {
-                        Ok(TrackNeighbors { is_first: row.get(0)?, next: row.get(1)? })
-                    })
-                    .optional()?)
-            })
-            .await
-    }
-
     /// Ordered by the release’s stored track positions.
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
@@ -271,6 +185,7 @@ impl Records {
             .await
     }
     /// Find audio format by track ID. Caller-provided ID — may not exist.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_audio_format_by_track_id(
         &self,
         track_id: &str,
@@ -285,70 +200,6 @@ impl Records {
                 )
                 .optional()
                 .map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Every segment of the audio format `audio_format_id`, in segment
-    /// order, each with the size of the release file it names (`None` when
-    /// there is no such file) and its scrub points, all read in one query.
-    pub async fn get_track_audio_segments(
-        &self,
-        audio_format_id: &str,
-    ) -> Result<Vec<DbTrackAudioSegment>, DbError> {
-        let audio_format_id = audio_format_id.to_string();
-        self.store
-            .read(move |sql| {
-                let rows: Vec<SegmentRow> =
-                    sql.query(TRACK_AUDIO_SEGMENTS, params![audio_format_id], |row| {
-                        Ok(SegmentRow {
-                            segment: row_to_audio_segment(row)?,
-                            file_size: row.get("file_size")?,
-                            file_container: row
-                                .get::<_, Option<String>>("file_container")?
-                                .as_deref()
-                                .map(bae_util::audio_container::AudioContainer::from_name),
-                            scrub_points: row.get("scrub_points")?,
-                        })
-                    })?;
-                rows.into_iter()
-                    .map(|row| {
-                        Ok(DbTrackAudioSegment {
-                            segment: row.segment,
-                            file_size: row.file_size,
-                            file_container: row.file_container,
-                            scrub_points: match row.scrub_points {
-                                Some(blob) => super::scrub_points_column::decode(&blob)?,
-                                None => Vec::new(),
-                            },
-                        })
-                    })
-                    .collect()
-            })
-            .await
-    }
-
-    /// The release files the segments of the audio format `audio_format_id`
-    /// name, each once.
-    #[cfg(desktop)]
-    pub async fn get_audio_files_for_format(
-        &self,
-        audio_format_id: &str,
-    ) -> Result<Vec<DbFile>, DbError> {
-        let audio_format_id = audio_format_id.to_string();
-        self.store
-            .read(move |sql| {
-                Ok(sql.query(
-                    concat!(
-                        "SELECT ",
-                        release_file_columns!(),
-                        " FROM release_files AS f WHERE f.id IN \
-                     (SELECT file_id FROM audio_format_segments WHERE audio_format_id = ?1) \
-                     ORDER BY f.id"
-                    ),
-                    params![audio_format_id],
-                    row_to_file,
-                )?)
             })
             .await
     }

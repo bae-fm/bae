@@ -37,6 +37,7 @@ pub use records::RecordsChange;
 pub use records::ReleaseMetadataRows;
 #[cfg(desktop)]
 pub use records::{ArtistCredits, GonePicked};
+pub use records::{DbTrackTags, TrackForSave, TrackSaveRead};
 pub use records::{
     Deleted, DeletionError, DeletionRefusal, IdentityRefusal, IdentityWriteError, ImageWriteError,
     ImageWriteRefusal, OtherDeviceError, PressingParts, PrimaryReleaseError, Records,
@@ -48,9 +49,7 @@ pub use records::{
 };
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use records::{SeededAlbum, SeededAudio};
-pub use resolved_track_audio::{
-    ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError, TrackAudioMeta,
-};
+pub use resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError};
 pub use upload_progress::{UploadActivity, UploadProgress};
 
 include!(concat!(env!("OUT_DIR"), "/schema.rs"));

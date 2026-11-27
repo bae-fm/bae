@@ -780,6 +780,27 @@ pub struct ResolvedSaveTags {
     pub total_tracks: usize,
 }
 
+#[cfg(desktop)]
+impl ResolvedSaveTags {
+    /// The tags a saved copy of a track carries, from what the library
+    /// stores of it.
+    fn of(tags: bae_records::DbTrackTags) -> Self {
+        Self {
+            tags: SaveTags {
+                title: tags.title,
+                artists: bae_records::credits::library_line(&tags.artists),
+                album_artists: bae_records::credits::library_line(&tags.album_artists),
+                album: tags.album_title,
+                album_year: tags.album_year,
+                year: bae_records::shown_year(tags.release_year, tags.album_year),
+                disc: tags.disc,
+            },
+            track_number: tags.number,
+            total_tracks: tags.total_tracks,
+        }
+    }
+}
+
 /// Which image to use when changing an album's cover art.
 pub enum CoverSelection {
     /// Use an image file already in the library.

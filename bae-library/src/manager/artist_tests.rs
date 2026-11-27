@@ -230,20 +230,21 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
         .expect("the album is found")
         .artist_line
         .plain_text();
-    let saved = manager
-        .library
-        .manager()
-        .resolve_save_tags(&library.release, &library.featured)
-        .await
-        .unwrap();
+    let saved = manager.library.manager().records.track_tags(&library.featured.id).await.unwrap();
+    let names = |credits: &[bae_records::credits::LibraryCredit]| {
+        bae_records::credits::library_line(credits)
+            .name_values()
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+    };
     PrintedLines {
         album_page: album.artist_line.plain_text(),
         featured_row: row(&library.featured.id),
         plain_row: row(&library.plain.id),
         queued_featured,
         searched_album,
-        saved_artists: saved.tags.artists.name_values().map(str::to_string).collect(),
-        saved_album_artists: saved.tags.album_artists.name_values().map(str::to_string).collect(),
+        saved_artists: names(&saved.artists),
+        saved_album_artists: names(&saved.album_artists),
     }
 }
 

@@ -334,20 +334,20 @@ impl SaveService {
         existing: ExistingOutput,
         bugs: BugSinkRef,
     ) -> Result<(), SaveError> {
-        let track_id = plan.audio_meta.track.id.clone();
+        let track_id = plan.audio.track_id.clone();
         debug!("Exporting track {} to {}", track_id, output_path.display());
 
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelSaveOnDrop(Arc::clone(&cancel));
 
         let tag_type = codec_tag_type(&codec);
-        let sample_rate = plan.audio_meta.audio_format.sample_rate.get();
-        let channels = plan.audio_meta.audio_format.channels.get();
+        let sample_rate = plan.audio.sample_rate.get();
+        let channels = plan.audio.channels.get();
         let cancel_for_audio = Arc::clone(&cancel);
         // How the audio gets into the file: copied from the source file as
         // stored, or decoded and encoded to the codec.
         let write_audio: Box<dyn FnOnce(std::fs::File) -> Result<(), SaveError> + Send> = match plan
-            .copied_file(&codec)?
+            .copied_file(&codec)
         {
             Some(file_id) => {
                 debug!("Track {track_id} is already in the saved codec: copying file {file_id}");
@@ -358,7 +358,7 @@ impl SaveService {
                 Box::new(move |file| copy_file_audio(&source, file, &cancel_for_audio))
             }
             None => {
-                let format = encode_format(&codec, plan.audio_meta.audio_format.bits_per_sample);
+                let format = encode_format(&codec, plan.audio.bits_per_sample);
                 let decode = plan.decode(&streams).map_err(|e| e.to_string())?;
                 Box::new(move |file| {
                     let mut encoder = StreamingEncoder::seekable(
@@ -526,7 +526,7 @@ struct Level {
 }
 
 impl ReplayGainTags {
-    pub(crate) fn of(meta: &bae_records::TrackAudioMeta) -> Self {
+    pub(crate) fn of(audio: &bae_records::ResolvedTrackAudio) -> Self {
         let level = |loudness: Option<f64>, peak: Option<f64>| {
             loudness.zip(peak).map(|(loudness, peak_linear)| Level {
                 gain_db: bae_playback::loudness_gain_db(loudness),
@@ -534,11 +534,8 @@ impl ReplayGainTags {
             })
         };
         Self {
-            track: level(
-                meta.audio_format.track_loudness_lufs,
-                meta.audio_format.track_peak_linear,
-            ),
-            album: level(meta.release.album_loudness_lufs, meta.release.album_peak_linear),
+            track: level(audio.track_loudness_lufs, audio.track_peak_linear),
+            album: level(audio.album_loudness_lufs, audio.album_peak_linear),
         }
     }
 

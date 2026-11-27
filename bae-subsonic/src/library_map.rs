@@ -22,7 +22,7 @@ use crate::model::{
 /// was stored at (16, 24 or 32 bits), or 16 for a lossy codec, which has no
 /// stored depth and decodes to nothing finer.
 pub(crate) fn wav_stream_format(audio: &ResolvedTrackAudio) -> StreamEncodeFormat {
-    let bits_per_sample = match audio.bits_per_sample {
+    let bits_per_sample = match audio.bits_per_sample.map(std::num::NonZeroU32::get) {
         Some(17..=24) => 24,
         Some(25..) => 32,
         Some(_) | None => 16,
@@ -176,7 +176,7 @@ async fn resolve_audio_fields(
         release_id: audio.release_id.clone(),
         // `bits_per_sample` is `None` for a lossy codec, which has no fixed
         // sample depth; OpenSubsonic's required `bitDepth` reports 0 there.
-        bit_depth: audio.bits_per_sample.map(i64::from).unwrap_or(0),
+        bit_depth: audio.bits_per_sample.map(|bits| i64::from(bits.get())).unwrap_or(0),
         sampling_rate: i64::from(audio.sample_rate.get()),
         channel_count: i64::from(audio.channels.get()),
         content_type,

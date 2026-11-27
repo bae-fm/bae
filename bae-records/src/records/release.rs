@@ -343,18 +343,6 @@ impl Records {
             .await
     }
 
-    /// Follow `DbTrack.release_id` → `DbRelease`. FK navigation — the row must
-    /// exist. See the method conventions above.
-    pub async fn get_release_for_track(&self, track: &DbTrack) -> Result<DbRelease, DbError> {
-        let release_id = track.release_id.clone();
-        self.store
-            .read(move |sql| {
-                sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
-                    .map_err(DbError::from)
-            })
-            .await
-    }
-
     /// Ordered by `created_at`.
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();

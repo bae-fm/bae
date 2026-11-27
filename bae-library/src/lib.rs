@@ -64,7 +64,7 @@ pub use tokio_util::sync::CancellationToken;
 #[cfg(desktop)]
 pub(crate) struct SaveTrackPlan {
     resolved: manager::ResolvedSaveTags,
-    audio_meta: bae_records::TrackAudioMeta,
+    audio: bae_records::ResolvedTrackAudio,
     window: manager::SaveWindow,
     /// The ReplayGain tags the saved file carries; `None` when the save
     /// writes no loudness tags.
