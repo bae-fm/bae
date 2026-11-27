@@ -3,9 +3,10 @@
 //! write replaces the whole queue with them, shuffled when the play asks for
 //! it or the queue's shuffle mode is on.
 
-use super::queue::{context_from_row, queue_row_on};
+use super::queue::{context_from_row, queue_row_on, ClearContextLaneParams, ClearUpNextParams};
 use super::*;
 use crate::{ContextSource, QueueEntry};
+use bae_store::WriteStatements;
 
 /// What a play fills the context lane with.
 #[derive(Debug, Clone)]
@@ -88,13 +89,153 @@ impl LeftOut {
     }
 }
 
-/// The tracks a fill puts in the lane, as a `FROM … WHERE …` over `tracks t`
-/// binding `:source` when it names one, and the source order that ranks them.
-struct FillSource {
-    from: &'static str,
-    source_order: &'static str,
-    source: Option<String>,
+/// The tracks a fill puts in the lane, in the source's order.
+enum FillSource {
+    /// The tracks of one release, by its id.
+    Release(String),
+    /// The tracks of each release a JSON array of ids names, release by
+    /// release in the array's order.
+    Releases(String),
+    /// The library's tracks among those a JSON array of ids names, in the
+    /// array's order.
+    Tracks(String),
+    /// Every library track, release by release.
+    Library,
 }
+
+// The tracks of a source, each with its place `ordered` in the source's order,
+// numbered from 1 in the order a play takes them. A play that shuffles takes
+// the row that leads first, which `lead_track` or `lead_position` names by its
+// track or its place, and the rest in random order; any other takes them in
+// the source's order.
+sqlive_compose::fragment!(
+    PlayOrder(shuffled: bool, lead_track: Option<String>, lead_position: Option<i64>)
+    with sourced(track_id TEXT, ordered INTEGER) { track_id: String, ordered: i64, played: i64 },
+    r#"
+    SELECT source.track_id, source.ordered,
+           row_number() OVER (
+               ORDER BY CASE WHEN :shuffled
+                            THEN source.track_id IS :lead_track
+                                 OR source.ordered IS :lead_position END DESC,
+                        CASE WHEN :shuffled THEN random() ELSE source.ordered END) AS played
+    FROM sourced AS source
+"#
+);
+
+// The context lane holding a release's tracks. The lane's entries are numbered
+// on from `base`, the next free entry number, in play order, and go in in that
+// order: the table, its shuffled index and its track index then grow at their
+// end. A lane not shuffled reads in the order it was numbered in, so its two
+// orders agree.
+sqlive_compose::write!(
+    FillFromRelease(
+        release: &'p str,
+        base: i64,
+        shuffled: bool,
+        lead_track: Option<&'p str>,
+        lead_position: Option<i64>,
+    ),
+    r#"
+    INSERT INTO playback_context (entry, ordered, shuffled, track_id)
+    SELECT :base + lane.played - 1, lane.ordered, lane.played, lane.track_id
+    FROM @crate::tables::queue_fill::PlayOrder(
+        shuffled: :shuffled, lead_track: :lead_track, lead_position: :lead_position,
+        sourced: (
+            SELECT track.track_id,
+                   row_number() OVER (ORDER BY track.position, track.track_id)
+            FROM @bae_records::records::spread_fragments::TrackPosition AS track
+            WHERE track.release_id = :release)) AS lane
+    ORDER BY lane.played
+"#
+);
+
+// [`FillFromRelease`] with the tracks of several releases.
+sqlive_compose::write!(
+    FillFromReleases(
+        releases: &'p str,
+        base: i64,
+        shuffled: bool,
+        lead_track: Option<&'p str>,
+        lead_position: Option<i64>,
+    ),
+    r#"
+    INSERT INTO playback_context (entry, ordered, shuffled, track_id)
+    SELECT :base + lane.played - 1, lane.ordered, lane.played, lane.track_id
+    FROM @crate::tables::queue_fill::PlayOrder(
+        shuffled: :shuffled, lead_track: :lead_track, lead_position: :lead_position,
+        sourced: (
+            SELECT track.track_id,
+                   row_number() OVER (ORDER BY given.key, track.position, track.track_id)
+            FROM json_each(:releases) AS given
+            JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+                ON track.release_id = given.value)) AS lane
+    ORDER BY lane.played
+"#
+);
+
+// [`FillFromRelease`] with a list's tracks.
+sqlive_compose::write!(
+    FillFromTracks(
+        tracks: &'p str,
+        base: i64,
+        shuffled: bool,
+        lead_track: Option<&'p str>,
+        lead_position: Option<i64>,
+    ),
+    r#"
+    INSERT INTO playback_context (entry, ordered, shuffled, track_id)
+    SELECT :base + lane.played - 1, lane.ordered, lane.played, lane.track_id
+    FROM @crate::tables::queue_fill::PlayOrder(
+        shuffled: :shuffled, lead_track: :lead_track, lead_position: :lead_position,
+        sourced: (
+            SELECT track.track_id, row_number() OVER (ORDER BY given.key)
+            FROM json_each(:tracks) AS given
+            JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+                ON track.track_id = given.value)) AS lane
+    ORDER BY lane.played
+"#
+);
+
+// [`FillFromRelease`] with every library track.
+sqlive_compose::write!(
+    FillFromLibrary(
+        base: i64,
+        shuffled: bool,
+        lead_track: Option<&'p str>,
+        lead_position: Option<i64>,
+    ),
+    r#"
+    INSERT INTO playback_context (entry, ordered, shuffled, track_id)
+    SELECT :base + lane.played - 1, lane.ordered, lane.played, lane.track_id
+    FROM @crate::tables::queue_fill::PlayOrder(
+        shuffled: :shuffled, lead_track: :lead_track, lead_position: :lead_position,
+        sourced: (
+            SELECT track.track_id,
+                   row_number() OVER (
+                       ORDER BY track.release_id, track.position, track.track_id)
+            FROM @bae_records::records::spread_fragments::TrackPosition AS track)) AS lane
+    ORDER BY lane.played
+"#
+);
+
+// What the filled lane plays from, its playing row's places and the next free
+// entry number.
+sqlive_compose::write!(
+    PlayFilledLane(
+        source_kind: &'static str,
+        source_release_id: Option<&'p str>,
+        shuffled: bool,
+        ordered_cursor: i64,
+        shuffled_cursor: i64,
+        next_entry: i64,
+    ),
+    r#"
+    UPDATE playback_queue
+    SET source_kind = :source_kind, source_release_id = :source_release_id,
+        shuffled = :shuffled, ordered_cursor = :ordered_cursor,
+        shuffled_cursor = :shuffled_cursor, next_entry = :next_entry
+"#
+);
 
 /// The lane row a fill plays first.
 enum FillCursor {
@@ -106,15 +247,14 @@ enum FillCursor {
 }
 
 impl FillCursor {
-    /// The lane when shuffled: the row played first leads it and the rest
-    /// follow in random order, so a shuffled play of one track still starts
-    /// with it. SQL over a lane row's `track_id` and `ordered`, true for
-    /// the row that leads, with the value it binds as `:lead`.
-    fn lead(&self) -> Option<(&'static str, &dyn rusqlite::ToSql)> {
+    /// The row that leads the lane when it shuffles, so a shuffled play of one
+    /// track still starts with it: its track, or its place in the source's
+    /// order; neither when no row leads.
+    fn lead(&self) -> (Option<&str>, Option<i64>) {
         match self {
-            FillCursor::First => None,
-            FillCursor::Track(track_id) => Some(("track_id = :lead", track_id)),
-            FillCursor::Position(position) => Some(("ordered = :lead", position)),
+            FillCursor::First => (None, None),
+            FillCursor::Track(track_id) => (Some(track_id), None),
+            FillCursor::Position(position) => (None, Some(*position)),
         }
     }
 }
@@ -123,11 +263,6 @@ pub(super) fn fill_on(
     sql: &coven::BulkSqlContext<'_>,
     fill: ContextFill,
 ) -> Result<ContextFilled, DbError> {
-    let release_source = |release_id: String| FillSource {
-        from: "tracks t WHERE t.release_id = :source",
-        source_order: "t.position, t.id",
-        source: Some(release_id),
-    };
     let (source, rows, whole_shuffled, start, left_out) = match fill {
         ContextFill::ReleaseOfTrack(track_id) => {
             let release_id: Option<String> = sql
@@ -140,7 +275,7 @@ pub(super) fn fill_on(
             };
             (
                 ContextSource::Release(release_id.clone()),
-                release_source(release_id),
+                FillSource::Release(release_id),
                 false,
                 FillCursor::Track(track_id),
                 LeftOut::Nothing,
@@ -172,7 +307,7 @@ pub(super) fn fill_on(
             };
             (
                 ContextSource::Release(release_id.clone()),
-                release_source(release_id),
+                FillSource::Release(release_id),
                 shuffled,
                 start,
                 LeftOut::Nothing,
@@ -202,11 +337,7 @@ pub(super) fn fill_on(
                 .expect("serializing a Vec<String> to JSON cannot fail");
             (
                 ContextSource::releases(playable),
-                FillSource {
-                    from: "json_each(:source) j JOIN tracks t ON t.release_id = j.value",
-                    source_order: "j.key, t.position, t.id",
-                    source: Some(playable_ids),
-                },
+                FillSource::Releases(playable_ids),
                 false,
                 FillCursor::First,
                 LeftOut::releases(left_out),
@@ -276,11 +407,7 @@ pub(super) fn fill_on(
             };
             (
                 ContextSource::Tracks,
-                FillSource {
-                    from: "json_each(:source) j JOIN tracks t ON t.id = j.value",
-                    source_order: "j.key",
-                    source: Some(track_ids),
-                },
+                FillSource::Tracks(track_ids),
                 whole_shuffled,
                 cursor,
                 LeftOut::tracks(left_out),
@@ -292,17 +419,7 @@ pub(super) fn fill_on(
             if !has_tracks {
                 return Ok(ContextFilled::NoTracks);
             }
-            (
-                ContextSource::Library,
-                FillSource {
-                    from: "tracks t",
-                    source_order: "t.release_id, t.position, t.id",
-                    source: None,
-                },
-                true,
-                FillCursor::First,
-                LeftOut::Nothing,
-            )
+            (ContextSource::Library, FillSource::Library, true, FillCursor::First, LeftOut::Nothing)
         }
     };
 
@@ -310,43 +427,31 @@ pub(super) fn fill_on(
     // mode on. Any other play shuffles while the mode is on, from its start
     // track when it names one.
     let shuffled = whole_shuffled || queue_row_on(sql)?.shuffled;
-    let lead = if whole_shuffled { None } else { start.lead() }.filter(|_| shuffled);
+    let (lead_track, lead_position) =
+        if whole_shuffled || !shuffled { (None, None) } else { start.lead() };
     // Up Next empties and the context lane is replaced, with what it plays
     // from written below.
-    sql.execute("DELETE FROM playback_manual", [])?;
-    sql.execute("DELETE FROM playback_context", [])?;
-    let play_order = match (shuffled, &lead) {
-        (false, _) => "ordered".to_string(),
-        (true, None) => "random()".to_string(),
-        (true, Some((leads, _))) => format!("({leads}) DESC, random()"),
-    };
-    // The lane's entries are numbered on from the next free entry number, in
-    // play order, and inserted in that order: the table, its shuffled index
-    // and its track index then grow at their end. A lane not shuffled reads in
-    // the order it was numbered in, so its two orders agree.
+    sql.run(&ClearUpNextParams {})?;
+    sql.run(&ClearContextLaneParams {})?;
     let base = queue_row_on(sql)?.next_entry;
-    let mut bound: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":base", &base)];
-    if let Some(source) = &rows.source {
-        bound.push((":source", source));
-    }
-    if let Some((_, value)) = &lead {
-        bound.push((":lead", *value));
-    }
-    let track_count = sql.execute(
-        &format!(
-            "INSERT INTO playback_context (entry, ordered, shuffled, track_id) \
-             SELECT :base + shuffled - 1, ordered, shuffled, track_id FROM ( \
-                 SELECT track_id, ordered, \
-                        row_number() OVER (ORDER BY {play_order}) AS shuffled \
-                 FROM (SELECT t.id AS track_id, \
-                              row_number() OVER (ORDER BY {source_order}) AS ordered \
-                       FROM {from})) \
-             ORDER BY shuffled",
-            source_order = rows.source_order,
-            from = rows.from,
-        ),
-        bound.as_slice(),
-    )?;
+    let track_count = match &rows {
+        FillSource::Release(release) => {
+            sql.run(&FillFromReleaseParams { release, base, shuffled, lead_track, lead_position })?
+        }
+        FillSource::Releases(releases) => sql.run(&FillFromReleasesParams {
+            releases,
+            base,
+            shuffled,
+            lead_track,
+            lead_position,
+        })?,
+        FillSource::Tracks(tracks) => {
+            sql.run(&FillFromTracksParams { tracks, base, shuffled, lead_track, lead_position })?
+        }
+        FillSource::Library => {
+            sql.run(&FillFromLibraryParams { base, shuffled, lead_track, lead_position })?
+        }
+    };
     // The row played first: a shuffled lane's first row, else the start's.
     let (ordered_cursor, shuffled_cursor): (i64, i64) = if shuffled {
         let ordered =
@@ -367,19 +472,14 @@ pub(super) fn fill_on(
         (ordered, ordered)
     };
     let (source_kind, source_release_id) = source.to_columns();
-    sql.execute(
-        "UPDATE playback_queue \
-         SET source_kind = ?, source_release_id = ?, shuffled = ?, ordered_cursor = ?, \
-             shuffled_cursor = ?, next_entry = ?",
-        params![
-            source_kind,
-            source_release_id,
-            shuffled,
-            ordered_cursor,
-            shuffled_cursor,
-            base + track_count as i64
-        ],
-    )?;
+    sql.run(&PlayFilledLaneParams {
+        source_kind,
+        source_release_id,
+        shuffled,
+        ordered_cursor,
+        shuffled_cursor,
+        next_entry: base + track_count as i64,
+    })?;
     let (current, _) = sql.query_row(
         "SELECT entry, track_id, shuffled AS position FROM playback_context WHERE shuffled = ?",
         [shuffled_cursor],
