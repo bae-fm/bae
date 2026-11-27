@@ -11,6 +11,11 @@ async fn queue() -> (QueuedReleases<DownloadRequest, u8>, bae_util::test_files::
     let db = Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
         .await
         .unwrap();
+    // The queue takes only releases the library holds.
+    bae_records::test_fixtures::artist_album_release()
+        .release(bae_records::test_fixtures::ALBUM_A, RELEASE_B)
+        .write(&bae_records::test_fixtures::test_records(&db))
+        .await;
     (QueuedReleases::new(db), tmp)
 }
 

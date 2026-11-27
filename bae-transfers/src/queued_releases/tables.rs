@@ -278,13 +278,30 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
     Ok(added)
 }
 
-/// What one write queueing a selection for download did.
+/// Queue each of `entries` whose release the library holds, in order, in one
+/// write that decides which: it passes over a release already in the queue,
+/// and names each one the library no longer holds.
+#[cfg(desktop)]
+pub(crate) fn enqueue_held_releases_on<P: QueuedPayload>(
+    sql: &CovenWrite<'_>,
+    entries: Vec<ReleaseQueueEntry<P>>,
+) -> Result<ReleasesQueued, DbError> {
+    let release_ids =
+        serde_json::Value::from_iter(entries.iter().map(|entry| entry.release_id.as_str()))
+            .to_string();
+    let missing = missing_releases_on(sql, &release_ids)?;
+    let held: Vec<_> =
+        entries.into_iter().filter(|entry| !missing.contains(&entry.release_id)).collect();
+    Ok(ReleasesQueued { added: enqueue_releases_on(sql, &held)?, missing })
+}
+
+/// What one write queueing releases did.
 #[derive(Debug, PartialEq, Eq)]
-pub struct DownloadsQueued {
+pub struct ReleasesQueued {
     /// Whether the write added any release or queued one again.
     pub added: bool,
-    /// Each release of the selection the library no longer holds, in the
-    /// selection's order. Queueing it changed nothing.
+    /// Each release asked for that the library no longer holds, in the order
+    /// asked. Queueing it changed nothing.
     pub missing: Vec<String>,
 }
 
@@ -313,7 +330,7 @@ pub(crate) fn enqueue_pins_on(
     sql: &CovenWrite<'_>,
     release_ids: &[String],
     created_at: i64,
-) -> Result<DownloadsQueued, DbError> {
+) -> Result<ReleasesQueued, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
     let added = sql.execute(
         &format!(
@@ -335,19 +352,7 @@ pub(crate) fn enqueue_pins_on(
             ":release_ids": release_ids,
         },
     )? > 0;
-    Ok(DownloadsQueued { added, missing: missing_releases_on(sql, &release_ids)? })
-}
-
-/// Whether the queue holds `release_id`, in any phase.
-pub(crate) fn release_queued_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<bool, DbError> {
-    Ok(sql.query_row(
-        &format!("SELECT EXISTS (SELECT 1 FROM {} WHERE release_id = ?)", P::TABLE),
-        [release_id],
-        |row| row.get(0),
-    )?)
+    Ok(ReleasesQueued { added, missing: missing_releases_on(sql, &release_ids)? })
 }
 
 /// Start `release_id`'s entry, or start it again when the process that
@@ -488,7 +493,7 @@ pub(crate) fn enqueue_moves_to_this_device_on(
     release_ids: &[String],
     target_dir: &std::path::Path,
     created_at: i64,
-) -> Result<DownloadsQueued, DbError> {
+) -> Result<ReleasesQueued, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
     let added = sql.execute(
         &format!(
@@ -511,7 +516,7 @@ pub(crate) fn enqueue_moves_to_this_device_on(
             ":target_dir": coven::path_bytes(target_dir),
         },
     )? > 0;
-    Ok(DownloadsQueued { added, missing: missing_releases_on(sql, &release_ids)? })
+    Ok(ReleasesQueued { added, missing: missing_releases_on(sql, &release_ids)? })
 }
 
 /// Empty the export and save queue and let it run: what the library opens

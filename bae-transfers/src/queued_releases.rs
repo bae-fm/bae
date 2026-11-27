@@ -207,23 +207,20 @@ where
         }
     }
 
-    pub async fn contains(&self, release_id: &str) -> Result<bool, DbError> {
-        let release_id = release_id.to_string();
-        self.store.read(move |sql| tables::release_queued_on::<Extra>(&sql, &release_id)).await
-    }
-
-    /// Queue every entry in order, passing over a release already queued,
-    /// and wake the worker if any went in. Returns whether any did.
+    /// Queue every entry in order, in one write that passes over a release
+    /// already queued and names each one the library no longer holds, and
+    /// wake the worker if any went in.
     #[cfg(desktop)]
     pub async fn enqueue_all(
         &self,
         entries: Vec<ReleaseQueueEntry<Extra>>,
-    ) -> Result<bool, DbError> {
-        let added = self.store.call(move |sql| tables::enqueue_releases_on(sql, &entries)).await?;
-        if added {
+    ) -> Result<tables::ReleasesQueued, DbError> {
+        let queued =
+            self.store.call(move |sql| tables::enqueue_held_releases_on(sql, entries)).await?;
+        if queued.added {
             self.wake();
         }
-        Ok(added)
+        Ok(queued)
     }
 
     /// Wake the worker parked on an empty or paused queue.
@@ -630,7 +627,7 @@ where
         &self,
         release_ids: Vec<String>,
         created_at: i64,
-    ) -> Result<tables::DownloadsQueued, DbError> {
+    ) -> Result<tables::ReleasesQueued, DbError> {
         self.store.call(move |sql| tables::enqueue_pins_on(sql, &release_ids, created_at)).await
     }
 
@@ -646,7 +643,7 @@ where
         release_ids: Vec<String>,
         target_dir: std::path::PathBuf,
         created_at: i64,
-    ) -> Result<tables::DownloadsQueued, DbError> {
+    ) -> Result<tables::ReleasesQueued, DbError> {
         let queued = self
             .store
             .call(move |sql| {

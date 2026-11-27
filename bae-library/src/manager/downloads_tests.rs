@@ -306,6 +306,16 @@ async fn pinning_a_failed_download_queues_it_again_in_its_place() {
     assert_eq!(queue.total.failed, 0);
 }
 
+/// Queue `release_id` to pin, which the queue takes.
+async fn queue_pin(manager: &LibraryManager, release_id: &str) {
+    let entry = bae_transfers::QueuedPin {
+        release_id: release_id.to_string(),
+        created_at: 0,
+        payload: bae_transfers::DownloadRequest::Pin,
+    };
+    assert!(manager.downloads.enqueue_all(vec![entry]).await.unwrap().added);
+}
+
 /// Each step of bytes a pin drives reaches the active download's progress,
 /// read apart from the queue's table.
 #[tokio::test]
@@ -315,18 +325,10 @@ async fn download_transfers_report_each_driven_file_progress() {
     let (test, _temp_dir) = setup_test_manager().await;
 
     let manager = test.library.manager();
-    let release_id = "release-progress".to_string();
+    let release_id = insert_pinnable_release(&test).await;
     // The manager's own worker leaves the entry to this test.
     manager.set_downloads_paused(true).await.unwrap();
-    assert!(manager
-        .downloads
-        .enqueue_all(vec![bae_transfers::QueuedPin {
-            release_id: release_id.clone(),
-            created_at: 0,
-            payload: bae_transfers::DownloadRequest::Pin,
-        }])
-        .await
-        .unwrap());
+    queue_pin(manager, &release_id).await;
     let pending = bae_util::test_spawn::task(std::future::pending::<()>());
     assert!(manager
         .downloads
@@ -343,8 +345,7 @@ async fn download_transfers_report_each_driven_file_progress() {
     let mut transfers = manager.downloads.watch_transfers();
     let bytes_done =
         |transfers: &std::collections::BTreeMap<String, bae_transfers::DownloadTransfer>| {
-            let Some(bae_transfers::DownloadTransfer::Pin(progress)) =
-                transfers.get("release-progress")
+            let Some(bae_transfers::DownloadTransfer::Pin(progress)) = transfers.get(&release_id)
             else {
                 panic!("the active download has a pin's progress");
             };
@@ -395,7 +396,7 @@ async fn download_transfers_report_each_driven_file_progress() {
 async fn download_bytes_send_no_new_sync_activity() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let release_id = "release-activity".to_string();
+    let release_id = insert_pinnable_release(&test).await;
     let progress = |bytes_done| {
         bae_transfers::DownloadTransfer::Pin(
             bae_transfers::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap(),
@@ -406,15 +407,7 @@ async fn download_bytes_send_no_new_sync_activity() {
 
     // The manager's own worker leaves the entry to this test.
     manager.set_downloads_paused(true).await.unwrap();
-    assert!(manager
-        .downloads
-        .enqueue_all(vec![bae_transfers::QueuedPin {
-            release_id: release_id.clone(),
-            created_at: 0,
-            payload: bae_transfers::DownloadRequest::Pin,
-        }])
-        .await
-        .unwrap());
+    queue_pin(manager, &release_id).await;
     let pending = bae_util::test_spawn::task(std::future::pending::<()>());
     assert!(manager
         .downloads

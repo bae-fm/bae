@@ -406,6 +406,21 @@ async fn the_worker_s_next_look_is_one_statement() {
     assert_eq!(counter.take().app_read_statements, 1);
 }
 
+/// Queueing leaves out a release the library lacks, and names it.
+#[cfg(desktop)]
+#[tokio::test]
+async fn queueing_names_a_release_the_library_lacks() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    artist_album_release().write(&test_records(&db)).await;
+    let entries = vec![download(RELEASE_B), download(RELEASE_A)];
+
+    let queued = db.call(move |sql| tables::enqueue_held_releases_on(sql, entries)).await.unwrap();
+
+    assert!(queued.added);
+    assert_eq!(queued.missing, [RELEASE_B.to_string()]);
+    assert_eq!(downloads(&db).await.len(), 1);
+}
+
 /// The worker's lookups use the table's keys.
 #[tokio::test]
 async fn the_queue_lookups_are_planned_on_their_keys() {

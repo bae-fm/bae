@@ -30,6 +30,11 @@ async fn opening_a_library_keeps_its_download_queue() {
     .await
     .unwrap();
     let left = sources.store(handle.clone());
+    // The queue takes only a release the library holds.
+    bae_records::test_fixtures::artist_album_release()
+        .release(bae_records::test_fixtures::ALBUM_A, REL_1)
+        .write(&bae_records::test_fixtures::test_records(&left))
+        .await;
     let left = bae_transfers::Downloads::new(left);
     left.enqueue_all(vec![bae_transfers::QueuedPin {
         release_id: REL_1.to_string(),

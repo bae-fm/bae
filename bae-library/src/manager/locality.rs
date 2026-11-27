@@ -243,9 +243,7 @@ impl LibraryManager {
     /// release's move to the cloud, and its files stay on this device only,
     /// as does ending a failed move. An unpin can't be stopped.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
-        if self.downloads.contains(release_id).await? {
-            self.cancel_download(release_id).await?;
-        }
+        self.cancel_download(release_id).await?;
         self.cancel_release_upload(release_id).await
     }
 

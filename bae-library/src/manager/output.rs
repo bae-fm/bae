@@ -2,7 +2,7 @@
 
 use super::*;
 use bae_util::timestamp::StoredTimestamp as _;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 /// A hidden file bae writes into every output folder — export or save — naming
 /// the release id. It is what lets a re-run safely replace a prior bae output of
@@ -68,20 +68,16 @@ impl LibraryManager {
         target_dir: std::path::PathBuf,
         kind: bae_transfers::OutputKind,
     ) -> Result<(), LibraryError> {
-        if self.outputs.contains(release_id).await? {
-            debug!("enqueue_output: {release_id} already queued, skipping");
-            return Ok(());
-        }
-        self.get_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::release_missing(release_id, output_work(&kind)))?;
-
+        let work = output_work(&kind);
         let entry = bae_transfers::OutputEntry {
             release_id: release_id.to_string(),
             created_at: bae_store::utc_now(self.clock.as_ref()).unix_timestamp_millis(),
             payload: bae_transfers::OutputRequest { target_dir, kind },
         };
-        self.outputs.enqueue_all(vec![entry]).await?;
+        let queued = self.outputs.enqueue_all(vec![entry]).await?;
+        if !queued.missing.is_empty() {
+            return Err(LibraryError::release_missing(release_id, work));
+        }
         Ok(())
     }
 
