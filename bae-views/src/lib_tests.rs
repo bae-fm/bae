@@ -550,18 +550,6 @@ mod window_cost {
         }
     }
 
-    /// What the artist and composer lists' reads cost in a library of 10,000
-    /// of each. Their statements order by the sort they are given, so each
-    /// read goes through the whole list, and no index serves one.
-    #[tokio::test(flavor = "multi_thread")]
-    #[ignore = "measurement: run in release with --ignored --nocapture"]
-    async fn artist_and_composer_window_cost() {
-        let (db, tmp) = bae_store::test_fixtures::temp_db(TEST_SCHEMA).await;
-        seed(&db, &tmp.path().join("originals"), 0, 10_000).await;
-        measure_artists(&db, 10_000).await;
-        measure_composers(&db, 10_000).await;
-    }
-
     async fn measure_storage(db: &Store, n: u64) {
         for (filter, rows) in [
             (
