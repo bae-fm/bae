@@ -5,6 +5,7 @@
 //! in bae-library adds it to these rows and sends each line's bar.
 
 use bae_store::DbError;
+use bae_transfers::DownloadKind;
 
 /// A transfer line's bar as the tables give it: the share of its batch's
 /// bytes done, and each file or release that bae is transferring now with its
@@ -114,8 +115,8 @@ pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRo
     let TransferBarsRow { uploads, pins, moves } = bae_store::statement_row(
         sql,
         &TransferBarsParams {
-            pins: "pin".to_string(),
-            moving_to_this_device: "move_to_this_device".to_string(),
+            pins: DownloadKind::Pin.key().to_string(),
+            moving_to_this_device: DownloadKind::MoveToThisDevice.key().to_string(),
         },
     )?;
     Ok(ActivityBarRows {

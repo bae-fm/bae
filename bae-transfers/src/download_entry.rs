@@ -1,6 +1,7 @@
 //! A release's entry in this device's download queue, as every reader of it
 //! shows it: what it does and where it stands.
 
+use bae_types::release_storage::ReleaseStorageAction;
 use rusqlite::{
     types::{FromSql, FromSqlError, FromSqlResult, ValueRef},
     Row,
@@ -16,15 +17,24 @@ pub enum DownloadKind {
     MoveToThisDevice,
 }
 
+impl DownloadKind {
+    /// The kind's name in the download queue's and its batch's `kind` columns:
+    /// its release storage action's.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Pin => ReleaseStorageAction::Pin,
+            Self::MoveToThisDevice => ReleaseStorageAction::MoveToThisDevice,
+        }
+        .key()
+    }
+}
+
 impl FromSql for DownloadKind {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        match value.as_str()? {
-            "pin" => Ok(Self::Pin),
-            "move_to_this_device" => Ok(Self::MoveToThisDevice),
-            other => {
-                Err(FromSqlError::Other(format!("download kind {other} names no kind").into()))
-            }
-        }
+        let name = value.as_str()?;
+        [Self::Pin, Self::MoveToThisDevice].into_iter().find(|kind| kind.key() == name).ok_or_else(
+            || FromSqlError::Other(format!("download kind {name} names no kind").into()),
+        )
     }
 }
 
