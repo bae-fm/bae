@@ -95,8 +95,22 @@ CREATE TABLE IF NOT EXISTS composer_listing (
     name_sort_key BLOB NOT NULL,
     work_count INTEGER NOT NULL CHECK (work_count >= 0),
     linked_release_count INTEGER NOT NULL CHECK (linked_release_count >= 0),
-    unlinked_credit_count INTEGER NOT NULL CHECK (unlinked_credit_count >= 0)
+    unlinked_credit_count INTEGER NOT NULL CHECK (unlinked_credit_count >= 0),
+    -- The composer list's sorts that run descending, each a column that sorts
+    -- ascending: a count negated, and the name's key in hex, which does in the
+    -- `descending` collation.
+    sort_name_back TEXT NOT NULL COLLATE descending GENERATED ALWAYS AS (hex(name_sort_key)) VIRTUAL,
+    sort_works_back INTEGER NOT NULL GENERATED ALWAYS AS (-work_count) VIRTUAL,
+    sort_releases_back INTEGER NOT NULL GENERATED ALWAYS AS (-linked_release_count) VIRTUAL
 ) STRICT;
+
+-- One index for each term the composer list can sort by first.
+CREATE INDEX IF NOT EXISTS idx_composer_listing_name ON composer_listing (name_sort_key, artist_id);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_name_back ON composer_listing (sort_name_back);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_works ON composer_listing (work_count);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_works_back ON composer_listing (sort_works_back);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_releases ON composer_listing (linked_release_count);
+CREATE INDEX IF NOT EXISTS idx_composer_listing_releases_back ON composer_listing (sort_releases_back);
 
 -- Each row added to or removed from the three tables counts in or out of its
 -- artist's listing row, named by the artist the row's credit names.

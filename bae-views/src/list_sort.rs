@@ -1,58 +1,59 @@
 //! A list's sort as its compiled statements bind it: the person's criteria in
-//! the order they stack, at most one for each field the list sorts by.
+//! the order they stack, at most one for each field the list sorts by, and the
+//! keys of the rows in its order.
 
 use bae_store::list_windows::{OrderKey, SortValue};
 use bae_store::{DbError, SortDirection};
 
-/// A sort of up to `N` criteria: each position's field, as the list's
-/// statements name it, and whether it runs descending.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ListSort<const N: usize> {
-    criteria: [Option<(&'static str, bool)>; N],
+/// A field a list sorts by, as the list's statements name it.
+pub(crate) trait ListSortField: Copy + PartialEq {
+    /// The names, which a sort of no criteria leads with, ascending.
+    const NAME: Self;
+
+    /// What the statements call the field's term running `direction`.
+    fn term(self, direction: SortDirection) -> &'static str;
 }
 
-impl<const N: usize> ListSort<N> {
+/// A sort of up to `N` criteria, in the order they stack.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ListSort<F, const N: usize> {
+    criteria: [Option<(F, SortDirection)>; N],
+}
+
+impl<F: ListSortField, const N: usize> ListSort<F, N> {
     /// The sort by `criteria`, the first foremost. A field named again orders
     /// no two rows its first naming left tied, so only that one counts, and a
-    /// list with `N` fields has a position for each.
-    pub(crate) fn of(criteria: impl IntoIterator<Item = (&'static str, SortDirection)>) -> Self {
+    /// list with `N` fields has a place for each.
+    pub(crate) fn of(criteria: impl IntoIterator<Item = (F, SortDirection)>) -> Self {
         let mut sort = [None; N];
         let mut stacked = 0;
         for (field, direction) in criteria {
             if sort.iter().flatten().any(|(held, _)| *held == field) {
                 continue;
             }
-            sort[stacked] = Some((field, direction == SortDirection::Descending));
+            sort[stacked] = Some((field, direction));
             stacked += 1;
         }
         Self { criteria: sort }
     }
 
-    /// The field at `position`, `None` past the last criterion.
-    pub(crate) fn field(&self, position: usize) -> Option<String> {
-        self.criteria[position].map(|(field, _)| field.to_string())
+    /// The field and direction the sort leads with.
+    pub(crate) fn first(&self) -> (F, SortDirection) {
+        self.criteria[0].unwrap_or((F::NAME, SortDirection::Ascending))
     }
 
-    /// Whether the criterion at `position` runs descending.
-    pub(crate) fn descending(&self, position: usize) -> bool {
-        self.criteria[position].is_some_and(|(_, descending)| descending)
+    /// The term of the criterion at `place`, `None` past the last criterion.
+    pub(crate) fn later(&self, place: usize) -> Option<String> {
+        self.criteria[place].map(|(field, direction)| field.term(direction).to_string())
     }
+}
 
-    /// The value in a row of the criterion at `position`, from the criterion's
-    /// ascending term and its descending one: the term its direction orders
-    /// by.
-    pub(crate) fn term(
-        &self,
-        position: usize,
-        ascending: SortValue,
-        descending: SortValue,
-    ) -> SortValue {
-        if self.descending(position) {
-            descending
-        } else {
-            ascending
-        }
-    }
+/// The key a window from the top binds, which every row comes after: no term
+/// is as low as the least integer, which SQLite also sorts before every blob.
+pub(crate) fn before_every_row<const N: usize>() -> ([SortValue; N], SortValue, String) {
+    let sorts =
+        std::array::from_fn(|place| SortValue::Integer(if place == 0 { i64::MIN } else { 0 }));
+    (sorts, SortValue::Integer(0), String::new())
 }
 
 /// The key of a row with the value `sorts` for each criterion, the name key

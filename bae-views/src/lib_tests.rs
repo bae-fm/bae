@@ -145,6 +145,40 @@ pub(super) fn plan_steps(
     })?)
 }
 
+/// Assert that each of a list's `windows`, a statement with the index leading
+/// with its first term and that term's column, seeks to its key through that
+/// index, and sorts at most the rows that tie on that term, which lets SQLite
+/// stop at the limit. A sort of the list stacks up to `places` criteria.
+pub(super) async fn assert_windows_seek_their_first_term(
+    windows: &[(&str, &str, &str)],
+    places: usize,
+) {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(super::TEST_SCHEMA).await;
+    for &(statement, index, column) in windows {
+        let statement = statement.to_string();
+        let steps = db
+            .read(move |sql| {
+                // The statement names the later places, then the key's
+                // values (two terms for each later place, the first's one, the
+                // name and the id) and the limit.
+                let mut params = vec![rusqlite::types::Value::Null; places - 1];
+                params.extend(vec![rusqlite::types::Value::Integer(0); 2 * places + 1]);
+                params.push(rusqlite::types::Value::Integer(50));
+                plan_steps(&sql, &statement, rusqlite::params_from_iter(params))
+            })
+            .await
+            .unwrap();
+        let seek = format!("SEARCH listing USING INDEX {index} ({column}>?)");
+        assert!(steps.iter().any(|step| step.detail == seek), "{index}: {steps:?}");
+        assert!(
+            steps.iter().filter(|step| step.own).all(|step| !step.detail.contains("TEMP B-TREE")
+                || step.detail.contains("TERMS OF ORDER BY")
+                || step.detail.contains("RIGHT PART OF ORDER BY")),
+            "{index} sorts the whole list: {steps:?}"
+        );
+    }
+}
+
 /// The plan of `statement` under `seek`'s parameters and `extra`, one step
 /// per line.
 pub(super) async fn plan(

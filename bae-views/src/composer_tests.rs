@@ -476,8 +476,8 @@ const SECOND_COMPOSER_MUSICBRAINZ: &str = "mb-composer-second";
 /// naming a composer moves it in the window holding it, a write to a
 /// composer in one window reruns that window and no other, and a composer
 /// sorting after the upper window's one row and before the lower window's
-/// first reruns the count alone. Descending by name, the second composer
-/// ("Second", then renamed) is above the first.
+/// first reruns the count alone. By name, the second composer ("Second", then
+/// renamed) is above the first ("Third").
 #[test]
 fn composer_windows_follow_the_composers_in_their_ranges() {
     bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
@@ -486,7 +486,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         let other = musicbrainz_artist(SECOND_COMPOSER_MUSICBRAINZ);
         devices.pause().await;
         RecordsFixture::new()
-            .artist(COMPOSER_ID, "Composer Name First")
+            .artist(COMPOSER_ID, "Composer Name Third")
             .work(COMPOSER_WORK_ID, "Work Title First")
             .composer(COMPOSER_WORK_ID, COMPOSER_ID)
             .at("2026-01-02T00:00:00Z")
@@ -498,7 +498,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
             .await;
         let sort = [ComposerSortCriterion {
             field: ComposerSortField::Name,
-            direction: SortDirection::Descending,
+            direction: SortDirection::Ascending,
         }];
         let views = crate::LibraryViews::new(db.clone());
         let first_composer = views
@@ -583,7 +583,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         // A composer sorting into the upper window reruns it and the count.
         RecordsFixture::new()
             .at("2026-01-03T00:00:00Z")
-            .artist(INSERTED_COMPOSER_ID, "Composer Name Zzz Inserted")
+            .artist(INSERTED_COMPOSER_ID, "Composer Name Aaa Inserted")
             .work(INSERTED_COMPOSER_WORK_ID, "Work Title Inserted")
             .composer(INSERTED_COMPOSER_WORK_ID, INSERTED_COMPOSER_ID)
             .write(&records)
@@ -597,7 +597,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 3);
 
         // "Middle" sorts after the upper window's one row and before the
-        // lower window's first row, "First".
+        // lower window's first row, "Third".
         let (middle, middle_work) =
             ("5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b02", "5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b03");
         RecordsFixture::new()

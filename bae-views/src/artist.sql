@@ -12,8 +12,19 @@ CREATE TABLE IF NOT EXISTS artist_listing (
     name TEXT NOT NULL,
     name_sort_key BLOB NOT NULL,
     sort_name_sort_key BLOB NOT NULL,
-    album_count INTEGER NOT NULL CHECK (album_count > 0)
+    album_count INTEGER NOT NULL CHECK (album_count > 0),
+    -- The artist list's sorts that run descending, each a column that sorts
+    -- ascending: the count negated, and the name's key in hex, which does in
+    -- the `descending` collation.
+    sort_name_back TEXT NOT NULL COLLATE descending GENERATED ALWAYS AS (hex(name_sort_key)) VIRTUAL,
+    sort_albums_back INTEGER NOT NULL GENERATED ALWAYS AS (-album_count) VIRTUAL
 ) STRICT;
+
+-- One index for each term the artist list can sort by first.
+CREATE INDEX IF NOT EXISTS idx_artist_listing_name ON artist_listing (name_sort_key, artist_id);
+CREATE INDEX IF NOT EXISTS idx_artist_listing_name_back ON artist_listing (sort_name_back);
+CREATE INDEX IF NOT EXISTS idx_artist_listing_albums ON artist_listing (album_count);
+CREATE INDEX IF NOT EXISTS idx_artist_listing_albums_back ON artist_listing (sort_albums_back);
 
 -- Both columns run one way, so the index serves the grid grouped by artist's
 -- sections in either direction.
