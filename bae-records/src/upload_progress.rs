@@ -20,7 +20,7 @@ impl UploadProgress {
     /// A release's files in this device's upload queue as one read found
     /// them: those only waiting, and those this process is sending now. The
     /// read holds at least one queued file
-    /// ([`release_upload_in_row`](crate::records::queued_uploads::release_upload_in_row)).
+    /// ([`ReleaseStorage::upload`](crate::release_storage::ReleaseStorage::upload)).
     pub fn of_release(raw: &crate::DbReleaseUpload) -> Self {
         Self { queued: raw.waiting, uploading: raw.sending }
     }

@@ -99,15 +99,6 @@ impl ReleaseStorage {
     }
 }
 
-// Every release's storage row, whose SQL a statement built as text holds.
-sqlive_compose::read!(
-    writer ReleaseStorageRows,
-    r#"
-    SELECT storage.*
-    FROM @crate::release_storage::ReleaseStorage AS storage
-"#
-);
-
 /// Plant, in the library file under `directory`, the device `device` as the
 /// one `release`'s storage row names as alone holding one of its audio files,
 /// as damage to the row would leave it.

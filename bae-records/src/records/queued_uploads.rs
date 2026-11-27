@@ -35,13 +35,6 @@ sqlive_compose::fragment!(
 "#
 );
 
-/// The columns of a release's storage row `storage`
-/// ([`ReleaseStorageRows`]) that [`release_upload_in_row`] maps: how many of
-/// the release's files wait, are being sent and are stored, and the name of
-/// the release file whose missing original a move of the release waits for.
-pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count, storage.waiting_files, \
-     storage.sending_files, storage.stored_files, storage.missing_original_file";
-
 // What holds the upload queue back, as one row: `upload_wait` names the wait
 // ([`UploadQueueHeld::wait`] gives what it names) and `upload_wait_at` is the earliest
 // time coven gives a file's wait to end. Each file's wait is coven's, as
@@ -97,22 +90,6 @@ fn named_wait(name: &str, at_ms: Option<i64>) -> Option<UploadQueueWait> {
     })
 }
 
-/// How many of a release's files wait, are being sent and are stored, as
-/// [`RELEASE_UPLOAD_COLUMNS`] read them; `None` when none of its files
-/// is queued. A count below zero, or past a `u32`, is a column-conversion
-/// error.
-fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32)>> {
-    let queued: i64 = row.get("queued_count")?;
-    if queued == 0 {
-        return Ok(None);
-    }
-    Ok(Some((
-        bae_store::read::count_column(row, "waiting_files")?,
-        bae_store::read::count_column(row, "sending_files")?,
-        bae_store::read::count_column(row, "stored_files")?,
-    )))
-}
-
 /// The upload progress of a release with queued files, `waiting` of which
 /// only wait and `sending` of which are being sent. A count below zero, or
 /// past a `u32`, is refused.
@@ -122,16 +99,6 @@ pub fn upload_progress(waiting: i64, sending: i64) -> Result<UploadProgress, DbE
             .map_err(|_error| DbError::unreadable("a release's upload count", value))
     };
     Ok(UploadProgress { queued: count(waiting)?, uploading: count(sending)? })
-}
-
-/// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
-/// none of its files waits.
-pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbReleaseUpload>> {
-    let Some((waiting, sending, stored)) = upload_counts_in_row(row)? else {
-        return Ok(None);
-    };
-    let missing = if sending > 0 { None } else { row.get("missing_original_file")? };
-    Ok(Some(DbReleaseUpload { waiting, sending, stored, missing }))
 }
 
 impl crate::release_storage::ReleaseStorage {
