@@ -52,6 +52,7 @@ impl People {
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 fn uuid_column(row: &Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
     let value: String = row.get(index)?;
     uuid::Uuid::parse_str(&value)
