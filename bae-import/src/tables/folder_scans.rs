@@ -42,7 +42,7 @@ use std::path::{Path, PathBuf};
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
 pub(crate) use self::cover_choice::cover_choice_of;
 pub(super) use self::cover_choice::{cover_refusal, CoverVersionColumns};
-pub(super) use self::invalid::{load_invalid_detail, InvalidColumns};
+pub(super) use self::invalid::{load_invalid_detail, InvalidColumns, StoredImage};
 pub(crate) use self::read::CandidateRow;
 pub(super) use self::read::{load_item_by_key, RowSources};
 /// Named only by a test that commits a reading under a stamp it took.

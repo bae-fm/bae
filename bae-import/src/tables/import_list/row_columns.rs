@@ -2,7 +2,7 @@
 //! as the columns the rows are shaped from.
 
 use super::*;
-use crate::tables::folder_scans::{CoverVersionColumns, InvalidColumns};
+use crate::tables::folder_scans::{CoverVersionColumns, InvalidColumns, StoredImage};
 use crate::tables::import_state::{
     RuntimeFactColumns, StoredCover, StoredProvenance, StoredReleaseLink,
 };
@@ -13,12 +13,6 @@ use std::path::PathBuf;
 /// `json`, a document a row fragment gave as `what`.
 fn document<T: DeserializeOwned>(what: &str, json: &str) -> Result<T, DbError> {
     serde_json::from_str(json).map_err(|error| DbError::unreadable_json(what, json, error))
-}
-
-/// A path a document holds as the hex of its stored bytes.
-fn path(hex: &str) -> Result<PathBuf, DbError> {
-    let bytes = hex::decode(hex).map_err(|_error| DbError::unreadable("a stored path", hex))?;
-    path_column::decode(bytes)
 }
 
 /// A `ListedRow` document.
@@ -37,15 +31,15 @@ struct RowDocument {
 
 #[derive(serde::Deserialize)]
 struct InvalidDocument {
-    folder: String,
+    #[serde(deserialize_with = "path_column::from_hex")]
+    folder: PathBuf,
     separable: i64,
     reason: String,
     shared_name: Option<String>,
     damaged_audio: Option<i64>,
     /// The album title and the stored credits.
     tags: Option<(String, Option<String>)>,
-    /// The path in hex, the size and the modification time.
-    cover: Option<(String, i64, i64)>,
+    cover: Option<StoredImage>,
 }
 
 #[derive(serde::Deserialize)]
@@ -174,7 +168,7 @@ pub(super) fn release_columns(json: &str) -> Result<ReleaseColumns, DbError> {
 
 fn invalid_columns(invalid: InvalidDocument) -> Result<InvalidColumns, DbError> {
     InvalidColumns::new(
-        path(&invalid.folder)?,
+        invalid.folder,
         invalid.separable != 0,
         (invalid.reason, invalid.shared_name, invalid.damaged_audio),
         invalid.tags,
@@ -234,7 +228,8 @@ fn candidate_columns(
 /// A `ListedHeader` document.
 #[derive(serde::Deserialize)]
 pub(super) struct HeaderDocument {
-    root: String,
+    #[serde(deserialize_with = "path_column::from_hex")]
+    root: PathBuf,
     folder: String,
     pub(super) name: String,
     folded: i64,
@@ -248,7 +243,7 @@ pub(super) fn header(json: &str) -> Result<Option<crate::list::ImportGroupHeader
     let Some(header) = document::<Option<HeaderDocument>>("an import list header", json)? else {
         return Ok(None);
     };
-    let root = path(&header.root)?;
+    let root = header.root;
     let folder = hex::decode(&header.folder)
         .map_err(|_error| DbError::unreadable("a group's folder", &header.folder))?;
     let folder = crate::RelativeFolder::from_bytes(folder)

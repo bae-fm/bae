@@ -10,9 +10,14 @@ use crate::triage::InvalidRow;
 use crate::CandidateKey;
 use crate::{InvalidCandidateDetail, MappingFile, MappingImage, MappingRole};
 
-/// An image as [`super::fragments::LeadingImage`] gives it: its path in hex,
-/// its size and its modification time.
-pub(crate) type StoredImage = (String, i64, i64);
+/// An image as [`super::fragments::LeadingImage`] gives it: its path, its
+/// size and its modification time.
+#[derive(serde::Deserialize)]
+pub(crate) struct StoredImage(
+    #[serde(deserialize_with = "path_column::from_hex")] PathBuf,
+    i64,
+    i64,
+);
 
 /// The value of the JSON a statement gave as `what`, where it gave any.
 fn stored_json<T: serde::de::DeserializeOwned>(
@@ -54,13 +59,7 @@ impl InvalidColumns {
         tags: Option<(String, Option<String>)>,
         cover: Option<StoredImage>,
     ) -> Result<Self, DbError> {
-        let cover = cover
-            .map(|(hex, size, modified)| {
-                let bytes = hex::decode(&hex)
-                    .map_err(|_error| DbError::unreadable("a stored path", hex))?;
-                Ok::<_, DbError>((path_column::decode(bytes)?, size, modified))
-            })
-            .transpose()?;
+        let cover = cover.map(|StoredImage(path, size, modified)| (path, size, modified));
         let tags = tags
             .map(|(album_title, credits)| {
                 let artist = crate::tables::stored_credits::line_of(credits.as_deref()).map_err(
