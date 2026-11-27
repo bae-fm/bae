@@ -130,34 +130,33 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
-    PreferenceColumnsRead,
+// This device's preferences: the `preferences` row, every save preset and the
+// name patterns' pieces, in one row.
+sqlive_compose::fragment!(
+    PreferenceRows,
     r#"
-    SELECT stored.* FROM @crate::row::StoredPreferences AS stored
+    SELECT stored.*, presets.*, patterns.*
+    FROM @crate::row::StoredPreferences AS stored
+    JOIN @crate::row::StoredSavePresets AS presets ON 1
+    JOIN @crate::row::StoredNamePatterns AS patterns ON 1
 "#
 );
 
 sqlive_compose::read!(
-    SavePresetsRead,
+    PreferencesRead,
     r#"
-    SELECT presets.* FROM @crate::row::StoredSavePresets AS presets
+    SELECT preferences.* FROM @crate::row::PreferenceRows AS preferences
 "#
 );
 
+// What the settings screens show: this device's preferences beside the
+// storage coven's views record.
 sqlive_compose::read!(
-    NamePatternsRead,
+    SettingsRead,
     r#"
-    SELECT patterns.* FROM @crate::row::StoredNamePatterns AS patterns
-"#
-);
-
-// The preset the last save used.
-sqlive_compose::read!(
-    LastSavePresetRead,
-    r#"
-    SELECT presets.*
-    FROM @crate::row::SavePresetsAmong(wanted: (
-        SELECT stored.last_save_preset AS id FROM preferences AS stored)) AS presets
+    SELECT preferences.*, recorded.*
+    FROM @crate::row::PreferenceRows AS preferences
+    JOIN @crate::row::RecordedStorage AS recorded ON 1
 "#
 );
 
@@ -180,13 +179,6 @@ sqlive_compose::read!(
             (SELECT chosen.id FROM save_preset AS chosen WHERE chosen.id = :selected),
             (SELECT stored.last_save_preset FROM preferences AS stored)) AS chosen_id
     FROM @crate::row::StoredSavePresets AS presets
-"#
-);
-
-sqlive_compose::read!(
-    RecordedStorageRead,
-    r#"
-    SELECT recorded.* FROM @crate::row::RecordedStorage AS recorded
 "#
 );
 
@@ -218,14 +210,17 @@ fn config_on(
     store_id: coven::StoreId,
     library_path: PathBuf,
 ) -> Result<Config, DbError> {
-    let recorded = statement_row(sql, &RecordedStorageReadParams {})?.recorded;
+    let SettingsReadRow { preferences, recorded } = statement_row(sql, &SettingsReadParams {})?;
     let storage_access =
         coven::MemberAccess::from_columns(recorded.account, recorded.access_key_id)
             .map_err(|error| DbError::unreadable("this person's access to storage", error))?;
-    let prefs = preferences_on(sql)?;
-    let last_save_preset =
-        one_save_preset(statement_row(sql, &LastSavePresetReadParams {})?.presets)?
-            .ok_or_else(|| invalid("last_save_preset", &prefs.last_save_preset))?;
+    let prefs = preferences_of(preferences)?;
+    let last_save_preset = prefs
+        .save_presets
+        .iter()
+        .find(|preset| preset.id == prefs.last_save_preset)
+        .cloned()
+        .ok_or_else(|| invalid("last_save_preset", &prefs.last_save_preset))?;
     Ok(Config {
         store_id,
         library_path,
@@ -322,17 +317,16 @@ impl PreferencesRow {
 }
 
 fn preferences_on(sql: &impl SqlRead) -> Result<Preferences, DbError> {
-    let save_presets = statement_row(sql, &SavePresetsReadParams {})?
-        .presets
-        .every
-        .save_presets
-        .into_iter()
-        .map(save_preset_of)
-        .collect::<Result<_, _>>()?;
-    let patterns = statement_row(sql, &NamePatternsReadParams {})?.patterns;
+    preferences_of(statement_row(sql, &PreferencesReadParams {})?.preferences)
+}
+
+/// This device's preferences as [`PreferenceRows`] holds them.
+fn preferences_of(rows: PreferenceRows) -> Result<Preferences, DbError> {
+    let PreferenceRows { stored, presets, patterns } = rows;
+    let save_presets =
+        presets.every.save_presets.into_iter().map(save_preset_of).collect::<Result<_, _>>()?;
     let save_filename_pattern = pattern_of(patterns.filename_tokens)?;
     let save_folder_pattern = pattern_of(patterns.folder_tokens)?;
-    let stored = statement_row(sql, &PreferenceColumnsReadParams {})?.stored;
     let subsonic_network =
         match (stored.subsonic_network.as_str(), stored.subsonic_network_interface) {
             ("this_machine", None) => SubsonicNetwork::ThisMachine,
