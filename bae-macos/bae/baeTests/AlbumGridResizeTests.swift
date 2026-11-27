@@ -291,16 +291,7 @@ struct AlbumGridResizeTests {
             }
         )
         let title = "Album Title \(Stage.centeredPosition)"
-        let words = try #require(
-            tree.nodes.first {
-                if case .text(title) = $0.value {
-                    true
-                }
-                else {
-                    false
-                }
-            }
-        )
+        let words = try #require(tree.nodes.first { $0.textWords == title })
         // The title's parent is the card.
         let card = tree.nodes[try #require(words.parent)]
         return card.frame.minY - visible.frame.minY
