@@ -1,7 +1,6 @@
 //! The JSON documents the placement's row fragments (`row_fragments`) give,
 //! as the columns the rows are shaped from.
 
-use super::listed::ListedColumns;
 use super::*;
 use crate::tables::folder_scans::{CoverVersionColumns, InvalidColumns};
 use crate::tables::import_state::{
@@ -272,23 +271,4 @@ pub(super) fn header(json: &str) -> Result<Option<crate::list::ImportGroupHeader
         expanded: header.folded == 0,
         entry_count: to_u32(header.entries, "a group's entry count")?,
     }))
-}
-
-/// The placement's columns of a release's row.
-pub(super) struct PlacementColumns {
-    pub(super) tab: String,
-    pub(super) import_failed: Option<bool>,
-    pub(super) actionable: Option<bool>,
-    pub(super) pending_state: Option<String>,
-    pub(super) needs_you_reason: Option<String>,
-    pub(super) reason_pressings: Option<i64>,
-    pub(super) error_detail: Option<String>,
-}
-
-impl PlacementColumns {
-    /// The listed columns of the placement with the commands the
-    /// `ListedActions` document `actions` offers.
-    pub(super) fn listed(self, actions: &str) -> Result<ListedColumns, DbError> {
-        ListedColumns::new(self, super::actions::offered(actions)?)
-    }
 }

@@ -18,7 +18,8 @@
 //! whether the list shows no member of the group after it.
 
 use super::list_items::{key_of, key_values, keyed_params, Item, ListBinding};
-use super::row_columns::{self, PlacementColumns, ReleaseColumns, ShownColumns};
+use super::listed::{ListedColumns, PlacementColumns};
+use super::row_columns::{self, ReleaseColumns, ShownColumns};
 use super::window_reads::*;
 use super::*;
 use crate::candidate_detail::ListedRelease;
@@ -64,13 +65,7 @@ struct StoredRelease {
     has_summary: Option<bool>,
     shown_title: Option<String>,
     shown_credits: Option<String>,
-    tab: String,
-    import_failed: Option<bool>,
-    actionable: Option<bool>,
-    pending_state: Option<String>,
-    needs_you_reason: Option<String>,
-    reason_pressings: Option<i64>,
-    error_detail: Option<String>,
+    placement: PlacementColumns,
     /// The `ListedActions` document.
     actions: String,
     /// The `ListedRow` document.
@@ -102,13 +97,15 @@ macro_rules! stored_item {
                 has_summary: $row.has_summary,
                 shown_title: $row.shown_title,
                 shown_credits: $row.shown_credits,
-                tab: required($row.tab, "tab")?,
-                import_failed: $row.import_failed,
-                actionable: $row.actionable,
-                pending_state: $row.pending_state,
-                needs_you_reason: $row.needs_you_reason,
-                reason_pressings: $row.reason_pressings,
-                error_detail: $row.error_detail,
+                placement: PlacementColumns {
+                    tab: required($row.tab, "tab")?,
+                    import_failed: $row.import_failed,
+                    actionable: $row.actionable,
+                    pending_state: $row.pending_state,
+                    needs_you_reason: $row.needs_you_reason,
+                    reason_pressings: $row.reason_pressings,
+                    error_detail: $row.error_detail,
+                },
                 actions: required($row.actions, "actions")?.actions,
                 row: required($row.listed, "listed")?.listed_row,
             }),
@@ -367,13 +364,7 @@ fn candidate_item(
         has_summary,
         shown_title,
         shown_credits,
-        tab,
-        import_failed,
-        actionable,
-        pending_state,
-        needs_you_reason,
-        reason_pressings,
-        error_detail,
+        placement,
         actions,
         row: _,
     } = release;
@@ -391,16 +382,7 @@ fn candidate_item(
         )),
         Some(false) | None => None,
     };
-    let placement = PlacementColumns {
-        tab,
-        import_failed,
-        actionable,
-        pending_state,
-        needs_you_reason,
-        reason_pressings,
-        error_detail,
-    };
-    let listed = placement.listed(&actions)?;
+    let listed = ListedColumns::new(placement, super::actions::offered(&actions)?);
     let ReleaseColumns { name, block, failure, facts, shown, .. } = columns;
     let ListedRelease { basis, actions, standing } = listed.listed(&key)?;
     let facts = facts.facts(&key)?;

@@ -10,21 +10,24 @@ use crate::{
 };
 use bae_catalogs::InternalFailure;
 
-/// The placement columns a release's command basis is read from, as SQLite
-/// holds them: the release's own are `NULL` on a folder that failed
-/// validation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(super) struct BasisColumns {
-    tab: String,
-    import_failed: Option<bool>,
-    actionable: Option<bool>,
+/// The placement's columns of a listed release, as SQLite holds them: the
+/// release's own are `NULL` on a folder that failed validation.
+#[derive(Clone, PartialEq)]
+pub(super) struct PlacementColumns {
+    pub(super) tab: String,
+    pub(super) import_failed: Option<bool>,
+    pub(super) actionable: Option<bool>,
+    pub(super) pending_state: Option<String>,
+    pub(super) needs_you_reason: Option<String>,
+    pub(super) reason_pressings: Option<i64>,
+    pub(super) error_detail: Option<String>,
 }
 
-impl BasisColumns {
+impl PlacementColumns {
     /// What the commands of the release at `key` are decided from. The
     /// table's checks hold every column a release needs, so one missing is a
     /// row the checks let through, which is refused here as broken.
-    pub(super) fn basis(&self, key: &crate::CandidateKey) -> Result<CandidateActionBasis, DbError> {
+    fn basis(&self, key: &crate::CandidateKey) -> Result<CandidateActionBasis, DbError> {
         let column = |column: Option<bool>| {
             column.ok_or_else(|| {
                 DbError::unreadable(
@@ -44,41 +47,18 @@ impl BasisColumns {
 }
 
 /// Where a release's placement says it stands, with the commands its row
-/// offers, as SQLite holds them.
+/// offers.
 #[derive(Clone, PartialEq)]
 pub(super) struct ListedColumns {
-    basis: BasisColumns,
-    pending_state: Option<String>,
-    needs_you_reason: Option<String>,
-    reason_pressings: Option<i64>,
-    error_detail: Option<String>,
+    placement: PlacementColumns,
     /// The commands the release offers.
     actions: Vec<crate::CandidateAction>,
 }
 
 impl ListedColumns {
     /// The placement's columns with the commands the row offers.
-    pub(super) fn new(
-        placement: super::row_columns::PlacementColumns,
-        actions: Vec<crate::CandidateAction>,
-    ) -> Result<Self, DbError> {
-        let super::row_columns::PlacementColumns {
-            tab,
-            import_failed,
-            actionable,
-            pending_state,
-            needs_you_reason,
-            reason_pressings,
-            error_detail,
-        } = placement;
-        Ok(Self {
-            basis: BasisColumns { tab, import_failed, actionable },
-            pending_state,
-            needs_you_reason,
-            reason_pressings,
-            error_detail,
-            actions,
-        })
+    pub(super) fn new(placement: PlacementColumns, actions: Vec<crate::CandidateAction>) -> Self {
+        Self { placement, actions }
     }
 
     /// The columns of a pane's read, which
@@ -87,33 +67,35 @@ impl ListedColumns {
         let actions = listed.actions.as_ref().ok_or_else(|| {
             DbError::unreadable("the commands of a listed release", None::<String>)
         })?;
-        Ok(Self {
-            basis: BasisColumns {
+        Ok(Self::new(
+            PlacementColumns {
                 tab: listed.tab.clone(),
                 import_failed: listed.import_failed,
                 actionable: listed.actionable,
+                pending_state: listed.pending_state.clone(),
+                needs_you_reason: listed.needs_you_reason.clone(),
+                reason_pressings: listed.reason_pressings,
+                error_detail: listed.error_detail.clone(),
             },
-            pending_state: listed.pending_state.clone(),
-            needs_you_reason: listed.needs_you_reason.clone(),
-            reason_pressings: listed.reason_pressings,
-            error_detail: listed.error_detail.clone(),
-            actions: super::actions::offered(&actions.actions)?,
-        })
+            super::actions::offered(&actions.actions)?,
+        ))
     }
 
     /// Where the list places the release at `key`. The table's checks hold
     /// every column a state needs, so one missing is a row the checks let
     /// through, which is refused here as broken.
     pub(super) fn listed(self, key: &crate::CandidateKey) -> Result<ListedRelease, DbError> {
+        let placement = &self.placement;
         let broken =
             |what: &str| DbError::unreadable(format!("import_list_placement of {key}"), what);
         let pressings = || {
-            self.reason_pressings
+            placement
+                .reason_pressings
                 .map(|count| to_u32(count, "a reason's pressing count"))
                 .transpose()?
                 .ok_or_else(|| broken("names no pressing count"))
         };
-        let standing = match self.pending_state.as_deref() {
+        let standing = match placement.pending_state.as_deref() {
             None => None,
             Some(state) => Some(match state {
                 "not_looked_up" => PendingStanding::NotLookedUp,
@@ -125,14 +107,14 @@ impl ListedColumns {
                 "import_error" => PendingStanding::ImportError,
                 "error" => PendingStanding::Error {
                     failure: InternalFailure {
-                        detail: self
+                        detail: placement
                             .error_detail
                             .clone()
                             .ok_or_else(|| broken("names no error"))?,
                     },
                 },
                 "needs_you" => PendingStanding::NeedsYou {
-                    reason: match self.needs_you_reason.as_deref() {
+                    reason: match placement.needs_you_reason.as_deref() {
                         Some("matches") => NeedsYouReason::Matches { count: pressings()? },
                         Some("no_tracklist") => NeedsYouReason::NoTracklist,
                         Some("not_found") => NeedsYouReason::NotFound,
@@ -151,7 +133,7 @@ impl ListedColumns {
                 }
             }),
         };
-        Ok(ListedRelease { basis: self.basis.basis(key)?, actions: self.actions, standing })
+        Ok(ListedRelease { basis: placement.basis(key)?, actions: self.actions, standing })
     }
 }
 
