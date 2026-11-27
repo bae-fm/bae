@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::collections::Stars;
-use bae_store::statement_row;
+use bae_store::{statement_row, WriteStatements};
 
 /// How the library shows the ratings of albums, or of tracks. Each person's
 /// rating stays one to five stars, or none, under every system.
@@ -103,12 +103,24 @@ impl RatingSystemError {
 /// The library's rating systems as its first write sets them: stars for
 /// albums and for tracks.
 pub(crate) fn write_first_rating_systems(sql: &coven::MemberWrite<'_>) -> rusqlite::Result<()> {
-    sql.execute(
-        "INSERT INTO rating_systems (id, albums, tracks) VALUES ('library', ?1, ?1)",
-        [RatingSystem::Stars.as_str()],
-    )?;
+    sql.run(&InsertRatingSystemsParams { system: RatingSystem::Stars.as_str() })?;
     Ok(())
 }
+
+sqlive_compose::write!(
+    InsertRatingSystems(system: &'static str),
+    r#"INSERT INTO rating_systems (id, albums, tracks) VALUES ('library', :system, :system)"#
+);
+
+sqlive_compose::write!(
+    SetAlbumRatingSystem(system: &'static str),
+    r#"UPDATE rating_systems SET albums = :system WHERE id = 'library'"#
+);
+
+sqlive_compose::write!(
+    SetTrackRatingSystem(system: &'static str),
+    r#"UPDATE rating_systems SET tracks = :system WHERE id = 'library'"#
+);
 
 // The library's one `rating_systems` row.
 sqlive_compose::fragment!(
@@ -187,17 +199,20 @@ impl People {
         items: RatedItems,
         system: RatingSystem,
     ) -> Result<(), RatingSystemError> {
-        let statement = match items {
-            RatedItems::Albums => "UPDATE rating_systems SET albums = ? WHERE id = 'library'",
-            RatedItems::Tracks => "UPDATE rating_systems SET tracks = ? WHERE id = 'library'",
-        };
+        let system = system.as_str();
         self.inner
             .store
-            .call(move |sql| match sql.execute(statement, [system.as_str()])? {
+            .call(move |sql| {
+                let changed = match items {
+                    RatedItems::Albums => sql.run(&SetAlbumRatingSystemParams { system })?,
+                    RatedItems::Tracks => sql.run(&SetTrackRatingSystemParams { system })?,
+                };
                 // The library's first write inserted the row, and nothing
                 // deletes it.
-                0 => Err(rusqlite::Error::QueryReturnedNoRows.into()),
-                _ => Ok(()),
+                match changed {
+                    0 => Err(rusqlite::Error::QueryReturnedNoRows.into()),
+                    _ => Ok(()),
+                }
             })
             .await?;
         Ok(())

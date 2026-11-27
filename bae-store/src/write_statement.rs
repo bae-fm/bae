@@ -3,7 +3,7 @@
 
 use crate::read_statement::row_count;
 use crate::DbError;
-use coven::{CommitSql, CovenWrite, JoiningWrite};
+use coven::{CommitSql, CovenWrite, JoiningWrite, MemberWrite};
 use sqlive_compose::{Write, WriteReturning};
 
 /// A context that writes, which runs generated writes.
@@ -41,4 +41,4 @@ macro_rules! write_statements {
     )+};
 }
 
-write_statements!(CommitSql, CovenWrite, JoiningWrite);
+write_statements!(CommitSql, CovenWrite, JoiningWrite, MemberWrite);
