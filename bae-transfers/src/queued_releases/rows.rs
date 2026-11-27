@@ -178,18 +178,29 @@ fn queued_release(
     }
 }
 
-impl DownloadQueueRow {
-    /// The entry as the pane shows it, beside its release.
-    pub(super) fn into_row(
+/// What every queue's row stores of an entry, whatever the entry carries.
+struct StoredEntry {
+    release_id: String,
+    created_at: i64,
+    file_count: u64,
+    total_size: u64,
+    state: String,
+    error: Option<String>,
+}
+
+impl StoredEntry {
+    /// The entry as a reader of its queue shows it, with `payload` what its
+    /// queue's own columns say, beside its release.
+    fn into_row<P>(
         self,
+        payload: Result<P, String>,
         release: Option<ReleaseAlbum>,
         album: Option<AlbumTitle>,
-    ) -> Result<ReleaseQueueRow<DownloadRequest, ()>, DbError> {
+    ) -> Result<ReleaseQueueRow<P, ()>, DbError> {
         let unreadable = |problem: String| {
-            DbError::unreadable(format!("the download of release {}", self.release_id), problem)
+            DbError::unreadable(format!("the queue entry of release {}", self.release_id), problem)
         };
-        let target_dir = self.target_dir.map(bae_store::path_column::decode).transpose()?;
-        let payload = download_request(self.kind, target_dir).map_err(unreadable)?;
+        let payload = payload.map_err(unreadable)?;
         let state = phase(&self.state, self.error).map_err(unreadable)?;
         let release = queued_release(&self.release_id, release, album)?;
         Ok(ReleaseQueueRow {
@@ -206,6 +217,27 @@ impl DownloadQueueRow {
     }
 }
 
+impl DownloadQueueRow {
+    /// The entry as the pane shows it, beside its release.
+    pub(super) fn into_row(
+        self,
+        release: Option<ReleaseAlbum>,
+        album: Option<AlbumTitle>,
+    ) -> Result<ReleaseQueueRow<DownloadRequest, ()>, DbError> {
+        let target_dir = self.target_dir.map(bae_store::path_column::decode).transpose()?;
+        let payload = download_request(self.kind, target_dir);
+        StoredEntry {
+            release_id: self.release_id,
+            created_at: self.created_at,
+            file_count: self.file_count,
+            total_size: self.total_size,
+            state: self.state,
+            error: self.error,
+        }
+        .into_row(payload, release, album)
+    }
+}
+
 #[cfg(any(desktop, test, feature = "test-utils"))]
 impl OutputQueueRow {
     /// The entry as a reader of the queue shows it, beside its release.
@@ -214,28 +246,20 @@ impl OutputQueueRow {
         release: Option<ReleaseAlbum>,
         album: Option<AlbumTitle>,
     ) -> Result<ReleaseQueueRow<crate::OutputRequest, ()>, DbError> {
-        let unreadable = |problem: String| {
-            DbError::unreadable(format!("the output of release {}", self.release_id), problem)
-        };
         let payload = super::tables::output_request(
             bae_store::path_column::decode(self.target_dir)?,
             &self.kind,
             [self.preset, self.filename_pattern, self.folder_pattern, self.extras],
-        )
-        .map_err(unreadable)?;
-        let state = phase(&self.state, self.error).map_err(unreadable)?;
-        let release = queued_release(&self.release_id, release, album)?;
-        Ok(ReleaseQueueRow {
-            op: ReleaseQueueOp {
-                release_id: self.release_id,
-                created_at: self.created_at,
-                file_count: self.file_count,
-                total_size: self.total_size,
-                payload,
-                state,
-            },
-            release,
-        })
+        );
+        StoredEntry {
+            release_id: self.release_id,
+            created_at: self.created_at,
+            file_count: self.file_count,
+            total_size: self.total_size,
+            state: self.state,
+            error: self.error,
+        }
+        .into_row(payload, release, album)
     }
 }
 
