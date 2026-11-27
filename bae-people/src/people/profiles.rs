@@ -1,48 +1,71 @@
 use super::*;
-use crate::membership::fragments::Member;
 use crate::people::fragments::Profile;
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
-use bae_store::{statement_optional, statement_rows};
+use bae_store::{statement_optional, statement_row, statement_rows};
 
-// The library's current members, each with their profile and how many people
-// and active devices the library has. The members with a profile come first, by
-// its name in the device's language; the read reads `name_sort`, so coven
-// reruns it when the device's language changes. The members with no profile yet
-// follow, and member id orders the rest.
-sqlive_compose::read!(
-    CurrentPeople { people: u32, devices: u32 },
+// A member with their profile, none until a device of theirs has written it.
+sqlive_compose::fragment!(
+    MemberWithProfile,
     r#"
-    SELECT member.*, profile.*, count(*) OVER () AS people,
-           sum(member.active_device_count) OVER () AS devices
+    SELECT member.*, profile.*
     FROM @crate::membership::fragments::Member AS member
-    JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
     LEFT JOIN @crate::people::fragments::Profile AS profile ON profile.id = member.member_id
-    WHERE NOT member.removed
-    ORDER BY profile.id IS NULL, bae_name_key(profile.name, sort.language), member.member_id
 "#
 );
 
-// The current member `:member`, with their profile.
+// The current member using this device, which coven marks as this device's own.
+sqlive_compose::read!(
+    OwnPerson,
+    r#"
+    SELECT person.*
+    FROM @crate::people::profiles::MemberWithProfile AS person
+    WHERE person.is_self AND NOT person.removed
+"#
+);
+
+// The other current members. Those with a profile come first, by its name in
+// the device's language; the read reads `name_sort`, so coven reruns it when
+// the device's language changes. Those with no profile yet follow, and member
+// id orders the rest.
+sqlive_compose::read!(
+    OtherPeople,
+    r#"
+    SELECT person.*
+    FROM @crate::people::profiles::MemberWithProfile AS person
+    JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+    WHERE NOT person.is_self AND NOT person.removed
+    ORDER BY person.id IS NULL, bae_name_key(person.name, sort.language), person.member_id
+"#
+);
+
+// How many people the library has and how many active devices they have.
+sqlive_compose::read!(
+    PeopleCounts { people: u32, devices: u32 },
+    r#"
+    SELECT count(*) AS people, coalesce(sum(member.active_device_count), 0) AS devices
+    FROM @crate::membership::fragments::Member AS member
+    WHERE NOT member.removed
+"#
+);
+
+// The member this device writes as: its own member, also after the library
+// removed them.
+sqlive_compose::read!(
+    WritingPerson,
+    r#"
+    SELECT person.*
+    FROM @crate::people::profiles::MemberWithProfile AS person
+    WHERE person.is_self
+"#
+);
+
+// The current member `:member`.
 sqlive_compose::read!(
     CurrentPerson(member: coven::MemberId),
     r#"
-    SELECT member.*, profile.*
-    FROM @crate::membership::fragments::Member AS member
-    LEFT JOIN @crate::people::fragments::Profile AS profile ON profile.id = member.member_id
-    WHERE member.member_id = :member AND NOT member.removed
-"#
-);
-
-// The member using this device, which coven marks as this device's own, with
-// their profile: while they are in the library, and with `:former` also after
-// it removed them.
-sqlive_compose::read!(
-    ThisDevicesPerson(former: bool),
-    r#"
-    SELECT member.*, profile.*
-    FROM @crate::membership::fragments::Member AS member
-    LEFT JOIN @crate::people::fragments::Profile AS profile ON profile.id = member.member_id
-    WHERE member.is_self AND (:former OR NOT member.removed)
+    SELECT person.*
+    FROM @crate::people::profiles::MemberWithProfile AS person
+    WHERE person.member_id = :member AND NOT person.removed
 "#
 );
 
@@ -62,20 +85,27 @@ impl People {
     /// after the library removed it, as the removed device keeps its copy and
     /// keeps writing to it.
     pub(super) async fn writing_person(&self) -> Result<Option<Person>, DbError> {
-        self.inner.store.read(|sql| this_devices_person_on(&sql, true)).await
+        self.inner
+            .store
+            .read(|sql| {
+                statement_optional(&sql, &WritingPersonParams {})?
+                    .map(|row| row.person.into_person())
+                    .transpose()
+            })
+            .await
     }
 
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile, which the same registration wrote.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        self.inner.store.read(|sql| this_devices_person_on(&sql, false)).await
+        self.inner.store.read(|sql| own_person_on(&sql)).await
     }
 
     /// The person using this device, the other people, and how many people and
-    /// devices the library has, live: one statement over coven's members and
-    /// devices and the profiles, so a screen draws its sections and its counts
-    /// from the same moment.
+    /// devices the library has, live: a statement for each, over one snapshot
+    /// of coven's members and devices and the profiles, so a screen draws its
+    /// sections and its counts from the same moment.
     pub fn subscribe_people(&self) -> coven::LiveQuery<PeopleView, bae_store::DbError> {
         self.inner.store.subscribe(|sql| people_view_on(&sql))
     }
@@ -88,7 +118,7 @@ impl People {
     ) -> coven::LiveQuery<Option<Person>, bae_store::DbError> {
         self.inner.store.subscribe(move |sql| {
             statement_optional(&sql, &CurrentPersonParams { member })?
-                .map(|row| person(row.member, row.profile))
+                .map(|row| row.person.into_person())
                 .transpose()
         })
     }
@@ -242,33 +272,26 @@ pub(crate) fn name_this_person_goes_by(
 }
 
 fn people_view_on(sql: &SqlReadContext<'_>) -> Result<PeopleView, DbError> {
-    let rows = statement_rows(sql, &CurrentPeopleParams {})?;
-    // Each row says both counts. A read that returns no row has no member to
-    // count.
-    let (people, devices) = rows.first().map_or((0, 0), |row| (row.people, row.devices));
-    let (mut own, others): (Vec<Person>, Vec<Person>) = rows
+    let own = own_person_on(sql)?;
+    let others = statement_rows(sql, &OtherPeopleParams {})?
         .into_iter()
-        .map(|row| person(row.member, row.profile))
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .partition(|person| person.membership.is_self);
-    Ok(PeopleView { own: own.pop(), others, people: people.into(), devices: devices.into() })
+        .map(|row| row.person.into_person())
+        .collect::<Result<_, _>>()?;
+    let counts = statement_row(sql, &PeopleCountsParams {})?;
+    Ok(PeopleView { own, others, people: counts.people.into(), devices: counts.devices.into() })
 }
 
-fn this_devices_person_on(
-    sql: &SqlReadContext<'_>,
-    former: bool,
-) -> Result<Option<Person>, DbError> {
-    statement_optional(sql, &ThisDevicesPersonParams { former })?
-        .map(|row| person(row.member, row.profile))
-        .transpose()
+fn own_person_on(sql: &SqlReadContext<'_>) -> Result<Option<Person>, DbError> {
+    statement_optional(sql, &OwnPersonParams {})?.map(|row| row.person.into_person()).transpose()
 }
 
-fn person(member: Member, profile: Option<Profile>) -> Result<Person, DbError> {
-    Ok(Person {
-        profile: profile.map(Profile::into_profile),
-        membership: member.into_membership()?,
-    })
+impl MemberWithProfile {
+    fn into_person(self) -> Result<Person, DbError> {
+        Ok(Person {
+            profile: self.profile.map(Profile::into_profile),
+            membership: self.member.into_membership()?,
+        })
+    }
 }
 
 impl Profile {
