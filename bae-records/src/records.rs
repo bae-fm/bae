@@ -104,10 +104,7 @@ pub use editor_tracks::draft_release_edit_tracks_on;
 #[cfg(desktop)]
 pub mod release_edit_rows;
 #[cfg(desktop)]
-pub use release_edit_rows::{
-    editor_release_on, release_to_edit_on, DbAddedSheetFile, DbReleaseSaveFacts,
-    EditorReleaseFacts, ReleaseToEdit,
-};
+pub use release_edit_rows::{editor_release_on, release_to_edit_on, ReleaseToEdit};
 pub mod file_fragments;
 pub mod place_fragments;
 mod release_credits;
