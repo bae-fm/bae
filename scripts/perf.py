@@ -138,7 +138,7 @@ SCENARIOS: tuple[Scenario, ...] = (
     Scenario(
         "first-selection",
         test_command("bae-app", ("--test", "integration"), ("test_first_selection::",)),
-        "the import pane's first and second selection in a fresh store",
+        "the import pane's first value and its first and second selection in a fresh store",
     ),
     Scenario(
         "library-create",

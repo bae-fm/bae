@@ -1,14 +1,15 @@
-//! How long the import pane takes to show the first candidate the person
-//! selects in a fresh library, then a second one: the read of the candidate,
-//! and the statements, steps and scope plans it ran. The library holds 10,000 albums of 10
-//! tracks and one watched folder of 1,000 identified candidates. Run
-//! explicitly in Debug:
+//! How long the import pane takes to show its first value in a fresh
+//! library, then the first candidate the person selects, then a second one:
+//! the read of each, and the statements, steps and scope plans it ran. The
+//! library holds 10,000 albums of 10 tracks and one watched folder of 1,000
+//! identified candidates. Run explicitly in Debug:
 //!
 //!   BUILDS_CARGO_HOST=local scripts/cargo.sh test -p bae-app --features test-utils \
 //!     --test integration -- test_first_selection:: --ignored --nocapture
 //!
 //! `scripts/perf.sh run first-selection` runs it in the release profile.
-//! It prints the time of each selection and its statements, steps and scope plans as costs.
+//! It prints the time of the first value and of each selection, and their
+//! statements, steps and scope plans, as costs.
 
 use bae_import::CandidateKey;
 use bae_library::{
@@ -63,12 +64,15 @@ async fn the_import_pane_first_selection() {
         .await
         .expect("the test library's services start");
 
+    let work = test_library.store().track_work_for_test().await.unwrap();
+    work.take();
+    let started = Instant::now();
     let mut pane = services.subscribe_import_candidate_query_for_test();
     tokio::time::timeout(SETTLE, pane.next_inline())
         .await
         .expect("the pane's first read")
         .expect("the pane's query runs");
-    let work = test_library.store().track_work_for_test().await.unwrap();
+    report("first_selection.import_pane.open", started.elapsed(), &work.take());
 
     for (metric, candidate) in [("first", 0), ("second", 1)] {
         let key = CandidateKey::folder(&root.join(format!("Folder {candidate:04}")));
@@ -87,31 +91,26 @@ async fn the_import_pane_first_selection() {
         })
         .await
         .unwrap_or_else(|_| panic!("the pane did not show candidate {candidate} in {SETTLE:?}"));
-        let elapsed = started.elapsed();
-        let counts = work.take();
-        let report = bae_store::test_fixtures::window_cost::report_cost;
         let metric = format!("first_selection.import_pane.{metric}");
-        report(&metric, elapsed.as_secs_f64() * 1_000.0, "ms");
-        report(
-            &format!("{metric}.app_read_statements"),
-            counts.app_read_statements as f64,
-            "count",
-        );
-        report(&format!("{metric}.app_read_steps"), counts.app_read_steps as f64, "count");
-        report(&format!("{metric}.scope_plans_built"), counts.scope_plans_built as f64, "count");
-        report(
-            &format!("{metric}.scope_plan_sources"),
-            counts.scope_plan_size.sources as f64,
-            "count",
-        );
-        report(&format!("{metric}.scope_plan_cores"), counts.scope_plan_size.cores as f64, "count");
-        report(&format!("{metric}.scope_plan_edges"), counts.scope_plan_size.edges as f64, "count");
-        report(
-            &format!("{metric}.scope_plan_time"),
-            counts.scope_plan_time.as_secs_f64() * 1_000.0,
-            "ms",
-        );
+        report(&metric, started.elapsed(), &work.take());
     }
 
     services.close().await.unwrap();
+}
+
+/// Report `metric`, work that took `elapsed` and did `counts`.
+fn report(metric: &str, elapsed: Duration, counts: &coven::WorkCounts) {
+    let report = bae_store::test_fixtures::window_cost::report_cost;
+    report(metric, elapsed.as_secs_f64() * 1_000.0, "ms");
+    report(&format!("{metric}.app_read_statements"), counts.app_read_statements as f64, "count");
+    report(&format!("{metric}.app_read_steps"), counts.app_read_steps as f64, "count");
+    report(&format!("{metric}.scope_plans_built"), counts.scope_plans_built as f64, "count");
+    report(&format!("{metric}.scope_plan_sources"), counts.scope_plan_size.sources as f64, "count");
+    report(&format!("{metric}.scope_plan_cores"), counts.scope_plan_size.cores as f64, "count");
+    report(&format!("{metric}.scope_plan_edges"), counts.scope_plan_size.edges as f64, "count");
+    report(
+        &format!("{metric}.scope_plan_time"),
+        counts.scope_plan_time.as_secs_f64() * 1_000.0,
+        "ms",
+    );
 }
