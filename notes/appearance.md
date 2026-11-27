@@ -11,7 +11,9 @@ The website (`website/`) is a theme-gen target too: `theme-gen emit --target
 web` writes `website/src/generated/tokens.css`, which the site's npm scripts
 run before Astro (`npm run theme`). It holds every colour token of tokens.json
 in each colour theme, the first theme (dark) on `:root` and each on
-`[data-theme="<id>"]`, then the spacing, radius and opacity tokens, every
+`[data-theme="<id>"]`, then the spacing, radius and opacity tokens, the
+Android glyph and size tokens (the site draws Android's symbols and
+controls), every
 font stack of `type.families` and the website's text styles, named as the
 design system's own `tokens.css` names them. The home page draws in the dark
 values; the docs follow Starlight's theme switch, which sets `data-theme`.

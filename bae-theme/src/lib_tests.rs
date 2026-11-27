@@ -530,6 +530,9 @@ fn the_website_takes_every_colour_token_in_each_theme() {
     assert!(measures.contains("  --space-related: 8px;\n"));
     assert!(measures.contains("  --radius-card: 10px;\n"));
     assert!(measures.contains("  --opacity-tint: 0.14;\n"));
+    assert!(measures.contains("  --icon-android-large: 24px;\n"));
+    assert!(measures.contains("  --size-android-hit-target: 48px;\n"));
+    assert!(!measures.contains("  --icon-small:"));
     assert!(measures.contains("  --font-web-display: \"Mona Sans\", system-ui, sans-serif;\n"));
 }
 

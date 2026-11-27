@@ -2,7 +2,9 @@
 //! system's `tokens.css` names them: `--<colour token>` in one block per
 //! colour theme of tokens.json, the first theme's block on `:root` too and
 //! each block on `[data-theme="<id>"]`, then one `:root` block with every
-//! spacing, radius and opacity token as `--<token>`, every font stack of
+//! spacing, radius and opacity token and every Android glyph and size token
+//! (the site draws Android's symbols and controls) as `--<token>`, every
+//! font stack of
 //! `type.families` as `--font-<family>` and each of the website's text styles
 //! as `--type-<style>-size`, `-weight`, `-line-height` and `-letter-spacing`,
 //! then one class per website text style, `.<style>`, which sets the style's
@@ -23,7 +25,8 @@ pub const FILE: &str = "tokens.css";
 pub struct Web {
     /// The colour themes in tokens.json's order; the first is the page's own.
     pub themes: Vec<WebTheme>,
-    /// The spacing, radius and opacity tokens, by name, in tokens.json's order.
+    /// The spacing, radius and opacity tokens, then the Android glyph and size
+    /// tokens, by name, in tokens.json's order.
     pub measures: Vec<(String, String)>,
     /// Each font family's stack, by its key.
     pub fonts: BTreeMap<String, String>,
@@ -72,7 +75,7 @@ pub(crate) fn read(raw: &RawTokens, colours: &Colours, problems: &mut Vec<String
                 .collect(),
         })
         .collect();
-    let measures = [&raw.spacing, &raw.radius, &raw.opacity]
+    let measures = [&raw.spacing, &raw.radius, &raw.opacity, &raw.icon_android, &raw.size_android]
         .into_iter()
         .flat_map(|family: &RawLengthFamily| &family.tokens)
         .map(|token| (token.name.clone(), token.value.clone()))

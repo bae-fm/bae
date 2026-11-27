@@ -107,8 +107,8 @@ pub struct Theme {
     /// Recurring element sizes, by role.
     pub size: BTreeMap<String, PlatformLengths>,
     /// What the website reads: every colour token in each colour theme, the
-    /// spacing, radius and opacity tokens, the font stacks and the website's
-    /// text styles, as CSS.
+    /// spacing, radius, opacity and Android glyph and size tokens, the font
+    /// stacks and the website's text styles, as CSS.
     pub web: web::Web,
 }
 
