@@ -189,17 +189,25 @@ impl State {
     }
 
     /// Ask for `window`: the window's read moves to it, and the position's
-    /// read to its key. Neither answer for the window before holds.
+    /// read to its key. A read answers a request equal to the one before it
+    /// no second time, so the view keeps the answer of each read it asks
+    /// nothing new of: both for the window it last asked for, and the
+    /// position for a window that starts at the same key.
     #[expect(
         clippy::read_kept_state,
-        reason = "replaces the window the view asks for and drops the answers to the window before; the view holds only the latest answer of its window's and its position's live queries"
+        reason = "replaces the window the view asks for and drops the answers its reads will give anew; the view holds only the latest answer of its window's and its position's live queries"
     )]
     fn request(&mut self, reads: &ListReads, window: ListWindow) -> Result<(), LiveQueryError> {
+        if self.request.as_ref() == Some(&window) {
+            return Ok(());
+        }
+        let asked = self.request.as_ref().and_then(|request| request.from.as_ref());
         match &window.from {
             None => {
                 self.position = None;
                 self.start = Some(0);
             }
+            Some(key) if asked == Some(key) => {}
             Some(key) => {
                 match &self.position {
                     Some(position) => {

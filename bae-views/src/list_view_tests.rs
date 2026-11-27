@@ -254,6 +254,43 @@ mod artists {
             .expect("the view's task does not panic");
     }
 
+    /// A screen that comes to show one row more, one row further down, wants
+    /// a larger window that starts at the same row: the view keeps that row's
+    /// position, which its read answers once, delivers the larger window, and
+    /// goes on moving it as the screen scrolls.
+    #[tokio::test]
+    async fn a_larger_window_from_the_same_row_keeps_its_position() {
+        let (db, _dir) = hundred_artists().await;
+        let (view, run) = ListView::open(
+            reads(&db, &CancellationToken::new()),
+            Visible::new(50, 59),
+            CancellationToken::new(),
+        );
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the test joins the view's task, so a panic in it fails the test"
+        )]
+        let task = tokio::spawn(run);
+        let first = value_at(&view, 40).await;
+        assert_eq!(names(&first), named(40..70));
+
+        // A screen of eleven rows from row 51 wants 33 rows from row 40.
+        view.set_visible(Visible::new(51, 61));
+        let grown = value_at(&view, 40).await;
+        assert_eq!(names(&grown), named(40..73));
+
+        view.set_visible(Visible::new(90, 99));
+        let end = value_at(&view, 80).await;
+        assert_eq!(names(&end), named(80..100));
+
+        view.cancel();
+        drop(view);
+        tokio::time::timeout(HANG_GUARD, task)
+            .await
+            .expect("the view's task ends with its handle")
+            .expect("the view's task does not panic");
+    }
+
     /// Cancelling the view's reads, as closing the library does, ends the
     /// view while the screen still holds its handle and takes no value: a
     /// cancelled read answers at once, so a view that went on asking it would
