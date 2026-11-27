@@ -28,14 +28,6 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::fragment!(
-    TrackRow,
-    r#"
-    SELECT track.id AS track_id
-    FROM tracks AS track
-"#
-);
-
-sqlive_compose::fragment!(
     HeldPressing,
     r#"
     SELECT held.catalog, held.key

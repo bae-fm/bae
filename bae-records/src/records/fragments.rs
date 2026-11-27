@@ -90,20 +90,6 @@ sqlive_compose::fragment!(
         '[]') AS credits
 "#);
 
-// The album's primary release: its lowest-ordered release, ties broken by
-// release id, so every device that holds the same rows names the same one; no
-// row for an album with no release.
-sqlive_compose::fragment!(
-    AlbumPrimaryRelease on albums,
-    r#"
-    SELECT first.id AS release_id
-    FROM releases AS first
-    WHERE first.album_id = @parent.id
-    ORDER BY first.album_order, first.id
-    LIMIT 1
-"#
-);
-
 // The ids of the album's releases in album order (the primary release first),
 // as a JSON array.
 sqlive_compose::fragment!(
