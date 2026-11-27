@@ -60,7 +60,8 @@ arguments = 2
 version = 1
 compute = "crate::records::lengths_disagree::lengths_disagree"
 
-# Records' part: records.sql, and the device's sort language's table.
+# Records' part: records.sql, and the device's sort language's table. Its
+# reads order names by bae-store's name key.
 [[part]]
 sql = ["src/records.sql", "src/records/name_sort.sql"]
 functions = [
@@ -72,6 +73,7 @@ functions = [
     "crate::VARIOUS_ARTISTS_ID",
     "crate::AUDIO_CODEC",
     "crate::LENGTHS_DISAGREE",
+    "bae_store::NAME_KEY",
 ]
 collations = ["bae_store::NATURAL_ORDER"]
 synced = { tables = "crate::synced::synced_tables", namespaces = "crate::synced::namespaces" }

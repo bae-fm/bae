@@ -18,12 +18,12 @@ async fn a_name_for_an_artist_no_longer_held_is_refused() {
         matches!(&refused, Err(CreditNameError::ArtistMissing(artist)) if artist == "gone"),
         "{refused:?}"
     );
-    let held = records
+    let held: i64 = records
         .store
-        .read(|sql| credit_names_of_on(&sql, "gone", "credit_name.name"))
+        .read(|sql| Ok(sql.query_row("SELECT COUNT(*) FROM artist_credits", [], |row| row.get(0))?))
         .await
         .unwrap();
-    assert!(held.is_empty());
+    assert_eq!(held, 0);
 }
 
 /// A role or work credit printing one of the artist's other names links it as
@@ -89,11 +89,15 @@ async fn role_and_work_credits_link_the_names_they_print() {
             .unwrap()
     };
 
-    let held = records
+    let (held, count) = records
         .store
-        .read(|sql| credit_names_of_on(&sql, ARTIST_COMPOSER, "credit_name.name"))
+        .read(|sql| {
+            let statement = OtherNamesOfArtistParams { artist: ARTIST_COMPOSER.to_string() };
+            Ok(bae_store::statement_row(&sql, &statement)?.listed.into_names())
+        })
         .await
         .unwrap();
+    assert_eq!(count, 1);
     assert_eq!(
         held.iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),
         ["Printed Name"]

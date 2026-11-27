@@ -5,7 +5,7 @@ use rusqlite::{params, OptionalExtension, Row};
 // coven owns production connections; row-mapping tests also use bare SQLite.
 use bae_store::Store;
 use bae_store::{DbError, WriteError};
-use coven::{CovenWrite, SqlReadContext};
+use coven::CovenWrite;
 use std::collections::{HashMap, HashSet};
 
 /// The columns of a release file row `f` that `row_to_file` reads: its own,

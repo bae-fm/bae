@@ -120,15 +120,8 @@ pub fn credit_names_json_sql(artist_id: &str, order_key: &str) -> String {
     )
 }
 
-/// How many other printed names [`credit_names_json_sql`] lists for the
-/// artist `artist_id` (an SQL expression).
-pub fn credit_name_count_sql(artist_id: &str) -> String {
-    format!("(SELECT COUNT(*) {})", credit_names_from_sql(artist_id))
-}
-
 /// The rows of the other printed names of the artist `artist_id` (an SQL
-/// expression), as `credit_name`: the `FROM` and `WHERE` clauses that the
-/// list and its count share.
+/// expression), as `credit_name`: the list's `FROM` and `WHERE` clauses.
 fn credit_names_from_sql(artist_id: &str) -> String {
     format!(
         "FROM artist_shown_as shown \
@@ -155,20 +148,67 @@ pub fn credit_names_column(row: &Row<'_>, column: &str) -> rusqlite::Result<Vec<
         .collect())
 }
 
-/// The other printed names of the artist `artist_id` shows as, in the order
-/// of `order_key` (a SQL expression over `credit_name.name`: the name's sort
-/// key): its own rows and those of the artists merged into it.
-pub fn credit_names_of_on(
-    sql: &SqlReadContext<'_>,
-    artist_id: &str,
-    order_key: &str,
-) -> Result<Vec<ArtistCreditName>, DbError> {
-    Ok(sql.query_row(
-        &format!("SELECT {} AS names", credit_names_json_sql("?1", order_key)),
-        params![artist_id],
-        |row| credit_names_column(row, "names"),
-    )?)
+// The other printed names of the artist the parent row shows as, those of the
+// artists merged into it among them, in name order in the device's language,
+// ties going by key, as a JSON array.
+sqlive_compose::fragment!(
+    OtherNames on artists {
+        struct OtherName { artist_id: String, key: String, name: String }
+        names: json<Vec<OtherName>>,
+    },
+    r#"
+    SELECT json_group_array(json_object('artist_id', credit_name.artist_id,
+                                        'key', credit_name.name_key,
+                                        'name', credit_name.name)
+                            ORDER BY bae_name_key(credit_name.name, (
+                                SELECT sort.language
+                                FROM @crate::records::name_sort::NameSortLanguage AS sort)),
+                                     credit_name.name_key) AS names
+    FROM artist_shown_as AS shown
+    JOIN artist_credits AS credit_name ON credit_name.artist_id = shown.artist_id
+    WHERE shown.shown_artist_id = @parent.id
+"#
+);
+
+// Each artist's other printed names ([`OtherNames`]) and how many they are, as
+// the artist's page lists them.
+sqlive_compose::fragment!(
+    ArtistOtherNames { name_count: u64 },
+    r#"
+    SELECT artist.id AS names_artist_id,
+           @crate::records::artist_credit_names::OtherNames(parent: artist) AS other_names,
+           json_array_length(
+               @crate::records::artist_credit_names::OtherNames(parent: artist)) AS name_count
+    FROM artists AS artist
+"#
+);
+
+impl ArtistOtherNames {
+    /// The names, and how many they are.
+    pub fn into_names(self) -> (Vec<ArtistCreditName>, u64) {
+        let names = self
+            .other_names
+            .names
+            .into_iter()
+            .map(|name| ArtistCreditName {
+                artist_id: name.artist_id,
+                credit: CreditName { key: name.key, name: name.name },
+            })
+            .collect();
+        (names, self.name_count)
+    }
 }
+
+// [`ArtistOtherNames`] of the artist `artist`, which a test reads.
+#[cfg(test)]
+sqlive_compose::read!(
+    writer OtherNamesOfArtist(artist: String),
+    r#"
+    SELECT listed.*
+    FROM @crate::records::artist_credit_names::ArtistOtherNames AS listed
+    WHERE listed.names_artist_id = :artist
+"#
+);
 
 impl Records {
     /// Give `artist_id` the other printed name `name`. A name that folds to

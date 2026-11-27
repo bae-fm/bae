@@ -96,7 +96,7 @@ impl LibraryViews {
         let artist_id = artist_id.to_string();
         self.store
             .read(move |sql| find_artist_detail_on(&sql, &artist_id))
-            .process(|rows| rows.map(ArtistDetailRows::process).transpose())
+            .process(ArtistDetailRows::process)
             .await
     }
 
@@ -109,15 +109,14 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |artist_id, sql| {
-                let Some(artist_id) = artist_id else {
-                    return Ok(None);
-                };
-                find_artist_detail_on(&sql, artist_id)
+                artist_id
+                    .as_deref()
+                    .map(|artist_id| find_artist_detail_on(&sql, artist_id))
+                    .transpose()
             })
-            .process(|detail| {
-                Ok(ArtistDetailProjection {
-                    detail: detail.map(ArtistDetailRows::process).transpose()?,
-                })
+            .process(|rows| {
+                let detail = rows.map(ArtistDetailRows::process).transpose()?.flatten();
+                Ok(ArtistDetailProjection { detail })
             })
     }
 }
@@ -144,54 +143,55 @@ fn artist_detail_of(raw: DbArtistDetail) -> ArtistDetail {
     }
 }
 
+/// What [`ArtistPageHead`] and the artist's albums read of the artist
+/// `artist_id`, in one snapshot.
 fn find_artist_detail_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
-) -> Result<Option<ArtistDetailRows>, DbError> {
-    let statement = ArtistByIdParams { artist: artist_id.to_string() };
-    let Some(found) = statement_optional(sql, &statement)? else {
-        return Ok(None);
-    };
-    let artist = found.shown.into_summary()?;
-    let albums = artist_albums_on(sql, artist_id)?;
-    let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
-        sql,
-        artist_id,
-        &crate::sort_key_sql("credit_name.name"),
-    )?;
-    // How many other names the page lists, counted over the rows their
-    // statement reads.
-    let credit_name_count = sql.query_row(
-        &format!(
-            "SELECT {credit_names} AS credit_name_count",
-            credit_names = bae_records::records::artist_credit_names::credit_name_count_sql("?1"),
-        ),
-        params![artist_id],
-        |row| bae_store::read::count_column(row, "credit_name_count"),
-    )?;
-    Ok(Some(ArtistDetailRows { artist, credit_names, albums, credit_name_count }))
+) -> Result<ArtistDetailRows, DbError> {
+    let statement = ArtistPageHeadParams { artist: artist_id.to_string() };
+    Ok(ArtistDetailRows {
+        head: statement_optional(sql, &statement)?,
+        albums: artist_albums_on(sql, artist_id)?,
+    })
 }
+
+// The artist `artist` as the artist list shows it, with the other printed
+// names it goes by; no row for an artist the list doesn't show.
+sqlive_compose::read!(
+    writer ArtistPageHead(artist: String),
+    r#"
+    SELECT shown.*, names.*
+    FROM @crate::artist::ListedArtist AS shown
+    JOIN @bae_records::records::artist_credit_names::ArtistOtherNames AS names
+      ON names.names_artist_id = :artist
+    WHERE shown.listed_id = :artist
+"#
+);
 
 #[derive(Clone, PartialEq)]
 struct ArtistDetailRows {
-    artist: DbArtistSummary,
-    credit_names: Vec<bae_records::credits::ArtistCreditName>,
+    head: Option<ArtistPageHeadRow>,
     albums: Vec<AlbumAppearanceRow>,
-    credit_name_count: u64,
 }
 
 impl ArtistDetailRows {
-    fn process(self) -> Result<DbArtistDetail, DbError> {
-        Ok(DbArtistDetail {
-            artist: self.artist,
-            credit_names: self.credit_names,
+    /// The artist's page; `None` when the artist list doesn't show the artist.
+    fn process(self) -> Result<Option<DbArtistDetail>, DbError> {
+        let Some(head) = self.head else {
+            return Ok(None);
+        };
+        let (credit_names, credit_name_count) = head.names.into_names();
+        Ok(Some(DbArtistDetail {
+            artist: head.shown.into_summary()?,
+            credit_names,
             albums: self
                 .albums
                 .into_iter()
                 .map(|row| row.process(false))
                 .collect::<Result<_, _>>()?,
-            credit_name_count: self.credit_name_count,
-        })
+            credit_name_count,
+        }))
     }
 }
 
@@ -223,17 +223,6 @@ impl ListedArtist {
         })
     }
 }
-
-// The artist `artist`, as the list shows it; no row for an artist the list
-// doesn't show.
-sqlive_compose::read!(
-    writer ArtistById(artist: String),
-    r#"
-    SELECT shown.*
-    FROM @crate::artist::ListedArtist AS shown
-    WHERE shown.listed_id = :artist
-"#
-);
 
 // The first `limit` artists library search finds for `pattern`, in name order,
 // ties going by id, each beside how many rows the statement lists.
