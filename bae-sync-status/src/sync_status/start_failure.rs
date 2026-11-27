@@ -5,6 +5,7 @@
 use super::fragments::StartFailure;
 use super::*;
 use bae_diagnostics::{UiError, UiErrorCategory, UiErrorClass};
+use bae_store::WriteStatements;
 use coven::{DropboxAccess, OAuthAccess, StorageFailure};
 
 /// Why a failed start could not be recorded.
@@ -302,6 +303,28 @@ impl StartFailure {
     }
 }
 
+sqlive_compose::write!(
+    KeepStartFailure(
+        category: &'static str,
+        storage_failure: Option<&'static str>,
+        required_access: Option<&'static str>,
+        size_bytes: Option<i64>,
+        limit_bytes: Option<i64>,
+        detail: &'p str,
+    ),
+    r#"
+    INSERT INTO sync_start_failure (
+        singleton, category, storage_failure, required_access, size_bytes, limit_bytes, detail)
+    VALUES (1, :category, :storage_failure, :required_access, :size_bytes, :limit_bytes, :detail)
+    ON CONFLICT (singleton) DO UPDATE SET
+        category = excluded.category, storage_failure = excluded.storage_failure,
+        required_access = excluded.required_access, size_bytes = excluded.size_bytes,
+        limit_bytes = excluded.limit_bytes, detail = excluded.detail
+"#
+);
+
+sqlive_compose::write!(DeleteStartFailure, r#"DELETE FROM sync_start_failure"#);
+
 impl SyncStatus {
     /// Record why starting sync failed.
     pub async fn record_sync_start_failure(
@@ -312,24 +335,14 @@ impl SyncStatus {
         let columns = FailureColumns::of(&category)?;
         self.store
             .call(move |sql| {
-                sql.execute(
-                    "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
-                     required_access, size_bytes, limit_bytes, detail) \
-                     VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6) \
-                     ON CONFLICT (singleton) DO UPDATE SET \
-                     category = excluded.category, storage_failure = excluded.storage_failure, \
-                     required_access = excluded.required_access, \
-                     size_bytes = excluded.size_bytes, limit_bytes = excluded.limit_bytes, \
-                     detail = excluded.detail",
-                    params![
-                        columns.category,
-                        columns.storage_failure,
-                        columns.required_access,
-                        columns.size_bytes,
-                        columns.limit_bytes,
-                        detail
-                    ],
-                )?;
+                sql.run(&KeepStartFailureParams {
+                    category: columns.category,
+                    storage_failure: columns.storage_failure,
+                    required_access: columns.required_access,
+                    size_bytes: columns.size_bytes,
+                    limit_bytes: columns.limit_bytes,
+                    detail: &detail,
+                })?;
                 Ok(())
             })
             .await?;
@@ -340,7 +353,7 @@ impl SyncStatus {
     pub async fn clear_sync_start_failure(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {
-                sql.execute("DELETE FROM sync_start_failure", [])?;
+                sql.run(&DeleteStartFailureParams {})?;
                 Ok(())
             })
             .await
