@@ -278,7 +278,6 @@ every_build = [
     "AppHandle.save_release_edit",
     "AppHandle.save_track",
     "AppHandle.save_track_suggested_name",
-    "AppHandle.search_albums",
     "AppHandle.select_candidate_release",
     "AppHandle.separate_candidate",
     "AppHandle.set_candidate_album",

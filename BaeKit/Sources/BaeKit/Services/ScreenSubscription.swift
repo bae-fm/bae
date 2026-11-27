@@ -160,6 +160,7 @@ extension SetupStatesSubscription: PulledSubscription {}
 extension StorageSetupFinishingSubscription: PulledSubscription {}
 extension ListViewSubscription: PulledSubscription {}
 extension ListCountSubscription: PulledSubscription {}
+extension ListPageSubscription: PulledSubscription {}
 extension AlbumSectionsSubscription: PulledSubscription {}
 extension AlbumPlaceSubscription: PulledSubscription {}
 extension AlbumSelectionSubscription: PulledSubscription {}

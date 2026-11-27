@@ -502,7 +502,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 album: nil,
                 albumActions: DraftAlbumActions(
                     pick: { _ in },
-                    search: { _ in [] }
+                    search: { _ in .fixed([]) }
                 ),
                 records: nil,
                 pressingUnknown: false

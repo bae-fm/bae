@@ -375,7 +375,7 @@ extension ShotScene {
 
     static let inertAlbumActions = DraftAlbumActions(
         pick: { _ in },
-        search: { _ in [] }
+        search: { _ in .fixed([]) }
     )
 
     static func artistSearch() -> ArtistSearchOpener {

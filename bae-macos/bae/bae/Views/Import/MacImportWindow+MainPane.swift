@@ -63,9 +63,7 @@ extension MacImportWindow {
                     candidate: candidate,
                     releaseId: release.releaseId,
                     albumId: release.albumId,
-                    editCommands: releaseEditor.editCommands(
-                        searchAlbums: importer.searchAlbums
-                    ),
+                    editCommands: releaseEditor.editCommands(),
                     onViewInLibrary: { uiStore.navigateToAlbum($0) },
                     onOpenImages: mappingActions.openImages,
                     onPlayTrack: { trackId in
@@ -157,7 +155,7 @@ extension MacImportWindow {
                     }
                 }
             },
-            search: { try await importer.searchAlbums($0) }
+            search: releaseEditor.albumSearch
         )
     }
 

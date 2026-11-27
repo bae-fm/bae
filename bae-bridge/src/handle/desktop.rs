@@ -457,22 +457,6 @@ forward! {
                 .await?)
         }
 
-        /// The library albums a query finds, for the album picker. A blank
-        /// query is not a search and finds none.
-        fn search_albums(query: String) -> Vec<crate::types::BridgeAlbumChoice> {
-            let Some(query) = bae_views::LibrarySearchQuery::parse(&query) else {
-                return Ok(Vec::new());
-            };
-            Ok(this
-                .services
-                .search_albums(&query)
-                .await
-                .map_err(crate::types::BridgeError::from)?
-                .into_iter()
-                .map(crate::types::BridgeAlbumChoice::from_core)
-                .collect())
-        }
-
         /// Show identification's results for the candidate: its stored verdict
         /// as it stood, picked row and all, when there is one, and a run
         /// started when there is none.

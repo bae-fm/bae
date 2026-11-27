@@ -58,7 +58,6 @@ private struct ImportOperations: Sendable {
     let setCandidateAlbum:
         @Sendable (Data, BridgeAlbumPick) async throws -> Void
     let readCandidateDocument: @Sendable (Data, String) async throws -> String
-    let searchAlbums: @Sendable (String) async throws -> [BridgeAlbumChoice]
     let setCandidatePressingFact:
         @Sendable (Data, BridgePressingFactEdit) async throws -> Void
     let setCandidateAlbumArtists:
@@ -224,9 +223,6 @@ extension ImportOperations {
                     fileId: $1
                 )
             },
-            searchAlbums: {
-                try await handle.searchAlbums(query: $0)
-            },
             setCandidatePressingFact: {
                 try await handle.setCandidatePressingFact(
                     candidateKey: $0,
@@ -378,9 +374,6 @@ final class Importer: Sendable, Observable {
                 _,
                 _ in throw StubError.notImplemented
             },
-        searchAlbums:
-            @escaping @Sendable (String) async throws
-            -> [BridgeAlbumChoice] = { _ in [] },
         setCandidatePressingFact:
             @escaping @Sendable (Data, BridgePressingFactEdit) async throws
             -> Void = { _, _ in },
@@ -444,7 +437,6 @@ final class Importer: Sendable, Observable {
             setCandidateBarcodes: setCandidateBarcodes,
             setCandidateAlbum: setCandidateAlbum,
             readCandidateDocument: readCandidateDocument,
-            searchAlbums: searchAlbums,
             setCandidatePressingFact: setCandidatePressingFact,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
@@ -702,11 +694,6 @@ extension Importer {
         _ fileId: String
     ) async throws -> String {
         try await operations.readCandidateDocument(candidateKey, fileId)
-    }
-
-    /// The library albums a query finds, for the album picker.
-    func searchAlbums(_ query: String) async throws -> [BridgeAlbumChoice] {
-        try await operations.searchAlbums(query)
     }
 
     /// Record this candidate's barcode rows as the person left them.

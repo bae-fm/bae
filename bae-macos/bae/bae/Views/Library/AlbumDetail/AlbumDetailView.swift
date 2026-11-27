@@ -15,8 +15,6 @@ struct AlbumDetailView: View {
     var library
     @Environment(ReleaseEditor.self)
     var releaseEditor
-    @Environment(Importer.self)
-    var importer
     @Environment(Sync.self)
     var sync
     @Environment(Downloads.self)
@@ -326,7 +324,6 @@ extension AlbumDetailView {
         let displayName = release.displayName
         let currentAlbumId = albumId
         let releaseEditor = releaseEditor
-        let importer = importer
         Task {
             do {
                 let opened = try await releaseEditor.openReleaseEdit(releaseId)
@@ -336,9 +333,7 @@ extension AlbumDetailView {
                         displayName: displayName,
                         host: host,
                         opened: opened,
-                        commands: releaseEditor.editCommands(
-                            searchAlbums: importer.searchAlbums
-                        ),
+                        commands: releaseEditor.editCommands(),
                         onSaved: { albumId in
                             uiStore.dismissAllModals()
                             // A release the save moved is shown where it went.

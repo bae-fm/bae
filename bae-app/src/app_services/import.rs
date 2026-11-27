@@ -5,20 +5,6 @@ use super::*;
 use bae_import::ImportCandidateDetail;
 
 impl AppServices {
-    /// The library albums a parsed, non-blank query finds, as the album
-    /// picker lists them: title, the album's credit line and year.
-    pub async fn search_albums(
-        &self,
-        query: &bae_views::LibrarySearchQuery,
-    ) -> Result<Vec<bae_records::DbAlbumSummary>, bae_library::LibraryError> {
-        Ok(self
-            .inner
-            .views
-            .search_rows(query.as_str(), bae_views::SEARCH_RESULT_LIMIT)
-            .await?
-            .albums)
-    }
-
     delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &bae_import::CandidateKey) -> Result<Vec<std::path::PathBuf>, bae_import::ImportError>);
     delegate_async!(import, import_combine_candidates => combine_candidates(keys: Vec<bae_import::CandidateKey>) -> Result<bae_import::CandidateKey, bae_import::ImportError>);
     delegate_async!(import, import_combine_folder => combine_folder(folder: bae_import::FolderReleaseDecisionKey) -> Result<bae_import::CandidateKey, bae_import::ImportError>);

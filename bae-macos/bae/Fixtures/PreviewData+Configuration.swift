@@ -317,7 +317,7 @@ actor PreviewReleaseLibrary {
                     PreviewReleaseEditSession(release: await self.open())
                 )
             },
-            searchAlbums: { _ in [] },
+            albumSearch: { _ in .fixed([]) },
             catalogApply: { nil }
         )
     }

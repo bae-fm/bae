@@ -79,7 +79,8 @@ struct ReleaseEditCommands {
     /// Open a form of the editor's own: the release as the library holds
     /// it, with nothing edited, applied or picked.
     let open: @Sendable (String) async throws -> OpenedReleaseEdit
-    let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
+    /// Follows the library albums a text finds, for the album picker.
+    let albumSearch: AlbumSearchOpener
     /// A new apply of a catalog release; `nil` where no bridge is behind the
     /// editor.
     let catalogApply: @Sendable () -> (any CatalogApplySource)?
@@ -166,7 +167,7 @@ final class ReleaseMetadataEditSession {
     var albumActions: DraftAlbumActions {
         DraftAlbumActions(
             pick: { [weak self] pick in self?.pickAlbum(pick) },
-            search: commands.searchAlbums
+            search: commands.albumSearch
         )
     }
 

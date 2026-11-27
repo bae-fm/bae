@@ -234,27 +234,6 @@ pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
     phase.loc_key().to_string()
 }
 
-/// A library album the album picker offers: its title, credit line and year.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeAlbumChoice {
-    pub album_id: String,
-    pub title: String,
-    pub artist_line: BridgeCreditLine,
-    pub year: Option<i32>,
-}
-
-#[cfg(desktop)]
-impl BridgeAlbumChoice {
-    pub(crate) fn from_core(album: bae_records::DbAlbumSummary) -> Self {
-        Self {
-            album_id: album.id,
-            title: album.title,
-            artist_line: BridgeCreditLine::from_core(album.artist_line),
-            year: album.year,
-        }
-    }
-}
-
 /// What the library holds of one release: every album holding it or another
 /// release of its album, those holding the release first.
 #[derive(Debug, Clone, uniffi::Record)]

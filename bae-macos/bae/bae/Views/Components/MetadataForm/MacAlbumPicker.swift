@@ -7,7 +7,7 @@ struct DraftAlbumActions {
     /// Record what the person picked: a library album, a new album, or the
     /// release's own album.
     let pick: (BridgeAlbumPick) -> Void
-    let search: @MainActor (String) async throws -> [BridgeAlbumChoice]
+    let search: AlbumSearchOpener
 }
 
 /// The library album a draft files under — an import's or a library
@@ -27,7 +27,7 @@ struct MacAlbumPicker: View {
     @State
     private var query = ""
     @State
-    private var results: [BridgeAlbumChoice] = []
+    private var results: [BridgeAlbumSearchResult] = []
     @State
     private var searchError: DisplayError?
 
@@ -106,9 +106,9 @@ struct MacAlbumPicker: View {
             if let searchError {
                 MacNotice(error: searchError)
             }
-            ForEach(results, id: \.albumId) { result in
+            ForEach(results, id: \.id) { result in
                 Button {
-                    actions.pick(.album(albumId: result.albumId))
+                    actions.pick(.album(albumId: result.id))
                     isPresented = false
                     query = ""
                 } label: {
@@ -124,31 +124,44 @@ struct MacAlbumPicker: View {
                 .buttonStyle(.accentPlain)
             }
         }
-        .task(id: query) { await search() }
+        .task(id: query) { await follow(query) }
     }
 
     /// The album's credit line, then its year where it states one.
-    private func line(of result: BridgeAlbumChoice) -> String {
+    private func line(of result: BridgeAlbumSearchResult) -> String {
         FactList.joined([result.artistLine.text, result.year.map(String.init)])
     }
 
+    /// Once typing pauses, follow the albums `text` finds until the text
+    /// changes or the picker closes. The rows the previous text found stay
+    /// until the new read answers; a failed read shows its failure instead.
     @MainActor
-    private func search() async {
+    private func follow(_ text: String) async {
         searchError = nil
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             results = []
             return
         }
         do {
             try await clock.sleep(for: .milliseconds(200))
-            results = try await actions.search(trimmed)
         }
-        catch is CancellationError {}
         catch {
-            results = []
-            searchError = DisplayError(error)
+            return
         }
+        let found = ScreenSubscription(
+            actions.search(trimmed),
+            onValue: { rows in
+                results = rows
+                searchError = nil
+            },
+            onError: { error in
+                results = []
+                searchError = DisplayError(error)
+            }
+        )
+        await Task.untilCancelled()
+        found.stop()
     }
 }
 

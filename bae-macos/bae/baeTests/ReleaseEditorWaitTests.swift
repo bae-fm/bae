@@ -92,7 +92,7 @@ struct ReleaseEditorWaitTests {
             opened: opened,
             commands: ReleaseEditCommands(
                 open: { _ in opened },
-                searchAlbums: { _ in [] },
+                albumSearch: { _ in .fixed([]) },
                 catalogApply: {
                     FixedCatalogApply(step: .fetchingCover(catalog: .discogs))
                 }

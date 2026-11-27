@@ -2,10 +2,17 @@ import BaeKit
 import Foundation
 import os.log
 
+/// How an album picker follows the library albums a text finds: one live
+/// read for each text, of the albums library search lists for it, which core
+/// reads again after each write that changes them.
+typealias AlbumSearchOpener =
+    @Sendable (_ text: String) -> PulledValues<[BridgeAlbumSearchResult]>
+
 /// Release-level mutations and the cover lookups the editor needs.
 /// Covers cover changes, pinning, deleting a release or a whole album,
 /// primary-release selection, opening a release editor's form (whose
-/// commands change it, apply a catalog, pick its album and save it),
+/// commands change it, apply a catalog, pick its album and save it), the
+/// search of the library's albums its album picker follows,
 /// reading one of a release's documents, and the lookups of the covers the
 /// catalogs offer a release's or a candidate's picker.
 @MainActor
@@ -46,6 +53,9 @@ final class ReleaseEditor: Observable {
     /// A new apply of a catalog release and its steps, for the editor to
     /// name what it waits on; `nil` where no bridge is behind the editor.
     let catalogApply: @Sendable () -> (any CatalogApplySource)?
+    /// Opens the live read of the albums that match an album picker's text;
+    /// each text gets its own read.
+    let albumSearch: AlbumSearchOpener
 
     init(
         changeCover:
@@ -85,6 +95,9 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable (String) async throws -> Void = { _ in },
         catalogApply: @escaping @Sendable () -> (any CatalogApplySource)? = {
             nil
+        },
+        albumSearch: @escaping AlbumSearchOpener = { _ in
+            fatalError("the release editor's album search is not installed")
         }
     ) {
         self.changeCover = changeCover
@@ -98,6 +111,7 @@ final class ReleaseEditor: Observable {
         self.refreshCandidateCovers = refreshCandidateCovers
         self.refreshReleaseCovers = refreshReleaseCovers
         self.catalogApply = catalogApply
+        self.albumSearch = albumSearch
     }
 
     convenience init(
@@ -141,8 +155,33 @@ final class ReleaseEditor: Observable {
             refreshReleaseCovers: {
                 try await handle.refreshReleaseCovers(releaseId: $0)
             },
-            catalogApply: { handle.catalogApply() }
+            catalogApply: { handle.catalogApply() },
+            albumSearch: Self.albumSearch(handle)
         )
+    }
+
+    /// Opens, through `handle`, the live read of the albums each text the
+    /// person types into an album picker finds: every album library search
+    /// lists for it, as many as core's result limit allows.
+    private static func albumSearch(
+        _ handle: any AppHandleProtocol
+    ) -> AlbumSearchOpener {
+        { text in
+            PulledValues(
+                handle.subscribeListPage(
+                    list: .searchAlbums(query: text),
+                    offset: 0,
+                    limit: .max
+                )
+            ) { rows in
+                guard case .searchAlbums(let rows) = rows else {
+                    preconditionFailure(
+                        "the album search delivered rows of another list"
+                    )
+                }
+                return rows
+            }
+        }
     }
 
     /// A form of the caller's own on the release, read from `handle`, the
@@ -212,16 +251,11 @@ final class ReleaseEditor: Observable {
         )
     }
 
-    /// The commands a release editor sends core beyond its form, finding
-    /// albums to pick with `searchAlbums`.
-    func editCommands(
-        searchAlbums:
-            @escaping @MainActor (String) async throws ->
-            [BridgeAlbumChoice]
-    ) -> ReleaseEditCommands {
+    /// The commands a release editor sends core beyond its form.
+    func editCommands() -> ReleaseEditCommands {
         ReleaseEditCommands(
             open: openReleaseEdit,
-            searchAlbums: searchAlbums,
+            albumSearch: albumSearch,
             catalogApply: catalogApply
         )
     }
