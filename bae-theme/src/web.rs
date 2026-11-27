@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::lengths::RawLengthFamily;
-use crate::RawTokens;
+use crate::{Colours, RawTokens};
 
 /// The stylesheet, named relative to the output directory.
 pub const FILE: &str = "tokens.css";
@@ -33,13 +33,9 @@ pub struct WebTheme {
     pub colours: Vec<(String, String)>,
 }
 
-/// The website's tokens of <raw>. A colour token's value holds one CSS colour
-/// for each theme, by the theme's id; a problem is reported for each theme a
-/// token gives no colour.
-pub(crate) fn read(raw: &RawTokens, problems: &mut Vec<String>) -> Web {
-    if raw.color.themes.is_empty() {
-        problems.push("tokens.json names no colour theme".to_string());
-    }
+/// The website's tokens of <raw>, with its colour tokens' <colours> in each
+/// theme.
+pub(crate) fn read(raw: &RawTokens, colours: &Colours) -> Web {
     let themes = raw
         .color
         .themes
@@ -51,16 +47,9 @@ pub(crate) fn read(raw: &RawTokens, problems: &mut Vec<String>) -> Web {
                 .tokens
                 .iter()
                 .filter_map(|token| {
-                    match token.value.get(&theme.id).and_then(serde_json::Value::as_str) {
-                        Some(css) => Some((token.name.clone(), css.to_string())),
-                        None => {
-                            problems.push(format!(
-                                "tokens.json `{}` has no {} colour",
-                                token.name, theme.id
-                            ));
-                            None
-                        }
-                    }
+                    // read_colours named a colour the token lacks.
+                    let css = colours.get(token.name.as_str())?.get(theme.id.as_str())?;
+                    Some((token.name.clone(), css.to_string()))
                 })
                 .collect(),
         })

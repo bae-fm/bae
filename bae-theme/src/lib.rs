@@ -324,28 +324,64 @@ struct RawToken {
     value: serde_json::Value,
 }
 
-/// A token's colour in each appearance, as (light, dark), or a problem for
-/// each appearance it lacks or whose colour does not parse.
+/// Each colour token's CSS colour in each colour theme, by token name and
+/// then theme id.
+type Colours<'a> = BTreeMap<&'a str, BTreeMap<&'a str, &'a str>>;
+
+/// The appearances the apps draw in, each a colour theme of tokens.json.
+const APPEARANCES: [&str; 2] = ["light", "dark"];
+
+/// Every colour token's colour in each theme. A problem is named for each
+/// appearance the apps draw that tokens.json names no theme for, and for each
+/// theme a token gives no colour; the token keeps the themes it gives.
+fn read_colours<'a>(raw: &'a RawColorTokens, problems: &mut Vec<String>) -> Colours<'a> {
+    for mode in APPEARANCES {
+        if !raw.themes.iter().any(|theme| theme.id == mode) {
+            problems
+                .push(format!("tokens.json names no `{mode}` colour theme, which the apps draw"));
+        }
+    }
+    raw.tokens
+        .iter()
+        .map(|token| {
+            let by_theme = raw
+                .themes
+                .iter()
+                .filter_map(|theme| {
+                    let css = token.value.get(&theme.id).and_then(serde_json::Value::as_str);
+                    if css.is_none() {
+                        problems.push(format!(
+                            "tokens.json `{}` has no {} colour",
+                            token.name, theme.id
+                        ));
+                    }
+                    Some((theme.id.as_str(), css?))
+                })
+                .collect();
+            (token.name.as_str(), by_theme)
+        })
+        .collect()
+}
+
+/// A token's colour in each appearance, as (light, dark), or a problem when
+/// tokens.json lacks the token or one of its colours does not parse.
 fn appearances(
-    by_name: &BTreeMap<&str, &serde_json::Value>,
+    colours: &Colours,
     token: &str,
     owner: &str,
     problems: &mut Vec<String>,
 ) -> Option<(Argb, Argb)> {
-    let Some(value) = by_name.get(token) else {
+    let Some(by_theme) = colours.get(token) else {
         problems.push(format!("tokens.json has no `{token}`, which {owner} needs"));
         return None;
     };
     let mut read = |mode: &str| {
-        let hex = value.get(mode).and_then(serde_json::Value::as_str);
-        match hex.map(Argb::parse) {
-            Some(Ok(colour)) => Some(colour),
-            Some(Err(problem)) => {
+        // read_colours named a colour the token lacks.
+        let css = by_theme.get(mode)?;
+        match Argb::parse(css) {
+            Ok(colour) => Some(colour),
+            Err(problem) => {
                 problems.push(format!("tokens.json `{token}`.{mode}: {problem}"));
-                None
-            }
-            None => {
-                problems.push(format!("tokens.json `{token}` has no {mode} colour"));
                 None
             }
         }
@@ -387,19 +423,18 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
             };
         }
     };
-    let by_name: BTreeMap<&str, &serde_json::Value> =
-        raw.color.tokens.iter().map(|token| (token.name.as_str(), &token.value)).collect();
+    let colours = read_colours(&raw.color, problems);
     let names: Vec<&str> = raw.color.tokens.iter().map(|token| token.name.as_str()).collect();
     TokenRoles {
-        tones: read_tones(&names, &by_name, problems),
-        accents: read_accents(&names, &by_name, problems),
+        tones: read_tones(&names, &colours, problems),
+        accents: read_accents(&names, &colours, problems),
         text: read_text(&raw.text, problems),
         opacity: lengths::read_shared("opacity", &raw.opacity, lengths::opacity, problems),
         radius: lengths::read_shared("radius", &raw.radius, lengths::shared_length, problems),
         space: lengths::read_shared("space", &raw.spacing, lengths::shared_length, problems),
         icon: lengths::read_icons(&raw.icon, &raw.icon_android, problems),
         size: lengths::read_sizes(&raw.size, &raw.size_android, problems),
-        web: web::read(&raw, problems),
+        web: web::read(&raw, &colours),
     }
 }
 
@@ -540,11 +575,7 @@ fn read_text(raw: &RawType, problems: &mut Vec<String>) -> BTreeMap<String, Text
 
 /// Every `<name>` with a `tone-<name>-background` token, with each
 /// `tone-<name>-<role>` token as a surface role.
-fn read_tones(
-    names: &[&str],
-    by_name: &BTreeMap<&str, &serde_json::Value>,
-    problems: &mut Vec<String>,
-) -> Vec<Tone> {
+fn read_tones(names: &[&str], colours: &Colours, problems: &mut Vec<String>) -> Vec<Tone> {
     let tones = names.iter().filter_map(|token| {
         let name = token.strip_prefix("tone-")?.strip_suffix("-background")?;
         (!name.is_empty()).then_some(name)
@@ -568,7 +599,7 @@ fn read_tones(
                 continue;
             }
             let owner = format!("tone `{name}`");
-            if let Some((light, dark)) = appearances(by_name, token, &owner, problems) {
+            if let Some((light, dark)) = appearances(colours, token, &owner, problems) {
                 surfaces.light.insert(role.clone(), light);
                 surfaces.dark.insert(role, dark);
             }
@@ -593,11 +624,7 @@ fn camel_case(kebab: &str) -> Option<String> {
 /// Every `<name>` with an `accent-<name>-fill` token. A problem is reported
 /// for each accent missing one of its four tokens or whose swatch, its
 /// content or selection differs between appearances.
-fn read_accents(
-    names: &[&str],
-    by_name: &BTreeMap<&str, &serde_json::Value>,
-    problems: &mut Vec<String>,
-) -> Vec<Accent> {
+fn read_accents(names: &[&str], colours: &Colours, problems: &mut Vec<String>) -> Vec<Accent> {
     let accents = names.iter().filter_map(|token| {
         let name = token.strip_prefix("accent-")?.strip_suffix("-fill")?;
         (!name.is_empty()).then_some(name)
@@ -605,7 +632,7 @@ fn read_accents(
     let mut out = Vec::new();
     for name in accents {
         let owner = format!("accent `{name}`");
-        let mut read = |token: String| appearances(by_name, &token, &owner, problems);
+        let mut read = |token: String| appearances(colours, &token, &owner, problems);
         let text = read(format!("accent-{name}"));
         let fill = read(format!("accent-{name}-fill"));
         let on_fill = read(format!("on-accent-{name}-fill"));
@@ -700,10 +727,6 @@ impl Theme {
             &mut problems,
         );
         check_role_names(semantics.light.keys(), &mut problems);
-        // The apps and the website both read a tone's and an accent's
-        // colours, so each names a colour such a token lacks: name it once.
-        let mut named = std::collections::BTreeSet::new();
-        problems.retain(|problem| named.insert(problem.clone()));
 
         if let (true, Some(tone), Some(accent)) =
             (problems.is_empty(), standard_tone, standard_accent)
