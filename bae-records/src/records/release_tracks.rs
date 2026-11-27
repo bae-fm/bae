@@ -14,6 +14,7 @@
 
 use super::read::*;
 use super::*;
+use bae_store::statement_rows;
 use bae_types::mediums::{side_letters, TrackPosition, TrackSide};
 
 /// The keys of the carriers played side by side, as an SQL list.
@@ -335,8 +336,6 @@ fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTrackP
     let track = place.track_id;
     let unreadable =
         |reason: String| DbError::unreadable(format!("the place of track {track}"), reason);
-    let ordinal = u32::try_from(place.side_ordinal)
-        .map_err(|error| unreadable(format!("side {}: {error}", place.side_ordinal)))?;
     let carrier = place
         .carrier
         .map(|key| {
@@ -344,7 +343,7 @@ fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTrackP
                 .ok_or_else(|| unreadable(format!("unknown medium {key:?}")))
         })
         .transpose()?;
-    let on = track_side_of(&place.side_kind, ordinal).map_err(unreadable)?;
+    let on = side_of_columns(&place.side_kind, place.side_ordinal).map_err(unreadable)?;
     Ok(DbTrackPlace { track_id: track, release_id: place.release_id, carrier, on })
 }
 
@@ -361,11 +360,38 @@ pub fn track_places_on(
         .collect()
 }
 
+/// The side a placed track's `side_kind` and `side_ordinal` name.
+fn side_of_columns(kind: &str, ordinal: i64) -> Result<TrackSide, String> {
+    let ordinal = u32::try_from(ordinal).map_err(|_error| format!("side ordinal {ordinal}"))?;
+    track_side_of(kind, ordinal)
+}
+
+// Where each place the JSON array `places` gives sits, in their order, on the
+// mediums the JSON array `mediums` gives, which no table holds.
+sqlive_compose::read!(
+    GivenSidePlaces(mediums: String, places: String) { side_kind: String, side_ordinal: i64 },
+    r#"
+    WITH placed AS (
+        SELECT place.*
+        FROM @crate::records::place_fragments::TrackPlaces(
+            mediums: (SELECT given.key + 1, 'given', given.key + 1,
+                             given.value ->> 'carrier', given.value ->> 'sides'
+                      FROM json_each(:mediums) AS given),
+            places: (SELECT asked.key, 'given', asked.value ->> 'medium',
+                            asked.value ->> 'side', 1, NULL, asked.key
+                     FROM json_each(:places) AS asked)) AS place)
+    SELECT placed.side_kind, placed.side_ordinal
+    FROM placed
+    ORDER BY placed.position
+"#
+);
+
 /// The heading of each side of the mediums numbered `numbered` (counted from
 /// one, each one of `mediums`) of a release that no table holds, such as one
 /// a catalog lists, and that holds `mediums` in order: each sided medium's
 /// sides in order, and each other medium's disc. The release has more than
-/// one medium or a record or cassette, since a flat side has no heading. [`track_places_ctes`] places them, over the
+/// one medium or a record or cassette, since a flat side has no heading.
+/// [`TrackPlaces`](super::place_fragments::TrackPlaces) places them, over the
 /// given mediums and one place on each side of the numbered ones, so a
 /// release in a catalog and one in the library name their sides alike.
 pub(super) fn side_headings_on(
@@ -394,42 +420,20 @@ pub(super) fn side_headings_on(
             (1..=sides).map(move |side| serde_json::json!({ "medium": number, "side": side }))
         })
         .collect();
-    let statement = format!(
-        "WITH {places} SELECT side_kind, side_ordinal FROM place ORDER BY position",
-        places = track_places_ctes(
-            MediumsSource::Draft {
-                mediums: "(SELECT j.key + 1 AS id, 'given' AS release_id, j.key + 1 AS position, \
-                                  j.value ->> 'carrier' AS medium, \
-                                  j.value ->> 'sides' AS side_count \
-                           FROM json_each(?1) j)",
-                places: "(SELECT j.key AS id, 'given' AS release_id, \
-                                 j.value ->> 'medium' AS medium_id, j.value ->> 'side' AS side, \
-                                 1 AS track_number, NULL AS stated_length_ms, j.key AS position \
-                          FROM json_each(?2) j)",
-            },
-            "1",
-        ),
-    );
-    Ok(sql.query(
-        &statement,
-        params![
-            serde_json::Value::from(given).to_string(),
-            serde_json::Value::from(places).to_string()
-        ],
-        |row| {
-            let kind: String = row.get("side_kind")?;
-            track_side_of(&kind, row.get("side_ordinal")?)
-                .map_err(|reason| column_conversion_error(row, "side_kind", reason))?
+    let params = GivenSidePlacesParams {
+        mediums: serde_json::Value::from(given).to_string(),
+        places: serde_json::Value::from(places).to_string(),
+    };
+    statement_rows(sql, &params)?
+        .into_iter()
+        .map(|row| {
+            let unreadable = |reason: String| DbError::unreadable("a side's heading", reason);
+            side_of_columns(&row.side_kind, row.side_ordinal)
+                .map_err(unreadable)?
                 .heading()
-                .ok_or_else(|| {
-                    column_conversion_error(
-                        row,
-                        "side_kind",
-                        "the only medium of a release has no heading".to_owned(),
-                    )
-                })
-        },
-    )?)
+                .ok_or_else(|| unreadable("the only medium of a release has no heading".into()))
+        })
+        .collect()
 }
 
 impl Records {
