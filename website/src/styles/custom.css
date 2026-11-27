@@ -13,6 +13,7 @@
    value from Starlight's data-theme, so one mapping serves both themes, and
    it outranks Starlight's light values, which sit in Starlight's layers. */
 :root {
+	--sl-nav-height: 5rem;
 	--sl-font: var(--font-web-body);
 	--sl-font-mono: var(--font-web-mono);
 
