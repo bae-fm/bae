@@ -47,7 +47,7 @@
 /* On Android a notice's words start space-edge after its glyph, as Material's list items and AndroidItem. */
 .bae-a-notice-box.bae-notice-with-icon { gap: var(--space-edge); }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
-.bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
+.bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) calc(var(--opacity-notice-secondary) * 100%), transparent); }
 .bae-notice-title-strong { font-weight: var(--type-strong-weight); }
 .bae-notice-subtitle { color: var(--text-secondary); }
 .bae-m-notice { position: relative; display: flex; flex-direction: column; gap: var(--space-inline); }

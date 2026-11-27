@@ -32,7 +32,7 @@ const { tone, title, subtitle, label } = Astro.props;
     border-radius: var(--radius-control);
     color: var(--on-notice);
     text-align: start;
-    --text-secondary: color-mix(in srgb, var(--on-notice) 72%, transparent);
+    --text-secondary: color-mix(in srgb, var(--on-notice) calc(var(--opacity-notice-secondary) * 100%), transparent);
   }
   .notice-info { background: var(--neutral-tint); }
   .notice-success { background: var(--success-notice); }

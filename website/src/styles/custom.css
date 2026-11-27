@@ -237,7 +237,7 @@
 	background: var(--notice-fill);
 	color: var(--on-notice);
 	font: var(--type-web-body-weight) var(--type-web-body-size) / var(--type-web-body-line-height) var(--font-web-body);
-	--text-secondary: color-mix(in srgb, var(--on-notice) 72%, transparent);
+	--text-secondary: color-mix(in srgb, var(--on-notice) calc(var(--opacity-notice-secondary) * 100%), transparent);
 	--sl-color-asides-text-accent: var(--on-notice);
 }
 .sl-markdown-content .starlight-aside:not(:where(.not-content *))::before {
