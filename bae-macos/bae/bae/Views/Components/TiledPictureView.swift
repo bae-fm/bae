@@ -87,14 +87,6 @@ private final class TileDrawer: NSObject, CALayerDelegate, @unchecked Sendable {
         )
     }
 
-    func layer(
-        _: CALayer,
-        shouldInheritContentsScale _: CGFloat,
-        from _: NSWindow
-    ) -> Bool {
-        true
-    }
-
     func draw(_ layer: CALayer, in context: CGContext) {
         let drawsDown = context.ctm.d < 0
         update { $0.drawsDown = drawsDown }

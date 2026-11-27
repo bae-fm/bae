@@ -17,11 +17,6 @@ struct StatedValue: Equatable {
             byJoining: catalogs.map { bridgeLookupCatalogName(catalog: $0) }
         )
     }
-
-    /// The value followed by its catalogs: "1992 MusicBrainz".
-    var text: String {
-        catalogs.isEmpty ? value : "\(value) \(catalogs)"
-    }
 }
 
 extension BridgeYearStatement {
@@ -52,17 +47,5 @@ extension PressingText {
                 "core.pressing.alternatives_separator"
             )
         )
-    }
-
-    /// The values of one fact, each followed by its catalogs, joined by the
-    /// catalog's separator for alternatives: "1992 MusicBrainz / 1993
-    /// Discogs".
-    static func alternatives(_ values: [StatedValue]) -> String {
-        values.map(\.text)
-            .joined(
-                separator: localizedCoreString(
-                    "core.pressing.alternatives_separator"
-                )
-            )
     }
 }

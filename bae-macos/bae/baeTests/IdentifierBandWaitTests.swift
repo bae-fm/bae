@@ -38,7 +38,7 @@ struct IdentifierBandWaitTests {
         #expect(ChipWait(waitingOn: run.discId)?.words == "Reading…")
         #expect(ChipWait(waitingOn: run.isrc)?.words == "Reading…")
         #expect(ChipWait(waitingOn: run.search)?.words == "Waiting…")
-        #expect(ChipWait(searching: ()).words == "Searching…")
+        #expect(ChipWait.searching.words == "Searching…")
         #expect(
             ChipWait(readingArtworkOf: run)?.words == "Reading artwork…"
         )

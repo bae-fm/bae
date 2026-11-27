@@ -334,7 +334,7 @@ struct ChipTrailing: View {
         case .nothing:
             EmptyView()
         case .searching:
-            ChipWait(searching: ())
+            ChipWait.searching
         case .failed(let failure):
             HStack(spacing: ThemeSpace.compact) {
                 IdentifierWarning()
@@ -391,7 +391,7 @@ struct IdentifierWarning: View {
 }
 
 /// The words a chip carries while what feeds it is still being read or
-/// asked: what it waits on. Each initializer takes the state a chip shows and
+/// asked: what it waits on. Each initializer that takes the state a chip shows
 /// fails for a state that is not a wait.
 struct ChipWait: View {
     let words: String
@@ -419,12 +419,18 @@ struct ChipWait: View {
     }
 
     /// A catalog still being asked about a value.
-    init(searching: Void) {
-        words = String(
-            localized: "Searching…",
-            comment:
-                "Find online ledger: at the end of an identifier's chip, while bae asks a catalog about the identifier."
+    static var searching: ChipWait {
+        ChipWait(
+            words: String(
+                localized: "Searching…",
+                comment:
+                    "Find online ledger: at the end of an identifier's chip, while bae asks a catalog about the identifier."
+            )
         )
+    }
+
+    private init(words: String) {
+        self.words = words
     }
 
     /// The artwork still being read, which can add barcodes and catalog

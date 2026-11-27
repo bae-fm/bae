@@ -31,11 +31,6 @@ struct ReleaseGroup: Equatable, Identifiable {
         artists.isEmpty ? nil : PressingText.alternatives(artists)
     }
 
-    /// Every row on the card, section by section.
-    var pressings: [Pressing] {
-        sections.flatMap(\.pressings)
-    }
-
     var coverImageContent: ImageContent? {
         coverArt?.coverChoice.imageContent
     }
