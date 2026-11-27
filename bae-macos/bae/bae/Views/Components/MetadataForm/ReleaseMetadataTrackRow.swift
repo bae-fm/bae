@@ -49,17 +49,10 @@ struct ReleaseMetadataTrackRow: View {
     }
 
     private var artistField: some View {
-        let (artists, inheritsAlbumArtists): (BridgeArtistField?, Bool) =
-            switch artist {
-            case .own(let field): (field, false)
-            case .albumArtist: (nil, true)
-            case .empty: (nil, false)
-            }
-        return MacAlbumArtistField(
-            field: artists,
+        MacAlbumArtistField(
+            artist: artist,
             placeholder: localizedCoreString("ui.import.mapping.column.artist"),
             width: .column,
-            inheritsAlbumArtists: inheritsAlbumArtists,
             onUseAlbumArtists: {
                 updateArtists(.albumArtists)
             },

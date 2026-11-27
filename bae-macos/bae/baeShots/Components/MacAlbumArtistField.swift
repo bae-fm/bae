@@ -7,35 +7,40 @@ extension ShotScene {
     static let macAlbumArtistFieldScenes: [ShotScene] = [
         albumArtistFieldScene(
             "mac.component.album-artist-field.library-artist",
-            artists: PreviewData.boardLibraryArtists("Mara Quill")
+            artist: .own(
+                field: PreviewData.boardLibraryArtists("Mara Quill")
+            )
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.new-artist",
-            artists: newArtists
+            artist: .own(field: newArtists)
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.no-artist",
-            artists: nil
+            artist: .empty
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.secondary",
-            artists: PreviewData.boardLibraryArtists("Mara Quill"),
+            artist: .own(
+                field: PreviewData.boardLibraryArtists("Mara Quill")
+            ),
             secondary: true
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.column",
-            artists: PreviewData.boardLibraryArtists("Mara Quill"),
+            artist: .own(
+                field: PreviewData.boardLibraryArtists("Mara Quill")
+            ),
             column: true
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.inherited",
-            artists: nil,
-            column: true,
-            inherited: true
+            artist: .albumArtist,
+            column: true
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.column-with-no-artist",
-            artists: nil,
+            artist: .empty,
             placeholder: "Artist",
             column: true
         ),
@@ -46,11 +51,10 @@ extension ShotScene {
     /// identity's text.
     private static func albumArtistFieldScene(
         _ id: String,
-        artists: BridgeArtistField?,
+        artist: BridgeTrackArtistDisplay,
         placeholder: String = "Album artist",
         secondary: Bool = false,
-        column: Bool = false,
-        inherited: Bool = false
+        column: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -59,10 +63,9 @@ extension ShotScene {
         ) {
             importStores(
                 MacAlbumArtistField(
-                    field: artists,
+                    artist: artist,
                     placeholder: placeholder,
                     width: column ? .column : .value,
-                    inheritsAlbumArtists: inherited,
                     artistSearch: artistSearch(),
                     onChange: { _ in }
                 )

@@ -9,12 +9,12 @@ struct MacAlbumArtistField: View {
         case column
     }
 
-    /// The field's credits, each with its badge, and the whole field's badge,
-    /// as core's read found them; `nil` while the field names none.
-    let field: BridgeArtistField?
+    /// What the field shows: its own credits, each with its badge, and the
+    /// whole field's badge, as core's read found them; the album's artists,
+    /// which a track takes; or its placeholder, while it names no artist.
+    let artist: BridgeTrackArtistDisplay
     let placeholder: String
     var width: Width = .value
-    var inheritsAlbumArtists = false
     var onUseAlbumArtists: (() -> Void)?
     /// Opens the live artist search the open field reads while it is open.
     let artistSearch: ArtistSearchOpener
@@ -24,6 +24,15 @@ struct MacAlbumArtistField: View {
     private var uiStore
     @State
     private var isPresented = false
+
+    /// The credits the field names itself, which its editor changes; `nil`
+    /// while it names none.
+    private var ownField: BridgeArtistField? {
+        switch artist {
+        case .own(let field): field
+        case .albumArtist, .empty: nil
+        }
+    }
 
     var body: some View {
         Button {
@@ -45,7 +54,7 @@ struct MacAlbumArtistField: View {
         .accessibilityLabel(Text(verbatim: accessibleName))
         .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
             ArtistAssignmentsEditor(
-                field: field,
+                field: ownField,
                 onUseAlbumArtists: onUseAlbumArtists,
                 artistSearch: artistSearch,
                 onChange: onChange,
@@ -63,36 +72,52 @@ struct MacAlbumArtistField: View {
     /// What assistive technology calls the field: the words it shows, its
     /// names then their badge.
     private var accessibleName: String {
-        if inheritsAlbumArtists { return String(localized: "Album artist") }
-        guard let summary = ArtistAssignmentsSummary(field: field)
-        else { return placeholder }
-        guard let badge = summary.identityBadge else { return summary.names }
-        return String(
-            localized: "album-artist-field.name",
-            defaultValue: "\(summary.names) \(badge.label)",
-            comment:
-                "The album artist button's spoken name: %1$@ is the artist names, %2$@ the badge beside them"
-        )
+        switch artist {
+        case .albumArtist:
+            return String(localized: "Album artist")
+        case .empty:
+            return placeholder
+        case .own(let field):
+            guard let summary = ArtistAssignmentsSummary(field: field)
+            else { return placeholder }
+            guard let badge = summary.identityBadge else {
+                return summary.names
+            }
+            return String(
+                localized: "album-artist-field.name",
+                defaultValue: "\(summary.names) \(badge.label)",
+                comment:
+                    "The album artist button's spoken name: %1$@ is the artist names, %2$@ the badge beside them"
+            )
+        }
     }
 
     @ViewBuilder
     private var fieldValue: some View {
-        if inheritsAlbumArtists {
+        switch artist {
+        case .albumArtist:
             Text("Album artist").foregroundStyle(Theme.textTertiary)
-        }
-        else if let summary = ArtistAssignmentsSummary(field: field) {
-            HStack(spacing: ThemeSpace.inline) {
-                Text(summary.names)
-                    .cutLine(.prose)
-                if let badge = summary.identityBadge {
-                    StatusChip(verbatim: badge.label, tone: badge.tone)
-                        .fixedSize()
+        case .empty:
+            placeholderText
+        case .own(let field):
+            if let summary = ArtistAssignmentsSummary(field: field) {
+                HStack(spacing: ThemeSpace.inline) {
+                    Text(summary.names)
+                        .cutLine(.prose)
+                    if let badge = summary.identityBadge {
+                        StatusChip(verbatim: badge.label, tone: badge.tone)
+                            .fixedSize()
+                    }
                 }
             }
+            else {
+                placeholderText
+            }
         }
-        else {
-            Text(placeholder).foregroundStyle(Theme.textTertiary)
-        }
+    }
+
+    private var placeholderText: some View {
+        Text(placeholder).foregroundStyle(Theme.textTertiary)
     }
 }
 

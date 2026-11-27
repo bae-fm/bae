@@ -42,7 +42,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 onCommit: { await writer.setField(.albumTitle, $0) }
             )
             MacAlbumArtistField(
-                field: albumArtists,
+                artist: albumArtists.map { .own(field: $0) } ?? .empty,
                 placeholder: String(localized: "Album artist"),
                 artistSearch: artistSearch,
                 onChange: { assignments in
