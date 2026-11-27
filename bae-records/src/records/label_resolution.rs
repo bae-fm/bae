@@ -329,7 +329,7 @@ pub fn write_release_labels_on(
             },
         )?;
     }
-    replace_release_label_rows(tx, release_id, &rows, write.label_row_ids)?;
+    super::write::replace_release_label_rows(tx, release_id, &rows, write.label_row_ids)?;
     Ok(())
 }
 
@@ -443,26 +443,6 @@ fn name_instead(rows: &mut [(Option<String>, Option<&str>)], from: &str, to: &st
             *id = Some(to.to_string());
         }
     }
-}
-
-/// Make the release `release_id`'s label rows exactly `rows`, in order,
-/// each under its id of `row_ids`.
-fn replace_release_label_rows(
-    tx: &CovenWrite<'_>,
-    release_id: &str,
-    rows: &[(Option<String>, Option<&str>)],
-    row_ids: &[String],
-) -> Result<(), DbError> {
-    assert_eq!(rows.len(), row_ids.len(), "a write holds an id for each label row it makes");
-    tx.execute("DELETE FROM release_labels WHERE release_id = ?", params![release_id])?;
-    for (position, ((label_id, catalog_number), id)) in rows.iter().zip(row_ids).enumerate() {
-        tx.execute(
-            "INSERT INTO release_labels (id, release_id, position, label_id, catalog_number) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![id, release_id, position as i64, label_id, catalog_number],
-        )?;
-    }
-    Ok(())
 }
 
 #[cfg(test)]

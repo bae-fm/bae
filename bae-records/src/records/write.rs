@@ -173,6 +173,22 @@ pub fn insert_release_row(
     Ok(())
 }
 
+/// Make the release `release_id`'s label rows exactly `rows`, each the id of
+/// the library label it names and the catalog number it gives, in order, each
+/// row under its id of `row_ids`.
+pub(super) fn replace_release_label_rows(
+    conn: &CovenWrite<'_>,
+    release_id: &str,
+    rows: &[(Option<String>, Option<&str>)],
+    row_ids: &[String],
+) -> Result<(), DbError> {
+    let rows = rows.iter().map(|(label_id, catalog_number)| {
+        [Value::from(label_id.clone()), Value::from(catalog_number.map(str::to_string))]
+    });
+    let columns = ["label_id", "catalog_number"];
+    replace_release_list(conn, "release_labels", columns, release_id, rows, row_ids)
+}
+
 /// Make the release `release_id`'s barcodes exactly `barcodes`, in order,
 /// each row under its id of `row_ids`.
 pub(super) fn replace_release_barcodes(
