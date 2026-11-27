@@ -7,6 +7,33 @@ use super::fragments::Groupings;
 use super::{decision_of, *};
 use crate::folder_scanner::{FolderReleaseDecisionAuthor, FolderReleaseDecisions};
 use crate::tables::watched_folders::relative_below;
+use bae_store::WriteStatements;
+
+// A folder's reading, under the key `:grouping` when none is stored yet.
+sqlive_compose::write!(
+    StoreAnchoredGrouping(
+        grouping: &'p CandidateKey,
+        anchor: &'p [u8],
+        combined: bool,
+        author: &'static str,
+    ),
+    r#"
+    INSERT INTO release_grouping (key, anchor_folder, combined, author)
+    VALUES (:grouping, :anchor, :combined, :author)
+    ON CONFLICT (anchor_folder) DO UPDATE SET
+        combined = excluded.combined, author = excluded.author
+    WHERE excluded.author = 'user' OR release_grouping.author != 'user'
+"#
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::write!(
+    PlantUnscannedFolderReading(folder: &'p [u8]),
+    r#"
+    INSERT INTO release_grouping (key, anchor_folder, combined, author)
+    VALUES (CAST('grouping:damaged' AS BLOB), :folder, 1, 'user')
+"#
+);
 
 /// Why storing a folder's reading was refused. Nothing of it was written.
 #[derive(Debug, thiserror::Error)]
@@ -73,15 +100,7 @@ pub(crate) fn store_folder_reading(
         .into());
     }
     let anchor = coven::path_bytes(&anchor);
-    sql.execute(
-        "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-         VALUES (?, ?, ?, ?) \
-         ON CONFLICT(anchor_folder) DO UPDATE SET \
-             combined = excluded.combined, author = excluded.author \
-         WHERE excluded.author = 'user' \
-             OR release_grouping.author != 'user'",
-        params![grouping, anchor, combined, author],
-    )?;
+    sql.run(&StoreAnchoredGroupingParams { grouping, anchor: &anchor, combined, author })?;
     let stored: CandidateKey = sql.query_row(
         "SELECT key FROM release_grouping WHERE anchor_folder = ?",
         [&anchor],
@@ -311,11 +330,7 @@ impl ImportTables {
         let folder = coven::path_bytes(folder);
         self.store
             .call(move |sql| {
-                sql.execute(
-                    "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-                     VALUES (CAST('grouping:damaged' AS BLOB), ?, 1, 'user')",
-                    [folder],
-                )?;
+                sql.run(&PlantUnscannedFolderReadingParams { folder: &folder })?;
                 Ok(())
             })
             .await

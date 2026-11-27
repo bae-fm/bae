@@ -45,16 +45,7 @@ async fn corrupt_folder_decision_keys_fail_when_loaded() {
     tables.add_watched_import_folder(&root).await.unwrap();
     let sep = std::path::MAIN_SEPARATOR;
     let dotted = format!("{}{sep}a{sep}.{sep}b", root.display());
-    db.call(move |conn| {
-        conn.execute(
-            "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-                 VALUES (CAST('grouping:corrupt' AS BLOB), ?, 1, 'user')",
-            [dotted.into_bytes()],
-        )?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    tables.plant_unscanned_folder_reading_for_test(std::path::Path::new(&dotted)).await.unwrap();
     let known = tables
         .load_known_of_root(
             &root,

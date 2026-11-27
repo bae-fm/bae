@@ -20,6 +20,7 @@ use crate::folder_scanner::{
 };
 use crate::grouping::{CombineRefusal, GroupingBlock};
 use crate::CandidateKey;
+use bae_store::WriteStatements;
 pub(crate) use folder_readings::folder_release_decisions;
 pub(super) use folder_readings::{store_folder_reading, validate_decision_key_ownership};
 use std::path::{Path, PathBuf};
@@ -35,6 +36,76 @@ pub(crate) use entry::{
 };
 pub(crate) use facts::GroupingFacts;
 pub use folder_readings::FolderReadingRefusal;
+
+sqlive_compose::write!(
+    DeleteGrouping(key: &'p crate::CandidateKey),
+    r#"DELETE FROM release_grouping WHERE key = :key"#
+);
+
+// The grouping `:key` sits in `:parent_folder` from now on, and reads none of
+// its files yet.
+sqlive_compose::write!(
+    MoveGrouping(parent_folder: Option<&'p [u8]>, key: &'p crate::CandidateKey),
+    r#"
+    UPDATE release_grouping SET parent_folder = :parent_folder, reads_parent_files = 0
+    WHERE key = :key
+"#
+);
+
+sqlive_compose::write!(
+    UnblockGrouping(reads_parent_files: bool, key: &'p crate::CandidateKey),
+    r#"
+    UPDATE release_grouping
+    SET blocked = NULL, blocked_subject = NULL, blocked_holder = NULL,
+        reads_parent_files = :reads_parent_files
+    WHERE key = :key
+"#
+);
+
+sqlive_compose::write!(
+    BlockGrouping(
+        kind: &'static str,
+        subject: &'p str,
+        holder: Option<&'p str>,
+        key: &'p crate::CandidateKey,
+    ),
+    r#"
+    UPDATE release_grouping
+    SET blocked = :kind, blocked_subject = :subject, blocked_holder = :holder
+    WHERE key = :key
+"#
+);
+
+sqlive_compose::write!(
+    SkipGrouping(skipped: bool, key: &'p crate::CandidateKey),
+    r#"UPDATE release_grouping SET skipped = :skipped WHERE key = :key AND skipped != :skipped"#
+);
+
+sqlive_compose::write!(
+    InsertPickedGrouping(key: &'p crate::CandidateKey),
+    r#"
+    INSERT INTO release_grouping (key, anchor_folder, combined, author)
+    VALUES (:key, NULL, 1, 'user')
+"#
+);
+
+sqlive_compose::write!(
+    InsertGroupingMember(
+        grouping: &'p crate::CandidateKey,
+        position: i64,
+        member: &'p crate::CandidateKey,
+        folder: &'p [u8],
+    ),
+    r#"
+    INSERT INTO release_grouping_member (grouping_key, position, member_key, member_folder)
+    VALUES (:grouping, :position, :member, :folder)
+"#
+);
+
+sqlive_compose::write!(
+    DeletePickedGrouping(key: &'p crate::CandidateKey),
+    r#"DELETE FROM release_grouping WHERE key = :key AND anchor_folder IS NULL"#
+);
 
 /// Why reading a release of folders picked together apart again was
 /// refused. Nothing of it was written.
@@ -88,7 +159,7 @@ pub(super) fn forget_at_or_below(
     )?;
     let mut removed = Vec::new();
     for (key, listed) in groupings {
-        sql.execute("DELETE FROM release_grouping WHERE key = ?", [&key])?;
+        sql.run(&DeleteGroupingParams { key: &key })?;
         if listed {
             removed.push(key);
         }
@@ -176,10 +247,7 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
     )?;
     let mut changes = GroupingChanges::default();
     if sat_in != sits_in_bytes {
-        sql.execute(
-            "UPDATE release_grouping SET parent_folder = ?, reads_parent_files = 0 WHERE key = ?",
-            params![sits_in_bytes, key],
-        )?;
+        sql.run(&MoveGroupingParams { parent_folder: sits_in_bytes.as_deref(), key })?;
         if let Some(left) = sat_in.clone() {
             changes.extend(rebuild_blocked_in(sql, key, &path_column::decode(left)?)?);
         }
@@ -269,13 +337,7 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
             }
         }
     };
-    sql.execute(
-        "UPDATE release_grouping \
-         SET blocked = NULL, blocked_subject = NULL, blocked_holder = NULL, \
-             reads_parent_files = ? \
-         WHERE key = ?",
-        params![reads_parent_files, key],
-    )?;
+    sql.run(&UnblockGroupingParams { reads_parent_files, key })?;
     // Its members are entries of the root's scan, which a root holds only
     // once it was read.
     let generation = folder_scans::root_generation_on(sql, &root)?.ok_or_else(|| {
@@ -432,11 +494,7 @@ fn blocked(
         }
         GroupingBlock::Unbuildable { detail } => ("unbuildable", detail, None),
     };
-    sql.execute(
-        "UPDATE release_grouping \
-         SET blocked = ?, blocked_subject = ?, blocked_holder = ? WHERE key = ?",
-        params![kind, subject, holder, key],
-    )?;
+    sql.run(&BlockGroupingParams { kind, subject, holder: holder.map(String::as_str), key })?;
     Ok(GroupingChanges::default())
 }
 
@@ -494,10 +552,7 @@ fn set_grouping_skipped_on(
     key: &CandidateKey,
     skipped: bool,
 ) -> Result<bool, DbError> {
-    let changed = sql.execute(
-        "UPDATE release_grouping SET skipped = ? WHERE key = ? AND skipped != ?",
-        params![skipped, key, skipped],
-    )? == 1;
+    let changed = sql.run(&SkipGroupingParams { skipped, key })? == 1;
     if changed && skipped {
         super::import_state::change_identification_on(
             sql,
@@ -682,23 +737,14 @@ impl ImportTables {
                 for member in &members {
                     require_combinable_on(sql, member)?;
                 }
-                sql.execute(
-                    "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-                 VALUES (?, NULL, 1, 'user')",
-                    [&key],
-                )?;
+                sql.run(&InsertPickedGroupingParams { key: &key })?;
                 for (position, member) in members.iter().enumerate() {
-                    sql.execute(
-                        "INSERT INTO release_grouping_member \
-                         (grouping_key, position, member_key, member_folder) \
-                     VALUES (?, ?, ?, ?)",
-                        params![
-                            key,
-                            position as i64,
-                            member.key(),
-                            coven::path_bytes(&member.path)
-                        ],
-                    )?;
+                    sql.run(&InsertGroupingMemberParams {
+                        grouping: &key,
+                        position: position as i64,
+                        member: &member.key(),
+                        folder: &coven::path_bytes(&member.path),
+                    })?;
                     // A folder read into the combined release leaves the queue, and
                     // its identification ends with it.
                     super::import_state::change_identification_on(
@@ -756,10 +802,7 @@ impl ImportTables {
                     )
                     .optional()?
                     .flatten();
-                let removed = sql.execute(
-                    "DELETE FROM release_grouping WHERE key = ? AND anchor_folder IS NULL",
-                    [&key],
-                )?;
+                let removed = sql.run(&DeletePickedGroupingParams { key: &key })?;
                 if removed == 0 {
                     return Err(SeparationRefusal::NotPicked(key).into());
                 }

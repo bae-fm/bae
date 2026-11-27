@@ -613,7 +613,7 @@ async fn a_grouping_going_finds_its_release_by_its_index() {
                 |row| row.get::<_, i64>(0),
             )?;
             let program = sql.query(
-                "EXPLAIN DELETE FROM release_grouping WHERE key = ?",
+                &format!("EXPLAIN {}", super::DeleteGrouping::SQL),
                 [b"grouping".to_vec()],
                 |row| Ok((row.get::<_, String>(1)?, row.get::<_, i64>(3)?)),
             )?;
