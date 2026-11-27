@@ -174,23 +174,23 @@ sqlive_compose::fragment!(
 "#
 );
 
-// The transfer lines' batches, beside what holds the upload queue back: one
-// row.
+// The transfer lines' batches, beside what holds the upload queue back and
+// the download queue's counts: one row.
 sqlive_compose::read!(
     TransferLines,
     r#"
-    SELECT uploads.*, downloads.*, held.*
+    SELECT uploads.*, downloads.*, held.*, queue.*
     FROM @crate::sync_activity::UploadBatchCounts AS uploads
     JOIN @crate::sync_activity::DownloadBatchCounts AS downloads ON 1
     JOIN @bae_records::records::queued_uploads::UploadQueueHeld AS held ON 1
+    JOIN @bae_transfers::queue_counts::StoredDownloadCounts AS queue ON 1
 "#
 );
 
-/// The activity as one read sees it: the transfer lines' batches, the download
-/// queue's counts, and the sync status the activity takes its failure and
-/// state from.
+/// The activity as one read sees it: the transfer lines' batches and queues,
+/// and the sync status the activity takes its failure and state from.
 fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae_store::DbError> {
-    let TransferLinesRow { uploads, downloads, held } =
+    let TransferLinesRow { uploads, downloads, held, queue } =
         bae_store::statement_row(sql, &TransferLinesParams {})?;
     let upload_counts = UploadQueueCounts {
         batch: TransferBatch { done: uploads.upload_done, total: uploads.upload_total },
@@ -203,7 +203,7 @@ fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae
             done: downloads.move_done,
             total: downloads.move_total,
         },
-        queue: <bae_transfers::DownloadRequest as bae_transfers::QueuedPayload>::counts_on(sql)?,
+        queue: queue.into_counts(),
     };
     let status = bae_sync_status::sync_status_on(sql)?;
     Ok(SyncActivity::new(&status, &upload_counts, &download_counts))
