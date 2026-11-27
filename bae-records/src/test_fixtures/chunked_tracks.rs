@@ -1,6 +1,8 @@
 //! A release with more tracks than one SQLite statement binds.
 
-use bae_store::query::SQL_MAX_IN_VARS;
+/// A count of parameters under SQLite's limit for one statement, which a test
+/// multiplies to pass the limit.
+pub const SQL_MAX_IN_VARS: usize = 900;
 
 pub async fn chunked_track_db(
     schema: bae_store::Schema,

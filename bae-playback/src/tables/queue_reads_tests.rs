@@ -1,7 +1,7 @@
 use super::*;
 use crate::tables::tests::*;
 use crate::tables::{queue_upcoming, ContextFill, ManualPlace, PlaybackQueueTables, ReleaseStart};
-use bae_store::query::SQL_MAX_IN_VARS;
+use bae_records::test_fixtures::chunked_tracks::SQL_MAX_IN_VARS;
 
 #[tokio::test]
 async fn queue_items_order_track_artist_names_inside_the_aggregate() {

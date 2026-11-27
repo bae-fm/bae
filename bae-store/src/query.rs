@@ -1,9 +1,6 @@
-//! The queries every domain's reads and writes share: the statement-size limit
-//! and integer conversions.
+//! The integer conversions every domain's reads and writes share.
 
 use crate::DbError;
-
-pub const SQL_MAX_IN_VARS: usize = 900;
 
 /// `value` (a count, a size, a position) as the integer SQLite stores, or the
 /// failure naming `what` when it is past SQLite's signed range: the write
@@ -33,8 +30,4 @@ pub fn to_u32(value: i64, what: &str) -> Result<u32, DbError> {
 /// [`to_u64`] of a count that fits a `usize`.
 pub fn to_usize(value: i64, what: &str) -> Result<usize, DbError> {
     usize::try_from(value).map_err(|_out_of_range| DbError::unreadable(what, value))
-}
-
-pub fn in_clause_placeholders(count: usize) -> String {
-    (0..count).map(|_| "?").collect::<Vec<_>>().join(",")
 }

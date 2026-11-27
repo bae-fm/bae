@@ -1,5 +1,15 @@
 use super::*;
 
+// Each track the library holds among those the JSON array `ids` names.
+sqlive_compose::read!(
+    HeldTrackIds(ids: String),
+    r#"
+    SELECT track.id
+    FROM tracks AS track
+    WHERE track.id IN (SELECT asked.value FROM json_each(:ids) AS asked)
+"#
+);
+
 // The tracks the JSON array `ids` of album and track ids names, in the
 // array's order: an album's are the tracks of its primary release, in playing
 // order, and a track's is itself. A row with no `track_id` is for an album
@@ -199,29 +209,8 @@ impl Records {
         &self,
         track_ids: &[String],
     ) -> Result<Vec<String>, DbError> {
-        if track_ids.is_empty() {
-            return Ok(Vec::new());
-        }
-        let track_ids = track_ids.to_vec();
-        self.store
-            .read(move |sql| {
-                let mut existing = Vec::new();
-                for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
-                    let placeholders = in_clause_placeholders(chunk.len());
-                    let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
-                    #[expect(
-                        clippy::read_query_per_row,
-                        reason = "kept finding: runs one statement for each chunk of the requested ids, as many as SQLite binds in one statement"
-                    )]
-                    existing.extend(sql.query(
-                        &query,
-                        rusqlite::params_from_iter(chunk.iter()),
-                        |row| row.get::<_, String>("id"),
-                    )?);
-                }
-                Ok(existing)
-            })
-            .await
+        let statement = HeldTrackIdsParams { ids: serde_json::json!(track_ids).to_string() };
+        Ok(self.store.read_rows(statement).await?.into_iter().map(|row| row.id).collect())
     }
 
     /// Ordered by the release’s stored track positions.
