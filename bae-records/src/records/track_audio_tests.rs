@@ -1,8 +1,7 @@
 use super::*;
+use crate::test_fixtures::audio::store_audio;
 use crate::test_fixtures::{artist_album_release, test_records, RELEASE_A, TRACK_A, TRACK_B};
 use sqlive_compose::Statement;
-
-const FLAC: &str = "audio/flac";
 
 /// `RELEASE_A` with `TRACK_A` then `TRACK_B` on its CD, and no audio.
 async fn two_tracks() -> (bae_store::Store, bae_util::test_files::TestFolder, Records) {
@@ -15,85 +14,12 @@ async fn two_tracks() -> (bae_store::Store, bae_util::test_files::TestFolder, Re
     (db, temp, records)
 }
 
-/// Give `track_id` an audio format whose segments are, in order, a pregap
-/// when `pregap`, then its body, each a whole new FLAC file of `RELEASE_A`.
-/// Returns the files' ids and the segments' ids, in segment order.
-async fn store_audio(
-    records: &Records,
-    temp: &bae_util::test_files::TestFolder,
-    track_id: &str,
-    pregap: bool,
-) -> (Vec<String>, Vec<String>) {
-    let now = time::UtcDateTime::now();
-    let roles: &[DbAudioSegmentRole] = if pregap {
-        &[DbAudioSegmentRole::AudioPregap, DbAudioSegmentRole::Main]
-    } else {
-        &[DbAudioSegmentRole::Main]
-    };
-    let format = DbAudioFormat {
-        id: bae_util::test_ids::test_uuid(&format!("format-{track_id}")),
-        track_id: track_id.to_string(),
-        content_type: ContentType::from_mime(FLAC),
-        pregap_samples: pregap.then_some(88_200),
-        generated_pregap_samples: None,
-        sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),
-        bits_per_sample: std::num::NonZeroU32::new(16),
-        channels: std::num::NonZeroU32::new(2).unwrap(),
-        track_loudness_lufs: Some(-9.5),
-        track_peak_linear: Some(0.5),
-        created_at: now,
-    };
-    let mut files = Vec::new();
-    let mut segments = Vec::new();
-    for (index, role) in roles.iter().enumerate() {
-        let name = format!("{track_id}-{index}.flac");
-        let original = temp.write(&name, vec![0u8; 100 + index]);
-        let mut file = NewReleaseFile::new(
-            RELEASE_A,
-            &name,
-            ContentType::from_mime(FLAC),
-            crate::ReleaseFileRole::Audio,
-            bae_util::test_ids::test_uuid(&name),
-            now,
-        );
-        file.source_audio = Some(crate::source_audio::SourceAudioFile {
-            layout: Some(crate::source_audio::SourceAudioLayout::File),
-            content_type: ContentType::from_mime(FLAC),
-            container: bae_util::audio_container::AudioContainer::Flac,
-            duration_ms: 1_000,
-            format: bae_types::audio_format::AudioFormat {
-                codec: "FLAC".to_string(),
-                sample_rate_hz: 44_100,
-                bits_per_sample: Some(16),
-                bitrate_kbps: None,
-                channels: 2,
-            },
-        });
-        records.insert_file_for_test(&file, &original).await.unwrap();
-        segments.push(DbAudioSegment {
-            id: bae_util::test_ids::test_uuid(&format!("segment-{name}")),
-            audio_format_id: format.id.clone(),
-            segment_index: i64::try_from(index).unwrap(),
-            role: role.clone(),
-            file_id: file.id.clone(),
-            start_sample: 0,
-            end_sample: None,
-            start_byte: None,
-            end_byte: None,
-            created_at: now,
-        });
-        files.push(file.id);
-    }
-    records.insert_audio_format_with_segments_for_test(&format, &segments).await.unwrap();
-    (files, segments.into_iter().map(|segment| segment.id).collect())
-}
-
 /// A track's audio is its segments in order, each with its file's size and
 /// container and its own scrub points, none for a segment that stores none.
 #[tokio::test]
 async fn a_tracks_audio_reads_its_segments_with_their_files() {
     let (_db, temp, records) = two_tracks().await;
-    let (files, segments) = store_audio(&records, &temp, TRACK_A, true).await;
+    let (files, segments) = store_audio(&records, &temp, RELEASE_A, TRACK_A, true).await;
     let points = [
         crate::ScrubPoint { sample: 0, byte: 8, exact_from: 0 },
         crate::ScrubPoint { sample: 40, byte: 90, exact_from: 41 },
@@ -144,8 +70,8 @@ async fn a_track_without_audio_names_what_it_lacks() {
 #[tokio::test]
 async fn a_save_reads_a_track_beside_the_next_and_a_release_in_order() {
     let (db, temp, records) = two_tracks().await;
-    store_audio(&records, &temp, TRACK_A, false).await;
-    store_audio(&records, &temp, TRACK_B, true).await;
+    store_audio(&records, &temp, RELEASE_A, TRACK_A, false).await;
+    store_audio(&records, &temp, RELEASE_A, TRACK_B, true).await;
 
     let first = records.track_for_save(TRACK_A).await.unwrap();
     assert!(first.is_first);
