@@ -6402,38 +6402,6 @@ Android's screens for opening a library. A keychain that won't open stops the la
 listing, opening and removing libraries all need it. On Linux the keychain is
 the desktop's secret service.
 
-### 9.7 The website
-
-bae.fm takes its colors, fonts and sizes from the design system, as the apps
-do. The home page draws every color in the dark value of the apps' color
-tokens, with no palette of its own; the docs follow their theme switch and
-draw in the same tokens' dark or light values. Display text is in Mona Sans,
-body text in Hanken Grotesk and code in JetBrains Mono. Every line of text
-takes one of the design system's web text styles, its size, weight, line
-height and letter spacing, which tokens.json holds beside the apps' styles,
-and a heading's size grows with the window. Corners and gaps take the radius
-and spacing tokens of their role. The page's own layout, its widths and
-section paddings, stays in the page. The top bar of the home page and the docs, and the home page's
-footer, draw the logo as the design system's Logo component does in a line:
-the sheep, then the word "bae" at 1.14 of the sheep's width, in the text
-color. The home page's hero draws the sheep over the word, floating in
-its glow, as Welcome does. Every sheep on the site is the design system's
-drawing, and the favicons are its small sheep, drawn for 16 and 32 pixels.
-The home page and the docs draw their buttons, notices, chips, status
-glyphs and cards as the design system draws them, and their icons are the
-design system's Material Symbols, the set Android draws, where an icon is
-the control. The home page also keeps drawings of its own: the device and
-cloud icons of the sync diagram, each platform's logo on its plate, and the
-globe on the language button. The first card of the library section shows bae
-matching folders to releases. Three folders with made-up names take turns at
-the top of a stack. While bae reads the top folder, a line under it names each
-step (reading tags, matching a barcode or catalog number, comparing track
-lengths), the album and its releases appear, and bae picks the release the
-folder holds. The home page's pre-1.0 banner is the site's own
-piece, drawn in the design system's warning color: a striped top edge, a
-"!" mark, and the heading and text. One switch in the site's code shows or
-hides the banner.
-
 ---
 
 ## 11. Crates and conventions
