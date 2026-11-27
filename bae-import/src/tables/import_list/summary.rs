@@ -76,19 +76,6 @@ sqlive_compose::read!(
 "#
 );
 
-// The groups `folded` names, each a JSON array of its watched folder's path
-// and its folder in hex, as the placement holds them.
-sqlive_compose::fragment!(
-    NamedGroups(folded: String) {
-        named_root: Option<Vec<u8>>, named_folder: Option<Vec<u8>>
-    },
-    r#"
-    SELECT unhex(json_extract(named.value, '$[0]')) AS named_root,
-        unhex(json_extract(named.value, '$[1]')) AS named_folder
-    FROM json_each(:folded) AS named
-"#
-);
-
 // How many items a list that searches for nothing holds, and, while Found's
 // filter entry narrows it, how many releases that entry keeps, from the
 // counts kept beside the placement alone: the releases the entry keeps, less
@@ -116,7 +103,7 @@ sqlive_compose::read!(
              AND g.pending_entry IN (SELECT kept.value FROM json_each(:entries) AS kept)
              AND ((g.watched_folder_path, g.group_folder) IN (
                       SELECT named.named_root, named.named_folder
-                      FROM @crate::tables::import_list::summary::NamedGroups(folded: :folded)
+                      FROM @crate::tables::import_list::row_fragments::NamedGroups(folded: :folded)
                           AS named)) = :folds_only)
         + (SELECT COALESCE(SUM(c.count), 0) FROM import_list_count AS c
            WHERE :filter IS NULL AND :tab = 'pending' AND c.tab = 'pending'

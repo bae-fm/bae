@@ -175,6 +175,19 @@ sqlive_compose::fragment!(
 "#
 );
 
+// The groups `folded` names, each a JSON array of its watched folder's path
+// and its folder in hex, as the placement holds them.
+sqlive_compose::fragment!(
+    NamedGroups(folded: String) {
+        named_root: Option<Vec<u8>>, named_folder: Option<Vec<u8>>
+    },
+    r#"
+    SELECT unhex(json_extract(named.value, '$[0]')) AS named_root,
+        unhex(json_extract(named.value, '$[1]')) AS named_folder
+    FROM json_each(:folded) AS named
+"#
+);
+
 // Whether the list folds the group of the placement row shut: the group is one
 // of those `folded` names, each a JSON array of its watched folder's path and
 // its folder in hex, or, when `folds_only` is false, `folded` names the groups
@@ -183,9 +196,9 @@ sqlive_compose::fragment!(
     Folded(folds_only: bool, folded: String) on import_list_placement { folded: bool },
     r#"
     SELECT ((@parent.watched_folder_path, @parent.group_folder) IN (
-                SELECT unhex(json_extract(named.value, '$[0]')),
-                       unhex(json_extract(named.value, '$[1]'))
-                FROM json_each(:folded) AS named)) = :folds_only AS folded
+                SELECT named.named_root, named.named_folder
+                FROM @crate::tables::import_list::row_fragments::NamedGroups(folded: :folded)
+                    AS named)) = :folds_only AS folded
 "#
 );
 
