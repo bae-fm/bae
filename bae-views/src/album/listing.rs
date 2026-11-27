@@ -368,18 +368,18 @@ pub(crate) fn album_key_at_on(
 /// Runs the flat or the grouped one of two reads over the numbered cards, as
 /// `order` is, binding its sorts and the fields given.
 macro_rules! numbered {
-    ($run:ident, $sql:expr, $order:expr, $flat:ident, $grouped:ident
+    ($sql:expr, $order:expr, $flat:ident, $grouped:ident
      { $($field:ident: $value:expr),* }, $map:expr) => {{
         let [first, second, third, fourth] = $order.codes();
         match $order.lead {
-            AlbumLead::Flat(_) => $run(
+            AlbumLead::Flat(_) => statement_rows(
                 $sql,
                 &$flat { first, second, third, fourth, $($field: $value),* },
             )?
             .into_iter()
             .map($map)
             .collect::<Vec<_>>(),
-            AlbumLead::Grouped(_) => $run(
+            AlbumLead::Grouped(_) => statement_rows(
                 $sql,
                 &$grouped { first, second, third, fourth, $($field: $value),* },
             )?
@@ -427,7 +427,6 @@ pub(crate) fn album_ids_between_on(
         |card: AlbumCard<'_>| (card.album_id.to_string(), card.section_id.map(str::to_string));
     let ((from_album, from_section), (to_album, to_section)) = (owned(from), owned(to));
     Ok(numbered!(
-        statement_rows,
         sql,
         order,
         FlatAlbumsBetweenParams,
@@ -450,7 +449,6 @@ pub(crate) fn albums_in_order_on(
 ) -> Result<Vec<AlbumSummaryRow>, DbError> {
     let albums = serde_json::to_string(album_ids).expect("album ids serialize as JSON");
     numbered!(
-        statement_rows,
         sql,
         order,
         FlatAlbumsInOrderParams,
