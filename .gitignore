@@ -39,6 +39,8 @@ node_modules/
 website/dist/
 website/.astro/
 website/.vercel/
+# The design system's tokens, which theme-gen writes (npm run theme).
+website/src/generated/
 
 # Development environment
 .env

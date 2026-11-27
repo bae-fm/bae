@@ -1,84 +1,48 @@
-/* bae docs theme - Direction D (Cozy x Studio)
-   Matches the marketing homepage: Mona Sans display, Hanken body, JetBrains
-   Mono code, on a night-violet surface with violet/pink/mint accents.
-   Global palette and fonts go through Starlight's own custom properties;
-   raw selectors only appear where a variable cannot express the intent
-   (heading font face, pink inline code, table radius, soft sidebar wash,
-   gradient asides, TOC border). */
+/* bae docs theme: the home page's look, in the design system's tokens.
+   Mona Sans display, Hanken body, JetBrains Mono code. Colours and fonts go
+   through Starlight's own custom properties; raw selectors only appear where
+   a variable cannot express the intent (heading font face, pink inline code,
+   table radius, the current sidebar item, gradient asides, TOC border). */
 
 /* Fonts. Loaded before the variable block so the families resolve. */
 @import url('https://fonts.googleapis.com/css2?family=Mona+Sans:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* Starlight's own properties, mapped onto the design system's tokens
+   (tokens.css, which theme-gen writes). The tokens take their dark or light
+   value from Starlight's data-theme, so one mapping serves both themes, and
+   it outranks Starlight's light values, which sit in Starlight's layers. */
 :root {
-	/* Direction D tokens, reused below so the values live in one place. */
-	--bae-night: #100e1a;
-	--bae-night-2: #161327;
-	--bae-card: #1c1830;
-	--bae-card-2: #231d3a;
-	--bae-cream: #fdf5ef;
-	--bae-fg-dim: rgba(253, 245, 239, 0.66);
-	--bae-fg-faint: rgba(253, 245, 239, 0.42);
-	--bae-violet: #9b6cf6;
-	--bae-violet-wash: rgba(155, 108, 246, 0.16);
-	--bae-violet-edge: rgba(155, 108, 246, 0.45);
-	--bae-pink: #f7a8c4;
-	--bae-pink-deep: #ec6a99;
-	--bae-mint: #86e0c8;
-	--bae-line: rgba(253, 245, 239, 0.12);
+	--sl-font: var(--font-web-body);
+	--sl-font-mono: var(--font-web-mono);
 
-	--bae-font-display: 'Mona Sans', system-ui, sans-serif;
+	/* Accent ramp: links, active nav, focus rings. */
+	--sl-color-accent-low: var(--accent-orchid-selection);
+	--sl-color-accent: var(--accent-orchid);
+	--sl-color-accent-high: var(--accent-orchid);
 
-	/* Display faces. --sl-font drives body copy and every UI element; the
-	   heading face is applied with a raw rule further down. */
-	--sl-font: 'Hanken Grotesk', system-ui, sans-serif;
-	--sl-font-mono: 'JetBrains Mono', monospace;
+	/* Gray scale: 1 to 3 are text, 4 to 6 surfaces; white is the brightest
+	   text and black the page. Starlight pulls the code-block and blockquote
+	   borders from gray-5 and the mobile-TOC shades from gray-6. */
+	--sl-color-white: var(--text-primary);
+	--sl-color-gray-1: var(--text-primary);
+	--sl-color-gray-2: var(--text-secondary);
+	--sl-color-gray-3: var(--text-tertiary);
+	--sl-color-gray-4: var(--elevated);
+	--sl-color-gray-5: var(--surface);
+	--sl-color-gray-6: var(--well);
+	--sl-color-black: var(--background);
 
-	/* Accent ramp: violet for links, active nav, focus rings.
-	   accent-high is the link/text-accent color in dark mode. */
-	--sl-color-accent-low: #2a1f47;
-	--sl-color-accent: var(--bae-violet);
-	--sl-color-accent-high: #c3a7fb;
+	/* The top bar is the backdrop, so Starlight's blur reads through it. */
+	--sl-color-bg: var(--background);
+	--sl-color-bg-nav: var(--backdrop);
+	--sl-color-bg-sidebar: var(--background);
+	--sl-color-bg-inline-code: var(--surface);
+	--sl-color-hairline: var(--hairline);
+	--sl-color-hairline-light: var(--hairline);
+	--sl-color-hairline-shade: var(--hairline);
 
-	/* Gray scale mapped onto the night-violet surfaces.
-	   1 = brightest text, 6 = darkest panel; black = page background.
-	   Starlight pulls the code-block and blockquote borders from gray-5 and
-	   the mobile-TOC / hairline shades from gray-6. */
-	--sl-color-white: var(--bae-cream);
-	--sl-color-gray-1: #f3e9e3;
-	--sl-color-gray-2: #c8c0c9;
-	--sl-color-gray-3: #948ea0;
-	--sl-color-gray-4: var(--bae-card-2);
-	--sl-color-gray-5: var(--bae-card);
-	--sl-color-gray-6: var(--bae-night-2);
-	--sl-color-black: var(--bae-night);
-
-	/* Surfaces and hairlines. Page on --night, the nav bar translucent so
-	   Starlight's backdrop blur reads as the frosted sticky bar, the sidebar
-	   on the page background (the mock's nav is transparent with a right
-	   hairline), inline code on --card, all hairlines on the cream 12% line. */
-	--sl-color-bg: var(--bae-night);
-	--sl-color-bg-nav: rgba(16, 14, 26, 0.82);
-	--sl-color-bg-sidebar: var(--bae-night);
-	--sl-color-bg-inline-code: var(--bae-card);
-	--sl-color-hairline: var(--bae-line);
-	--sl-color-hairline-light: var(--bae-line);
-	--sl-color-hairline-shade: var(--bae-line);
-
-	/* Secondary body text sits at the dim cream level. */
-	--sl-color-text: var(--bae-fg-dim);
-	/* Links, active TOC entries and other "accent text" are pure violet, the
-	   way the mock draws them, not the lighter accent-high tone. */
-	--sl-color-text-accent: var(--bae-violet);
-}
-
-:root[data-theme='light'] {
-	/* Keep dark as the primary theme; these are sensible light overrides so
-	   the violet accent still reads against a pale background. In light mode
-	   Starlight maps text-accent to --sl-color-accent, not accent-high. */
-	--sl-color-accent-low: #ede7fd;
-	--sl-color-accent: #7c4ddb;
-	--sl-color-accent-high: #4a2a9c;
-	--sl-color-text-accent: var(--sl-color-accent);
+	--sl-color-text: var(--text-secondary);
+	--sl-color-text-accent: var(--accent-orchid);
 }
 
 /* ---- Headings: Mona Sans display face over the Hanken body ---- */
@@ -87,7 +51,7 @@
    "On this page" heading), which the mock keeps in Hanken or mono. */
 .sl-markdown-content :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)),
 .content-panel h1 {
-	font-family: var(--bae-font-display);
+	font-family: var(--font-web-display);
 	font-weight: 700;
 }
 
@@ -107,7 +71,7 @@
 .header {
 	backdrop-filter: blur(14px);
 	-webkit-backdrop-filter: blur(14px);
-	border-bottom: 1px solid var(--bae-line);
+	border-bottom: 1px solid var(--hairline);
 }
 
 /* ---- Left sidebar nav ---- */
@@ -118,28 +82,28 @@
 	font-size: var(--sl-text-xs);
 	text-transform: uppercase;
 	letter-spacing: 0.09em;
-	color: var(--bae-fg-faint);
+	color: var(--text-tertiary);
 	font-weight: 500;
 }
 
-/* Nav links: rounded, dim cream by default, card hover. */
+/* Nav links: rounded, secondary text by default, surface hover. */
 .sidebar-content a {
-	border-radius: 10px;
-	color: var(--bae-fg-dim);
+	border-radius: var(--radius-control);
+	color: var(--text-secondary);
 	font-weight: 500;
 }
 .sidebar-content a:hover {
-	background-color: var(--bae-card);
-	color: var(--bae-cream);
+	background-color: var(--surface);
+	color: var(--text-primary);
 }
 
-/* Active nav item: soft violet wash with violet text, not the default
-   solid accent fill that Starlight applies. */
+/* Active nav item: the accent's selection under on-fill text, as the apps
+   mark a current item. */
 .sidebar-content a[aria-current='page'],
 .sidebar-content a[aria-current='page']:hover,
 .sidebar-content a[aria-current='page']:focus {
-	background-color: var(--bae-violet-wash);
-	color: var(--bae-violet);
+	background-color: var(--accent-orchid-selection);
+	color: var(--on-fill);
 	font-weight: 600;
 }
 
@@ -148,19 +112,19 @@
 	font-family: var(--sl-font);
 }
 
-/* Lead paragraph emphasis stays cream. */
+/* Lead paragraph emphasis is primary text. */
 .sl-markdown-content strong,
 .sl-markdown-content b {
-	color: var(--bae-cream);
+	color: var(--text-primary);
 	font-weight: 600;
 }
 
-/* ---- Inline code: card surface, pink text, hairline, 6px radius ---- */
+/* ---- Inline code: surface, pink text, hairline, chip radius ---- */
 .sl-markdown-content code:not(:where(.not-content *)) {
-	background-color: var(--bae-card);
-	border: 1px solid var(--bae-line);
-	border-radius: 6px;
-	color: var(--bae-pink);
+	background-color: var(--surface);
+	border: 1px solid var(--hairline);
+	border-radius: var(--radius-chip);
+	color: var(--accent-pink);
 }
 /* Code inside a heading inherits the heading color, not pink. */
 .sl-markdown-content :is(h1, h2, h3, h4, h5, h6) code {
@@ -169,9 +133,9 @@
 
 /* Code blocks sit on a darker surface than inline code. */
 .sl-markdown-content pre:not(:where(.not-content *)) {
-	background-color: var(--bae-night-2);
-	border: 1px solid var(--bae-line);
-	border-radius: 12px;
+	background-color: var(--well);
+	border: 1px solid var(--hairline);
+	border-radius: var(--radius-card);
 }
 /* Reset code inside a block so it inherits the block surface, not the
    pink inline treatment. */
@@ -182,7 +146,7 @@
 	background: transparent;
 }
 
-/* ---- Tables: separated borders, 16px outer radius, header on --card-2 ---- */
+/* ---- Tables: separated borders, panel radius, header on elevated ---- */
 /* Starlight renders the table as display:block with no outer frame; rebuild
    the framed, rounded card from the mock. */
 .sl-markdown-content table:not(:where(.not-content *)) {
@@ -190,86 +154,85 @@
 	width: 100%;
 	border-collapse: separate;
 	border-spacing: 0;
-	border: 1px solid var(--bae-line);
-	border-radius: 16px;
+	border: 1px solid var(--hairline);
+	border-radius: var(--radius-panel);
 	overflow: hidden;
 	font-size: var(--sl-text-sm);
 }
 .sl-markdown-content :is(th, td):not(:where(.not-content *)) {
-	border-bottom: 1px solid var(--bae-line);
-	padding: 12px 16px;
+	border-bottom: 1px solid var(--hairline);
+	padding: var(--space-group) var(--space-edge);
 	vertical-align: baseline;
 }
 /* Undo Starlight's edge-flush padding so cells sit inside the rounded frame. */
 .sl-markdown-content :is(th:first-child, td:first-child):not(:where(.not-content *)) {
-	padding-inline-start: 16px;
+	padding-inline-start: var(--space-edge);
 }
 .sl-markdown-content :is(th:last-child, td:last-child):not(:where(.not-content *)) {
-	padding-inline-end: 16px;
+	padding-inline-end: var(--space-edge);
 }
 .sl-markdown-content thead th:not(:where(.not-content *)) {
-	background-color: var(--bae-card-2);
-	color: var(--bae-cream);
-	font-family: var(--bae-font-display);
+	background-color: var(--elevated);
+	color: var(--text-primary);
+	font-family: var(--font-web-display);
 	font-weight: 700;
 	font-size: var(--sl-text-xs);
 }
 .sl-markdown-content tbody th:not(:where(.not-content *)) {
-	background-color: var(--bae-card);
-	color: var(--bae-cream);
+	background-color: var(--surface);
+	color: var(--text-primary);
 	font-weight: 600;
 }
 .sl-markdown-content tbody td:not(:where(.not-content *)) {
-	color: var(--bae-fg-dim);
+	color: var(--text-secondary);
 }
 /* Drop the bottom hairline on the last row so it meets the rounded corner. */
 .sl-markdown-content tbody tr:last-child :is(th, td):not(:where(.not-content *)) {
 	border-bottom: 0;
 }
 
-/* ---- Asides / callouts: gradient card, colored left border, 16px radius ---- */
+/* ---- Asides / callouts: gradient card, colored left border, panel radius ---- */
 /* Starlight's default aside is a flat tinted block; restyle as the gradient
    card from the mock. The left border and title color come from
    --sl-color-asides-border / --sl-color-asides-text-accent, which each
    variant sets below; background-color:transparent clears Starlight's flat
    tint so only the gradient shows. */
 .sl-markdown-content .starlight-aside:not(:where(.not-content *)) {
-	background-image: linear-gradient(180deg, var(--bae-card), var(--bae-night-2));
-	border: 1px solid var(--bae-line);
+	background-image: linear-gradient(180deg, var(--surface), var(--well));
+	border: 1px solid var(--hairline);
 	border-inline-start: 3px solid var(--sl-color-asides-border);
-	border-radius: 16px;
+	border-radius: var(--radius-panel);
 	padding: 18px 20px;
-	color: var(--bae-fg-dim);
+	color: var(--text-secondary);
 }
 .starlight-aside__content {
-	color: var(--bae-fg-dim);
+	color: var(--text-secondary);
 }
 .starlight-aside__content strong,
 .starlight-aside__content b {
-	color: var(--bae-cream);
+	color: var(--text-primary);
 }
 
-/* Recolor the four aside variants onto the Direction D supporting hues. The
-   mock's callout is mint, so tip is mint; note keeps violet, caution and
-   danger take the warmer pinks. */
+/* The four aside variants: tip is mint, note orchid, caution pink and
+   danger the pink fill. */
 .sl-markdown-content .starlight-aside--note {
-	--sl-color-asides-border: var(--bae-violet);
-	--sl-color-asides-text-accent: var(--bae-violet);
+	--sl-color-asides-border: var(--accent-orchid);
+	--sl-color-asides-text-accent: var(--accent-orchid);
 	background-color: transparent;
 }
 .sl-markdown-content .starlight-aside--tip {
-	--sl-color-asides-border: var(--bae-mint);
-	--sl-color-asides-text-accent: var(--bae-mint);
+	--sl-color-asides-border: var(--accent-mint);
+	--sl-color-asides-text-accent: var(--accent-mint);
 	background-color: transparent;
 }
 .sl-markdown-content .starlight-aside--caution {
-	--sl-color-asides-border: var(--bae-pink);
-	--sl-color-asides-text-accent: var(--bae-pink);
+	--sl-color-asides-border: var(--accent-pink);
+	--sl-color-asides-text-accent: var(--accent-pink);
 	background-color: transparent;
 }
 .sl-markdown-content .starlight-aside--danger {
-	--sl-color-asides-border: var(--bae-pink-deep);
-	--sl-color-asides-text-accent: var(--bae-pink-deep);
+	--sl-color-asides-border: var(--accent-pink-fill);
+	--sl-color-asides-text-accent: var(--accent-pink-fill);
 	background-color: transparent;
 }
 
@@ -281,27 +244,27 @@ starlight-toc nav h2 {
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
 	font-weight: 500;
-	color: var(--bae-fg-faint);
+	color: var(--text-tertiary);
 }
 /* Inactive links sit on a faint hairline rail. starlight-toc is the desktop
    wrapper, so the mobile dropdown TOC is left untouched. */
 starlight-toc nav a {
-	border-inline-start: 2px solid var(--bae-line);
-	color: var(--bae-fg-faint);
+	border-inline-start: 2px solid var(--hairline);
+	color: var(--text-tertiary);
 }
 starlight-toc nav a:hover {
-	color: var(--bae-fg-dim);
+	color: var(--text-secondary);
 }
-/* Active TOC link: violet text with a violet left border. */
+/* Active TOC link: orchid text with an orchid left border. */
 starlight-toc nav a[aria-current='true'],
 starlight-toc nav a[aria-current='true']:hover {
-	color: var(--bae-violet);
-	border-inline-start-color: var(--bae-violet);
+	color: var(--accent-orchid);
+	border-inline-start-color: var(--accent-orchid);
 }
 
-/* ---- Custom scrollbar thumb in --card-2 ---- */
+/* ---- Custom scrollbar thumb in elevated ---- */
 * {
-	scrollbar-color: var(--bae-card-2) transparent;
+	scrollbar-color: var(--elevated) transparent;
 }
 ::-webkit-scrollbar {
 	width: 10px;
@@ -311,15 +274,15 @@ starlight-toc nav a[aria-current='true']:hover {
 	background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-	background: var(--bae-card-2);
-	border-radius: 5px;
-	border: 2px solid var(--bae-night);
+	background: var(--elevated);
+	border-radius: 999px;
+	border: 2px solid var(--background);
 }
 
-/* ---- Selection: pink wash, dark ink ---- */
+/* ---- Selection: pink, with the ink drawn on the pink fill ---- */
 ::selection {
-	background: var(--bae-pink);
-	color: #3a2230;
+	background: var(--accent-pink);
+	color: var(--on-accent-pink-fill);
 }
 
 /* Disable sidebar section collapsing */

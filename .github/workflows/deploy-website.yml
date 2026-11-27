@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'design/system/tokens.json'
+      - 'design/theme.toml'
+      - 'bae-theme/**'
       - '.github/workflows/deploy-website.yml'
   workflow_dispatch:
 
@@ -14,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
     steps:
     - name: Checkout code
@@ -26,21 +32,31 @@ jobs:
         cache: 'npm'
         cache-dependency-path: website/package-lock.json
 
+    # The site's build runs theme-gen (npm run theme), which cargo builds.
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
     - name: Install Node dependencies
       working-directory: ./website
       run: npm ci
 
+    # Vercel builds here, where theme-gen can run, and is given the built
+    # output: a deploy of the source would build on Vercel, which has no
+    # Rust and no files outside website/.
+    - name: Pull the Vercel project's settings
+      working-directory: ./website
+      run: npx vercel@65.15.0 pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+    # The Vercel project's own build command may run astro build alone, so
+    # the tokens are written first.
+    - name: Write the design system's tokens
+      working-directory: ./website
+      run: npm run theme
+
     - name: Build website
       working-directory: ./website
-      run: npm run build
+      run: npx vercel@65.15.0 build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
     - name: Deploy to Vercel
-      uses: amondnet/vercel-action@v42
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        vercel-version: latest
-        working-directory: ./website
-        scope: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-args: '--prod'
+      working-directory: ./website
+      run: npx vercel@65.15.0 deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

@@ -59,22 +59,24 @@ export default defineConfig({
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/bae-fm/bae' }
 			],
-			customCss: ['./src/styles/custom.css'],
+			// tokens.css holds the design system's tokens, which theme-gen
+			// writes (npm run theme); custom.css maps Starlight onto them.
+			customCss: ['./src/generated/tokens.css', './src/styles/custom.css'],
 			// Fenced code blocks render through Expressive Code, which has its
-			// own theming and ignores custom.css. Pin its surface to the Direction
-			// D night-violet palette so code blocks match the rest of the docs.
-			// JetBrains Mono comes in already, via --sl-font-mono.
+			// own theming and ignores custom.css. Set its surfaces in the same
+			// tokens so code blocks match the rest of the docs. JetBrains Mono
+			// comes in already, via --sl-font-mono.
 			expressiveCode: {
 				styleOverrides: {
-					borderRadius: '12px',
-					borderColor: 'rgba(253, 245, 239, 0.12)',
-					codeBackground: '#161327',
+					borderRadius: 'var(--radius-card)',
+					borderColor: 'var(--hairline)',
+					codeBackground: 'var(--well)',
 					frames: {
-						editorActiveTabBackground: '#1c1830',
-						editorTabBarBackground: '#100e1a',
-						editorActiveTabIndicatorBottomColor: '#9b6cf6',
-						terminalTitlebarBackground: '#1c1830',
-						terminalBackground: '#161327',
+						editorActiveTabBackground: 'var(--surface)',
+						editorTabBarBackground: 'var(--background)',
+						editorActiveTabIndicatorBottomColor: 'var(--accent-orchid)',
+						terminalTitlebarBackground: 'var(--surface)',
+						terminalBackground: 'var(--well)',
 					},
 				},
 			},

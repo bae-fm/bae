@@ -7,6 +7,18 @@ Swift for BaeKit and Kotlin for Android; `build-macos.sh`, `build-ios.sh` and `b
 its output is not checked in. Both platforms get the same roles, so change
 values there rather than adding a platform palette.
 
+The website (`website/`) is a theme-gen target too: `theme-gen emit --target
+web` writes `website/src/generated/tokens.css`, which the site's npm scripts
+run before Astro (`npm run theme`). It holds every colour token of tokens.json
+in each colour theme, the first theme (dark) on `:root` and each on
+`[data-theme="<id>"]`, then the spacing, radius and opacity tokens and every
+font stack of `type.families`, named as the design system's own `tokens.css`
+names them. The home page draws in the dark values; the docs follow
+Starlight's theme switch, which sets `data-theme`. tokens.json's `web-display`,
+`web-body` and `web-mono` families are the site's Mona Sans, Hanken Grotesk
+and JetBrains Mono. The site's own layout (its type sizes, line heights,
+widths, section paddings and letter spacing) stays in the page.
+
 Appearance settings have three independent choices: System/Light/Dark mode,
 Blue/Orchid/Pink/Lime/Mint/Sky accent, and
 Neutral/Slate/Plum/Midnight/Forest/Sand background tone. A new installation

@@ -6356,6 +6356,17 @@ Android's screens for opening a library. A keychain that won't open stops the la
 listing, opening and removing libraries all need it. On Linux the keychain is
 the desktop's secret service.
 
+### 9.7 The website
+
+bae.fm takes its colors, fonts and sizes from the design system, as the apps
+do. The home page draws every color in the dark value of the apps' color
+tokens, with no palette of its own; the docs follow their theme switch and
+draw in the same tokens' dark or light values. Display text is in Mona Sans,
+body text in Hanken Grotesk and code in JetBrains Mono. Corners and gaps take
+the radius and spacing tokens of their role. The page's own layout, its type
+sizes, line heights, widths, section paddings and letter spacing, stays in the
+page.
+
 ---
 
 ## 11. Crates and conventions

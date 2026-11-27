@@ -5,9 +5,10 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
+    "theme": "cd .. && ./scripts/cargo.sh run -q -p bae-theme --bin theme-gen -- emit --target web --out-dir website/src/generated",
+    "dev": "npm run theme && astro dev",
+    "start": "npm run dev",
+    "build": "npm run theme && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
