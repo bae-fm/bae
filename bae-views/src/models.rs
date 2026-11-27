@@ -9,9 +9,9 @@ use time::UtcDateTime;
 /// produces the display-ready `crate::album_detail::SearchResults`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct DbLibrarySearchResults {
-    pub albums: Vec<bae_records::DbAlbumSummary>,
+    pub albums: Vec<DbAlbumSummary>,
     pub artists: Vec<DbArtistSummary>,
-    pub tracks: Vec<DbTrackSearchResult>,
+    pub tracks: Vec<crate::album_detail::TrackSearchResult>,
     pub composers: Vec<DbComposerSummary>,
     pub works: Vec<DbWorkSummary>,
     /// Whether the search found anything of any kind.
@@ -35,24 +35,6 @@ pub struct SearchSectionCounts {
 pub struct DbTopPlayable {
     pub release_id: String,
     pub track_id: String,
-}
-
-/// Raw track search-result row with album and artist info joined in SQL;
-/// `artist_line` is the track's own credits, else its album's. No formatted
-/// duration label — resolving it formats one.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbTrackSearchResult {
-    pub id: String,
-    pub title: String,
-    pub duration_ms: u64,
-    /// The release the track belongs to — the key the resolver looks the
-    /// track's cover up by.
-    pub release_id: String,
-    pub album_id: String,
-    pub album_title: String,
-    pub artist_line: bae_types::credits::CreditLine,
-    /// The version of the release's cover; `None` when it has none.
-    pub cover_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

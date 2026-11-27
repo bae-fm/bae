@@ -1,6 +1,6 @@
 //! The language this device orders names in: the `name_sort` table
-//! (`records/name_sort.sql`), its write, and the sort key a read orders a
-//! name by.
+//! (`records/name_sort.sql`), its write, and the fragment a read takes the
+//! language from to order a name by.
 //!
 //! The lists that keep a sort key beside each name write those keys again
 //! with their own triggers on `name_sort`, in the write that changes it.
@@ -28,24 +28,6 @@ sqlive_compose::fragment!(
     FROM name_sort AS sort
 "#
 );
-
-// [`NameSortLanguage`]'s row, whose SQL a statement built as text holds.
-sqlive_compose::read!(
-    writer NameSortLanguages,
-    r#"
-    SELECT language.*
-    FROM @crate::records::name_sort::NameSortLanguage AS language
-"#
-);
-
-/// The sort key of the name `name` (a SQL expression) in the device's
-/// language, for a list too small to keep keys beside its names: it computes
-/// the same key that the other lists store beside their names. A live read
-/// that orders by it reads `name_sort`, so coven reruns the read when the
-/// language changes.
-pub fn sort_key_sql(name: &str) -> String {
-    format!("bae_name_key({name}, ({language}))", language = NameSortLanguages::SQL)
-}
 
 sqlive_compose::write!(
     SetNameSort(language: &'p str, data_version: u32),

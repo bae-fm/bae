@@ -425,15 +425,6 @@ impl CoverVersion {
     }
 }
 
-// Every cover's version, whose SQL a statement built as text holds.
-sqlive_compose::read!(
-    writer CoverVersions,
-    r#"
-    SELECT cover.*
-    FROM @crate::records::files::CoverVersion AS cover
-"#
-);
-
 // Each artist image's version, by the artist it is the image of.
 sqlive_compose::fragment!(
     ArtistImageVersion { version: Option<String> },
@@ -451,16 +442,6 @@ impl ArtistImageVersion {
     pub fn into_version(self) -> Option<String> {
         self.version
     }
-}
-
-/// The version of the cover of the release `release_id` (a SQL expression),
-/// found by the covers' key; NULL when the release has no cover.
-pub fn cover_version_sql(release_id: &str) -> String {
-    format!(
-        "(SELECT image_version.version FROM ({versions}) AS image_version \
-         WHERE image_version.id = {release_id})",
-        versions = CoverVersions::SQL
-    )
 }
 
 /// The coven file one image row names (a cover's browse copy), or `None` when there is no such row.

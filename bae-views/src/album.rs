@@ -1,7 +1,7 @@
 //! The album views: the album grid, flat or grouped by artist, its
-//! selection, an album's detail, an album's tracks as a list, library
-//! search, the albums a search lists as a list (`search_albums`), and where
-//! an album's card is in the grid (`place`).
+//! selection, an album's detail, an album's tracks as a list, the albums a
+//! search lists (`search_albums`), and where an album's card is in the grid
+//! (`place`).
 
 use super::*;
 use bae_records::records::track_display::DisplayedTrack;
@@ -26,45 +26,9 @@ mod place;
 mod position_reads;
 mod window_reads;
 pub use place::{AlbumCard, AlbumPlace};
-mod search_albums;
-use search_albums::first_search_albums_on;
+pub mod search_albums;
 
 impl LibraryViews {
-    /// Search the library for a parsed, non-blank query. The result count is
-    /// the core-owned [`crate::SEARCH_RESULT_LIMIT`]; no caller passes
-    /// one.
-    pub async fn search_library(
-        &self,
-        query: &crate::LibrarySearchQuery,
-    ) -> Result<crate::album_detail::SearchResults, DbError> {
-        let rows = self.search_rows(query.as_str(), crate::SEARCH_RESULT_LIMIT).await?;
-        Ok(crate::album_detail::SearchResults::from_raw(rows))
-    }
-
-    /// The track a spoken "play" of `query` plays: the first track the
-    /// search finds, else the first track of the first album it finds. The
-    /// method runs only the SQL statement that picks that track, not the
-    /// whole search.
-    pub async fn search_top_playable(
-        &self,
-        query: &crate::LibrarySearchQuery,
-    ) -> Result<Option<DbTopPlayable>, DbError> {
-        let pattern = search_pattern(query.as_str());
-        self.store.read(move |sql| top_playable_on(&sql, &pattern)).await
-    }
-
-    /// The albums, tracks, composers and works whose title or name `query`
-    /// finds, at most `limit` of each, as their rows read.
-    pub async fn search_rows(
-        &self,
-        query: &str,
-        limit: usize,
-    ) -> Result<DbLibrarySearchResults, DbError> {
-        let pattern = search_pattern(query);
-        let limit_i64 = limit as i64;
-        self.store.read(move |sql| search_library_on(&sql, &pattern, limit_i64)).await
-    }
-
     /// Follow one page of the album `album_id`'s tracks: the tracks at the
     /// page's places as each write leaves them, as a media browser lists
     /// them.
@@ -106,36 +70,6 @@ impl LibraryViews {
             .read(move |sql| statement_optional(&sql, &statement))
             .process(|row| row.map(|row| release_track(row.shown)).transpose())
             .await
-    }
-
-    /// Follow the results of one library search. The request is the parsed
-    /// query; `None` is no search, which reads nothing and delivers no results.
-    /// A new query moves this subscription's request rather than opening
-    /// another.
-    pub fn subscribe_library_search(
-        &self,
-        initial: Option<crate::LibrarySearchQuery>,
-        limit: usize,
-    ) -> coven::ReconfigurableLiveQuery<
-        Option<crate::LibrarySearchQuery>,
-        LibrarySearchProjection,
-        bae_store::DbError,
-    > {
-        let limit_i64 = limit as i64;
-        self.store
-            .subscribe_reconfigurable(initial, move |request, sql| {
-                let Some(query) = request else {
-                    return Ok(None);
-                };
-                let pattern = search_pattern(query.as_str());
-                Ok(Some(search_library_on(&sql, &pattern, limit_i64)?))
-            })
-            .process(|raw| {
-                let Some(results) = raw else {
-                    return Ok(LibrarySearchProjection::default());
-                };
-                Ok(LibrarySearchProjection { results })
-            })
     }
 
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
@@ -347,13 +281,6 @@ pub fn resolve_album_detail_projection(
     projection.detail.map(resolve_album_detail)
 }
 
-/// One delivery of a library search as its results show it.
-pub fn resolve_library_search_projection(
-    projection: LibrarySearchProjection,
-) -> crate::album_detail::SearchResults {
-    crate::album_detail::SearchResults::from_raw(projection.results)
-}
-
 /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`: joins artist names, formats labels,
 /// groups tracks by side, and builds galleries.
 fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail {
@@ -410,7 +337,9 @@ sqlive_compose::read!(
 );
 
 /// The track `shown` as a media browser's item shows it.
-fn release_track(shown: DisplayedTrack) -> Result<crate::album_detail::TrackSearchResult, DbError> {
+pub(crate) fn release_track(
+    shown: DisplayedTrack,
+) -> Result<crate::album_detail::TrackSearchResult, DbError> {
     let id = shown.track_id().to_string();
     let duration_ms = shown.duration_ms();
     let display = shown.into_display()?;
@@ -424,228 +353,6 @@ fn release_track(shown: DisplayedTrack) -> Result<crate::album_detail::TrackSear
         artist_line: display.artist_line,
         cover: display.cover_image,
     })
-}
-
-/// What a track hit shows: the track, its release's album, its credit line and
-/// its release's cover version, as columns over the track `t` and
-/// [`TRACK_HIT_JOINS`].
-static TRACK_HIT_COLUMNS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    format!(
-        "t.id, t.title, t.duration_ms, t.release_id, \
-         r.album_id, a.title as album_title, {} as artist_name, \
-         {} as cover_version",
-        track_credits_json_sql("t"),
-        bae_records::records::files::cover_version_sql("t.release_id"),
-    )
-});
-
-/// The tables a track hit reads past its track `t`: the track's release `r`
-/// and the release's album `a`.
-const TRACK_HIT_JOINS: &str = "JOIN releases r ON t.release_id = r.id \
-     JOIN albums a ON r.album_id = a.id";
-
-fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
-    Ok(DbTrackSearchResult {
-        id: row.get("id")?,
-        title: row.get("title")?,
-        duration_ms: row.get("duration_ms")?,
-        release_id: row.get("release_id")?,
-        album_id: row.get("album_id")?,
-        album_title: row.get("album_title")?,
-        artist_line: credit_line_column(row, "artist_name")?,
-        cover_version: row.get("cover_version")?,
-    })
-}
-
-/// The rows `statement` returns, in its order, each as `read` reads it, and
-/// how many rows that is. The count is a window over the statement's own
-/// rows in the same statement, so it counts the rows the statement lists
-/// (after its `LIMIT`); a statement that returns no rows counts zero.
-fn counted_rows<T>(
-    sql: &SqlReadContext<'_>,
-    statement: &str,
-    params: impl rusqlite::Params,
-    mut read: impl FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<T>,
-) -> Result<(Vec<T>, u64), DbError> {
-    let rows = sql.query(
-        &format!("SELECT listed.*, COUNT(*) OVER () AS section_count FROM ({statement}) AS listed"),
-        params,
-        |row| Ok((read(row)?, bae_store::read::count_column::<u64>(row, "section_count")?)),
-    )?;
-    let count = rows.first().map_or(0, |(_, count)| *count);
-    Ok((rows.into_iter().map(|(row, _)| row).collect(), count))
-}
-
-/// The library rows holding the search `pattern` (see [`search_pattern`]),
-/// each kind's first `limit` in its order, ties going by id. Each kind finds
-/// its rows through its search table, then reads what it shows for those
-/// rows alone.
-fn search_library_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    limit: i64,
-) -> Result<DbLibrarySearchResults, DbError> {
-    // Each section counts the rows it lists.
-    let (albums, album_count) = first_search_albums_on(sql, pattern, limit as u64)?;
-    let (tracks, track_count) =
-        counted_rows(sql, &first_tracks_found_sql(), params![pattern, limit], track_hit_row)?;
-    let (artists, artist_count) = first_artists_found_on(sql, pattern, limit)?;
-    let (composers, composer_count) = first_composers_found_on(sql, pattern, limit)?;
-    let (works, work_count) = first_works_found_on(sql, pattern, limit)?;
-    // Whether any kind has a match, through the conditions that list each
-    // kind, stopping at the first.
-    let found: bool = sql.query_row(
-        &format!(
-            "SELECT EXISTS (SELECT 1 FROM albums a WHERE {album_matches}) \
-                 OR EXISTS (SELECT 1 FROM tracks t \
-                            WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)) \
-                 OR EXISTS (SELECT 1 FROM artist_listing listed \
-                            WHERE listed.artist_id IN ({artists_found})) \
-                 OR EXISTS (SELECT 1 FROM composer_listing listed \
-                            WHERE listed.artist_id IN ({artists_found})) \
-                 OR EXISTS (SELECT 1 FROM work_search_entry entry WHERE {work_matches})",
-            album_matches = album_matches_sql("a.id", "?1"),
-            artists_found = artists_found_sql("?1"),
-            work_matches = entries_found_sql("work", "?1"),
-        ),
-        params![pattern],
-        |row| row.get(0),
-    )?;
-    let section_counts = crate::SearchSectionCounts {
-        albums: album_count,
-        artists: artist_count,
-        tracks: track_count,
-        composers: composer_count,
-        works: work_count,
-    };
-    Ok(DbLibrarySearchResults { albums, artists, tracks, composers, works, found, section_counts })
-}
-
-/// Whether the search entry `entry` of a `kind` (`track` or `work`) holds a
-/// title the search pattern `pattern` (a SQL parameter) finds.
-fn entries_found_sql(kind: &str, pattern: &str) -> String {
-    format!("entry.entry IN (SELECT rowid FROM {kind}_search WHERE title GLOB {pattern})")
-}
-
-/// The first `limit` (`?2`) search entries of a `kind` (`track` or `work`)
-/// whose title holds the search pattern `?1`, in title order, ties going by
-/// id, as `{kind}_id` and `title_sort_key`. The read walks the entries' title
-/// index, tests each entry against the titles the search finds, and stops at
-/// the `limit`th; `INDEXED BY` holds it to that index, because left to choose,
-/// SQLite reads the entries the search finds and sorts them all.
-fn first_entries_found_sql(kind: &str) -> String {
-    format!(
-        "SELECT entry.{kind}_id, entry.title_sort_key \
-         FROM {kind}_search_entry entry INDEXED BY idx_{kind}_search_entry_title \
-         WHERE {found} \
-         ORDER BY entry.title_sort_key, entry.{kind}_id LIMIT ?2",
-        found = entries_found_sql(kind, "?1"),
-    )
-}
-
-/// The track hits of the first `?2` tracks whose title holds the search
-/// pattern `?1`, in title order, ties going by id. The statement reads each
-/// hit's release, album, credits and cover only for those tracks.
-fn first_tracks_found_sql() -> String {
-    format!(
-        "SELECT {columns} \
-         FROM ({found}) found \
-         CROSS JOIN tracks t ON t.id = found.track_id \
-         {TRACK_HIT_JOINS} \
-         ORDER BY found.title_sort_key, found.track_id",
-        columns = TRACK_HIT_COLUMNS.as_str(),
-        found = first_entries_found_sql("track"),
-    )
-}
-
-// The first `limit` works whose title holds the search `pattern`, in title
-// order, ties going by id, each beside how many rows the statement lists. The
-// read walks the entries' title index, tests each entry against the titles the
-// search finds, and stops at the `limit`th, as [`first_entries_found_sql`]
-// does for tracks; it reads what each work shows for those works alone.
-sqlive_compose::read!(
-    writer FirstWorksFound(pattern: String, limit: i64) { listed: i64 },
-    r#"
-    SELECT work.*, cover.*, COUNT(*) OVER () AS listed
-    FROM (SELECT entry.work_id, entry.title_sort_key
-          FROM work_search_entry AS entry INDEXED BY idx_work_search_entry_title
-          WHERE entry.entry IN (
-              SELECT found_title.rowid FROM work_search AS found_title
-              WHERE found_title.title GLOB :pattern)
-          ORDER BY entry.title_sort_key, entry.work_id
-          LIMIT :limit) AS found
-    CROSS JOIN @bae_records::records::browse_fragments::WorkSummary AS work
-            ON work.work_id = found.work_id
-    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
-           ON cover.id = work.representative_release_id
-    ORDER BY found.title_sort_key, found.work_id
-"#
-);
-
-/// The works [`FirstWorksFound`] lists for `pattern`, at most `limit`, with
-/// how many it lists.
-fn first_works_found_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    limit: i64,
-) -> Result<(Vec<DbWorkSummary>, u64), DbError> {
-    let statement = FirstWorksFoundParams { pattern: pattern.to_string(), limit };
-    let rows = bae_store::statement_rows(sql, &statement)?;
-    let listed = list_count(rows.first().map_or(0, |row| row.listed))?;
-    let works =
-        rows.into_iter().map(|row| work_summary(row.work, row.cover)).collect::<Result<_, _>>()?;
-    Ok((works, listed))
-}
-
-/// The first track `pattern` finds, and failing that the first track of the
-/// first album it finds that has a track: one row, whichever kind of hit
-/// ranks first. A spoken "play" of a search plays it.
-fn top_playable_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-) -> Result<Option<DbTopPlayable>, DbError> {
-    let read = |statement: String| {
-        sql.query_row(&statement, params![pattern], |row| {
-            Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? })
-        })
-        .optional()
-    };
-    match read(top_track_statement())? {
-        Some(top) => Ok(Some(top)),
-        None => Ok(read(top_album_track_statement())?),
-    }
-}
-
-/// The statement that reads the first track `?1` finds, in the order of the
-/// track entries' stored title key, ties going by id.
-fn top_track_statement() -> String {
-    format!(
-        "SELECT t.release_id, t.id \
-         FROM track_search_entry entry INDEXED BY idx_track_search_entry_title \
-         CROSS JOIN tracks t ON t.id = entry.track_id \
-         WHERE {found} \
-         ORDER BY entry.title_sort_key, entry.track_id LIMIT 1",
-        found = entries_found_sql("track", "?1"),
-    )
-}
-
-/// The statement that reads the first track of the first album `?1` finds
-/// that has one: the albums in order of their stored title key, ties going
-/// by id, each with its main release's first track. `INDEXED BY` holds the
-/// read to the title index, because left to choose, SQLite reads the albums
-/// the search finds and sorts them all.
-fn top_album_track_statement() -> String {
-    format!(
-        "SELECT {primary_release} AS release_id, \
-                (SELECT id FROM tracks WHERE release_id = {primary_release} \
-                 ORDER BY position, id LIMIT 1) AS track_id \
-         FROM album_listing listing INDEXED BY idx_album_listing_title \
-         CROSS JOIN albums a ON a.id = listing.album_id \
-         WHERE {album_matches} AND track_id IS NOT NULL \
-         ORDER BY listing.title_sort_key, listing.album_id LIMIT 1",
-        primary_release = album_primary_release_sql(),
-        album_matches = album_matches_sql("a.id", "?1"),
-    )
 }
 
 // The album `album` above its releases: its row, its credits and whether it
@@ -749,11 +456,6 @@ pub struct AlbumCounts {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumDetailProjection {
     pub detail: Option<DbAlbumDetail>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct LibrarySearchProjection {
-    pub results: DbLibrarySearchResults,
 }
 
 // A page of the album `album`'s tracks: those of its primary release at the

@@ -323,37 +323,24 @@ sqlive_compose::read!(
 "#
 );
 
-// The first `limit` composers library search finds for `pattern`, in name order,
-// ties going by id, each beside how many rows the statement lists.
-sqlive_compose::read!(
-    writer FirstComposersFound(pattern: String, limit: i64) { listed: i64 },
+// The first `limit` composers library search finds for `pattern`, in name
+// order, ties going by id, each with its place in that order, from 1, how many
+// composers these are, and the composer as the composer list shows it.
+sqlive_compose::fragment!(
+    FoundComposers(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
-    SELECT shown.*, COUNT(*) OVER () AS listed
+    SELECT ROW_NUMBER() OVER (ORDER BY picked.name_sort_key, picked.artist_id) AS place,
+           COUNT(*) OVER () AS listed, shown.*
     FROM (SELECT listing.artist_id, listing.name_sort_key
           FROM composer_listing AS listing
           WHERE listing.artist_id IN (
               SELECT matched.artist_id
               FROM @crate::album_search::ArtistsFound(pattern: :pattern) AS matched)
           ORDER BY listing.name_sort_key, listing.artist_id
-          LIMIT :limit) AS found
-    CROSS JOIN @crate::composer::ListedComposer AS shown ON shown.listed_id = found.artist_id
-    ORDER BY found.name_sort_key, found.artist_id
+          LIMIT :limit) AS picked
+    CROSS JOIN @crate::composer::ListedComposer AS shown ON shown.listed_id = picked.artist_id
 "#
 );
-
-/// The composers [`FirstComposersFound`] lists for `pattern`, at most `limit`,
-/// with how many it lists.
-pub(crate) fn first_composers_found_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    limit: i64,
-) -> Result<(Vec<DbComposerSummary>, u64), DbError> {
-    let statement = FirstComposersFoundParams { pattern: pattern.to_string(), limit };
-    let rows = statement_rows(sql, &statement)?;
-    let listed = list_count(rows.first().map_or(0, |row| row.listed))?;
-    let found = rows.into_iter().map(|row| row.shown.into_summary()).collect::<Result<_, _>>()?;
-    Ok((found, listed))
-}
 
 // The work `work`, as its rows show it, with its cover.
 sqlive_compose::read!(

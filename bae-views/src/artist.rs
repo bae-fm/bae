@@ -6,7 +6,7 @@ use super::*;
 use crate::album::{artist_albums_on, AlbumAppearanceRow};
 use crate::album_detail::{AlbumAppearance, ArtistDetail};
 use bae_records::records::files::ArtistImageVersion;
-use bae_store::{statement_optional, statement_rows};
+use bae_store::statement_optional;
 
 mod list;
 pub(crate) use list::{
@@ -224,37 +224,24 @@ impl ListedArtist {
     }
 }
 
-// The first `limit` artists library search finds for `pattern`, in name order,
-// ties going by id, each beside how many rows the statement lists.
-sqlive_compose::read!(
-    writer FirstArtistsFound(pattern: String, limit: i64) { listed: i64 },
+// The first `limit` artists library search finds for `pattern`, in name
+// order, ties going by id, each with its place in that order, from 1, how many
+// artists these are, and the artist as the artist list shows it.
+sqlive_compose::fragment!(
+    FoundArtists(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
-    SELECT shown.*, COUNT(*) OVER () AS listed
+    SELECT ROW_NUMBER() OVER (ORDER BY picked.name_sort_key, picked.artist_id) AS place,
+           COUNT(*) OVER () AS listed, shown.*
     FROM (SELECT listing.artist_id, listing.name_sort_key
           FROM artist_listing AS listing
           WHERE listing.artist_id IN (
               SELECT matched.artist_id
               FROM @crate::album_search::ArtistsFound(pattern: :pattern) AS matched)
           ORDER BY listing.name_sort_key, listing.artist_id
-          LIMIT :limit) AS found
-    CROSS JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = found.artist_id
-    ORDER BY found.name_sort_key, found.artist_id
+          LIMIT :limit) AS picked
+    CROSS JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = picked.artist_id
 "#
 );
-
-/// The artists [`FirstArtistsFound`] lists for `pattern`, at most `limit`,
-/// with how many it lists.
-pub(crate) fn first_artists_found_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    limit: i64,
-) -> Result<(Vec<DbArtistSummary>, u64), DbError> {
-    let statement = FirstArtistsFoundParams { pattern: pattern.to_string(), limit };
-    let rows = statement_rows(sql, &statement)?;
-    let listed = list_count(rows.first().map_or(0, |row| row.listed))?;
-    let found = rows.into_iter().map(|row| row.shown.into_summary()).collect::<Result<_, _>>()?;
-    Ok((found, listed))
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistDetailProjection {

@@ -358,7 +358,7 @@ impl AppServices {
         bae_views::LiveLibrarySearch::new(query, |read, projection| {
             Some(bae_views::LibrarySearchSnapshot {
                 query: read.request.clone(),
-                results: bae_views::album::resolve_library_search_projection(projection),
+                results: bae_views::resolve_library_search_projection(projection),
                 request_revision: read.revision,
             })
         })

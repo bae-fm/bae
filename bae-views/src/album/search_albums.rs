@@ -1,29 +1,39 @@
 //! The albums a library search lists: the first albums it finds, in title
-//! order, ties going by id. Library search reads its first albums here, and a
-//! media browser reads the first [`crate::SEARCH_RESULT_LIMIT`] of them a
-//! page at a time.
+//! order, ties going by id. Library search lists its first albums through
+//! [`FoundAlbums`], and a media browser reads the first
+//! [`crate::SEARCH_RESULT_LIMIT`] of them a page at a time.
 
 use super::*;
 use crate::album_detail::AlbumSearchResult;
 use bae_records::records::fragments::AlbumSummary;
 use bae_store::{statement_row, statement_rows};
 
-// The albums a search for `pattern` lists: the first `cap` albums that hold
-// it, in title order, ties going by id. The read walks the listing's title
-// index, tests each album against the albums the search finds, and stops at
-// the `cap`th album that holds the pattern. `INDEXED BY` holds it to that
-// index: left to choose, SQLite reads the albums the search finds by id and
-// sorts them all. Every album holds a release (§2.1), so every album has a
-// listing row.
+// The albums that hold the search pattern `pattern`, each with its title's
+// sort key, which its listing row holds. A read that takes them in title
+// order, ties going by id, walks the listing's title index, tests each album
+// against the albums the search finds, and stops at its limit, computing no
+// key. `INDEXED BY` holds the walk to that index: left to choose, SQLite reads
+// the albums the search finds by id and sorts them all. Every album holds a
+// release (§2.1), so every album has a listing row.
 sqlive_compose::fragment!(
-    SearchedAlbums(pattern: Option<String>, cap: i64),
+    AlbumsFoundByTitle(pattern: Option<String>),
     r#"
     SELECT entry.album_id AS searched_album_id, entry.title_sort_key AS searched_title_key
     FROM album_listing AS entry INDEXED BY idx_album_listing_title
     WHERE entry.album_id IN (
         SELECT found.album_id
         FROM @crate::album_search::AlbumsFound(pattern: :pattern) AS found)
-    ORDER BY entry.title_sort_key, entry.album_id
+"#
+);
+
+// The albums a search for `pattern` lists: the first `cap` albums that hold
+// it ([`AlbumsFoundByTitle`]), in title order, ties going by id.
+sqlive_compose::fragment!(
+    SearchedAlbums(pattern: Option<String>, cap: i64),
+    r#"
+    SELECT titled.*
+    FROM @crate::album::search_albums::AlbumsFoundByTitle(pattern: :pattern) AS titled
+    ORDER BY titled.searched_title_key, titled.searched_album_id
     LIMIT :cap
 "#
 );
@@ -46,18 +56,19 @@ sqlive_compose::read!(
 "#
 );
 
-// The first `limit` albums a search lists ([`SearchedAlbums`]), as library
-// search shows them, each beside how many rows the statement lists. The count
-// makes SQLite sort those rows, at most `limit` of them, once more.
-sqlive_compose::read!(
-    writer FirstSearchAlbums(pattern: Option<String>, limit: i64) { listed: u64 },
+// The first `limit` albums a search lists ([`SearchedAlbums`]), each with its
+// place in their order, from 1, how many albums these are, and what a list
+// shows of it.
+sqlive_compose::fragment!(
+    FoundAlbums(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
-    SELECT shown.*, COUNT(*) OVER () AS listed
+    SELECT ROW_NUMBER() OVER (
+               ORDER BY picked.searched_title_key, picked.searched_album_id) AS place,
+           COUNT(*) OVER () AS listed, summary.*
     FROM @crate::album::search_albums::SearchedAlbums(
              pattern: :pattern, cap: :limit) AS picked
-    CROSS JOIN @bae_records::records::fragments::AlbumSummary AS shown
-            ON shown.summary_album_id = picked.searched_album_id
-    ORDER BY picked.searched_title_key, picked.searched_album_id
+    CROSS JOIN @bae_records::records::fragments::AlbumSummary AS summary
+            ON summary.summary_album_id = picked.searched_album_id
 "#
 );
 
@@ -137,23 +148,6 @@ fn search_albums_on(
         limit: bae_store::list_windows::sql_bound(page.limit),
     };
     Ok(statement_rows(sql, &statement)?.into_iter().map(|row| row.shown).collect())
-}
-
-/// The first `limit` albums a library search for `pattern` lists, in title
-/// order, and how many that is.
-pub(super) fn first_search_albums_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    limit: u64,
-) -> Result<(Vec<DbAlbumSummary>, u64), DbError> {
-    let statement = FirstSearchAlbumsParams {
-        pattern: Some(pattern.to_string()),
-        limit: bae_store::list_windows::sql_bound(limit),
-    };
-    let rows = statement_rows(sql, &statement)?;
-    let listed = rows.first().map_or(0, |row| row.listed);
-    let albums = rows.into_iter().map(|row| row.shown).collect();
-    Ok((album_summaries(albums)?, listed))
 }
 
 /// The albums as read, each made into its summary.

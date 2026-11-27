@@ -911,62 +911,64 @@ async fn a_limited_search_keeps_the_first_titles() {
     assert_eq!(works(&few), works(&all));
 }
 
-/// A search reads its first tracks and works in title order from their
-/// entries' title indexes, so it stops at its limit: the read that picks them
-/// computes no title's key and sorts nothing. The works' statement, which counts
-/// what it lists, then sorts those works alone once more.
+/// A search picks its first albums, tracks and works in title order from
+/// their stored title keys: it walks each kind's title index and sorts nothing
+/// before its limit, so it reads what its hits show for those rows alone.
 #[tokio::test]
-async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
+async fn a_search_reads_its_albums_tracks_and_works_from_the_title_indexes() {
     let (db, _tmp) = crate::tests::library().await;
-    let plan = |statement: String| {
-        let db = db.clone();
-        async move {
-            db.read(move |sql| {
-                crate::tests::plan_steps(&sql, &statement, params![search_pattern("1"), 50])
-            })
-            .await
-            .unwrap()
-        }
-    };
-    let works = FirstWorksFound::SQL.to_string();
-    for (kind, statement) in [("track", first_tracks_found_sql()), ("work", works)] {
-        let found = first_entries_found_sql(kind);
-        assert!(!found.contains("bae_name_key"), "{found}");
-        let steps = plan(found).await;
-        let index = format!("USING COVERING INDEX idx_{kind}_search_entry_title");
-        assert!(steps.iter().any(|step| step.detail.contains(&index)), "{steps:?}");
-        assert!(!crate::tests::sorts_at_any_level(&steps), "{kind}: {steps:?}");
-
-        let steps = plan(statement).await;
-        assert!(steps.iter().any(|step| step.detail.contains(&index)), "{steps:?}");
-        if kind == "track" {
-            assert!(!crate::tests::scans_or_sorts(&steps), "{kind}: {steps:?}");
-            continue;
-        }
-        // The steps that pick the works run before the first read of a work.
-        let picking = steps.iter().take_while(|step| !step.detail.starts_with("SEARCH work "));
-        assert!(!picking.into_iter().any(|step| step.detail.contains("B-TREE")), "{steps:?}");
+    let plan = db
+        .read(|sql| {
+            crate::tests::plan_steps(
+                &sql,
+                crate::library_search::LibrarySearch::SQL,
+                rusqlite::named_params! {
+                    ":pattern": search_pattern("1"), ":places": "[1,2]", ":limit": 2
+                },
+            )
+        })
+        .await
+        .unwrap();
+    for index in
+        ["idx_album_listing_title", "idx_track_search_entry_title", "idx_work_search_entry_title"]
+    {
+        let walk = plan
+            .iter()
+            .position(|step| step.detail.ends_with(&format!("USING COVERING INDEX {index}")))
+            .unwrap_or_else(|| panic!("no walk of {index}: {plan:?}"));
+        let picking: Vec<_> =
+            plan[walk..].iter().take_while(|step| step.detail != "SCAN picked").collect();
+        assert!(
+            !picking.iter().any(|step| step.detail.ends_with("FOR ORDER BY")),
+            "{index}: {plan:?}"
+        );
     }
 }
 
 /// A spoken "play" reads the tracks and the albums a search finds in order
-/// from their stored title keys: each read walks its title index and sorts
-/// nothing.
+/// from their stored title keys: it walks each title index, and sorts only the
+/// tracks of one release and the two hits it picks between.
 #[tokio::test]
 async fn a_spoken_play_reads_tracks_and_albums_from_the_stored_title_keys() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    for (statement, index) in [
-        (crate::album::top_track_statement(), "INDEX idx_track_search_entry_title"),
-        (crate::album::top_album_track_statement(), "INDEX idx_album_listing_title"),
-    ] {
-        let plan = db
-            .read(move |sql| crate::tests::plan_steps(&sql, &statement, ["Probe*"]))
-            .await
-            .unwrap();
+    let plan = db
+        .read(|sql| {
+            crate::tests::plan_steps(
+                &sql,
+                crate::library_search::TopPlayable::SQL,
+                rusqlite::named_params! { ":pattern": "Probe*" },
+            )
+        })
+        .await
+        .unwrap();
+    for index in ["idx_track_search_entry_title", "idx_album_listing_title"] {
         assert!(
-            plan.iter().any(|step| step.detail.ends_with(index))
-                && !plan.iter().any(|step| step.detail.contains("TEMP B-TREE")),
-            "the read comes from {index} with no sort: {plan:?}"
+            plan.iter().any(|step| step.detail.ends_with(&format!("USING COVERING INDEX {index}"))),
+            "no walk of {index}: {plan:?}"
         );
     }
+    assert!(
+        !plan.iter().any(|step| !step.own && step.detail == "USE TEMP B-TREE FOR ORDER BY"),
+        "{plan:?}"
+    );
 }

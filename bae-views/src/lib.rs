@@ -27,6 +27,7 @@ pub mod composer_detail;
 pub mod download_batches;
 pub mod history;
 mod invites;
+mod library_search;
 mod list_sort;
 pub mod list_view;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
@@ -64,28 +65,25 @@ pub use sync_activity::{
     UploadQueueCounts,
 };
 
-pub use album::{AlbumCounts, AlbumDetailProjection, LibrarySearchProjection};
+pub use album::{AlbumCounts, AlbumDetailProjection};
 pub use artist::ArtistDetailProjection;
 pub use artist_search::DbArtistSearchRow;
 pub use composer::WorkDetailProjection;
 pub use composer_detail::ComposerDetailProjection;
+pub use library_search::{resolve_library_search_projection, LibrarySearchProjection};
 pub use models::*;
 pub use release::ReleaseDetailProjection;
 pub use storage::StorageCounts;
 
-use artist::first_artists_found_on;
-use composer::{first_composers_found_on, work_summary};
+use composer::work_summary;
 use release::{build_album_release_details_on, ReleaseDetailRows};
 
-use album_search::*;
 use bae_records::records::query::*;
-use bae_records::records::read::*;
 use bae_records::*;
 use bae_store::list_windows::OrderKey;
 use bae_store::*;
 use bae_util::search_text::search_pattern;
 use coven::SqlReadContext;
-use rusqlite::{params, OptionalExtension};
 use std::collections::BTreeSet;
 use time::UtcDateTime;
 

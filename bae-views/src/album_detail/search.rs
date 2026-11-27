@@ -3,10 +3,8 @@
 //! that produce them.
 
 use super::*;
-use crate::{
-    DbAlbumSummary, DbArtistSummary, DbComposerSummary, DbLibrarySearchResults,
-    DbTrackSearchResult, DbWorkSummary,
-};
+use crate::{DbArtistSummary, DbComposerSummary, DbLibrarySearchResults, DbWorkSummary};
+use bae_records::DbAlbumSummary;
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchResults {
@@ -26,7 +24,7 @@ impl SearchResults {
     pub(crate) fn from_raw(raw: DbLibrarySearchResults) -> SearchResults {
         SearchResults {
             albums: raw.albums.into_iter().map(AlbumSearchResult::from_raw).collect(),
-            tracks: raw.tracks.into_iter().map(TrackSearchResult::from_raw).collect(),
+            tracks: raw.tracks,
             artists: raw.artists,
             composers: raw.composers,
             works: raw.works,
@@ -36,7 +34,7 @@ impl SearchResults {
     }
 }
 
-/// An album a search found, as its row shows it.
+/// An album hit: what its row shows of the album, with its cover.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumSearchResult {
     pub id: String,
@@ -50,8 +48,8 @@ pub struct AlbumSearchResult {
     pub cover: Option<ImageRef>,
 }
 
-/// A resolved track hit: the raw row's display fields plus the cover of the
-/// release the track belongs to.
+/// A track hit: the track as playback shows it, with the cover of the release
+/// it is on.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackSearchResult {
     pub id: String,
@@ -74,22 +72,6 @@ impl AlbumSearchResult {
             id: raw.id,
             title: raw.title,
             year: raw.year,
-            artist_line: raw.artist_line,
-            cover,
-        }
-    }
-}
-
-impl TrackSearchResult {
-    pub(crate) fn from_raw(raw: DbTrackSearchResult) -> TrackSearchResult {
-        let cover = cover_ref(&raw.release_id, raw.cover_version);
-        TrackSearchResult {
-            id: raw.id,
-            title: raw.title,
-            duration_ms: raw.duration_ms,
-            release_id: raw.release_id,
-            album_id: raw.album_id,
-            album_title: raw.album_title,
             artist_line: raw.artist_line,
             cover,
         }
