@@ -1,7 +1,26 @@
 //! The write that gives a person their profile as each of their devices
 //! registers (§5.4).
 
-use rusqlite::params;
+use bae_store::WriteStatements;
+
+// The private profile of a member who has none.
+sqlive_compose::write!(
+    CreateJoiningProfile(member: coven::MemberId, name: &'p str, circle: coven::CircleId),
+    r#"
+    INSERT INTO people (id, name, private_circle, history_sharing)
+    VALUES (:member, :name, :circle, 'private')
+    ON CONFLICT (id) DO NOTHING
+"#
+);
+
+// A member's profile points at `circle`, where it names another.
+sqlive_compose::write!(
+    MoveProfileCircle(member: coven::MemberId, circle: coven::CircleId),
+    r#"
+    UPDATE people SET private_circle = :circle
+    WHERE id = :member AND private_circle <> :circle
+"#
+);
 
 /// The name of `member`'s private circle: the circle a join's request asks
 /// for, or the one a library's creation makes for its creator, which their
@@ -26,27 +45,17 @@ pub(crate) fn write_profile(
     sql: &coven::JoiningWrite<'_>,
     joining: &coven::Joining,
 ) -> Result<(), coven::DbError> {
-    let member = joining.member.to_string();
-    let circle = joining.circle.to_string();
-    let existing =
-        sql.query("SELECT private_circle FROM people WHERE id = ?1", [&member], |row| {
-            row.get::<_, String>(0)
-        })?;
-    match (existing.first(), &joining.person) {
-        (None, Some(name)) => {
-            sql.execute(
-                "INSERT INTO people (id, name, private_circle, history_sharing) \
-                 VALUES (?1, ?2, ?3, 'private')",
-                params![member, name, circle],
-            )?;
+    match &joining.person {
+        Some(name) => {
+            sql.run(&CreateJoiningProfileParams {
+                member: joining.member,
+                name,
+                circle: joining.circle,
+            })?;
         }
-        (Some(current), None) if *current != circle => {
-            sql.execute(
-                "UPDATE people SET private_circle = ?2 WHERE id = ?1",
-                params![member, circle],
-            )?;
+        None => {
+            sql.run(&MoveProfileCircleParams { member: joining.member, circle: joining.circle })?;
         }
-        _ => {}
     }
     Ok(())
 }

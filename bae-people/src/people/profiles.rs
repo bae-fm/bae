@@ -1,7 +1,7 @@
 use super::*;
 use crate::people::fragments::Profile;
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::{statement_optional, statement_row, statement_rows, WriteStatements};
 
 // A member with their profile, none until a device of theirs has written it.
 sqlive_compose::fragment!(
@@ -120,6 +120,26 @@ sqlive_compose::read!(
 "#
 );
 
+sqlive_compose::write!(
+    RenameProfile(name: &'p str, person: coven::MemberId),
+    r#"UPDATE people SET name = :name WHERE id = :person"#
+);
+
+sqlive_compose::write!(
+    SetProfileHistorySharing(sharing: &'static str, person: coven::MemberId),
+    r#"UPDATE people SET history_sharing = :sharing WHERE id = :person"#
+);
+
+sqlive_compose::write!(
+    SetProfileAvatar(avatar: coven::FileId, person: coven::MemberId),
+    r#"UPDATE people SET avatar_id = :avatar WHERE id = :person"#
+);
+
+sqlive_compose::write!(
+    ClearProfileAvatar(person: coven::MemberId),
+    r#"UPDATE people SET avatar_id = NULL WHERE id = :person"#
+);
+
 impl People {
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile, which the same registration wrote.
@@ -185,11 +205,7 @@ impl People {
     pub async fn rename_profile(&self, name: &str) -> Result<(), ProfileError> {
         let name = bae_store::EnteredName::parse(name)?.into_string();
         self.write_as_self(move |sql, person| {
-            update_profile(
-                sql,
-                "UPDATE people SET name = ? WHERE id = ?",
-                params![name, person.id.to_string()],
-            )?;
+            one_profile(sql.run(&RenameProfileParams { name: &name, person: person.id })?)?;
             Ok(Ok(()))
         })
         .await
@@ -207,11 +223,7 @@ impl People {
         self.inner
             .store
             .write(move |sql| {
-                update_profile(
-                    &sql,
-                    "UPDATE people SET name = ? WHERE id = ?",
-                    params![name, person.to_string()],
-                )?;
+                one_profile(sql.run(&RenameProfileParams { name: &name, person })?)?;
                 Ok(())
             })
             .await
@@ -219,11 +231,10 @@ impl People {
 
     pub async fn set_history_sharing(&self, sharing: HistorySharing) -> Result<(), ProfileError> {
         self.write_as_self(move |sql, person| {
-            update_profile(
-                sql,
-                "UPDATE people SET history_sharing = ? WHERE id = ?",
-                params![sharing.as_str(), person.id.to_string()],
-            )?;
+            one_profile(sql.run(&SetProfileHistorySharingParams {
+                sharing: sharing.as_str(),
+                person: person.id,
+            })?)?;
             Ok(Ok(()))
         })
         .await
@@ -234,7 +245,7 @@ impl People {
     /// named before goes with its last reference.
     pub async fn set_avatar(&self, avatar: Option<Vec<u8>>) -> Result<(), ProfileError> {
         let own = self.inner.store.read(|sql| writing_profile_on(&sql)).await??;
-        let person = own.id.to_string();
+        let person = own.id;
         match avatar {
             Some(bytes) => {
                 self.inner
@@ -248,10 +259,8 @@ impl People {
                             ))
                         },
                         move |sql, file| {
-                            update_profile(
-                                &sql,
-                                "UPDATE people SET avatar_id = ? WHERE id = ?",
-                                params![file, person],
+                            one_profile(
+                                sql.run(&SetProfileAvatarParams { avatar: file, person })?,
                             )?;
                             Ok(())
                         },
@@ -262,11 +271,7 @@ impl People {
                 self.inner
                     .store
                     .call_sql(move |sql| {
-                        update_profile(
-                            &sql,
-                            "UPDATE people SET avatar_id = NULL WHERE id = ?",
-                            [person],
-                        )?;
+                        one_profile(sql.run(&ClearProfileAvatarParams { person })?)?;
                         Ok(())
                     })
                     .await?
@@ -337,12 +342,9 @@ impl Profile {
     }
 }
 
-fn update_profile(
-    sql: &CovenWrite<'_>,
-    statement: &str,
-    params: impl Params,
-) -> rusqlite::Result<()> {
-    let changed = sql.execute(statement, params)?;
+/// A profile write changed `changed` rows, which must be the one profile it
+/// names.
+fn one_profile(changed: usize) -> rusqlite::Result<()> {
     if changed != 1 {
         return Err(rusqlite::Error::StatementChangedRows(changed));
     }
