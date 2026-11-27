@@ -210,13 +210,7 @@ async fn a_sheet_can_go_on_each_side_of_a_record_and_on_each_disc() {
     // A release with no track on it keeps a heading for every side a sheet
     // can go on.
     let rows = db
-        .read(|sql| {
-            crate::records::draft_release_edit_tracks_on(
-                &sql,
-                &moved("[]".to_owned()),
-                &Default::default(),
-            )
-        })
+        .read(|sql| crate::records::draft_release_edit_tracks_on(&sql, &moved("[]".to_owned())))
         .await
         .unwrap();
     let headings: Vec<_> = rows

@@ -266,11 +266,9 @@ async fn a_file_a_staying_track_plays_gets_no_track() {
 
 async fn rows(db: &Store, edits: SheetEdits) -> Vec<DbReleaseEditRow> {
     let json = edits.json().unwrap();
-    db.read(move |sql| {
-        crate::records::draft_release_edit_tracks_on(&sql, &stored_layout(&json), &edits.titles)
-    })
-    .await
-    .unwrap()
+    db.read(move |sql| crate::records::draft_release_edit_tracks_on(&sql, &stored_layout(&json)))
+        .await
+        .unwrap()
 }
 
 /// What each row of the editor's tracks statement is: a track the library

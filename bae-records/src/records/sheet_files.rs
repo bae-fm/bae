@@ -53,19 +53,22 @@ impl SheetEdits {
 pub const NO_SHEET_EDITS: &str = "{}";
 
 // The names of the files the picks of `edits` move lines of the release
-// `release`'s sheets onto, each once, in name order; no row when the picks
-// move no line.
+// `release`'s sheets onto, each once, as a JSON array in name order; NULL when
+// the picks move no line.
 sqlive_compose::read!(
-    SheetFilesToRead(release: String, edits: String),
+    SheetFilesToRead(release: String, edits: String) { names: Option<String> },
     r#"
     WITH moved AS (
         SELECT lines.*
         FROM @crate::records::sheet_fragments::MovedSheetLines(
-            release: :release, edits: :edits) AS lines)
-    SELECT DISTINCT f.original_filename AS name
-    FROM moved
-    JOIN release_files AS f ON f.id = moved.to_file_id
-    ORDER BY f.original_filename COLLATE natural_order
+            release: :release, edits: :edits) AS lines),
+    named AS (
+        SELECT DISTINCT f.original_filename AS name
+        FROM moved
+        JOIN release_files AS f ON f.id = moved.to_file_id)
+    SELECT CASE WHEN EXISTS (SELECT 1 FROM moved) THEN
+               (SELECT json_group_array(named.name ORDER BY named.name COLLATE natural_order)
+                FROM named) END AS names
 "#
 );
 
@@ -79,8 +82,14 @@ pub fn sheet_files_to_read_on(
 ) -> Result<Option<Vec<String>>, DbError> {
     let params =
         SheetFilesToReadParams { release: release_id.to_string(), edits: edits.to_string() };
-    let rows = statement_rows(sql, &params)?;
-    Ok((!rows.is_empty()).then(|| rows.into_iter().map(|row| row.name).collect()))
+    statement_row(sql, &params)?
+        .names
+        .map(|names| {
+            serde_json::from_str(&names).map_err(|error| {
+                DbError::unreadable_json("the files a save reads first", names.clone(), error)
+            })
+        })
+        .transpose()
 }
 
 /// An audio file a save adds a track for: the file's id and name, and the

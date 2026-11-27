@@ -9,10 +9,18 @@
 use super::super::layout_bindings::{json, mediums_json, moves_json, places_json};
 use super::form_assignments::assignment_rows;
 use super::*;
-use crate::tables::draft_rows::{assignments_of, DraftAlbumRow};
+use crate::tables::draft_rows::{assignment_kind_column, assignments_of, decoded, DraftAlbumRow};
 use crate::{AlbumPick, DraftAlbum, RawTrackEdit, TrackArtistAssignments};
 use bae_records::records::layout::LibraryLayout;
 use bae_store::{statement_row, statement_rows};
+
+/// One form track as `:form_tracks` binds it.
+#[derive(serde::Serialize)]
+struct FormTrackJson<'a> {
+    id: &'a str,
+    title: &'a str,
+    kind: &'static str,
+}
 
 /// The form as the draft's reads bind it: the release, whether the person
 /// applied values, and each list as a JSON array.
@@ -20,11 +28,16 @@ pub(super) struct FormParams {
     release: String,
     applied: bool,
     /// Whether the form links the release to records of its own, an
+    /// apply's or none, in place of the release's.
+    relinked: bool,
+    /// Whether the form links the release to records of its own, an
     /// apply's or none, in place of the release's, and those name any, so
     /// they name the album a save files the release under.
     linked: bool,
     album_artists: String,
     track_artists: String,
+    /// The form's tracks, as [`FormDraftTracks`] binds them.
+    form_tracks: String,
     /// The applied catalog's mediums and places, and the discs picked for
     /// CUE sheets, as the layout binds them.
     mediums: String,
@@ -53,6 +66,15 @@ impl FormParams {
                 assignment_rows(Some(track.id.as_str()), own)
             })
             .collect();
+        let form_tracks: Vec<_> = edit
+            .tracks
+            .iter()
+            .map(|track| FormTrackJson {
+                id: &track.id,
+                title: &track.title,
+                kind: assignment_kind_column(&track.artist_assignments),
+            })
+            .collect();
         let applied = form.applied.as_ref();
         let (pick_kind, pick_album) = match &form.album_pick {
             AlbumPick::Records => ("records", None),
@@ -62,9 +84,11 @@ impl FormParams {
         Ok(Self {
             release: form.release_id.clone(),
             applied: form.applied.is_some(),
+            relinked: form.records.is_some(),
             linked: form.records.as_ref().is_some_and(|records| !records.is_empty()),
             album_artists: json(&album_artists, "a release editor's album artists")?,
             track_artists: json(&track_artists, "a release editor's track artists")?,
+            form_tracks: json(&form_tracks, "a release editor's tracks")?,
             mediums: mediums_json(applied, "a release editor's applied mediums")?,
             places: places_json(applied, "a release editor's applied track places")?,
             moves: moves_json(
@@ -164,23 +188,35 @@ fn release_edit_album_on(
 
 // The tracks of a form's release as the form lays them out
 // ([`DraftEditorTrackRows`](bae_records::records::editor_tracks::DraftEditorTrackRows)),
-// each with its own artists as the library holds the ones the person picked
-// (NULL for a track with none of its own) and how they stand to the library.
+// each with the row of the form that edits it as the JSON object `form` (NULL
+// when the form holds no row for it). `form` has the row's `own` artists where
+// it has any: its assignments, with each picked artist as the library holds it,
+// and how they stand to the library.
 sqlive_compose::read!(
     FormDraftTracks(
         release: String, applied: bool, mediums: String, places: String, moves: String,
-        edits: String, album_artists: String, track_artists: String
-    ) { assignments: Option<String>, artists: Option<String> },
+        edits: String, album_artists: String, track_artists: String, form_tracks: String
+    ) { form: Option<String> },
     r#"
     WITH fields AS (
         SELECT own.*
         FROM @crate::tables::release_edit::artist_fields::FormArtistFields(
             album_artists: :album_artists, track_artists: :track_artists) AS own
-        WHERE own.part = 1)
-    SELECT shown.*, fields.assignments AS assignments, fields.field AS artists
+        WHERE own.part = 1),
+    edited AS (
+        SELECT row.value ->> 'id' AS id, row.value ->> 'title' AS title,
+               row.value ->> 'kind' AS kind
+        FROM json_each(:form_tracks) AS row)
+    SELECT shown.*,
+           CASE WHEN edited.id IS NOT NULL THEN json_object(
+               'id', edited.id, 'title', edited.title, 'kind', edited.kind,
+               'own', json(CASE WHEN fields.track_id IS NOT NULL THEN json_object(
+                   'assignments', json(fields.assignments),
+                   'standing', json(fields.field)) END)) END AS form
     FROM @bae_records::records::editor_tracks::DraftEditorTrackRows(
         release: :release, applied: :applied, mediums: :mediums, places: :places,
         moves: :moves, edits: :edits) AS shown
+    LEFT JOIN edited ON edited.id = shown.row_id
     LEFT JOIN fields ON fields.track_id = shown.row_id
     ORDER BY shown.placed_medium, shown.placed_position
 "#
@@ -221,6 +257,7 @@ pub(crate) struct ReleaseEditDraftRows {
     /// or a playlist entry.
     deletes_track_data: bool,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
+    shows_records: bool,
 }
 
 /// One row of a form's draft tracks: a track the library holds, a track the
@@ -233,14 +270,48 @@ enum DraftRow {
 }
 
 /// One track the library holds, as a form's draft read returns it: what the
-/// library holds about the track, its form row's own artists as the library
-/// holds them as JSON, and how those stand to the library as JSON (both
-/// `None` when it has none of its own).
+/// library holds about the track, and the form row that edits it as JSON
+/// (`None` when the form holds no row for the track).
 #[derive(Debug, Clone, PartialEq)]
 struct DraftTrackRow {
     track: bae_records::DbReleaseEditTrack,
-    assignments: Option<String>,
-    artists: Option<String>,
+    form: Option<String>,
+}
+
+/// The form row of a track as [`FormDraftTracks`] writes it.
+#[derive(serde::Deserialize)]
+struct FormTrackRow {
+    id: String,
+    title: String,
+    kind: String,
+    own: Option<OwnArtists>,
+}
+
+/// A form track's own artists as [`FormDraftTracks`] writes them: its
+/// assignments as the library holds them, and how they stand to the library.
+#[derive(serde::Deserialize)]
+struct OwnArtists {
+    assignments: serde_json::Value,
+    standing: serde_json::Value,
+}
+
+impl FormTrackRow {
+    /// The form row this track is, and how its own artists stand to the
+    /// library (`None` when it has none of its own).
+    fn decoded(self) -> Result<(RawTrackEdit, Option<crate::ArtistField>), DbError> {
+        let artist_assignments = match self.kind.as_str() {
+            "album_artists" => TrackArtistAssignments::AlbumArtists,
+            "explicit" => TrackArtistAssignments::Explicit(match &self.own {
+                Some(own) => assignments_of(&own.assignments.to_string(), "track artists")?,
+                None => Vec::new(),
+            }),
+            other => return Err(DbError::unreadable("a form track's artist kind", other)),
+        };
+        let standing =
+            self.own.map(|own| artist_field_of_json(&own.standing.to_string())).transpose()?;
+        let edit = RawTrackEdit { id: self.id, title: self.title, artist_assignments, file: None };
+        Ok((edit, standing))
+    }
 }
 
 /// The rows of `form`'s draft, one read per part; `None` once the library no
@@ -250,7 +321,9 @@ pub(crate) fn release_edit_draft_rows_on(
     form: &ReleaseEditForm,
 ) -> Result<Option<ReleaseEditDraftRows>, DbError> {
     let params = FormParams::of(form)?;
-    let Some(head) = bae_records::records::edited_release_on(sql, &params.release)? else {
+    let form_records = params.relinked.then_some(params.records.as_str());
+    let Some(head) = bae_records::records::edited_release_on(sql, &params.release, form_records)?
+    else {
         return Ok(None);
     };
     Ok(Some(ReleaseEditDraftRows {
@@ -262,7 +335,7 @@ pub(crate) fn release_edit_draft_rows_on(
         )?,
         album: release_edit_album_on(sql, &params)?,
         cover_version: head.cover_version,
-        tracks: draft_tracks_on(sql, &params, &form.sheet_edits().titles)?,
+        tracks: draft_tracks_on(sql, &params)?,
         files_to_read: bae_records::records::sheet_files::sheet_files_to_read_on(
             sql,
             &params.release,
@@ -288,19 +361,15 @@ pub(crate) fn release_edit_draft_rows_on(
         .data
         .any(),
         records: form.records.clone().unwrap_or(head.records),
+        shows_records: head.shows_records,
     }))
 }
 
 /// The tracks of the form's release in release order, and the tracks its
-/// save adds, each with the title `titles` gives it, on the mediums and with
-/// the listed lengths the catalog the person applied gives them or else the
-/// release's own, each track the library holds with its form row's own
-/// artists and how each stands to the library.
-fn draft_tracks_on(
-    sql: &impl coven::SqlRead,
-    form: &FormParams,
-    titles: &std::collections::BTreeMap<String, String>,
-) -> Result<Vec<DraftRow>, DbError> {
+/// save adds, on the mediums and with the listed lengths the catalog the
+/// person applied gives them or else the release's own, each track the
+/// library holds with the form row that edits it.
+fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<DraftRow>, DbError> {
     let params = FormDraftTracksParams {
         release: form.release.clone(),
         applied: form.applied,
@@ -310,16 +379,15 @@ fn draft_tracks_on(
         edits: form.edits.clone(),
         album_artists: form.album_artists.clone(),
         track_artists: form.track_artists.clone(),
+        form_tracks: form.form_tracks.clone(),
     };
     statement_rows(sql, &params)?
         .into_iter()
         .map(|row| {
-            Ok(match bae_records::records::draft_release_edit_row_of(row.shown, titles)? {
-                bae_records::DbReleaseEditRow::Stored(track) => DraftRow::Stored(DraftTrackRow {
-                    track: *track,
-                    assignments: row.assignments,
-                    artists: row.artists,
-                }),
+            Ok(match bae_records::records::draft_release_edit_row_of(row.shown)? {
+                bae_records::DbReleaseEditRow::Stored(track) => {
+                    DraftRow::Stored(DraftTrackRow { track: *track, form: row.form })
+                }
                 bae_records::DbReleaseEditRow::Added(added) => DraftRow::Added(added),
                 bae_records::DbReleaseEditRow::EmptySide(side) => DraftRow::EmptySide(side),
             })
@@ -327,46 +395,23 @@ fn draft_tracks_on(
         .collect()
 }
 
-/// The row of `form` that edits the track `track_id`, with its own artists
-/// as the JSON `assignments` holds them as the library does.
-fn form_row_of(form: &RawTrackEdit, assignments: Option<&str>) -> Result<RawTrackEdit, DbError> {
-    let artist_assignments = match &form.artist_assignments {
-        TrackArtistAssignments::AlbumArtists => TrackArtistAssignments::AlbumArtists,
-        TrackArtistAssignments::Explicit(own) => {
-            TrackArtistAssignments::Explicit(match assignments {
-                Some(json) => assignments_of(json, "track artists")?,
-                None if own.is_empty() => Vec::new(),
-                None => return Err(DbError::unreadable("the artists of a form's track", &form.id)),
-            })
-        }
-    };
-    Ok(RawTrackEdit {
-        id: form.id.clone(),
-        title: form.title.clone(),
-        artist_assignments,
-        file: None,
-    })
-}
-
 impl DraftTrackRow {
-    /// The row of the editor's track table this track is, beside the row of
-    /// `form` that edits it. `unreadable` says what makes the track one the
-    /// editor can't show.
+    /// The row of the editor's track table this track is. `unreadable` says
+    /// what makes the track one the editor can't show.
     fn table_row(
         self,
-        form: &[RawTrackEdit],
         unreadable: &impl Fn(crate::ReleaseEditLoadError) -> DbError,
     ) -> Result<crate::types::ReleaseEditTrackRow, DbError> {
         let track_id = self.track.track.id.clone();
-        let edit = form
-            .iter()
-            .find(|edit| edit.id == track_id)
+        let form = self
+            .form
             .ok_or_else(|| unreadable(crate::ReleaseEditLoadError::MissingFormRow { track_id }))?;
+        let (edit, artists) = decoded::<FormTrackRow>(&form, "a track's form row")?.decoded()?;
         Ok(crate::types::ReleaseEditTrackRow {
-            edit: form_row_of(edit, self.assignments.as_deref())?,
+            edit,
             context: crate::ReleaseEditTrackContext::of_track(self.track).map_err(unreadable)?,
             audition: crate::TrackAudition::LibraryTrack,
-            artists: self.artists.as_deref().map(artist_field_of_json).transpose()?,
+            artists,
         })
     }
 }
@@ -375,14 +420,11 @@ impl DraftRow {
     /// The entry of the editor's track table this row is.
     fn table_row(
         self,
-        form: &[RawTrackEdit],
         unreadable: &impl Fn(crate::ReleaseEditLoadError) -> DbError,
     ) -> Result<crate::types::ReleaseEditTableRow, DbError> {
         let added = match self {
             Self::Stored(track) => {
-                return track
-                    .table_row(form, unreadable)
-                    .map(crate::types::ReleaseEditTableRow::Track)
+                return track.table_row(unreadable).map(crate::types::ReleaseEditTableRow::Track)
             }
             Self::Added(added) => added,
             Self::EmptySide(side) => return Ok(crate::types::ReleaseEditTableRow::EmptySide(side)),
@@ -429,6 +471,7 @@ impl ReleaseEditDraftRows {
             files,
             deletes_track_data,
             records,
+            shows_records,
         } = self;
         let changed = form.changed();
         let invalid = form.edit.shape().err();
@@ -438,7 +481,7 @@ impl ReleaseEditDraftRows {
         };
         let rows = tracks
             .into_iter()
-            .map(|track| track.table_row(&form.edit.tracks, &unreadable))
+            .map(|track| track.table_row(&unreadable))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
@@ -486,7 +529,7 @@ impl ReleaseEditDraftRows {
                 })
                 .transpose()?,
             album,
-            records: (!records.is_empty()).then_some(records),
+            records: shows_records.then_some(records),
             pressing_offers: form.edit.pressing.offers(),
             album_artists,
             changed,

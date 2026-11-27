@@ -501,12 +501,20 @@ impl Records {
 }
 
 // The release `release` as its editor's draft shows it beside the form:
-// whether it has tracks, its records and its cover's version; no row when the
-// library holds no such release.
+// whether it has tracks, its records, whether the draft shows any record (the
+// form's `records`, a JSON array, once the form replaced the release's, and
+// else the release's own) and its cover's version; no row when the library
+// holds no such release.
 sqlive_compose::read!(
-    EditedReleaseHead(release: String) { has_tracks: bool },
+    EditedReleaseHead(release: String, relinked: bool, records: String) {
+        has_tracks: bool,
+        shows_records: bool
+    },
     r#"
     SELECT EXISTS (SELECT 1 FROM tracks AS held WHERE held.release_id = rel.id) AS has_tracks,
+           CASE WHEN :relinked THEN json_array_length(:records) > 0
+                ELSE EXISTS (SELECT 1 FROM release_records AS linked
+                             WHERE linked.release_id = rel.id) END AS shows_records,
            described.*, cover.*
     FROM releases AS rel
     JOIN @crate::records::fragments::ReleaseRecords AS described
@@ -522,22 +530,32 @@ pub struct EditedRelease {
     /// The version of the release's cover; `None` when it has none.
     pub cover_version: Option<String>,
     pub has_tracks: bool,
+    /// Whether the draft shows any record: the form's, once it replaced the
+    /// release's records, and else the release's own.
+    pub shows_records: bool,
     /// The records of the release as the library holds them.
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
 }
 
 /// The release `release_id` as its editor's draft shows it; `None` when the
-/// library holds no such release.
+/// library holds no such release. `form_records` is the JSON array of the
+/// records the form replaced the release's with, where it replaced them.
 pub fn edited_release_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
+    form_records: Option<&str>,
 ) -> Result<Option<EditedRelease>, DbError> {
-    let params = EditedReleaseHeadParams { release: release_id.to_string() };
+    let params = EditedReleaseHeadParams {
+        release: release_id.to_string(),
+        relinked: form_records.is_some(),
+        records: form_records.unwrap_or("[]").to_string(),
+    };
     bae_store::statement_optional(sql, &params)?
         .map(|row| {
             Ok(EditedRelease {
                 cover_version: row.cover.and_then(super::files::CoverVersion::into_version),
                 has_tracks: row.has_tracks,
+                shows_records: row.shows_records,
                 records: super::read::records_of_json(row.described.records_json())?,
             })
         })

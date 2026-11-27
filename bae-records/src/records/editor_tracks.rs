@@ -6,14 +6,14 @@ use super::read::source_audio_layout_of;
 use super::release_tracks::{track_position_of, track_side_of};
 use super::*;
 use bae_store::statement_rows;
-use std::collections::BTreeMap;
 
 // The rows of the release editor's tracks, over the release `release` and the
 // edits `edits` its form makes to the CUE sheets, with the release's tracks at
 // `places` on `mediums`: each track at a place, each track the edits add among
 // them, and each side or disc of a medium no track sits on (`empty_side`).
 //
-// A row gives its side's kind and ordinal and its number there, its stored
+// A row gives, for a track the edits add, the title the edits give it by its
+// file's id (`added_title`). It gives its side's kind and ordinal and its number there, its stored
 // track as a JSON object whose length is the one the edits lay out (a track on
 // a line moved to another file plays to that file's end where it played to
 // the end of the file before), the length its place lists for it where that
@@ -47,6 +47,7 @@ sqlive_compose::fragment!(
         main_segment: Option<String>,
         is_added: bool,
         file_duration_ms: Option<i64>,
+        added_title: Option<String>,
         sheet: Option<String>
     },
     r#"
@@ -144,6 +145,8 @@ sqlive_compose::fragment!(
                'name', laid.main_file_name, 'layout', laid.main_file_layout) END
                AS main_segment,
            laid.is_added, laid.file_duration_ms,
+           (SELECT typed.value FROM json_each(json_extract(:edits, '$.titles')) AS typed
+            WHERE typed.key = laid.row_id) AS added_title,
            (SELECT json_object(
                     'file_id', cut.sheet_file_id, 'name', sheet_file.original_filename,
                     'place', json_object(
@@ -317,12 +320,8 @@ fn document<T: serde::de::DeserializeOwned>(
 }
 
 /// One row of the editor's tracks: a track the library holds, the track a
-/// save adds for an audio file, with the title `titles` gives it by the
-/// file's id, or a side no track sits on.
-fn row_of(
-    row: EditorTrackRows,
-    titles: &BTreeMap<String, String>,
-) -> Result<DbReleaseEditRow, DbError> {
+/// save adds for an audio file, or a side no track sits on.
+fn row_of(row: EditorTrackRows) -> Result<DbReleaseEditRow, DbError> {
     let row_id = row.row_id;
     let unreadable =
         |reason: String| DbError::unreadable(format!("the release editor's row {row_id}"), reason);
@@ -351,7 +350,7 @@ fn row_of(
             .ok_or_else(|| unreadable("an added track's file has no length".to_string()))?;
         return Ok(DbReleaseEditRow::Added(DbReleaseEditAdded {
             file: super::sheet_files::AddedFile {
-                typed_title: titles.get(&row_id).cloned(),
+                typed_title: row.added_title,
                 file_id: row_id.clone(),
                 name,
             },
@@ -424,7 +423,7 @@ pub fn release_edit_tracks_on(
     };
     statement_rows(sql, &params)?
         .into_iter()
-        .map(|row| match row_of(row.shown, &BTreeMap::new())? {
+        .map(|row| match row_of(row.shown)? {
             DbReleaseEditRow::Stored(track) => Ok(*track),
             other => Err(DbError::unreadable(
                 format!("a stored track of release {release_id}"),
@@ -435,13 +434,10 @@ pub fn release_edit_tracks_on(
 }
 
 /// One row of a form's draft tracks ([`DraftEditorTrackRows`]): a track the
-/// library holds, the track a save adds for an audio file, with the title
-/// `titles` gives it by the file's id, or a side no track sits on.
-pub fn draft_release_edit_row_of(
-    row: DraftEditorTrackRows,
-    titles: &BTreeMap<String, String>,
-) -> Result<DbReleaseEditRow, DbError> {
-    row_of(row.shown, titles)
+/// library holds, the track a save adds for an audio file, or a side no track
+/// sits on.
+pub fn draft_release_edit_row_of(row: DraftEditorTrackRows) -> Result<DbReleaseEditRow, DbError> {
+    row_of(row.shown)
 }
 
 /// The rows of the release editor's tracks as `layout` lays them out, in
@@ -450,7 +446,6 @@ pub fn draft_release_edit_row_of(
 pub fn draft_release_edit_tracks_on(
     sql: &impl coven::SqlRead,
     layout: &super::layout::LibraryLayout,
-    titles: &BTreeMap<String, String>,
 ) -> Result<Vec<DbReleaseEditRow>, DbError> {
     let params = DraftEditorTracksParams {
         release: layout.release_id.clone(),
@@ -462,6 +457,6 @@ pub fn draft_release_edit_tracks_on(
     };
     statement_rows(sql, &params)?
         .into_iter()
-        .map(|row| draft_release_edit_row_of(row.draft, titles))
+        .map(|row| draft_release_edit_row_of(row.draft))
         .collect()
 }
