@@ -118,7 +118,7 @@ sqlive_compose::fragment!(
 
 // One track's audio; no row for a track the library does not hold.
 sqlive_compose::read!(
-    OneTrackAudio(track: String),
+    writer OneTrackAudio(track: String),
     r#"
     SELECT audio.*
     FROM @crate::records::track_audio::TrackAudio AS audio
@@ -128,7 +128,7 @@ sqlive_compose::read!(
 
 // One track's tags; no row for a track the library does not hold.
 sqlive_compose::read!(
-    OneTrackTags(track: String),
+    writer OneTrackTags(track: String),
     r#"
     SELECT tags.*
     FROM @crate::records::track_audio::TrackTags(
@@ -149,7 +149,7 @@ sqlive_compose::read!(
 // One track's audio and tags, then the audio and tags of the track after it
 // on its release; no row for a track the library does not hold.
 sqlive_compose::read!(
-    TrackAndNextForSave(track: String),
+    writer TrackAndNextForSave(track: String),
     r#"
     SELECT audio.*, tags.*
     FROM @crate::records::track_audio::TrackAudio AS audio
@@ -180,7 +180,7 @@ sqlive_compose::read!(
 
 // The audio and tags of every track of one release, in playing order.
 sqlive_compose::read!(
-    ReleaseForSave(release: String),
+    writer ReleaseForSave(release: String),
     r#"
     SELECT audio.*, tags.*
     FROM @crate::records::track_audio::TrackAudio AS audio

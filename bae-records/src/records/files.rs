@@ -22,7 +22,7 @@ pub struct LibraryPicture {
 // The format of one release's cover copies and the coven files of both; no
 // row for a release with no cover.
 sqlive_compose::read!(
-    OneCoverCopies(release: String) {
+    writer OneCoverCopies(release: String) {
         browse_file: coven::FileId,
         large_file: coven::FileId,
     },
@@ -36,7 +36,7 @@ sqlive_compose::read!(
 // The format and coven file of one artist's image; no row for an artist with
 // no image.
 sqlive_compose::read!(
-    OneArtistPicture(artist: String) {
+    writer OneArtistPicture(artist: String) {
         file: coven::FileId,
     },
     r#"
@@ -48,7 +48,7 @@ sqlive_compose::read!(
 
 // One release's cover's version; no row for a release with no cover.
 sqlive_compose::read!(
-    OneCoverVersion(release: String),
+    writer OneCoverVersion(release: String),
     r#"
     SELECT cover.*
     FROM @crate::records::files::CoverVersion AS cover
@@ -430,7 +430,7 @@ impl CoverVersion {
 
 // Every cover's version, whose SQL a statement built as text holds.
 sqlive_compose::read!(
-    CoverVersions,
+    writer CoverVersions,
     r#"
     SELECT cover.*
     FROM @crate::records::files::CoverVersion AS cover
@@ -458,7 +458,7 @@ impl ArtistImageVersion {
 
 // Every artist image's version, whose SQL a statement built as text holds.
 sqlive_compose::read!(
-    ArtistImageVersions,
+    writer ArtistImageVersions,
     r#"
     SELECT image.*
     FROM @crate::records::files::ArtistImageVersion AS image
@@ -491,7 +491,7 @@ fn image_version_sql(image_type: &LibraryImageType, id: &str) -> String {
 }
 
 /// The coven file one image row names (a cover's browse copy), or `None` when there is no such row.
-pub fn image_file_on<Q: coven::SqlRead>(
+pub fn image_file_on<Q: bae_store::WriterRead>(
     sql: &Q,
     image_type: &LibraryImageType,
     id: &str,
@@ -508,7 +508,7 @@ pub fn image_file_on<Q: coven::SqlRead>(
 // Whether this device keeps each of the release `:release`'s files whole, as
 // `coven_pins` says.
 sqlive_compose::read!(
-    ReleaseFilesKeptRead(release: String) { kept: bool },
+    writer ReleaseFilesKeptRead(release: String) { kept: bool },
     r#"
     SELECT f.id, pin.file IS NOT NULL AS kept
     FROM release_files AS f
@@ -519,7 +519,7 @@ sqlive_compose::read!(
 
 /// [`ReleaseFilesKeptRead`] of `release_id`, by release file id.
 fn release_files_kept_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<std::collections::BTreeMap<String, bool>, DbError> {
     let params = ReleaseFilesKeptReadParams { release: release_id.to_string() };

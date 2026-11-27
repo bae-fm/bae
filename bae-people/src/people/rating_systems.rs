@@ -122,7 +122,7 @@ sqlive_compose::fragment!(
 
 // [`LibraryRatingSystems`]'s row, whose SQL a statement built as text holds.
 sqlive_compose::read!(
-    LibraryRatingSystemsRow,
+    writer LibraryRatingSystemsRow,
     r#"
     SELECT library.*
     FROM @crate::people::rating_systems::LibraryRatingSystems AS library
@@ -132,7 +132,7 @@ sqlive_compose::read!(
 // The library's rating systems, and whether the member using this device may
 // change them.
 sqlive_compose::read!(
-    RatingSystemsToChange,
+    writer RatingSystemsToChange,
     r#"
     SELECT library.*, viewer.*
     FROM @crate::people::rating_systems::LibraryRatingSystems AS library

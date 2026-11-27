@@ -147,7 +147,7 @@ pub(super) fn track_groups_of_json(json: &str) -> Result<Vec<DbTrackGroup>, DbEr
 // among all of its release's mediums, so the fragment places every track of
 // the named tracks' releases.
 sqlive_compose::read!(
-    NamedTrackPlaces(tracks: String),
+    writer NamedTrackPlaces(tracks: String),
     r#"
     SELECT place.*
     FROM json_each(:tracks) AS wanted
@@ -190,7 +190,7 @@ fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTrackP
 /// Where each of `track_ids` sits, in their order, each track the library
 /// holds.
 pub fn track_places_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     track_ids: &[String],
 ) -> Result<Vec<DbTrackPlace>, DbError> {
     let statement = NamedTrackPlacesParams { tracks: serde_json::json!(track_ids).to_string() };
@@ -209,7 +209,7 @@ fn side_of_columns(kind: &str, ordinal: i64) -> Result<TrackSide, String> {
 // Where each place the JSON array `places` gives sits, in their order, on the
 // mediums the JSON array `mediums` gives, which no table holds.
 sqlive_compose::read!(
-    GivenSidePlaces(mediums: String, places: String) { side_kind: String, side_ordinal: i64 },
+    writer GivenSidePlaces(mediums: String, places: String) { side_kind: String, side_ordinal: i64 },
     r#"
     WITH placed AS (
         SELECT place.*
@@ -235,7 +235,7 @@ sqlive_compose::read!(
 /// given mediums and one place on each side of the numbered ones, so a
 /// release in a catalog and one in the library name their sides alike.
 pub(super) fn side_headings_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     mediums: &[bae_types::mediums::ReleaseMedium],
     numbered: &[u32],
 ) -> Result<Vec<bae_types::mediums::SideHeading>, DbError> {

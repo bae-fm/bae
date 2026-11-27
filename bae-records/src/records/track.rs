@@ -2,7 +2,7 @@ use super::*;
 
 // Each track the library holds among those the JSON array `ids` names.
 sqlive_compose::read!(
-    HeldTrackIds(ids: String),
+    writer HeldTrackIds(ids: String),
     r#"
     SELECT track.id
     FROM tracks AS track
@@ -16,7 +16,7 @@ sqlive_compose::read!(
 // whose primary release has no track, `album_id` naming it, or for an id of
 // no album and no track.
 sqlive_compose::read!(
-    NamedTrackIds(ids: String) {
+    writer NamedTrackIds(ids: String) {
         asked_id: Option<String>,
         track_id: Option<String>,
     },

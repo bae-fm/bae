@@ -162,7 +162,7 @@ sqlive_compose::fragment!(
 
 // The first row of the session's up-next list: the track that plays next.
 sqlive_compose::read!(
-    QueueFront(limit: i64),
+    writer QueueFront(limit: i64),
     r#"
     SELECT front.*
     FROM @crate::tables::queue_reads::SessionUpNext(limit: :limit) AS front
@@ -172,7 +172,7 @@ sqlive_compose::read!(
 // The context lane's track after the playing one, while the lane reads in its
 // own order and Up Next is empty; no row otherwise.
 sqlive_compose::read!(
-    NextInOrder,
+    writer NextInOrder,
     r#"
     SELECT later.track_id
     FROM playback_queue AS queue
@@ -188,7 +188,7 @@ sqlive_compose::read!(
 // each beside the queue's head and flags, and one row with no entry when Up
 // Next is empty.
 sqlive_compose::read!(
-    QueueValue,
+    writer QueueValue,
     r#"
     SELECT head.*, flags.*, item.*
     FROM @crate::tables::queue_reads::QueueHead AS head
@@ -202,7 +202,7 @@ sqlive_compose::read!(
 
 // The session's up-next list, each row with its track.
 sqlive_compose::read!(
-    SessionUpNextItems(limit: i64),
+    writer SessionUpNextItems(limit: i64),
     r#"
     SELECT item.*
     FROM @crate::tables::queue_reads::QueueItems(

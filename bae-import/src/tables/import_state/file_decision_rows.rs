@@ -77,11 +77,12 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    FileEditsOf(content_hashes: String),
+    writer FileEditsOf(content_hashes: String),
     r#"
     SELECT decided.*
     FROM @crate::tables::import_state::file_decision_rows::FileEdits(
-        keys: (SELECT value AS content_hash FROM json_each(:content_hashes))) AS decided
+        keys: (SELECT given.value AS content_hash
+               FROM json_each(:content_hashes) AS given)) AS decided
 "#
 );
 
@@ -216,7 +217,7 @@ impl ImportTables {
 /// compute a content hash, so each emitted row performs one indexed lookup
 /// instead of rereading the whole table.
 pub(crate) fn load_candidate_file_edits_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<FinishRead<CandidateFileEdits>, DbError> {
     let request = file_edits_of(&[content_hash.to_string()])?;

@@ -46,7 +46,7 @@ impl RowSources {
 }
 
 sqlive_compose::read!(
-    ItemsAtKeys(keys: String, grouping_releases: bool),
+    writer ItemsAtKeys(keys: String, grouping_releases: bool),
     r#"
     SELECT item.*
     FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (
@@ -58,7 +58,7 @@ sqlive_compose::read!(
 
 /// The rows of the entries at `keys`, in key order.
 fn rows_at_keys<'a>(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     keys: impl Iterator<Item = &'a CandidateKey>,
     sources: RowSources,
 ) -> Result<Vec<CandidateRow>, DbError> {
@@ -79,7 +79,7 @@ pub(crate) struct StoredScanItem {
 
 #[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
-    ItemsUnderRoot(root: Vec<u8>, grouping_releases: bool),
+    writer ItemsUnderRoot(root: Vec<u8>, grouping_releases: bool),
     r#"
     SELECT item.*
     FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (
@@ -96,7 +96,7 @@ sqlive_compose::read!(
 /// them.
 #[cfg(any(test, feature = "test-utils"))]
 pub(super) fn load_items(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
@@ -139,7 +139,7 @@ pub(super) fn check_generations(
 /// The entry at `entry_key`, and the root it is under. Watched roots never
 /// overlap and keys are absolute paths, so at most one root holds it.
 pub(crate) fn load_item_by_key(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     entry_key: &CandidateKey,
     sources: RowSources,
 ) -> Result<Option<(PathBuf, StoredScanItem)>, DbError> {
@@ -147,7 +147,7 @@ pub(crate) fn load_item_by_key(
 }
 
 pub(crate) fn load_item_by_key_rows(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     entry_key: &CandidateKey,
     sources: RowSources,
 ) -> Result<Option<FinishRead<(PathBuf, StoredScanItem)>>, DbError> {
@@ -169,7 +169,7 @@ pub(crate) fn load_item_by_key_rows(
 /// Whether a valid or invalid entry, rather than a tentative one or none, is
 /// stored at `path`.
 pub(crate) fn settled_entry_is_stored(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     watched_folder_path: &Path,
     path: &CandidateKey,
 ) -> Result<bool, DbError> {
@@ -224,7 +224,7 @@ impl CoveredFolders {
 }
 
 sqlive_compose::read!(
-    ReadersCovering(
+    writer ReadersCovering(
         root: Vec<u8>,
         folder: Vec<u8>,
         above: String,
@@ -250,7 +250,7 @@ sqlive_compose::read!(
 /// it returns, whatever else the root holds: see
 /// [`super::fragments::FolderReaders`].
 pub(crate) fn entries_reading(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     watched_folder_path: &Path,
     coverage: &Coverage,
     readers: Readers<'_>,

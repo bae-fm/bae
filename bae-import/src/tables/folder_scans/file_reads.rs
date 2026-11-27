@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 sqlive_compose::read!(
-    KnownOfRootRows(root: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
+    writer KnownOfRootRows(root: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
         root_generation: Option<i64>
     },
     r#"
@@ -265,7 +265,7 @@ impl<'a> WantedElement<'a> {
 }
 
 sqlive_compose::read!(
-    ScanBatchReadings(wanted: String) { at: i64, settled: bool },
+    writer ScanBatchReadings(wanted: String) { at: i64, settled: bool },
     r#"
     SELECT asked.value ->> 'at' AS at,
         (asked.value ->> 'at') IN (

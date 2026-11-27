@@ -82,7 +82,7 @@ impl ReleaseStorage {
 
 // Every release's storage row, whose SQL a statement built as text holds.
 sqlive_compose::read!(
-    ReleaseStorageRows,
+    writer ReleaseStorageRows,
     r#"
     SELECT storage.*
     FROM @crate::release_storage::ReleaseStorage AS storage

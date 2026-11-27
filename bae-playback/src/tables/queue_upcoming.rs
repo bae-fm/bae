@@ -37,7 +37,7 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    WindowTopOrdered(limit: i64),
+    writer WindowTopOrdered(limit: i64),
     r#"
     SELECT lane.ordered, lane.entry, track.*
     FROM playback_context AS lane
@@ -50,7 +50,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    WindowFromOrdered(from: i64, limit: i64),
+    writer WindowFromOrdered(from: i64, limit: i64),
     r#"
     SELECT lane.ordered, lane.entry, track.*
     FROM playback_context AS lane
@@ -64,7 +64,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    WindowTopShuffled(limit: i64),
+    writer WindowTopShuffled(limit: i64),
     r#"
     SELECT lane.shuffled, lane.entry, track.*
     FROM playback_context AS lane
@@ -77,7 +77,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    WindowFromShuffled(from: i64, limit: i64),
+    writer WindowFromShuffled(from: i64, limit: i64),
     r#"
     SELECT lane.shuffled, lane.entry, track.*
     FROM playback_context AS lane
@@ -91,7 +91,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    CountOrdered { count: u64 },
+    writer CountOrdered { count: u64 },
     r#"
     SELECT COUNT(*) AS count
     FROM @crate::tables::queue_upcoming::UpcomingOrdered AS upcoming
@@ -99,7 +99,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    CountBeforeOrdered(place: i64) { count: u64 },
+    writer CountBeforeOrdered(place: i64) { count: u64 },
     r#"
     SELECT COUNT(*) AS count
     FROM @crate::tables::queue_upcoming::UpcomingOrdered AS upcoming
@@ -110,7 +110,7 @@ sqlive_compose::read!(
 // The place of the last of the first `:count` upcoming rows, NULL when there
 // are none.
 sqlive_compose::read!(
-    LastPlaceOfFirstOrdered(count: i64) { place: Option<i64> },
+    writer LastPlaceOfFirstOrdered(count: i64) { place: Option<i64> },
     r#"
     SELECT MAX(first.place) AS place
     FROM (SELECT upcoming.*
@@ -121,7 +121,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    CountShuffled { count: u64 },
+    writer CountShuffled { count: u64 },
     r#"
     SELECT COUNT(*) AS count
     FROM @crate::tables::queue_upcoming::UpcomingShuffled AS upcoming
@@ -129,7 +129,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    CountBeforeShuffled(place: i64) { count: u64 },
+    writer CountBeforeShuffled(place: i64) { count: u64 },
     r#"
     SELECT COUNT(*) AS count
     FROM @crate::tables::queue_upcoming::UpcomingShuffled AS upcoming
@@ -140,7 +140,7 @@ sqlive_compose::read!(
 // The place of the last of the first `:count` upcoming rows, NULL when there
 // are none.
 sqlive_compose::read!(
-    LastPlaceOfFirstShuffled(count: i64) { place: Option<i64> },
+    writer LastPlaceOfFirstShuffled(count: i64) { place: Option<i64> },
     r#"
     SELECT MAX(first.place) AS place
     FROM (SELECT upcoming.*
@@ -153,7 +153,7 @@ sqlive_compose::read!(
 // The entry that a row moved to place `:offset` of the upcoming list goes
 // before: the entry there once the moved row `:moved` is left out.
 sqlive_compose::read!(
-    EntryAtPlaceOrdered(moved: i64, offset: i64),
+    writer EntryAtPlaceOrdered(moved: i64, offset: i64),
     r#"
     SELECT upcoming.*
     FROM @crate::tables::queue_upcoming::UpcomingOrdered AS upcoming
@@ -164,7 +164,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    EntryAtPlaceShuffled(moved: i64, offset: i64),
+    writer EntryAtPlaceShuffled(moved: i64, offset: i64),
     r#"
     SELECT upcoming.*
     FROM @crate::tables::queue_upcoming::UpcomingShuffled AS upcoming
@@ -178,7 +178,7 @@ sqlive_compose::read!(
 /// `moved`, moved to `offset` among them, goes before; `None` when the offset
 /// is past their end.
 pub(super) fn upcoming_entry_at_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     shuffled: bool,
     moved: i64,
     offset: i64,
@@ -303,7 +303,7 @@ pub fn subscribe_upcoming_position(
 /// The key of the upcoming track at `position`, or of the last one when the
 /// lane ends before it, read on `sql`; `None` when nothing is upcoming.
 pub(super) fn upcoming_key_at_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     shuffled: bool,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {

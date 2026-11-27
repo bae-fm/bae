@@ -5,7 +5,7 @@
 
 // The key at a position of the flat grid sorted first by title ascending.
 sqlive_compose::read!(
-    FlatKeyAtTitle(
+    writer FlatKeyAtTitle(
         first: String,
         second: String,
         third: String,
@@ -37,7 +37,7 @@ sqlive_compose::read!(
 
 // The key at a position of the flat grid sorted first by title descending.
 sqlive_compose::read!(
-    FlatKeyAtTitleBack(
+    writer FlatKeyAtTitleBack(
         first: String,
         second: String,
         third: String,
@@ -69,7 +69,7 @@ sqlive_compose::read!(
 
 // The key at a position of the flat grid sorted first by artist ascending.
 sqlive_compose::read!(
-    FlatKeyAtArtist(
+    writer FlatKeyAtArtist(
         first: String,
         second: String,
         third: String,
@@ -101,7 +101,7 @@ sqlive_compose::read!(
 
 // The key at a position of the flat grid sorted first by artist descending.
 sqlive_compose::read!(
-    FlatKeyAtArtistBack(
+    writer FlatKeyAtArtistBack(
         first: String,
         second: String,
         third: String,
@@ -133,7 +133,7 @@ sqlive_compose::read!(
 
 // The key at a position of the flat grid sorted first by year ascending.
 sqlive_compose::read!(
-    FlatKeyAtYear(
+    writer FlatKeyAtYear(
         first: String,
         second: String,
         third: String,
@@ -165,7 +165,7 @@ sqlive_compose::read!(
 
 // The key at a position of the flat grid sorted first by year descending.
 sqlive_compose::read!(
-    FlatKeyAtYearBack(
+    writer FlatKeyAtYearBack(
         first: String,
         second: String,
         third: String,
@@ -197,7 +197,7 @@ sqlive_compose::read!(
 
 // The key at a position of the flat grid sorted first by date added, oldest first.
 sqlive_compose::read!(
-    FlatKeyAtAdded(
+    writer FlatKeyAtAdded(
         first: String,
         second: String,
         third: String,
@@ -229,7 +229,7 @@ sqlive_compose::read!(
 
 // The key at a position of the flat grid sorted first by date added, newest first.
 sqlive_compose::read!(
-    FlatKeyAtAddedBack(
+    writer FlatKeyAtAddedBack(
         first: String,
         second: String,
         third: String,
@@ -261,7 +261,7 @@ sqlive_compose::read!(
 
 // The key at a position of the grid grouped by artist sorted first by the artists ascending.
 sqlive_compose::read!(
-    GroupedKeyAtArtist(
+    writer GroupedKeyAtArtist(
         first: String,
         second: String,
         third: String,
@@ -293,7 +293,7 @@ sqlive_compose::read!(
 
 // The key at a position of the grid grouped by artist sorted first by the artists descending.
 sqlive_compose::read!(
-    GroupedKeyAtArtistBack(
+    writer GroupedKeyAtArtistBack(
         first: String,
         second: String,
         third: String,

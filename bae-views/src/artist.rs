@@ -223,7 +223,7 @@ impl ListedArtist {
 // The artist `artist`, as the list shows it; no row for an artist the list
 // doesn't show.
 sqlive_compose::read!(
-    ArtistById(artist: String),
+    writer ArtistById(artist: String),
     r#"
     SELECT shown.*
     FROM @crate::artist::ListedArtist AS shown
@@ -250,7 +250,7 @@ sqlive_compose::read!(
 // written over columns of the list table and returned ahead of the row, so
 // coven reruns a full window only for a write at or before its last row.
 sqlive_compose::read!(
-    ArtistWindow(
+    writer ArtistWindow(
         field_1: Option<String>,
         field_2: Option<String>,
         descending_1: bool,
@@ -308,7 +308,7 @@ sqlive_compose::read!(
 // The artist list's rows at the places from `offset` in the sort's order, at
 // most `limit` of them.
 sqlive_compose::read!(
-    ArtistRows(
+    writer ArtistRows(
         field_1: Option<String>,
         field_2: Option<String>,
         descending_1: bool,
@@ -335,7 +335,7 @@ sqlive_compose::read!(
 
 // How many artists of the sort's order come before the row at a key.
 sqlive_compose::read!(
-    ArtistsBefore(
+    writer ArtistsBefore(
         field_1: Option<String>,
         field_2: Option<String>,
         descending_1: bool,
@@ -366,7 +366,7 @@ sqlive_compose::read!(
 // row when the list ends before it. SQLite reads the offset -1 of an empty
 // list as 0, where there is no row.
 sqlive_compose::read!(
-    ArtistKeyAt(
+    writer ArtistKeyAt(
         field_1: Option<String>,
         field_2: Option<String>,
         descending_1: bool,
@@ -406,7 +406,7 @@ sqlive_compose::read!(
 
 // How many artists the list has.
 sqlive_compose::read!(
-    ArtistListLength { entries: i64 },
+    writer ArtistListLength { entries: i64 },
     r#"
     SELECT COUNT(*) AS entries
     FROM artist_listing AS listing
@@ -519,7 +519,7 @@ pub(crate) fn artist_list_length_on(sql: &SqlReadContext<'_>) -> Result<u64, DbE
 // The first `limit` artists library search finds for `pattern`, in name order,
 // ties going by id, each beside how many rows the statement lists.
 sqlive_compose::read!(
-    FirstArtistsFound(pattern: String, limit: i64) { listed: i64 },
+    writer FirstArtistsFound(pattern: String, limit: i64) { listed: i64 },
     r#"
     SELECT shown.*, COUNT(*) OVER () AS listed
     FROM (SELECT listing.artist_id, listing.name_sort_key

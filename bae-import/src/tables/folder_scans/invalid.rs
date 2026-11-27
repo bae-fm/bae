@@ -148,7 +148,7 @@ impl InvalidColumns {
 
 // The scan row of the folder that failed validation stored at `key`.
 sqlive_compose::read!(
-    InvalidScan(key: CandidateKey),
+    writer InvalidScan(key: CandidateKey),
     r#"
     SELECT listed.*
     FROM @crate::tables::folder_scans::listed_fragments::ListedScan AS listed
@@ -161,7 +161,7 @@ sqlive_compose::read!(
 /// roots never overlap and keys are absolute paths, so at most one root
 /// holds it.
 pub(crate) fn load_invalid_row(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<InvalidRow>, DbError> {
     let request = InvalidScanParams { key: key.clone() };
@@ -189,7 +189,7 @@ pub(crate) fn load_invalid_row(
 // `key`, each with whether the preview player holds the whole of it, which is
 // the stretch an audio file of this pane plays.
 sqlive_compose::read!(
-    SkippedPaneFiles(key: CandidateKey) {
+    writer SkippedPaneFiles(key: CandidateKey) {
         relative_path: String,
         absolute_path: Vec<u8>,
         size: i64,
@@ -226,7 +226,7 @@ const INVALID_FILES: &str = "FROM scan_candidate AS c \
 /// SQL keeps each part's files by their role; `None` when no folder that
 /// failed validation is stored there.
 pub(crate) fn load_invalid_detail(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<InvalidCandidateDetail>, DbError> {
     let row = load_invalid_row(sql, key)?;

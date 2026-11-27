@@ -18,7 +18,7 @@ pub struct ReleaseEditContext {
 /// detail with its album's title, year and artists, and its tracks' audio in
 /// release order. `None` when the release is gone.
 pub(crate) fn release_edit_rows_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Option<ReleaseEditRows>, DbError> {
     let Some(release) = bae_records::records::release_editor_rows_on(sql, release_id)? else {

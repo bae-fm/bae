@@ -179,7 +179,7 @@ sqlive_compose::fragment!(
 // cover can be made from.
 #[cfg(test)]
 sqlive_compose::read!(
-    ShownImageTypes,
+    writer ShownImageTypes,
     r#"
     SELECT shown.*
     FROM @crate::records::file_fragments::ShowableImageTypes AS shown

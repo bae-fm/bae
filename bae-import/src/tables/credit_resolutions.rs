@@ -20,7 +20,7 @@ use rusqlite::{params, OptionalExtension};
 pub mod row_fragments;
 
 sqlive_compose::read!(
-    DueCredit { held: bool },
+    writer DueCredit { held: bool },
     r#"
     SELECT DISTINCT due.name_key, due.musicbrainz_artist_id, due.discogs_artist_id,
            (EXISTS (SELECT 1
@@ -38,7 +38,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    ChangedCreditAnswer(credits: String),
+    writer ChangedCreditAnswer(credits: String),
     r#"
     SELECT fresh.*
     FROM @bae_records::records::credit_rule::CreditAnswers(credits: (

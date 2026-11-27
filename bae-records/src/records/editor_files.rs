@@ -9,7 +9,7 @@
 // sides of the mediums the form lays the release out on
 // ([`BaseMediums`](super::layout_fragments::BaseMediums)).
 sqlive_compose::read!(
-    EditorReleaseFiles(release: String, applied: bool, mediums: String, edits: String),
+    writer EditorReleaseFiles(release: String, applied: bool, mediums: String, edits: String),
     r#"
     WITH gone AS MATERIALIZED (
         SELECT dropped.*

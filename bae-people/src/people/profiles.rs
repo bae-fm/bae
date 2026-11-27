@@ -15,7 +15,7 @@ sqlive_compose::fragment!(
 
 // The current member using this device, which coven marks as this device's own.
 sqlive_compose::read!(
-    OwnPerson,
+    writer OwnPerson,
     r#"
     SELECT person.*
     FROM @crate::people::profiles::MemberWithProfile AS person
@@ -28,7 +28,7 @@ sqlive_compose::read!(
 // the device's language changes. Those with no profile yet follow, and member
 // id orders the rest.
 sqlive_compose::read!(
-    OtherPeople,
+    writer OtherPeople,
     r#"
     SELECT person.*
     FROM @crate::people::profiles::MemberWithProfile AS person
@@ -40,7 +40,7 @@ sqlive_compose::read!(
 
 // How many people the library has and how many active devices they have.
 sqlive_compose::read!(
-    PeopleCounts { people: u32, devices: u32 },
+    writer PeopleCounts { people: u32, devices: u32 },
     r#"
     SELECT count(*) AS people, coalesce(sum(member.active_device_count), 0) AS devices
     FROM @crate::membership::fragments::Member AS member
@@ -52,7 +52,7 @@ sqlive_compose::read!(
 // removed them, with their profile, none until a device of theirs has written
 // it.
 sqlive_compose::read!(
-    WritingPerson { member_id: coven::MemberId },
+    writer WritingPerson { member_id: coven::MemberId },
     r#"
     SELECT own.member_id, profile.*
     FROM (SELECT m.member AS member_id FROM coven_members AS m WHERE m.is_self) AS own
@@ -63,7 +63,7 @@ sqlive_compose::read!(
 // The profile of this device's person while the library holds them: the name
 // an invite gives its inviter.
 sqlive_compose::read!(
-    InviterProfile,
+    writer InviterProfile,
     r#"
     SELECT profile.*
     FROM (SELECT m.member AS member_id FROM coven_members AS m
@@ -83,7 +83,7 @@ pub(super) struct Writer {
 }
 
 /// Who this device writes as; `None` until its registration has applied.
-pub(super) fn writer_on(sql: &impl coven::SqlRead) -> Result<Option<Writer>, DbError> {
+pub(super) fn writer_on(sql: &impl bae_store::WriterRead) -> Result<Option<Writer>, DbError> {
     Ok(statement_optional(sql, &WritingPersonParams {})?.map(|row| Writer {
         member: row.member_id,
         profile: row.profile.map(Profile::into_profile),
@@ -92,7 +92,7 @@ pub(super) fn writer_on(sql: &impl coven::SqlRead) -> Result<Option<Writer>, DbE
 
 /// The profile this device writes as, or why it has none.
 fn writing_profile_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
 ) -> Result<Result<PersonProfile, ProfileError>, DbError> {
     Ok(match writer_on(sql)? {
         None => Err(ProfileError::NotRegistered),
@@ -102,7 +102,7 @@ fn writing_profile_on(
 
 // The current member `:member`.
 sqlive_compose::read!(
-    CurrentPerson(member: coven::MemberId),
+    writer CurrentPerson(member: coven::MemberId),
     r#"
     SELECT person.*
     FROM @crate::people::profiles::MemberWithProfile AS person
@@ -112,7 +112,7 @@ sqlive_compose::read!(
 
 // The profile of the person `:member`.
 sqlive_compose::read!(
-    ProfileOf(member: coven::MemberId),
+    writer ProfileOf(member: coven::MemberId),
     r#"
     SELECT profile.*
     FROM @crate::people::fragments::Profile AS profile
@@ -293,7 +293,7 @@ impl People {
 /// for the caller to report. The one place that decides it, so an invite
 /// names its inviter as the person is named everywhere else.
 pub(crate) fn name_this_person_goes_by(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
 ) -> Result<Option<String>, DbError> {
     Ok(statement_optional(sql, &InviterProfileParams {})?
         .map(|row| row.profile.into_profile().name))

@@ -237,7 +237,7 @@ sqlive_compose::fragment!(
 
 // How many items of the list newest first sit before the one at a key.
 sqlive_compose::read!(
-    NewestFirstPosition(
+    writer NewestFirstPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
         order_key_0: bae_store::list_windows::SortValue,
@@ -303,7 +303,7 @@ sqlive_compose::read!(
 // The key of the item of the list newest first at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
 sqlive_compose::read!(
-    NewestFirstKeyAt(
+    writer NewestFirstKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64
     ) {
@@ -354,7 +354,7 @@ sqlive_compose::read!(
 
 // How many items of the list oldest first sit before the one at a key.
 sqlive_compose::read!(
-    OldestFirstPosition(
+    writer OldestFirstPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
         order_key_0: bae_store::list_windows::SortValue,
@@ -420,7 +420,7 @@ sqlive_compose::read!(
 // The key of the item of the list oldest first at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
 sqlive_compose::read!(
-    OldestFirstKeyAt(
+    writer OldestFirstKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64
     ) {
@@ -471,7 +471,7 @@ sqlive_compose::read!(
 
 // How many items of the list by folder, A to Z sit before the one at a key.
 sqlive_compose::read!(
-    PathAscendingPosition(
+    writer PathAscendingPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
         order_key_0: bae_store::list_windows::SortValue,
@@ -522,7 +522,7 @@ sqlive_compose::read!(
 // The key of the item of the list by folder, A to Z at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
 sqlive_compose::read!(
-    PathAscendingKeyAt(
+    writer PathAscendingKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64
     ) {
@@ -565,7 +565,7 @@ sqlive_compose::read!(
 
 // How many items of the list by folder, Z to A sit before the one at a key.
 sqlive_compose::read!(
-    PathDescendingPosition(
+    writer PathDescendingPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
         order_key_0: bae_store::list_windows::SortValue,
@@ -616,7 +616,7 @@ sqlive_compose::read!(
 // The key of the item of the list by folder, Z to A at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
 sqlive_compose::read!(
-    PathDescendingKeyAt(
+    writer PathDescendingKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64
     ) {
@@ -853,7 +853,7 @@ impl PositionStatement {
     }
 
     /// How many items sit before the statement's key.
-    pub(super) fn read(&self, sql: &impl coven::SqlRead) -> Result<u64, DbError> {
+    pub(super) fn read(&self, sql: &impl bae_store::WriterRead) -> Result<u64, DbError> {
         let before = match self {
             Self::NewestFirst(params) => statement_row(sql, params)?.before,
             Self::OldestFirst(params) => statement_row(sql, params)?.before,
@@ -895,7 +895,10 @@ impl KeyAtStatement {
 
     /// The key of the item at the statement's position, or of the list's last
     /// item when the list ends before it; `None` for a list with no items.
-    pub(super) fn read(&self, sql: &impl coven::SqlRead) -> Result<Option<OrderKey>, DbError> {
+    pub(super) fn read(
+        &self,
+        sql: &impl bae_store::WriterRead,
+    ) -> Result<Option<OrderKey>, DbError> {
         macro_rules! first_key {
             ($params:ident, [$($column:ident)*]) => {
                 statement_optional(sql, $params)?.map(|row| key_of!(row, $($column)*))

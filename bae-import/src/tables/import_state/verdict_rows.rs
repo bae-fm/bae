@@ -707,7 +707,7 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    AnsweredOf(files: String),
+    writer AnsweredOf(files: String),
     r#"
     SELECT answered.*
     FROM @crate::tables::import_state::verdict_rows::AnsweredFiles(files: (
@@ -720,7 +720,7 @@ sqlive_compose::read!(
 // A candidate's entry, with whether a verdict is stored for its files as the
 // scan holds them.
 sqlive_compose::read!(
-    CandidateAnswer(key: crate::CandidateKey),
+    writer CandidateAnswer(key: crate::CandidateKey),
     r#"
     SELECT entry.*, answered.*
     FROM @crate::tables::release_groupings::fragments::EnteredCandidate(key: :key) AS entry

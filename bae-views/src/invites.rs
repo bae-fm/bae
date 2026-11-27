@@ -88,7 +88,7 @@ sqlive_compose::fragment!(
 // ended: `coven_operations` lists an invite only once a sharing refusal ends
 // it.
 sqlive_compose::read!(
-    ListedInvites { listed_operation: i64, outcome: Option<coven::InviteOutcome> },
+    writer ListedInvites { listed_operation: i64, outcome: Option<coven::InviteOutcome> },
     r#"
     SELECT listed.operation AS listed_operation, listed.outcome, open.*
     FROM (
@@ -107,7 +107,7 @@ sqlive_compose::read!(
 // The open invite whose id, as canonical UUID text, is `:invite`, while it is
 // open.
 sqlive_compose::read!(
-    InviteOfId(invite: String),
+    writer InviteOfId(invite: String),
     r#"
     SELECT open.*
     FROM @crate::invites::OpenInviteRows AS open
@@ -119,7 +119,7 @@ sqlive_compose::read!(
 // join request waits for the admin's decision, leaving out the invites whose
 // ids the JSON array `:closed` holds.
 sqlive_compose::read!(
-    FirstWaitingRequest(closed: String),
+    writer FirstWaitingRequest(closed: String),
     r#"
     SELECT open.*
     FROM @crate::invites::OpenInviteRows AS open

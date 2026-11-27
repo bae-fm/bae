@@ -506,7 +506,7 @@ impl Records {
 // else the release's own) and its cover's version; no row when the library
 // holds no such release.
 sqlive_compose::read!(
-    EditedReleaseHead(release: String, relinked: bool, records: String) {
+    writer EditedReleaseHead(release: String, relinked: bool, records: String) {
         has_tracks: bool,
         shows_records: bool
     },
@@ -541,7 +541,7 @@ pub struct EditedRelease {
 /// library holds no such release. `form_records` is the JSON array of the
 /// records the form replaced the release's with, where it replaced them.
 pub fn edited_release_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
     form_records: Option<&str>,
 ) -> Result<Option<EditedRelease>, DbError> {

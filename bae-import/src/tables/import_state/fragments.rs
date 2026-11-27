@@ -95,7 +95,8 @@ sqlive_compose::fragment!(
         UNION ALL
         SELECT 'named', named.album_id
         FROM @bae_records::records::fragments::AlbumRecordsName(records: (
-            SELECT key, value ->> 'catalog', value ->> 'kind', value ->> 'key', value ->> 'album'
+            SELECT given.key, given.value ->> 'catalog', given.value ->> 'kind',
+                   given.value ->> 'key', given.value ->> 'album'
             FROM json_each((
                 SELECT json_group_array(json_object(
                            'catalog', claimed.catalog, 'kind', claimed.kind,
@@ -105,7 +106,7 @@ sqlive_compose::fragment!(
                 WHERE claimed.content_hash = (
                     SELECT scan.content_hash
                     FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
-                        AS scan)))),
+                        AS scan))) AS given),
             excluding: (SELECT NULL WHERE 0)) AS named
         JOIN pick ON pick.pick = 'records')
     SELECT :key AS candidate_album_key, COALESCE(choice.kind, 'none') AS candidate_album_kind,

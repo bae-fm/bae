@@ -56,7 +56,7 @@ pub enum StorageKind {
 // archives that resets kept, NULL while there is none; and every part's bytes
 // together.
 sqlive_compose::read!(
-    DeviceStorageSums(audio: &'static str) {
+    writer DeviceStorageSums(audio: &'static str) {
         audio_budget: Option<u64>,
         pinned: u64,
         cache: u64,

@@ -175,7 +175,8 @@ sqlive_compose::fragment!(
             release: :release, edits: :edits) AS fresh)
     SELECT laid.*
     FROM @crate::records::layout_fragments::LaidPlaces(
-        base_mediums: (SELECT position, carrier, sides FROM starting),
+        base_mediums: (SELECT starting.position, starting.carrier, starting.sides
+                       FROM starting),
         base_places: (
             SELECT given.value ->> 'track_id', given.value ->> 'medium',
                    given.value ->> 'side', given.value ->> 'number',
@@ -194,8 +195,9 @@ sqlive_compose::fragment!(
                   FROM tracks AS held
                   JOIN carved_tracks AS cut ON cut.track_id = held.id
                   WHERE held.release_id = :release),
-        dropped: (SELECT track_id FROM gone),
-        added: (SELECT file_id, sheet_file_id, first_position FROM replacing)) AS laid
+        dropped: (SELECT gone.track_id FROM gone),
+        added: (SELECT replacing.file_id, replacing.sheet_file_id, replacing.first_position
+                FROM replacing)) AS laid
 "#
 );
 

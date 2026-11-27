@@ -11,7 +11,7 @@ use bae_records::records::layout::{honored_picks_on, laid_out_on, ReleaseLayout}
 
 /// The layout a save of `form` writes over the release's tracks.
 pub fn release_edit_layout_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     form: &ReleaseEditForm,
 ) -> Result<ReleaseLayout, DbError> {
     let params = FormParams::of(form)?;

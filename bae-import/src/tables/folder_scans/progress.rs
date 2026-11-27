@@ -218,7 +218,7 @@ fn load_held_root_scans_on(sql: &SqlReadContext<'_>) -> Result<HeldRootScans, Db
 // root. `volume` is never NULL on a root, so a NULL one is a folder with
 // none.
 sqlive_compose::read!(
-    StoredFolderScans,
+    writer StoredFolderScans,
     r#"
     SELECT watched.*, roots.status, roots.detail, roots.unwatched_directory,
         roots.unwatched_cause, roots.volume

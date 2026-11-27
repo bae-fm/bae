@@ -86,7 +86,7 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    CreditCandidatesOfCredits(credits: String),
+    writer CreditCandidatesOfCredits(credits: String),
     r#"
     SELECT candidate.*
     FROM @crate::records::credit_candidates::CreditCandidates(credits: (
@@ -161,7 +161,7 @@ impl CatalogLibrary<DbArtist> for IdHolders {
 }
 
 /// Read the library artists each of `credits` can name, positionally.
-pub(super) fn candidates_on<Q: coven::SqlRead>(
+pub(super) fn candidates_on<Q: bae_store::WriterRead>(
     sql: &Q,
     credits: Vec<LookedUpCredit<'_>>,
 ) -> Result<Vec<Candidates>, DbError> {

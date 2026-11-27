@@ -5,6 +5,14 @@
 use crate::DbError;
 use coven::SqlRead;
 use sqlive_compose::Read;
+use sqlive_reads::Writer;
+
+/// A context that reads on the store's writer, as every one of bae's does: a
+/// read's, a write's or a bulk write's. A generated read runs on one when its
+/// call marks it `writer`.
+pub trait WriterRead: SqlRead<Handle = Writer> {}
+
+impl<T: SqlRead<Handle = Writer>> WriterRead for T {}
 
 /// Every row each of two reads returned.
 pub type RowsOfBoth<A, B> =
@@ -14,14 +22,17 @@ pub type RowsOfBoth<A, B> =
 /// compiled for it, so a live query's first run builds none. It fails with
 /// SQLite's own error, which a caller that answers coven and one that answers
 /// the store both take.
-pub fn statement_rows<Q: Read>(sql: &impl SqlRead, statement: &Q) -> rusqlite::Result<Vec<Q::Row>> {
+pub fn statement_rows<Q: Read<Handle = Writer>>(
+    sql: &impl WriterRead,
+    statement: &Q,
+) -> rusqlite::Result<Vec<Q::Row>> {
     sql.query_compiled(Q::compiled(), statement.params().as_slice(), Q::read)
 }
 
 /// The row `statement` returns on `sql`, for a statement that returns at most
 /// one; a second row is an error.
-pub fn statement_optional<Q: Read>(
-    sql: &impl SqlRead,
+pub fn statement_optional<Q: Read<Handle = Writer>>(
+    sql: &impl WriterRead,
     statement: &Q,
 ) -> Result<Option<Q::Row>, DbError> {
     let mut rows = statement_rows(sql, statement)?.into_iter();
@@ -34,7 +45,10 @@ pub fn statement_optional<Q: Read>(
 
 /// The row `statement` returns on `sql`, for a statement that returns exactly
 /// one; any other number of rows is an error.
-pub fn statement_row<Q: Read>(sql: &impl SqlRead, statement: &Q) -> Result<Q::Row, DbError> {
+pub fn statement_row<Q: Read<Handle = Writer>>(
+    sql: &impl WriterRead,
+    statement: &Q,
+) -> Result<Q::Row, DbError> {
     statement_optional(sql, statement)?.ok_or_else(|| row_count::<Q>(0))
 }
 

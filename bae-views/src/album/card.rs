@@ -24,7 +24,7 @@ sqlive_compose::fragment!(
 // year, an unknown year after every year, then by title and id, which
 // `album_artist_link`'s artist page index holds, so the read sorts nothing.
 sqlive_compose::read!(
-    ArtistAlbums(artist: String),
+    writer ArtistAlbums(artist: String),
     r#"
     SELECT card.*
     FROM album_artist_link AS link

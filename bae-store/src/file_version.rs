@@ -32,7 +32,7 @@ impl StoredFileVersion {
 
 // Every stored file's version, whose SQL a statement built as text holds.
 sqlive_compose::read!(
-    StoredFileVersions,
+    writer StoredFileVersions,
     r#"
     SELECT stored.*
     FROM @crate::file_version::StoredFileVersion AS stored

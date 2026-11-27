@@ -240,7 +240,7 @@ fn picks_of(json: &str) -> Result<Vec<PickedResult>, DbError> {
 
 /// What the picks of the search `run` read, in the order bae stored them.
 pub(super) fn load_picks_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     run: i64,
 ) -> Result<Vec<PickedResult>, DbError> {
     let json: String =

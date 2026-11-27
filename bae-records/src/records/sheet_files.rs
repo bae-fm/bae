@@ -56,7 +56,7 @@ pub const NO_SHEET_EDITS: &str = "{}";
 // `release`'s sheets onto, each once, as a JSON array in name order; NULL when
 // the picks move no line.
 sqlive_compose::read!(
-    SheetFilesToRead(release: String, edits: String) { names: Option<String> },
+    writer SheetFilesToRead(release: String, edits: String) { names: Option<String> },
     r#"
     WITH moved AS (
         SELECT lines.*
@@ -76,7 +76,7 @@ sqlive_compose::read!(
 /// `release_id`'s sheets onto, which a save reads before it writes, in name
 /// order; `None` when the picks move no line.
 pub fn sheet_files_to_read_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
     edits: &str,
 ) -> Result<Option<Vec<String>>, DbError> {
@@ -117,7 +117,7 @@ pub struct SheetTrackChanges {
 // The tracks a save of the edits `edits` deletes from the release
 // `release`, in release order.
 sqlive_compose::read!(
-    DroppedTracksInOrder(release: String, edits: String),
+    writer DroppedTracksInOrder(release: String, edits: String),
     r#"
     SELECT dropped.*
     FROM @crate::records::sheet_fragments::DroppedSheetTracks(
@@ -129,7 +129,7 @@ sqlive_compose::read!(
 // The files a save of the edits `edits` adds a track for, each with its name,
 // in the order their first deleted track sat.
 sqlive_compose::read!(
-    AddedFilesInOrder(release: String, edits: String),
+    writer AddedFilesInOrder(release: String, edits: String),
     r#"
     WITH added AS (
         SELECT fresh.*
@@ -144,7 +144,7 @@ sqlive_compose::read!(
 
 // The release's first medium.
 sqlive_compose::read!(
-    FirstMedium(release: String),
+    writer FirstMedium(release: String),
     r#"
     SELECT held.id
     FROM release_mediums AS held
@@ -156,7 +156,7 @@ sqlive_compose::read!(
 
 /// What the edits `edits` do to the tracks of the release `release_id`.
 pub fn sheet_track_changes_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
     edits: &SheetEdits,
 ) -> Result<SheetTrackChanges, DbError> {

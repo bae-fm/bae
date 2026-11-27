@@ -268,7 +268,7 @@ impl ListedComposer {
 // written over columns of the list table and returned ahead of the row, so
 // coven reruns a full window only for a write at or before its last row.
 sqlive_compose::read!(
-    ComposerWindow(
+    writer ComposerWindow(
         field_1: Option<String>,
         field_2: Option<String>,
         field_3: Option<String>,
@@ -343,7 +343,7 @@ sqlive_compose::read!(
 // The composer list's rows at the places from `offset` in the sort's order, at
 // most `limit` of them.
 sqlive_compose::read!(
-    ComposerRows(
+    writer ComposerRows(
         field_1: Option<String>,
         field_2: Option<String>,
         field_3: Option<String>,
@@ -376,7 +376,7 @@ sqlive_compose::read!(
 
 // How many composers of the sort's order come before the row at a key.
 sqlive_compose::read!(
-    ComposersBefore(
+    writer ComposersBefore(
         field_1: Option<String>,
         field_2: Option<String>,
         field_3: Option<String>,
@@ -414,7 +414,7 @@ sqlive_compose::read!(
 // row when the list ends before it. SQLite reads the offset -1 of an empty
 // list as 0, where there is no row.
 sqlive_compose::read!(
-    ComposerKeyAt(
+    writer ComposerKeyAt(
         field_1: Option<String>,
         field_2: Option<String>,
         field_3: Option<String>,
@@ -466,7 +466,7 @@ sqlive_compose::read!(
 
 // How many composers the list has.
 sqlive_compose::read!(
-    ComposerListLength { entries: i64 },
+    writer ComposerListLength { entries: i64 },
     r#"
     SELECT COUNT(*) AS entries
     FROM composer_listing AS listing
@@ -597,7 +597,7 @@ pub(crate) fn composer_list_length_on(sql: &SqlReadContext<'_>) -> Result<u64, D
 // The first `limit` composers library search finds for `pattern`, in name order,
 // ties going by id, each beside how many rows the statement lists.
 sqlive_compose::read!(
-    FirstComposersFound(pattern: String, limit: i64) { listed: i64 },
+    writer FirstComposersFound(pattern: String, limit: i64) { listed: i64 },
     r#"
     SELECT shown.*, COUNT(*) OVER () AS listed
     FROM (SELECT listing.artist_id, listing.name_sort_key
@@ -640,7 +640,7 @@ pub(crate) fn composer_sort(sort: &[ComposerSortCriterion]) -> ListSort<3> {
 
 // The work `work`, as its rows show it, with its cover.
 sqlive_compose::read!(
-    WorkById(work: String),
+    writer WorkById(work: String),
     r#"
     SELECT work.*, cover.*
     FROM @bae_records::records::browse_fragments::WorkSummary AS work
@@ -653,7 +653,7 @@ sqlive_compose::read!(
 // The works that are parts of the work `work`, in its page's order, each
 // beside how many there are.
 sqlive_compose::read!(
-    WorkPartRows(work: String) { children: i64 },
+    writer WorkPartRows(work: String) { children: i64 },
     r#"
     SELECT part.*, cover.*, COUNT(*) OVER () AS children
     FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
@@ -669,7 +669,7 @@ sqlive_compose::read!(
 // The releases that perform the work `work`, in its page's order, each beside
 // how many there are.
 sqlive_compose::read!(
-    WorkReleaseRows(work: String) { children: i64 },
+    writer WorkReleaseRows(work: String) { children: i64 },
     r#"
     SELECT release.*, cover.*, COUNT(*) OVER () AS children
     FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
@@ -686,7 +686,7 @@ sqlive_compose::read!(
 // release by release in its page's order, each release's tracks in playing
 // order.
 sqlive_compose::read!(
-    WorkTrackRows(work: String) { listed: i64 },
+    writer WorkTrackRows(work: String) { listed: i64 },
     r#"
     SELECT link.*, track.*, album.*, COUNT(*) OVER () AS listed
     FROM @bae_records::records::browse_fragments::WorkPerformances AS shown
@@ -706,7 +706,7 @@ sqlive_compose::read!(
 // `limit`, in their order: its parts, then the releases that perform it, each
 // with what it shows.
 sqlive_compose::read!(
-    WorkChildRows(work: String, offset: i64, limit: i64),
+    writer WorkChildRows(work: String, offset: i64, limit: i64),
     r#"
     SELECT child.*, part.*, part_cover.*, release.*, release_cover.*
     FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
@@ -726,7 +726,7 @@ sqlive_compose::read!(
 
 // How many children the work `work` has.
 sqlive_compose::read!(
-    WorkChildCount(work: String) { children: i64 },
+    writer WorkChildCount(work: String) { children: i64 },
     r#"
     SELECT COUNT(*) AS children
     FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child

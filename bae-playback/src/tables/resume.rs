@@ -41,7 +41,7 @@ impl SavedResume {
 }
 
 sqlive_compose::read!(
-    StoredResume,
+    writer StoredResume,
     r#"
     SELECT saved.*
     FROM @crate::tables::resume::SavedResume AS saved
@@ -52,7 +52,7 @@ sqlive_compose::read!(
 // queue repeats, the resume row while one is stored, and how many tracks the
 // context lane holds, played or not.
 sqlive_compose::read!(
-    PlaybackStartRead { context_tracks: u64 },
+    writer PlaybackStartRead { context_tracks: u64 },
     r#"
     SELECT level.*, queue.*, saved.*,
            (SELECT COUNT(*) FROM playback_context) AS context_tracks
@@ -88,7 +88,7 @@ pub async fn playback_start(store: &Store) -> Result<PlaybackStart, DbError> {
 }
 
 /// Whether a resume row is stored.
-pub(super) fn resume_stored_on(sql: &impl coven::SqlRead) -> Result<bool, DbError> {
+pub(super) fn resume_stored_on(sql: &impl bae_store::WriterRead) -> Result<bool, DbError> {
     Ok(statement_optional(sql, &StoredResumeParams {})?.is_some())
 }
 

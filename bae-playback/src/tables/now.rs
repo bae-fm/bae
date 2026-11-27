@@ -65,7 +65,7 @@ impl KeptLevel {
 
 #[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
-    PlaybackLevel,
+    writer PlaybackLevel,
     r#"
     SELECT kept.*
     FROM @crate::tables::now::KeptLevel AS kept
@@ -534,7 +534,7 @@ impl StoredReceiver {
 // loading, playing or paused; the display is NULL when the row names no track
 // the library holds.
 sqlive_compose::read!(
-    PlayingNow {
+    writer PlayingNow {
         prepared: Option<bool>,
         waits_on_storage: Option<bool>,
         duration_ms: Option<u64>,

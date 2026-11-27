@@ -568,7 +568,7 @@ fn prepared(stored: SourceRelease, kept: Vec<GroupAlbum>) -> PreparedRelease {
 /// The stored release each of `releases` names, as its rows hold it beside
 /// how import surfaces read it, in their order and in one statement; `None`
 /// for one no row names.
-fn load_prepared_releases_on<S: coven::SqlRead>(
+fn load_prepared_releases_on<S: bae_store::WriterRead>(
     sql: &S,
     releases: &[&bae_catalogs::records::LookupRef],
 ) -> Result<Vec<Option<PreparedRelease>>, DbError> {
@@ -589,7 +589,7 @@ fn load_prepared_releases_on<S: coven::SqlRead>(
 
 /// The stored release each of `releases` names, as import surfaces read it,
 /// in their order and in one statement; `None` for one no row names.
-pub(crate) fn load_source_releases_on<S: coven::SqlRead>(
+pub(crate) fn load_source_releases_on<S: bae_store::WriterRead>(
     sql: &S,
     releases: &[&bae_catalogs::records::LookupRef],
 ) -> Result<Vec<Option<SourceRelease>>, DbError> {

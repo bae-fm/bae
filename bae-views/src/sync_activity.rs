@@ -177,7 +177,7 @@ sqlive_compose::fragment!(
 // The transfer lines' batches, beside what holds the upload queue back and
 // the download queue's counts: one row.
 sqlive_compose::read!(
-    TransferLines,
+    writer TransferLines,
     r#"
     SELECT uploads.*, downloads.*, held.*, queue.*
     FROM @crate::sync_activity::UploadBatchCounts AS uploads

@@ -81,7 +81,7 @@ sqlive_compose::fragment!(
 // What the picker lists: the found receivers, and the one playback is cast to
 // while it casts, with whether it lists no receiver at all.
 sqlive_compose::read!(
-    PickerList { is_empty: bool },
+    writer PickerList { is_empty: bool },
     r#"
     SELECT listed.*, casting.*,
            casting.remote IS NULL AND json_array_length(listed.found) = 0 AS is_empty

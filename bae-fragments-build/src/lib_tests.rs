@@ -47,6 +47,7 @@ fn refusals(people: &str) -> Vec<String> {
             sql: vec![SCHEMA.to_owned()],
             functions: Vec::new(),
             collations: Vec::new(),
+            writer_only: Vec::new(),
         },
     })
     .unwrap_or_else(|errors| panic!("{errors:?}"));

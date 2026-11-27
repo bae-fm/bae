@@ -209,7 +209,7 @@ sqlive_compose::fragment!(
 // most `limit`, each with its key. The order is the page's index's: its terms
 // after the artist, which end with terms that tell every row of a page apart.
 sqlive_compose::read!(
-    ComposerPageWindow(
+    writer ComposerPageWindow(
         artist: String,
         order_key_0: SortValue,
         order_key_1: SortValue,
@@ -247,7 +247,7 @@ sqlive_compose::read!(
 // The rows of the composer `artist`'s page at the places from `offset`, at
 // most `limit`.
 sqlive_compose::read!(
-    ComposerPageRows(artist: String, offset: i64, limit: i64),
+    writer ComposerPageRows(artist: String, offset: i64, limit: i64),
     r#"
     SELECT shown.*
     FROM composer_detail_row AS listing
@@ -261,7 +261,7 @@ sqlive_compose::read!(
 
 // How many rows the composer `artist`'s page lists.
 sqlive_compose::read!(
-    ComposerPageLength(artist: String) { entries: i64 },
+    writer ComposerPageLength(artist: String) { entries: i64 },
     r#"
     SELECT COUNT(*) AS entries
     FROM composer_detail_row AS listing
@@ -272,7 +272,7 @@ sqlive_compose::read!(
 // How many rows of the composer `artist`'s page come before a key of its
 // order.
 sqlive_compose::read!(
-    ComposerPageRowsBefore(
+    writer ComposerPageRowsBefore(
         artist: String,
         order_key_0: SortValue,
         order_key_1: SortValue,
@@ -297,7 +297,7 @@ sqlive_compose::read!(
 // of its last row when the page ends before it. SQLite reads the offset -1 of
 // an empty page as 0, where there is no row.
 sqlive_compose::read!(
-    ComposerPageKeyAt(artist: String, index: i64) { order_key_0: SortValue, order_key_1: SortValue, order_key_2: SortValue, order_key_3: SortValue, order_key_4: SortValue, order_key_5: SortValue, order_key_6: SortValue, order_key_7: SortValue, order_key_8: SortValue },
+    writer ComposerPageKeyAt(artist: String, index: i64) { order_key_0: SortValue, order_key_1: SortValue, order_key_2: SortValue, order_key_3: SortValue, order_key_4: SortValue, order_key_5: SortValue, order_key_6: SortValue, order_key_7: SortValue, order_key_8: SortValue },
     r#"
     SELECT listing.section AS order_key_0,
            listing.group_title_sort_key AS order_key_1,
@@ -321,7 +321,7 @@ sqlive_compose::read!(
 // The composer `artist` as the composer list shows it, with the first work its
 // page lists; no row for an artist the list doesn't show.
 sqlive_compose::read!(
-    ComposerHead(artist: String) { default_work_id: Option<String> },
+    writer ComposerHead(artist: String) { default_work_id: Option<String> },
     r#"
     SELECT shown.*,
            (SELECT listing.item_id

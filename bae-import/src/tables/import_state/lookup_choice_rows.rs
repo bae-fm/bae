@@ -39,7 +39,7 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    LookupChoicesOf(content_hash: String),
+    writer LookupChoicesOf(content_hash: String),
     r#"
     SELECT choices.*
     FROM @crate::tables::import_state::lookup_choice_rows::LookupChoiceRow AS choices
@@ -75,7 +75,7 @@ impl LookupChoiceRow {
 /// What the candidate `content_hash` decided its identification asks about:
 /// the default when it has decided nothing.
 fn load_lookup_choices_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<LookupChoices, DbError> {
     let request = LookupChoicesOfParams { content_hash: content_hash.to_string() };

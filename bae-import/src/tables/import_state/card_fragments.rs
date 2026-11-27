@@ -135,21 +135,21 @@ sqlive_compose::fragment!(
                 FROM import_candidate_match AS found
                 WHERE found.verdict_id = verdict.verdict_id AND found.listing = 'narrowed_out'
                 ), 'shared_album', CASE WHEN (
-                SELECT COUNT(DISTINCT card)
+                SELECT COUNT(DISTINCT offered.card)
                 FROM offered
                 ) = 1 AND (
-                SELECT COUNT(DISTINCT pressing)
+                SELECT COUNT(DISTINCT offered.pressing)
                 FROM offered
                 ) >= 2 AND NOT EXISTS (
                 SELECT 1
                 FROM offered
-                WHERE source_group_id IS NOT NULL
-                GROUP BY source
-                HAVING COUNT(DISTINCT source_group_id) > 1
+                WHERE offered.source_group_id IS NOT NULL
+                GROUP BY offered.source
+                HAVING COUNT(DISTINCT offered.source_group_id) > 1
                 ) AND EXISTS (
                 SELECT 1
                 FROM offered
-                WHERE source_group_id IS NOT NULL
+                WHERE offered.source_group_id IS NOT NULL
                 ) THEN json_object('leads', json((
                 SELECT json_group_array(json(lead.value))
                 FROM json_each(listed_cards.json) AS card, json_each(card.value, '$.leads') AS
@@ -158,10 +158,10 @@ sqlive_compose::fragment!(
                 SELECT json_group_array(json_object('catalog', album.source, 'key',
                     album.group_id) ORDER BY bae_catalog_rank(album.source))
                     FROM (
-                    SELECT source, MIN(source_group_id) AS group_id
+                    SELECT offered.source, MIN(offered.source_group_id) AS group_id
                     FROM offered
-                    WHERE source_group_id IS NOT NULL
-                    GROUP BY source
+                    WHERE offered.source_group_id IS NOT NULL
+                    GROUP BY offered.source
                 ) AS album
             ))) END)
             FROM listed_cards

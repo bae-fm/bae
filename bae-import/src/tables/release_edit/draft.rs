@@ -126,7 +126,7 @@ impl FormParams {
 // the release's own records or none, the album the release is in. `kind` says
 // which of those names it, and `album` is the library album it names.
 sqlive_compose::read!(
-    FiledDraftAlbum(
+    writer FiledDraftAlbum(
         release: String, pick_kind: String, pick_album: Option<String>, linked: bool,
         records: String
     ) { kind: String },
@@ -138,7 +138,7 @@ sqlive_compose::read!(
     pick (kind, album_id) AS (
         SELECT 'new', NULL WHERE :pick_kind = 'new'
         UNION ALL
-        SELECT 'album', album_id FROM picked),
+        SELECT 'album', picked.album_id FROM picked),
     filed AS (
         SELECT target.*
         FROM @bae_records::records::fragments::FiledByRecords(
@@ -151,13 +151,14 @@ sqlive_compose::read!(
         FROM @bae_records::records::fragments::ReleaseAlbum AS held
         WHERE held.release_id = :release),
     choice (kind, album_id) AS (
-        SELECT kind, album_id FROM pick
+        SELECT pick.kind, pick.album_id FROM pick
         UNION ALL
-        SELECT CASE WHEN target_album_id IS NULL THEN 'none' ELSE 'named' END, target_album_id
+        SELECT CASE WHEN filed.target_album_id IS NULL THEN 'none' ELSE 'named' END,
+               filed.target_album_id
         FROM filed
         WHERE NOT EXISTS (SELECT 1 FROM pick) AND :linked
         UNION ALL
-        SELECT 'named', album_id FROM kept
+        SELECT 'named', kept.album_id FROM kept
         WHERE NOT EXISTS (SELECT 1 FROM pick) AND NOT :linked)
     SELECT choice.kind AS kind, album.*
     FROM choice
@@ -169,7 +170,7 @@ sqlive_compose::read!(
 /// The album a save of the form files its release under
 /// ([`FiledDraftAlbum`]).
 fn release_edit_album_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     form: &FormParams,
 ) -> Result<DraftAlbum, DbError> {
     let row = statement_row(
@@ -193,7 +194,7 @@ fn release_edit_album_on(
 // it has any: its assignments, with each picked artist as the library holds it,
 // and how they stand to the library.
 sqlive_compose::read!(
-    FormDraftTracks(
+    writer FormDraftTracks(
         release: String, applied: bool, mediums: String, places: String, moves: String,
         edits: String, album_artists: String, track_artists: String, form_tracks: String
     ) { form: Option<String> },
@@ -225,7 +226,7 @@ sqlive_compose::read!(
 // Whether a track the save of the edits `edits` deletes from the release
 // `release` has a rating, a play in the history or a playlist entry.
 sqlive_compose::read!(
-    DroppedTracksKeptData(release: String, edits: String),
+    writer DroppedTracksKeptData(release: String, edits: String),
     r#"
     WITH gone AS (
         SELECT dropped.*
@@ -317,7 +318,7 @@ impl FormTrackRow {
 /// The rows of `form`'s draft, one read per part; `None` once the library no
 /// longer holds the form's release.
 pub(crate) fn release_edit_draft_rows_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     form: &ReleaseEditForm,
 ) -> Result<Option<ReleaseEditDraftRows>, DbError> {
     let params = FormParams::of(form)?;
@@ -369,7 +370,7 @@ pub(crate) fn release_edit_draft_rows_on(
 /// save adds, on the mediums and with the listed lengths the catalog the
 /// person applied gives them or else the release's own, each track the
 /// library holds with the form row that edits it.
-fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<DraftRow>, DbError> {
+fn draft_tracks_on(sql: &impl bae_store::WriterRead, form: &FormParams) -> Result<Vec<DraftRow>, DbError> {
     let params = FormDraftTracksParams {
         release: form.release.clone(),
         applied: form.applied,

@@ -110,7 +110,7 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    KeptForAlbums(albums: String),
+    writer KeptForAlbums(albums: String),
     r#"
     SELECT kept.*
     FROM @crate::tables::album_link_rows::KeptGroupAlbums(
@@ -136,7 +136,7 @@ pub(super) fn group_albums_of(kept: KeptGroupAlbums) -> Result<Vec<GroupAlbum>, 
 
 /// Every album kept for any of `albums`, as [`KeptGroupAlbums`] lists them,
 /// in one statement.
-pub(super) fn kept_group_albums_on<S: coven::SqlRead>(
+pub(super) fn kept_group_albums_on<S: bae_store::WriterRead>(
     sql: &S,
     albums: &[MetadataRef],
 ) -> Result<Vec<GroupAlbum>, DbError> {

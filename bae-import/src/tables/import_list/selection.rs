@@ -21,7 +21,7 @@ use crate::{CandidateAction, CandidateKey, ImportListOpening, ImportListViewChan
 // release; otherwise it counts none. A selection offering nothing, such as one
 // whose keys name no row, gives one row with no command.
 sqlive_compose::read!(
-    Selection(keys: String, commands: String) {
+    writer Selection(keys: String, commands: String) {
         rows: i64, single_item: Option<String>, single_key: Option<crate::CandidateKey>,
         command: Option<i64>, offering: Option<i64>, enabled: Option<bool>
     },
@@ -64,7 +64,7 @@ sqlive_compose::read!(
 /// no row. A row that Combine cannot merge shows the reason, and Combine
 /// stays in the offers.
 pub(super) fn selection(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     keys: &[CandidateKey],
 ) -> Result<SelectionSummary, DbError> {
     let mut summary = SelectionSummary::default();
@@ -103,7 +103,7 @@ pub(super) fn selection_params(keys: &[CandidateKey]) -> SelectionParams {
 // shows, in its order, each with its item and its folder's name; and, when
 // `acting` names a command's flag, only those that offer the command.
 sqlive_compose::read!(
-    Selected(
+    writer Selected(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
         opened: Option<crate::CandidateKey>, keys: String, acting: Option<String>
@@ -133,7 +133,7 @@ sqlive_compose::read!(
 
 // Every release the list shows, in its order.
 sqlive_compose::read!(
-    ShownKeys(
+    writer ShownKeys(
         list_order: String,
         tab: Option<String>,
         filter: Option<String>,
@@ -159,7 +159,7 @@ sqlive_compose::read!(
 // `last`, both included, in the list's order: those whose places are between
 // the two ends' places, which are one place when the list shows one end alone.
 sqlive_compose::read!(
-    KeysBetween(
+    writer KeysBetween(
         list_order: String,
         tab: Option<String>,
         filter: Option<String>,
@@ -192,7 +192,7 @@ sqlive_compose::read!(
 // Where the release at `key` sits in the list's order; no row when the list
 // does not show it.
 sqlive_compose::read!(
-    ShownPosition(
+    writer ShownPosition(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
         opened: Option<crate::CandidateKey>, key: crate::CandidateKey
@@ -214,7 +214,7 @@ sqlive_compose::read!(
 // place of the first of them the list shows, none when it shows none; and
 // those it doesn't show, in their order.
 sqlive_compose::read!(
-    Opening(
+    writer Opening(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
         opened: Option<crate::CandidateKey>, keys: String
@@ -244,7 +244,7 @@ sqlive_compose::read!(
 // hid: in the view's tab and kept by its filters, shown under the folds
 // `folded_before` and in a group the folds `folded` fold shut.
 sqlive_compose::read!(
-    HiddenByFolds(
+    writer HiddenByFolds(
         tab: String,
         filter: Option<String>,
         filter_text: Option<String>,
@@ -297,7 +297,7 @@ macro_rules! shown_params {
 /// The rows at `keys` the list `request` shows, in its order, and, when the
 /// caller names a command in `acting`, only the rows that offer it.
 pub(super) fn selected(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
     keys: &[CandidateKey],
     acting: Option<CandidateAction>,
@@ -336,7 +336,7 @@ fn shown_key(key: Option<Vec<u8>>) -> Result<CandidateKey, DbError> {
 
 /// Every release the list `request` shows, loaded by a surface or not.
 fn shown_keys(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
 ) -> Result<Vec<CandidateKey>, DbError> {
     let params = shown_params!(ShownKeysParams, request);
@@ -346,7 +346,7 @@ fn shown_keys(
 /// The releases the list `request` shows from the release `from` to the
 /// release `to`.
 fn keys_between(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
     from: &CandidateKey,
     to: &CandidateKey,
@@ -358,7 +358,7 @@ fn keys_between(
 /// Where the release at `key` sits in the list `request` shows; `None` when
 /// the list does not show it.
 pub(super) fn position_of(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
     key: &CandidateKey,
 ) -> Result<Option<u64>, DbError> {
@@ -375,7 +375,7 @@ pub(super) fn position_of(
 /// same view: the list keeps the person's place, and the keys a fold hid
 /// leave the selection.
 pub(super) fn view_change(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     before: &ImportListRequest,
     after: &ImportListRequest,
     keys: &[CandidateKey],
@@ -396,7 +396,7 @@ pub(super) fn view_change(
 /// it shows, or its top when it shows none; and the keys it doesn't show,
 /// which leave the selection.
 fn opening(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
     keys: &[CandidateKey],
 ) -> Result<ImportListViewChange, DbError> {
@@ -416,7 +416,7 @@ fn opening(
 /// The keys of `keys` whose rows the list `before` showed and the list
 /// `after` doesn't: what a fold hid. The two requests show the same view.
 fn hidden_by(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     before: &ImportListRequest,
     after: &ImportListRequest,
     keys: &[CandidateKey],

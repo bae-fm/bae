@@ -116,7 +116,7 @@ impl ScanItemWrite {
 /// The generation `watched_folder_path` was last scanned under, `None` for a
 /// root never scanned.
 pub(super) fn root_generation_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     watched_folder_path: &Path,
 ) -> Result<Option<i64>, DbError> {
     Ok(sql
@@ -205,7 +205,7 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
 }
 
 sqlive_compose::read!(
-    ScanDirectories(watched_folder_path: Vec<u8>),
+    writer ScanDirectories(watched_folder_path: Vec<u8>),
     r#"
     SELECT recorded.path, recorded.modified_at
     FROM folder_scan_directory AS recorded

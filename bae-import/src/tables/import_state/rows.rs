@@ -30,7 +30,7 @@ struct StoredCandidate<Signals> {
 }
 
 sqlive_compose::read!(
-    StatesOf(candidate: String),
+    writer StatesOf(candidate: String),
     r#"
     WITH owners AS (
         SELECT stored.content_hash AS content_hash, NULL AS identify_run
@@ -47,7 +47,7 @@ sqlive_compose::read!(
 
 #[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
-    EveryState,
+    writer EveryState,
     r#"
     WITH owners AS (
         SELECT stored.content_hash AS content_hash, NULL AS identify_run
@@ -66,7 +66,7 @@ sqlive_compose::read!(
 /// content hash.
 #[cfg(test)]
 pub(crate) fn load_states_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
     load_states_rows_on(sql, only)?()
@@ -76,7 +76,7 @@ pub(crate) fn load_states_on(
 /// one-to-one rows that share its content hash joined onto it, and its
 /// matches, in position order, nested in it as one JSON array.
 pub(crate) fn load_states_rows_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let rows: Vec<(CurrentState, Option<SignalTextPool>)> = match only {

@@ -9,7 +9,7 @@ use bae_identify::signals::PaneSignals;
 use bae_store::{statement_row, DbError};
 
 sqlive_compose::read!(
-    StoredVerdict(key: crate::CandidateKey),
+    writer StoredVerdict(key: crate::CandidateKey),
     r#"
     SELECT state.*, cards.*
     FROM (SELECT :key AS key) AS stored
@@ -26,7 +26,7 @@ sqlive_compose::read!(
 /// its verdict, in one read; no state when another file-edit revision wrote
 /// it, and no cards unless its verdict holds findings.
 pub(crate) fn load_current_state_and_cards_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &crate::CandidateKey,
 ) -> Result<(Option<DbImportCandidateState<PaneSignals>>, bae_identify::VerdictCards), DbError> {
     let request = StoredVerdictParams { key: key.clone() };

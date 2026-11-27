@@ -28,6 +28,8 @@ coven = { workspace = true }
 rusqlite = { workspace = true }
 # The traits of a generated read, by which the store runs one.
 sqlive-compose = { workspace = true }
+# The handle a generated read's type names: bae reads on the writer.
+sqlive-reads = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -55,9 +57,6 @@ coven = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
 # The schema tests read the tables the schema creates.
 regex = { workspace = true }
-# The plans of the reads the tests write by hand, built as the compiler builds
-# a read's.
-sqlive-reads = { workspace = true }
 # The kept seeds (see the optional dependencies above) compile into this
 # crate's own test build, where the test-utils feature is off.
 sha2 = { workspace = true }

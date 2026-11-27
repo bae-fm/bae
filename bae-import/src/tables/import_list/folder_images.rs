@@ -44,7 +44,7 @@ pub struct FolderImagesSnapshot {
 // file ids before and after it, wrapping around the ends. The lightbox shows
 // the image `:focus` names while the folder holds it, else the first.
 sqlive_compose::read!(
-    LightboxImages(key: crate::CandidateKey, focus: Option<String>) {
+    writer LightboxImages(key: crate::CandidateKey, focus: Option<String>) {
         struct LightboxImage { id: String, name: String, path: hex, size: u64, modified_at_ns: i64 }
         struct LightboxAround { previous: String, next: String }
         struct LightboxFocus { image: LightboxImage, neighbors: Option<LightboxAround> }
@@ -92,7 +92,7 @@ impl LightboxImage {
 
 /// The folder images `request`'s lightbox shows, as one read.
 fn folder_images_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &FolderImagesRequest,
 ) -> Result<FolderImages, DbError> {
     let row = statement_row(

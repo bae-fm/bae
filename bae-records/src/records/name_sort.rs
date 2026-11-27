@@ -31,7 +31,7 @@ sqlive_compose::fragment!(
 
 // [`NameSortLanguage`]'s row, whose SQL a statement built as text holds.
 sqlive_compose::read!(
-    NameSortLanguages,
+    writer NameSortLanguages,
     r#"
     SELECT language.*
     FROM @crate::records::name_sort::NameSortLanguage AS language

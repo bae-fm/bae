@@ -67,7 +67,7 @@ impl TrackList {
     /// only those the library holds, as `reading` says.
     pub fn ordered_on(
         &self,
-        sql: &impl coven::SqlRead,
+        sql: &impl bae_store::WriterRead,
         reading: TrackReading,
     ) -> Result<Vec<String>, DbError> {
         let statement = match (self, reading) {
@@ -91,7 +91,7 @@ impl TrackList {
     /// the app shows nothing of them.
     pub fn ordered_leaving_out_missing_picks(
         &self,
-        sql: &impl coven::SqlRead,
+        sql: &impl bae_store::WriterRead,
     ) -> Result<Vec<String>, DbError> {
         let reading = match self {
             Self::Given(_) => TrackReading::Named,

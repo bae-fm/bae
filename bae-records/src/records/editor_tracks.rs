@@ -59,8 +59,9 @@ sqlive_compose::fragment!(
     sheeted AS (
         SELECT carried.*
         FROM @crate::records::place_fragments::PlacedWithSheetSides(
-            placed: (SELECT track_id, position, medium_position, side, number, side_kind,
-                            side_ordinal, stated_length_ms
+            placed: (SELECT placed.track_id, placed.position, placed.medium_position,
+                            placed.side, placed.number, placed.side_kind, placed.side_ordinal,
+                            placed.stated_length_ms
                      FROM placed)) AS carried),
     choices AS (
         SELECT choice.*
@@ -71,34 +72,39 @@ sqlive_compose::fragment!(
         FROM @crate::records::place_fragments::SheetSideChoicesJson(
             mediums: (SELECT * FROM mediums)) AS listed),
     candidates AS (
-        SELECT track_id AS row_id, 1 AS has_track, medium_position, position, number, side_kind,
-               side_ordinal, stated_length_ms, sheet_medium, sheet_side, sheet_kind,
-               sheet_ordinal
+        SELECT sheeted.track_id AS row_id, 1 AS has_track, sheeted.medium_position,
+               sheeted.position, sheeted.number, sheeted.side_kind, sheeted.side_ordinal,
+               sheeted.stated_length_ms, sheeted.sheet_medium, sheeted.sheet_side,
+               sheeted.sheet_kind, sheeted.sheet_ordinal
         FROM sheeted
         UNION ALL
-        SELECT 'empty:' || medium || ':' || side, 0, medium, side, 0, kind, ordinal, NULL, NULL,
-               NULL, NULL, NULL
+        SELECT 'empty:' || choices.medium || ':' || choices.side, 0, choices.medium,
+               choices.side, 0, choices.kind, choices.ordinal, NULL, NULL, NULL, NULL, NULL
         FROM choices),
     counted AS (
         SELECT candidates.*,
-               SUM(has_track) OVER (PARTITION BY medium_position) AS tracks_on_medium
+               SUM(candidates.has_track) OVER (PARTITION BY candidates.medium_position)
+                   AS tracks_on_medium
         FROM candidates),
     shown AS (
-        SELECT row_id, medium_position, position, number, side_kind, side_ordinal,
-               stated_length_ms, sheet_medium, sheet_side, sheet_kind, sheet_ordinal,
-               NOT has_track AS empty_side
+        SELECT counted.row_id, counted.medium_position, counted.position, counted.number,
+               counted.side_kind, counted.side_ordinal, counted.stated_length_ms,
+               counted.sheet_medium, counted.sheet_side, counted.sheet_kind,
+               counted.sheet_ordinal, NOT counted.has_track AS empty_side
         FROM counted
-        WHERE has_track OR tracks_on_medium = 0),
+        WHERE counted.has_track OR counted.tracks_on_medium = 0),
     segments AS MATERIALIZED (
         SELECT segment.*
         FROM @crate::records::sheet_fragments::LaidSegments(
             release: :release, edits: :edits) AS segment),
     main AS MATERIALIZED (
-        SELECT track_id, file_id, start_sample * 1000 / sample_rate AS start_ms,
-               end_sample IS NULL AND moved AS to_new_end, added,
-               ROW_NUMBER() OVER (PARTITION BY track_id ORDER BY segment_index) AS n,
-               COUNT(*) OVER (PARTITION BY track_id) AS main_count
-        FROM segments WHERE role = 'main'),
+        SELECT segments.track_id, segments.file_id,
+               segments.start_sample * 1000 / segments.sample_rate AS start_ms,
+               segments.end_sample IS NULL AND segments.moved AS to_new_end, segments.added,
+               ROW_NUMBER() OVER (
+                   PARTITION BY segments.track_id ORDER BY segments.segment_index) AS n,
+               COUNT(*) OVER (PARTITION BY segments.track_id) AS main_count
+        FROM segments WHERE segments.role = 'main'),
     files AS MATERIALIZED (
         SELECT laid_file.*
         FROM @crate::records::sheet_fragments::LaidFiles(
@@ -152,7 +158,7 @@ sqlive_compose::fragment!(
                     'place', json_object(
                         'medium', laid.sheet_medium, 'side', laid.sheet_side,
                         'kind', laid.sheet_kind, 'ordinal', laid.sheet_ordinal),
-                    'side_choices', json((SELECT choices FROM listed_choices)),
+                    'side_choices', json((SELECT listed_choices.choices FROM listed_choices)),
                     'line_count', caption.bound_count,
                     'file_reference', cut.file_reference,
                     'unbound_lines', json(caption.unbound),
@@ -171,7 +177,7 @@ sqlive_compose::fragment!(
 // The release's tracks as the library holds them: each at its place on the
 // release's mediums, on the files it plays from.
 sqlive_compose::read!(
-    StoredEditorTracks(release: String, edits: String),
+    writer StoredEditorTracks(release: String, edits: String),
     r#"
     SELECT shown.*
     FROM @crate::records::editor_tracks::EditorTrackRows(
@@ -225,7 +231,7 @@ sqlive_compose::fragment!(
 // of the sheet edits.
 #[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
-    DraftEditorTracks(
+    writer DraftEditorTracks(
         release: String,
         applied: bool,
         mediums: String,
@@ -414,7 +420,7 @@ fn row_of(row: EditorTrackRows) -> Result<DbReleaseEditRow, DbError> {
 /// audio, in release order, each on the mediums and files the library holds
 /// it on.
 pub fn release_edit_tracks_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {
     let params = StoredEditorTracksParams {
@@ -444,7 +450,7 @@ pub fn draft_release_edit_row_of(row: DraftEditorTrackRows) -> Result<DbReleaseE
 /// release order.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn draft_release_edit_tracks_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     layout: &super::layout::LibraryLayout,
 ) -> Result<Vec<DbReleaseEditRow>, DbError> {
     let params = DraftEditorTracksParams {

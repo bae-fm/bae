@@ -250,7 +250,7 @@ impl RuntimeFactColumns {
 /// Where `candidate_key` stands, as its row says, inside a write or outside
 /// one; nothing running when it has no row.
 pub(crate) fn load_standing_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     candidate_key: &CandidateKey,
 ) -> Result<StoredStanding, DbError> {
     let columns = sql
@@ -271,7 +271,7 @@ pub(crate) fn load_standing_on(
 // of `admitted`, both 0 with no batch open, which stores no count row; and how
 // many candidates an import holds, whatever step it has reached.
 sqlive_compose::read!(
-    ImportCountsRead { identified: u32, admitted: u32, imports_in_flight: u32 },
+    writer ImportCountsRead { identified: u32, admitted: u32, imports_in_flight: u32 },
     r#"
     SELECT COALESCE(batch.ended, 0) AS identified,
            COALESCE(batch.admitted, 0) AS admitted,
@@ -282,7 +282,7 @@ sqlive_compose::read!(
 "#
 );
 
-fn load_import_counts_on(sql: &impl coven::SqlRead) -> Result<ImportCounts, DbError> {
+fn load_import_counts_on(sql: &impl bae_store::WriterRead) -> Result<ImportCounts, DbError> {
     let row = statement_row(sql, &ImportCountsReadParams {})?;
     Ok(ImportCounts {
         identified: row.identified,

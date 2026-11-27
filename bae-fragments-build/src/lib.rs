@@ -170,7 +170,12 @@ fn setup_of(coven: &coven_objects::CovenObjects, migration: &Migration) -> Setup
         arguments: i32::from(function.arguments),
         deterministic: true,
     }));
-    Setup { sql, functions, collations: migration.collations.clone() }
+    Setup {
+        sql,
+        functions,
+        collations: migration.collations.clone(),
+        writer_only: coven_schema::WRITER_ONLY.iter().map(|name| (*name).to_owned()).collect(),
+    }
 }
 
 /// Each call of the crate that reads a table of a domain whose homes don't hold

@@ -42,7 +42,8 @@ impl Returning for Bodies {
 }
 
 impl Read for Bodies {
-    const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[{"object":{"Table":{"name":"notes","within":null}},"from":"main.\"notes\" AS n","qualifier":"n","term":{"Compare":{"column":"topic","affinity":"Text","operand":{"Parameter":0},"ordering":0,"inclusive":false}},"carried":null,"place":{"Statement":{"offset":19,"line":1,"column":20}},"unread":false,"columns":["body","id","topic"],"memberships":[],"either":[]}],"order":[0],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":1,"cores":1,"edges":0}},"schema":{"objects":{"notes":{"stored":"notes","kind":"table","definition":["CREATE TABLE notes (id INTEGER PRIMARY KEY, topic TEXT NOT NULL, body TEXT NOT NULL) STRICT"]}},"functions":{}}}"#;
+    type Handle = sqlive_reads::Writer;
+    const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[{"object":{"Table":{"name":"notes","within":null}},"from":"main.\"notes\" AS n","qualifier":"n","term":{"Compare":{"column":"topic","affinity":"Text","operand":{"Parameter":0},"ordering":0,"inclusive":false}},"carried":null,"place":{"Statement":{"offset":19,"line":1,"column":20}},"unread":false,"columns":{"read":["body","id","topic"],"unread":[]},"memberships":[],"either":[]}],"order":[0],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":1,"cores":1,"edges":0}},"schema":{"objects":{"notes":{"stored":"notes","kind":"table","definition":["CREATE TABLE notes (id INTEGER PRIMARY KEY, topic TEXT NOT NULL, body TEXT NOT NULL) STRICT"]}},"functions":{}}}"#;
 }
 
 /// How many notes a topic has.
@@ -73,7 +74,8 @@ impl Returning for Count {
 }
 
 impl Read for Count {
-    const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[{"object":{"Table":{"name":"notes","within":null}},"from":"main.\"notes\" AS n","qualifier":"n","term":{"Compare":{"column":"topic","affinity":"Text","operand":{"Parameter":0},"ordering":0,"inclusive":false}},"carried":null,"place":{"Statement":{"offset":30,"line":1,"column":31}},"unread":false,"columns":["topic"],"memberships":[],"either":[]}],"order":[0],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":1,"cores":1,"edges":0}},"schema":{"objects":{"notes":{"stored":"notes","kind":"table","definition":["CREATE TABLE notes (id INTEGER PRIMARY KEY, topic TEXT NOT NULL, body TEXT NOT NULL) STRICT"]}},"functions":{"count":[{"arguments":0,"aggregate":true,"deterministic":false,"builtin":true},{"arguments":1,"aggregate":true,"deterministic":false,"builtin":true}]}}}"#;
+    type Handle = sqlive_reads::Writer;
+    const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[{"object":{"Table":{"name":"notes","within":null}},"from":"main.\"notes\" AS n","qualifier":"n","term":{"Compare":{"column":"topic","affinity":"Text","operand":{"Parameter":0},"ordering":0,"inclusive":false}},"carried":null,"place":{"Statement":{"offset":30,"line":1,"column":31}},"unread":false,"columns":{"read":["topic"],"unread":[]},"memberships":[],"either":[]}],"order":[0],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":1,"cores":1,"edges":0}},"schema":{"objects":{"notes":{"stored":"notes","kind":"table","definition":["CREATE TABLE notes (id INTEGER PRIMARY KEY, topic TEXT NOT NULL, body TEXT NOT NULL) STRICT"]}},"functions":{"count":[{"arguments":0,"aggregate":true,"deterministic":false,"builtin":true},{"arguments":1,"aggregate":true,"deterministic":false,"builtin":true}]}}}"#;
 }
 
 /// A statement whose row does not read.
@@ -103,6 +105,7 @@ impl Returning for Failing {
 }
 
 impl Read for Failing {
+    type Handle = sqlive_reads::Writer;
     const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[],"order":[],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":0,"cores":1,"edges":0}},"schema":{"objects":{},"functions":{}}}"#;
 }
 

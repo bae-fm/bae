@@ -139,7 +139,7 @@ pub struct CoverGallery {
 // files, each file in name order. The release focuses its saved cover, or the
 // file the cover is made from, unless the request names another.
 sqlive_compose::read!(
-    ReleaseGallery(
+    writer ReleaseGallery(
         release: String,
         filter: &'static str,
         focus_kind: Option<&'static str>,
@@ -211,7 +211,7 @@ pub struct CoverGallerySnapshot {
 
 /// The covers `request`'s picker offers, as one read of the library's tables.
 fn cover_gallery_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &CoverGalleryRequest,
 ) -> Result<CoverGallery, DbError> {
     let (focus_kind, focus_key) = request.focus.as_ref().map(CoverKey::columns).unzip();

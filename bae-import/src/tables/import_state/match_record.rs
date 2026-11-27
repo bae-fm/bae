@@ -297,7 +297,7 @@ fn record_json(record: Option<MatchRecord>, owner: &str) -> Result<String, DbErr
 }
 
 sqlive_compose::read!(
-    SearchRunMatches(run: i64),
+    writer SearchRunMatches(run: i64),
     r#"
     SELECT part.position, found.position AS found_position,
         @crate::tables::import_state::match_record::MatchRecord(parent: found) AS record
@@ -312,7 +312,7 @@ sqlive_compose::read!(
 /// The releases of the search `run`, under its catalog parts in their order,
 /// each part's in the order it returned them.
 pub(super) fn load_search_run_matches_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     run: i64,
 ) -> Result<Vec<MatchRow>, DbError> {
     let name = format!("search {run}");

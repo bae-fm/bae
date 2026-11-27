@@ -7,7 +7,7 @@
 //! it. The pane's value takes fields of both.
 
 sqlive_compose::read!(
-    PaneHead(key: Option<crate::CandidateKey>),
+    writer PaneHead(key: Option<crate::CandidateKey>),
     r#"
     SELECT listed.*, scan.*, grouping.*, files.*, standing.*, imported.*, state.*, evidence.*,
            cards.*
@@ -33,7 +33,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    PaneDraft(key: Option<crate::CandidateKey>) { pane_key: Option<crate::CandidateKey> },
+    writer PaneDraft(key: Option<crate::CandidateKey>) { pane_key: Option<crate::CandidateKey> },
     r#"
     SELECT pane.key AS pane_key, draft.*, flags.*, failure.*, pane_failure.*, mapping.*,
            artist_field.*, claimed.*, status.*, album.*, cover.*, previewed.*

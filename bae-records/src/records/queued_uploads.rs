@@ -74,7 +74,7 @@ sqlive_compose::fragment!(
 
 // [`UploadQueueHeld`]'s row, whose SQL a statement built as text holds.
 sqlive_compose::read!(
-    UploadQueueHold,
+    writer UploadQueueHold,
     r#"
     SELECT held.*
     FROM @crate::records::queued_uploads::UploadQueueHeld AS held
@@ -181,7 +181,7 @@ impl crate::release_storage::ReleaseStorage {
 /// What of the release `release_id` waits in this device's upload queue;
 /// `None` when none of its files waits.
 pub fn release_upload_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Option<DbReleaseUpload>, DbError> {
     Ok(sql
@@ -204,7 +204,7 @@ pub fn release_upload_on(
 // the bytes of its files stored of its whole size; and whether the person
 // paused uploads. One row per upload in flight is read.
 sqlive_compose::read!(
-    SendingUploads {
+    writer SendingUploads {
         files: json<Vec<crate::models::DbSendingFile>>,
         releases: json<Vec<crate::models::DbSendingRelease>>,
         paused: bool
@@ -231,7 +231,7 @@ sqlive_compose::read!(
 );
 
 /// What this process is sending now, as [`SendingUploads`] reads it.
-fn sending_uploads_on(sql: &impl coven::SqlRead) -> Result<DbSendingUploads, DbError> {
+fn sending_uploads_on(sql: &impl bae_store::WriterRead) -> Result<DbSendingUploads, DbError> {
     let row = statement_row(sql, &SendingUploadsParams {})?;
     Ok(DbSendingUploads { files: row.files, releases: row.releases, paused: row.paused })
 }

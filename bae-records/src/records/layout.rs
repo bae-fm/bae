@@ -65,7 +65,7 @@ pub struct DraftLayout {
 
 // The mediums a release editor's layout starts from, in order.
 sqlive_compose::read!(
-    LaidMediums(release: String, applied: bool, mediums: String),
+    writer LaidMediums(release: String, applied: bool, mediums: String),
     r#"
     SELECT base.*
     FROM @crate::records::layout_fragments::BaseMediums(
@@ -76,7 +76,7 @@ sqlive_compose::read!(
 
 // The tracks a release editor's layout lays out, in playing order.
 sqlive_compose::read!(
-    LaidReleaseTracks(
+    writer LaidReleaseTracks(
         release: String,
         applied: bool,
         mediums: String,
@@ -96,7 +96,7 @@ sqlive_compose::read!(
 // The sides picked for CUE sheets that a release editor's layout gave the
 // sheets: those on which a sheet's first laid track sits.
 sqlive_compose::read!(
-    HonoredSheetPicks(
+    writer HonoredSheetPicks(
         release: String, applied: bool, mediums: String, places: String, moves: String,
         edits: String
     ) { sheet_file_id: String, medium: i64, side: i64 },
@@ -124,7 +124,7 @@ sqlive_compose::read!(
 
 // An import draft's mediums, in order.
 sqlive_compose::read!(
-    DraftLayoutMediums(mediums: String),
+    writer DraftLayoutMediums(mediums: String),
     r#"
     SELECT given.*
     FROM @crate::records::layout_fragments::GivenMediums(mediums: :mediums) AS given
@@ -134,14 +134,15 @@ sqlive_compose::read!(
 
 // The tracks of an import draft's layout, in playing order.
 sqlive_compose::read!(
-    LaidDraftTracks(mediums: String, places: String, carving: String, moves: String),
+    writer LaidDraftTracks(mediums: String, places: String, carving: String, moves: String),
     r#"
     WITH given_mediums AS (
         SELECT given.*
         FROM @crate::records::layout_fragments::GivenMediums(mediums: :mediums) AS given)
     SELECT laid.*
     FROM @crate::records::layout_fragments::LaidPlaces(
-        base_mediums: (SELECT position, carrier, sides FROM given_mediums),
+        base_mediums: (SELECT given_mediums.position, given_mediums.carrier, given_mediums.sides
+                       FROM given_mediums),
         base_places: (SELECT placed.value ->> 'track_id', placed.value ->> 'medium',
                              placed.value ->> 'side', placed.value ->> 'number',
                              placed.value ->> 'stated_length_ms', placed.value ->> 'position'
@@ -160,7 +161,7 @@ sqlive_compose::read!(
 /// The sides picked for CUE sheets that the layout gave the sheets: each a
 /// sheet's file id with the side.
 pub fn honored_picks_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     layout: &LibraryLayout,
 ) -> Result<Vec<(String, bae_types::mediums::MediumSide)>, DbError> {
     let params = HonoredSheetPicksParams {
@@ -185,7 +186,7 @@ pub fn honored_picks_on(
 
 /// The layout a release editor's form gives its release's tracks.
 pub fn laid_out_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     layout: &LibraryLayout,
 ) -> Result<ReleaseLayout, DbError> {
     let mediums = LaidMediumsParams {
@@ -214,7 +215,7 @@ pub fn laid_out_on(
 
 /// The layout an import draft's sheet moves give its tracks.
 pub fn draft_laid_out_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     layout: &DraftLayout,
 ) -> Result<ReleaseLayout, DbError> {
     let mediums = DraftLayoutMediumsParams { mediums: layout.mediums.clone() };

@@ -4,7 +4,7 @@
 
 // A page of the flat grid sorted first by title ascending.
 sqlive_compose::read!(
-    FlatPageTitle(
+    writer FlatPageTitle(
         first: String,
         second: String,
         third: String,
@@ -32,7 +32,7 @@ sqlive_compose::read!(
 
 // A page of the flat grid sorted first by title descending.
 sqlive_compose::read!(
-    FlatPageTitleBack(
+    writer FlatPageTitleBack(
         first: String,
         second: String,
         third: String,
@@ -60,7 +60,7 @@ sqlive_compose::read!(
 
 // A page of the flat grid sorted first by artist ascending.
 sqlive_compose::read!(
-    FlatPageArtist(
+    writer FlatPageArtist(
         first: String,
         second: String,
         third: String,
@@ -88,7 +88,7 @@ sqlive_compose::read!(
 
 // A page of the flat grid sorted first by artist descending.
 sqlive_compose::read!(
-    FlatPageArtistBack(
+    writer FlatPageArtistBack(
         first: String,
         second: String,
         third: String,
@@ -116,7 +116,7 @@ sqlive_compose::read!(
 
 // A page of the flat grid sorted first by year ascending.
 sqlive_compose::read!(
-    FlatPageYear(
+    writer FlatPageYear(
         first: String,
         second: String,
         third: String,
@@ -144,7 +144,7 @@ sqlive_compose::read!(
 
 // A page of the flat grid sorted first by year descending.
 sqlive_compose::read!(
-    FlatPageYearBack(
+    writer FlatPageYearBack(
         first: String,
         second: String,
         third: String,
@@ -172,7 +172,7 @@ sqlive_compose::read!(
 
 // A page of the flat grid sorted first by date added, oldest first.
 sqlive_compose::read!(
-    FlatPageAdded(
+    writer FlatPageAdded(
         first: String,
         second: String,
         third: String,
@@ -200,7 +200,7 @@ sqlive_compose::read!(
 
 // A page of the flat grid sorted first by date added, newest first.
 sqlive_compose::read!(
-    FlatPageAddedBack(
+    writer FlatPageAddedBack(
         first: String,
         second: String,
         third: String,

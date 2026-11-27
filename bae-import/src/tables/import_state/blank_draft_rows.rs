@@ -24,7 +24,7 @@ pub(super) fn seed_blank_draft_on(sql: &CovenWrite<'_>, content_hash: &str) -> R
 // The blank draft of a candidate as its views hold it, with its mediums and
 // tracks as JSON arrays in their order.
 sqlive_compose::read!(
-    BlankDraftOf(content_hash: String) {
+    writer BlankDraftOf(content_hash: String) {
         struct StoredBlankTrack {
             track_id: String,
             medium: u16,

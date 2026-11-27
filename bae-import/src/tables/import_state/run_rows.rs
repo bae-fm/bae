@@ -70,7 +70,7 @@ sqlive_compose::fragment!(
 "#);
 
 sqlive_compose::read!(
-    RuntimeOf(key: crate::CandidateKey),
+    writer RuntimeOf(key: crate::CandidateKey),
     r#"
     SELECT runtime.*
     FROM @crate::tables::import_state::run_rows::RuntimeRows(
@@ -79,7 +79,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    EveryRuntime,
+    writer EveryRuntime,
     r#"
     SELECT runtime.*
     FROM @crate::tables::import_state::run_rows::RuntimeRows(keys: (
@@ -92,7 +92,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    RunSignals(key: crate::CandidateKey, run: i64),
+    writer RunSignals(key: crate::CandidateKey, run: i64),
     r#"
     WITH owners AS (
         SELECT NULL AS content_hash, run.identify_run AS identify_run
@@ -150,7 +150,7 @@ fn published_of(
 /// pane's read does: the verdict of its current state with the cards its rows
 /// hold, and the sample rate its stored signals say rules out a CD.
 fn load_stored_verdict_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<StoredVerdict>, DbError> {
     let (current, cards) = super::load_current_state_and_cards_on(sql, key)?;
@@ -190,7 +190,7 @@ fn runtime_of(row: RuntimeRows) -> Result<(CandidateKey, StoredRuntime), DbError
 /// names or, for a key with no identification standing (a library release's
 /// re-identify session), its latest run in flight, else its latest answer.
 pub(crate) fn load_stored_runtime_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<StoredRuntime, DbError> {
     let request = RuntimeOfParams { key: key.clone() };

@@ -24,7 +24,7 @@ impl Membership {
 
 // The name of this device's own registration.
 sqlive_compose::read!(
-    ThisDeviceName,
+    writer ThisDeviceName,
     r#"
     SELECT own.name
     FROM coven_devices AS own

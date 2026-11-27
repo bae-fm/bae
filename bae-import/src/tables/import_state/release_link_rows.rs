@@ -79,7 +79,7 @@ pub(super) fn store_release_link(
 // The release link of the candidate `content_hash`; no row for one linked to
 // nothing.
 sqlive_compose::read!(
-    LinkOfCandidate(content_hash: String),
+    writer LinkOfCandidate(content_hash: String),
     r#"
     SELECT link.*
     FROM @crate::tables::import_state::listed_fragments::ListedLink AS link
@@ -91,7 +91,7 @@ sqlive_compose::read!(
 /// [`super::listed_fragments::ListedLink`] gives it; `None` for one linked to
 /// nothing.
 pub(super) fn load_release_link_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<Option<super::listed_fragments::ListedLink>, DbError> {
     let request = LinkOfCandidateParams { content_hash: content_hash.to_string() };

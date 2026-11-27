@@ -101,7 +101,7 @@ sqlive_compose::fragment!(
 
 // Every transfer line's bar: one row.
 sqlive_compose::read!(
-    TransferBars(pins: String, moving_to_this_device: String),
+    writer TransferBars(pins: String, moving_to_this_device: String),
     r#"
     SELECT uploads.*, pins.*, moves.*
     FROM @crate::activity_bars::UploadBar AS uploads

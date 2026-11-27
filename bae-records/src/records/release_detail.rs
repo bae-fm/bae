@@ -162,7 +162,7 @@ impl ReleaseAlbumFacts {
 // its album's title, year and credits; no row for a release the library does
 // not hold.
 sqlive_compose::read!(
-    ReleaseEditorDetail(release: String),
+    writer ReleaseEditorDetail(release: String),
     r#"
     SELECT detail.*, facts.*, album.*
     FROM @crate::records::release_detail::ReleaseDetail(
@@ -184,7 +184,7 @@ pub struct ReleaseEditorRows {
 /// The release `release_id` as its editor reads it; `None` when the library
 /// holds no such release.
 pub fn release_editor_rows_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Option<ReleaseEditorRows>, DbError> {
     let statement = ReleaseEditorDetailParams { release: release_id.to_owned() };
@@ -218,7 +218,7 @@ impl ReleaseEditorRows {
 /// ([`super::editor_files::EditorReleaseFiles`]).
 #[cfg(desktop)]
 pub fn release_files_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     form: super::editor_files::EditorReleaseFilesParams,
 ) -> Result<DbReleaseFiles, DbError> {
     let row = bae_store::statement_row(sql, &form)?;

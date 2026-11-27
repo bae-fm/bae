@@ -1,7 +1,7 @@
 use super::*;
 
 pub fn find_album_by_id_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     album_id: &str,
 ) -> Result<Option<DbAlbum>, DbError> {
     sql.query_row(
@@ -21,7 +21,7 @@ pub fn find_album_by_id_on(
 }
 
 pub fn get_artists_for_album_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     album_id: &str,
 ) -> Result<Vec<LibraryCredit>, DbError> {
     // Each credit in list order, showing the artist it resolves to after
@@ -216,7 +216,7 @@ fn credit_line_of(
 }
 
 pub fn find_release_by_id_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Option<DbRelease>, DbError> {
     sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
@@ -225,7 +225,7 @@ pub fn find_release_by_id_on(
 }
 
 pub fn get_releases_for_album_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     album_id: &str,
 ) -> Result<Vec<DbRelease>, DbError> {
     sql.query(
@@ -280,7 +280,7 @@ pub fn records_of_json(json: &str) -> Result<Vec<bae_catalogs::records::ReleaseR
 /// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
 pub fn get_release_records_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
     Ok(sql.query_row(
@@ -389,7 +389,7 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
 /// A release's mediums, in order.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn release_mediums_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Vec<DbReleaseMedium>, DbError> {
     Ok(sql.query(

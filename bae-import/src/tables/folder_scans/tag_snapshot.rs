@@ -18,7 +18,7 @@ use bae_store::{statement_optional, statement_rows};
 use bae_util::content_type::ContentType;
 
 sqlive_compose::read!(
-    TagSnapshotAt(key: crate::CandidateKey),
+    writer TagSnapshotAt(key: crate::CandidateKey),
     r#"
     SELECT tags.*
     FROM @crate::tables::folder_scans::fragments::TagSnapshot(
@@ -27,7 +27,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    EntryTagSnapshotAt(key: crate::CandidateKey),
+    writer EntryTagSnapshotAt(key: crate::CandidateKey),
     r#"
     SELECT entry.*, tags.*
     FROM @crate::tables::release_groupings::fragments::EnteredCandidate(key: :key) AS entry
@@ -254,7 +254,7 @@ impl ImportTables {
 /// displays its stored artwork and metadata: operations enforce
 /// actionability before reading or changing source files.
 pub(crate) fn load_candidate_file_tag_snapshot(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     candidate_path: &CandidateKey,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
     let request = EntryTagSnapshotAtParams { key: candidate_path.clone() };
@@ -281,7 +281,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
 /// The file-tag reading stored for one scanned candidate, whatever the scan
 /// row around it says. The candidate's own shape is the caller's to check.
 pub(crate) fn load_file_tag_snapshot(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     candidate_path: &CandidateKey,
 ) -> Result<Option<FileTagSnapshot>, DbError> {
     let request = TagSnapshotAtParams { key: candidate_path.clone() };
@@ -426,7 +426,7 @@ impl StoredSnapshot {
 /// The bytes of the embedded cover the candidate's tag snapshot stored from
 /// `source_file_id`, or `None` when it stored none from that file.
 pub(crate) fn stored_embedded_cover_bytes(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     candidate_path: &CandidateKey,
     source_file_id: &str,
 ) -> Result<Option<Vec<u8>>, DbError> {

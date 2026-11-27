@@ -28,7 +28,7 @@ sqlive_compose::fragment!(
 
 // [`CandidateCoverLink`] of the content `:content_hash`.
 sqlive_compose::read!(
-    CoverLinkOf(content_hash: String),
+    writer CoverLinkOf(content_hash: String),
     r#"
     SELECT link.*
     FROM @crate::tables::cover_gallery::candidate::CandidateCoverLink AS link
@@ -43,7 +43,7 @@ sqlive_compose::read!(
 // all or the release's files. The candidate's own cover is the one its draft
 // chose.
 sqlive_compose::read!(
-    CandidateGallery(
+    writer CandidateGallery(
         key: crate::CandidateKey,
         filter: &'static str,
         focus_kind: Option<&'static str>,

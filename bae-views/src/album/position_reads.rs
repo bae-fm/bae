@@ -4,7 +4,7 @@
 
 // The rows before a key in the flat grid sorted first by title ascending.
 sqlive_compose::read!(
-    FlatBeforeTitle(
+    writer FlatBeforeTitle(
         first: String,
         second: String,
         third: String,
@@ -34,7 +34,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the flat grid sorted first by title descending.
 sqlive_compose::read!(
-    FlatBeforeTitleBack(
+    writer FlatBeforeTitleBack(
         first: String,
         second: String,
         third: String,
@@ -64,7 +64,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the flat grid sorted first by artist ascending.
 sqlive_compose::read!(
-    FlatBeforeArtist(
+    writer FlatBeforeArtist(
         first: String,
         second: String,
         third: String,
@@ -94,7 +94,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the flat grid sorted first by artist descending.
 sqlive_compose::read!(
-    FlatBeforeArtistBack(
+    writer FlatBeforeArtistBack(
         first: String,
         second: String,
         third: String,
@@ -124,7 +124,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the flat grid sorted first by year ascending.
 sqlive_compose::read!(
-    FlatBeforeYear(
+    writer FlatBeforeYear(
         first: String,
         second: String,
         third: String,
@@ -154,7 +154,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the flat grid sorted first by year descending.
 sqlive_compose::read!(
-    FlatBeforeYearBack(
+    writer FlatBeforeYearBack(
         first: String,
         second: String,
         third: String,
@@ -184,7 +184,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the flat grid sorted first by date added, oldest first.
 sqlive_compose::read!(
-    FlatBeforeAdded(
+    writer FlatBeforeAdded(
         first: String,
         second: String,
         third: String,
@@ -214,7 +214,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the flat grid sorted first by date added, newest first.
 sqlive_compose::read!(
-    FlatBeforeAddedBack(
+    writer FlatBeforeAddedBack(
         first: String,
         second: String,
         third: String,
@@ -244,7 +244,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the grid grouped by artist sorted first by the artists ascending.
 sqlive_compose::read!(
-    GroupedBeforeArtist(
+    writer GroupedBeforeArtist(
         first: String,
         second: String,
         third: String,
@@ -274,7 +274,7 @@ sqlive_compose::read!(
 
 // The rows before a key in the grid grouped by artist sorted first by the artists descending.
 sqlive_compose::read!(
-    GroupedBeforeArtistBack(
+    writer GroupedBeforeArtistBack(
         first: String,
         second: String,
         third: String,

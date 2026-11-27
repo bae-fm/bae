@@ -216,7 +216,10 @@ impl WindowStatement {
     }
 
     /// The items the statement reads, each with its key.
-    fn read(&self, sql: &impl coven::SqlRead) -> Result<Vec<(StoredItem, OrderKey)>, DbError> {
+    fn read(
+        &self,
+        sql: &impl bae_store::WriterRead,
+    ) -> Result<Vec<(StoredItem, OrderKey)>, DbError> {
         macro_rules! items {
             ($params:ident, [$($column:ident)*]) => {
                 statement_rows(sql, $params)?
@@ -278,7 +281,7 @@ const ABOVE_EVERY_FLAG: i64 = 2;
 /// holds each order to its indexes with.
 #[cfg(test)]
 pub(super) fn window_plans(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
 ) -> Result<Vec<Vec<String>>, DbError> {
     let top = bae_store::ListWindow::top(50);

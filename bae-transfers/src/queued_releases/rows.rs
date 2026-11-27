@@ -56,7 +56,7 @@ sqlive_compose::fragment!(
 
 // Whether coven says the device has a usable network.
 sqlive_compose::read!(
-    CurrentNetwork,
+    writer CurrentNetwork,
     r#"
     SELECT network.*
     FROM @crate::queue_counts::NetworkUsable AS network
@@ -68,7 +68,7 @@ sqlive_compose::read!(
 // no network. It takes the active entry if there is one, else the first
 // queued. A network coven cannot tell about does not hold the queue.
 sqlive_compose::read!(
-    NextDownload,
+    writer NextDownload,
     r#"
     SELECT network.*, entry.*
     FROM @crate::queue_counts::NetworkUsable AS network
@@ -86,7 +86,7 @@ sqlive_compose::read!(
 // The entry the export and save worker takes next, unless the queue is paused:
 // the active entry if there is one, else the first queued.
 sqlive_compose::read!(
-    NextOutput,
+    writer NextOutput,
     r#"
     SELECT entry.*
     FROM @crate::queued_releases::rows::OutputQueueRow AS entry
@@ -100,7 +100,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    DownloadQueueTotals,
+    writer DownloadQueueTotals,
     r#"
     SELECT counts.*
     FROM @crate::queue_counts::StoredDownloadCounts AS counts
@@ -109,7 +109,7 @@ sqlive_compose::read!(
 
 // The export and save queue's counts and its pause.
 sqlive_compose::read!(
-    OutputQueueTotals,
+    writer OutputQueueTotals,
     r#"
     SELECT tally.*, pause.*
     FROM @crate::queued_releases::rows::OutputQueueTally AS tally
@@ -120,7 +120,7 @@ sqlive_compose::read!(
 // The download queue's entry for one release, beside its album's title.
 #[cfg(desktop)]
 sqlive_compose::read!(
-    DownloadOfRelease(release: String),
+    writer DownloadOfRelease(release: String),
     r#"
     SELECT entry.*, release.*, album.*
     FROM @crate::queued_releases::rows::DownloadQueueRow AS entry
@@ -135,7 +135,7 @@ sqlive_compose::read!(
 // The export and save queue's entry for one release, beside its album's title.
 #[cfg(desktop)]
 sqlive_compose::read!(
-    OutputOfRelease(release: String),
+    writer OutputOfRelease(release: String),
     r#"
     SELECT entry.*, release.*, album.*
     FROM @crate::queued_releases::rows::OutputQueueRow AS entry
@@ -151,7 +151,7 @@ sqlive_compose::read!(
 // its album's title.
 #[cfg(any(desktop, test, feature = "test-utils"))]
 sqlive_compose::read!(
-    OutputQueueEntries,
+    writer OutputQueueEntries,
     r#"
     SELECT entry.*, release.*, album.*
     FROM @crate::queued_releases::rows::OutputQueueRow AS entry

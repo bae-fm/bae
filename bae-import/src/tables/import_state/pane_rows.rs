@@ -206,7 +206,7 @@ fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i
 /// holds a state row and no import of it.
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 fn stored_for_test_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<crate::preparations::CandidatePreparation, DbError> {
     match super::preparation_rows::load_preparation_on(sql, content_hash)? {
@@ -255,7 +255,7 @@ impl ImportTables {
 /// Whether the draft of `candidate` is blank and whether it would import, as
 /// its row stores them beside its fields, in the write that stored them.
 fn load_draft_columns_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     candidate: OneCandidate<'_>,
 ) -> Result<(bool, bool), DbError> {
     let filter = candidate.filter("content_hash");
@@ -270,7 +270,7 @@ fn load_draft_columns_on(
 
 /// Whether the candidate `content_hash` holds a draft row.
 pub(super) fn has_draft_row_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<bool, DbError> {
     Ok(sql

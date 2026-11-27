@@ -69,7 +69,7 @@ sqlive_compose::fragment!(
 
 // A place's admin changes, and whether it has one.
 sqlive_compose::read!(
-    PlaceAdminChanges(place: &'static str, member: Option<coven::MemberId>) {
+    writer PlaceAdminChanges(place: &'static str, member: Option<coven::MemberId>) {
         place_has_change: bool
     },
     r#"
@@ -92,7 +92,7 @@ impl PlaceAdminChangesParams {
 }
 
 fn admin_changes_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     place: &AdminChangePlace,
 ) -> Result<AdminChanges, DbError> {
     let row = statement_row(sql, &PlaceAdminChangesParams::of(place))?;

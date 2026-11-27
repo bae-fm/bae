@@ -53,7 +53,7 @@ pub(super) fn record_on(
 /// The release this device imported from the files hashed `content_hash`,
 /// if it imported one.
 pub(super) fn imported_release_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<Option<String>, DbError> {
     let request = OriginOfParams { content_hash: content_hash.to_string() };
@@ -61,7 +61,7 @@ pub(super) fn imported_release_on(
 }
 
 sqlive_compose::read!(
-    OriginOf(content_hash: String),
+    writer OriginOf(content_hash: String),
     r#"
     SELECT origin.*
     FROM @crate::tables::import_origin::fragments::ReleaseOrigin AS origin

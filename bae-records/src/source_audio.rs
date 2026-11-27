@@ -125,30 +125,30 @@ sqlive_compose::fragment!(
                           / SUM(audio.value ->> 6) FILTER (WHERE audio.value ->> 4 IS NOT NULL)
                      ELSE (SUM(audio.value ->> 4) + COUNT(audio.value ->> 4) / 2)
                           / COUNT(audio.value ->> 4) END,
-            'layouts', json((SELECT json_group_array(stated ORDER BY first)
+            'layouts', json((SELECT json_group_array(facts.stated ORDER BY facts.first)
                 FROM (SELECT of_file.value ->> 0 AS stated, MIN(of_file.key) AS first
                       FROM json_each(collected.listed) AS of_file
-                      WHERE of_file.value ->> 0 IS NOT NULL GROUP BY 1)
+                      WHERE of_file.value ->> 0 IS NOT NULL GROUP BY 1) AS facts
                 HAVING COUNT(*) >= 2)),
-            'codecs', json((SELECT json_group_array(stated ORDER BY first)
+            'codecs', json((SELECT json_group_array(facts.stated ORDER BY facts.first)
                 FROM (SELECT of_file.value ->> 1 AS stated, MIN(of_file.key) AS first
                       FROM json_each(collected.listed) AS of_file
-                      WHERE of_file.value ->> 1 IS NOT NULL GROUP BY 1)
+                      WHERE of_file.value ->> 1 IS NOT NULL GROUP BY 1) AS facts
                 HAVING COUNT(*) >= 2)),
-            'sample_rates_hz', json((SELECT json_group_array(stated ORDER BY first)
+            'sample_rates_hz', json((SELECT json_group_array(facts.stated ORDER BY facts.first)
                 FROM (SELECT of_file.value ->> 2 AS stated, MIN(of_file.key) AS first
                       FROM json_each(collected.listed) AS of_file
-                      WHERE of_file.value ->> 2 IS NOT NULL GROUP BY 1)
+                      WHERE of_file.value ->> 2 IS NOT NULL GROUP BY 1) AS facts
                 HAVING COUNT(*) >= 2)),
-            'bits_per_sample', json((SELECT json_group_array(stated ORDER BY first)
+            'bits_per_sample', json((SELECT json_group_array(facts.stated ORDER BY facts.first)
                 FROM (SELECT of_file.value ->> 3 AS stated, MIN(of_file.key) AS first
                       FROM json_each(collected.listed) AS of_file
-                      WHERE of_file.value ->> 3 IS NOT NULL GROUP BY 1)
+                      WHERE of_file.value ->> 3 IS NOT NULL GROUP BY 1) AS facts
                 HAVING COUNT(*) >= 2)),
-            'channels', json((SELECT json_group_array(stated ORDER BY first)
+            'channels', json((SELECT json_group_array(facts.stated ORDER BY facts.first)
                 FROM (SELECT of_file.value ->> 5 AS stated, MIN(of_file.key) AS first
                       FROM json_each(collected.listed) AS of_file
-                      WHERE of_file.value ->> 5 IS NOT NULL GROUP BY 1)
+                      WHERE of_file.value ->> 5 IS NOT NULL GROUP BY 1) AS facts
                 HAVING COUNT(*) >= 2)))
         FROM json_each(collected.listed) AS audio) END AS summary
     FROM (

@@ -129,7 +129,7 @@ pub(crate) fn store_claims_of_releases_on(
 // The candidates whose link claims a release that has one of `albums` among
 // its own albums.
 sqlive_compose::read!(
-    LinksClaimingAlbums(albums: String) { content_hash: String },
+    writer LinksClaimingAlbums(albums: String) { content_hash: String },
     r#"
     WITH changed (catalog, key) AS (
         SELECT changed_album.value ->> 0, changed_album.value ->> 1
@@ -205,7 +205,7 @@ pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, 
 /// The stored records the link of the candidate `content_hash` claims; none
 /// for a candidate with no link.
 fn load_claimed_records_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<Vec<ReleaseRecord>, DbError> {
     match load_release_link_on(sql, content_hash)? {
@@ -239,7 +239,7 @@ impl ImportTables {
 // which tests read.
 #[cfg(test)]
 sqlive_compose::read!(
-    OfferedCoversOf(content_hash: String),
+    writer OfferedCoversOf(content_hash: String),
     r#"
     SELECT offered.*
     FROM @crate::tables::import_state::row_fragments::OfferedCovers AS offered

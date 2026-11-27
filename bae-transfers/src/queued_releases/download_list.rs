@@ -25,7 +25,7 @@ sqlive_compose::fragment!(
 // ahead of any `*`, which no column of a spread can be: the order is read from
 // the table.
 sqlive_compose::read!(
-    DownloadWindow(from: i64, limit: i64),
+    writer DownloadWindow(from: i64, limit: i64),
     r#"
     SELECT queued.position, entry.*, release.*, album.*
     FROM download_queue AS queued
@@ -43,7 +43,7 @@ sqlive_compose::read!(
 
 // How many entries the downloads list has.
 sqlive_compose::read!(
-    DownloadListLength { entries: u64 },
+    writer DownloadListLength { entries: u64 },
     r#"
     SELECT COUNT(*) AS entries
     FROM @crate::queued_releases::download_list::DownloadQueuePlace AS entry
@@ -52,7 +52,7 @@ sqlive_compose::read!(
 
 // How many entries come before the place `position`.
 sqlive_compose::read!(
-    DownloadsBefore(position: i64) { entries: u64 },
+    writer DownloadsBefore(position: i64) { entries: u64 },
     r#"
     SELECT COUNT(*) AS entries
     FROM @crate::queued_releases::download_list::DownloadQueuePlace AS entry
@@ -64,7 +64,7 @@ sqlive_compose::read!(
 // last entry when the list ends before it. SQLite reads the offset -1 of an
 // empty list as 0, where there is no row.
 sqlive_compose::read!(
-    DownloadPlaceAt(index: i64),
+    writer DownloadPlaceAt(index: i64),
     r#"
     SELECT entry.*
     FROM @crate::queued_releases::download_list::DownloadQueuePlace AS entry

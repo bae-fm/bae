@@ -83,7 +83,7 @@ pub(crate) fn settle_candidate_files(
 }
 
 sqlive_compose::read!(
-    ReleasesReadingFiles(content_hash: String, file_edit_revision: i64),
+    writer ReleasesReadingFiles(content_hash: String, file_edit_revision: i64),
     r#"
     SELECT release.*
     FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (

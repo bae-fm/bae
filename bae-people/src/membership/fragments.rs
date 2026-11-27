@@ -53,7 +53,7 @@ sqlive_compose::fragment!(
 
 // The members who remain in the library, in member-id order.
 sqlive_compose::read!(
-    CurrentMembers,
+    writer CurrentMembers,
     r#"
     SELECT member.*
     FROM @crate::membership::fragments::Member AS member

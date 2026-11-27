@@ -15,7 +15,7 @@ use bae_store::ListWindow;
 
 /// How many items sit before the one at `key` in the list `request` shows.
 fn position_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
     key: &OrderKey,
 ) -> Result<u64, DbError> {

@@ -21,7 +21,7 @@ use super::window_reads::*;
 // The flat grid's counts: its albums, each of which is one row, and whether
 // the library holds a track.
 sqlive_compose::read!(
-    FlatAlbumCounts { albums: u64, can_shuffle: bool },
+    writer FlatAlbumCounts { albums: u64, can_shuffle: bool },
     r#"
     SELECT (SELECT COUNT(*) FROM album_listing AS listing) AS albums,
            EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track)
@@ -33,7 +33,7 @@ sqlive_compose::read!(
 // each album under each of its artists, the sum of the artists' album counts;
 // and whether the library holds a track.
 sqlive_compose::read!(
-    GroupedAlbumCounts { albums: u64, appearances: u64, can_shuffle: bool },
+    writer GroupedAlbumCounts { albums: u64, appearances: u64, can_shuffle: bool },
     r#"
     SELECT (SELECT COUNT(*) FROM album_listing AS listing) AS albums,
            (SELECT COALESCE(SUM(artist.album_count), 0) FROM artist_listing AS artist)
@@ -71,7 +71,7 @@ pub(crate) fn album_counts_on(
 // artist in the grouped order with its name, where its albums start in the
 // grid's rows, how many there are and the version of its picture.
 sqlive_compose::read!(
-    AscendingArtistSections { first_position: u64, image_version: Option<String> },
+    writer AscendingArtistSections { first_position: u64, image_version: Option<String> },
     r#"
     SELECT artist.artist_id, artist.name,
            SUM(artist.album_count) OVER (
@@ -88,7 +88,7 @@ sqlive_compose::read!(
 
 // [`AscendingArtistSections`] with the artists descending.
 sqlive_compose::read!(
-    DescendingArtistSections { first_position: u64, image_version: Option<String> },
+    writer DescendingArtistSections { first_position: u64, image_version: Option<String> },
     r#"
     SELECT artist.artist_id, artist.name,
            SUM(artist.album_count) OVER (
@@ -152,7 +152,7 @@ fn section(
 // The ids of `requested`, a JSON array of album ids, that the grid does not
 // show, in id order: the grid shows an album that has a listing row.
 sqlive_compose::read!(
-    UnshownAlbums(requested: String) { album_id: String },
+    writer UnshownAlbums(requested: String) { album_id: String },
     r#"
     SELECT requested.value AS album_id
     FROM json_each(:requested) AS requested

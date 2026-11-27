@@ -108,7 +108,7 @@ pub(super) fn sidecar_of(row: Sidecars) -> Result<FolderSidecar, DbError> {
 }
 
 sqlive_compose::read!(
-    SidecarAt(folder: Vec<u8>),
+    writer SidecarAt(folder: Vec<u8>),
     r#"
     SELECT sidecar.*
     FROM @crate::tables::folder_scans::fragments::Sidecars AS sidecar
@@ -118,7 +118,7 @@ sqlive_compose::read!(
 
 /// The sidecar stored for `folder`.
 pub(crate) fn load_sidecar(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     folder: &Path,
 ) -> Result<Option<FolderSidecar>, DbError> {
     let request = SidecarAtParams { folder: coven::path_bytes(folder) };

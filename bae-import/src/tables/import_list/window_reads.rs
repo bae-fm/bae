@@ -9,7 +9,7 @@
 
 // The window of the list newest first.
 sqlive_compose::read!(
-    NewestFirstWindow(
+    writer NewestFirstWindow(
         tab: String,
         filter: Option<String>,
         filter_text: Option<String>,
@@ -138,7 +138,7 @@ sqlive_compose::read!(
 
 // The window of the list oldest first.
 sqlive_compose::read!(
-    OldestFirstWindow(
+    writer OldestFirstWindow(
         tab: String,
         filter: Option<String>,
         filter_text: Option<String>,
@@ -267,7 +267,7 @@ sqlive_compose::read!(
 
 // The window of the list by folder, A to Z.
 sqlive_compose::read!(
-    PathAscendingWindow(
+    writer PathAscendingWindow(
         tab: String,
         filter: Option<String>,
         filter_text: Option<String>,
@@ -360,7 +360,7 @@ sqlive_compose::read!(
 
 // The window of the list by folder, Z to A.
 sqlive_compose::read!(
-    PathDescendingWindow(
+    writer PathDescendingWindow(
         tab: String,
         filter: Option<String>,
         filter_text: Option<String>,

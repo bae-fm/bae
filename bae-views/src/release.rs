@@ -123,7 +123,7 @@ sqlive_compose::fragment!(
 // [`ViewedRelease`] of the release `release`; no row for a release the
 // library does not hold.
 sqlive_compose::read!(
-    ViewedReleaseDetail(release: String),
+    writer ViewedReleaseDetail(release: String),
     r#"
     SELECT viewed.*
     FROM @crate::release::ViewedRelease AS viewed
@@ -134,7 +134,7 @@ sqlive_compose::read!(
 // [`ViewedRelease`] of each release of the album `album`, in the album's
 // order.
 sqlive_compose::read!(
-    ViewedAlbumReleases(album: String),
+    writer ViewedAlbumReleases(album: String),
     r#"
     SELECT viewed.*
     FROM @crate::release::ViewedRelease AS viewed

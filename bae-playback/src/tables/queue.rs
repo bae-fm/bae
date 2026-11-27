@@ -305,7 +305,7 @@ impl QueueRow {
     }
 }
 
-pub(super) fn queue_row_on(sql: &impl coven::SqlRead) -> rusqlite::Result<QueueRow> {
+pub(super) fn queue_row_on(sql: &impl bae_store::WriterRead) -> rusqlite::Result<QueueRow> {
     sql.query_row(
         "SELECT CASE shuffled WHEN 1 THEN shuffled_cursor ELSE ordered_cursor END AS cursor, \
                 shuffled, next_entry \

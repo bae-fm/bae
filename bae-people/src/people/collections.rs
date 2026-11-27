@@ -296,7 +296,7 @@ fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
 // One playlist's entries, in order; `playlist_entries_position` serves the
 // lookup and the order.
 sqlive_compose::read!(
-    EntriesOfPlaylist(playlist: String),
+    writer EntriesOfPlaylist(playlist: String),
     r#"
     SELECT entry.position_id, entry.track_id
     FROM playlist_entries AS entry

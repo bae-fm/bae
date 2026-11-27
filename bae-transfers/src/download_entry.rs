@@ -69,7 +69,7 @@ sqlive_compose::fragment!(
 // Every entry of the download queue, whose SQL a statement built as text
 // holds.
 sqlive_compose::read!(
-    QueuedDownloadEntries,
+    writer QueuedDownloadEntries,
     r#"
     SELECT entry.*
     FROM @crate::download_entry::QueuedDownloadEntry AS entry

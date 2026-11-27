@@ -19,7 +19,7 @@ fn step_columns(step: CatalogApplyStep) -> (&'static str, Catalog) {
 
 // The step of the apply `:apply`, while it waits on a read.
 sqlive_compose::read!(
-    StepOfApply(apply: String),
+    writer StepOfApply(apply: String),
     r#"
     SELECT waiting.step, waiting.catalog
     FROM import_catalog_apply_step AS waiting
@@ -29,7 +29,7 @@ sqlive_compose::read!(
 
 /// The read `apply` waits on now, or `None` while it waits on none.
 fn load_step_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     apply: &CatalogApplyId,
 ) -> Result<Option<CatalogApplyStep>, DbError> {
     let params = StepOfApplyParams { apply: apply.as_str().to_string() };

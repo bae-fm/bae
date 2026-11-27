@@ -14,7 +14,7 @@ use super::{
     SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
 };
 use bae_store::{statement_row, DbError, Store};
-use coven::{CovenWrite, SqlRead};
+use coven::CovenWrite;
 use rusqlite::params;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use std::path::PathBuf;
@@ -143,7 +143,7 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    PreferencesRead,
+    writer PreferencesRead,
     r#"
     SELECT preferences.* FROM @crate::row::PreferenceRows AS preferences
 "#
@@ -152,7 +152,7 @@ sqlive_compose::read!(
 // What the settings screens show: this device's preferences, the preset the
 // last save used, and the storage coven's views record.
 sqlive_compose::read!(
-    SettingsRead,
+    writer SettingsRead,
     r#"
     SELECT preferences.*, last_saved.*, recorded.*
     FROM @crate::row::PreferenceRows AS preferences
@@ -164,7 +164,7 @@ sqlive_compose::read!(
 
 // The preset `id`, none once no preset has the id.
 sqlive_compose::read!(
-    SavePresetRead(id: String),
+    writer SavePresetRead(id: String),
     r#"
     SELECT presets.*
     FROM @crate::row::SavePresetsAmong(wanted: (SELECT :id AS id)) AS presets
@@ -174,7 +174,7 @@ sqlive_compose::read!(
 // Every save preset, with the id of the one a save panel shows chosen when
 // the person has selected `selected`.
 sqlive_compose::read!(
-    SaveChoiceRead(selected: String) { chosen_id: Option<String> },
+    writer SaveChoiceRead(selected: String) { chosen_id: Option<String> },
     r#"
     SELECT presets.*,
         COALESCE(
@@ -208,7 +208,7 @@ pub fn subscribe_config(
 }
 
 fn config_on(
-    sql: &impl SqlRead,
+    sql: &impl bae_store::WriterRead,
     store_id: coven::StoreId,
     library_path: PathBuf,
 ) -> Result<Config, DbError> {
@@ -315,7 +315,7 @@ impl PreferencesRow {
     }
 }
 
-fn preferences_on(sql: &impl SqlRead) -> Result<Preferences, DbError> {
+fn preferences_on(sql: &impl bae_store::WriterRead) -> Result<Preferences, DbError> {
     preferences_of(statement_row(sql, &PreferencesReadParams {})?.preferences)
 }
 

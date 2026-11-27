@@ -562,7 +562,7 @@ fn first_tracks_found_sql() -> String {
 // search finds, and stops at the `limit`th, as [`first_entries_found_sql`]
 // does for tracks; it reads what each work shows for those works alone.
 sqlive_compose::read!(
-    FirstWorksFound(pattern: String, limit: i64) { listed: i64 },
+    writer FirstWorksFound(pattern: String, limit: i64) { listed: i64 },
     r#"
     SELECT work.*, cover.*, COUNT(*) OVER () AS listed
     FROM (SELECT entry.work_id, entry.title_sort_key

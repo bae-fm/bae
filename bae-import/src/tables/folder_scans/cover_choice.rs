@@ -16,7 +16,7 @@ use crate::CoverSelection;
 /// it. Every scan of these files holds the same paths, so any of them
 /// answers. A catalog's image names nothing the scan holds.
 pub(crate) fn cover_refusal(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
     cover: &PreparedCover,
     snapshot: Option<&FileTagSnapshot>,

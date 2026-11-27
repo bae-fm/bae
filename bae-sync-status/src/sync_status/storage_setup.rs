@@ -91,7 +91,7 @@ impl SetupRow {
 }
 
 sqlive_compose::read!(
-    LibraryStorageSetup,
+    writer LibraryStorageSetup,
     r#"
     SELECT current.*
     FROM @crate::sync_status::fragments::StorageSetup AS current

@@ -29,7 +29,7 @@ impl Emptiable {
     /// What removing or rewriting the rows of `release_ids` may empty: their
     /// albums, the works their tracks perform (and the works those are parts
     /// of), and every artist their album, tracks, roles and works credit.
-    pub(super) fn of_releases<Q: coven::SqlRead>(
+    pub(super) fn of_releases<Q: bae_store::WriterRead>(
         conn: &Q,
         release_ids: &[&str],
     ) -> Result<Self, DbError> {
@@ -64,7 +64,7 @@ impl Emptiable {
     /// write lands a release in or edits beside the releases it removes.
     /// Only a release edit's save does, and that is desktop's.
     #[cfg(desktop)]
-    pub(super) fn including_album<Q: coven::SqlRead>(
+    pub(super) fn including_album<Q: bae_store::WriterRead>(
         mut self,
         conn: &Q,
         album_id: &str,

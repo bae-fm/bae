@@ -135,7 +135,7 @@ impl Store {
     /// Every row of the generated statement `statement`, read once.
     pub async fn read_rows<Q>(&self, statement: Q) -> Result<Vec<Q::Row>, DbError>
     where
-        Q: sqlive_compose::Read + Send + 'static,
+        Q: sqlive_compose::Read<Handle = sqlive_reads::Writer> + Send + 'static,
         Q::Row: Send + 'static,
     {
         self.read(move |sql| Ok(statement_rows(&sql, &statement)?)).await
@@ -144,7 +144,7 @@ impl Store {
     /// The one row of the generated statement `statement`, read once.
     pub async fn read_row<Q>(&self, statement: Q) -> Result<Q::Row, DbError>
     where
-        Q: sqlive_compose::Read + Send + 'static,
+        Q: sqlive_compose::Read<Handle = sqlive_reads::Writer> + Send + 'static,
         Q::Row: Send + 'static,
     {
         self.read(move |sql| statement_row(&sql, &statement)).await
@@ -250,8 +250,12 @@ impl Store {
     ) -> coven::ReconfigurableLiveQuery<P, RowsOfBoth<A, B>, E>
     where
         P: Clone + PartialEq + Send + Sync + 'static,
-        A: sqlive_compose::Read + for<'request> From<&'request P> + 'static,
-        B: sqlive_compose::Read + for<'request> From<&'request P> + 'static,
+        A: sqlive_compose::Read<Handle = sqlive_reads::Writer>
+            + for<'request> From<&'request P>
+            + 'static,
+        B: sqlive_compose::Read<Handle = sqlive_reads::Writer>
+            + for<'request> From<&'request P>
+            + 'static,
         A::Row: Send + 'static,
         B::Row: Send + 'static,
         E: From<DbError> + From<coven::DbError> + CarriesBug + Send + 'static,

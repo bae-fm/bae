@@ -215,7 +215,7 @@ pub struct ArtistCredits<'a> {
 impl ArtistCredits<'_> {
     /// The credits resolved, a picked artist the library no longer holds as
     /// `gone` says.
-    pub fn resolve_on<Q: coven::SqlRead>(
+    pub fn resolve_on<Q: bae_store::WriterRead>(
         &self,
         sql: &Q,
         gone: GonePicked,
@@ -250,7 +250,7 @@ pub enum GonePicked {
 /// Within one write a credit first meets the new artists this write already
 /// decided on, then the library, so two credits that are each ambiguous
 /// against the library still become one new artist.
-pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
+pub(crate) fn resolve_artists_on<Q: bae_store::WriterRead>(
     sql: &Q,
     credits: &[DbArtist],
     picked: &HashSet<String>,
@@ -359,7 +359,7 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
 
 #[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
-    CreditUnderTest(name: String, musicbrainz: Option<String>, discogs: Option<String>),
+    writer CreditUnderTest(name: String, musicbrainz: Option<String>, discogs: Option<String>),
     r#"
     SELECT answer.*
     FROM @crate::records::credit_rule::CreditAnswers(credits: (
@@ -374,7 +374,7 @@ sqlive_compose::read!(
 /// when they name none or several. Tests read the rule's answers through it.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn credit_artists_checked_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     credit: &bae_catalogs::credits::ArtistCredit,
 ) -> Result<Vec<crate::ExistingArtist>, DbError> {
     let request = CreditUnderTestParams {

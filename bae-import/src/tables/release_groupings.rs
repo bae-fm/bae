@@ -357,7 +357,7 @@ pub(super) const PARENT_FILES_READER: &str =
 /// a folder with a sidecar, only the one already reading it may. Files still
 /// downloading are read by no release until the download ends.
 fn parent_files_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
     folder: Option<&Path>,
     reading: bool,
@@ -510,7 +510,7 @@ fn set_grouping_skipped_on(
 
 /// Why grouping `key`'s release cannot be worked on, when something says so.
 pub(super) fn load_block_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<GroupingBlock>, DbError> {
     let columns: Option<(Option<String>, Option<String>, Option<String>)> = sql

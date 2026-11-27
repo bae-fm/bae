@@ -14,7 +14,7 @@ use crate::{CandidateStanding, ImportError, TriageRuntimeFacts};
 use bae_store::statement_rows;
 
 sqlive_compose::read!(
-    CandidateEntryAt(key: crate::CandidateKey),
+    writer CandidateEntryAt(key: crate::CandidateKey),
     r#"
     SELECT entry.*
     FROM @crate::tables::release_groupings::fragments::EnteredCandidate(key: :key) AS entry
@@ -125,7 +125,7 @@ impl CandidateEntry {
 /// that failed validation; `None` when it stores nothing there. Watched roots
 /// never overlap and keys are absolute paths, so at most one root holds it.
 fn load_scanned_entry_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<ScannedEntry>, DbError> {
     let rows = statement_rows(sql, &CandidateEntryAtParams { key: key.clone() })?;
@@ -171,7 +171,7 @@ pub(crate) fn listed_entry_of(
 /// The release stored at `key` and where it stands, or `None` when the scan
 /// stores no release there: nothing, or a folder that failed validation.
 pub(crate) fn load_candidate_entry_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<CandidateEntry>, DbError> {
     Ok(match load_scanned_entry_on(sql, key)? {
@@ -184,7 +184,7 @@ pub(crate) fn load_candidate_entry_on(
 /// write. Refused when a grouping's release is blocked, or when the key names
 /// no release that may be worked on.
 pub(crate) fn require_workable_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<CandidateEntry, ImportError> {
     load_candidate_entry_on(sql, key)?
@@ -203,7 +203,7 @@ pub(crate) fn require_workable_on(
 /// longer lists the release there with those files, and otherwise as a
 /// release is that is blocked, imported or claimed by an import.
 pub(crate) fn require_editable_files_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
     content_hash: &str,
     file_edit_revision: u64,

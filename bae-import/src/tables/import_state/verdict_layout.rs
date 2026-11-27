@@ -128,7 +128,7 @@ pub(super) fn verdict_text_on(
 }
 
 sqlive_compose::read!(
-    VerdictOf(content_hash: Option<String>, run: Option<i64>)
+    writer VerdictOf(content_hash: Option<String>, run: Option<i64>)
         { verdict_id: crate::tables::import_state::verdict_rows::VerdictId },
     r#"
     SELECT verdict.verdict_id AS verdict_id, state.*

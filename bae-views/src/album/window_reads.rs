@@ -6,7 +6,7 @@
 
 // The window of the flat grid sorted first by title ascending.
 sqlive_compose::read!(
-    FlatWindowTitle(
+    writer FlatWindowTitle(
         first: String,
         second: String,
         third: String,
@@ -54,7 +54,7 @@ sqlive_compose::read!(
 
 // The window of the flat grid sorted first by title descending.
 sqlive_compose::read!(
-    FlatWindowTitleBack(
+    writer FlatWindowTitleBack(
         first: String,
         second: String,
         third: String,
@@ -102,7 +102,7 @@ sqlive_compose::read!(
 
 // The window of the flat grid sorted first by artist ascending.
 sqlive_compose::read!(
-    FlatWindowArtist(
+    writer FlatWindowArtist(
         first: String,
         second: String,
         third: String,
@@ -150,7 +150,7 @@ sqlive_compose::read!(
 
 // The window of the flat grid sorted first by artist descending.
 sqlive_compose::read!(
-    FlatWindowArtistBack(
+    writer FlatWindowArtistBack(
         first: String,
         second: String,
         third: String,
@@ -198,7 +198,7 @@ sqlive_compose::read!(
 
 // The window of the flat grid sorted first by year ascending.
 sqlive_compose::read!(
-    FlatWindowYear(
+    writer FlatWindowYear(
         first: String,
         second: String,
         third: String,
@@ -246,7 +246,7 @@ sqlive_compose::read!(
 
 // The window of the flat grid sorted first by year descending.
 sqlive_compose::read!(
-    FlatWindowYearBack(
+    writer FlatWindowYearBack(
         first: String,
         second: String,
         third: String,
@@ -294,7 +294,7 @@ sqlive_compose::read!(
 
 // The window of the flat grid sorted first by date added, oldest first.
 sqlive_compose::read!(
-    FlatWindowAdded(
+    writer FlatWindowAdded(
         first: String,
         second: String,
         third: String,
@@ -342,7 +342,7 @@ sqlive_compose::read!(
 
 // The window of the flat grid sorted first by date added, newest first.
 sqlive_compose::read!(
-    FlatWindowAddedBack(
+    writer FlatWindowAddedBack(
         first: String,
         second: String,
         third: String,
@@ -390,7 +390,7 @@ sqlive_compose::read!(
 
 // The window of the grid grouped by artist sorted first by the artists ascending.
 sqlive_compose::read!(
-    GroupedWindowArtist(
+    writer GroupedWindowArtist(
         first: String,
         second: String,
         third: String,
@@ -442,7 +442,7 @@ sqlive_compose::read!(
 
 // The window of the grid grouped by artist sorted first by the artists descending.
 sqlive_compose::read!(
-    GroupedWindowArtistBack(
+    writer GroupedWindowArtistBack(
         first: String,
         second: String,
         third: String,

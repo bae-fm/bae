@@ -38,7 +38,7 @@ pub struct PlaylistDetail {
 // person's own, where Add to playlist can put a track. The read reads
 // `name_sort`, so coven reruns it when the device's language changes.
 sqlive_compose::read!(
-    PlaylistList(own_only: bool) { total: u64 },
+    writer PlaylistList(own_only: bool) { total: u64 },
     r#"
     SELECT playlist.*, COUNT(*) OVER () AS total
     FROM @bae_people::people::playlist_fragments::ListedPlaylist AS playlist
@@ -50,7 +50,7 @@ sqlive_compose::read!(
 
 // Whether the person can make a playlist.
 sqlive_compose::read!(
-    CanCreatePlaylist,
+    writer CanCreatePlaylist,
     r#"
     SELECT viewer.*
     FROM @bae_people::people::playlist_fragments::OwnProfileExists AS viewer
@@ -60,7 +60,7 @@ sqlive_compose::read!(
 // The playlist `playlist` with its entries; no row when the library holds no
 // such playlist, or `playlist` names none.
 sqlive_compose::read!(
-    PlaylistPage(playlist: Option<String>),
+    writer PlaylistPage(playlist: Option<String>),
     r#"
     SELECT playlist.*, paged.*
     FROM @bae_people::people::playlist_fragments::ListedPlaylist AS playlist

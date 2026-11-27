@@ -165,7 +165,7 @@ impl CatalogRow for LabelRow {
 /// The library's labels, as a write's transaction reads them.
 struct LibraryLabels<'a, Q>(&'a Q);
 
-impl<Q: coven::SqlRead> CatalogLibrary<LabelRow> for LibraryLabels<'_, Q> {
+impl<Q: bae_store::WriterRead> CatalogLibrary<LabelRow> for LibraryLabels<'_, Q> {
     type Error = rusqlite::Error;
 
     fn holding(&self, column: CatalogColumn, catalog_id: &str) -> rusqlite::Result<Vec<LabelRow>> {
@@ -334,7 +334,7 @@ pub fn write_release_labels_on(
 }
 
 /// The name and id of each label the release names now, as each shows.
-fn labels_named_on<Q: coven::SqlRead>(
+fn labels_named_on<Q: bae_store::WriterRead>(
     sql: &Q,
     release_id: &str,
 ) -> Result<Vec<(String, String)>, DbError> {

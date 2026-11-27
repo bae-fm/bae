@@ -52,7 +52,7 @@ impl ReleaseDeletion {
         &self.album_id
     }
 
-    pub(super) fn plan_on<Q: coven::SqlRead>(
+    pub(super) fn plan_on<Q: bae_store::WriterRead>(
         sql: &Q,
         release_id: &str,
     ) -> Result<Option<Self>, DbError> {

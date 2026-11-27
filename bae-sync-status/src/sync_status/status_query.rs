@@ -5,7 +5,7 @@ use super::fragments::{CurrentSyncStatus, StartFailure};
 use super::*;
 
 sqlive_compose::read!(
-    LibrarySyncStatus,
+    writer LibrarySyncStatus,
     r#"
     SELECT current.*
     FROM @crate::sync_status::fragments::CurrentSyncStatus AS current

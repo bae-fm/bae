@@ -10,7 +10,7 @@ use super::*;
 // id breaking a tie), and the coven file of its cover's browse copy; no row
 // for a release the library does not hold.
 sqlive_compose::read!(
-    OneReleaseWithFiles(release: String) {
+    writer OneReleaseWithFiles(release: String) {
         files: String,
         cover_file: Option<coven::FileId>,
     },
@@ -33,7 +33,7 @@ sqlive_compose::read!(
 // The file `file` of the release `release`; no row when the release has no
 // such file.
 sqlive_compose::read!(
-    FileOfRelease(release: String, file: String),
+    writer FileOfRelease(release: String, file: String),
     r#"
     SELECT listed.*
     FROM @crate::records::file_fragments::FileDocuments(
@@ -60,7 +60,7 @@ pub struct ReleaseWithFiles {
 /// The release `release_id` with its files; `None` when the library holds no
 /// such release.
 pub(super) fn release_with_files_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Option<ReleaseWithFiles>, DbError> {
     let statement = OneReleaseWithFilesParams { release: release_id.to_owned() };

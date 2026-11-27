@@ -57,9 +57,10 @@ sqlive_compose::fragment!(
                 SELECT answer.name_key, answer.musicbrainz_artist_id, answer.discogs_artist_id,
                        answer.artists
                 FROM @bae_records::records::credit_rule::CreditAnswers(credits: (
-                    SELECT DISTINCT bae_artist_name_key(name) AS name_key,
-                           musicbrainz_artist_id, discogs_artist_id
-                    FROM form_raw WHERE assignment_kind = 'credit')) AS answer)) AS stood),
+                    SELECT DISTINCT bae_artist_name_key(named.name) AS name_key,
+                           named.musicbrainz_artist_id, named.discogs_artist_id
+                    FROM form_raw AS named
+                    WHERE named.assignment_kind = 'credit')) AS answer)) AS stood),
     own AS (
         SELECT assignment.track_id,
                json_group_array(json_object(
@@ -95,7 +96,7 @@ sqlive_compose::fragment!(
 
 // The album's artist field: no row when the album has no artist.
 sqlive_compose::read!(
-    FormAlbumArtistField(album_artists: String, track_artists: String),
+    writer FormAlbumArtistField(album_artists: String, track_artists: String),
     r#"
     SELECT album.*
     FROM @crate::tables::release_edit::artist_fields::FormArtistFields(
@@ -108,7 +109,7 @@ sqlive_compose::read!(
 /// tracks' artists are the JSON arrays `album_artists` and `track_artists`,
 /// with how it stands to the library; `None` when the album has none.
 pub(super) fn album_artist_field_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     album_artists: &str,
     track_artists: &str,
 ) -> Result<Option<crate::ArtistField>, DbError> {

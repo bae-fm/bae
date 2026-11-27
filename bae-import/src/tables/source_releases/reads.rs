@@ -1,7 +1,7 @@
 //! The statements that read stored catalog releases.
 
 sqlive_compose::read!(
-    ReleasesWithKeptAlbums(releases: String) { at: Option<i64> },
+    writer ReleasesWithKeptAlbums(releases: String) { at: Option<i64> },
     r#"
     SELECT wanted.key AS at, release.*, kept.*
     FROM json_each(:releases) AS wanted

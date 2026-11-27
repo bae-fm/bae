@@ -51,7 +51,7 @@ sqlive_compose::fragment!(
 
 // Each track of one release, in playing order, with its numbers.
 sqlive_compose::read!(
-    NumberedTracksOfRelease(release: String),
+    writer NumberedTracksOfRelease(release: String),
     r#"
     SELECT track.*, numbered.*
     FROM @crate::records::export_numbers::ExportNumbers(
@@ -69,7 +69,7 @@ sqlive_compose::read!(
 
 // One track with its numbers; no row for a track the library does not hold.
 sqlive_compose::read!(
-    OneNumberedTrack(track: String),
+    writer OneNumberedTrack(track: String),
     r#"
     SELECT track.*, numbered.*
     FROM @crate::records::export_numbers::ExportNumbers(
@@ -114,7 +114,7 @@ fn numbered_track(
 /// Each track of `release_id` in playing order, with how a surface outside
 /// bae numbers it.
 pub(super) fn numbered_tracks_of_release_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Vec<DbNumberedTrack>, DbError> {
     let statement = NumberedTracksOfReleaseParams { release: release_id.to_owned() };
@@ -127,7 +127,7 @@ pub(super) fn numbered_tracks_of_release_on(
 /// The track `track_id` with how a surface outside bae numbers it, or `None`
 /// when the library holds no such track.
 pub(super) fn numbered_track_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     track_id: &str,
 ) -> Result<Option<DbNumberedTrack>, DbError> {
     let statement = OneNumberedTrackParams { track: track_id.to_owned() };

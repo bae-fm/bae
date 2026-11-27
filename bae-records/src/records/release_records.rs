@@ -204,7 +204,7 @@ pub(super) fn set_records_on(
 /// releases `excluding`, as
 /// [`AlbumRecordsName`](super::fragments::AlbumRecordsName) names it.
 pub fn album_records_name_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     records: &[bae_catalogs::records::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
@@ -222,7 +222,7 @@ pub fn album_records_name_on(
 // the JSON array `records` ([`records_json`]), leaving out the releases of the
 // JSON array `excluding`.
 sqlive_compose::read!(
-    AlbumRecordsNameOfJson(records: String, excluding: String),
+    writer AlbumRecordsNameOfJson(records: String, excluding: String),
     r#"
     SELECT named.*
     FROM @crate::records::fragments::AlbumRecordsName(
@@ -238,7 +238,7 @@ sqlive_compose::read!(
 // of the JSON array `checks`, each a `[release_id, catalog, group_id]`, in
 // its order.
 sqlive_compose::read!(
-    LibraryStatusOfJson(checks: String),
+    writer LibraryStatusOfJson(checks: String),
     r#"
     SELECT status.*
     FROM @crate::records::fragments::LibraryStatusRows(checks: (
@@ -254,7 +254,7 @@ sqlive_compose::read!(
 /// [`FiledByRecords`](super::fragments::FiledByRecords) names them; `None`
 /// when the library holds no such release.
 pub fn records_target_album_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     release_id: &str,
     records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<Option<RecordsTargetAlbum>, DbError> {
@@ -274,7 +274,7 @@ pub fn records_target_album_on(
 // [`FiledByRecords`](super::fragments::FiledByRecords) over the records of
 // the JSON array `records` ([`records_json`]).
 sqlive_compose::read!(
-    RecordsTargetAlbumOfJson(release: String, records: String),
+    writer RecordsTargetAlbumOfJson(release: String, records: String),
     r#"
     SELECT filed.*
     FROM @crate::records::fragments::FiledByRecords(
@@ -326,7 +326,7 @@ pub fn records_json(records: &[bae_catalogs::records::ReleaseRecord]) -> String 
 /// JSON array, and [`LibraryStatusOfJson`] returns one row for each check, in
 /// check order.
 fn check_releases_in_library_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
     if checks.is_empty() {

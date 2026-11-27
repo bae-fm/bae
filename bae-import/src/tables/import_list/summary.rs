@@ -37,7 +37,7 @@ impl TabCounts {
 // Whether bae watches any folder, and whether Found has any group: a group's
 // header is a placement row of its own, which the counts count.
 sqlive_compose::read!(
-    Summary { has_watched_folders: bool, has_groups: bool },
+    writer Summary { has_watched_folders: bool, has_groups: bool },
     r#"
     SELECT EXISTS (
                SELECT 1 FROM @crate::tables::watched_folders::fragments::WatchedFolderRows
@@ -53,15 +53,15 @@ sqlive_compose::read!(
 // and the others each hold those in their states. The person cannot choose an
 // entry that holds no releases.
 sqlive_compose::read!(
-    FilterEntries(entries: String, all: String) {
+    writer FilterEntries(entries: String, all: String) {
         entry: Option<String>, count: i64, selectable: bool
     },
     r#"
     WITH named(position, entry) AS (
         SELECT listed.key, listed.value FROM json_each(:entries) AS listed
     ), held(entry, count) AS (
-        SELECT pending_entry, count FROM import_list_count
-        WHERE pending_entry IS NOT NULL
+        SELECT import_list_count.pending_entry, import_list_count.count FROM import_list_count
+        WHERE import_list_count.pending_entry IS NOT NULL
     ), counted(position, entry, count) AS (
         SELECT named.position, named.entry,
             CASE WHEN named.entry = :all
@@ -87,7 +87,7 @@ sqlive_compose::read!(
 // while no entry narrows it, which the group counts are searched by. Only
 // Found has groups.
 sqlive_compose::read!(
-    KeptCount(
+    writer KeptCount(
         tab: String, filter: Option<String>, entries: String, folds_only: bool, folded: String
     ) { rows: i64, shown: Option<i64> },
     r#"
@@ -134,7 +134,7 @@ sqlive_compose::fragment!(
 // rows its search finds, which are read once: the kept releases outside the
 // groups it folds shut, and the headers of the groups holding a kept release.
 sqlive_compose::read!(
-    SearchCount(
+    writer SearchCount(
         tab: String, filter: Option<String>, filter_text: String, folds_only: bool,
         folded: String
     ) { rows: i64, shown: i64 },
@@ -164,7 +164,7 @@ sqlive_compose::read!(
 /// Every entry of Found's filter, in the menu's order, with how many of
 /// Found's releases it holds.
 pub(super) fn filter_entries(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
 ) -> Result<Vec<PendingFilterEntry>, DbError> {
     statement_rows(sql, &filter_entries_params())?
         .into_iter()
@@ -196,7 +196,7 @@ fn entry_list(filters: &[PendingFilter]) -> String {
 
 /// The summary a surface shows beside the list's rows: whether bae watches
 /// any folder, and whether Found has any group.
-pub(super) fn summary(sql: &impl coven::SqlRead) -> Result<ImportQueueSummary, DbError> {
+pub(super) fn summary(sql: &impl bae_store::WriterRead) -> Result<ImportQueueSummary, DbError> {
     let row = statement_row(sql, &SummaryParams {})?;
     Ok(ImportQueueSummary {
         has_watched_folders: row.has_watched_folders,
@@ -234,7 +234,7 @@ impl CountStatement {
 /// tab counts beside the list's own counts, so a narrowed list's total is the
 /// tab bar's count of its tab.
 pub(super) fn count(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
 ) -> Result<ImportListCount, DbError> {
     let (tabs, rows, shown) = match CountStatement::of(request) {
@@ -262,7 +262,7 @@ pub(super) fn count(
 // and how many items sit before it among its tab's, in the list's order with
 // the filters cleared and its group opened.
 sqlive_compose::read!(
-    Revealed(
+    writer Revealed(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
         opened: Option<crate::CandidateKey>
@@ -302,7 +302,7 @@ pub(super) fn reveal_params(request: &ImportListRequest, key: &CandidateKey) -> 
 /// group opened and the list's order and other folds kept, and where it sits
 /// there. `None` for a candidate no tab lists.
 pub(super) fn reveal(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
     key: &CandidateKey,
 ) -> Result<Option<ImportListReveal>, DbError> {
@@ -341,7 +341,7 @@ pub(super) fn reveal(
 // The first candidate being identified, Found's first, in the order each
 // read names, every tab's rows unfiltered and no group folded.
 sqlive_compose::read!(
-    NewestFirstIdentifying { key: crate::CandidateKey },
+    writer NewestFirstIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key
     FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
@@ -357,7 +357,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    OldestFirstIdentifying { key: crate::CandidateKey },
+    writer OldestFirstIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key
     FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
@@ -373,7 +373,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    PathAscendingIdentifying { key: crate::CandidateKey },
+    writer PathAscendingIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key
     FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
@@ -388,7 +388,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    PathDescendingIdentifying { key: crate::CandidateKey },
+    writer PathDescendingIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key
     FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
@@ -406,7 +406,7 @@ sqlive_compose::read!(
 /// The first candidate being identified in the order `order` runs, every
 /// tab's rows unfiltered, Found's first: `None` for none.
 pub(super) fn first_identifying(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     order: crate::ImportListOrder,
 ) -> Result<Option<CandidateKey>, DbError> {
     use crate::ImportListOrder as Order;

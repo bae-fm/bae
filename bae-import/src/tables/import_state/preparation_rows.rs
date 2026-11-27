@@ -125,7 +125,7 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::read!(
-    PreparationOf(content_hash: String),
+    writer PreparationOf(content_hash: String),
     r#"
     SELECT preparation.*
     FROM @crate::tables::import_state::preparation_rows::Preparation(
@@ -134,7 +134,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    LeftOutAudioOf(key: crate::CandidateKey),
+    writer LeftOutAudioOf(key: crate::CandidateKey),
     r#"
     SELECT unread.*
     FROM @crate::tables::import_list::fragments::LeftOutAudio(key: :key) AS unread
@@ -143,7 +143,7 @@ sqlive_compose::read!(
 
 // The first draft track that plays no audio unit of the folder, if any.
 sqlive_compose::read!(
-    DraftTrackWithoutUnit(key: crate::CandidateKey),
+    writer DraftTrackWithoutUnit(key: crate::CandidateKey),
     r#"
     SELECT played.*
     FROM @crate::tables::import_list::fragments::DraftUnits(key: :key) AS played
@@ -154,7 +154,7 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
-    PreparationWithCardsOf(content_hash: String),
+    writer PreparationWithCardsOf(content_hash: String),
     r#"
     SELECT preparation.*, cards.*
     FROM @crate::tables::import_state::preparation_rows::Preparation(
@@ -167,7 +167,7 @@ sqlive_compose::read!(
 /// [`PreparationOf`] on the connection the caller holds, a read's or a
 /// write's; `None` for a hash no candidate holds state under.
 pub(super) fn load_preparation_on(
-    sql: &impl coven::SqlRead,
+    sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<Option<CandidatePreparationRead>, DbError> {
     let request = PreparationOfParams { content_hash: content_hash.to_string() };
