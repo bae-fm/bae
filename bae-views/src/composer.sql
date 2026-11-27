@@ -88,8 +88,7 @@ CREATE INDEX IF NOT EXISTS idx_composer_unlinked_credit_artist ON composer_unlin
 CREATE INDEX IF NOT EXISTS idx_composer_unlinked_credit_release ON composer_unlinked_credit (release_id);
 
 -- Each artist the composer list shows, with its name and the name's sort key
--- (`name_sort`) for the list's order and the three counts: a row while any count is above zero. An index serves each
--- of the list's sorts, ties broken by name, then id.
+-- (`name_sort`) for the list's order and the three counts: a row while any count is above zero.
 CREATE TABLE IF NOT EXISTS composer_listing (
     artist_id TEXT PRIMARY KEY REFERENCES artists (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -98,18 +97,6 @@ CREATE TABLE IF NOT EXISTS composer_listing (
     linked_release_count INTEGER NOT NULL CHECK (linked_release_count >= 0),
     unlinked_credit_count INTEGER NOT NULL CHECK (unlinked_credit_count >= 0)
 ) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_composer_listing_name ON composer_listing (name_sort_key, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_composer_listing_name_desc ON composer_listing (name_sort_key DESC, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_composer_listing_work_count ON composer_listing (work_count, name_sort_key, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_composer_listing_work_count_desc ON composer_listing (work_count DESC, name_sort_key, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count ON composer_listing (linked_release_count, name_sort_key, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count_desc ON composer_listing (linked_release_count DESC, name_sort_key, artist_id);
 
 -- Each row added to or removed from the three tables counts in or out of its
 -- artist's listing row, named by the artist the row's credit names.

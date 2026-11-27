@@ -5,11 +5,16 @@
 
 use super::*;
 use crate::album_detail::{WorkChild, WorkDetail, WorkReleaseSummary};
+use crate::list_sort::term;
+use crate::list_sort::ListSort;
 use bae_records::records::browse_fragments::{WorkReleaseRow, WorkSummary};
+use bae_records::records::files::ArtistImageVersion;
 use bae_records::records::files::CoverVersion;
+use bae_store::list_windows::{sql_bound, SortValue};
 use bae_store::{statement_optional, statement_row, statement_rows};
 
 impl LibraryViews {
+    /// The composer list's rows at the places from `offset`, at most `limit`.
     #[cfg(test)]
     pub(crate) async fn get_composer_page(
         &self,
@@ -17,84 +22,67 @@ impl LibraryViews {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbComposerSummary>, DbError> {
-        let order = composer_order(sort);
-        self.store
-            .read(move |sql| {
-                Ok(composer_rows_on(&sql, &order, &order.at_offset(offset), limit)?
-                    .into_iter()
-                    .map(|(row, _)| row)
-                    .collect())
-            })
-            .await
+        let sort = composer_sort(sort);
+        let page = ListPage { offset, limit };
+        self.store.read(move |sql| composer_page_on(&sql, &sort, page)).await
     }
 
-    /// Follow one window of the composer list under `sort`: a range of its
-    /// order (`list_windows`), which coven reruns for a write inside it alone.
+    /// Follow one window of the composer list under `sort`: the rows from a key
+    /// of its order on.
     pub fn subscribe_composer_window(
         &self,
         sort: &[ComposerSortCriterion],
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbComposerSummary>, bae_store::DbError>
     {
-        let order = composer_order(sort);
-        let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
-            composer_rows_on(sql, &read_order, seek, limit)
+        let sort = composer_sort(sort);
+        self.store.subscribe_reconfigurable(initial, move |window, sql| {
+            composer_window_on(&sql, &sort, window)
         })
     }
 
-    /// Follow one page of the composer list under `sort`: the composers at
-    /// the page's places as each write leaves them.
+    /// Follow one page of the composer list under `sort`: the composers at the
+    /// page's places as each write leaves them.
     pub fn subscribe_composer_page(
         &self,
         sort: &[ComposerSortCriterion],
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
-        let order = composer_order(sort);
-        let read_order = order.clone();
-        self.store.subscribe_list_page(
-            page,
-            order,
-            |order, seek| listing_window_query(composer_listing_query, order, seek),
-            move |sql, seek, limit| composer_rows_on(sql, &read_order, seek, limit),
-            |rows| Ok(crate::ListRows::Composers(rows)),
-        )
+        let sort = composer_sort(sort);
+        self.store
+            .subscribe(move |sql| composer_page_on(&sql, &sort, page))
+            .process(|rows| Ok(crate::ListRows::Composers(rows)))
     }
 
     /// Follow how many composers the list has. The count runs as a separate
-    /// query from the windows' rows.
+    /// query from the windows, because every composer added or removed changes
+    /// it.
     pub fn subscribe_composer_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
-        self.store.subscribe(|sql| composer_count_on(&sql))
+        self.store.subscribe(|sql| composer_list_length_on(&sql))
     }
 
-    /// Follow how many composers come before the row at a key, a count over
-    /// index ranges; the caller changes the key on the same query.
+    /// Follow how many composers come before the row at a key; the caller
+    /// changes the key on the same query.
     pub fn subscribe_composer_position(
         &self,
         sort: &[ComposerSortCriterion],
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        let order = composer_order(sort);
+        let sort = composer_sort(sort);
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            composer_rows_before_on(&sql, &order, key)
+            composers_before_on(&sql, &sort, key)
         })
     }
 
-    /// The key of the composer at `position`, or of the last one when the
-    /// list ends before it; `None` for an empty list.
+    /// The key of the composer at `position`, or of the last one when the list
+    /// ends before it; `None` for an empty list.
     pub async fn composer_key_at(
         &self,
         sort: &[ComposerSortCriterion],
         position: u64,
     ) -> Result<Option<OrderKey>, DbError> {
-        let order = composer_order(sort);
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    composer_rows_on(&sql, &order, seek, limit)
-                })
-            })
-            .await
+        let sort = composer_sort(sort);
+        self.store.read(move |sql| composer_key_at_on(&sql, &sort, position)).await
     }
 
     pub(crate) async fn find_work_detail(
@@ -262,106 +250,441 @@ fn find_work_detail_on(
     }))
 }
 
-/// How many composers come before the row at `key`.
-pub(crate) fn composer_rows_before_on(
+// Each artist the composer list shows (`composer_listing`), with how many
+// works it is credited on and how many releases perform them, and its image's
+// version.
+sqlive_compose::fragment!(
+    ListedComposer,
+    r#"
+    SELECT listing.artist_id AS listed_id, listing.work_count, listing.linked_release_count, artist.*, image.*
+    FROM composer_listing AS listing
+    JOIN @bae_records::records::browse_fragments::ArtistRecord AS artist
+      ON artist.artist_id = listing.artist_id
+    LEFT JOIN @bae_records::records::files::ArtistImageVersion AS image
+           ON image.id = listing.artist_id
+"#
+);
+
+impl ListedComposer {
+    /// The composer as its row shows it.
+    pub(crate) fn into_summary(self) -> Result<DbComposerSummary, DbError> {
+        let artist = self.artist.into_artist()?;
+        let version = self.image.and_then(ArtistImageVersion::into_version);
+        Ok(DbComposerSummary {
+            image: bae_records::artist_image_ref(&artist.id, version),
+            artist,
+            work_count: self.work_count,
+            linked_release_count: self.linked_release_count,
+        })
+    }
+}
+
+// The composer list's statements order by the person's sort of up to 3
+// criteria, each of them one fixed statement for every sort. `field_N` names
+// the Nth criterion's field, NULL past the sort's last, and `descending_N`
+// runs it the other way. After the criteria, rows go by name, then id, which
+// tells every two apart. A key is a row's value for each criterion, its name
+// key and its id. A row comes before a key when the first of those it differs
+// in puts it first; no criterion's value is NULL, so only the criteria past
+// the sort's last compare two NULLs. A window from the top binds a NULL key,
+// which no row comes before. The window and the count before a key write that
+// comparison over the list table's own columns, so coven reruns each only for
+// a write on its side of the key. No index serves a sort the parameters name,
+// so each read goes through the whole list.
+
+// The composer list's rows from a key on, at most `limit` of them, in the sort's
+// order. Each criterion has an ascending and a descending term, one of which is
+// NULL in every row, as both are past the sort's last criterion. Each term is
+// written over columns of the list table and returned ahead of the row, so
+// coven reruns a full window only for a write at or before its last row.
+sqlive_compose::read!(
+    ComposerWindow(
+        field_1: Option<String>,
+        field_2: Option<String>,
+        field_3: Option<String>,
+        descending_1: bool,
+        descending_2: bool,
+        descending_3: bool,
+        key_1: SortValue,
+        key_2: SortValue,
+        key_3: SortValue,
+        key_name: SortValue,
+        key_id: Option<String>,
+        limit: i64
+    ) {
+        order_name: Vec<u8>,
+        order_id: String,
+        order_1: SortValue,
+        order_2: SortValue,
+        order_3: SortValue,
+        order_4: SortValue,
+        order_5: SortValue,
+        order_6: SortValue
+    },
+    r#"
+    SELECT CASE WHEN NOT :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_1,
+           CASE WHEN :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_2,
+           CASE WHEN NOT :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_3,
+           CASE WHEN :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_4,
+           CASE WHEN NOT :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_5,
+           CASE WHEN :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_6,
+           listing.name_sort_key AS order_name, listing.artist_id AS order_id,
+           shown.*
+    FROM composer_listing AS listing
+    JOIN @crate::composer::ListedComposer AS shown ON shown.listed_id = listing.artist_id
+    WHERE NOT COALESCE(
+            CASE WHEN :descending_1
+                 THEN CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END > :key_1
+                 ELSE CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END < :key_1 END
+            OR (CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END IS :key_1 AND (
+                CASE WHEN :descending_2
+                     THEN CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END > :key_2
+                     ELSE CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END < :key_2 END
+                OR (CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END IS :key_2 AND (
+                    CASE WHEN :descending_3
+                         THEN CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END > :key_3
+                         ELSE CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END < :key_3 END
+                    OR (CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END IS :key_3 AND (
+                        (listing.name_sort_key, listing.artist_id) < (:key_name, :key_id))))))),
+            0)
+    ORDER BY CASE WHEN NOT :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             CASE WHEN NOT :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             CASE WHEN NOT :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             listing.name_sort_key, listing.artist_id
+    LIMIT :limit
+"#
+);
+
+// The composer list's rows at the places from `offset` in the sort's order, at
+// most `limit` of them.
+sqlive_compose::read!(
+    ComposerRows(
+        field_1: Option<String>,
+        field_2: Option<String>,
+        field_3: Option<String>,
+        descending_1: bool,
+        descending_2: bool,
+        descending_3: bool,
+        offset: i64,
+        limit: i64,
+    ),
+    r#"
+    SELECT shown.*
+    FROM composer_listing AS listing
+    JOIN @crate::composer::ListedComposer AS shown ON shown.listed_id = listing.artist_id
+    ORDER BY CASE WHEN NOT :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             CASE WHEN NOT :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             CASE WHEN NOT :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             listing.name_sort_key, listing.artist_id
+    LIMIT :limit OFFSET :offset
+"#
+);
+
+// How many composers of the sort's order come before the row at a key.
+sqlive_compose::read!(
+    ComposersBefore(
+        field_1: Option<String>,
+        field_2: Option<String>,
+        field_3: Option<String>,
+        descending_1: bool,
+        descending_2: bool,
+        descending_3: bool,
+        key_1: SortValue,
+        key_2: SortValue,
+        key_3: SortValue,
+        key_name: SortValue,
+        key_id: Option<String>
+    ) { entries: i64 },
+    r#"
+    SELECT COUNT(*) AS entries
+    FROM composer_listing AS listing
+    WHERE COALESCE(
+            CASE WHEN :descending_1
+                 THEN CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END > :key_1
+                 ELSE CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END < :key_1 END
+            OR (CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END IS :key_1 AND (
+                CASE WHEN :descending_2
+                     THEN CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END > :key_2
+                     ELSE CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END < :key_2 END
+                OR (CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END IS :key_2 AND (
+                    CASE WHEN :descending_3
+                         THEN CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END > :key_3
+                         ELSE CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END < :key_3 END
+                    OR (CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END IS :key_3 AND (
+                        (listing.name_sort_key, listing.artist_id) < (:key_name, :key_id))))))),
+            0)
+"#
+);
+
+// The key of the row at the place `index` of the sort's order, or of the last
+// row when the list ends before it. SQLite reads the offset -1 of an empty
+// list as 0, where there is no row.
+sqlive_compose::read!(
+    ComposerKeyAt(
+        field_1: Option<String>,
+        field_2: Option<String>,
+        field_3: Option<String>,
+        descending_1: bool,
+        descending_2: bool,
+        descending_3: bool,
+        index: i64
+    ) {
+        order_name: Vec<u8>,
+        order_id: String,
+        order_1: SortValue,
+        order_2: SortValue,
+        order_3: SortValue,
+        order_4: SortValue,
+        order_5: SortValue,
+        order_6: SortValue
+    },
+    r#"
+    SELECT CASE WHEN NOT :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_1,
+           CASE WHEN :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_2,
+           CASE WHEN NOT :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_3,
+           CASE WHEN :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_4,
+           CASE WHEN NOT :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_5,
+           CASE WHEN :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END AS order_6,
+           listing.name_sort_key AS order_name, listing.artist_id AS order_id
+    FROM composer_listing AS listing
+    ORDER BY CASE WHEN NOT :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_1 THEN
+               CASE :field_1 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             CASE WHEN NOT :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_2 THEN
+               CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             CASE WHEN NOT :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END,
+             CASE WHEN :descending_3 THEN
+               CASE :field_3 WHEN 'name' THEN listing.name_sort_key WHEN 'works' THEN listing.work_count WHEN 'releases' THEN listing.linked_release_count END END DESC,
+             listing.name_sort_key, listing.artist_id
+    LIMIT 1 OFFSET min(:index, (SELECT COUNT(*) FROM composer_listing AS counted) - 1)
+"#
+);
+
+// How many composers the list has.
+sqlive_compose::read!(
+    ComposerListLength { entries: i64 },
+    r#"
+    SELECT COUNT(*) AS entries
+    FROM composer_listing AS listing
+"#
+);
+
+/// The key of a row with the value `sorts` for each criterion, the name key
+/// `name` and the id `id`.
+fn composer_key(sorts: [SortValue; 3], name: Vec<u8>, id: String) -> OrderKey {
+    let mut values = Vec::from(sorts);
+    values.extend([SortValue::Blob(name), SortValue::Text(id)]);
+    OrderKey::new(values)
+}
+
+/// The values `key` holds, as the statements bind them: each criterion's, the
+/// name key's and the id.
+fn composer_key_values(key: &OrderKey) -> Result<([SortValue; 3], SortValue, String), DbError> {
+    match key.values() {
+        [sort_1, sort_2, sort_3, name, SortValue::Text(id)] => {
+            Ok(([sort_1.clone(), sort_2.clone(), sort_3.clone()], name.clone(), id.clone()))
+        }
+        values => Err(DbError::unreadable("a composer list key", values)),
+    }
+}
+
+/// The composer list's `window` under `sort`, each row with its key.
+pub(crate) fn composer_window_on(
     sql: &SqlReadContext<'_>,
-    order: &ListOrder,
+    sort: &ListSort<3>,
+    window: &ListWindow,
+) -> Result<WindowRead<DbComposerSummary>, DbError> {
+    let (mut key_1, mut key_2, mut key_3, mut key_name, mut key_id) =
+        (SortValue::Null, SortValue::Null, SortValue::Null, SortValue::Null, None);
+    if let Some(from) = &window.from {
+        let ([sort_1, sort_2, sort_3], name, id) = composer_key_values(from)?;
+        (key_1, key_2, key_3, key_name, key_id) = (sort_1, sort_2, sort_3, name, Some(id));
+    }
+    // A window from the top starts after no row. One from a key starts at the
+    // key's row: the rows that don't come before it.
+    let statement = ComposerWindowParams {
+        field_1: sort.field(0),
+        field_2: sort.field(1),
+        field_3: sort.field(2),
+        descending_1: sort.descending(0),
+        descending_2: sort.descending(1),
+        descending_3: sort.descending(2),
+        key_1,
+        key_2,
+        key_3,
+        key_name,
+        key_id,
+        limit: sql_bound(window.limit),
+    };
+    let rows = statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| {
+            let key = composer_key(
+                [
+                    term(row.order_1, row.order_2),
+                    term(row.order_3, row.order_4),
+                    term(row.order_5, row.order_6),
+                ],
+                row.order_name,
+                row.order_id,
+            );
+            Ok((row.shown.into_summary()?, key))
+        })
+        .collect::<Result<_, DbError>>()?;
+    Ok(WindowRead { window: window.clone(), rows })
+}
+
+/// The composer list's rows at `page`'s places under `sort`.
+pub(crate) fn composer_page_on(
+    sql: &SqlReadContext<'_>,
+    sort: &ListSort<3>,
+    page: ListPage,
+) -> Result<Vec<DbComposerSummary>, DbError> {
+    let statement = ComposerRowsParams {
+        field_1: sort.field(0),
+        field_2: sort.field(1),
+        field_3: sort.field(2),
+        descending_1: sort.descending(0),
+        descending_2: sort.descending(1),
+        descending_3: sort.descending(2),
+        offset: sql_bound(page.offset),
+        limit: sql_bound(page.limit),
+    };
+    statement_rows(sql, &statement)?.into_iter().map(|row| row.shown.into_summary()).collect()
+}
+
+/// How many composers come before the row at `key` under `sort`.
+pub(crate) fn composers_before_on(
+    sql: &SqlReadContext<'_>,
+    sort: &ListSort<3>,
     key: &OrderKey,
 ) -> Result<u64, DbError> {
-    bae_store::list_windows::rows_before_on(
-        sql,
-        "FROM composer_listing listing",
-        None,
-        &[],
-        order,
-        key,
-    )
+    let ([key_1, key_2, key_3], key_name, id) = composer_key_values(key)?;
+    let statement = ComposersBeforeParams {
+        field_1: sort.field(0),
+        field_2: sort.field(1),
+        field_3: sort.field(2),
+        descending_1: sort.descending(0),
+        descending_2: sort.descending(1),
+        descending_3: sort.descending(2),
+        key_1,
+        key_2,
+        key_3,
+        key_name,
+        key_id: Some(id),
+    };
+    list_count(statement_row(sql, &statement)?.entries)
 }
 
-fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row("SELECT COUNT(*) FROM composer_listing", [], |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)
-        .map_err(DbError::from)
-}
-
-/// The composer list's rows `seek` reads in `order`, at most `limit`, each
-/// with its key.
-pub(crate) fn composer_rows_on(
+/// The key of the composer at `position` under `sort`, or of the last one.
+pub(crate) fn composer_key_at_on(
     sql: &SqlReadContext<'_>,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbComposerSummary>>, DbError> {
-    let statement = listing_window_query(composer_listing_query, order, seek);
-    Ok(seek.bound(limit, |params| {
-        sql.query(&statement, params, |row| Ok((row_to_composer_summary(row)?, order.key_of(row)?)))
-    })?)
+    sort: &ListSort<3>,
+    position: u64,
+) -> Result<Option<OrderKey>, DbError> {
+    let statement = ComposerKeyAtParams {
+        field_1: sort.field(0),
+        field_2: sort.field(1),
+        field_3: sort.field(2),
+        descending_1: sort.descending(0),
+        descending_2: sort.descending(1),
+        descending_3: sort.descending(2),
+        index: sql_bound(position),
+    };
+    Ok(statement_optional(sql, &statement)?.map(|row| {
+        composer_key(
+            [
+                term(row.order_1, row.order_2),
+                term(row.order_3, row.order_4),
+                term(row.order_5, row.order_6),
+            ],
+            row.order_name,
+            row.order_id,
+        )
+    }))
 }
 
-/// The composer list's rows (`composer_listing`), each with its artist, as
-/// [`row_to_composer_summary`] reads them, and each row's key in `keyed`'s
-/// order when one is given; `filter` and `tail` follow the join.
-pub(crate) fn composer_listing_query(
-    keyed: Option<&ListOrder>,
-    filter: Option<&str>,
-    tail: Option<&str>,
-) -> String {
-    let mut query = format!(
-        "SELECT composer.id AS artist_id,
-                composer.name AS artist_name,
-                composer.sort_name AS artist_sort_name,
-                composer.discogs_artist_id AS artist_discogs_artist_id,
-                composer.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
-                composer.created_at AS artist_created_at,
-                {image} AS artist_image_version,
-                listing.work_count,
-                listing.linked_release_count{keys}
-         FROM composer_listing listing
-         JOIN artists composer ON composer.id = listing.artist_id
-         ",
-        image = artist_image_version_sql("composer.id"),
-        keys = key_columns(keyed),
-    );
-    if let Some(filter) = filter {
-        query.push_str(filter);
-    }
-    if let Some(tail) = tail {
-        query.push('\n');
-        query.push_str(tail);
-    }
-    query
+/// How many composers the list has.
+pub(crate) fn composer_list_length_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
+    list_count(statement_row(sql, &ComposerListLengthParams {})?.entries)
 }
 
-pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
-    let artist = row_to_artist_with_prefix(row, "artist_")?;
-    Ok(DbComposerSummary {
-        image: bae_records::artist_image_ref(&artist.id, row.get("artist_image_version")?),
-        artist,
-        work_count: row.get("work_count")?,
-        linked_release_count: row.get("linked_release_count")?,
-    })
+// The first `limit` composers library search finds for `pattern`, in name order,
+// ties going by id, each beside how many rows the statement lists.
+sqlive_compose::read!(
+    FirstComposersFound(pattern: String, limit: i64) { listed: i64 },
+    r#"
+    SELECT shown.*, COUNT(*) OVER () AS listed
+    FROM (SELECT listing.artist_id, listing.name_sort_key
+          FROM composer_listing AS listing
+          WHERE listing.artist_id IN (
+              SELECT matched.artist_id
+              FROM @crate::album_search::ArtistsFound(pattern: :pattern) AS matched)
+          ORDER BY listing.name_sort_key, listing.artist_id
+          LIMIT :limit) AS found
+    CROSS JOIN @crate::composer::ListedComposer AS shown ON shown.listed_id = found.artist_id
+    ORDER BY found.name_sort_key, found.artist_id
+"#
+);
+
+/// The composers [`FirstComposersFound`] lists for `pattern`, at most `limit`,
+/// with how many it lists.
+pub(crate) fn first_composers_found_on(
+    sql: &SqlReadContext<'_>,
+    pattern: &str,
+    limit: i64,
+) -> Result<(Vec<DbComposerSummary>, u64), DbError> {
+    let statement = FirstComposersFoundParams { pattern: pattern.to_string(), limit };
+    let rows = statement_rows(sql, &statement)?;
+    let listed = list_count(rows.first().map_or(0, |row| row.listed))?;
+    let found = rows.into_iter().map(|row| row.shown.into_summary()).collect::<Result<_, _>>()?;
+    Ok((found, listed))
 }
 
-/// The composer list's order, over `composer_listing listing`. Ties break by
-/// name ascending, then id — a window needs a total order and a name is not
-/// unique — and that tie-break is the whole order when `sort` is empty. A
-/// name the sort already orders by is not repeated, so an index of
-/// `composer_listing` serves each one-field sort. Mirrors `album_order`'s
-/// `album_id` tie-break.
-pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
-    let terms = sort
-        .iter()
-        .map(|c| {
-            let field = match c.field {
-                ComposerSortField::Name => "listing.name_sort_key",
-                ComposerSortField::WorkCount => "listing.work_count",
-                ComposerSortField::LinkedReleaseCount => "listing.linked_release_count",
-            };
-            SortTerm::running(field, c.direction)
-        })
-        .collect::<Vec<_>>();
-    let ordered_by_name = sort.iter().any(|c| c.field == ComposerSortField::Name);
-    ListOrder::named(terms, ordered_by_name, "listing.name_sort_key", "listing.artist_id")
+/// The composer list's sort as its statements bind it.
+pub(crate) fn composer_sort(sort: &[ComposerSortCriterion]) -> ListSort<3> {
+    ListSort::of(sort.iter().map(|criterion| {
+        let field = match criterion.field {
+            ComposerSortField::Name => "name",
+            ComposerSortField::WorkCount => "works",
+            ComposerSortField::LinkedReleaseCount => "releases",
+        };
+        (field, criterion.direction)
+    }))
 }
 
 // The work `work`, as its rows show it, with its cover.

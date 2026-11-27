@@ -15,14 +15,6 @@ CREATE TABLE IF NOT EXISTS artist_listing (
     album_count INTEGER NOT NULL CHECK (album_count > 0)
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_artist_listing_name ON artist_listing (name_sort_key, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_artist_listing_name_desc ON artist_listing (name_sort_key DESC, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count ON artist_listing (album_count, name_sort_key, artist_id);
-
-CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count_desc ON artist_listing (album_count DESC, name_sort_key, artist_id);
-
 -- Both columns run one way, so the index serves the grid grouped by artist's
 -- sections in either direction.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_artist_listing_sort_name_key ON artist_listing (sort_name_sort_key DESC, artist_id DESC);

@@ -532,51 +532,24 @@ fn search_library_on(
     let (albums, album_count) = first_search_albums_on(sql, pattern, limit as u64)?;
     let (tracks, track_count) =
         counted_rows(sql, &first_tracks_found_sql(), params![pattern, limit], track_hit_row)?;
-    let (artists, artist_count) = counted_rows(
-        sql,
-        &artist_listing_query(
-            None,
-            Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
-            Some("ORDER BY listing.name_sort_key, listing.artist_id LIMIT ?2"),
-        ),
-        params![pattern, limit],
-        row_to_artist_summary,
-    )?;
-    let (composers, composer_count) = counted_rows(
-        sql,
-        &composer_listing_query(
-            None,
-            Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
-            Some("ORDER BY listing.name_sort_key, listing.artist_id LIMIT ?2"),
-        ),
-        params![pattern, limit],
-        row_to_composer_summary,
-    )?;
+    let (artists, artist_count) = first_artists_found_on(sql, pattern, limit)?;
+    let (composers, composer_count) = first_composers_found_on(sql, pattern, limit)?;
     let (works, work_count) = first_works_found_on(sql, pattern, limit)?;
-    // This query checks whether any album, track, artist, composer or work
-    // matches, through the statements that list each kind, and stops at the
-    // first match.
+    // Whether any album or track matches, through the conditions that list
+    // each kind, stopping at the first match; an artist, composer or work
+    // matches when its section lists one.
     let found: bool = sql.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM albums a WHERE {album_matches}) \
                  OR EXISTS (SELECT 1 FROM tracks t \
-                            WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)) \
-                 OR EXISTS ({artists}) OR EXISTS ({composers})",
+                            WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1))",
             album_matches = album_matches_sql("a.id", "?1"),
-            artists = artist_listing_query(
-                None,
-                Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
-                Some("LIMIT 1"),
-            ),
-            composers = composer_listing_query(
-                None,
-                Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
-                Some("LIMIT 1"),
-            ),
         ),
         params![pattern],
         |row| row.get::<_, bool>(0),
-    )? || work_count > 0;
+    )? || artist_count > 0
+        || composer_count > 0
+        || work_count > 0;
     let section_counts = crate::SearchSectionCounts {
         albums: album_count,
         artists: artist_count,

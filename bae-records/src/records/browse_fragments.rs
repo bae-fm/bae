@@ -406,6 +406,15 @@ impl AlbumRecord {
     }
 }
 
+// The artist each artist shows as after merges, itself unless it was merged.
+sqlive_compose::fragment!(
+    ShownArtist,
+    r#"
+    SELECT shown.artist_id, shown.shown_artist_id
+    FROM artist_shown_as AS shown
+"#
+);
+
 /// The time the text `value` of the column `column` names.
 fn timestamp(column: &'static str, value: &str) -> Result<UtcDateTime, DbError> {
     bae_util::timestamp::parse_rfc3339(value)

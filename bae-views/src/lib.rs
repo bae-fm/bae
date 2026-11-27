@@ -18,7 +18,7 @@
 mod activity_bars;
 pub mod album;
 pub mod album_detail;
-mod album_search;
+pub mod album_search;
 pub mod artist;
 pub mod artist_search;
 mod browse;
@@ -27,6 +27,7 @@ pub mod composer_detail;
 pub mod download_batches;
 pub mod history;
 mod invites;
+mod list_sort;
 pub mod list_view;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
@@ -72,8 +73,8 @@ pub use models::*;
 pub use release::ReleaseDetailProjection;
 pub use storage::StorageCounts;
 
-use artist::{artist_listing_query, row_to_artist_summary};
-use composer::{composer_listing_query, row_to_composer_summary, work_summary};
+use artist::first_artists_found_on;
+use composer::{first_composers_found_on, work_summary};
 use release::{build_album_release_details_on, ReleaseDetailRows};
 
 use album_search::*;
@@ -126,25 +127,6 @@ impl LibraryViews {
 /// The count `count` a `COUNT(*)` read.
 fn list_count(count: i64) -> Result<u64, DbError> {
     u64::try_from(count).map_err(|_error| DbError::unreadable("a list's count", count))
-}
-
-/// `keyed`'s key columns after a select list's last column, or nothing.
-fn key_columns(keyed: Option<&ListOrder>) -> String {
-    keyed.map_or_else(String::new, |order| format!(", {}", order.key_columns()))
-}
-
-/// The statement reading the rows `seek` reads of a listing query built by
-/// `listing` in `order`, at most `:limit`, each with its key.
-pub(crate) fn listing_window_query(
-    listing: fn(Option<&ListOrder>, Option<&str>, Option<&str>) -> String,
-    order: &ListOrder,
-    seek: &Seek,
-) -> String {
-    listing(
-        Some(order),
-        Some(&format!("WHERE {}", order.condition(seek))),
-        Some(&format!("ORDER BY {} {}", order.ordering(seek), seek.limit_clause())),
-    )
 }
 
 #[cfg(test)]

@@ -449,6 +449,13 @@ sqlive_compose::fragment!(
 "#
 );
 
+impl ArtistImageVersion {
+    /// The image's version; `None` while its file has none.
+    pub fn into_version(self) -> Option<String> {
+        self.version
+    }
+}
+
 // Every artist image's version, whose SQL a statement built as text holds.
 sqlive_compose::read!(
     ArtistImageVersions,

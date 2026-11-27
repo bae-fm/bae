@@ -291,82 +291,106 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
     assert_eq!(rows[1].album.artist_line.plain_text(), "Artist Name First, Artist Name Second");
 }
 
-/// An artist window starting at a key holds the rows from that key on, the
-/// same rows that a read by offset returns, and each query the window runs
-/// searches the order's index without sorting.
+/// Under stacked sorts, with ties on every criterion, the artist list's page,
+/// window from a key, position and jump all read one order: the criteria in
+/// turn, then name, then id.
 #[tokio::test]
-async fn an_artist_window_from_a_key_holds_the_rows_from_it_through_the_index() {
-    let (db, _tmp) = library().await;
-    let sort = Vec::new();
-    let order = crate::artist::artist_order(&sort);
+async fn a_stacked_artist_sort_pages_windows_counts_and_jumps_in_one_order() {
+    use ArtistSortField::{AlbumCount, Name};
+    use SortDirection::{Ascending, Descending};
+
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    // By name, then id, the artists run second, fourth, first, third; the
+    // second has one album and each other one two.
+    let [first, second, third, fourth] = [ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_VARIOUS];
+    RecordsFixture::new()
+        .artist(first, "Artist Name B")
+        .artist(second, "Artist Name A")
+        .artist(third, "Artist Name C")
+        .artist(fourth, "Artist Name A")
+        .album(ALBUM_A, "Album Title A", None, &[first, second, third, fourth])
+        .album(ALBUM_AB, "Album Title B", None, &[first, third, fourth])
+        .release(ALBUM_A, "9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e01")
+        .release(ALBUM_AB, "9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e02")
+        .write(&test_records(&db))
+        .await;
     let views = LibraryViews::new(db.clone());
-    let from = views.artist_key_at(&sort, 150).await.unwrap().expect("a row at 150");
-    let mut live =
-        views.subscribe_artist_window(&sort, ListWindow { from: Some(from.clone()), limit: 50 });
-    let held = live.next_inline().await.expect("the query stays open").result.unwrap();
-    let by_offset = views.get_artist_page(&sort, 150, 50).await.unwrap();
-    let ids =
-        |rows: &[DbArtistSummary]| rows.iter().map(|row| row.artist.id.clone()).collect::<Vec<_>>();
-    let held: Vec<DbArtistSummary> = held.rows.into_iter().map(|(row, _key)| row).collect();
-    assert_eq!(held.len(), 50);
-    assert_eq!(ids(&held), ids(&by_offset));
-    assert_seeks_search(
-        &db,
-        "artists from a key",
-        &order,
-        from,
-        |seek| crate::listing_window_query(crate::artist::artist_listing_query, &order, seek),
-        Vec::new(),
-    )
-    .await;
+    let by = |field, direction| ArtistSortCriterion { field, direction };
+
+    for (sort, expected) in [
+        (vec![], [second, fourth, first, third]),
+        (vec![by(Name, Descending)], [third, first, second, fourth]),
+        (vec![by(AlbumCount, Ascending)], [second, fourth, first, third]),
+        (vec![by(AlbumCount, Descending)], [fourth, first, third, second]),
+        (vec![by(AlbumCount, Descending), by(Name, Descending)], [third, first, fourth, second]),
+        (vec![by(AlbumCount, Ascending), by(Name, Descending)], [second, third, first, fourth]),
+        (vec![by(Name, Descending), by(AlbumCount, Descending)], [third, first, fourth, second]),
+        (vec![by(Name, Ascending), by(AlbumCount, Ascending)], [second, fourth, first, third]),
+    ] {
+        let ids = |rows: Vec<DbArtistSummary>| {
+            rows.into_iter().map(|row| row.artist.id).collect::<Vec<_>>()
+        };
+        assert_eq!(ids(views.get_artist_page(&sort, 0, 10).await.unwrap()), expected, "{sort:?}");
+        for (position, _) in expected.iter().enumerate() {
+            let key = views.artist_key_at(&sort, position as u64).await.unwrap().expect("a key");
+            let window = ListWindow { from: Some(key.clone()), limit: 10 };
+            let mut live = views.subscribe_artist_window(&sort, window);
+            let held = live.next_inline().await.expect("the query stays open").result.unwrap();
+            let held = held.rows.into_iter().map(|(row, _key)| row).collect();
+            assert_eq!(ids(held), expected[position..], "{sort:?} from {position}");
+            let before = views
+                .subscribe_artist_position(&sort, key)
+                .next_inline()
+                .await
+                .expect("the query stays open")
+                .result
+                .unwrap();
+            assert_eq!(before, position as u64, "{sort:?}");
+        }
+        assert_eq!(
+            views.artist_key_at(&sort, 10).await.unwrap(),
+            views.artist_key_at(&sort, 3).await.unwrap(),
+            "{sort:?}: a jump past the end finds the last row"
+        );
+    }
 }
 
+/// Three stacked composer criteria read a window, from the top and from a key,
+/// that holds the rows a page reads at those places, and the position of the
+/// key is the place.
 #[tokio::test]
-async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
+async fn a_composer_window_under_three_criteria_holds_the_rows_at_its_places() {
     let (db, _tmp) = library().await;
-    let mut artist_sorts = vec![Vec::new()];
-    for (field, direction) in
-        both_ways(ArtistSortField::Name).into_iter().chain(both_ways(ArtistSortField::AlbumCount))
-    {
-        artist_sorts.push(vec![ArtistSortCriterion { field, direction }]);
-    }
-    for sort in artist_sorts {
-        let order = crate::artist::artist_order(&sort);
-        let key = key_at(&db, &order, crate::artist::artist_rows_on, 150).await;
-        assert_seeks_search(
-            &db,
-            &format!("artists {sort:?}"),
-            &order,
-            key,
-            |seek| crate::listing_window_query(crate::artist::artist_listing_query, &order, seek),
-            Vec::new(),
-        )
-        .await;
-    }
-    let mut composer_sorts = vec![Vec::new()];
-    for field in [
-        ComposerSortField::Name,
-        ComposerSortField::WorkCount,
-        ComposerSortField::LinkedReleaseCount,
-    ] {
-        for (field, direction) in both_ways(field) {
-            composer_sorts.push(vec![ComposerSortCriterion { field, direction }]);
-        }
-    }
-    for sort in composer_sorts {
-        let order = crate::composer::composer_order(&sort);
-        let key = key_at(&db, &order, crate::composer::composer_rows_on, 150).await;
-        assert_seeks_search(
-            &db,
-            &format!("composers {sort:?}"),
-            &order,
-            key,
-            |seek| {
-                crate::listing_window_query(crate::composer::composer_listing_query, &order, seek)
-            },
-            Vec::new(),
-        )
-        .await;
+    let views = LibraryViews::new(db.clone());
+    let sort = [
+        (ComposerSortField::WorkCount, SortDirection::Descending),
+        (ComposerSortField::LinkedReleaseCount, SortDirection::Ascending),
+        (ComposerSortField::Name, SortDirection::Descending),
+    ]
+    .map(|(field, direction)| ComposerSortCriterion { field, direction });
+    let ids = |rows: &[DbComposerSummary]| {
+        rows.iter().map(|row| row.artist.id.clone()).collect::<Vec<_>>()
+    };
+    for position in [0, 150] {
+        let from = match position {
+            0 => None,
+            at => views.composer_key_at(&sort, at).await.unwrap(),
+        };
+        let mut live =
+            views.subscribe_composer_window(&sort, ListWindow { from: from.clone(), limit: 50 });
+        let held = live.next_inline().await.expect("the query stays open").result.unwrap();
+        let held: Vec<DbComposerSummary> = held.rows.into_iter().map(|(row, _key)| row).collect();
+        assert_eq!(held.len(), 50);
+        assert_eq!(ids(&held), ids(&views.get_composer_page(&sort, position, 50).await.unwrap()));
+        let Some(key) = from else { continue };
+        let before = views
+            .subscribe_composer_position(&sort, key)
+            .next_inline()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap();
+        assert_eq!(before, position);
     }
 }
 
@@ -450,7 +474,8 @@ mod window_cost {
         }
     }
 
-    async fn measure_artists(db: &Store, n: u64) {
+    /// Every sort of the artist list by one criterion, and one stacking both.
+    fn artist_sorts() -> Vec<(String, Vec<ArtistSortCriterion>)> {
         let mut sorts = vec![("default".to_string(), Vec::new())];
         for field in [ArtistSortField::Name, ArtistSortField::AlbumCount] {
             for (field, direction) in both_ways(field) {
@@ -460,27 +485,22 @@ mod window_cost {
                 ));
             }
         }
-        for (name, sort) in sorts {
-            measure(
-                db,
-                "artists",
-                &name,
-                n,
-                crate::artist::artist_order(&sort),
-                crate::artist::artist_rows_on,
-                crate::artist::artist_rows_before_on,
-            )
-            .await;
-        }
+        let stacked = [ArtistSortField::AlbumCount, ArtistSortField::Name]
+            .map(|field| ArtistSortCriterion { field, direction: SortDirection::Descending });
+        sorts.push(("stacked".to_string(), stacked.to_vec()));
+        sorts
     }
 
-    async fn measure_composers(db: &Store, n: u64) {
-        let mut sorts = vec![("default".to_string(), Vec::new())];
-        for field in [
-            ComposerSortField::Name,
+    /// Every sort of the composer list by one criterion, and one stacking all
+    /// three.
+    fn composer_sorts() -> Vec<(String, Vec<ComposerSortCriterion>)> {
+        let fields = [
             ComposerSortField::WorkCount,
             ComposerSortField::LinkedReleaseCount,
-        ] {
+            ComposerSortField::Name,
+        ];
+        let mut sorts = vec![("default".to_string(), Vec::new())];
+        for field in fields {
             for (field, direction) in both_ways(field) {
                 sorts.push((
                     format!("{field:?}_{direction:?}"),
@@ -488,18 +508,58 @@ mod window_cost {
                 ));
             }
         }
-        for (name, sort) in sorts {
-            measure(
+        let stacked = fields
+            .map(|field| ComposerSortCriterion { field, direction: SortDirection::Descending });
+        sorts.push(("stacked".to_string(), stacked.to_vec()));
+        sorts
+    }
+
+    async fn measure_artists(db: &Store, n: u64) {
+        for (name, sort) in artist_sorts() {
+            let sort = crate::artist::artist_sort(&sort);
+            measure_reads(
+                db,
+                "artists",
+                &name,
+                n,
+                move |sql, position| crate::artist::artist_key_at_on(sql, &sort, position),
+                move |sql, window| {
+                    Ok(crate::artist::artist_window_on(sql, &sort, window)?.rows.len())
+                },
+                move |sql, key| crate::artist::artists_before_on(sql, &sort, key),
+            )
+            .await;
+        }
+    }
+
+    async fn measure_composers(db: &Store, n: u64) {
+        for (name, sort) in composer_sorts() {
+            let sort = crate::composer::composer_sort(&sort);
+            measure_reads(
                 db,
                 "composers",
                 &name,
                 n,
-                crate::composer::composer_order(&sort),
-                crate::composer::composer_rows_on,
-                crate::composer::composer_rows_before_on,
+                move |sql, position| crate::composer::composer_key_at_on(sql, &sort, position),
+                move |sql, window| {
+                    Ok(crate::composer::composer_window_on(sql, &sort, window)?.rows.len())
+                },
+                move |sql, key| crate::composer::composers_before_on(sql, &sort, key),
             )
             .await;
         }
+    }
+
+    /// What the artist and composer lists' reads cost in a library of 10,000
+    /// of each. Their statements order by the sort they are given, so each
+    /// read goes through the whole list, and no index serves one.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "measurement: run in release with --ignored --nocapture"]
+    async fn artist_and_composer_window_cost() {
+        let (db, tmp) = bae_store::test_fixtures::temp_db(TEST_SCHEMA).await;
+        seed(&db, &tmp.path().join("originals"), 0, 10_000).await;
+        measure_artists(&db, 10_000).await;
+        measure_composers(&db, 10_000).await;
     }
 
     async fn measure_storage(db: &Store, n: u64) {

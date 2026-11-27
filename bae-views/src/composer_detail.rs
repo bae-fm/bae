@@ -318,15 +318,19 @@ sqlive_compose::read!(
 "#
 );
 
-// The first work the composer `artist`'s page lists.
+// The composer `artist` as the composer list shows it, with the first work its
+// page lists; no row for an artist the list doesn't show.
 sqlive_compose::read!(
-    FirstListedWork(artist: String),
+    ComposerHead(artist: String) { default_work_id: Option<String> },
     r#"
-    SELECT listing.item_id
-    FROM composer_detail_row AS listing
-    WHERE listing.artist_id = :artist AND listing.section = 0
-    ORDER BY listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id
-    LIMIT 1
+    SELECT shown.*,
+           (SELECT listing.item_id
+            FROM composer_detail_row AS listing
+            WHERE listing.artist_id = :artist AND listing.section = 0
+            ORDER BY listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id
+            LIMIT 1) AS default_work_id
+    FROM @crate::composer::ListedComposer AS shown
+    WHERE shown.listed_id = :artist
 "#
 );
 
@@ -511,19 +515,15 @@ fn find_composer_detail_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
 ) -> Result<Option<DbComposerDetail>, DbError> {
-    let composer = sql
-        .query_row(
-            &composer_listing_query(None, Some("WHERE listing.artist_id = ?"), None),
-            params![artist_id],
-            row_to_composer_summary,
-        )
-        .optional()?;
-    let Some(composer) = composer else {
-        return Ok(None);
-    };
-    let statement = FirstListedWorkParams { artist: artist_id.to_string() };
-    let default_work_id = statement_optional(sql, &statement)?.map(|row| row.item_id);
-    Ok(Some(DbComposerDetail { composer, default_work_id }))
+    let statement = ComposerHeadParams { artist: artist_id.to_string() };
+    statement_optional(sql, &statement)?
+        .map(|row| {
+            Ok(DbComposerDetail {
+                composer: row.shown.into_summary()?,
+                default_work_id: row.default_work_id,
+            })
+        })
+        .transpose()
 }
 
 #[derive(Debug, Clone, PartialEq)]

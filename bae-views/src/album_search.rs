@@ -16,6 +16,22 @@ pub(crate) fn artists_found_sql(pattern: &str) -> String {
     )
 }
 
+// The artists [`artists_found_sql`] finds, for the compiled statements.
+sqlive_compose::fragment!(
+    ArtistsFound(pattern: String) { artist_id: Option<String> },
+    r#"
+    SELECT named.artist_id FROM artist_search AS named WHERE named.name GLOB :pattern
+    UNION
+    SELECT sorted.artist_id FROM artist_search AS sorted WHERE sorted.sort_name GLOB :pattern
+    UNION
+    SELECT shown.shown_artist_id
+    FROM artist_credit_search AS matched_credit
+    JOIN @bae_records::records::browse_fragments::ShownArtist AS shown
+      ON shown.artist_id = matched_credit.artist_id
+    WHERE matched_credit.name GLOB :pattern
+"#
+);
+
 /// The albums whose credits library search finds (§2.3) for the search
 /// pattern the parameter `pattern` binds (see
 /// [`bae_util::search_text::search_pattern`]): the name of the artist a
