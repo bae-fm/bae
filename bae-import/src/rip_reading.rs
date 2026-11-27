@@ -138,10 +138,11 @@ struct RipArtifacts<'a> {
 /// whose table of contents `read` parsed, because `read` already hashed that
 /// disc from the log. A folder holding one rip per disc yields one Disc ID
 /// per disc; when two files hash to the same Disc ID, `read` keeps that Disc
-/// ID once. A document `read` cannot read fails the reading, as does a log
-/// or sheet `read` cannot hash to a disc. When `read` parses a log and finds
-/// no table of contents, it gets no Disc ID from that log, skips the log and
-/// logs a warning. `text_of` gives each document's text, one after the
+/// ID once. A document `read` cannot read fails the reading, as does a sheet
+/// `read` cannot hash to a disc. When `read` parses a log and finds no table
+/// of contents, or a table it cannot hash, it gets no Disc ID and no proof
+/// from that log's table, hashes the sheets as though the log were not there,
+/// and logs a warning. `text_of` gives each document's text, one after the
 /// other.
 fn read(
     artifacts: RipArtifacts<'_>,
@@ -155,17 +156,19 @@ fn read(
         let text = text_of(document)?;
         if document.kind == DocumentKind::RipLog {
             trace!("Reading LOG file: {:?}", document.path);
-            let disc_id = discid_from_log_text(&text).map_err(|error| {
-                ImportError::DiscIdCalculation { file: document.path.display().to_string(), error }
-            })?;
-            match disc_id {
-                Some(disc_id) => {
+            match discid_from_log_text(&text) {
+                Ok(Some(disc_id)) => {
                     keep_disc(&mut discs, disc_id, document.file);
                     read_logs.push(document);
                     continue;
                 }
-                None => warn!(
+                Ok(None) => warn!(
                     "LOG {:?} holds no table of contents, so it states no disc",
+                    document.path
+                ),
+                Err(error) => warn!(
+                    "LOG {:?} has a table of contents that can't be read, so it gives no disc: \
+                     {error}",
                     document.path
                 ),
             }

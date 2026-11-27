@@ -73,10 +73,9 @@ pub enum ImportError {
     #[error("{file} could not be read: {error}")]
     DocumentRead { file: String, error: std::io::Error },
 
-    /// A rip log or track sheet that names a disc could not be hashed to its
-    /// Disc ID: a table row that does not read, tracks out of order, audio
-    /// with no measured length, or sectors past the range. The Disc ID is
-    /// unknown, which is not the same as a folder without one.
+    /// A track sheet that names a disc could not be hashed to its Disc ID:
+    /// audio with no measured length, or sectors past the range. The Disc ID
+    /// is unknown, which is not the same as a folder without one.
     #[cfg(desktop)]
     #[error("{file} cannot be hashed to a Disc ID: {error}")]
     DiscIdCalculation { file: String, error: std::io::Error },

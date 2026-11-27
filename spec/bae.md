@@ -1403,9 +1403,10 @@ of:
   the same folder. A sheet beside a log describes the disc the log already
   hashed, so it isn't hashed again; a disc two files hash alike counts once.
   bae reads the table of contents of an Exact Audio Copy or XLD log in whatever
-  language the ripper wrote it: it finds the table by the dashed rule under its
-  five column headings, never by their words, and the table's rows end at the
-  first line with no `|`.
+  language the ripper wrote it, going by no word of the log: a line whose first
+  cell, before a `|`, is a number is a track row, and the table runs from the
+  first track row to the next blank line. bae skips every other line in it,
+  such as the column headings.
   bae hashes the track offsets the way MusicBrainz does; it never reads a
   drive. Carol's box, a CUE sheet per disc, yields two Disc IDs.
 - **Barcodes**, decoded from the bars on the artwork, read from the digits
@@ -1420,13 +1421,15 @@ of:
 
 A file that can't be read at all, such as a rip log, a text file or an audio
 file's tags on a drive that fails, is not a file that states nothing: the
-run fails with the read's error, and identifying again reads it anew. A rip
-log whose table of contents has a row that doesn't read, or whose track
-numbers don't run 1, 2, 3 in order, fails the run with that, since the Disc ID
-of a table with a row missing would look as valid as the real one; so does a
+run fails with the read's error, and identifying again reads it anew. So does a
 CUE sheet that can't be laid out as a disc, such as one naming an audio file
-with no measured length. A rip log with no table of contents at all states no
-disc, and is passed over.
+with no measured length. A rip log whose table of contents can't be read, with
+a track row whose cells don't read or track numbers that don't run 1, 2, 3 in
+order, doesn't fail the run: bae logs the error with the file and the row and
+takes no Disc ID from the log, since the Disc ID of only the rows that read
+would name another disc. Identification then goes on exactly as it does for a
+folder without that log, by every other way bae has. A rip log with no table of
+contents at all states no disc, and is passed over.
 
 Identification reads the audio's tags from the files on every run, so the
 scan's stored reading keeps none of the ISRCs, labels, copyright lines or

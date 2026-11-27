@@ -376,8 +376,8 @@ fn parse_log_toc_row_accepts_valid_and_rejects_malformed() {
     assert_eq!(parse_log_toc_row("1 | 0:00.00 | 1:00.00 | 0 | 0"), None);
 }
 
-/// A table of contents is found by its shape, so a log reads the same in
-/// whatever language the ripper wrote it.
+/// A track row is known by the number in its first cell, so a log reads the
+/// same in whatever language the ripper wrote it.
 #[test]
 fn extract_log_toc_sectors_reads_a_table_written_in_any_language() {
     let russian = "Exact Audio Copy V0.99 prebeta 5 from 4. May 2009\n\
@@ -416,17 +416,16 @@ fn extract_log_toc_sectors_reads_a_table_written_in_any_language() {
     }
 }
 
-/// The table ends at the first line after its rows that is not a row, whatever
-/// that line says, so no later line of the log is read as part of it.
+/// The table ends at the first blank line after its rows: a line before that
+/// which is no track row is skipped, and one after it is no part of the table.
 #[test]
-fn extract_log_toc_sectors_ends_the_table_at_the_first_line_that_is_not_a_row() {
-    let log = "Заголовок\n\
-         Трек | Старт | Длительность | Начальный сектор | Конечный сектор\n\
+fn extract_log_toc_sectors_ends_the_table_at_the_blank_line_after_its_rows() {
+    let log = "1 | 0:00.00 | 1:00.00 | 0 | 99\n\
          -----------------------------------------------------------\n\
-         1 | 0:00.00 | 1:00.00 | 0 | 99\n\
-         Отчёт\n\
-         2 | 1:00.00 | 1:00.00 | 100 | 199\n";
-    assert_eq!(extract_log_toc_sectors(log).unwrap(), Some(vec![(0, 99)]));
+         2 | 1:00.00 | 1:00.00 | 100 | 199\n\
+         \n\
+         3 | (10/10) Отчёт\n";
+    assert_eq!(extract_log_toc_sectors(log).unwrap(), Some(vec![(0, 99), (100, 199)]));
 }
 
 #[test]
@@ -438,6 +437,15 @@ fn extract_log_toc_sectors_finds_no_disc_without_toc_rows() {
         "a LOG with no TOC rows states no disc"
     );
     assert_eq!(discid_from_log_text(log).unwrap(), None);
+}
+
+#[test]
+fn extract_log_toc_sectors_parses_headerless_table() {
+    let log = "   1 | 0:00.00 | 1:00.00 | 0 | 100\n   2 | 1:00.00 | 1:00.00 | 100 | 200\n";
+    let rows = extract_log_toc_sectors(log)
+        .expect("headerless TOC table should parse")
+        .expect("the table holds rows");
+    assert_eq!(rows, vec![(0, 100), (100, 200)]);
 }
 
 /// A row that does not read, or a gap in the track numbers, fails the log: a
@@ -458,12 +466,13 @@ fn extract_log_toc_sectors_fails_on_a_damaged_row_or_a_gap_in_track_numbers() {
     assert_eq!(extract_log_toc_sectors(&whole).unwrap(), Some(vec![(0, 99), (100, 199)]));
 
     // A middle row with an unreadable sector, a last row with an unreadable
-    // sector, and a first row with an unreadable track number.
+    // sector or a missing cell, and a middle row that is no longer a track
+    // row, which leaves a gap in the track numbers.
     for damaged in [
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 1O0 | 199\n3 | 2:00.00 | 1:00.00 | 200 | 299",
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 1x9",
-        "x | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 199",
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100  199",
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n2  1:00.00  1:00.00  100  199\n3 | 2:00.00 | 1:00.00 | 200 | 299",
     ] {
         let error = extract_log_toc_sectors(&toc(damaged)).expect_err(damaged);
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidData, "{damaged}");

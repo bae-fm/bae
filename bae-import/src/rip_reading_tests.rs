@@ -393,35 +393,40 @@ fn a_rip_log_that_cannot_be_read_fails_the_reading() {
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
 }
 
-/// A rip log whose table of contents has a row that does not read cannot be
-/// hashed: the run fails with that, as a disc ID of a table with a row missing
-/// would look as valid as the real one. A log with no table at all states no
-/// disc and is passed over.
+/// A rip log whose table of contents can't be read states no disc and proves
+/// no rip, as a disc ID of the rows that did read would name another disc. The
+/// sheet beside it is hashed as though the log were not there.
 #[test]
-fn a_rip_log_whose_table_of_contents_does_not_hash_fails_the_reading() {
+fn a_rip_log_whose_table_of_contents_cannot_be_read_gives_no_disc() {
     let tmp = TestFolder::new();
     let path = tmp.path().join("Album.log");
-    let mut text = log_text(&[1000, 2000]);
-    text = text.replace("|    1000    |", "|    1O00    |");
+    let text = log_text(&[1000, 2000]).replace("|    1000    |", "|    1O00    |");
     tmp.write(&path, text);
 
-    let lease = bae_util::test_files::lease();
-    let error = read(
-        RipArtifacts {
-            documents: vec![RipDocument {
-                path: &path,
-                file: Some("Album.log"),
-                kind: DocumentKind::RipLog,
-            }],
-            sheets: Vec::new(),
-            audio: Vec::new(),
-        },
-        &on_disk(&lease),
-    )
-    .expect_err("a table of contents that does not read fails the reading");
-    assert!(
-        matches!(error, ImportError::DiscIdCalculation { ref file, .. } if file.ends_with("Album.log")),
-        "{error:?}"
+    let sheet = sheet(None);
+    let format = lossless(44_100, 16, 2);
+    let reading = read_ok(RipArtifacts {
+        documents: vec![RipDocument {
+            path: &path,
+            file: Some("Album.log"),
+            kind: DocumentKind::RipLog,
+        }],
+        sheets: vec![RipSheet {
+            sheet: &sheet,
+            audio: vec![SheetAudioDuration { file_reference: "Album.flac", duration_ms: 120_000 }],
+            path: &path.with_file_name("Album.cue"),
+            file: Some("Album.cue"),
+        }],
+        audio: vec![&format],
+    });
+
+    assert_eq!(reading.origin.source, None);
+    let DiscIdReading::Computed(discs) = reading.disc_id else {
+        panic!("the sheet hashes to a disc ID");
+    };
+    assert_eq!(
+        discs.iter().map(|disc| disc.source_file.as_deref()).collect::<Vec<_>>(),
+        vec![Some("Album.cue")]
     );
 }
 
