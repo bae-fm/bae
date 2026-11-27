@@ -12,6 +12,19 @@ use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
+/// The save preset of `preferences` that `preset_id` names.
+pub(super) fn preset_named(
+    preferences: &bae_preferences::Preferences,
+    preset_id: &str,
+) -> Result<bae_preferences::SavePreset, LibraryError> {
+    preferences
+        .save_presets
+        .iter()
+        .find(|preset| preset.id == preset_id)
+        .cloned()
+        .ok_or_else(|| LibraryError::Save(format!("save preset {preset_id} does not exist")))
+}
+
 impl LibraryManager {
     /// One track's save plan under `window`: its tags and stored audio as
     /// the library's read gave them. No source is opened here; the save opens
@@ -117,10 +130,11 @@ impl LibraryManager {
         output_path: &Path,
         preset_id: &str,
     ) -> Result<(), LibraryError> {
-        let preset = self.save_preset_for(preset_id).await?;
+        let preferences = self.preferences().await?;
+        let preset = preset_named(&preferences, preset_id)?;
         self.set_last_save_preset(preset.id.clone()).await?;
         let read = self.records.track_for_save(track_id).await?;
-        let extras = self.preferences().await?.save_extras;
+        let extras = preferences.save_extras;
         let cover = self.save_cover_image(&read.track.audio.release_id, extras.embed_cover).await?;
         let plan = Self::save_track_plan(
             read.track,

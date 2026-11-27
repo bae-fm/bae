@@ -290,19 +290,6 @@ impl LibraryManager {
         Ok(self.preferences().await?.save_presets)
     }
 
-    /// The save preset `preset_id` names.
-    #[cfg(desktop)]
-    pub(crate) async fn save_preset_for(
-        &self,
-        preset_id: &str,
-    ) -> Result<bae_preferences::SavePreset, LibraryError> {
-        self.save_presets()
-            .await?
-            .into_iter()
-            .find(|preset| preset.id == preset_id)
-            .ok_or_else(|| LibraryError::Save(format!("save preset {preset_id} does not exist")))
-    }
-
     /// Add `preset` after the other save presets, as
     /// [`bae_preferences::Preferences::add_save_preset`] allows.
     pub async fn add_save_preset(

@@ -39,8 +39,8 @@ impl LibraryManager {
         target_dir: std::path::PathBuf,
         preset_id: &str,
     ) -> Result<(), LibraryError> {
-        let preset = self.save_preset_for(preset_id).await?;
         let preferences = self.preferences().await?;
+        let preset = super::save::preset_named(&preferences, preset_id)?;
         let preset_id = preset.id.clone();
         self.enqueue_output(
             release_id,
