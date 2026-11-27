@@ -1,9 +1,10 @@
 //! bae's library store, with no table of its own: the `Store` over coven's
 //! handle and the entry points every read, write and live query runs
-//! through, how a generated read or write runs, the coven calls bae makes on a library, the schema's shape (each
-//! crate's parts of it, run as one migration) and the SQL functions and
-//! collation the parts declare, list windows, the cancellable live queries a
-//! surface pulls values from, and the names a person enters.
+//! through, how a generated read or write runs, the coven calls bae makes on
+//! a library, the schema's shape (each crate's parts of it, run as one
+//! migration) and the SQL functions and collation the parts declare, list
+//! windows, the cancellable live queries a surface pulls values from, and the
+//! names a person enters.
 
 mod builder;
 pub use builder::store_builder;
