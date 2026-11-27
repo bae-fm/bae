@@ -5,13 +5,28 @@ use super::*;
 use crate::download_snapshot::DownloadRequest;
 use crate::queued_releases::tables::{self, worker_moves};
 use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
+use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::*;
 use bae_store::Store;
 
-/// `count` releases the library doesn't hold, queued to pin in order.
+/// The ids of `count` releases, which [`hold`] puts in the library.
+fn release_ids(count: usize) -> Vec<String> {
+    (0..count).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect()
+}
+
+/// Put `releases` in the library, which has none of them yet.
+async fn hold(db: &Store, releases: &[String]) {
+    releases
+        .iter()
+        .fold(artist_album_release(), |library, release| library.release(ALBUM_A, release))
+        .write(&test_records(db))
+        .await;
+}
+
+/// `count` releases, put in the library and queued to pin in order.
 async fn queue_pins(db: &Store, count: usize) -> Vec<String> {
-    let releases: Vec<String> =
-        (0..count).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
+    let releases = release_ids(count);
+    hold(db, &releases).await;
     queue(db, &releases).await;
     releases
 }
@@ -72,7 +87,10 @@ async fn an_empty_list_has_no_key() {
 #[tokio::test]
 async fn a_write_after_a_full_window_does_not_rerun_it() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let releases = queue_pins(&db, 4).await;
+    let releases = release_ids(5);
+    hold(&db, &releases).await;
+    let (releases, later) = releases.split_at(4);
+    queue(&db, releases).await;
     let downloads = crate::Downloads::new(db.clone());
     let second = downloads.key_at(1).await.unwrap().expect("a row at 1");
     let mut windows = [ListWindow::top(2), ListWindow { from: Some(second), limit: 50 }]
@@ -83,8 +101,7 @@ async fn a_write_after_a_full_window_does_not_rerun_it() {
     }
     length.next_inline().await.expect("open").unwrap();
 
-    let later = bae_util::test_ids::test_uuid("window-release-later");
-    queue(&db, std::slice::from_ref(&later)).await;
+    queue(&db, later).await;
     assert!(!windows[0].is_marked_for_rerun());
     assert!(windows[1].is_marked_for_rerun());
     assert!(length.is_marked_for_rerun());

@@ -15,9 +15,10 @@ use coven::CovenWrite;
 /// Only this crate can name this trait, so no other crate runs a queue's
 /// statements.
 pub trait QueueWrites: Sized {
-    /// Queue `entry`, passing over a release already in the queue. The
-    /// statement also counts the release's files and adds up their size, so
-    /// the row keeps both after the library deletes the release.
+    /// Queue `entry`, passing over a release already in the queue or one the
+    /// library doesn't hold. The statement copies the file count and total
+    /// size from the release's storage row, so the entry keeps both after the
+    /// library deletes the release.
     #[cfg(desktop)]
     fn insert_on(sql: &CovenWrite<'_>, entry: &ReleaseQueueEntry<Self>) -> Result<usize, DbError>;
     /// Start a queued or active entry, unless the queue is paused.
@@ -167,8 +168,6 @@ impl QueueWrites for OutputRequest {
     }
 }
 
-// An aggregate with no GROUP BY gives one row even for a release with no
-// files, which is queued with none.
 #[cfg(desktop)]
 sqlive_compose::write!(
     InsertDownload(
@@ -181,15 +180,13 @@ sqlive_compose::write!(
     INSERT INTO download_queue
         (release_id, created_at, kind, target_dir, file_count, total_size, state)
     SELECT :release, :created_at, :kind, :target_dir,
-           COUNT(file.file_id), COALESCE(SUM(stored.size), 0), 'queued'
-    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
-    JOIN coven_files AS stored ON stored.id = file.stored_file
-    WHERE file.release_id = :release
+           storage.file_count, storage.total_size, 'queued'
+    FROM @bae_records::release_storage::ReleaseStorage AS storage
+    WHERE storage.release_id = :release
     ON CONFLICT (release_id) DO NOTHING
 "#
 );
 
-// Counts the release's files as `InsertDownload` does.
 #[cfg(desktop)]
 sqlive_compose::write!(
     InsertOutput(
@@ -207,10 +204,9 @@ sqlive_compose::write!(
         (release_id, created_at, target_dir, kind, preset, filename_pattern, folder_pattern,
          extras, file_count, total_size, state)
     SELECT :release, :created_at, :target_dir, :kind, :preset, :filename_pattern, :folder_pattern,
-           :extras, COUNT(file.file_id), COALESCE(SUM(stored.size), 0), 'queued'
-    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
-    JOIN coven_files AS stored ON stored.id = file.stored_file
-    WHERE file.release_id = :release
+           :extras, storage.file_count, storage.total_size, 'queued'
+    FROM @bae_records::release_storage::ReleaseStorage AS storage
+    WHERE storage.release_id = :release
     ON CONFLICT (release_id) DO NOTHING
 "#
 );

@@ -84,6 +84,21 @@ async fn clear_transfers(db: &Store) -> Result<(), DbError> {
     db.call(tables::clear_transfers_on).await
 }
 
+/// A release beside the fixtures' own.
+const RELEASE_C: &str = "3c4c2e9a-7f0b-4b8e-8d2a-5d6a1f0e9b21";
+
+/// A store whose library holds the releases the tests queue: the queues take
+/// only releases the library holds.
+async fn library_of_releases() -> (Store, bae_util::test_files::TestFolder) {
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
+    [RELEASE_B, RELEASE_C, RELEASE_Z]
+        .into_iter()
+        .fold(artist_album_release(), |library, release| library.release(ALBUM_A, release))
+        .write(&test_records(&db))
+        .await;
+    (db, tmp)
+}
+
 fn download(release_id: &str) -> ReleaseQueueEntry<DownloadRequest> {
     ReleaseQueueEntry {
         release_id: release_id.to_string(),
@@ -108,7 +123,7 @@ async fn downloads(db: &Store) -> Vec<(String, ReleaseQueueState<()>)> {
 /// release already queued is not queued again.
 #[tokio::test]
 async fn a_queued_release_is_a_row_in_the_order_queued() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     assert!(enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap());
     assert!(!enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap());
 
@@ -131,7 +146,7 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
 /// release stays failed, and a release with no failed entry changes nothing.
 #[tokio::test]
 async fn retrying_one_release_leaves_the_other_failed() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
     for release in [RELEASE_A, RELEASE_B] {
         assert!(fail_queued_release::<DownloadRequest>(&db, release, "refused".to_string())
@@ -159,7 +174,7 @@ async fn retrying_one_release_leaves_the_other_failed() {
 /// leaves. A move on an entry no longer there says so.
 #[tokio::test]
 async fn an_entry_starts_fails_retries_and_finishes() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
 
     assert!(activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
@@ -208,7 +223,7 @@ async fn an_entry_starts_fails_retries_and_finishes() {
 /// The schema holds one active entry at most.
 #[tokio::test]
 async fn a_queue_holds_one_active_entry_at_most() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
     activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap();
     let second = activate_queued_release::<DownloadRequest>(&db, RELEASE_B).await;
@@ -219,7 +234,7 @@ async fn a_queue_holds_one_active_entry_at_most() {
 /// offers the first again.
 #[tokio::test]
 async fn a_paused_queue_offers_nothing_to_start() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
     assert!(!set_release_queue_paused::<DownloadRequest>(&db, true).await.unwrap());
     assert_eq!(next_queued_release::<DownloadRequest>(&db).await.unwrap(), None);
@@ -236,7 +251,7 @@ async fn a_paused_queue_offers_nothing_to_start() {
 /// Cancelling takes an entry out in any phase.
 #[tokio::test]
 async fn cancelling_takes_entries_out() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B), download(RELEASE_Z)])
         .await
         .unwrap();
@@ -256,14 +271,13 @@ async fn cancelling_takes_entries_out() {
 /// left the library stays listed with none, to be cancelled.
 #[tokio::test]
 async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    seed_artist_album_release(&db).await;
-    let gone = "0f0b3c1e-5a07-4a8e-9a43-3d2d64d1e7a1";
-    enqueue_releases(&db, vec![download(RELEASE_A), download(gone)]).await.unwrap();
+    let (db, _tmp) = library_of_releases().await;
+    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
+    delete_release(&test_records(&db), RELEASE_B).await;
 
     let queue = release_queue::<DownloadRequest>(&db).await.unwrap();
     queue.rows[0].release.as_ref().expect("RELEASE_A is held");
-    assert_eq!(queue.rows[1].op.release_id, gone);
+    assert_eq!(queue.rows[1].op.release_id, RELEASE_B);
     assert_eq!(queue.rows[1].release, None);
     assert_eq!(queue.total.queued, 2);
 }
@@ -301,7 +315,7 @@ async fn an_entry_keeps_its_files_and_size_after_its_release_is_gone() {
 /// whole.
 #[tokio::test]
 async fn an_output_keeps_its_target_and_preset() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     let preset = bae_preferences::Preferences::default().save_presets.remove(0);
     let save = ReleaseQueueEntry {
         release_id: RELEASE_A.to_string(),
@@ -346,7 +360,7 @@ async fn an_output_keeps_its_target_and_preset() {
 /// that was running starts again after a restart, an export does not.
 #[tokio::test]
 async fn opening_keeps_the_download_queue_and_its_pause() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     let export = ReleaseQueueEntry {
         release_id: RELEASE_B.to_string(),
         created_at: 8,
@@ -387,7 +401,7 @@ async fn opening_keeps_the_download_queue_and_its_pause() {
 /// takes next and, for the download queue, the network.
 #[tokio::test]
 async fn the_worker_s_next_look_is_one_statement() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
 
     let counter = db.track_work_for_test().await.unwrap();
@@ -459,21 +473,20 @@ fn batched(kind: &str, release_id: &str) -> (String, String) {
 /// only when no entry of its kind waits, and a retry starts it again.
 #[tokio::test]
 async fn the_download_batch_holds_each_kind_until_it_has_none_waiting() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     let move_to_this_device = ReleaseQueueEntry {
         release_id: RELEASE_Z.to_string(),
         created_at: 8,
         payload: DownloadRequest::MoveToThisDevice { target_dir: "/Users/ana/Music".into() },
     };
-    let third = "3c4c2e9a-7f0b-4b8e-8d2a-5d6a1f0e9b21";
-    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B), download(third)])
+    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B), download(RELEASE_C)])
         .await
         .unwrap();
     enqueue_releases(&db, vec![move_to_this_device]).await.unwrap();
     let everything = vec![
         batched("move_to_this_device", RELEASE_Z),
         batched("pin", RELEASE_A),
-        batched("pin", third),
+        batched("pin", RELEASE_C),
         batched("pin", RELEASE_B),
     ];
     assert_eq!(download_batch(&db).await, everything);
@@ -488,7 +501,7 @@ async fn the_download_batch_holds_each_kind_until_it_has_none_waiting() {
     assert!(cancel_queued_release::<DownloadRequest>(&db, RELEASE_B).await.unwrap());
     assert_eq!(download_batch(&db).await, everything, "a pin still waits");
 
-    assert!(fail_queued_release::<DownloadRequest>(&db, third, "refused".to_string())
+    assert!(fail_queued_release::<DownloadRequest>(&db, RELEASE_C, "refused".to_string())
         .await
         .unwrap());
     assert_eq!(
@@ -497,21 +510,21 @@ async fn the_download_batch_holds_each_kind_until_it_has_none_waiting() {
         "no pin waits or downloads: the pin batch is over"
     );
 
-    assert!(retry_failed_release::<DownloadRequest>(&db, third).await.unwrap());
+    assert!(retry_failed_release::<DownloadRequest>(&db, RELEASE_C).await.unwrap());
     assert_eq!(
         download_batch(&db).await,
-        vec![batched("move_to_this_device", RELEASE_Z), batched("pin", third)],
+        vec![batched("move_to_this_device", RELEASE_Z), batched("pin", RELEASE_C)],
         "the retried pin starts a new batch"
     );
     assert!(cancel_queued_release::<DownloadRequest>(&db, RELEASE_Z).await.unwrap());
-    assert_eq!(download_batch(&db).await, vec![batched("pin", third)]);
+    assert_eq!(download_batch(&db).await, vec![batched("pin", RELEASE_C)]);
 }
 
 /// The queue's counts say whether it holds any entry and whether any failed,
 /// so a screen needs no sum of the phases.
 #[tokio::test]
 async fn the_counts_say_whether_any_entry_or_failure_is_held() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = library_of_releases().await;
     let counts = |db: &Store| {
         let db = db.clone();
         async move {

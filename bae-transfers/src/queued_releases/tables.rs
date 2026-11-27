@@ -205,8 +205,8 @@ pub fn release_queue_entries_on(
     })
 }
 
-/// Queue `entries` in order, passing over a release already in the queue;
-/// `true` when any went in.
+/// Queue `entries` in order, passing over a release already in the queue or
+/// one the library doesn't hold; `true` when any went in.
 #[cfg(desktop)]
 pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
