@@ -155,8 +155,8 @@ fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<Pressin
 }
 
 /// Builds a record's facts, except its media, from its key columns' values,
-/// for a record read from JSON instead of a row: the columns
-/// [`read_facts_without_media`] reads. The error names the value no
+/// for a record read from JSON instead of a row: `country`, `region`,
+/// `status`, `packaging` and `discogs_details`. The error names the value no
 /// vocabulary names.
 pub fn facts_without_media_of(
     country: Option<String>,

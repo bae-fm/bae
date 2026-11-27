@@ -3,7 +3,7 @@
 //! extraction left it.
 //!
 //! A fetched release is held in memory until the write that writes the first
-//! row naming it, which stores it whole ([`store_named_releases_on`]); the
+//! row naming it, which stores it whole (`store_named_releases_on`); the
 //! schema's triggers delete it in the write that drops the last such row. It
 //! is read whole by every import surface but the import list's rows, which
 //! read only the records it names. Writing it again replaces every row under
@@ -651,7 +651,7 @@ pub(crate) fn store_named_releases_on(
 }
 
 impl ImportTables {
-    /// [`load_source_releases_on`] as its own read.
+    /// `load_source_releases_on` as its own read.
     pub async fn load_source_releases(
         &self,
         releases: &[&bae_catalogs::records::LookupRef],

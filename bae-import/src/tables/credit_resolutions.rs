@@ -6,7 +6,7 @@
 //! The SQL file beside this one holds the tables and the triggers that mark a
 //! credit due when a write changes the credit or an artist the rule can name
 //! for it, in this device's writes and in the ones coven applies from another
-//! device alike. [`answer_due_credits`], the part's before-commit function,
+//! device alike. `answer_due_credits`, the part's before-commit function,
 //! runs last in every such transaction: it answers each due credit with the
 //! rule, deletes the answer of a credit no draft holds any more, and empties
 //! the list. The import pane's reads join the stored answers
