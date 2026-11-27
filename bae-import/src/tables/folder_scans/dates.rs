@@ -31,6 +31,30 @@ fn stored_date(
     }
 }
 
+sqlive_compose::write!(
+    StoreFolderDiscovery(
+        folder: Vec<u8>,
+        first_seen_at: i64,
+        settled: bool,
+        source_date: Option<i64>,
+        source_date_kind: Option<&'static str>,
+    ),
+    r#"
+    INSERT INTO folder_discovery
+        (folder, first_seen_at, settled, source_date, source_date_kind)
+    VALUES (:folder, :first_seen_at, :settled, :source_date, :source_date_kind)
+    ON CONFLICT (folder) DO UPDATE SET
+        first_seen_at = excluded.first_seen_at,
+        settled = MAX(settled, excluded.settled),
+        source_date = excluded.source_date,
+        source_date_kind = excluded.source_date_kind
+    WHERE first_seen_at IS NOT excluded.first_seen_at
+        OR settled < excluded.settled
+        OR source_date IS NOT excluded.source_date
+        OR source_date_kind IS NOT excluded.source_date_kind
+"#
+);
+
 /// What is known about when a folder was found, kept by its path on disk
 /// rather than with the scan row of whichever watched folder covers it.
 pub(super) struct FolderDiscovery {
@@ -90,43 +114,35 @@ impl FolderDiscovery {
     /// when `settles`. Writes nothing when nothing changed.
     pub(super) fn store(&self, sql: &CovenWrite<'_>, settles: bool) -> Result<(), DbError> {
         let date = self.folder_date.map(date_columns);
-        sql.execute(
-            "INSERT INTO folder_discovery \
-                 (folder, first_seen_at, settled, source_date, source_date_kind) \
-             VALUES (?1, ?2, ?3, ?4, ?5) \
-             ON CONFLICT (folder) DO UPDATE SET \
-                 first_seen_at = excluded.first_seen_at, \
-                 settled = MAX(settled, excluded.settled), \
-                 source_date = excluded.source_date, \
-                 source_date_kind = excluded.source_date_kind \
-             WHERE first_seen_at IS NOT excluded.first_seen_at \
-                OR settled < excluded.settled \
-                OR source_date IS NOT excluded.source_date \
-                OR source_date_kind IS NOT excluded.source_date_kind",
-            params![
-                coven::path_bytes(&self.folder),
-                self.first_seen_at,
-                self.settled || settles,
-                date.map(|(at, _)| at),
-                date.map(|(_, kind)| kind)
-            ],
-        )?;
+        sql.run(&StoreFolderDiscoveryParams {
+            folder: coven::path_bytes(&self.folder),
+            first_seen_at: self.first_seen_at,
+            settled: self.settled || settles,
+            source_date: date.map(|(at, _)| at),
+            source_date_kind: date.map(|(_, kind)| kind),
+        })?;
         Ok(())
     }
 }
+
+sqlive_compose::write!(
+    ForgetDiscoveryAtOrBelow(folder: &'p [u8], below_first: &'p [u8], below_past: &'p [u8]),
+    r#"
+    DELETE FROM folder_discovery
+    WHERE folder = :folder OR (folder >= :below_first AND folder < :below_past)
+"#
+);
 
 /// Forget when every folder at or below `folders` was found.
 pub(crate) fn forget_discovery_at_or_below(
     sql: &CovenWrite<'_>,
     folders: &crate::tables::watched_folders::FoldersAtOrBelow,
 ) -> Result<(), DbError> {
-    sql.execute(
-        &format!(
-            "DELETE FROM folder_discovery WHERE {}",
-            crate::tables::watched_folders::FoldersAtOrBelow::condition("folder")
-        ),
-        &folders.params(),
-    )?;
+    sql.run(&ForgetDiscoveryAtOrBelowParams {
+        folder: &folders.folder,
+        below_first: &folders.below_first,
+        below_past: &folders.below_past,
+    })?;
     Ok(())
 }
 

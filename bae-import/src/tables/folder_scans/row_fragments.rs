@@ -1,5 +1,15 @@
 //! The folder scans' rows that other domains' fragments spread to reach them.
 
+// Every candidate the scans hold: the key its rows are under, and the files it
+// reads.
+sqlive_compose::fragment!(
+    HeldCandidates,
+    r#"
+    SELECT scan.watched_folder_path, scan.path, scan.content_hash
+    FROM scan_candidate AS scan
+"#
+);
+
 sqlive_compose::fragment!(
     ScanContent(key: crate::CandidateKey) {
         content_hash: Option<String>,

@@ -38,6 +38,33 @@ pub(crate) struct OwnedPicture {
     pub(crate) kept: Option<PictureCopy>,
 }
 
+sqlive_compose::write!(
+    StorePictureCopy(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p [u8],
+        source_kind: &'static str,
+        source_path: &'p [u8],
+        source_size: i64,
+        source_modified_at_ns: i64,
+        step: i64,
+        format: &'static str,
+        bytes: &'p [u8],
+    ),
+    r#"
+    INSERT INTO import_picture_copy
+        (watched_folder_path, candidate_path, source_kind, source_path, source_size,
+         source_modified_at_ns, step, format, bytes)
+    SELECT :watched_folder_path, :candidate_path, :source_kind, :source_path, :source_size,
+        :source_modified_at_ns, :step, :format, :bytes
+    WHERE EXISTS (
+        SELECT 1
+        FROM @crate::tables::folder_scans::row_fragments::HeldCandidates AS candidate
+        WHERE candidate.watched_folder_path = :watched_folder_path
+            AND candidate.path = :candidate_path)
+    ON CONFLICT DO NOTHING
+"#
+);
+
 impl ImportTables {
     /// The candidate whose scan holds the picture's file, or `None` when none
     /// does: a file that is not an image of a stored candidate is no picture
@@ -177,26 +204,17 @@ impl ImportTables {
         let bytes = copy.bytes.clone();
         self.store
             .write(move |sql| {
-                sql.execute(
-                    "INSERT INTO import_picture_copy (watched_folder_path, candidate_path, \
-                         source_kind, source_path, source_size, source_modified_at_ns, \
-                         step, format, bytes) \
-                     SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9 \
-                     WHERE EXISTS (SELECT 1 FROM scan_candidate \
-                                   WHERE watched_folder_path = ?1 AND path = ?2) \
-                     ON CONFLICT DO NOTHING",
-                    params![
-                        owner.watched_folder_path,
-                        owner.candidate_path,
-                        owner.source_kind,
-                        owner.source_path,
-                        owner.source_size,
-                        owner.source_modified_at_ns,
-                        step_column(step),
-                        format,
-                        bytes
-                    ],
-                )?;
+                sql.run(&StorePictureCopyParams {
+                    watched_folder_path: &owner.watched_folder_path,
+                    candidate_path: &owner.candidate_path,
+                    source_kind: owner.source_kind,
+                    source_path: &owner.source_path,
+                    source_size: owner.source_size,
+                    source_modified_at_ns: owner.source_modified_at_ns,
+                    step: step_column(step),
+                    format,
+                    bytes: &bytes,
+                })?;
                 Ok(())
             })
             .await
@@ -219,16 +237,28 @@ impl ImportTables {
     }
 }
 
+sqlive_compose::write!(
+    ForgetCopiesForHash(content_hash: &'p str),
+    r#"
+    DELETE FROM import_picture_copy
+    WHERE (watched_folder_path, candidate_path) IN (
+        SELECT candidate.watched_folder_path, candidate.path
+        FROM @crate::tables::folder_scans::row_fragments::HeldCandidates AS candidate
+        WHERE candidate.content_hash = :content_hash)
+"#
+);
+
 /// Drop every copy of the candidates holding `content_hash`, inside the write
 /// that imports them: an imported candidate leaves the import list.
 pub(super) fn forget_for_hash_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_picture_copy WHERE (watched_folder_path, candidate_path) IN \
-         (SELECT watched_folder_path, path FROM scan_candidate WHERE content_hash = ?)",
-        [content_hash],
-    )?;
+    sql.run(&ForgetCopiesForHashParams { content_hash })?;
     Ok(())
 }
+
+sqlive_compose::write!(
+    ForgetCopiesForFolder(candidate_path: Vec<u8>),
+    r#"DELETE FROM import_picture_copy WHERE candidate_path = :candidate_path"#
+);
 
 /// Drop every copy of the candidate in the folder `candidate_path`, inside the
 /// write that sets it aside.
@@ -236,9 +266,6 @@ pub(super) fn forget_for_folder_on(
     sql: &CovenWrite<'_>,
     candidate_path: &Path,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_picture_copy WHERE candidate_path = ?",
-        [coven::path_bytes(candidate_path)],
-    )?;
+    sql.run(&ForgetCopiesForFolderParams { candidate_path: coven::path_bytes(candidate_path) })?;
     Ok(())
 }

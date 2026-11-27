@@ -2,6 +2,7 @@
 
 use crate::tables::watched_path::host_root;
 use bae_store::test_fixtures::empty_db;
+use bae_store::WriteStatements as _;
 
 /// A skipped folder's key below the root that is not canonical — a doubled
 /// separator — is refused when set aside, and fails the read of the root's
@@ -19,8 +20,8 @@ async fn corrupt_skipped_keys_fail_when_loaded() {
         .set_import_candidate_skipped(std::path::Path::new(&doubled), true)
         .await
         .is_err());
-    db.call(move |conn| {
-        conn.execute("INSERT INTO skipped_import_candidates VALUES (?)", [doubled.into_bytes()])?;
+    db.call(move |sql| {
+        sql.run(&super::SkipFolderParams { candidate_path: doubled.into_bytes() })?;
         Ok(())
     })
     .await

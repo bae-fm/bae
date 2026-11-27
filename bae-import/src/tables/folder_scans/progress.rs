@@ -152,6 +152,36 @@ fn load_folder_scan_progress_on(
     Ok(FolderScanProgress { statuses, has_problem, scanning, alerts })
 }
 
+sqlive_compose::write!(
+    HoldRootScan(
+        watched_folder_path: Vec<u8>,
+        state: &'static str,
+        error: Option<&'p str>,
+        volume: Option<&'static str>,
+    ),
+    r#"
+    INSERT INTO folder_scan_held (watched_folder_path, state, error, volume)
+    VALUES (:watched_folder_path, :state, :error, :volume)
+    ON CONFLICT (watched_folder_path) DO UPDATE SET
+        state = excluded.state, error = excluded.error, volume = excluded.volume
+    WHERE state IS NOT excluded.state OR error IS NOT excluded.error
+        OR volume IS NOT excluded.volume
+"#
+);
+
+// Every root's held state but those of the roots `kept` names, a JSON array
+// of their paths' bytes in hex.
+sqlive_compose::write!(
+    DropUnheldRootScans(kept: String),
+    r#"
+    DELETE FROM folder_scan_held
+    WHERE watched_folder_path NOT IN (
+        SELECT unhex(wanted.value) FROM json_each(:kept) AS wanted)
+"#
+);
+
+sqlive_compose::write!(ClearHeldRootScans, r#"DELETE FROM folder_scan_held"#);
+
 /// Store `held` as the one row of `watched_folder_path`, leaving a row that
 /// already says it unwritten.
 fn hold_root_scan_on(
@@ -167,15 +197,12 @@ fn hold_root_scan_on(
             Some(super::columns::volume_text(failure.volume)),
         ),
     };
-    sql.execute(
-        "INSERT INTO folder_scan_held (watched_folder_path, state, error, volume) \
-         VALUES (?, ?, ?, ?) \
-         ON CONFLICT (watched_folder_path) DO UPDATE SET \
-             state = excluded.state, error = excluded.error, volume = excluded.volume \
-         WHERE state IS NOT excluded.state OR error IS NOT excluded.error \
-             OR volume IS NOT excluded.volume",
-        params![coven::path_bytes(watched_folder_path), state, error, volume],
-    )?;
+    sql.run(&HoldRootScanParams {
+        watched_folder_path: coven::path_bytes(watched_folder_path),
+        state,
+        error,
+        volume,
+    })?;
     Ok(())
 }
 
@@ -409,14 +436,8 @@ impl ImportTables {
     pub(crate) async fn hold_root_scans(&self, held: HeldRootScans) -> Result<(), DbError> {
         self.store
             .call(move |sql| {
-                let kept: Vec<Vec<u8>> = held.keys().map(|path| coven::path_bytes(path)).collect();
-                let places = vec!["?"; kept.len()].join(", ");
-                sql.execute(
-                    &format!(
-                        "DELETE FROM folder_scan_held WHERE watched_folder_path NOT IN ({places})"
-                    ),
-                    rusqlite::params_from_iter(&kept),
-                )?;
+                let kept = path_column::hex_list(held.keys().map(|path| path.as_path()));
+                sql.run(&DropUnheldRootScansParams { kept })?;
                 for (path, root) in &held {
                     hold_root_scan_on(sql, path, root)?;
                 }
@@ -431,7 +452,7 @@ impl ImportTables {
     pub(crate) async fn clear_held_folder_scans(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {
-                sql.execute("DELETE FROM folder_scan_held", [])?;
+                sql.run(&ClearHeldRootScansParams {})?;
                 Ok(())
             })
             .await

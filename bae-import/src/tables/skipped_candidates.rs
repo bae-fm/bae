@@ -10,18 +10,38 @@ use super::*;
 use crate::CandidateKey;
 use std::path::Path;
 
+sqlive_compose::write!(
+    ForgetSkippedAtOrBelow(folder: &'p [u8], below_first: &'p [u8], below_past: &'p [u8]),
+    r#"
+    DELETE FROM skipped_import_candidates
+    WHERE candidate_path = :folder
+        OR (candidate_path >= :below_first AND candidate_path < :below_past)
+"#
+);
+
+sqlive_compose::write!(
+    UnskipFolder(candidate_path: Vec<u8>),
+    r#"DELETE FROM skipped_import_candidates WHERE candidate_path = :candidate_path"#
+);
+
+sqlive_compose::write!(
+    SkipFolder(candidate_path: Vec<u8>),
+    r#"
+    INSERT INTO skipped_import_candidates (candidate_path) VALUES (:candidate_path)
+    ON CONFLICT DO NOTHING
+"#
+);
+
 /// Forget every candidate set aside at or below `folders`.
 pub(super) fn forget_at_or_below(
     sql: &CovenWrite<'_>,
     folders: &super::watched_folders::FoldersAtOrBelow,
 ) -> Result<(), DbError> {
-    sql.execute(
-        &format!(
-            "DELETE FROM skipped_import_candidates WHERE {}",
-            super::watched_folders::FoldersAtOrBelow::condition("candidate_path")
-        ),
-        &folders.params(),
-    )?;
+    sql.run(&ForgetSkippedAtOrBelowParams {
+        folder: &folders.folder,
+        below_first: &folders.below_first,
+        below_past: &folders.below_past,
+    })?;
     Ok(())
 }
 
@@ -84,10 +104,8 @@ pub(super) fn set_folder_skipped_on(
 ) -> Result<bool, crate::ImportError> {
     crate::tables::watched_path::validate_stored_folder(candidate_path)?;
     if !skipped {
-        let changed = sql.execute(
-            "DELETE FROM skipped_import_candidates WHERE candidate_path = ?",
-            [coven::path_bytes(candidate_path)],
-        )?;
+        let changed =
+            sql.run(&UnskipFolderParams { candidate_path: coven::path_bytes(candidate_path) })?;
         return Ok(changed == 1);
     }
     require_watched(sql, candidate_path)?;
@@ -101,11 +119,8 @@ pub(super) fn set_folder_skipped_on(
     // Set aside, the candidate is out of the import list, and its pictures'
     // copies go.
     super::picture_copies::forget_for_folder_on(sql, candidate_path)?;
-    let changed = sql.execute(
-        "INSERT INTO skipped_import_candidates (candidate_path) VALUES (?) \
-         ON CONFLICT DO NOTHING",
-        [coven::path_bytes(candidate_path)],
-    )?;
+    let changed =
+        sql.run(&SkipFolderParams { candidate_path: coven::path_bytes(candidate_path) })?;
     Ok(changed == 1)
 }
 

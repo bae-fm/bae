@@ -23,10 +23,14 @@ fn an_entry_written_again_clears_every_table_below_its_row() {
         .collect::<Result<_, _>>()
         .unwrap();
     referencing.sort();
-    let mut cleared: Vec<String> = super::ENTRY_ROW_TABLES
+    let mut cleared: Vec<String> = super::ENTRY_ROW_CLEARS
         .iter()
-        .chain(&KEPT_ACROSS_REWRITE)
-        .map(|table| table.to_string())
+        .map(|delete| {
+            let mut words = delete.split_whitespace().skip_while(|word| *word != "FROM");
+            words.nth(1).expect("a delete names its table")
+        })
+        .chain(KEPT_ACROSS_REWRITE)
+        .map(str::to_string)
         .collect();
     cleared.sort();
     assert_eq!(cleared, referencing);

@@ -125,6 +125,45 @@ pub(crate) fn load_sidecar(
     bae_store::statement_optional(sql, &request)?.map(|row| sidecar_of(row.sidecar)).transpose()
 }
 
+sqlive_compose::write!(
+    StampSidecar(folder: &'p [u8], generation: i64),
+    r#"UPDATE scan_sidecar SET generation = :generation WHERE folder = :folder"#
+);
+
+sqlive_compose::write!(
+    InsertSidecar(
+        folder: &'p [u8],
+        watched_folder_path: Vec<u8>,
+        generation: i64,
+        state: &'static str,
+    ),
+    r#"
+    INSERT INTO scan_sidecar (folder, watched_folder_path, generation, state)
+    VALUES (:folder, :watched_folder_path, :generation, :state)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSidecarFile(
+        folder: &'p [u8],
+        position: i64,
+        relative_path: &'p str,
+        absolute_path: Vec<u8>,
+        size: i64,
+        modified_at_ns: i64,
+        role: &'static str,
+        audio_damage: Option<&'static str>,
+        document_kind: Option<&'static str>,
+    ),
+    r#"
+    INSERT INTO scan_sidecar_file
+        (folder, position, relative_path, absolute_path, size, modified_at_ns, role,
+         audio_damage, document_kind)
+    VALUES (:folder, :position, :relative_path, :absolute_path, :size, :modified_at_ns, :role,
+        :audio_damage, :document_kind)
+"#
+);
+
 /// Store `sidecar` under `generation`, replacing the scanned releases that
 /// hold any of its files, and rebuild the groupings sitting in its folder or
 /// taking in a replaced release. A sidecar stored exactly so only takes the
@@ -147,10 +186,7 @@ pub(super) fn write_sidecar(
     );
     let folder_text = coven::path_bytes(&sidecar.folder);
     if load_sidecar(sql, &sidecar.folder)?.as_ref() == Some(sidecar) {
-        sql.execute(
-            "UPDATE scan_sidecar SET generation = ? WHERE folder = ?",
-            params![generation, folder_text],
-        )?;
+        sql.run(&StampSidecarParams { folder: &folder_text, generation })?;
         return Ok(ScanItemWrite::Unchanged);
     }
     // Every file the sidecar holds, with the role, damage and document kind
@@ -232,29 +268,24 @@ pub(super) fn write_sidecar(
         SidecarFiles::Downloading => "downloading",
         SidecarFiles::Invalid(_) => "invalid",
     };
-    sql.execute(
-        "INSERT INTO scan_sidecar (folder, watched_folder_path, generation, state) \
-         VALUES (?, ?, ?, ?)",
-        params![folder_text, coven::path_bytes(watched_folder_path), generation, state],
-    )?;
+    sql.run(&InsertSidecarParams {
+        folder: &folder_text,
+        watched_folder_path: coven::path_bytes(watched_folder_path),
+        generation,
+        state,
+    })?;
     for (position, entry) in files.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO scan_sidecar_file \
-                 (folder, position, relative_path, absolute_path, size, modified_at_ns, role, \
-                  audio_damage, document_kind) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                folder_text,
-                to_i64(position as u64, "a sidecar file's position")?,
-                entry.relative_path,
-                coven::path_bytes(entry.path),
-                to_i64(entry.size, "a sidecar file's size")?,
-                entry.modified_at_ns,
-                entry.role,
-                entry.damage,
-                entry.document_kind,
-            ],
-        )?;
+        sql.run(&InsertSidecarFileParams {
+            folder: &folder_text,
+            position: to_i64(position as u64, "a sidecar file's position")?,
+            relative_path: entry.relative_path,
+            absolute_path: coven::path_bytes(entry.path),
+            size: to_i64(entry.size, "a sidecar file's size")?,
+            modified_at_ns: entry.modified_at_ns,
+            role: entry.role,
+            audio_damage: entry.damage,
+            document_kind: entry.document_kind,
+        })?;
     }
     let regrouped =
         crate::tables::release_groupings::rebuild_groupings(sql, &superseded_keys, &touched)?;
@@ -272,12 +303,21 @@ struct StoredSidecarFile<'a> {
     document_kind: Option<&'static str>,
 }
 
+// The sidecars of the folders `folders` names, a JSON array of their paths'
+// bytes in hex.
+sqlive_compose::write!(
+    DeleteSidecars(folders: String),
+    r#"
+    DELETE FROM scan_sidecar
+    WHERE folder IN (SELECT unhex(wanted.value) FROM json_each(:folders) AS wanted)
+"#
+);
+
 /// Delete the sidecars stored for `folders`.
 fn delete_sidecars_at(sql: &CovenWrite<'_>, folders: &[PathBuf]) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM scan_sidecar WHERE folder IN (SELECT unhex(value) FROM json_each(?))",
-        [path_column::hex_list(folders.iter().map(PathBuf::as_path))],
-    )?;
+    sql.run(&DeleteSidecarsParams {
+        folders: path_column::hex_list(folders.iter().map(PathBuf::as_path)),
+    })?;
     Ok(())
 }
 

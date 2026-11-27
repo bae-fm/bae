@@ -52,8 +52,8 @@ pub fn statement_row<Q: Read<Handle = Writer>>(
     statement_optional(sql, statement)?.ok_or_else(|| row_count::<Q>(0))
 }
 
-/// A read returned `rows` rows, a number its statement never returns.
-fn row_count<Q: Read>(rows: usize) -> DbError {
+/// A statement returned `rows` rows, a number it never returns.
+pub(crate) fn row_count<Q>(rows: usize) -> DbError {
     DbError::unreadable(format!("the result of {}", std::any::type_name::<Q>()), rows)
 }
 

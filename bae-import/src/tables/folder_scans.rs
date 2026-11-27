@@ -4,7 +4,8 @@
 //! is written, and successful completion prunes rows of other generations in
 //! the transaction that marks the root complete.
 //!
-//! [`write`] stores candidate rows, `read` loads them back, `sidecar`
+//! [`write`] stores candidate rows, `roots` each watched folder's scan row
+//! and recorded directories, `read` loads them back, `sidecar`
 //! stores a folder's sidecar files, `file_reads` reads what they say was
 //! read of each file, `tag_snapshot` stores and reads back what a
 //! candidate's files' tags read, `cover_choice` checks a cover against what
@@ -26,6 +27,7 @@ pub mod listed_fragments;
 mod progress;
 pub(super) mod read;
 mod reading;
+mod roots;
 pub mod row_fragments;
 mod sidecar;
 pub(super) mod tag_snapshot;
@@ -141,12 +143,10 @@ fn finish_read_tree(
     let pruned = write::prune_other_generations(sql, watched_folder_path, generation)?;
     let pruned_sidecars = sidecar::prune_sidecars(sql, watched_folder_path, generation, None)?;
     match unwatched {
-        None => sql.execute(
-            "UPDATE folder_scan_roots SET status = 'complete', detail = NULL, \
-                 unwatched_directory = NULL, unwatched_cause = NULL \
-             WHERE watched_folder_path = ? AND generation = ?",
-            params![coven::path_bytes(watched_folder_path), generation],
-        )?,
+        None => sql.run(&roots::CompleteRootScanParams {
+            watched_folder_path: coven::path_bytes(watched_folder_path),
+            generation,
+        })?,
         Some(reason) => store_unwatched(sql, watched_folder_path, generation, reason)?,
     };
     let regrouped = super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
@@ -161,18 +161,13 @@ fn store_unwatched(
     generation: i64,
     reason: &crate::UnwatchedReason,
 ) -> Result<usize, DbError> {
-    Ok(sql.execute(
-        "UPDATE folder_scan_roots SET status = 'unwatched', detail = ?, \
-             unwatched_directory = ?, unwatched_cause = ? \
-         WHERE watched_folder_path = ? AND generation = ?",
-        params![
-            reason.message,
-            coven::path_bytes(&reason.directory),
-            columns::unwatched_cause_text(reason.cause),
-            coven::path_bytes(watched_folder_path),
-            generation
-        ],
-    )?)
+    Ok(sql.run(&roots::LeaveRootUnwatchedParams {
+        watched_folder_path: coven::path_bytes(watched_folder_path),
+        generation,
+        detail: &reason.message,
+        unwatched_directory: coven::path_bytes(&reason.directory),
+        unwatched_cause: columns::unwatched_cause_text(reason.cause),
+    })?)
 }
 
 /// Whether `generation` is still the root's. Read inside the write
@@ -240,17 +235,8 @@ impl ImportTables {
         let volume = columns::volume_text(volume);
         self.store
             .call(move |sql| {
-                let generation = next_folder_scan_generation(sql)?;
-                sql.execute(
-                    "INSERT INTO folder_scan_roots \
-                     (watched_folder_path, generation, status, detail, volume) \
-                 VALUES (?, ?, NULL, NULL, ?) \
-                 ON CONFLICT(watched_folder_path) DO UPDATE SET \
-                     generation = excluded.generation, status = NULL, detail = NULL, \
-                     unwatched_directory = NULL, unwatched_cause = NULL, \
-                     volume = excluded.volume",
-                    params![watched_folder_path, generation, volume],
-                )?;
+                let generation = roots::next_folder_scan_generation(sql)?;
+                sql.run(&roots::BeginRootScanParams { watched_folder_path, generation, volume })?;
                 to_u64(generation, "a folder scan generation")
             })
             .await
@@ -363,16 +349,15 @@ impl ImportTables {
         let directories = directories.to_vec();
         self.store
             .call(move |sql| {
-                sql.execute(
-                    "DELETE FROM folder_scan_directory WHERE watched_folder_path = ?",
-                    [&watched_folder_path],
-                )?;
+                sql.run(&roots::DeleteRootDirectoriesParams {
+                    watched_folder_path: &watched_folder_path,
+                })?;
                 for (path, modified_at) in &directories {
-                    sql.execute(
-                    "INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at) \
-                     VALUES (?, ?, ?)",
-                    params![watched_folder_path, coven::path_bytes(path), modified_at],
-                )?;
+                    sql.run(&roots::InsertScanDirectoryParams {
+                        watched_folder_path: &watched_folder_path,
+                        path: coven::path_bytes(path),
+                        modified_at: *modified_at,
+                    })?;
                 }
                 Ok(())
             })
@@ -413,12 +398,11 @@ impl ImportTables {
                     return Ok(None);
                 }
                 if let Some(error) = error {
-                    sql.execute(
-                        "UPDATE folder_scan_roots SET status = 'failed', detail = ?, \
-                         unwatched_directory = NULL, unwatched_cause = NULL \
-                     WHERE watched_folder_path = ? AND generation = ?",
-                        params![error, coven::path_bytes(&watched_folder_path), generation],
-                    )?;
+                    sql.run(&roots::FailRootScanParams {
+                        watched_folder_path: coven::path_bytes(&watched_folder_path),
+                        generation,
+                        detail: error,
+                    })?;
                     return Ok(Some(FinishedScan::default()));
                 }
                 finish_read_tree(sql, &watched_folder_path, generation, None).map(Some)
@@ -907,20 +891,6 @@ pub(super) fn stored_entry_belongs(
             stored: misplaced.to_string(),
         }),
     }
-}
-
-/// The next scan generation. An upsert, so a missing seed row is created
-/// rather than failing the scan.
-pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, DbError> {
-    let generation: i64 = sql.query_row(
-        "INSERT INTO folder_scan_generation_sequence (singleton, last_generation) \
-         VALUES (1, 1) \
-         ON CONFLICT(singleton) DO UPDATE SET last_generation = last_generation + 1 \
-         RETURNING last_generation",
-        [],
-        |row| row.get(0),
-    )?;
-    Ok(generation)
 }
 
 #[cfg(test)]

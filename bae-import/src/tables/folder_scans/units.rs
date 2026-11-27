@@ -25,6 +25,53 @@ struct SliceColumns<'a> {
     end: Option<i64>,
 }
 
+sqlive_compose::write!(
+    InsertUnit(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        position: i64,
+        file_kind: &'static str,
+        file_id: &'p str,
+        sheet_id: Option<&'p str>,
+        slice_index: Option<i64>,
+        cue_track_position: Option<i64>,
+        duration_ms: i64,
+        start_sample: Option<i64>,
+        end_sample: Option<i64>,
+        disc: Option<u32>,
+        number: u32,
+        pregap_file_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO scan_candidate_unit
+        (watched_folder_path, candidate_path, position, file_kind, file_id, sheet_id,
+         slice_index, cue_track_position, duration_ms, start_sample, end_sample, disc, number,
+         pregap_file_id)
+    VALUES (:watched_folder_path, :candidate_path, :position, :file_kind, :file_id, :sheet_id,
+        :slice_index, :cue_track_position, :duration_ms, :start_sample, :end_sample, :disc,
+        :number, :pregap_file_id)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSheetOffer(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        sheet_relative_path: &'p str,
+        file_reference: &'p str,
+        audio_relative_path: &'p str,
+        offer: &'static str,
+        codec: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO scan_candidate_sheet_offer
+        (watched_folder_path, candidate_path, sheet_relative_path, file_reference,
+         audio_relative_path, offer, codec)
+    VALUES (:watched_folder_path, :candidate_path, :sheet_relative_path, :file_reference,
+        :audio_relative_path, :offer, :codec)
+"#
+);
+
 /// Write the units and sheet offers of `files`, the files of the candidate
 /// `candidate_path`. `insert_candidate_files` writes their file rows first,
 /// in the same write, and `scan_candidate_file` refuses an audio file without
@@ -90,29 +137,22 @@ pub(super) fn insert_units(
                 ("sheet_slice", Some(slice))
             }
         };
-        sql.execute(
-            "INSERT INTO scan_candidate_unit \
-                 (watched_folder_path, candidate_path, position, file_kind, file_id, sheet_id, \
-                  slice_index, cue_track_position, duration_ms, start_sample, end_sample, \
-                  disc, number, pregap_file_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
-                candidate_path,
-                position as i64,
-                file_kind,
-                track.file.file_id(),
-                slice.as_ref().map(|slice| slice.sheet_id),
-                slice.as_ref().map(|slice| slice.index),
-                slice.as_ref().map(|slice| slice.cue_position),
-                to_i64(duration_ms, "an audio unit's length")?,
-                slice.as_ref().map(|slice| slice.start),
-                slice.as_ref().and_then(|slice| slice.end),
-                track.disc,
-                track.number.get(),
-                slice.as_ref().and_then(|slice| slice.pregap_file_id),
-            ],
-        )?;
+        sql.run(&InsertUnitParams {
+            watched_folder_path: &coven::path_bytes(watched_folder_path),
+            candidate_path,
+            position: position as i64,
+            file_kind,
+            file_id: track.file.file_id(),
+            sheet_id: slice.as_ref().map(|slice| slice.sheet_id),
+            slice_index: slice.as_ref().map(|slice| slice.index),
+            cue_track_position: slice.as_ref().map(|slice| slice.cue_position),
+            duration_ms: to_i64(duration_ms, "an audio unit's length")?,
+            start_sample: slice.as_ref().map(|slice| slice.start),
+            end_sample: slice.as_ref().and_then(|slice| slice.end),
+            disc: track.disc,
+            number: track.number.get(),
+            pregap_file_id: slice.as_ref().and_then(|slice| slice.pregap_file_id),
+        })?;
     }
     for sheet in files.track_sheets() {
         for reference in files.sheet_binding_options(&sheet.file.relative_path) {
@@ -125,21 +165,15 @@ pub(super) fn insert_units(
                     }
                     SheetBindingOffer::RefusedUnreadable => ("refused_unreadable", None),
                 };
-                sql.execute(
-                    "INSERT INTO scan_candidate_sheet_offer \
-                         (watched_folder_path, candidate_path, sheet_relative_path, \
-                          file_reference, audio_relative_path, offer, codec) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    params![
-                        coven::path_bytes(watched_folder_path),
-                        candidate_path,
-                        sheet.file.relative_path,
-                        reference.file_reference,
-                        option.file_id,
-                        offer,
-                        codec,
-                    ],
-                )?;
+                sql.run(&InsertSheetOfferParams {
+                    watched_folder_path: &coven::path_bytes(watched_folder_path),
+                    candidate_path,
+                    sheet_relative_path: &sheet.file.relative_path,
+                    file_reference: &reference.file_reference,
+                    audio_relative_path: &option.file_id,
+                    offer,
+                    codec,
+                })?;
             }
         }
     }

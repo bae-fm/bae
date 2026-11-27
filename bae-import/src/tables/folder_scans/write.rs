@@ -23,57 +23,113 @@ pub(crate) fn delete_entry(
     crate::tables::import_state::end_file_work_unless_of_on(sql, key, None)
 }
 
+sqlive_compose::write!(
+    DeleteScanCandidate(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM scan_candidate WHERE watched_folder_path = :watched_folder_path AND path = :key
+"#
+);
+
 fn delete_entry_row(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     key: &CandidateKey,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
-        params![coven::path_bytes(watched_folder_path), key],
-    )?;
+    sql.run(&DeleteScanCandidateParams {
+        watched_folder_path: &coven::path_bytes(watched_folder_path),
+        key,
+    })?;
     Ok(())
 }
 
-/// Every table that hangs off a `scan_candidate` row by foreign key: what an
-/// entry written again clears before its rows are written anew.
-pub(super) const ENTRY_ROW_TABLES: [&str; 6] = [
-    "scan_candidate_tag_snapshot",
-    "scan_candidate_unit",
-    "scan_candidate_part",
-    "scan_candidate_file",
-    "scan_skipped_file",
-    "scan_skipped_tags",
-];
+sqlive_compose::write!(
+    DeleteEntryTagSnapshot(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM scan_candidate_tag_snapshot
+    WHERE watched_folder_path = :watched_folder_path AND candidate_path = :key
+"#
+);
 
-/// Clear every row below the entry's `scan_candidate` row, for a write that
-/// stores the entry again over that row and says itself what that does to
-/// its candidate's identification.
-pub(super) fn clear_entry_rows(
-    sql: &CovenWrite<'_>,
-    watched_folder_path: &Path,
-    key: &CandidateKey,
-) -> Result<(), DbError> {
-    for table in ENTRY_ROW_TABLES {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE watched_folder_path = ? AND candidate_path = ?"),
-            params![coven::path_bytes(watched_folder_path), key],
-        )?;
-    }
-    Ok(())
+sqlive_compose::write!(
+    DeleteEntryUnits(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM scan_candidate_unit
+    WHERE watched_folder_path = :watched_folder_path AND candidate_path = :key
+"#
+);
+
+sqlive_compose::write!(
+    DeleteEntryParts(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM scan_candidate_part
+    WHERE watched_folder_path = :watched_folder_path AND candidate_path = :key
+"#
+);
+
+sqlive_compose::write!(
+    DeleteEntryFiles(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM scan_candidate_file
+    WHERE watched_folder_path = :watched_folder_path AND candidate_path = :key
+"#
+);
+
+sqlive_compose::write!(
+    DeleteEntrySkippedFiles(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM scan_skipped_file
+    WHERE watched_folder_path = :watched_folder_path AND candidate_path = :key
+"#
+);
+
+sqlive_compose::write!(
+    DeleteEntrySkippedTags(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM scan_skipped_tags
+    WHERE watched_folder_path = :watched_folder_path AND candidate_path = :key
+"#
+);
+
+/// Declare [`clear_entry_rows`] over one delete for each table that hangs off
+/// a `scan_candidate` row by foreign key, and list the deletes' SQL for the
+/// test that holds them against the schema's foreign keys.
+macro_rules! entry_row_clears {
+    ($($write:ident => $params:ident),+ $(,)?) => {
+        #[cfg(test)]
+        const ENTRY_ROW_CLEARS: &[&str] = &[$($write::SQL),+];
+
+        /// Clear every row below the entry's `scan_candidate` row, for a write
+        /// that stores the entry again over that row and says itself what
+        /// that does to its candidate's identification.
+        pub(super) fn clear_entry_rows(
+            sql: &CovenWrite<'_>,
+            watched_folder_path: &Path,
+            key: &CandidateKey,
+        ) -> Result<(), DbError> {
+            let watched_folder_path = coven::path_bytes(watched_folder_path);
+            $(sql.run(&$params { watched_folder_path: &watched_folder_path, key })?;)+
+            Ok(())
+        }
+    };
 }
 
-/// The clause that makes a `scan_candidate` insert write over a row already
-/// stored under the same key, column for column.
-const OVER_STORED_ROW: &str = "ON CONFLICT (watched_folder_path, path) DO UPDATE SET \
-     generation = excluded.generation, kind = excluded.kind, name = excluded.name, \
-     relative_folder = excluded.relative_folder, folder = excluded.folder, \
-     file_root = excluded.file_root, scope = excluded.scope, \
-     content_hash = excluded.content_hash, file_edit_revision = excluded.file_edit_revision, \
-     grouping_key = excluded.grouping_key, source_kind = excluded.source_kind, \
-     blank_cover_file = excluded.blank_cover_file, invalid_reason = excluded.invalid_reason, \
-     invalid_shared_name = excluded.invalid_shared_name, \
-     invalid_damaged_audio = excluded.invalid_damaged_audio";
+entry_row_clears!(
+    DeleteEntryTagSnapshot => DeleteEntryTagSnapshotParams,
+    DeleteEntryUnits => DeleteEntryUnitsParams,
+    DeleteEntryParts => DeleteEntryPartsParams,
+    DeleteEntryFiles => DeleteEntryFilesParams,
+    DeleteEntrySkippedFiles => DeleteEntrySkippedFilesParams,
+    DeleteEntrySkippedTags => DeleteEntrySkippedTagsParams,
+);
+
+sqlive_compose::write!(
+    DeleteOtherGenerations(watched_folder_path: &'p [u8], generation: i64),
+    r#"
+    DELETE FROM scan_candidate
+    WHERE watched_folder_path = :watched_folder_path AND generation != :generation
+        AND source_kind = 'folder'
+"#
+);
 
 /// Delete every scanned row, not a grouping's, stamped with another
 /// generation than `generation`, ending each candidate's identification, and
@@ -90,10 +146,10 @@ pub(super) fn prune_other_generations(
         params![coven::path_bytes(watched_folder_path), generation],
         |row| row.get::<_, CandidateKey>(0),
     )?;
-    sql.execute(
-        "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder'",
-        params![coven::path_bytes(watched_folder_path), generation],
-    )?;
+    sql.run(&DeleteOtherGenerationsParams {
+        watched_folder_path: &coven::path_bytes(watched_folder_path),
+        generation,
+    })?;
     // The candidates the pass did not find leave the scan, and their
     // identifications with them.
     for key in &pruned {
@@ -101,6 +157,26 @@ pub(super) fn prune_other_generations(
     }
     Ok(pruned)
 }
+
+sqlive_compose::write!(
+    StampScanCandidate(
+        watched_folder_path: &'p [u8],
+        path: &'p crate::CandidateKey,
+        generation: i64,
+    ),
+    r#"
+    UPDATE scan_candidate SET generation = :generation
+    WHERE watched_folder_path = :watched_folder_path AND path = :path
+"#
+);
+
+sqlive_compose::write!(
+    StampTagSnapshot(watched_folder_path: &'p [u8], path: &'p crate::CandidateKey, generation: i64),
+    r#"
+    UPDATE scan_candidate_tag_snapshot SET scan_generation = :generation
+    WHERE watched_folder_path = :watched_folder_path AND candidate_path = :path
+"#
+);
 
 /// Stamp a candidate row and its file-tag reading with `generation`, changing
 /// nothing else, so the completion prune keeps the row. The row keeps the
@@ -111,15 +187,17 @@ pub(crate) fn touch_candidate(
     path: &CandidateKey,
     generation: i64,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "UPDATE scan_candidate SET generation = ? WHERE watched_folder_path = ? AND path = ?",
-        params![generation, coven::path_bytes(watched_folder_path), path],
-    )?;
-    sql.execute(
-        "UPDATE scan_candidate_tag_snapshot SET scan_generation = ? \
-         WHERE watched_folder_path = ? AND candidate_path = ?",
-        params![generation, coven::path_bytes(watched_folder_path), path],
-    )?;
+    let watched_folder_path = coven::path_bytes(watched_folder_path);
+    sql.run(&StampScanCandidateParams {
+        watched_folder_path: &watched_folder_path,
+        path,
+        generation,
+    })?;
+    sql.run(&StampTagSnapshotParams {
+        watched_folder_path: &watched_folder_path,
+        path,
+        generation,
+    })?;
     Ok(())
 }
 
@@ -190,17 +268,58 @@ fn insert_candidate(
     Ok(())
 }
 
-/// The statement writing a candidate's `scan_candidate` row over the one
-/// stored under its key.
-fn candidate_row_insert() -> String {
-    format!(
-        "INSERT INTO scan_candidate \
-             (watched_folder_path, path, generation, kind, name, relative_folder, folder, \
-              file_root, scope, content_hash, file_edit_revision, grouping_key, \
-              source_kind) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) {OVER_STORED_ROW}"
-    )
-}
+// A candidate's row, written over the one stored under its key, column for
+// column.
+sqlive_compose::write!(
+    UpsertCandidateRow(
+        watched_folder_path: &'p [u8],
+        path: &'p crate::CandidateKey,
+        generation: i64,
+        kind: &'p str,
+        name: &'p str,
+        relative_folder: &'p crate::RelativeFolder,
+        folder: Vec<u8>,
+        file_root: Vec<u8>,
+        scope: &'static str,
+        content_hash: String,
+        file_edit_revision: i64,
+        grouping_key: Option<&'p crate::CandidateKey>,
+        source_kind: &'p str,
+    ),
+    r#"
+    INSERT INTO scan_candidate
+        (watched_folder_path, path, generation, kind, name, relative_folder, folder, file_root,
+         scope, content_hash, file_edit_revision, grouping_key, source_kind)
+    VALUES (:watched_folder_path, :path, :generation, :kind, :name, :relative_folder, :folder,
+        :file_root, :scope, :content_hash, :file_edit_revision, :grouping_key, :source_kind)
+    ON CONFLICT (watched_folder_path, path) DO UPDATE SET
+        generation = excluded.generation, kind = excluded.kind, name = excluded.name,
+        relative_folder = excluded.relative_folder, folder = excluded.folder,
+        file_root = excluded.file_root, scope = excluded.scope,
+        content_hash = excluded.content_hash,
+        file_edit_revision = excluded.file_edit_revision,
+        grouping_key = excluded.grouping_key, source_kind = excluded.source_kind,
+        blank_cover_file = excluded.blank_cover_file,
+        invalid_reason = excluded.invalid_reason,
+        invalid_shared_name = excluded.invalid_shared_name,
+        invalid_damaged_audio = excluded.invalid_damaged_audio
+"#
+);
+
+sqlive_compose::write!(
+    InsertCandidatePart(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        position: i64,
+        folder: Vec<u8>,
+        prefix: &'p str,
+    ),
+    r#"
+    INSERT INTO scan_candidate_part
+        (watched_folder_path, candidate_path, position, folder, prefix)
+    VALUES (:watched_folder_path, :candidate_path, :position, :folder, :prefix)
+"#
+);
 
 /// Write one candidate's `scan_candidate` row, over the one stored under its
 /// key, and its parts. `source_kind` is `folder` for a scan's row, `grouping`
@@ -214,40 +333,111 @@ pub(crate) fn insert_candidate_row(
     candidate: &FolderCandidate,
 ) -> Result<(), DbError> {
     let path = candidate.key();
-    sql.execute(
-        &candidate_row_insert(),
-        params![
-            coven::path_bytes(watched_folder_path),
-            path,
-            generation,
-            kind,
-            candidate.name,
-            candidate.relative_folder,
-            coven::path_bytes(&candidate.path),
-            coven::path_bytes(&candidate.file_root),
-            scope_text(candidate.scope),
-            candidate.files.content_hash(),
-            to_i64(candidate.file_edit_revision, "a candidate's file edit revision")?,
-            candidate.grouping,
-            source_kind,
-        ],
-    )?;
+    let watched_folder_path = coven::path_bytes(watched_folder_path);
+    sql.run(&UpsertCandidateRowParams {
+        watched_folder_path: &watched_folder_path,
+        path: &path,
+        generation,
+        kind,
+        name: &candidate.name,
+        relative_folder: &candidate.relative_folder,
+        folder: coven::path_bytes(&candidate.path),
+        file_root: coven::path_bytes(&candidate.file_root),
+        scope: scope_text(candidate.scope),
+        content_hash: candidate.files.content_hash(),
+        file_edit_revision: to_i64(
+            candidate.file_edit_revision,
+            "a candidate's file edit revision",
+        )?,
+        grouping_key: candidate.grouping.as_ref(),
+        source_kind,
+    })?;
     for (position, part) in candidate.files.parts.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO scan_candidate_part \
-                 (watched_folder_path, candidate_path, position, folder, prefix) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
-                path,
-                to_i64(position as u64, "a release part's position")?,
-                coven::path_bytes(&part.folder),
-                part.prefix,
-            ],
-        )?;
+        sql.run(&InsertCandidatePartParams {
+            watched_folder_path: &watched_folder_path,
+            candidate_path: &path,
+            position: to_i64(position as u64, "a release part's position")?,
+            folder: coven::path_bytes(&part.folder),
+            prefix: &part.prefix,
+        })?;
     }
     Ok(())
 }
+
+// An invalid candidate's row, written over the one stored under its key,
+// column for column. It has no content hash and no file decisions.
+sqlive_compose::write!(
+    UpsertInvalidCandidateRow(
+        watched_folder_path: &'p [u8],
+        path: &'p crate::CandidateKey,
+        generation: i64,
+        name: &'p str,
+        relative_folder: &'p crate::RelativeFolder,
+        folder: &'p [u8],
+        scope: &'static str,
+        grouping_key: Option<&'p crate::CandidateKey>,
+        source_kind: &'p str,
+        blank_cover_file: Option<String>,
+        invalid_reason: &'static str,
+        invalid_shared_name: Option<String>,
+        invalid_damaged_audio: Option<u32>,
+    ),
+    r#"
+    INSERT INTO scan_candidate
+        (watched_folder_path, path, generation, kind, name, relative_folder, folder, file_root,
+         scope, content_hash, file_edit_revision, grouping_key, source_kind, blank_cover_file,
+         invalid_reason, invalid_shared_name, invalid_damaged_audio)
+    VALUES (:watched_folder_path, :path, :generation, 'invalid', :name, :relative_folder, :folder,
+        :folder, :scope, NULL, 0, :grouping_key, :source_kind, :blank_cover_file,
+        :invalid_reason, :invalid_shared_name, :invalid_damaged_audio)
+    ON CONFLICT (watched_folder_path, path) DO UPDATE SET
+        generation = excluded.generation, kind = excluded.kind, name = excluded.name,
+        relative_folder = excluded.relative_folder, folder = excluded.folder,
+        file_root = excluded.file_root, scope = excluded.scope,
+        content_hash = excluded.content_hash,
+        file_edit_revision = excluded.file_edit_revision,
+        grouping_key = excluded.grouping_key, source_kind = excluded.source_kind,
+        blank_cover_file = excluded.blank_cover_file,
+        invalid_reason = excluded.invalid_reason,
+        invalid_shared_name = excluded.invalid_shared_name,
+        invalid_damaged_audio = excluded.invalid_damaged_audio
+"#
+);
+
+sqlive_compose::write!(
+    InsertSkippedFile(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        position: i64,
+        relative_path: &'p str,
+        absolute_path: Vec<u8>,
+        size: i64,
+        modified_at_ns: i64,
+        role: &'static str,
+        audio_damage: Option<&'static str>,
+        document_kind: Option<&'static str>,
+    ),
+    r#"
+    INSERT INTO scan_skipped_file
+        (watched_folder_path, candidate_path, position, relative_path, absolute_path, size,
+         modified_at_ns, role, audio_damage, document_kind)
+    VALUES (:watched_folder_path, :candidate_path, :position, :relative_path, :absolute_path,
+        :size, :modified_at_ns, :role, :audio_damage, :document_kind)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSkippedTags(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        album_title: &'p str,
+        credits: Option<String>,
+    ),
+    r#"
+    INSERT INTO scan_skipped_tags (watched_folder_path, candidate_path, album_title, credits)
+    VALUES (:watched_folder_path, :candidate_path, :album_title, :credits)
+"#
+);
 
 fn insert_invalid(
     sql: &CovenWrite<'_>,
@@ -263,73 +453,85 @@ fn insert_invalid(
         InvalidReason::DamagedAudio { count } => ("damaged_audio", None, Some(count)),
         InvalidReason::NoValidAudio => ("no_valid_audio", None, None),
     };
-    sql.execute(
-        &format!(
-            "INSERT INTO scan_candidate \
-                 (watched_folder_path, path, generation, kind, name, relative_folder, folder, \
-                  file_root, scope, content_hash, file_edit_revision, grouping_key, \
-                  source_kind, blank_cover_file, invalid_reason, invalid_shared_name, \
-                  invalid_damaged_audio) \
-             VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?, ?, ?) \
-             {OVER_STORED_ROW}"
-        ),
-        params![
-            coven::path_bytes(watched_folder_path),
-            key,
-            generation,
-            candidate.name,
-            candidate.relative_folder,
-            folder,
-            folder,
-            scope_text(if candidate.grouping.is_some() {
-                crate::folder_scanner::ReleaseFileScope::Recursive
-            } else {
-                crate::folder_scanner::ReleaseFileScope::Direct
-            }),
-            candidate.grouping,
-            source_kind,
-            candidate.cover_file(),
-            reason,
-            shared_name,
-            damaged_audio,
-        ],
-    )?;
+    let watched_folder_path = coven::path_bytes(watched_folder_path);
+    sql.run(&UpsertInvalidCandidateRowParams {
+        watched_folder_path: &watched_folder_path,
+        path: &key,
+        generation,
+        name: &candidate.name,
+        relative_folder: &candidate.relative_folder,
+        folder: &folder,
+        scope: scope_text(if candidate.grouping.is_some() {
+            crate::folder_scanner::ReleaseFileScope::Recursive
+        } else {
+            crate::folder_scanner::ReleaseFileScope::Direct
+        }),
+        grouping_key: candidate.grouping.as_ref(),
+        source_kind,
+        blank_cover_file: candidate.cover_file(),
+        invalid_reason: reason,
+        invalid_shared_name: shared_name,
+        invalid_damaged_audio: damaged_audio,
+    })?;
     for (position, file) in candidate.files.iter().enumerate() {
         let columns = proposed_role_columns(file.role);
-        sql.execute(
-            "INSERT INTO scan_skipped_file \
-                 (watched_folder_path, candidate_path, position, relative_path, absolute_path, \
-                  size, modified_at_ns, role, audio_damage, document_kind) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
-                key,
-                to_i64(position as u64, "a skipped file's position")?,
-                file.relative_path,
-                coven::path_bytes(&file.file.path),
-                to_i64(file.file.size, "a skipped file's size")?,
-                file.file.modified_at_ns,
-                columns.role,
-                columns.audio_damage,
-                columns.document_kind,
-            ],
-        )?;
+        sql.run(&InsertSkippedFileParams {
+            watched_folder_path: &watched_folder_path,
+            candidate_path: &key,
+            position: to_i64(position as u64, "a skipped file's position")?,
+            relative_path: &file.relative_path,
+            absolute_path: coven::path_bytes(&file.file.path),
+            size: to_i64(file.file.size, "a skipped file's size")?,
+            modified_at_ns: file.file.modified_at_ns,
+            role: columns.role,
+            audio_damage: columns.audio_damage,
+            document_kind: columns.document_kind,
+        })?;
     }
     if let Some(tags) = &candidate.tags {
-        sql.execute(
-            "INSERT INTO scan_skipped_tags \
-                 (watched_folder_path, candidate_path, album_title, credits) \
-             VALUES (?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
-                key,
-                tags.album_title,
-                tags.artist.as_ref().map(crate::tables::stored_credits::line_json).transpose()?,
-            ],
-        )?;
+        sql.run(&InsertSkippedTagsParams {
+            watched_folder_path: &watched_folder_path,
+            candidate_path: &key,
+            album_title: &tags.album_title,
+            credits: tags
+                .artist
+                .as_ref()
+                .map(crate::tables::stored_credits::line_json)
+                .transpose()?,
+        })?;
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    InsertSheetAudioFile(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        sheet_relative_path: &'p str,
+        position: i64,
+        file_reference: &'p str,
+        audio_relative_path: &'p str,
+    ),
+    r#"
+    INSERT INTO scan_sheet_audio_file
+        (watched_folder_path, candidate_path, sheet_relative_path, position, file_reference,
+         audio_relative_path)
+    VALUES (:watched_folder_path, :candidate_path, :sheet_relative_path, :position,
+        :file_reference, :audio_relative_path)
+"#
+);
+
+sqlive_compose::write!(
+    SetBlankCoverFile(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        blank_cover_file: Option<String>,
+    ),
+    r#"
+    UPDATE scan_candidate SET blank_cover_file = :blank_cover_file
+    WHERE watched_folder_path = :watched_folder_path AND path = :candidate_path
+"#
+);
 
 /// Insert one candidate's files and their parsed track sheets; a file decision
 /// uses it too, to replace the files the scan proposed. Each sheet's audio
@@ -349,33 +551,63 @@ pub(crate) fn insert_candidate_files(
             continue;
         };
         for (position, audio) in audio_files.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO scan_sheet_audio_file \
-                     (watched_folder_path, candidate_path, sheet_relative_path, position, \
-                      file_reference, audio_relative_path) \
-                 VALUES (?, ?, ?, ?, ?, ?)",
-                params![
-                    coven::path_bytes(watched_folder_path),
-                    candidate_path,
-                    sheet.file.relative_path,
-                    to_i64(position as u64, "a sheet audio file's position")?,
-                    audio.file_reference,
-                    audio.file_id,
-                ],
-            )?;
+            sql.run(&InsertSheetAudioFileParams {
+                watched_folder_path: &coven::path_bytes(watched_folder_path),
+                candidate_path,
+                sheet_relative_path: &sheet.file.relative_path,
+                position: to_i64(position as u64, "a sheet audio file's position")?,
+                file_reference: &audio.file_reference,
+                audio_relative_path: &audio.file_id,
+            })?;
         }
     }
-    sql.execute(
-        "UPDATE scan_candidate SET blank_cover_file = ? \
-         WHERE watched_folder_path = ? AND path = ?",
-        params![
-            crate::cover_art::blank_cover_file(files.artwork()),
-            coven::path_bytes(watched_folder_path),
-            candidate_path
-        ],
-    )?;
+    sql.run(&SetBlankCoverFileParams {
+        watched_folder_path: &coven::path_bytes(watched_folder_path),
+        candidate_path,
+        blank_cover_file: crate::cover_art::blank_cover_file(files.artwork()),
+    })?;
     super::units::insert_units(sql, watched_folder_path, candidate_path, files)
 }
+
+sqlive_compose::write!(
+    InsertCandidateFile(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        relative_path: &'p str,
+        position: i64,
+        absolute_path: Vec<u8>,
+        size: i64,
+        modified_at_ns: i64,
+        audio_content_type: Option<&'p str>,
+        audio_container: Option<&'p str>,
+        audio_duration_ms: Option<i64>,
+        audio_sample_rate_hz: Option<i64>,
+        audio_bits_per_sample: Option<i64>,
+        audio_bitrate_kbps: Option<i64>,
+        audio_channels: Option<i64>,
+        file_name: &'p str,
+        role: &'static str,
+        document_kind: Option<&'static str>,
+        sheet_binding: Option<&'static str>,
+        sheet_binding_codec: Option<&'p str>,
+        sheet_place: Option<&'static str>,
+        sheet_medium: Option<u32>,
+        sheet_side: Option<u32>,
+    ),
+    r#"
+    INSERT INTO scan_candidate_file
+        (watched_folder_path, candidate_path, relative_path, position, absolute_path, size,
+         modified_at_ns, audio_content_type, audio_container, audio_duration_ms,
+         audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels,
+         file_name, role, document_kind, sheet_binding, sheet_binding_codec, sheet_place,
+         sheet_medium, sheet_side)
+    VALUES (:watched_folder_path, :candidate_path, :relative_path, :position, :absolute_path,
+        :size, :modified_at_ns, :audio_content_type, :audio_container, :audio_duration_ms,
+        :audio_sample_rate_hz, :audio_bits_per_sample, :audio_bitrate_kbps, :audio_channels,
+        :file_name, :role, :document_kind, :sheet_binding, :sheet_binding_codec, :sheet_place,
+        :sheet_medium, :sheet_side)
+"#
+);
 
 fn insert_file(
     sql: &CovenWrite<'_>,
@@ -385,43 +617,33 @@ fn insert_file(
     file: &CandidateFile,
 ) -> Result<(), DbError> {
     let columns = role_columns(&file.role);
-    sql.execute(
-        "INSERT INTO scan_candidate_file \
-             (watched_folder_path, candidate_path, relative_path, position, absolute_path, \
-              size, modified_at_ns, audio_content_type, audio_container, audio_duration_ms, \
-              audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
-              file_name, role, document_kind, sheet_binding, \
-              sheet_binding_codec, sheet_place, sheet_medium, sheet_side) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![
-            coven::path_bytes(watched_folder_path),
-            candidate_path,
-            file.file.relative_path,
-            to_i64(position as u64, "a candidate file's position")?,
-            coven::path_bytes(&file.file.version.path),
-            to_i64(file.file.version.size, "a file's size")?,
-            file.file.version.modified_at_ns,
-            file.file.source_audio.as_ref().map(|audio| audio.content_type.as_str()),
-            file.file.source_audio.as_ref().map(|audio| audio.container.as_str()),
-            file.file
-                .source_audio
-                .as_ref()
-                .map(|audio| to_i64(audio.duration_ms, "an audio file's duration"))
-                .transpose()?,
-            file.file.source_audio.as_ref().map(|audio| audio.format.sample_rate_hz),
-            file.file.source_audio.as_ref().and_then(|audio| audio.format.bits_per_sample),
-            file.file.source_audio.as_ref().and_then(|audio| audio.format.bitrate_kbps),
-            file.file.source_audio.as_ref().map(|audio| audio.format.channels),
-            file.file.file_name,
-            columns.role,
-            columns.document_kind,
-            columns.sheet_binding,
-            columns.sheet_binding_codec,
-            columns.sheet_place,
-            columns.sheet_medium,
-            columns.sheet_side,
-        ],
-    )?;
+    let audio = file.file.source_audio.as_ref();
+    sql.run(&InsertCandidateFileParams {
+        watched_folder_path: &coven::path_bytes(watched_folder_path),
+        candidate_path,
+        relative_path: &file.file.relative_path,
+        position: to_i64(position as u64, "a candidate file's position")?,
+        absolute_path: coven::path_bytes(&file.file.version.path),
+        size: to_i64(file.file.version.size, "a file's size")?,
+        modified_at_ns: file.file.version.modified_at_ns,
+        audio_content_type: audio.map(|audio| audio.content_type.as_str()),
+        audio_container: audio.map(|audio| audio.container.as_str()),
+        audio_duration_ms: audio
+            .map(|audio| to_i64(audio.duration_ms, "an audio file's duration"))
+            .transpose()?,
+        audio_sample_rate_hz: audio.map(|audio| audio.format.sample_rate_hz),
+        audio_bits_per_sample: audio.and_then(|audio| audio.format.bits_per_sample),
+        audio_bitrate_kbps: audio.and_then(|audio| audio.format.bitrate_kbps),
+        audio_channels: audio.map(|audio| audio.format.channels),
+        file_name: &file.file.file_name,
+        role: columns.role,
+        document_kind: columns.document_kind,
+        sheet_binding: columns.sheet_binding,
+        sheet_binding_codec: columns.sheet_binding_codec,
+        sheet_place: columns.sheet_place,
+        sheet_medium: columns.sheet_medium,
+        sheet_side: columns.sheet_side,
+    })?;
     if let FileRole::TrackSheet { sheet, .. } = &file.role {
         insert_cue_sheet(
             sql,
@@ -434,6 +656,73 @@ fn insert_file(
     Ok(())
 }
 
+sqlive_compose::write!(
+    InsertCueSheet(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        sheet_relative_path: &'p str,
+        title: Option<&'p str>,
+        performer: Option<&'p str>,
+        catalog: Option<&'p str>,
+        date: Option<&'p str>,
+        ripper: Option<&'static str>,
+    ),
+    r#"
+    INSERT INTO scan_cue_sheet
+        (watched_folder_path, candidate_path, sheet_relative_path, title, performer, catalog,
+         date, ripper)
+    VALUES (:watched_folder_path, :candidate_path, :sheet_relative_path, :title, :performer,
+        :catalog, :date, :ripper)
+"#
+);
+
+sqlive_compose::write!(
+    InsertCueTrack(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        sheet_relative_path: &'p str,
+        position: i64,
+        number: u32,
+        mode: &'static str,
+        mode_other: Option<&'p str>,
+        title: Option<&'p str>,
+        performer: Option<&'p str>,
+        file_reference: &'p str,
+        start_cue_frames: i64,
+        end_cue_frames: Option<i64>,
+        generated_pregap_frames: Option<i64>,
+    ),
+    r#"
+    INSERT INTO scan_cue_track
+        (watched_folder_path, candidate_path, sheet_relative_path, position, number, mode,
+         mode_other, title, performer, file_reference, start_cue_frames, end_cue_frames,
+         generated_pregap_frames)
+    VALUES (:watched_folder_path, :candidate_path, :sheet_relative_path, :position, :number,
+        :mode, :mode_other, :title, :performer, :file_reference, :start_cue_frames,
+        :end_cue_frames, :generated_pregap_frames)
+"#
+);
+
+sqlive_compose::write!(
+    InsertCueIndex(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        sheet_relative_path: &'p str,
+        track_position: i64,
+        position: i64,
+        number: u32,
+        frames: i64,
+        file_reference: &'p str,
+    ),
+    r#"
+    INSERT INTO scan_cue_index
+        (watched_folder_path, candidate_path, sheet_relative_path, track_position, position,
+         number, frames, file_reference)
+    VALUES (:watched_folder_path, :candidate_path, :sheet_relative_path, :track_position,
+        :position, :number, :frames, :file_reference)
+"#
+);
+
 fn insert_cue_sheet(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
@@ -441,77 +730,66 @@ fn insert_cue_sheet(
     sheet_relative_path: &str,
     sheet: &CueSheet,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "INSERT INTO scan_cue_sheet \
-             (watched_folder_path, candidate_path, sheet_relative_path, title, performer, \
-              catalog, date, ripper) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        params![
-            coven::path_bytes(watched_folder_path),
-            candidate_path,
-            sheet_relative_path,
-            sheet.title,
-            sheet.performer,
-            sheet.catalog,
-            sheet.date,
-            sheet.ripper.map(ripper_text),
-        ],
-    )?;
+    let watched_folder_path = coven::path_bytes(watched_folder_path);
+    sql.run(&InsertCueSheetParams {
+        watched_folder_path: &watched_folder_path,
+        candidate_path,
+        sheet_relative_path,
+        title: sheet.title.as_deref(),
+        performer: sheet.performer.as_deref(),
+        catalog: sheet.catalog.as_deref(),
+        date: sheet.date.as_deref(),
+        ripper: sheet.ripper.map(ripper_text),
+    })?;
     for (position, track) in sheet.tracks.iter().enumerate() {
         let position = to_i64(position as u64, "a cue track's position")?;
         let (mode, mode_other) = match &track.mode {
             crate::cue_sheet::CueTrackMode::Audio => ("audio", None),
             crate::cue_sheet::CueTrackMode::Other(other) => ("other", Some(other.as_str())),
         };
-        sql.execute(
-            "INSERT INTO scan_cue_track \
-                 (watched_folder_path, candidate_path, sheet_relative_path, position, number, \
-                  mode, mode_other, title, performer, file_reference, start_cue_frames, \
-                  end_cue_frames, generated_pregap_frames) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
+        sql.run(&InsertCueTrackParams {
+            watched_folder_path: &watched_folder_path,
+            candidate_path,
+            sheet_relative_path,
+            position,
+            number: track.number,
+            mode,
+            mode_other,
+            title: track.title.as_deref(),
+            performer: track.performer.as_deref(),
+            file_reference: &track.file_reference,
+            start_cue_frames: to_i64(track.start_cue_frames, "a cue track's start")?,
+            end_cue_frames: track
+                .end_cue_frames
+                .map(|frames| to_i64(frames, "a cue track's end"))
+                .transpose()?,
+            generated_pregap_frames: track
+                .generated_pregap_frames
+                .map(|frames| to_i64(frames, "a generated pregap's length"))
+                .transpose()?,
+        })?;
+        for (index_position, index) in track.indexes.iter().enumerate() {
+            sql.run(&InsertCueIndexParams {
+                watched_folder_path: &watched_folder_path,
                 candidate_path,
                 sheet_relative_path,
-                position,
-                track.number,
-                mode,
-                mode_other,
-                track.title,
-                track.performer,
-                track.file_reference,
-                to_i64(track.start_cue_frames, "a cue track's start")?,
-                track
-                    .end_cue_frames
-                    .map(|frames| to_i64(frames, "a cue track's end"))
-                    .transpose()?,
-                track
-                    .generated_pregap_frames
-                    .map(|frames| to_i64(frames, "a generated pregap's length"))
-                    .transpose()?,
-            ],
-        )?;
-        for (index_position, index) in track.indexes.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO scan_cue_index \
-                     (watched_folder_path, candidate_path, sheet_relative_path, track_position, \
-                      position, number, frames, file_reference) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    coven::path_bytes(watched_folder_path),
-                    candidate_path,
-                    sheet_relative_path,
-                    position,
-                    to_i64(index_position as u64, "a cue index's position")?,
-                    index.number,
-                    to_i64(index.frames, "a cue index's frame position")?,
-                    index.file_reference,
-                ],
-            )?;
+                track_position: position,
+                position: to_i64(index_position as u64, "a cue index's position")?,
+                number: index.number,
+                frames: to_i64(index.frames, "a cue index's frame position")?,
+                file_reference: &index.file_reference,
+            })?;
         }
     }
     Ok(())
 }
+
+// Damage a test plants: every candidate stamped with `generation`.
+#[cfg(test)]
+sqlive_compose::write!(
+    StampEveryCandidate(generation: i64),
+    r#"UPDATE scan_candidate SET generation = :generation"#
+);
 
 #[cfg(test)]
 #[path = "write_tests.rs"]

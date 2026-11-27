@@ -8,7 +8,7 @@ use crate::tables::watched_path::host_root;
 use crate::tables::ImportTables;
 use bae_store::test_fixtures::{empty_db, temp_db_hearing_bugs};
 use bae_store::Store;
-use rusqlite::params;
+use bae_store::WriteStatements as _;
 
 impl ImportTables {
     /// Each watched folder's scan as a test reads it whole: its generation,
@@ -261,11 +261,10 @@ async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded
         .unwrap();
     assert!(tables.load_folder_scan_snapshots().await.is_ok());
 
-    db.call(move |conn| {
-        conn.execute(
-            "UPDATE scan_candidate SET generation = ?",
-            params![i64::try_from(generation + 1).unwrap()],
-        )?;
+    db.call(move |sql| {
+        sql.run(&super::write::StampEveryCandidateParams {
+            generation: i64::try_from(generation + 1).unwrap(),
+        })?;
         Ok(())
     })
     .await
@@ -281,7 +280,7 @@ async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
     db.call(|sql| {
-        sql.execute("DELETE FROM folder_scan_generation_sequence", [])?;
+        sql.run(&super::roots::ForgetGenerationCounterParams {})?;
         Ok(())
     })
     .await

@@ -96,7 +96,7 @@ impl ImportTables {
                 let Some(read_under) = root_generation_on(sql, &watched_folder_path)? else {
                     return Err(FolderRereadRefusal::NeverRead(watched_folder_path).into());
                 };
-                let generation = next_folder_scan_generation(sql)?;
+                let generation = roots::next_folder_scan_generation(sql)?;
                 Ok(FolderReadingStamp {
                     read_under: to_u64(read_under, "folder_scan_roots.generation")?,
                     generation: to_u64(generation, "a folder scan generation")?,
@@ -182,10 +182,10 @@ impl ImportTables {
                         &reading.grouping,
                     )?;
                 }
-                sql.execute(
-                    "UPDATE folder_scan_roots SET generation = ? WHERE watched_folder_path = ?",
-                    params![generation, root],
-                )?;
+                sql.run(&roots::SetRootGenerationParams {
+                    watched_folder_path: &root,
+                    generation,
+                })?;
                 let finding = match decision {
                     Some(_) => Finding::Decision,
                     None => Finding::FirstRead,
@@ -232,18 +232,12 @@ impl ImportTables {
                 )?;
                 match &directories {
                     Some(directories) => {
-                        sql.execute(
-                            "DELETE FROM folder_scan_directory \
-                         WHERE watched_folder_path = :root \
-                           AND (path = :folder \
-                                OR (path >= :below_first AND path < :below_past))",
-                            rusqlite::named_params! {
-                                ":root": root,
-                                ":folder": folder_bytes,
-                                ":below_first": below_first,
-                                ":below_past": below_past,
-                            },
-                        )?;
+                        sql.run(&roots::DeleteDirectoriesAtOrBelowParams {
+                            watched_folder_path: &root,
+                            folder: &folder_bytes,
+                            below_first: &below_first,
+                            below_past: &below_past,
+                        })?;
                         for (path, modified_at) in directories {
                             // The walk of the folder records only the
                             // directories below it.
@@ -253,18 +247,17 @@ impl ImportTables {
                                 coven::path_text(path),
                                 coven::path_text(&folder_path)
                             );
-                            sql.execute(
-                                "INSERT INTO folder_scan_directory \
-                                 (watched_folder_path, path, modified_at) VALUES (?, ?, ?)",
-                                params![root, coven::path_bytes(path), modified_at],
-                            )?;
+                            sql.run(&roots::InsertScanDirectoryParams {
+                                watched_folder_path: &root,
+                                path: coven::path_bytes(path),
+                                modified_at: *modified_at,
+                            })?;
                         }
                     }
                     None => {
-                        sql.execute(
-                            "DELETE FROM folder_scan_directory WHERE watched_folder_path = ?",
-                            [&root],
-                        )?;
+                        sql.run(&roots::DeleteRootDirectoriesParams {
+                            watched_folder_path: &root,
+                        })?;
                     }
                 }
                 let regrouped = crate::tables::release_groupings::rebuild_groupings(

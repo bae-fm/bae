@@ -59,9 +59,12 @@ pub enum WatchedFolderRefusal {
 /// column: the range each owner of rows kept by folder forgets when the
 /// folder stops being watched.
 pub(crate) struct FoldersAtOrBelow {
-    folder: Vec<u8>,
-    below_first: Vec<u8>,
-    below_past: Vec<u8>,
+    /// The folder's stored bytes.
+    pub(crate) folder: Vec<u8>,
+    /// The first of the byte range the paths below the folder are in.
+    pub(crate) below_first: Vec<u8>,
+    /// The first bytes past that range.
+    pub(crate) below_past: Vec<u8>,
 }
 
 impl FoldersAtOrBelow {
@@ -219,17 +222,21 @@ fn refuse_overlap_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(), crate::I
     }
 }
 
+sqlive_compose::write!(
+    AppendWatchedFolder(path: Vec<u8>),
+    r#"
+    INSERT INTO watched_import_folders (path, position)
+    SELECT :path, COALESCE(MAX(held.position) + 1, 0) FROM watched_import_folders AS held
+"#
+);
+
 /// Watch `folder`, keyed by its canonical spelling, after every folder
 /// watched now. Each caller checks, in the same write, that `folder`
 /// overlaps no watched folder: the add with [`refuse_overlap_on`], and the
 /// takeover by checking that no watched folder holds `folder` and that the
 /// watched folders inside it are the ones the takeover deleted.
 pub(super) fn watch_folder_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(), DbError> {
-    sql.execute(
-        "INSERT INTO watched_import_folders (path, position) \
-         SELECT ?, COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
-        [coven::path_bytes(folder)],
-    )?;
+    sql.run(&AppendWatchedFolderParams { path: coven::path_bytes(folder) })?;
     Ok(())
 }
 
@@ -295,15 +302,18 @@ impl ImportTables {
         spelling.push(b'/');
         self.store
             .call(move |sql| {
-                sql.execute(
-                    "INSERT INTO watched_import_folders (path, position) VALUES (?, 99)",
-                    [spelling],
-                )?;
+                sql.run(&PlantWatchedFolderParams { path: spelling })?;
                 Ok(())
             })
             .await
     }
 }
+
+#[cfg(test)]
+sqlive_compose::write!(
+    PlantWatchedFolder(path: Vec<u8>),
+    r#"INSERT INTO watched_import_folders (path, position) VALUES (:path, 99)"#
+);
 
 #[cfg(test)]
 impl ImportTables {

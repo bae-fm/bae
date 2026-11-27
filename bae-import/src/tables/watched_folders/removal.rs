@@ -2,6 +2,11 @@ use super::*;
 use crate::CandidateKey;
 use std::path::{Path, PathBuf};
 
+sqlive_compose::write!(
+    UnwatchFolder(path: Vec<u8>),
+    r#"DELETE FROM watched_import_folders WHERE path = :path"#
+);
+
 /// What a removal of watched folders changed, as its write left the store.
 #[derive(Debug)]
 pub struct WatchedFoldersRemoved {
@@ -64,10 +69,7 @@ impl ImportTables {
                         |row| row.get::<_, CandidateKey>(0),
                     )?);
                     // Checked as watched in this write above.
-                    sql.execute(
-                        "DELETE FROM watched_import_folders WHERE path = ?",
-                        [&root_bytes],
-                    )?;
+                    sql.run(&UnwatchFolderParams { path: root_bytes })?;
                 }
                 match &parent {
                     // The write watches `parent` after it deletes the roots

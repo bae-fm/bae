@@ -36,6 +36,71 @@ sqlive_compose::read!(
 "#
 );
 
+// Match a candidate still at one scan generation and file edit revision: the
+// write changes its row to what it holds, and the count says whether one
+// matched.
+sqlive_compose::write!(
+    MatchScannedCandidate(
+        watched_folder_path: Vec<u8>,
+        path: &'p crate::CandidateKey,
+        generation: i64,
+        file_edit_revision: i64,
+    ),
+    r#"
+    UPDATE scan_candidate SET generation = generation
+    WHERE watched_folder_path = :watched_folder_path AND path = :path
+        AND generation = :generation AND file_edit_revision = :file_edit_revision
+"#
+);
+
+sqlive_compose::write!(
+    InsertTagSnapshot(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        scan_generation: i64,
+        file_edit_revision: i64,
+        embedded_cover_source_relative_path: Option<&'p str>,
+        embedded_cover_content_type: Option<&'p str>,
+        embedded_cover_data: Option<&'p [u8]>,
+    ),
+    r#"
+    INSERT INTO scan_candidate_tag_snapshot
+        (watched_folder_path, candidate_path, scan_generation, file_edit_revision,
+         embedded_cover_source_relative_path, embedded_cover_content_type, embedded_cover_data)
+    VALUES (:watched_folder_path, :candidate_path, :scan_generation, :file_edit_revision,
+        :embedded_cover_source_relative_path, :embedded_cover_content_type,
+        :embedded_cover_data)
+"#
+);
+
+sqlive_compose::write!(
+    InsertFileTag(
+        watched_folder_path: &'p [u8],
+        candidate_path: &'p crate::CandidateKey,
+        relative_path: &'p str,
+        file_size: i64,
+        modified_at_ns: i64,
+        unparseable_reason: Option<&'p str>,
+        title: Option<&'p str>,
+        track_artists: Option<&'p str>,
+        album_title: Option<&'p str>,
+        album_artists: Option<&'p str>,
+        compilation: Option<bool>,
+        years: Option<&'p str>,
+        track_number: Option<i64>,
+        disc_number: Option<i64>,
+    ),
+    r#"
+    INSERT INTO scan_candidate_file_tag
+        (watched_folder_path, candidate_path, relative_path, file_size, modified_at_ns,
+         unparseable_reason, title, track_artists, album_title, album_artists, compilation,
+         years, track_number, disc_number)
+    VALUES (:watched_folder_path, :candidate_path, :relative_path, :file_size, :modified_at_ns,
+        :unparseable_reason, :title, :track_artists, :album_title, :album_artists,
+        :compilation, :years, :track_number, :disc_number)
+"#
+);
+
 /// Replace a candidate's file-tag snapshot, inside the caller's transaction,
 /// if its scan generation and file edit revision still match the snapshot's.
 /// `false` means the candidate changed first and nothing was written.
@@ -48,17 +113,12 @@ pub(crate) fn replace_candidate_file_tag_snapshot_on(
     let expected_generation = generation_column(snapshot.scan_generation)?;
     let expected_file_edit_revision =
         to_i64(snapshot.file_edit_revision, "a file-tag snapshot's file edit revision")?;
-    let matched = sql.execute(
-        "UPDATE scan_candidate SET generation = generation \
-         WHERE watched_folder_path = ? AND path = ? \
-           AND generation = ? AND file_edit_revision = ?",
-        params![
-            coven::path_bytes(watched_folder_path),
-            candidate_path,
-            expected_generation,
-            expected_file_edit_revision
-        ],
-    )?;
+    let matched = sql.run(&MatchScannedCandidateParams {
+        watched_folder_path: coven::path_bytes(watched_folder_path),
+        path: candidate_path,
+        generation: expected_generation,
+        file_edit_revision: expected_file_edit_revision,
+    })?;
     if matched == 0 {
         return Ok(false);
     }
@@ -103,11 +163,11 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
     candidate_path: &CandidateKey,
     snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM scan_candidate_tag_snapshot \
-         WHERE watched_folder_path = ? AND candidate_path = ?",
-        params![coven::path_bytes(watched_folder_path), candidate_path],
-    )?;
+    let root = coven::path_bytes(watched_folder_path);
+    sql.run(&super::write::DeleteEntryTagSnapshotParams {
+        watched_folder_path: &root,
+        key: candidate_path,
+    })?;
     let (cover_source, cover_content_type, cover_data) = match &snapshot.embedded_cover {
         Some(cover) => (
             Some(cover.source_relative_path.as_str()),
@@ -116,51 +176,40 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
         ),
         None => (None, None, None),
     };
-    sql.execute(
-        "INSERT INTO scan_candidate_tag_snapshot \
-             (watched_folder_path, candidate_path, scan_generation, file_edit_revision, \
-              embedded_cover_source_relative_path, embedded_cover_content_type, \
-              embedded_cover_data) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
-        params![
-            coven::path_bytes(watched_folder_path),
-            candidate_path,
-            to_i64(snapshot.scan_generation, "a file-tag snapshot's scan generation")?,
-            to_i64(snapshot.file_edit_revision, "a file-tag snapshot's file edit revision")?,
-            cover_source,
-            cover_content_type,
-            cover_data,
-        ],
-    )?;
+    sql.run(&InsertTagSnapshotParams {
+        watched_folder_path: &root,
+        candidate_path,
+        scan_generation: to_i64(snapshot.scan_generation, "a file-tag snapshot's scan generation")?,
+        file_edit_revision: to_i64(
+            snapshot.file_edit_revision,
+            "a file-tag snapshot's file edit revision",
+        )?,
+        embedded_cover_source_relative_path: cover_source,
+        embedded_cover_content_type: cover_content_type,
+        embedded_cover_data: cover_data,
+    })?;
     for fact in &snapshot.files {
         let (unparseable_reason, stated) = match &fact.tags {
             TagReading::Stated(tags) => (None, Some(StatedTagColumns::of(tags)?)),
             TagReading::Unparseable(reason) => (Some(reason.as_str()), None),
         };
         let stated = stated.as_ref();
-        sql.execute(
-            "INSERT INTO scan_candidate_file_tag \
-                 (watched_folder_path, candidate_path, relative_path, file_size, \
-                  modified_at_ns, unparseable_reason, title, track_artists, album_title, \
-                  album_artists, compilation, years, track_number, disc_number) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
-                candidate_path,
-                fact.observation.relative_path,
-                to_i64(fact.observation.size, "a file-tag observation's size")?,
-                fact.observation.modified_at_ns,
-                unparseable_reason,
-                stated.and_then(|tags| tags.title),
-                stated.map(|tags| tags.track_artists.as_str()),
-                stated.and_then(|tags| tags.album_title),
-                stated.map(|tags| tags.album_artists.as_str()),
-                stated.map(|tags| tags.compilation),
-                stated.map(|tags| tags.years.as_str()),
-                stated.and_then(|tags| tags.track_number),
-                stated.and_then(|tags| tags.disc_number),
-            ],
-        )?;
+        sql.run(&InsertFileTagParams {
+            watched_folder_path: &root,
+            candidate_path,
+            relative_path: &fact.observation.relative_path,
+            file_size: to_i64(fact.observation.size, "a file-tag observation's size")?,
+            modified_at_ns: fact.observation.modified_at_ns,
+            unparseable_reason,
+            title: stated.and_then(|tags| tags.title),
+            track_artists: stated.map(|tags| tags.track_artists.as_str()),
+            album_title: stated.and_then(|tags| tags.album_title),
+            album_artists: stated.map(|tags| tags.album_artists.as_str()),
+            compilation: stated.map(|tags| tags.compilation),
+            years: stated.map(|tags| tags.years.as_str()),
+            track_number: stated.and_then(|tags| tags.track_number),
+            disc_number: stated.and_then(|tags| tags.disc_number),
+        })?;
     }
     Ok(())
 }

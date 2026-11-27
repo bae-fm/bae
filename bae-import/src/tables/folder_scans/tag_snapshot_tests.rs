@@ -7,6 +7,7 @@ use crate::folder_scanner::{
 };
 use crate::tables::tests::*;
 use bae_store::Store;
+use bae_store::WriteStatements as _;
 use bae_util::content_type::ContentType;
 use rusqlite::params;
 
@@ -262,11 +263,11 @@ async fn stale_file_edit_revision_cannot_replace_snapshot() {
     let root_owned = coven::path_bytes(&root);
     let key_owned = key.clone();
     db.call(move |sql| {
-        sql.execute(
-            "UPDATE scan_candidate SET file_edit_revision = 1 \
-             WHERE watched_folder_path = ? AND path = ?",
-            params![root_owned, key_owned],
-        )?;
+        sql.run(&super::super::file_decisions::SetFileEditRevisionParams {
+            watched_folder_path: root_owned,
+            path: &key_owned,
+            file_edit_revision: 1,
+        })?;
         Ok(())
     })
     .await

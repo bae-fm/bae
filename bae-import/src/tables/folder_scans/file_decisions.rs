@@ -6,6 +6,18 @@ use super::*;
 use crate::tables::PreparationRefusal;
 use std::collections::HashMap;
 
+sqlive_compose::write!(
+    SetFileEditRevision(
+        watched_folder_path: Vec<u8>,
+        path: &'p crate::CandidateKey,
+        file_edit_revision: i64,
+    ),
+    r#"
+    UPDATE scan_candidate SET file_edit_revision = :file_edit_revision
+    WHERE watched_folder_path = :watched_folder_path AND path = :path
+"#
+);
+
 /// Give every scanned release reading `content_hash` its files from
 /// `settled_by_key`, stamped `next_revision`, and return their keys in key
 /// order. Refused as [`PreparationRefusal::Changed`] unless the scan still
@@ -47,14 +59,9 @@ pub(crate) fn settle_candidate_files(
                 // them; the files themselves did not change, so it is put
                 // back as it was, at the revision it was taken at.
                 let reading = tag_snapshot::load_file_tag_snapshot(sql, &path)?;
-                sql.execute(
-                    "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
-                    params![coven::path_bytes(&watched_folder_path), path],
-                )?;
-                sql.execute(
-                    "DELETE FROM scan_candidate_unit WHERE watched_folder_path = ? AND candidate_path = ?",
-                    params![coven::path_bytes(&watched_folder_path), path],
-                )?;
+                let root = coven::path_bytes(&watched_folder_path);
+                sql.run(&write::DeleteEntryFilesParams { watched_folder_path: &root, key: &path })?;
+                sql.run(&write::DeleteEntryUnitsParams { watched_folder_path: &root, key: &path })?;
                 insert_candidate_files(sql, &watched_folder_path, &path, files)?;
                 if let Some(reading) = reading {
                     tag_snapshot::replace_candidate_file_tag_snapshot(
@@ -67,11 +74,11 @@ pub(crate) fn settle_candidate_files(
             }
             other => return Err(DbError::unreadable("scan_candidate.source_kind", other).into()),
         }
-        sql.execute(
-            "UPDATE scan_candidate SET file_edit_revision = ? \
-             WHERE watched_folder_path = ? AND path = ?",
-            params![next_revision, coven::path_bytes(&watched_folder_path), path],
-        )?;
+        sql.run(&SetFileEditRevisionParams {
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
+            path: &path,
+            file_edit_revision: next_revision,
+        })?;
         settled.push(path);
     }
     // A release the save was prepared with that left, or reads other files
