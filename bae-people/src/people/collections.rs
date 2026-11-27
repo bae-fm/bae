@@ -6,7 +6,7 @@ use crate::collections::{
     AlbumRatings, BesideEntry, CollectionError, EntryPlace, InsertPlace, OtherRating, Playlist,
     PlaylistEntry, RatingTarget, Stars,
 };
-use crate::people::Sharing;
+use crate::people::{PersonProfile, Sharing};
 
 impl People {
     pub async fn set_rating(
@@ -14,22 +14,22 @@ impl People {
         target: RatingTarget,
         stars: Option<Stars>,
     ) -> Result<(), CollectionError> {
-        let person = self.own_profile().await?.id;
         let (kind, target_id, album, track) = match target {
             RatingTarget::Album(id) => ("album", id.clone(), Some(id), None),
             RatingTarget::Track(id) => ("track", id.clone(), None, Some(id)),
         };
-        let id = format!("{person}:{kind}:{target_id}");
-        self.inner.store.call(move |sql| {
+        self.write_as_self(move |sql, person| {
+            let person = person.id;
+            let id = format!("{person}:{kind}:{target_id}");
             match stars {
                 Some(stars) => {
                     sql.execute("INSERT INTO ratings (id, person_id, album_id, track_id, stars) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(id) DO UPDATE SET stars = excluded.stars", params![id, person.to_string(), album, track, stars as i64])?;
                 }
                 None => { sql.execute("DELETE FROM ratings WHERE id = ?", [id])?; }
             }
-            Ok(())
-        }).await?;
-        Ok(())
+            Ok(Ok(()))
+        })
+        .await
     }
 
     /// Turn this person's heart on `target` on or off. A heart is five stars
@@ -64,33 +64,33 @@ impl People {
         tracks: bae_records::TrackList,
     ) -> Result<Playlist, CollectionError> {
         let name = bae_store::EnteredName::parse(name)?.into_string();
-        let person = self.own_profile().await?;
-        let playlist = Playlist {
-            id,
-            person: person.id,
-            name,
-            audience: sharing.audience(person.private_circle),
-        };
-        let row = playlist.clone();
-        self.inner
-            .store
-            .call(move |sql| {
+        self.write_as_self(move |sql, person| {
+            let playlist = Playlist {
+                id,
+                person: person.id,
+                name,
+                audience: sharing.audience(person.private_circle),
+            };
+            sql.execute(
+                "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
+                params![
+                    playlist.id.to_string(),
+                    playlist.person.to_string(),
+                    playlist.name,
+                    playlist.audience
+                ],
+            )?;
+            let track_ids = tracks.ordered_leaving_out_missing_picks(sql)?;
+            assert!(positions.len() >= track_ids.len(), "a position id for each entry");
+            for (position, (position_id, track_id)) in positions.iter().zip(&track_ids).enumerate() {
                 sql.execute(
-                    "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
-                    params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
+                    "INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) VALUES (?, ?, ?, ?)",
+                    params![playlist.id.to_string(), position_id.to_string(), track_id, position as i64],
                 )?;
-                let track_ids = tracks.ordered_leaving_out_missing_picks(sql)?;
-                assert!(positions.len() >= track_ids.len(), "a position id for each entry");
-                for (position, (position_id, track_id)) in positions.iter().zip(&track_ids).enumerate() {
-                    sql.execute(
-                        "INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) VALUES (?, ?, ?, ?)",
-                        params![row.id.to_string(), position_id.to_string(), track_id, position as i64],
-                    )?;
-                }
-                Ok(())
-            })
-            .await?;
-        Ok(playlist)
+            }
+            Ok(Ok(playlist))
+        })
+        .await
     }
 
     /// Sets a playlist's name and who sees it in one write, so no reader ever
@@ -103,11 +103,10 @@ impl People {
         sharing: Sharing,
     ) -> Result<(), CollectionError> {
         let name = bae_store::EnteredName::parse(name)?.into_string();
-        let audience = sharing.audience(self.own_profile().await?.private_circle);
-        self.change_playlist(id, move |sql| {
+        self.change_playlist(id, move |sql, person| {
             sql.execute(
                 "UPDATE playlists SET name = ?, audience = ? WHERE id = ?",
-                params![name, audience, id.to_string()],
+                params![name, sharing.audience(person.private_circle), id.to_string()],
             )?;
             Ok(Ok(()))
         })
@@ -115,7 +114,7 @@ impl People {
     }
 
     pub async fn delete_playlist(&self, id: uuid::Uuid) -> Result<(), CollectionError> {
-        self.change_playlist(id, move |sql| {
+        self.change_playlist(id, move |sql, _| {
             sql.execute("DELETE FROM playlists WHERE id = ?", [id.to_string()])?;
             Ok(Ok(()))
         })
@@ -144,7 +143,7 @@ impl People {
         positions: Vec<uuid::Uuid>,
         tracks: bae_records::TrackList,
     ) -> Result<(), CollectionError> {
-        self.change_playlist(playlist, move |sql| {
+        self.change_playlist(playlist, move |sql, _| {
             let track_ids = tracks.ordered_on(sql, bae_records::TrackReading::Named)?;
             assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
             for (position, track) in positions.iter().zip(&track_ids) {
@@ -159,7 +158,7 @@ impl People {
         playlist: uuid::Uuid,
         position: uuid::Uuid,
     ) -> Result<(), CollectionError> {
-        self.change_playlist(playlist, move |sql| {
+        self.change_playlist(playlist, move |sql, _| {
             let changed = sql.execute(
                 "DELETE FROM playlist_entries WHERE playlist_id = ? AND position_id = ?",
                 params![playlist.to_string(), position.to_string()],
@@ -178,7 +177,7 @@ impl People {
         position: uuid::Uuid,
         place: EntryPlace,
     ) -> Result<(), CollectionError> {
-        self.change_playlist(playlist, move |sql| {
+        self.change_playlist(playlist, move |sql, _| {
             let Some(to) = place_among_others_on(sql, playlist, position, place)? else {
                 return Ok(Err(CollectionError::Missing));
             };
@@ -213,7 +212,7 @@ impl People {
         tracks: bae_records::TrackList,
         place: InsertPlace,
     ) -> Result<(), CollectionError> {
-        self.change_playlist(playlist, move |sql| {
+        self.change_playlist(playlist, move |sql, _| {
             let at = match place {
                 InsertPlace::Start => Some(0),
                 InsertPlace::Beside(beside) => entries_before_on(sql, playlist, beside, None)?,
@@ -247,31 +246,34 @@ impl People {
         .await
     }
 
+    /// Make `change` to the playlist `id` in one write, which refuses a
+    /// playlist the library lacks and one of another person's. `change` is
+    /// handed this device's person.
     async fn change_playlist(
         &self,
         id: uuid::Uuid,
-        change: impl FnOnce(&CovenWrite<'_>) -> Result<Result<(), CollectionError>, DbError>
+        change: impl for<'ctx> FnOnce(
+                &CovenWrite<'ctx>,
+                PersonProfile,
+            ) -> Result<Result<(), CollectionError>, DbError>
             + Send
             + 'static,
     ) -> Result<(), CollectionError> {
-        let person = self.own_profile().await?.id.to_string();
-        self.inner
-            .store
-            .call(move |sql| {
-                let owner: Option<String> = sql
-                    .query_row(
-                        "SELECT person_id FROM playlists WHERE id = ?",
-                        [id.to_string()],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                match owner {
-                    None => Ok(Err(CollectionError::Missing)),
-                    Some(owner) if owner != person => Ok(Err(CollectionError::NotOwner)),
-                    Some(_) => change(sql),
-                }
-            })
-            .await?
+        self.write_as_self(move |sql, person| {
+            let owner: Option<String> = sql
+                .query_row(
+                    "SELECT person_id FROM playlists WHERE id = ?",
+                    [id.to_string()],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            match owner {
+                None => Ok(Err(CollectionError::Missing)),
+                Some(owner) if owner != person.id.to_string() => Ok(Err(CollectionError::NotOwner)),
+                Some(_) => change(sql, person),
+            }
+        })
+        .await
     }
 }
 

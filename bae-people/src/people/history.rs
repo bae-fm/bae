@@ -1,3 +1,4 @@
+use super::profiles::{writer_on, Writer};
 use super::*;
 use crate::history::{HistoryEntry, HistoryPlay, PlayRecordError};
 use bae_util::timestamp::StoredTimestamp as _;
@@ -18,9 +19,9 @@ impl People {
         started_at: UtcDateTime,
         played_on: time::Date,
     ) -> Result<Option<HistoryPlay>, PlayRecordError> {
-        let person = self.writing_person().await?.ok_or(PlayRecordError::NoPerson)?;
-        let crate::people::Person { profile, membership } = person;
-        let profile = profile.ok_or(PlayRecordError::NoProfile(membership.id))?;
+        let writer = self.inner.store.read(|sql| writer_on(&sql)).await?;
+        let Writer { member, profile } = writer.ok_or(PlayRecordError::NoPerson)?;
+        let profile = profile.ok_or(PlayRecordError::NoProfile(member))?;
         let Some(audience) = profile.history_sharing.audience(profile.private_circle) else {
             return Ok(None);
         };
@@ -31,7 +32,7 @@ impl People {
                 started_at,
                 played_on,
                 played: Duration::ZERO,
-                person: membership.id,
+                person: member,
                 audience,
             },
             duration,
@@ -44,15 +45,15 @@ impl People {
             return Ok(false);
         }
         let entry = play.entry.clone();
-        if self.writing_person().await?.map(|person| person.membership.id) != Some(entry.person) {
-            return Err(PlayRecordError::PersonChanged(entry.person));
-        }
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
-        Ok(self.inner.store.call(move |sql| {
+        self.inner.store.call(move |sql| {
+            if writer_on(sql)?.map(|writer| writer.member) != Some(entry.person) {
+                return Ok(Err(PlayRecordError::PersonChanged(entry.person)));
+            }
             // The first write stores the day, and the play keeps it.
             sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_on, played_ms, audience) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), entry.played_on.to_string(), played_ms, entry.audience])?;
-            Ok(true)
-        }).await?)
+            Ok(Ok(true))
+        }).await?
     }
 
     /// Every play the library holds, newest first: what the tests of

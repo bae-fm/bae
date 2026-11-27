@@ -321,7 +321,7 @@ impl Membership {
     ) -> Result<coven::InviteId, InviteError> {
         let inviter = self
             .store
-            .read(|sql| Ok(crate::people::name_this_person_goes_by(&sql)?))
+            .read(|sql| crate::people::name_this_person_goes_by(&sql))
             .await?
             .ok_or(InviteError::InviterUnnamed)?;
         Ok(self.store.invite_person(role, access, lifetime, inviter).await?)

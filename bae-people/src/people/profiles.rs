@@ -49,15 +49,56 @@ sqlive_compose::read!(
 );
 
 // The member this device writes as: its own member, also after the library
-// removed them.
+// removed them, with their profile, none until a device of theirs has written
+// it.
 sqlive_compose::read!(
-    WritingPerson,
+    WritingPerson { member_id: coven::MemberId },
     r#"
-    SELECT person.*
-    FROM @crate::people::profiles::MemberWithProfile AS person
-    WHERE person.is_self
+    SELECT own.member_id, profile.*
+    FROM (SELECT m.member AS member_id FROM coven_members AS m WHERE m.is_self) AS own
+    LEFT JOIN @crate::people::fragments::Profile AS profile ON profile.id = own.member_id
 "#
 );
+
+// The profile of this device's person while the library holds them: the name
+// an invite gives its inviter.
+sqlive_compose::read!(
+    InviterProfile,
+    r#"
+    SELECT profile.*
+    FROM (SELECT m.member AS member_id FROM coven_members AS m
+          WHERE m.is_self AND NOT m.removed) AS own
+    JOIN @crate::people::fragments::Profile AS profile ON profile.id = own.member_id
+"#
+);
+
+/// Who this device writes as, for plays, ratings, playlists and their
+/// profile: its own member, who stays this device's person after the library
+/// removes them, as the removed device keeps its copy and keeps writing to
+/// it.
+pub(super) struct Writer {
+    pub(super) member: coven::MemberId,
+    /// `None` until a device of the member's has written it.
+    pub(super) profile: Option<PersonProfile>,
+}
+
+/// Who this device writes as; `None` until its registration has applied.
+pub(super) fn writer_on(sql: &impl coven::SqlRead) -> Result<Option<Writer>, DbError> {
+    Ok(statement_optional(sql, &WritingPersonParams {})?.map(|row| Writer {
+        member: row.member_id,
+        profile: row.profile.map(Profile::into_profile),
+    }))
+}
+
+/// The profile this device writes as, or why it has none.
+fn writing_profile_on(
+    sql: &impl coven::SqlRead,
+) -> Result<Result<PersonProfile, ProfileError>, DbError> {
+    Ok(match writer_on(sql)? {
+        None => Err(ProfileError::NotRegistered),
+        Some(writer) => writer.profile.ok_or(ProfileError::Missing),
+    })
+}
 
 // The current member `:member`.
 sqlive_compose::read!(
@@ -80,21 +121,6 @@ sqlive_compose::read!(
 );
 
 impl People {
-    /// The person this device writes as, for plays, ratings, playlists and
-    /// their profile: [`Self::own_person`], and still this device's person
-    /// after the library removed it, as the removed device keeps its copy and
-    /// keeps writing to it.
-    pub(super) async fn writing_person(&self) -> Result<Option<Person>, DbError> {
-        self.inner
-            .store
-            .read(|sql| {
-                statement_optional(&sql, &WritingPersonParams {})?
-                    .map(|row| row.person.into_person())
-                    .transpose()
-            })
-            .await
-    }
-
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile, which the same registration wrote.
     #[cfg(any(test, feature = "test-utils"))]
@@ -134,29 +160,39 @@ impl People {
             .await
     }
 
-    pub(crate) async fn own_profile(&self) -> Result<PersonProfile, ProfileError> {
-        self.writing_person()
+    /// Write as this device's person: `write` is handed their profile, read
+    /// in the write's own transaction, which writes nothing when this device
+    /// has no profile.
+    pub(super) async fn write_as_self<T, E>(
+        &self,
+        write: impl for<'ctx> FnOnce(&CovenWrite<'ctx>, PersonProfile) -> Result<Result<T, E>, DbError>
+            + Send
+            + 'static,
+    ) -> Result<T, E>
+    where
+        T: Send + 'static,
+        E: From<ProfileError> + From<DbError> + Send + 'static,
+    {
+        self.inner
+            .store
+            .call(move |sql| match writing_profile_on(sql)? {
+                Ok(person) => write(sql, person),
+                Err(refused) => Ok(Err(refused.into())),
+            })
             .await?
-            .ok_or(ProfileError::NotRegistered)?
-            .profile
-            .ok_or(ProfileError::Missing)
     }
 
     pub async fn rename_profile(&self, name: &str) -> Result<(), ProfileError> {
         let name = bae_store::EnteredName::parse(name)?.into_string();
-        let person = self.own_profile().await?.id;
-        self.inner
-            .store
-            .call(move |sql| {
-                update_profile(
-                    sql,
-                    "UPDATE people SET name = ? WHERE id = ?",
-                    params![name, person.to_string()],
-                )?;
-                Ok(())
-            })
-            .await?;
-        Ok(())
+        self.write_as_self(move |sql, person| {
+            update_profile(
+                sql,
+                "UPDATE people SET name = ? WHERE id = ?",
+                params![name, person.id.to_string()],
+            )?;
+            Ok(Ok(()))
+        })
+        .await
     }
 
     /// Rename `person`'s profile whoever's it is, as no surface asks: coven
@@ -182,26 +218,23 @@ impl People {
     }
 
     pub async fn set_history_sharing(&self, sharing: HistorySharing) -> Result<(), ProfileError> {
-        let person = self.own_profile().await?.id;
-        self.inner
-            .store
-            .call(move |sql| {
-                update_profile(
-                    sql,
-                    "UPDATE people SET history_sharing = ? WHERE id = ?",
-                    params![sharing.as_str(), person.to_string()],
-                )?;
-                Ok(())
-            })
-            .await?;
-        Ok(())
+        self.write_as_self(move |sql, person| {
+            update_profile(
+                sql,
+                "UPDATE people SET history_sharing = ? WHERE id = ?",
+                params![sharing.as_str(), person.id.to_string()],
+            )?;
+            Ok(Ok(()))
+        })
+        .await
     }
 
     /// Set the person's avatar to `avatar`, a JPEG, staged as a new coven
     /// file the profile row references; `None` clears it. The file the row
     /// named before goes with its last reference.
     pub async fn set_avatar(&self, avatar: Option<Vec<u8>>) -> Result<(), ProfileError> {
-        let person = self.own_profile().await?.id.to_string();
+        let own = self.inner.store.read(|sql| writing_profile_on(&sql)).await??;
+        let person = own.id.to_string();
         match avatar {
             Some(bytes) => {
                 self.inner
@@ -261,14 +294,9 @@ impl People {
 /// names its inviter as the person is named everywhere else.
 pub(crate) fn name_this_person_goes_by(
     sql: &impl coven::SqlRead,
-) -> rusqlite::Result<Option<String>> {
-    sql.query(
-        "SELECT p.name FROM coven_members AS m JOIN people AS p ON p.id = m.member \
-         WHERE m.is_self AND NOT m.removed",
-        [],
-        |row| row.get::<_, String>(0),
-    )
-    .map(|mut found| found.pop())
+) -> Result<Option<String>, DbError> {
+    Ok(statement_optional(sql, &InviterProfileParams {})?
+        .map(|row| row.profile.into_profile().name))
 }
 
 fn people_view_on(sql: &SqlReadContext<'_>) -> Result<PeopleView, DbError> {

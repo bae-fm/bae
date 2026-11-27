@@ -34,3 +34,19 @@ async fn a_play_begun_as_another_person_is_refused() {
     );
     assert!(people.history().await.unwrap().is_empty());
 }
+
+/// A play reads who the device writes as in one statement.
+#[tokio::test]
+async fn who_a_play_begins_as_is_one_statement() {
+    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let people = People::new(db.clone(), coven::FileBudget::for_test());
+    let started_at = bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap();
+
+    let counter = db.track_work_for_test().await.unwrap();
+    let begun = people
+        .begin_play(uuid::Uuid::from_u128(1), "track", None, started_at, started_at.date())
+        .await;
+
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert!(matches!(begun, Ok(Some(_))), "{begun:?}");
+}
