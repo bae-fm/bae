@@ -332,8 +332,7 @@ pub(super) fn track_readings(
 pub(super) struct StoredSnapshot {
     scan_generation: u64,
     file_edit_revision: u64,
-    /// Each file's fact with the path it was read at.
-    files: Vec<(PathBuf, FileTagFact)>,
+    files: Vec<FileTagFact>,
     cover: Option<StoredCoverSource>,
 }
 
@@ -362,7 +361,10 @@ impl StoredSnapshot {
                     ))
                 }
             };
-        let files = file_tags_of(candidate_path, &row.file_tags.tag_files)?;
+        let files = file_tags_of(candidate_path, &row.file_tags.tag_files)?
+            .into_iter()
+            .map(|(_, fact)| fact)
+            .collect();
         Ok(Self {
             scan_generation: to_u64(row.scan_generation, "a file-tag snapshot's scan generation")?,
             file_edit_revision: to_u64(
@@ -391,7 +393,7 @@ impl StoredSnapshot {
                 StoredCover::Replaced { source_relative_path: relative_path }
             }
         };
-        StoredTagReading { files: self.files.into_iter().map(|(_, fact)| fact).collect(), cover }
+        StoredTagReading { files: self.files, cover }
     }
 
     /// The reading, from a read that took its picture's bytes.
@@ -415,7 +417,7 @@ impl StoredSnapshot {
         Ok(FileTagSnapshot {
             scan_generation: self.scan_generation,
             file_edit_revision: self.file_edit_revision,
-            files: self.files.into_iter().map(|(_, fact)| fact).collect(),
+            files: self.files,
             embedded_cover,
         })
     }
