@@ -11,54 +11,50 @@ pub(crate) enum GroupingFacts {
     Picked { members: Vec<CandidateKey> },
 }
 
-// The grouping `key`, a row beside each watched folder: the folder an
-// anchored grouping reads is addressed below the one covering it.
+// The grouping `key`, and beside it, for an anchored one, the watched folder
+// covering its anchor: the one whose path the anchor is, or starts with up to
+// a path separator. Watched folders never overlap, so at most one covers it.
 sqlive_compose::read!(
-    GroupingWithWatched(key: crate::CandidateKey),
+    GroupingWithWatched(key: crate::CandidateKey, separator: Vec<u8>),
     r#"
     SELECT stored.*, watched.*
     FROM @crate::tables::release_groupings::fragments::Groupings(
         keys: (SELECT :key AS grouping_key)) AS stored
-    LEFT JOIN @crate::tables::watched_folders::fragments::WatchedFolderRows AS watched ON 1
+    LEFT JOIN @crate::tables::watched_folders::fragments::WatchedFolderRows AS watched
+        ON substr(stored.anchor_folder, 1, length(watched.watched_path)) = watched.watched_path
+        AND (length(stored.anchor_folder) = length(watched.watched_path)
+            OR substr(stored.anchor_folder, length(watched.watched_path) + 1, 1) = :separator
+            OR substr(watched.watched_path, -1) = :separator)
 "#
 );
 
-/// How the grouping `rows` of [`GroupingWithWatched`] are of reads, or `None`
-/// when there are none.
-fn grouping_facts(rows: Vec<GroupingWithWatchedRow>) -> Result<Option<GroupingFacts>, DbError> {
-    let mut watched = Vec::with_capacity(rows.len());
-    let mut stored = None;
-    for row in rows {
-        if let Some(folder) = row.watched {
-            watched.push(super::path_column::decode(folder.watched_path)?);
-        }
-        stored = Some(row.stored);
-    }
-    let Some(stored) = stored else {
-        return Ok(None);
-    };
+/// How the grouping a row of [`GroupingWithWatched`] is of reads.
+fn grouping_facts(row: GroupingWithWatchedRow) -> Result<GroupingFacts, DbError> {
+    let GroupingWithWatchedRow { stored, watched } = row;
     let Some(anchor) = stored.anchor_folder else {
-        return Ok(Some(GroupingFacts::Picked {
+        return Ok(GroupingFacts::Picked {
             members: stored
                 .members
                 .into_iter()
                 .map(|member| CandidateKey::from(member.key))
                 .collect(),
-        }));
+        });
     };
-    let anchor = super::path_column::decode(anchor)?;
+    let anchor = crate::tables::path_column::decode(anchor)?;
     // A grouping anchored at a folder goes with the watched folder covering
-    // it, and watched folders never overlap.
-    let root = watched.into_iter().find(|root| anchor.starts_with(root)).ok_or_else(|| {
-        DbError::unreadable("release_grouping.anchor_folder under no watched folder", &anchor)
-    })?;
-    Ok(Some(GroupingFacts::Anchored {
+    // it.
+    let root = watched
+        .ok_or_else(|| {
+            DbError::unreadable("release_grouping.anchor_folder under no watched folder", &anchor)
+        })
+        .and_then(|watched| crate::tables::path_column::decode(watched.watched_path))?;
+    Ok(GroupingFacts::Anchored {
         folder: FolderReleaseDecisionKey {
-            relative_folder: super::watched_folders::relative_below(&root, &anchor)?,
+            relative_folder: crate::tables::watched_folders::relative_below(&root, &anchor)?,
             watched_folder_path: root,
         },
         decision: decision_of(stored.combined),
-    }))
+    })
 }
 
 impl ImportTables {
@@ -67,8 +63,14 @@ impl ImportTables {
         &self,
         key: &CandidateKey,
     ) -> Result<Option<GroupingFacts>, DbError> {
-        let request = GroupingWithWatchedParams { key: key.clone() };
-        let rows = self.store.read_rows(request).await?;
-        grouping_facts(rows)
+        let request = GroupingWithWatchedParams {
+            key: key.clone(),
+            separator: vec![std::path::MAIN_SEPARATOR as u8],
+        };
+        self.store
+            .read(move |sql| bae_store::statement_optional(&sql, &request))
+            .await?
+            .map(grouping_facts)
+            .transpose()
     }
 }
