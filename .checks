@@ -25,7 +25,7 @@ whole ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,s
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
 # clippy's lints and the typed lints, over the crates with their test features
-# and then without (scripts/clippy-crates.sh).
+# and then without them and without debug_assertions (scripts/clippy-crates.sh).
 # The `every:` paths pin and build the typed lints' driver (tools/typed-lints)
 # and run clippy with it (scripts/clippy-*.sh): a change to them changes the
 # lints of every crate, so it lints every crate, as a change to

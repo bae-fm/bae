@@ -245,6 +245,13 @@ incremental = true
 [profile.dev.package."*"]
 opt-level = 3
 
+# The hook's lint of what the apps' releases compile (scripts/clippy-crates.sh):
+# the dev profile with debug_assertions off. The release profile itself makes
+# that check take about twice as long.
+[profile.release-lint]
+inherits = "dev"
+debug-assertions = false
+
 [patch.crates-io]
 # Android's platform verifier accepts a certificate when it cannot get the
 # certificate's revocation data, and still refuses a certificate it confirmed

@@ -258,10 +258,11 @@ jobs:
         dotnet test bae-avalonia/bae-avalonia.Tests -c Debug
 
     - name: Check the bridge as a release build (full edition, OAuth + desktop)
-      # Every other build on a push is a debug one, and code only a debug
-      # build's callers use (debug_assertions) is dead in a release build,
-      # which the workspace's dead_code deny fails. The release apps are built
-      # only on dispatch, so this is where a push finds it. The desktop cfg is
-      # the macOS build's too.
+      # Code only a debug build's callers use (debug_assertions) is dead in a
+      # release build, which the workspace's dead_code deny fails. clippy's
+      # second run (scripts/clippy-crates.sh) compiles with debug_assertions off
+      # and with cloudkit on; this checks the release profile with cloudkit off.
+      # The release apps are built only on dispatch, so a push finds it here and
+      # there. The desktop cfg is the macOS build's too.
       if: ${{ !cancelled() }}
       run: cargo check --release -p bae-bridge --features oauth-providers,cast

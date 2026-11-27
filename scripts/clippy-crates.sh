@@ -10,12 +10,18 @@
 # each crate compiles once for clippy's lints and the typed lints.
 #
 # A second run then lints the same crates' libraries and binaries without the
-# test features, which is how the bridge and the apps build them: a function
-# that only test code calls has a caller in the first run and is dead code in
-# theirs. The second run turns on each named crate's features that a release
-# build of the apps turns on: every bae-bridge feature but the two that only
-# Debug builds add (`test-keyring` and `dev-reset`), and the workspace features
-# those turn on. cargo turns on what a feature implies in the crates below.
+# test features and with debug_assertions off (the `release-lint` profile),
+# which is how the apps' releases compile them. A function that only test code
+# calls has a caller in the first run and is dead code in this one, and so is
+# what only code under `cfg(debug_assertions)` uses, such as a helper of a
+# function that only tests and Debug builds compile. The second run turns on
+# each named crate's features that a release build of the apps turns on: every
+# bae-bridge feature but the two that only Debug builds add (`test-keyring` and
+# `dev-reset`), and the workspace features those turn on. cargo turns on what a
+# feature implies in the crates below. An item under `cfg(debug_assertions)`
+# that only tests use is dead code in a Debug app's build, which neither run
+# compiles: the libraries without test features that .land-compile lints are
+# that build.
 #
 # Only the named crates are linted. The workspace crates they depend on
 # compile through the typed lints' driver too, which writes the record the
@@ -122,4 +128,4 @@ if [ "$lints_every_crate" = every ] && [ -n "$unreachable" ]; then
 fi
 [ "$status" -eq 0 ] || exit "$status"
 RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" \
-    tools/typed-lints/clippy.sh "${app_args[@]}" -- -D warnings
+    tools/typed-lints/clippy.sh --profile release-lint "${app_args[@]}" -- -D warnings
