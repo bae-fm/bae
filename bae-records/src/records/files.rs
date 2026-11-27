@@ -361,6 +361,7 @@ impl Records {
 
     /// The coven file a library image's row names, as this device reads it
     /// now; `None` when there is no such row.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn library_image_file(
         &self,
         id: &str,
