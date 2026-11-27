@@ -86,18 +86,29 @@ struct Logo: View {
                                 )
                             )
                     }
-                wordImage(glow ? Theme.logoWord : Theme.textPrimary)
+                // The word's box is the logo's one element, as on the
+                // board, so the drawings are behind it: the word fits inside
+                // the box, a fraction of a point narrower, and its edge
+                // reaches past it.
+                Color.clear
                     .frame(width: wordWidth, height: wordHeight)
+                    .accessibilityElement()
+                    .accessibilityLabel(Text(verbatim: "bae"))
+                    .accessibilityAddTraits(.isImage)
                     .background {
-                        // The word's edge, a copy 1 point right and below
-                        // it. A layer shadow of no blur is drawn above the
-                        // word in a macOS window (`ShadowedFace`).
-                        if glow {
-                            wordImage(Theme.logoWordEdge)
-                                .frame(width: wordWidth, height: wordHeight)
-                                .offset(x: 1, y: 1)
-                                .accessibilityHidden(true)
+                        ZStack {
+                            // The word's edge, a copy 1 point right and
+                            // below it. A layer shadow of no blur is drawn
+                            // above the word in a macOS window
+                            // (`ShadowedFace`).
+                            if glow {
+                                wordImage(Theme.logoWordEdge)
+                                    .offset(x: 1, y: 1)
+                            }
+                            wordImage(glow ? Theme.logoWord : Theme.textPrimary)
                         }
+                        .frame(width: wordWidth, height: wordHeight)
+                        .accessibilityHidden(true)
                     }
                     .modifier(
                         Bob(
@@ -106,8 +117,6 @@ struct Logo: View {
                             rise: Proportion.wordRise * wordHeight
                         )
                     )
-                    .accessibilityLabel(Text(verbatim: "bae"))
-                    .accessibilityAddTraits(.isImage)
             }
         }
     }
