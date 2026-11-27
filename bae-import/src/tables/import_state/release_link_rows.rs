@@ -76,23 +76,30 @@ pub(super) fn store_release_link(
     Ok(())
 }
 
-/// A candidate's release link as columns of a read that joins its row as
-/// `link`: a pressing's partners in the other catalogs, by catalog, and an
-/// album's album in each catalog, in catalog order, riding on it as JSON
-/// arrays. A candidate with no link reads `link_row` as NULL.
-pub(crate) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
-     link.kind AS link_kind, link.source AS link_source, link.release_id AS link_release_id, \
-     (SELECT json_group_array(json_array(partner.source, partner.release_id) \
-                              ORDER BY partner.source) \
-      FROM import_candidate_release_link_partner AS partner \
-      WHERE partner.content_hash = link.content_hash) AS link_partners, \
-     (SELECT json_group_array(json_array(album.catalog, album.album_id) \
-                              ORDER BY bae_catalog_rank(album.catalog)) \
-      FROM import_candidate_release_link_album AS album \
-      WHERE album.content_hash = link.content_hash) AS link_albums";
+// The release link of the candidate `content_hash`; no row for one linked to
+// nothing.
+sqlive_compose::read!(
+    LinkOfCandidate(content_hash: String),
+    r#"
+    SELECT link.*
+    FROM @crate::tables::import_state::listed_fragments::ListedLink AS link
+    WHERE link.link_hash = :content_hash
+"#
+);
 
-/// One candidate's [`RELEASE_LINK_COLUMNS`] as SQLite hands them over, its
-/// lists still JSON.
+/// The release link of the candidate `content_hash` as
+/// [`super::listed_fragments::ListedLink`] gives it; `None` for one linked to
+/// nothing.
+pub(super) fn load_release_link_on(
+    sql: &impl coven::SqlRead,
+    content_hash: &str,
+) -> Result<Option<super::listed_fragments::ListedLink>, DbError> {
+    let request = LinkOfCandidateParams { content_hash: content_hash.to_string() };
+    Ok(bae_store::statement_optional(sql, &request)?.map(|row| row.link))
+}
+
+/// One candidate's release link as SQLite hands it over, its lists still
+/// JSON.
 #[derive(Clone, PartialEq)]
 pub(crate) struct StoredReleaseLink {
     content_hash: String,
@@ -101,21 +108,6 @@ pub(crate) struct StoredReleaseLink {
     release_id: Option<String>,
     partners: String,
     albums: String,
-}
-
-/// The [`RELEASE_LINK_COLUMNS`] of `row`; none for an unlinked candidate.
-pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<StoredReleaseLink>> {
-    let Some(content_hash) = row.get::<_, Option<String>>("link_row")? else {
-        return Ok(None);
-    };
-    Ok(Some(StoredReleaseLink {
-        content_hash,
-        kind: row.get("link_kind")?,
-        source: row.get("link_source")?,
-        release_id: row.get("link_release_id")?,
-        partners: row.get("link_partners")?,
-        albums: row.get("link_albums")?,
-    }))
 }
 
 impl StoredReleaseLink {

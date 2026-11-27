@@ -82,3 +82,18 @@ sqlive_compose::fragment!(
     FROM import_candidate_cover AS cover
 "#
 );
+
+impl ListedLink {
+    /// The link's columns, with the records it claims as their JSON array.
+    pub(crate) fn into_stored(self) -> (super::StoredReleaseLink, String) {
+        let link = super::StoredReleaseLink::new(
+            self.link_hash,
+            self.link_kind,
+            self.link_source,
+            self.link_release_id,
+            self.link_partners,
+            self.link_albums,
+        );
+        (link, self.link_records)
+    }
+}

@@ -13,7 +13,7 @@
 //! ([`ImportTables::store_import_reads`]).
 //! Its tables are `claim_rows.sql`.
 
-use super::release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
+use super::release_link_rows::load_release_link_on;
 use super::*;
 use crate::ReleaseLink;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
@@ -32,17 +32,10 @@ pub(super) fn store_claims_on(sql: &CovenWrite<'_>, content_hash: &str) -> Resul
         "DELETE FROM import_candidate_offered_cover WHERE content_hash = ?",
         [content_hash],
     )?;
-    let stored = sql.query(
-        &format!(
-            "SELECT {RELEASE_LINK_COLUMNS} FROM import_candidate_release_link AS link \
-             WHERE link.content_hash = ?"
-        ),
-        [content_hash],
-        read_release_link,
-    )?;
-    let Some(link) = stored.into_iter().flatten().next() else {
+    let Some(listed) = load_release_link_on(sql, content_hash)? else {
         return Ok(());
     };
+    let (link, _stored_records) = listed.into_stored();
     let (records, covers) = match link.link()? {
         ReleaseLink::Album(album) => (album.records(), Vec::new()),
         ReleaseLink::Pressing(pressing) => {
@@ -184,19 +177,6 @@ pub(crate) fn store_claims_of_albums_on(
     Ok(())
 }
 
-/// The stored records the link of the candidate whose content hash the
-/// expression `hash` names claims, as a JSON array of `{catalog, kind, key,
-/// album}` objects in the order surfaces list them. A larger statement can
-/// use this SQL as one of its columns.
-pub(crate) fn claimed_records_sql(hash: &str) -> String {
-    format!(
-        "SELECT json_group_array(json_object('catalog', claimed.catalog, 'kind', claimed.kind, \
-                                             'key', claimed.key, 'album', claimed.album) \
-                                 ORDER BY claimed.position) \
-         FROM import_candidate_claimed_record AS claimed WHERE claimed.content_hash = {hash}"
-    )
-}
-
 #[derive(serde::Deserialize)]
 struct RecordColumns {
     catalog: String,
@@ -205,7 +185,8 @@ struct RecordColumns {
     album: Option<String>,
 }
 
-/// The records a [`claimed_records_sql`] column holds.
+/// The records [`super::listed_fragments::ListedLink`] gives as a link's
+/// claimed records.
 pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, DbError> {
     let rows: Vec<RecordColumns> = serde_json::from_str(json)
         .map_err(|error| DbError::unreadable_json("the claimed records", json, error))?;
@@ -221,17 +202,16 @@ pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, 
         .collect()
 }
 
-/// The stored records the link of the candidate `content_hash` claims, read
-/// by [`claimed_records_sql`] as its own statement.
-fn load_claimed_records_on<S: coven::SqlRead>(
-    sql: &S,
+/// The stored records the link of the candidate `content_hash` claims; none
+/// for a candidate with no link.
+fn load_claimed_records_on(
+    sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Vec<ReleaseRecord>, DbError> {
-    let json: String =
-        sql.query_row(&format!("SELECT ({})", claimed_records_sql("?")), [content_hash], |row| {
-            row.get(0)
-        })?;
-    claimed_records_of_json(&json)
+    match load_release_link_on(sql, content_hash)? {
+        Some(listed) => claimed_records_of_json(&listed.into_stored().1),
+        None => Ok(Vec::new()),
+    }
 }
 
 impl ImportTables {
