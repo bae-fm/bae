@@ -390,19 +390,15 @@ async fn the_count_reads_one_row_by_its_key() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let plan = db
         .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", super::IDENTIFICATION_PROGRESS),
-                [],
-                |row| row.get::<_, String>(3),
-            )
+            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::ImportCountsRead::SQL), [], |row| {
+                row.get::<_, String>(3)
+            })
             .map_err(DbError::from)
         })
         .await
         .unwrap();
-    assert_eq!(
-        plan,
-        vec!["SEARCH import_identification_count USING INTEGER PRIMARY KEY (rowid=?)".to_string()]
-    );
+    let batch: Vec<&String> = plan.iter().filter(|step| step.contains("batch")).collect();
+    assert_eq!(batch, ["SEARCH batch USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN"], "{plan:?}");
 }
 
 /// How many imports the import counts' live query counts in flight.

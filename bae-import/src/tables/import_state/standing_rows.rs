@@ -30,6 +30,7 @@ use crate::triage::TriageRuntimeFacts;
 use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles, SaveFailure};
 use crate::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
+use bae_store::statement_row;
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads
 /// them.
@@ -266,35 +267,28 @@ pub(crate) fn load_standing_on(
     }
 }
 
-/// The batch's count: its ended and admitted identifications.
-const IDENTIFICATION_PROGRESS: &str =
-    "SELECT ended, admitted FROM import_identification_count WHERE singleton = 1";
+// How far the batch of identifications in flight has got, `identified` ended
+// of `admitted`, both 0 with no batch open, which stores no count row; and how
+// many candidates an import holds, whatever step it has reached.
+sqlive_compose::read!(
+    ImportCountsRead { identified: u32, admitted: u32, imports_in_flight: u32 },
+    r#"
+    SELECT COALESCE(batch.ended, 0) AS identified,
+           COALESCE(batch.admitted, 0) AS admitted,
+           (SELECT COUNT(*) FROM import_candidate_standing AS standing
+            WHERE standing.import_step IS NOT NULL) AS imports_in_flight
+    FROM (SELECT 1) AS one
+    LEFT JOIN import_identification_count AS batch ON batch.singleton = 1
+"#
+);
 
-/// How far the batch of identifications in flight has got: ended of
-/// admitted. `(0, 0)` is no batch.
-fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32), DbError> {
-    let progress = sql
-        .query_row(IDENTIFICATION_PROGRESS, [], |row| {
-            Ok((row.get::<_, u32>(0)?, row.get::<_, u32>(1)?))
-        })
-        .optional()?;
-    // No row is the stored shape of no batch open.
-    Ok(progress.unwrap_or((0, 0)))
-}
-
-/// How many candidates an import holds, whatever step it has reached.
-fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
-    Ok(sql.query_row(
-        "SELECT COUNT(*) FROM import_candidate_standing WHERE import_step IS NOT NULL",
-        [],
-        |row| row.get::<_, u32>(0),
-    )?)
-}
-
-/// The identification batch's count and the imports in flight, read together.
-fn load_import_counts_on(sql: &SqlReadContext<'_>) -> Result<ImportCounts, DbError> {
-    let (identified, admitted) = load_identification_progress_on(sql)?;
-    Ok(ImportCounts { identified, admitted, imports_in_flight: load_imports_in_flight_on(sql)? })
+fn load_import_counts_on(sql: &impl coven::SqlRead) -> Result<ImportCounts, DbError> {
+    let row = statement_row(sql, &ImportCountsReadParams {})?;
+    Ok(ImportCounts {
+        identified: row.identified,
+        admitted: row.admitted,
+        imports_in_flight: row.imports_in_flight,
+    })
 }
 
 /// End, inside the caller's write, `candidate_key`'s identification and its
@@ -545,7 +539,8 @@ impl ImportTables {
     /// the live read carries it to everyone else.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn load_identification_progress(&self) -> Result<(u32, u32), DbError> {
-        self.store.read(|sql| load_identification_progress_on(&sql)).await
+        let counts = self.store.read(|sql| load_import_counts_on(&sql)).await?;
+        Ok((counts.identified, counts.admitted))
     }
 
     /// How far the identification batch has got and how many imports are in
