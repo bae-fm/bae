@@ -128,14 +128,21 @@ mirror_enum! {
 
 impl BridgeMappingFile {
     pub(crate) fn from_core(file: bae_import::MappingFile) -> Self {
-        let bae_import::MappingFile { file_id, name, size, preview_target, role } = file;
+        let bae_import::MappingFile { file_id, name, size, audition, role } = file;
         BridgeMappingFile {
             role: BridgeMappingRole::from_core(role),
-            preview_target: preview_target.map(BridgePreviewTarget::from_core),
+            audition: audition.map(BridgeFileAudition::from_core),
             file_id,
             name,
             size,
         }
+    }
+}
+
+impl BridgeFileAudition {
+    fn from_core(audition: bae_import::FileAudition) -> Self {
+        let bae_import::FileAudition { target, previewing } = audition;
+        BridgeFileAudition { target: BridgePreviewTarget::from_core(target), previewing }
     }
 }
 
@@ -219,9 +226,9 @@ impl BridgeTrackTableRow {
                 },
             },
             audition: match audition {
-                bae_import::TrackAudition::Preview(target) => {
-                    BridgeTrackAudition::Preview { target: BridgePreviewTarget::from_core(target) }
-                }
+                bae_import::TrackAudition::Preview(audition) => BridgeTrackAudition::Preview {
+                    audition: BridgeFileAudition::from_core(audition),
+                },
                 bae_import::TrackAudition::LibraryTrack => BridgeTrackAudition::LibraryTrack,
                 bae_import::TrackAudition::Unsaved => BridgeTrackAudition::Unsaved,
             },

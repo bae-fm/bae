@@ -43,7 +43,6 @@ extension MacImportWindow {
             else if let invalid = selectedInvalidCandidate {
                 InvalidCandidatePane(
                     detail: invalid,
-                    previewingTarget: importStore.previewState.active?.target,
                     mappingActions: ImportMappingFlow.actions(
                         key: invalid.candidate.candidateKey,
                         services: mappingServices

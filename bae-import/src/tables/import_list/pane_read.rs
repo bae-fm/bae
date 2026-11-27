@@ -34,7 +34,7 @@ sqlive_compose::read!(
     PaneDraft(key: Option<crate::CandidateKey>) { pane_key: Option<crate::CandidateKey> },
     r#"
     SELECT pane.key AS pane_key, draft.*, flags.*, failure.*, pane_failure.*, mapping.*,
-           artist_field.*, claimed.*, status.*, album.*, cover.*
+           artist_field.*, claimed.*, status.*, album.*, cover.*, previewed.*
     FROM (SELECT :key AS key) AS pane
     LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
         AS imported ON 1
@@ -59,5 +59,7 @@ sqlive_compose::read!(
     LEFT JOIN @crate::tables::import_state::fragments::CandidateAlbum(key: :key) AS album
         ON imported.imported_key IS NULL
     LEFT JOIN @crate::tables::import_state::fragments::CoverChoice(key: :key) AS cover
+        ON imported.imported_key IS NULL
+    LEFT JOIN @bae_playback::tables::now::PreviewedWindow AS previewed
         ON imported.imported_key IS NULL
 "#);

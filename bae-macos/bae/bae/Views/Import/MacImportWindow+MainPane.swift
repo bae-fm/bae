@@ -92,7 +92,6 @@ extension MacImportWindow {
     private func preparingMappingPane(for candidate: Candidate) -> some View {
         ImportMappingPane(
             candidate: candidate,
-            previewingTarget: importStore.previewState.active?.target,
             isApplyingMetadata: importStore.isApplyingMetadata(
                 forKey: candidate.key
             ),

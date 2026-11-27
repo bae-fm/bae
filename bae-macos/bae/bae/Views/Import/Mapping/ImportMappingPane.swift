@@ -11,8 +11,6 @@ import SwiftUI
 /// column in place.
 struct ImportMappingPane: View {
     let candidate: Candidate
-    /// The exact source window currently auditioning, if any.
-    let previewingTarget: BridgePreviewTarget?
     /// Whether a metadata source is being read into this candidate's draft.
     /// The store answers it: a pick outlives which candidate is on screen.
     let isApplyingMetadata: Bool
@@ -120,7 +118,6 @@ struct ImportMappingPane: View {
                         },
                     sides: draft.mapping.trackSides,
                     files: draft.mapping.files,
-                    previewingTarget: previewingTarget,
                     actions: mappingActions.trackTable
                 ),
                 editingCommands: editingCommands,

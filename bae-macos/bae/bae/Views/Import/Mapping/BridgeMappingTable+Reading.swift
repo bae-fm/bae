@@ -16,11 +16,12 @@ extension BridgeTrackTableRun {
 }
 
 extension BridgeTrackAudition {
-    /// The window of a folder's file the preview player plays for the row;
-    /// `nil` for a library release's row, which the library plays.
-    var previewTarget: BridgePreviewTarget? {
+    /// The window of a folder's file the preview player plays for the row,
+    /// and whether it holds it now; `nil` for a library release's row, which
+    /// the library plays.
+    var fileAudition: BridgeFileAudition? {
         switch self {
-        case .preview(let target): target
+        case .preview(let audition): audition
         case .libraryTrack, .unsaved: nil
         }
     }

@@ -54,11 +54,14 @@ extension MappingFixtures {
                 track: track,
                 source: .file(name: name),
                 audition: .preview(
-                    target: BridgePreviewTarget(
-                        path: path,
-                        name: name,
-                        startSample: 0,
-                        endSample: nil
+                    audition: BridgeFileAudition(
+                        target: BridgePreviewTarget(
+                            path: path,
+                            name: name,
+                            startSample: 0,
+                            endSample: nil
+                        ),
+                        previewing: false
                     )
                 ),
                 position: position,
@@ -255,7 +258,12 @@ extension MappingFixtures {
             source: .sheetSlice(
                 start: BridgeDurationClock.length(ms: UInt64(index) * 200_000)
             ),
-            audition: .preview(target: previewTarget),
+            audition: .preview(
+                audition: BridgeFileAudition(
+                    target: previewTarget,
+                    previewing: false
+                )
+            ),
             position: "\(index + 1)",
             length: BridgeDurationClock.length(
                 ms: UInt64(200_000 + index * 1000)

@@ -8,17 +8,11 @@ struct MacImportTrackRow: View {
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
     let columns: ReleaseMetadataTrackColumns
-    let previewingTarget: BridgePreviewTarget?
     let editingCommands: EditingCommitCommands
     let actions: ReleaseTrackTableActions
     /// Opens the live artist search the track's artist field reads while
     /// open.
     let artistSearch: ArtistSearchOpener
-
-    private var isPreviewing: Bool {
-        guard let target = row.audition.previewTarget else { return false }
-        return target == previewingTarget
-    }
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
@@ -38,7 +32,10 @@ struct MacImportTrackRow: View {
         .padding(.vertical, ThemeSpace.compact)
         .frame(minHeight: 40)
         .padding(.top, ThemeSpace.hairline)
-        .background(isPreviewing ? Theme.accentSoft : .clear)
+        .background(
+            row.audition.fileAudition?.previewing == true
+                ? Theme.accentSoft : .clear
+        )
         .overlay(alignment: .top) { MacHairline() }
     }
 
@@ -48,7 +45,6 @@ struct MacImportTrackRow: View {
             source: row.source,
             audition: row.audition,
             trackId: row.track.id,
-            isPreviewing: isPreviewing,
             actions: actions.audition,
         )
         .frame(width: columns.source, alignment: .leading)
@@ -58,8 +54,8 @@ struct MacImportTrackRow: View {
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
-                    if let target = row.audition.previewTarget {
-                        actions.audition.preview(target)
+                    if let audition = row.audition.fileAudition {
+                        actions.audition.preview(audition.target)
                     }
                 }
         )

@@ -262,7 +262,6 @@ extension ShotScene {
             sides: content == .unread
                 ? nil : editorSides(draft.sides, content: content),
             files: content == .unread ? nil : draft.files,
-            previewingTarget: nil,
             actions: actions
         )
     }

@@ -96,11 +96,14 @@ extension ShotScene {
                 start: BridgeDurationClock.length(ms: startSeconds * 1_000)
             ),
             audition: .preview(
-                target: BridgePreviewTarget(
-                    path: PreviewData.fakePath(container),
-                    name: container,
-                    startSample: startSeconds * 44_100,
-                    endSample: (startSeconds + seconds) * 44_100
+                audition: BridgeFileAudition(
+                    target: BridgePreviewTarget(
+                        path: PreviewData.fakePath(container),
+                        name: container,
+                        startSample: startSeconds * 44_100,
+                        endSample: (startSeconds + seconds) * 44_100
+                    ),
+                    previewing: false
                 )
             ),
             position: position,
@@ -132,6 +135,19 @@ extension ShotScene {
         seconds: 320
     )
 
+    /// `row` while the preview player holds its stretch of audio.
+    private static func previewing(_ row: BridgeTrackTableRow)
+        -> BridgeTrackTableRow
+    {
+        guard var audition = row.audition.fileAudition else {
+            preconditionFailure("a folder's row previews its file")
+        }
+        audition.previewing = true
+        var row = row
+        row.audition = .preview(audition: audition)
+        return row
+    }
+
     private static func trackRowScene(
         _ id: String,
         _ track: BridgeTrackTableRow,
@@ -147,12 +163,14 @@ extension ShotScene {
                     sides: [
                         BridgeTrackTableSide(
                             side: .flat,
-                            runs: [.track(row: track)]
+                            runs: [
+                                .track(
+                                    row: playing ? previewing(track) : track
+                                )
+                            ]
                         )
                     ],
 
-                    previewingTarget: playing
-                        ? track.audition.previewTarget : nil,
                     actions: inertMappingActions().trackTable,
                     editingCommands: EditingCommitCommands()
                 )

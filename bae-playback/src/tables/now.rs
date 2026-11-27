@@ -17,6 +17,7 @@ use crate::{
     PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState,
     PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
+use bae_track_audio::PreviewTarget;
 use bae_types::mediums::SideHeading;
 use bae_util::timestamp::StoredTimestamp as _;
 
@@ -110,6 +111,57 @@ impl Casting {
         .receiver(&CAST_RECEIVER)
         .map_err(|column| DbError::unreadable(format!("playback_now.{column}"), None::<String>))
     }
+}
+
+sqlive_compose::fragment!(
+    PreviewedWindow {
+        previewed_state: String,
+        previewed_path: Option<Vec<u8>>,
+        previewed_start_sample: Option<u64>,
+        previewed_end_sample: Option<u64>
+    },
+    r#"
+    SELECT now.preview AS previewed_state, now.preview_path AS previewed_path,
+           now.preview_start_sample AS previewed_start_sample,
+           now.preview_end_sample AS previewed_end_sample
+    FROM playback_now AS now
+    WHERE now.preview <> 'idle'
+"#
+);
+
+impl PreviewedWindow {
+    /// The stretch of a file the preview player holds, playing or paused.
+    /// The table's CHECKs give a row that previews its path and its start.
+    pub fn target(self) -> Result<PreviewTarget, DbError> {
+        let missing =
+            |column: &str| DbError::unreadable(format!("playback_now.{column}"), None::<String>);
+        Ok(PreviewTarget::sample_range(
+            bae_store::path_column::decode(
+                self.previewed_path.ok_or_else(|| missing("preview_path"))?,
+            )?,
+            self.previewed_start_sample.ok_or_else(|| missing("preview_start_sample"))?,
+            self.previewed_end_sample,
+        ))
+    }
+}
+
+sqlive_compose::read!(
+    Previewed,
+    r#"
+    SELECT previewed.*
+    FROM @crate::tables::now::PreviewedWindow AS previewed
+"#
+);
+
+/// The stretch of a file the preview player holds, playing or paused, for
+/// another domain's read that marks the row of it; `None` while it previews
+/// nothing.
+pub fn previewed_target_on(sql: &impl coven::SqlRead) -> Result<Option<PreviewTarget>, DbError> {
+    bae_store::statement_rows(sql, &PreviewedParams {})?
+        .into_iter()
+        .next()
+        .map(|row| row.previewed.target())
+        .transpose()
 }
 
 impl PlaybackNowRow {

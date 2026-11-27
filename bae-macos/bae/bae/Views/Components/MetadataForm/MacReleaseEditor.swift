@@ -41,7 +41,6 @@ struct MacReleaseEditor<Search: View>: View {
             if let sides = tracks.sides {
                 MacImportTable(
                     sides: sides,
-                    previewingTarget: tracks.previewingTarget,
                     actions: tracks.actions,
                     editingCommands: editingCommands
                 )
@@ -198,8 +197,6 @@ struct ReleaseEditorTracks {
     let sides: [BridgeTrackTableSide]?
     /// The files no track plays from; `nil` while there are none.
     let files: [BridgeMappingFileRow]?
-    /// The source window the preview player plays now, if any.
-    let previewingTarget: BridgePreviewTarget?
     let actions: ReleaseTrackTableActions
 }
 

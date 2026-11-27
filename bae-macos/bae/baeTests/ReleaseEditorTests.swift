@@ -142,7 +142,6 @@ struct ReleaseEditorTests {
                 MacImportTable(
                     sides: release.draft.sides ?? [],
 
-                    previewingTarget: nil,
                     actions: ReleaseTrackTableActions(
                         sheetCaption: SheetCaptionActions(
                             open: { _, _ in },

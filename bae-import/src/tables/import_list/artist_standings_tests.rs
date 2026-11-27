@@ -27,7 +27,7 @@ async fn fields_of(db: &bae_store::Store) -> (Option<ArtistField>, Option<Artist
         .load_pane_mapping_for_test(&crate::tables::import_state::tests::pane_candidate_key())
         .await
         .unwrap();
-    let table = mapping.read(album.is_some()).unwrap().table;
+    let table = mapping.read(album.is_some(), None).unwrap().table;
     let track =
         table.track_sides.iter().flatten().flat_map(|side| side.rows()).find_map(|row| match &row
             .artist

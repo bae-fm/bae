@@ -57,6 +57,9 @@ struct DraftRows {
     /// The cover the candidate commits with: its stored selection, with the
     /// image its scan stored for it.
     cover: Option<CoverChoice>,
+    /// The stretch of a file the preview player holds, which marks the
+    /// mapping row that plays it.
+    previewed: Option<bae_track_audio::PreviewTarget>,
 }
 
 /// One candidate, whole, with its standing and where the list places it.
@@ -190,6 +193,7 @@ impl DraftRows {
             )?
             .album(&key.to_string())?,
             cover: row.cover.map(|cover| folder_scans::cover_choice_of(cover, &key)).transpose()?,
+            previewed: row.previewed.map(|previewed| previewed.target()).transpose()?,
         })
     }
 }
@@ -334,6 +338,7 @@ impl DraftRows {
             picked_library_status,
             album,
             cover,
+            previewed,
         } = self;
         let PaneStanding { placement, actionable, identifying, importing, current, stored_verdict } =
             standing;
@@ -376,7 +381,7 @@ impl DraftRows {
             TriageTab::Done => CandidatePanePlacement::Done,
         };
         let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
-            mapping.read(album_artists.is_some())?;
+            mapping.read(album_artists.is_some(), previewed.as_ref())?;
         let metadata_draft = draft.release_edit();
         let pane = CandidateDraftPane {
             picked_library_status,

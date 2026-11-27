@@ -281,9 +281,19 @@ pub struct BridgeMappingFile {
     /// The file's path within the release.
     pub name: String,
     pub size: u64,
-    /// The whole-file target when this file currently supplies audio.
-    pub preview_target: Option<BridgePreviewTarget>,
+    /// The whole-file audition when this file currently supplies audio.
+    pub audition: Option<BridgeFileAudition>,
     pub role: BridgeMappingRole,
+}
+
+/// A stretch of a folder's file that the preview player can play. Mirror of
+/// bae-import's `FileAudition`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeFileAudition {
+    pub target: BridgePreviewTarget,
+    /// Whether the preview player holds this stretch, playing or paused.
+    pub previewing: bool,
 }
 
 /// One of a release's audio files, by its id and the name the screens show.
@@ -467,7 +477,7 @@ pub enum BridgeTrackSource {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTrackAudition {
     /// The preview player plays this window of one of the folder's files.
-    Preview { target: BridgePreviewTarget },
+    Preview { audition: BridgeFileAudition },
     /// The library plays the release from the row's track, the library
     /// track the row's `track.id` names.
     LibraryTrack,

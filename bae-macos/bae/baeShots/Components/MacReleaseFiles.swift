@@ -96,7 +96,11 @@ extension ShotScene {
                 fileId: name,
                 name: name,
                 size: size,
-                previewTarget: plays ? previewTarget(name) : nil,
+                audition: plays
+                    ? BridgeFileAudition(
+                        target: previewTarget(name),
+                        previewing: false
+                    ) : nil,
                 role: role
             )
         )
@@ -118,7 +122,7 @@ extension ShotScene {
                 rows: rows,
                 onOpenDocument: { _, _ in },
                 sheetActions: sheetActions,
-                playing: (nil, inertMappingActions().audition)
+                auditionActions: inertMappingActions().audition
             )
             .frame(width: 520, alignment: .leading)
         }

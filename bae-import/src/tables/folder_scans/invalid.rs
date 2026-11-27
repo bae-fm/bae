@@ -276,6 +276,7 @@ pub(crate) fn load_invalid_detail(
             ))
         },
     )?;
+    let previewed = bae_playback::tables::now::previewed_target_on(sql)?;
     let Some(candidate) = row else {
         return Ok(None);
     };
@@ -302,8 +303,12 @@ pub(crate) fn load_invalid_detail(
                 file_id: relative_path.clone(),
                 name: relative_path,
                 size: to_u64(size, "a skipped file's size")?,
-                preview_target: (role == MappingRole::Audio)
-                    .then(|| bae_track_audio::PreviewTarget::whole_file(path)),
+                audition: (role == MappingRole::Audio).then(|| {
+                    crate::FileAudition::of(
+                        bae_track_audio::PreviewTarget::whole_file(path),
+                        previewed.as_ref(),
+                    )
+                }),
                 role,
             })
         })

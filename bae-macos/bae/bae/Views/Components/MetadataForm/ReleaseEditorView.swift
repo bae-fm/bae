@@ -73,7 +73,6 @@ struct ReleaseEditorView: View {
                         images: images(of: draft),
                         sides: draft.sides,
                         files: draft.files,
-                        previewingTarget: nil,
                         actions: tableActions
                     ),
                     editingCommands: session.editingCommands,

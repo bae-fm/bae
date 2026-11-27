@@ -197,11 +197,14 @@ extension ShotScene {
                     ),
                     audition: example == .importing
                         ? .preview(
-                            target: BridgePreviewTarget(
-                                path: PreviewData.fakePath(bound.name),
-                                name: bound.name,
-                                startSample: start * 44_100 / 1_000,
-                                endSample: startMs * 44_100 / 1_000
+                            audition: BridgeFileAudition(
+                                target: BridgePreviewTarget(
+                                    path: PreviewData.fakePath(bound.name),
+                                    name: bound.name,
+                                    startSample: start * 44_100 / 1_000,
+                                    endSample: startMs * 44_100 / 1_000
+                                ),
+                                previewing: false
                             )
                         )
                         : .libraryTrack,

@@ -955,7 +955,7 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
 
 #[test]
 fn a_mapping_file_s_audition_target_survives_its_json() {
-    for preview_target in [
+    for target in [
         None,
         Some(bae_track_audio::PreviewTarget::whole_file("disc/01.flac".into())),
         Some(bae_track_audio::PreviewTarget::sample_range(
@@ -968,12 +968,26 @@ fn a_mapping_file_s_audition_target_survives_its_json() {
             file_id: "disc/01.flac".to_string(),
             name: "01.flac".to_string(),
             size: 1_024,
-            preview_target,
+            audition: target.map(|target| crate::FileAudition { target, previewing: false }),
             role: MappingRole::Audio,
         };
         let json = serde_json::to_string(&file).unwrap();
         assert_eq!(serde_json::from_str::<MappingFile>(&json).unwrap(), file);
     }
+}
+
+/// Two stretches of one image, as two entries of its CUE sheet play them, are
+/// two auditions: the preview player holding one marks only that one.
+#[test]
+fn another_stretch_of_the_same_file_is_not_previewing() {
+    let stretch = |start, end| {
+        bae_track_audio::PreviewTarget::sample_range("disc/image.flac".into(), start, Some(end))
+    };
+    let held = stretch(44_100, 88_200);
+
+    assert!(crate::FileAudition::of(held.clone(), Some(&held)).previewing);
+    assert!(!crate::FileAudition::of(stretch(0, 44_100), Some(&held)).previewing);
+    assert!(!crate::FileAudition::of(held, None).previewing);
 }
 
 #[path = "mapping_sheet_place_tests.rs"]

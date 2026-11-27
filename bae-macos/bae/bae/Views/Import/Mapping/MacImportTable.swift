@@ -6,9 +6,6 @@ import SwiftUI
 /// each a track row or a CUE sheet's caption over the rows it carves.
 struct MacImportTable: View {
     let sides: [BridgeTrackTableSide]
-    /// The source window the preview player plays now, if any; its row is
-    /// accented.
-    let previewingTarget: BridgePreviewTarget?
     let actions: ReleaseTrackTableActions
     let editingCommands: EditingCommitCommands
 
@@ -72,7 +69,6 @@ struct MacImportTable: View {
         MacImportTrackRow(
             row: row,
             columns: columns,
-            previewingTarget: previewingTarget,
             editingCommands: editingCommands,
             actions: actions,
             artistSearch: library.artistSearch,

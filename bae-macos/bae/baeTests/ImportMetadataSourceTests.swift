@@ -511,7 +511,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 images: nil,
                 sides: nil,
                 files: nil,
-                previewingTarget: nil,
                 actions: inertMappingActions().trackTable
             ),
             editingCommands: EditingCommitCommands(),

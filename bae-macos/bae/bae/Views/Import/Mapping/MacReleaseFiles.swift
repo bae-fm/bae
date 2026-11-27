@@ -16,10 +16,9 @@ struct MacReleaseFiles: View {
     /// given a disc, the actions that do it; `nil` for a list that holds no
     /// sheet.
     var sheetActions: SheetCaptionActions?
-    /// Where an audio file can play before import: the source window the
-    /// second player plays now, and the actions that start and stop it.
-    /// `nil` where the files play nothing.
-    var playing: (target: BridgePreviewTarget?, actions: TrackAuditionActions)?
+    /// Where an audio file can play before import: the actions that start
+    /// and stop it on the second player. `nil` where the files play nothing.
+    var auditionActions: TrackAuditionActions?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -51,8 +50,7 @@ struct MacReleaseFiles: View {
                 onOpen: file.role == .document
                     ? { onOpenDocument(file.name, file.fileId) } : nil,
                 onPlay: playAction(file),
-                isPlaying: file.previewTarget != nil
-                    && file.previewTarget == playing?.target
+                isPlaying: file.audition?.previewing == true
             )
         case .sheet(let sheet):
             // Only a Found folder's list holds a sheet, which it lists with
@@ -67,9 +65,11 @@ struct MacReleaseFiles: View {
     }
 
     private func playAction(_ file: BridgeMappingFile) -> (() -> Void)? {
-        guard let playing, let target = file.previewTarget else { return nil }
-        return target == playing.target
-            ? { playing.actions.stopPreview() }
-            : { playing.actions.preview(target) }
+        guard let auditionActions, let audition = file.audition else {
+            return nil
+        }
+        return audition.previewing
+            ? { auditionActions.stopPreview() }
+            : { auditionActions.preview(audition.target) }
     }
 }

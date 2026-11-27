@@ -437,7 +437,8 @@ extension ImportMappingPaneTests {
         )
         let entry = try #require(
             MappingFixtures.mapping(of: store)?.trackRows[4].audition
-                .previewTarget
+                .fileAudition?
+                .target
         )
 
         actions.preview(entry)

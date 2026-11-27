@@ -1071,6 +1071,7 @@ dependencies = [
  "bae-fragments-build",
  "bae-identify",
  "bae-pictures",
+ "bae-playback",
  "bae-preferences",
  "bae-records",
  "bae-schema-manifest",

@@ -2438,7 +2438,12 @@ file before (§2.2) is not named, and every other track names the file its body,
 from its INDEX 01 on, plays from. A row's Play button plays the track: in a
 Found folder's pane through a second player, which pauses the library's
 playback and resumes it when it ends, and in a library release's editor by
-playing the release from that track. In a Found folder's pane, the table also
+playing the release from that track. While the second player holds the audio a
+Found row plays, playing or paused, the row is highlighted and its button
+stops that player. An audio file that a broken folder's pane lists shows the
+same on its own button. The pane's query reads which audio the second player
+holds from `playback_now` (§9.4) and marks that row, so the app compares
+nothing. In a Found folder's pane, the table also
 counts the tracks nobody has named yet, and the action row states that count
 beside Import without blocking it: importing titles each of them after its
 file.

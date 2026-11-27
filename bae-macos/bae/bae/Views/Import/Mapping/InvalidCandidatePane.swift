@@ -8,8 +8,6 @@ import SwiftUI
 /// damaged one marked with why.
 struct InvalidCandidatePane: View {
     let detail: BridgeInvalidCandidateDetail
-    /// The exact source window currently auditioning, if any.
-    let previewingTarget: BridgePreviewTarget?
     let mappingActions: ImportMappingActions
     let onNavigateToPlacement: () -> Void
 
@@ -48,7 +46,7 @@ struct InvalidCandidatePane: View {
         MacReleaseFiles(
             rows: detail.files.map { .file(file: $0) },
             onOpenDocument: mappingActions.openDocument,
-            playing: (previewingTarget, mappingActions.audition)
+            auditionActions: mappingActions.audition
         )
     }
 }

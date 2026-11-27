@@ -213,11 +213,16 @@ impl MappingRows {
         Self { document }
     }
 
-    /// The mapping table over the draft's tracks. Refuses a draft whose
+    /// The mapping table over the draft's tracks, each marked by whether
+    /// the preview player holds `previewed`, its stretch of audio. Refuses a draft whose
     /// tracks are not the folder's audio units in order: every write that
     /// changes the folder's files rebuilds the draft, so a mismatch is a
     /// stored state that contradicts itself.
-    pub(super) fn read(&self, has_album_artists: bool) -> Result<MappingRead, ImportError> {
+    pub(super) fn read(
+        &self,
+        has_album_artists: bool,
+        previewed: Option<&bae_track_audio::PreviewTarget>,
+    ) -> Result<MappingRead, ImportError> {
         let internal = |detail: String| ImportError::Internal { detail };
         let document: Document = serde_json::from_str(&self.document)
             .map_err(|error| internal(format!("the mapping statement's document: {error}")))?;
@@ -230,7 +235,10 @@ impl MappingRows {
         let track_sides = document
             .sides
             .map(|sides| {
-                sides.into_iter().map(|side| track_side(side, has_album_artists)).collect()
+                sides
+                    .into_iter()
+                    .map(|side| track_side(side, has_album_artists, previewed))
+                    .collect()
             })
             .transpose()?;
         let files = document
@@ -263,7 +271,11 @@ impl MappingRows {
 
 /// One side of the track table, its runs of loose tracks and of the tracks
 /// a sheet carves, each row at its place on the side.
-fn track_side(side: SideJson, has_album_artists: bool) -> Result<TrackTableSide, ImportError> {
+fn track_side(
+    side: SideJson,
+    has_album_artists: bool,
+    previewed: Option<&bae_track_audio::PreviewTarget>,
+) -> Result<TrackTableSide, ImportError> {
     let unplaced =
         |reason: String| ImportError::Internal { detail: format!("a track side: {reason}") };
     let mut runs = Vec::new();
@@ -273,7 +285,7 @@ fn track_side(side: SideJson, has_album_artists: bool) -> Result<TrackTableSide,
             let position =
                 bae_records::records::track_position_of(&side.kind, side.ordinal, row.number)
                     .map_err(unplaced)?;
-            rows.push(table_row(row, position.text(), has_album_artists)?);
+            rows.push(table_row(row, position.text(), has_album_artists, previewed)?);
         }
         match run.sheet {
             Some(sheet) => runs.push(TrackTableRun::Sheet { sheet: sheet_group(sheet)?, rows }),
@@ -294,7 +306,7 @@ fn carried_row(carried: CarriedJson) -> Result<MappingFileRow, ImportError> {
             file_id: file.file_id,
             name: file.name,
             size: file.size,
-            preview_target: None,
+            audition: None,
             role: carried_role(&file.role)?,
         }),
     })
@@ -408,6 +420,7 @@ fn table_row(
     row: RowJson,
     position: String,
     has_album_artists: bool,
+    previewed: Option<&bae_track_audio::PreviewTarget>,
 ) -> Result<TrackTableRow, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
     let track = row.track.track()?;
@@ -439,7 +452,7 @@ fn table_row(
         .map_err(ImportError::Database)?,
         track,
         source,
-        audition: TrackAudition::Preview(audition),
+        audition: TrackAudition::Preview(crate::FileAudition::of(audition, previewed)),
         position,
         length_ms: unit.length_ms,
         listed_length_ms: row.listed_ms,
@@ -454,6 +467,6 @@ impl crate::tables::ImportTables {
         key: &crate::CandidateKey,
     ) -> Result<MappingTable, ImportError> {
         let (mapping, album_artists) = self.load_pane_mapping_for_test(key).await?;
-        mapping.read(album_artists.is_some()).map(|read| read.table)
+        mapping.read(album_artists.is_some(), None).map(|read| read.table)
     }
 }

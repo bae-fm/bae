@@ -19,6 +19,8 @@ use std::path::PathBuf;
 
 #[path = "pane_tests/parts.rs"]
 mod parts;
+#[path = "pane_tests/preview.rs"]
+mod preview;
 #[path = "pane_tests/stage.rs"]
 mod stage;
 
@@ -827,7 +829,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     assert_eq!(
         read.files
             .iter()
-            .map(|file| (file.file_id.as_str(), file.role, file.preview_target.is_some()))
+            .map(|file| (file.file_id.as_str(), file.role, file.audition.is_some()))
             .collect::<Vec<_>>(),
         [
             ("01.flac", crate::MappingRole::Audio, true),

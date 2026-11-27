@@ -74,6 +74,8 @@ libc = { workspace = true }
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 # The copies of a candidate's pictures, made at the sizes a screen asks for.
 bae-pictures = { workspace = true }
+# The preview the pane's rows are marked by, read from playback's row.
+bae-playback = { workspace = true }
 lofty = { workspace = true }
 # A scanned file's name is matched against a sheet's or a tag's with its
 # Unicode composition set aside (src/folder_scanner/sheet_references.rs).

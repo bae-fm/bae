@@ -387,11 +387,14 @@ extension PreviewData {
                         )
                     ),
                     audition: .preview(
-                        target: BridgePreviewTarget(
-                            path: fakePath(container.name),
-                            name: container.name,
-                            startSample: from,
-                            endSample: startSample
+                        audition: BridgeFileAudition(
+                            target: BridgePreviewTarget(
+                                path: fakePath(container.name),
+                                name: container.name,
+                                startSample: from,
+                                endSample: startSample
+                            ),
+                            previewing: false
                         )
                     ),
                     position: "\(index + 1)",

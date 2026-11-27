@@ -399,7 +399,7 @@ pub(crate) fn carried_file(file: &bae_records::DbFile) -> crate::MappingFile {
         file_id: file.id.clone(),
         name: file.original_filename.clone(),
         size: file.file_size,
-        preview_target: None,
+        audition: None,
         role: match file.role {
             ReleaseFileRole::Audio => MappingRole::Audio,
             ReleaseFileRole::TrackSheet | ReleaseFileRole::Document(_) => MappingRole::Document,

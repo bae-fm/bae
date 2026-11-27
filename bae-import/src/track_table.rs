@@ -111,7 +111,7 @@ pub enum TrackSource {
 pub enum TrackAudition {
     /// The preview player plays this window of one of the folder's files,
     /// pausing the library's playback.
-    Preview(bae_track_audio::PreviewTarget),
+    Preview(crate::FileAudition),
     /// The library plays the release from the row's track, the library
     /// track the row's `track.id` names.
     LibraryTrack,

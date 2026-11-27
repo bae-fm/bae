@@ -307,8 +307,8 @@ pub use list::{
 };
 #[cfg(desktop)]
 pub use mapping::{
-    mapping_tracks, InvalidCandidateDetail, MappingFile, MappingFileRow, MappingImage, MappingRole,
-    MappingTable,
+    mapping_tracks, FileAudition, InvalidCandidateDetail, MappingFile, MappingFileRow,
+    MappingImage, MappingRole, MappingTable,
 };
 #[cfg(desktop)]
 pub use preparations::{
@@ -331,12 +331,14 @@ pub use tables::{
 };
 
 /// The schema this crate's tests open their stores on: the catalogs' part,
-/// records' and release storage's parts, preferences' and import's.
+/// records' and release storage's parts, preferences', playback's and
+/// import's.
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
     bae_catalogs::SCHEMA_PARTS,
     bae_records::SCHEMA_PARTS,
     bae_preferences::SCHEMA_PARTS,
+    bae_playback::SCHEMA_PARTS,
     SCHEMA_PARTS,
 ]);
 

@@ -31,7 +31,6 @@ struct ImportMappingTracksLayoutTests {
             MacImportTrackRow(
                 row: pairedMapping,
                 columns: columns,
-                previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: MappingTrackActionRecorder())
                     .trackTable,
@@ -80,7 +79,6 @@ struct ImportMappingTracksLayoutTests {
             MacImportTrackRow(
                 row: pairedMapping,
                 columns: columns,
-                previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: recorder).trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
@@ -110,11 +108,11 @@ struct ImportMappingTracksLayoutTests {
         let tableWidth = wideTableWidth
         let stopped = try await hostedTrack(
             tableWidth: tableWidth,
-            previewingTarget: nil
+            previewing: false
         )
         let playing = try await hostedTrack(
             tableWidth: tableWidth,
-            previewingTarget: previewTarget
+            previewing: true
         )
 
         #expect(stopped.height == playing.height)
@@ -123,33 +121,15 @@ struct ImportMappingTracksLayoutTests {
     }
 
     @MainActor
-    @Test("another CUE window in the same file does not mark this row playing")
-    func cueWindowsHaveDistinctPreviewIdentity() async throws {
-        let otherWindow = BridgePreviewTarget(
-            path: audioPath,
-            name: "track.flac",
-            startSample: 44_100,
-            endSample: 88_200
-        )
-        let hosted = try await hostedTrack(
-            tableWidth: wideTableWidth,
-            previewingTarget: otherWindow
-        )
-
-        #expect(hosted.recorder.previewed == [previewTarget])
-        #expect(hosted.recorder.stops == 0)
-    }
-
-    @MainActor
     @Test("playback states keep one Source row height")
     func sourceStatesKeepOneRowHeight() {
         let stopped = sourceCellHeight(
             source: pairedMapping.source,
-            isPreviewing: false
+            previewing: false
         )
         let playing = sourceCellHeight(
             source: pairedMapping.source,
-            isPreviewing: true
+            previewing: true
         )
 
         #expect(stopped == playing)
@@ -171,7 +151,6 @@ struct ImportMappingTracksLayoutTests {
             MacImportTrackRow(
                 row: mapping,
                 columns: columns,
-                previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: MappingTrackActionRecorder())
                     .trackTable,
@@ -368,6 +347,25 @@ extension ImportMappingTracksLayoutTests {
             endSample: nil
         )
     }
+    /// The row's own audio, which the preview player holds when
+    /// `previewing`.
+    fileprivate func audition(previewing: Bool) -> BridgeTrackAudition {
+        .preview(
+            audition: BridgeFileAudition(
+                target: previewTarget,
+                previewing: previewing
+            )
+        )
+    }
+
+    private func row(_ row: BridgeTrackTableRow, previewing: Bool)
+        -> BridgeTrackTableRow
+    {
+        var row = row
+        row.audition = audition(previewing: previewing)
+        return row
+    }
+
     fileprivate var longAudioName: String {
         "A very long source filename that must remain inside its column.flac"
     }
@@ -397,7 +395,7 @@ extension ImportMappingTracksLayoutTests {
                 file: .standalone(fileId: "track.flac")
             ),
             source: .file(name: "track.flac"),
-            audition: .preview(target: previewTarget),
+            audition: audition(previewing: false),
             position: "1",
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
@@ -463,11 +461,14 @@ extension ImportMappingTracksLayoutTests {
                 )
             ),
             audition: .preview(
-                target: BridgePreviewTarget(
-                    path: audioPath,
-                    name: "track.flac",
-                    startSample: UInt64(number - 1) * 44_100,
-                    endSample: UInt64(number) * 44_100
+                audition: BridgeFileAudition(
+                    target: BridgePreviewTarget(
+                        path: audioPath,
+                        name: "track.flac",
+                        startSample: UInt64(number - 1) * 44_100,
+                        endSample: UInt64(number) * 44_100
+                    ),
+                    previewing: false
                 )
             ),
             position: String(number),
@@ -480,7 +481,7 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func hostedTrack(
         tableWidth: CGFloat,
-        previewingTarget: BridgePreviewTarget?
+        previewing: Bool
     ) async throws -> (height: CGFloat, recorder: MappingTrackActionRecorder) {
         let columns = ReleaseMetadataTrackColumns.resolved(
             tableWidth: tableWidth
@@ -489,9 +490,8 @@ extension ImportMappingTracksLayoutTests {
         let recorder = MappingTrackActionRecorder()
         return try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
-                row: pairedMapping,
+                row: row(pairedMapping, previewing: previewing),
                 columns: columns,
-                previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: recorder).trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
@@ -519,14 +519,13 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func sourceCellHeight(
         source: BridgeTrackSource,
-        isPreviewing: Bool
+        previewing: Bool
     ) -> CGFloat {
         let host = NSHostingView(
             rootView: TrackSourceCell(
                 source: source,
-                audition: .preview(target: previewTarget),
+                audition: audition(previewing: previewing),
                 trackId: "track",
-                isPreviewing: isPreviewing,
                 actions: actions(recording: MappingTrackActionRecorder())
                     .audition
             )

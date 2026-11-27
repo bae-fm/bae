@@ -57,7 +57,6 @@ enum ImportMappingPreview {
     static func make(
         candidate: Candidate,
         importDestination: Binding<BridgeImportDestination>,
-        previewingTarget: BridgePreviewTarget? = nil,
         libraryStatus: BridgeLibraryStatus? = nil,
         runtime: BridgeCandidateRuntimeSnapshot? = nil
     ) -> some View {
@@ -65,7 +64,6 @@ enum ImportMappingPreview {
         store.selectedCandidates[candidate.key] = candidate
         return ImportMappingPane(
             candidate: candidate,
-            previewingTarget: previewingTarget,
             isApplyingMetadata: false,
             libraryStatus: libraryStatus,
             hasCoverOptions: true,

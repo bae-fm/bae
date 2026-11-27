@@ -9,7 +9,6 @@ struct TrackSourceCell: View {
     let audition: BridgeTrackAudition
     /// The track the row edits, which a library release's row plays from.
     let trackId: String
-    let isPreviewing: Bool
     let actions: TrackAuditionActions
     private static let auditionLineHeight: CGFloat = 16
 
@@ -34,12 +33,13 @@ struct TrackSourceCell: View {
     @ViewBuilder
     private var playButton: some View {
         switch audition {
-        case .preview(let target):
+        case .preview(let audition):
             MacAuditionButton(
-                isPlaying: isPreviewing,
+                isPlaying: audition.previewing,
                 height: Self.auditionLineHeight
             ) {
-                isPreviewing ? actions.stopPreview() : actions.preview(target)
+                audition.previewing
+                    ? actions.stopPreview() : actions.preview(audition.target)
             }
         case .libraryTrack:
             if let playTrack = actions.playTrack {

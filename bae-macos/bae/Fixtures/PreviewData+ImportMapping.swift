@@ -26,11 +26,14 @@ extension PreviewData {
     /// it.
     static func wholeFile(_ name: String) -> BridgeTrackAudition {
         .preview(
-            target: BridgePreviewTarget(
-                path: fakePath(name),
-                name: name,
-                startSample: 0,
-                endSample: nil
+            audition: BridgeFileAudition(
+                target: BridgePreviewTarget(
+                    path: fakePath(name),
+                    name: name,
+                    startSample: 0,
+                    endSample: nil
+                ),
+                previewing: false
             )
         )
     }
@@ -65,12 +68,15 @@ extension PreviewData {
             fileId: file.file.name,
             name: file.file.name,
             size: file.file.size,
-            previewTarget: role == .audio
-                ? BridgePreviewTarget(
-                    path: fakePath(file.file.name),
-                    name: file.file.fileName,
-                    startSample: 0,
-                    endSample: nil
+            audition: role == .audio
+                ? BridgeFileAudition(
+                    target: BridgePreviewTarget(
+                        path: fakePath(file.file.name),
+                        name: file.file.fileName,
+                        startSample: 0,
+                        endSample: nil
+                    ),
+                    previewing: false
                 ) : nil,
             role: role
         )
@@ -213,11 +219,14 @@ extension PreviewData {
                 start: BridgeDurationClock.length(ms: UInt64(index) * 1_000)
             ),
             audition: .preview(
-                target: BridgePreviewTarget(
-                    path: fakePath(mappedAudioContainer.file.name),
-                    name: mappedAudioContainer.file.fileName,
-                    startSample: UInt64(index) * 44_100,
-                    endSample: UInt64(index + 1) * 44_100
+                audition: BridgeFileAudition(
+                    target: BridgePreviewTarget(
+                        path: fakePath(mappedAudioContainer.file.name),
+                        name: mappedAudioContainer.file.fileName,
+                        startSample: UInt64(index) * 44_100,
+                        endSample: UInt64(index + 1) * 44_100
+                    ),
+                    previewing: false
                 )
             ),
             position: "\(index + 1)",
@@ -292,7 +301,7 @@ extension PreviewData {
             fileId: "release-file-\(name)",
             name: name,
             size: size,
-            previewTarget: nil,
+            audition: nil,
             role: role
         )
     }

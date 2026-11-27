@@ -28,7 +28,6 @@ extension ShotScene {
             MacImportTable(
                 sides: sides,
 
-                previewingTarget: nil,
                 actions: inertMappingActions().trackTable,
                 editingCommands: EditingCommitCommands()
             )

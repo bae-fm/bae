@@ -99,10 +99,30 @@ pub struct MappingFile {
     /// directory shows up only as the prefix its files carry.
     pub name: String,
     pub size: u64,
-    /// The whole-file audition target of an audio file of a folder.
-    #[serde(with = "stored_preview_target")]
-    pub preview_target: Option<bae_track_audio::PreviewTarget>,
+    /// The whole-file audition of an audio file of a folder.
+    pub audition: Option<FileAudition>,
     pub role: MappingRole,
+}
+
+/// A stretch of a folder's file that the preview player can play.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct FileAudition {
+    #[serde(with = "stored_preview_target")]
+    pub target: bae_track_audio::PreviewTarget,
+    /// Whether the preview player holds this stretch, playing or paused.
+    pub previewing: bool,
+}
+
+#[cfg(desktop)]
+impl FileAudition {
+    /// The audition of `target` while the preview player holds `previewed`.
+    pub(crate) fn of(
+        target: bae_track_audio::PreviewTarget,
+        previewed: Option<&bae_track_audio::PreviewTarget>,
+    ) -> Self {
+        let previewing = previewed == Some(&target);
+        Self { target, previewing }
+    }
 }
 
 /// A file's audition target as JSON: the file's path and the samples the
@@ -120,25 +140,22 @@ mod stored_preview_target {
     }
 
     pub(super) fn serialize<S: serde::Serializer>(
-        target: &Option<PreviewTarget>,
+        target: &PreviewTarget,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        target
-            .as_ref()
-            .map(|target| Stored {
-                path: target.path().to_path_buf(),
-                start_sample: target.span().start_sample,
-                end_sample: target.span().end_sample,
-            })
-            .serialize(serializer)
+        Stored {
+            path: target.path().to_path_buf(),
+            start_sample: target.span().start_sample,
+            end_sample: target.span().end_sample,
+        }
+        .serialize(serializer)
     }
 
     pub(super) fn deserialize<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
-    ) -> Result<Option<PreviewTarget>, D::Error> {
-        Ok(Option::<Stored>::deserialize(deserializer)?.map(|stored| {
-            PreviewTarget::sample_range(stored.path, stored.start_sample, stored.end_sample)
-        }))
+    ) -> Result<PreviewTarget, D::Error> {
+        let stored = Stored::deserialize(deserializer)?;
+        Ok(PreviewTarget::sample_range(stored.path, stored.start_sample, stored.end_sample))
     }
 }
 
