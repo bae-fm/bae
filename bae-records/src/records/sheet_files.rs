@@ -114,6 +114,7 @@ pub struct SheetTrackChanges {
     pub medium_id: String,
 }
 
+#[cfg(desktop)]
 impl super::release_edit_rows::DbReleaseSaveFacts {
     /// What the edits `edits`, which the facts were read for, do to the
     /// release's tracks.
@@ -124,6 +125,7 @@ impl super::release_edit_rows::DbReleaseSaveFacts {
 
 /// What the edits `edits` do to the tracks of a release, from the tracks they
 /// delete, the files they add tracks for and the release's first medium.
+#[cfg(desktop)]
 fn track_changes_of(
     dropped: &[String],
     added: &[super::release_edit_rows::DbAddedSheetFile],
@@ -151,7 +153,7 @@ fn track_changes_of(
 }
 
 // What the edits `edits` do to the tracks of the release `release`.
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
 sqlive_compose::read!(
     writer OneSheetChanges(release: String, edits: String),
     r#"
@@ -162,7 +164,7 @@ sqlive_compose::read!(
 );
 
 /// What the edits `edits` do to the tracks of the release `release_id`.
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub fn sheet_track_changes_on(
     sql: &impl bae_store::WriterRead,
     release_id: &str,
