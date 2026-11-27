@@ -101,7 +101,6 @@ async fn an_albums_tracks_are_read_in_order_from_the_position_index() {
             })
             .await
             .unwrap();
-        eprintln!("PLAN tracks: {steps:#?}");
         assert!(
             steps.iter().any(|step| step.detail.contains("tracks_release_position (release_id=?")),
             "{steps:?}"

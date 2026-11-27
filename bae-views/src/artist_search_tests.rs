@@ -289,7 +289,6 @@ async fn artist_search_reads_scan_no_artists() {
             })
             .await
             .unwrap();
-        eprintln!("PLAN artists: {steps:#?}");
         assert!(
             !steps.iter().any(|step| ["artist", "discogs", "musicbrainz"]
                 .iter()
