@@ -27,8 +27,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.component.main-window.inactive",
             size: CGSize(width: 1100, height: 520),
-            frame: .window(title: "bae", titleBar: .hidden),
-            inactive: true
+            frame: .window(title: "bae", titleBar: .hidden, inactive: true)
         ) {
             mainWindow(section: .library, playing: true)
         },

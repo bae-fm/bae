@@ -12,8 +12,7 @@ extension ShotScene {
     static let inactiveLibraryScene = ShotScene(
         id: "mac.library.albums.inactive",
         size: CGSize(width: 1200, height: 760),
-        frame: .window(title: "bae", titleBar: .hidden),
-        inactive: true
+        frame: .window(title: "bae", titleBar: .hidden, inactive: true)
     ) {
         let uiStore = UiStore()
         let backing = boardLibraryBacking(uiStore: uiStore)

@@ -50,7 +50,7 @@ private final class BaeShotDressing: ShotDressing {
                 .environment(bugReports)
         }
         let titled =
-            if case .window(_, .themed) = frame {
+            if case .window(_, .themed, _) = frame {
                 AnyView(timed.themedWindowTitleBar())
             }
             else {
