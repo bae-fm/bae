@@ -141,9 +141,13 @@ internal class FakeInvitesSubscription : InvitesSubscription(NoHandle) {
     }
 }
 
-/** Preferences nothing delivers: each pull waits until cancelled. */
+/** The settings: a pull waits until a test delivers or the app cancels. */
 internal class FakeConfigSubscription : ConfigSubscription(NoHandle) {
     private val values = Channel<BridgeConfig>(Channel.UNLIMITED)
+
+    fun deliver(config: BridgeConfig) {
+        values.trySend(config)
+    }
 
     override suspend fun next(): BridgeConfig = values.receive()
 

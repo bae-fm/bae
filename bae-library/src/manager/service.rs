@@ -507,12 +507,6 @@ impl LibraryManager {
         self.downloads.key_at(position).await
     }
 
-    /// How many downloads are in each phase now, and whether the queue is
-    /// paused.
-    pub async fn download_counts(&self) -> Result<bae_transfers::ReleaseQueueCounts, LibraryError> {
-        Ok(self.downloads.counts().await?)
-    }
-
     /// Follow how many downloads are in each phase, and whether the queue is
     /// paused: what the Downloads pane's controls show of them.
     pub fn subscribe_download_counts(

@@ -872,7 +872,6 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_unmetered_only())
     }
 
-    delegate_lib!(store, is_unmetered_only => unmetered_only() -> bool);
     delegate_lib!(store, is_sync_paused => uploads_paused() -> bool);
 
     delegate_sync!(manager, watch_outbox_transfers => watch_outbox_transfers() -> bae_library::OutboxTransfersWatch);

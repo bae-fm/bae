@@ -68,8 +68,6 @@ every_build = [
     "AppHandle.fetch_release_image_bytes",
     "AppHandle.generate_restore_code",
     "AppHandle.get_config",
-    "AppHandle.get_download_counts",
-    "AppHandle.get_unmetered_only",
     "AppHandle.get_uploads_paused",
     "AppHandle.insert_in_queue",
     "AppHandle.insert_picked_into_playlist",

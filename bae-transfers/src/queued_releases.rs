@@ -622,12 +622,6 @@ where
         self.store.read(move |sql| download_list::download_key_at_on(&sql, position)).await
     }
 
-    /// How many downloads are in each phase now, and whether the queue is
-    /// paused.
-    pub async fn counts(&self) -> Result<ReleaseQueueCounts, DbError> {
-        self.store.read(|sql| rows::download_counts_on(&sql)).await
-    }
-
     /// Follow how many downloads are in each phase, and whether the queue is
     /// paused.
     pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts, bae_store::DbError> {

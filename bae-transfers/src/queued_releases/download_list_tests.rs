@@ -107,12 +107,14 @@ async fn the_counts_follow_the_pause() {
     let downloads = crate::Downloads::new(db.clone());
     let started = releases[0].clone();
     db.call(move |sql| worker_moves::activate_on::<DownloadRequest>(sql, &started)).await.unwrap();
-    let running = downloads.counts().await.unwrap();
+    let running =
+        db.read(|sql| crate::queued_releases::rows::download_counts_on(&sql)).await.unwrap();
     assert_eq!((running.total.queued, running.total.active), (1, 1));
     assert!(!running.paused());
 
     downloads.set_paused(true).await.unwrap();
-    let paused = downloads.counts().await.unwrap();
+    let paused =
+        db.read(|sql| crate::queued_releases::rows::download_counts_on(&sql)).await.unwrap();
     assert_eq!((paused.total.queued, paused.total.active), (2, 0));
     assert!(paused.paused());
 }

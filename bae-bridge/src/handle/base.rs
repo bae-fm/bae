@@ -63,16 +63,6 @@ impl AppHandle {
 }
 
 forward! { async this => {
-    /// How many downloads are in each phase now, and whether the queue is
-    /// paused.
-    fn get_download_counts() -> crate::types::BridgeDownloadCounts {
-        this.services
-            .download_counts()
-            .await
-            .map(crate::types::BridgeDownloadCounts::from_core)
-            .map_err(BridgeError::from)
-    }
-
     /// One track of a release as a browse item shows it, read once; `None`
     /// when the release has no such track.
     fn read_release_track(

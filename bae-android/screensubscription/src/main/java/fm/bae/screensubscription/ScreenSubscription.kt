@@ -40,6 +40,18 @@ fun <Value, Mapped> PulledSubscription<Value>.map(transform: (Value) -> Mapped):
     pulled({ transform(next()) }, this::cancel)
 
 /**
+ * A subscription whose [first] value is taken, for a store that is made with a value: [rest] pulls
+ * the values after it.
+ */
+class StartedSubscription<Value>(
+    val first: Value,
+    val rest: PulledSubscription<Value>,
+)
+
+/** Wait for the first value of these pulls. A first read that fails throws its failure. */
+suspend fun <Value> PulledSubscription<Value>.start(): StartedSubscription<Value> = StartedSubscription(next(), this)
+
+/**
  * Pull each value and hand it to [onValue] in the calling coroutine, until that coroutine is
  * cancelled or the subscription ends (a pull answers [BridgeException.Cancelled], or
  * [BridgeException.ShuttingDown] once the runtime is ending with the process: neither clears, so

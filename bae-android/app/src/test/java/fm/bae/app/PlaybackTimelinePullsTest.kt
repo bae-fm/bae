@@ -36,7 +36,7 @@ class PlaybackTimelinePullsTest {
             }
         val session = openTestLibrary(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        session.wireUp(scope)
+        session.wireUp(scope, testStartSubscriptions(handle))
 
         handle.playbackValues.deliver(playbackValues(playingState(trackId = "track-1")))
         shadowOf(Looper.getMainLooper()).idle()
@@ -59,7 +59,7 @@ class PlaybackTimelinePullsTest {
             }
         val session = openTestLibrary(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        session.wireUp(scope)
+        session.wireUp(scope, testStartSubscriptions(handle))
 
         handle.playbackTimeline.fail(BridgeException.Diagnostic(BridgeErrorCategory.Internal, "timeline read failed"))
         shadowOf(Looper.getMainLooper()).idle()

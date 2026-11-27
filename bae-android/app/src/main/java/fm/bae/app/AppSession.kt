@@ -167,8 +167,11 @@ class OpenLibrary internal constructor(
         shownScreens.update { it - 1 }
     }
 
-    fun wireUp(scope: CoroutineScope) {
-        subscribeToValues(scope)
+    internal fun wireUp(
+        scope: CoroutineScope,
+        started: SessionStartSubscriptions,
+    ) {
+        subscribeToValues(scope, started)
         appHandle.setLocalTimeZone(DeviceTimeZone())
         person.start()
         memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
@@ -176,10 +179,13 @@ class OpenLibrary internal constructor(
         observeNowPlayingForWidget(scope)
     }
 
-    private fun subscribeToValues(scope: CoroutineScope) {
+    private fun subscribeToValues(
+        scope: CoroutineScope,
+        started: SessionStartSubscriptions,
+    ) {
         screenSubscriptions +=
             ScreenSubscription(
-                appHandle.subscribeConfig().let { pulled(it::next, it::cancel) },
+                started.config.rest,
                 scope,
                 onValue = stores.config::setConfig,
                 onError = { error -> messages.show(subscriptionFailed("settings", error)) },
@@ -206,7 +212,7 @@ class OpenLibrary internal constructor(
             playback.trackPositions.feed(appHandle, scope) { bugs.report("read the playing track's position", it) }
         streamFeeds +=
             playback.trackBuffered.feed(appHandle, scope) { bugs.report("read the playing track's held bytes", it) }
-        subscribeToTransfers(scope)
+        subscribeToTransfers(scope, started)
         screenSubscriptions +=
             ScreenSubscription(
                 appHandle.subscribeCastReceivers().let { pulled(it::next, it::cancel) },
@@ -220,10 +226,13 @@ class OpenLibrary internal constructor(
     }
 
     /** The downloads and uploads: the download counts, whether files wait for Wi-Fi, and their fast transfers. */
-    private fun subscribeToTransfers(scope: CoroutineScope) {
+    private fun subscribeToTransfers(
+        scope: CoroutineScope,
+        started: SessionStartSubscriptions,
+    ) {
         screenSubscriptions +=
             ScreenSubscription(
-                appHandle.subscribeDownloadCounts().let { pulled(it::next, it::cancel) },
+                started.downloadCounts.rest,
                 scope,
                 onValue = stores.downloads::setCounts,
                 onError = { error -> subscriptionFailed("downloads", error)?.let(stores.downloads::fail) },
@@ -233,7 +242,7 @@ class OpenLibrary internal constructor(
                 .feed(appHandle, scope) { bugs.report("read the download transfers", it) }
         screenSubscriptions +=
             ScreenSubscription(
-                appHandle.subscribeUnmeteredOnly().let { pulled(it::next, it::cancel) },
+                started.unmeteredOnly.rest,
                 scope,
                 onValue = stores.downloads::setUnmeteredOnly,
                 onError = { error ->

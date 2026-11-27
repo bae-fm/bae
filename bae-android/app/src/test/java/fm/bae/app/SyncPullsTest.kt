@@ -38,7 +38,7 @@ class SyncPullsTest {
         val store = SyncStatusStore()
         val session = openTestLibrary(handle, store)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        session.wireUp(scope)
+        session.wireUp(scope, testStartSubscriptions(handle))
         assertEquals(SyncLine.Checking, store.line.value)
 
         handle.syncStatus.deliver(status(BridgeSyncStatusWord.SYNCING, "core.sync.syncing", BridgeSyncTone.NEUTRAL))
@@ -64,7 +64,7 @@ class SyncPullsTest {
         val store = SyncActivityStore()
         val session = openTestLibrary(handle, syncActivity = store)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        session.wireUp(scope)
+        session.wireUp(scope, testStartSubscriptions(handle))
         assertEquals(null, store.activity.value)
 
         val uploading = activity(BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 2u), wait = null))

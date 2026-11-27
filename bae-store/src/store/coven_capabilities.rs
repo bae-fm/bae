@@ -389,12 +389,6 @@ impl Store {
             .await
     }
 
-    /// Whether files move only on unmetered networks now.
-    pub async fn unmetered_only(&self) -> Result<bool, DbError> {
-        self.read(|sql| sql.query_row(UNMETERED_ONLY, [], |row| row.get(0)).map_err(DbError::from))
-            .await
-    }
-
     /// How far each file this process is sending has got, by file, from
     /// coven's upload watch.
     pub fn subscribe_upload_transfers(&self) -> coven::TransferWatch {

@@ -55,12 +55,6 @@ impl AppServices {
         )
     }
 
-    /// How many downloads are in each phase now, and whether the queue is
-    /// paused.
-    pub async fn download_counts(&self) -> Result<bae_transfers::ReleaseQueueCounts, LibraryError> {
-        self.inner.manager.download_counts().await
-    }
-
     /// How many downloads are in each phase, and whether the queue is paused:
     /// what the Downloads pane's controls show, the first value at once, then
     /// one after each write that changes them.

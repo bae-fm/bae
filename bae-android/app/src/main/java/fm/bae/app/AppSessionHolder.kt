@@ -36,7 +36,6 @@ import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeClosingProgress
-import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCopyReset
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeDiagnostics
@@ -896,19 +895,18 @@ object AppSessionHolder {
         context: Context,
         onScreen: (AppScreen) -> Unit,
     ): OpenLibrary {
-        try {
-            if (handle.storeKeyState() == BridgeStoreKeyState.LOCKED) {
-                handle.unlockStoreKey()
+        val started =
+            try {
+                if (handle.storeKeyState() == BridgeStoreKeyState.LOCKED) {
+                    handle.unlockStoreKey()
+                }
+                SessionStartSubscriptions.start(handle)
+            } catch (e: Exception) {
+                // Releasing the handle closes its library, blocking until done, so
+                // it runs off the main thread, even when the open was cancelled.
+                withContext(NonCancellable + Dispatchers.IO) { handle.close() }
+                throw e
             }
-        } catch (e: Exception) {
-            // Releasing the handle closes its library, blocking until done, so
-            // it runs off the main thread, even when the open was cancelled.
-            withContext(NonCancellable + Dispatchers.IO) { handle.close() }
-            throw e
-        }
-        val config: BridgeConfig = handle.getConfig()
-        val initialUnmeteredOnly = handle.getUnmeteredOnly()
-        val initialDownloads = handle.getDownloadCounts()
         val previous = current
         current = null
         previous?.let { closeShowing(it, context, onScreen) }
@@ -924,7 +922,7 @@ object AppSessionHolder {
                 libraryId = libraryId,
                 appHandle = BridgeLibraryHandle(handle),
                 diagnostics = diagnostics,
-                stores = buildStores(config, initialUnmeteredOnly, initialDownloads),
+                stores = buildStores(started),
                 runtime =
                     OpenLibraryRuntime(
                         playback =
@@ -949,7 +947,7 @@ object AppSessionHolder {
                 appContext = appContext,
             )
         current = session
-        session.wireUp(sessionScope)
+        session.wireUp(sessionScope, started)
         waitForCopyReset(sessionScope, libraryId, handle, appContext, onScreen)
         diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
         return session
@@ -983,16 +981,12 @@ object AppSessionHolder {
         }
     }
 
-    private fun buildStores(
-        config: BridgeConfig,
-        initialUnmeteredOnly: Boolean,
-        initialDownloads: uniffi.bae_bridge.BridgeDownloadCounts,
-    ): OpenLibraryStores =
+    private fun buildStores(started: SessionStartSubscriptions): OpenLibraryStores =
         OpenLibraryStores(
-            config = ConfigStore(config),
+            config = ConfigStore(started.config.first),
             syncStatus = SyncStatusStore(),
             syncActivity = SyncActivityStore(),
-            downloads = DownloadStore(initialDownloads, initialUnmeteredOnly),
+            downloads = DownloadStore(started.downloadCounts.first, started.unmeteredOnly.first),
             cast = CastStore(),
         )
 }

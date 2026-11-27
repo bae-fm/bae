@@ -141,9 +141,9 @@ internal class FakeSessionUpNextSubscription : SessionUpNextSubscription(NoHandl
     override fun close() = pulls.cancel()
 }
 
-/** Download counts nothing delivers: each pull waits until cancelled. */
+/** The download counts: a pull waits until a test delivers or the app cancels. */
 internal class FakeDownloadCountsSubscription : DownloadCountsSubscription(NoHandle) {
-    private val pulls = PullChannel<BridgeDownloadCounts>()
+    val pulls = PullChannel<BridgeDownloadCounts>()
 
     override suspend fun next(): BridgeDownloadCounts = pulls.next()
 
@@ -152,9 +152,9 @@ internal class FakeDownloadCountsSubscription : DownloadCountsSubscription(NoHan
     override fun close() = pulls.cancel()
 }
 
-/** Whether files move only on unmetered networks, which nothing delivers: each pull waits until cancelled. */
+/** Whether files move only on unmetered networks: a pull waits until a test delivers or the app cancels. */
 internal class FakeUnmeteredOnlySubscription : UnmeteredOnlySubscription(NoHandle) {
-    private val pulls = PullChannel<Boolean>()
+    val pulls = PullChannel<Boolean>()
 
     override suspend fun next(): Boolean = pulls.next()
 

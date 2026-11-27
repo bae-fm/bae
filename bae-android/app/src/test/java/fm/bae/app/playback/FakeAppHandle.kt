@@ -31,7 +31,6 @@ import uniffi.bae_bridge.BridgeCopyReset
 import uniffi.bae_bridge.BridgeCoverImageSource
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDeviceRemoval
-import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeHistorySharing
@@ -155,7 +154,10 @@ internal open class FakeAppHandle(
 
     override suspend fun savePlaybackState() {}
 
-    override fun subscribeConfig(): ConfigSubscription = FakeConfigSubscription()
+    /** The settings the handle answers, which a test delivers to. */
+    val config = FakeConfigSubscription()
+
+    override fun subscribeConfig(): ConfigSubscription = config
 
     override fun subscribeSavePreset(id: String): SavePresetSubscription = unfaked("subscribeSavePreset")
 
@@ -173,7 +175,10 @@ internal open class FakeAppHandle(
 
     override fun subscribeSyncActivity(): SyncActivitySubscription = syncActivity
 
-    override fun subscribeDownloadCounts(): DownloadCountsSubscription = FakeDownloadCountsSubscription()
+    /** The download counts the handle answers, which a test delivers to. */
+    val downloadCounts = FakeDownloadCountsSubscription()
+
+    override fun subscribeDownloadCounts(): DownloadCountsSubscription = downloadCounts
 
     override fun subscribeDeviceStorage(): DeviceStorageSubscription = unfaked("subscribeDeviceStorage")
 
@@ -184,7 +189,10 @@ internal open class FakeAppHandle(
 
     override fun subscribeUploadsPaused(): UploadsPausedSubscription = FakeUploadsPausedSubscription()
 
-    override fun subscribeUnmeteredOnly(): UnmeteredOnlySubscription = FakeUnmeteredOnlySubscription()
+    /** Whether files wait for unmetered networks, as the handle answers it and a test delivers it. */
+    val unmeteredOnly = FakeUnmeteredOnlySubscription()
+
+    override fun subscribeUnmeteredOnly(): UnmeteredOnlySubscription = unmeteredOnly
 
     override fun feedOutboxTransfers(): BridgeOutboxFeeds = BridgeOutboxFeeds.Streams(FakeKeyedValueStream(), FakeKeyedValueStream())
 
@@ -486,8 +494,6 @@ internal open class FakeAppHandle(
         albumIds: List<String>,
         groupByArtist: Boolean,
     ): List<BridgeAlbum> = unfaked("albumsInBrowseOrder")
-
-    override suspend fun getDownloadCounts(): BridgeDownloadCounts = unfaked("getDownloadCounts")
 
     override suspend fun insertInQueue(
         trackIds: List<String>,
@@ -890,8 +896,6 @@ internal open class FakeAppHandle(
     }
 
     override suspend fun getUploadsPaused(): Boolean = unfaked("getUploadsPaused")
-
-    override suspend fun getUnmeteredOnly(): Boolean = unfaked("getUnmeteredOnly")
 
     override suspend fun reconnectSync() {
         unfaked("reconnectSync")

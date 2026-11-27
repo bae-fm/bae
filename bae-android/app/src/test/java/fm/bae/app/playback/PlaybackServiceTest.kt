@@ -15,6 +15,7 @@ import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.plainCreditText
+import fm.bae.app.testStartSubscriptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -100,9 +101,10 @@ class PlaybackServiceTest {
     @Test
     fun wireUpDoesNotStartTheServiceBeforePlayback() {
         val context = RuntimeEnvironment.getApplication()
-        val session = openLibrary(context, Looper.getMainLooper())
+        val handle = FakeAppHandle()
+        val session = openLibrary(context, Looper.getMainLooper(), handle)
 
-        session.wireUp(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        session.wireUp(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate), testStartSubscriptions(handle))
 
         // The service is started when playback begins on screen, not at library
         // open — a non-foreground service started here is reclaimed before the
@@ -113,8 +115,8 @@ class PlaybackServiceTest {
     private fun openLibrary(
         context: android.content.Context,
         looper: Looper,
+        handle: FakeAppHandle = FakeAppHandle(),
     ): OpenLibrary {
-        val handle = FakeAppHandle()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         return OpenLibrary(
             libraryId = "lib-1",

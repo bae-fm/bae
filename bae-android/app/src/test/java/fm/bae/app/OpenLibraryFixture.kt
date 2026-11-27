@@ -64,6 +64,17 @@ internal fun openTestLibrary(
 }
 
 /**
+ * [handle]'s starting subscriptions with the fixtures' values as their first, as the open of [openTestLibrary]'s
+ * fresh stores takes them.
+ */
+internal fun testStartSubscriptions(handle: FakeAppHandle): SessionStartSubscriptions {
+    handle.config.deliver(BridgeFixtures.config())
+    handle.downloadCounts.pulls.deliver(BridgeFixtures.downloadCounts())
+    handle.unmeteredOnly.pulls.deliver(false)
+    return runBlocking { SessionStartSubscriptions.start(handle) }
+}
+
+/**
  * Dispose this library as the app does, on the main thread with its looper running, and return once it has finished.
  * Disposing hands work back to the main thread (the player's close, the widget job's redraw), so a test that holds the
  * main thread in `runBlocking { dispose(null) }` can wait forever on work only that thread's looper could run.

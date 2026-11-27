@@ -31,7 +31,7 @@ class PlaybackFailurePullsTest {
             }
         val session = openTestLibrary(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        session.wireUp(scope)
+        session.wireUp(scope, testStartSubscriptions(handle))
         val stopped = BridgePlaybackValueState.Stopped
 
         handle.playbackValues.deliver(playbackValues(stopped, failure = BridgePlaybackErrorReason.SyncDisconnected))

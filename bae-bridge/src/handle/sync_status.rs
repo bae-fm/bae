@@ -115,11 +115,6 @@ forward! { async this => {
         Ok(this.services.is_sync_paused().await?)
     }
 
-    /// Whether files move only on unmetered networks, as it stands now.
-    fn get_unmetered_only() -> bool {
-        Ok(this.services.is_unmetered_only().await?)
-    }
-
     /// Retry failed uploads now: drain coven's upload queue immediately instead
     /// of waiting for the next sync cycle.
     fn retry_outbox() -> () {
