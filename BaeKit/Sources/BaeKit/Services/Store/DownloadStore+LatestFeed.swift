@@ -1,13 +1,16 @@
 extension DownloadStore {
     /// Start the streams for releases moving to This Mac and their current files.
-    public nonisolated func feedMovesToThisDevice(from appHandle: AppHandle)
-        -> [LatestFeed]
-    {
+    public nonisolated func feedMovesToThisDevice(
+        from appHandle: AppHandle,
+        bugReporter: any BridgeBugReporter
+    ) -> [LatestFeed] {
         switch appHandle.feedMoveToThisDeviceTransfers() {
         case .streams(let releases, let files):
             return [
-                moveToThisDeviceTransfers.fed { releases },
-                moveFileShares.fed { files },
+                moveToThisDeviceTransfers.fed(bugReporter: bugReporter) {
+                    releases
+                },
+                moveFileShares.fed(bugReporter: bugReporter) { files },
             ]
         }
     }

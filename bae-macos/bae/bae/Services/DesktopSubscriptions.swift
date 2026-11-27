@@ -168,6 +168,7 @@ final class DesktopSubscriptions {
     private let downloadStore: DownloadStore
     private let subsonicStore: SubsonicStore
     private let uiStore: UiStore
+    private let bugReporter: any BridgeBugReporter
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
     /// The import counts' pulls, which stop when this is dropped.
@@ -186,7 +187,8 @@ final class DesktopSubscriptions {
         outboxStore: OutboxStore,
         downloadStore: DownloadStore,
         subsonicStore: SubsonicStore,
-        uiStore: UiStore
+        uiStore: UiStore,
+        bugReporter: any BridgeBugReporter
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
@@ -195,6 +197,7 @@ final class DesktopSubscriptions {
         self.downloadStore = downloadStore
         self.subsonicStore = subsonicStore
         self.uiStore = uiStore
+        self.bugReporter = bugReporter
         // The list's selection sink is the observations' one owner: it lives
         // as long as the list slot that calls it.
         let selectionObservation = ImportSelectionObservation(
@@ -281,8 +284,8 @@ final class DesktopSubscriptions {
         }
     }
 
-    func start() {
-        precondition(folderScans == nil)
+    /// The fast streams core writes.
+    private func startFeeds() {
         feeds =
             [
                 outputStore.percents.feed(
@@ -305,7 +308,16 @@ final class DesktopSubscriptions {
                     from: appHandle,
                     bugReporter: bugReporter
                 ),
-            ] + downloadStore.feedMovesToThisDevice(from: appHandle)
+            ]
+            + downloadStore.feedMovesToThisDevice(
+                from: appHandle,
+                bugReporter: bugReporter
+            )
+    }
+
+    func start() {
+        precondition(folderScans == nil)
+        startFeeds()
         let scans = appHandle.subscribeFolderScans()
         importStore.setRaisedScanAlerts = { raised in
             try scans.setRaised(raised: raised)
