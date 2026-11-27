@@ -18,7 +18,7 @@ use crate::release_queue::ReleaseQueueRow;
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_records::release_storage::ReleaseStorageRows;
-use bae_store::DbError;
+use bae_store::{DbError, Store};
 use coven::{CovenWrite, SqlReadContext};
 #[cfg(desktop)]
 use rusqlite::types::Value;
@@ -32,19 +32,26 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     const TABLE: &'static str;
     /// The payload's columns, in the order [`Self::values`] gives them.
     const COLUMNS: &'static [&'static str];
-    /// Whether the queue's entries need the network, so the worker takes none
-    /// while coven says the device has none.
-    const NEEDS_NETWORK: bool;
+    /// What a look at the queue sees of the network: coven's word on it for
+    /// a queue whose entries need it, nothing for the others.
+    type Network: Send + 'static;
     /// Only the queues desktop fills by entry read it.
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError>;
-    /// The network, and the entry the worker takes next, unless the queue is
-    /// paused or, for a queue that needs the network, coven says the device
-    /// has none: the active entry if there is one, else the first queued. An
-    /// active entry is one the worker took and has not ended, so after a
-    /// restart it is taken first.
+    /// The entry the worker takes next, unless the queue is paused or, for a
+    /// queue that needs the network, coven says the device has none: the
+    /// active entry if there is one, else the first queued. An active entry is
+    /// one the worker took and has not ended, so after a restart it is taken
+    /// first. Beside it, what the look saw of the network.
     #[doc(hidden)]
     fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError>;
+    /// Resolves once the network may let an entry go that it held back from
+    /// the look that saw `seen`; never for a queue that needs no network.
+    #[doc(hidden)]
+    fn network_changed_from(
+        store: &Store,
+        seen: Self::Network,
+    ) -> impl std::future::Future<Output = ()> + Send;
     /// How many entries the queue holds in each phase, and what holds it
     /// back.
     fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError>;
@@ -65,7 +72,7 @@ impl QueuedPayload for DownloadRequest {
     const QUEUE: &'static str = "download";
     const TABLE: &'static str = "download_queue";
     const COLUMNS: &'static [&'static str] = &["kind", "target_dir"];
-    const NEEDS_NETWORK: bool = true;
+    type Network = Option<bool>;
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
@@ -80,6 +87,13 @@ impl QueuedPayload for DownloadRequest {
 
     fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
         rows::next_download_on(sql)
+    }
+
+    fn network_changed_from(
+        store: &Store,
+        seen: Option<bool>,
+    ) -> impl std::future::Future<Output = ()> + Send {
+        super::network_changed_from(store, seen)
     }
 
     fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
@@ -119,7 +133,7 @@ impl QueuedPayload for OutputRequest {
     const TABLE: &'static str = "output_queue";
     const COLUMNS: &'static [&'static str] =
         &["target_dir", "kind", "preset", "filename_pattern", "folder_pattern", "extras"];
-    const NEEDS_NETWORK: bool = false;
+    type Network = ();
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
@@ -153,6 +167,13 @@ impl QueuedPayload for OutputRequest {
 
     fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
         rows::next_output_on(sql)
+    }
+
+    fn network_changed_from(
+        _store: &Store,
+        _seen: (),
+    ) -> impl std::future::Future<Output = ()> + Send {
+        std::future::pending()
     }
 
     fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {

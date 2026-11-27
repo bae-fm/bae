@@ -3,7 +3,7 @@
 //! phase, and whether it is paused. The downloads list's window is in
 //! [`super::download_list`].
 
-use super::tables::download_request;
+use super::tables::{download_request, QueuedPayload};
 use crate::download_snapshot::DownloadRequest;
 use crate::release_queue::{
     QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
@@ -192,12 +192,11 @@ fn queued_release(
 }
 
 /// What the worker finds as it looks for its next entry.
-pub struct NextUp<P> {
+pub struct NextUp<P: QueuedPayload> {
     /// The entry to take, if the queue has one it may take now.
     pub(crate) entry: Option<ReleaseQueueEntry<P>>,
-    /// Whether coven says the device has a usable network, for a queue that
-    /// needs one; `None` where nothing tells, and for a queue that needs none.
-    pub(crate) network_usable: Option<bool>,
+    /// What the look saw of the network.
+    pub(crate) network: P::Network,
 }
 
 /// Why the stored entry of `release_id` can't be read.
@@ -211,7 +210,7 @@ pub(super) fn next_download_on(
     let row = statement_row(sql, &NextDownloadParams {})?;
     Ok(NextUp {
         entry: row.entry.map(DownloadQueueRow::into_entry).transpose()?,
-        network_usable: row.network.network_usable,
+        network: row.network.network_usable,
     })
 }
 
@@ -221,7 +220,7 @@ pub(super) fn next_output_on(
     let entry = bae_store::statement_optional(sql, &NextOutputParams {})?
         .map(|row| row.entry.into_entry())
         .transpose()?;
-    Ok(NextUp { entry, network_usable: None })
+    Ok(NextUp { entry, network: () })
 }
 
 /// Whether coven says the device has a usable network; `None` where nothing

@@ -458,7 +458,7 @@ where
             let wakes_heard = self.shared.wakes_sent.load(std::sync::atomic::Ordering::SeqCst);
             let entry = match store.read(|sql| Extra::next_up_on(&sql)).await {
                 Ok(NextUp { entry: Some(entry), .. }) => entry,
-                Ok(NextUp { entry: None, network_usable }) => {
+                Ok(NextUp { entry: None, network }) => {
                     #[cfg(any(test, feature = "test-utils"))]
                     self.shared.rest.send_modify(|rest| {
                         rest.parks += 1;
@@ -469,7 +469,7 @@ where
                     // it left waiting may be takeable now.
                     tokio::select! {
                         () = self.shared.wake.notified() => {}
-                        () = network_changed_from(store, network_usable), if Extra::NEEDS_NETWORK => {}
+                        () = Extra::network_changed_from(store, network) => {}
                     }
                     continue;
                 }
