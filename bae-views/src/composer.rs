@@ -124,7 +124,10 @@ impl LibraryViews {
         work_id: &str,
     ) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
-        self.store.read(move |sql| find_work_detail_on(&sql, &work_id)).await
+        self.store
+            .read(move |sql| find_work_detail_on(&sql, &work_id))
+            .process(WorkDetailRows::process)
+            .await
     }
 
     /// The work's page as its view shows it; `None` for an unknown work.
@@ -140,12 +143,14 @@ impl LibraryViews {
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection, bae_store::DbError>
     {
-        self.store.subscribe_reconfigurable(initial, |work_id, sql| {
-            let Some(work_id) = work_id else {
-                return Ok(WorkDetailProjection { detail: None });
-            };
-            Ok(WorkDetailProjection { detail: find_work_detail_on(&sql, work_id)? })
-        })
+        self.store
+            .subscribe_reconfigurable(initial, |work_id, sql| {
+                work_id.as_deref().map(|work_id| find_work_detail_on(&sql, work_id)).transpose()
+            })
+            .process(|rows| {
+                let detail = rows.map(WorkDetailRows::process).transpose()?.flatten();
+                Ok(WorkDetailProjection { detail })
+            })
     }
 
     /// Follow one page of the work `work_id`'s children: the children at the
@@ -213,47 +218,69 @@ fn work_detail_of(raw: DbWorkDetail) -> WorkDetail {
     }
 }
 
-fn find_work_detail_on(
-    sql: &SqlReadContext<'_>,
-    work_id: &str,
-) -> Result<Option<DbWorkDetail>, DbError> {
+/// What the work page's statements read of the work `work_id`, in one
+/// snapshot: its row, its parts, the releases that perform it and the tracks
+/// that do.
+fn find_work_detail_on(sql: &SqlReadContext<'_>, work_id: &str) -> Result<WorkDetailRows, DbError> {
     let work = || work_id.to_string();
-    let Some(found) = statement_optional(sql, &WorkByIdParams { work: work() })? else {
-        return Ok(None);
-    };
-    let parts = statement_rows(sql, &WorkPartRowsParams { work: work() })?;
-    // Each section's statement counts its own rows beside them; a section
-    // with no rows counts zero.
-    let child_work_count = list_count(parts.first().map_or(0, |part| part.children))?;
-    let child_works =
-        parts.into_iter().map(|row| work_summary(row.part, row.cover)).collect::<Result<_, _>>()?;
-    let performing = statement_rows(sql, &WorkReleaseRowsParams { work: work() })?;
-    let release_count = list_count(performing.first().map_or(0, |release| release.children))?;
-    let releases = performing
-        .into_iter()
-        .map(|row| work_release(row.release, row.cover))
-        .collect::<Result<_, _>>()?;
-    let performed = statement_rows(sql, &WorkTrackRowsParams { work: work() })?;
-    let track_count = list_count(performed.first().map_or(0, |track| track.listed))?;
-    let tracks = performed
-        .into_iter()
-        .map(|row| {
-            Ok(DbWorkTrackSummary {
-                link: row.link.into_link()?,
-                track: row.track.into_track()?,
-                album: row.album.into_album()?,
+    Ok(WorkDetailRows {
+        head: statement_optional(sql, &WorkByIdParams { work: work() })?,
+        parts: statement_rows(sql, &WorkPartRowsParams { work: work() })?,
+        releases: statement_rows(sql, &WorkReleaseRowsParams { work: work() })?,
+        tracks: statement_rows(sql, &WorkTrackRowsParams { work: work() })?,
+    })
+}
+
+#[derive(Clone, PartialEq)]
+struct WorkDetailRows {
+    head: Option<WorkByIdRow>,
+    parts: Vec<WorkPartRowsRow>,
+    releases: Vec<WorkReleaseRowsRow>,
+    tracks: Vec<WorkTrackRowsRow>,
+}
+
+impl WorkDetailRows {
+    /// The work's page; `None` for an unknown work.
+    fn process(self) -> Result<Option<DbWorkDetail>, DbError> {
+        let Some(found) = self.head else {
+            return Ok(None);
+        };
+        // Each section's statement counts its own rows beside them; a section
+        // with no rows counts zero.
+        let child_work_count = list_count(self.parts.first().map_or(0, |part| part.children))?;
+        let child_works = self
+            .parts
+            .into_iter()
+            .map(|row| work_summary(row.part, row.cover))
+            .collect::<Result<_, _>>()?;
+        let release_count = list_count(self.releases.first().map_or(0, |row| row.children))?;
+        let releases = self
+            .releases
+            .into_iter()
+            .map(|row| work_release(row.release, row.cover))
+            .collect::<Result<_, _>>()?;
+        let track_count = list_count(self.tracks.first().map_or(0, |track| track.listed))?;
+        let tracks = self
+            .tracks
+            .into_iter()
+            .map(|row| {
+                Ok(DbWorkTrackSummary {
+                    link: row.link.into_link()?,
+                    track: row.track.into_track()?,
+                    album: row.album.into_album()?,
+                })
             })
-        })
-        .collect::<Result<_, DbError>>()?;
-    Ok(Some(DbWorkDetail {
-        work: work_summary(found.work, found.cover)?,
-        child_works,
-        releases,
-        tracks,
-        child_work_count,
-        release_count,
-        track_count,
-    }))
+            .collect::<Result<_, DbError>>()?;
+        Ok(Some(DbWorkDetail {
+            work: work_summary(found.work, found.cover)?,
+            child_works,
+            releases,
+            tracks,
+            child_work_count,
+            release_count,
+            track_count,
+        }))
+    }
 }
 
 // Each artist the composer list shows (`composer_listing`), with how many
