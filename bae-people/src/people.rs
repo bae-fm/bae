@@ -4,12 +4,11 @@
 use bae_store::{DbError, Store};
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
-use rusqlite::{params, OptionalExtension, Row};
+use rusqlite::{params, OptionalExtension};
 use std::sync::Arc;
 use time::UtcDateTime;
 
 mod collections;
-pub use collections::{album_ratings_row, album_ratings_sql};
 pub mod fragments;
 mod history;
 mod initials;
@@ -22,7 +21,6 @@ pub(crate) use profiles::name_this_person_goes_by;
 pub mod rating_systems;
 pub use rating_systems::{
     is_heart, RatedItems, RatingSystem, RatingSystemError, RatingSystems, RatingSystemsSettings,
-    RATING_SYSTEMS_SQL,
 };
 
 struct PeopleInner {
@@ -53,7 +51,7 @@ impl People {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-fn uuid_column(row: &Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
+fn uuid_column(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
     let value: String = row.get(index)?;
     uuid::Uuid::parse_str(&value)
         .map_err(|error| bae_store::read::column_conversion_error(row, index, error))

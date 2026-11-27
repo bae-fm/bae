@@ -1205,7 +1205,6 @@ dependencies = [
  "coven",
  "regex",
  "rusqlite",
- "serde",
  "sqlive-compose",
  "thiserror 2.0.21",
  "time",

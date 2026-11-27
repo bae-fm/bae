@@ -107,6 +107,29 @@ impl MediaOfRelease {
     }
 }
 
+// Each album's credits ([`AlbumCredits`]), by the album.
+sqlive_compose::fragment!(
+    CreditedAlbum,
+    r#"
+    SELECT album.id AS credited_album_id,
+           @crate::records::fragments::AlbumCredits(parent: album) AS album_credits
+    FROM albums AS album
+"#
+);
+
+impl CreditedAlbum {
+    /// The album's credits, in list order.
+    pub fn into_credits(self) -> Result<Vec<crate::credits::LibraryCredit>, DbError> {
+        let credits = self.album_credits.ok_or_else(|| {
+            DbError::unreadable(
+                format!("the credits of album {}", self.credited_album_id),
+                None::<String>,
+            )
+        })?;
+        crate::records::read::credits_from_json(&credits.credits)
+    }
+}
+
 // The ids of the album's releases in album order (the primary release first),
 // as a JSON array.
 sqlive_compose::fragment!(

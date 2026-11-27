@@ -132,15 +132,6 @@ sqlive_compose::fragment!(
 "#
 );
 
-// [`LibraryRatingSystems`]'s row, whose SQL a statement built as text holds.
-sqlive_compose::read!(
-    writer LibraryRatingSystemsRow,
-    r#"
-    SELECT library.*
-    FROM @crate::people::rating_systems::LibraryRatingSystems AS library
-"#
-);
-
 // The library's rating systems, and whether the member using this device may
 // change them.
 sqlive_compose::read!(
@@ -152,11 +143,7 @@ sqlive_compose::read!(
 "#
 );
 
-/// The SQL of the library's one `rating_systems` row, for a statement built
-/// as text.
-pub const RATING_SYSTEMS_SQL: &str = LibraryRatingSystemsRow::SQL;
-
-pub(super) const MIN_HEART_STARS: Stars = Stars::Three;
+const MIN_HEART_STARS: Stars = Stars::Three;
 
 /// Whether *Heart* shows a rating of `stars` as a heart: three stars or
 /// more.

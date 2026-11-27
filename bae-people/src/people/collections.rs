@@ -1,10 +1,9 @@
-use super::rating_systems::MIN_HEART_STARS;
 use super::*;
 #[cfg(any(test, feature = "test-utils"))]
 use crate::collections::Rating;
 use crate::collections::{
-    AlbumRatings, BesideEntry, CollectionError, EntryPlace, InsertPlace, OtherRating, Playlist,
-    PlaylistEntry, RatingTarget, Stars,
+    BesideEntry, CollectionError, EntryPlace, InsertPlace, Playlist, PlaylistEntry, RatingTarget,
+    Stars,
 };
 use crate::people::{PersonProfile, Sharing};
 use bae_store::WriteStatements;
@@ -417,63 +416,6 @@ fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> Result<Vec<Playlis
 #[cfg(test)]
 #[path = "collections_tests.rs"]
 mod tests;
-
-/// The member using this device; `None` until their registration has applied.
-/// A removed device keeps its member, as the device keeps writing to its own
-/// copy as that person.
-const OWN_MEMBER_SQL: &str = "SELECT m.member AS member FROM coven_members AS m WHERE m.is_self";
-
-/// The rating system for albums and the album `?1`'s ratings that it shows.
-/// SQLite finds the album's ratings through `ratings_album`, and names
-/// other raters by name then id.
-pub fn album_ratings_sql() -> String {
-    format!(
-        "WITH album AS ( \
-             SELECT ?1 AS id, albums, \
-                    CASE albums WHEN '{stars}' THEN 1 WHEN '{heart}' THEN {minimum_heart} END AS minimum \
-             FROM ({RATING_SYSTEMS_SQL}) AS systems \
-         ), shown AS MATERIALIZED ( \
-             SELECT album.albums, \
-                    (SELECT r.stars FROM ratings AS r \
-                     WHERE r.album_id = album.id AND r.person_id = own.member \
-                       AND r.stars >= album.minimum) AS mine, \
-                    (SELECT json_group_array(json_object('name', p.name, 'stars', r.stars) \
-                            ORDER BY p.name, p.id) \
-                     FROM ratings AS r JOIN people AS p ON p.id = r.person_id \
-                     WHERE r.album_id = album.id AND r.person_id IS NOT own.member \
-                       AND r.stars >= album.minimum) AS others \
-             FROM album LEFT JOIN ({own}) AS own ON 1 \
-         ) \
-         SELECT *, mine IS NOT NULL OR json_array_length(others) > 0 AS has_raters FROM shown",
-        stars = RatingSystem::Stars.as_str(),
-        heart = RatingSystem::Heart.as_str(),
-        minimum_heart = MIN_HEART_STARS as i64,
-        own = OWN_MEMBER_SQL,
-    )
-}
-
-/// Read the rating system and ratings that [`album_ratings_sql`] selects.
-pub fn album_ratings_row(row: &Row<'_>) -> rusqlite::Result<(RatingSystem, AlbumRatings)> {
-    let stars_of = crate::collections::stars_from_sql;
-    let others: Vec<StoredRating> = bae_store::read::json_column(row, "others")?;
-    let ratings = AlbumRatings {
-        mine: row.get::<_, Option<i64>>("mine")?.map(stars_of).transpose()?,
-        others: others
-            .into_iter()
-            .map(|other| Ok(OtherRating { name: other.name, stars: stars_of(other.stars)? }))
-            .collect::<rusqlite::Result<_>>()?,
-        has_raters: row.get("has_raters")?,
-    };
-    Ok((bae_store::read::parsed_column(row, "albums")?, ratings))
-}
-
-/// One other person's rating as [`album_ratings_sql`] writes it into its
-/// `others` array.
-#[derive(serde::Deserialize)]
-struct StoredRating {
-    name: String,
-    stars: i64,
-}
 
 /// The place, counted from 0 among the playlist's other entries, that a move
 /// of the entry `moved` to `place` puts it at; none when the playlist holds no

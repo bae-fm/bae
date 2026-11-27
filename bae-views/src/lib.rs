@@ -78,7 +78,6 @@ use composer::{first_composers_found_on, work_summary};
 use release::{build_album_release_details_on, ReleaseDetailRows};
 
 use album_search::*;
-use bae_records::credits::LibraryCredit;
 use bae_records::records::files::artist_image_version_sql;
 use bae_records::records::name_sort::sort_key_sql;
 use bae_records::records::query::*;

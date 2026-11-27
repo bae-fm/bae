@@ -1,6 +1,10 @@
 //! What the people domain offers to other reads: a person's profile, the
-//! stars the person using this device gave tracks, and the plays History
-//! lists.
+//! stars the person using this device gave tracks, an album's ratings, and the
+//! plays History lists.
+
+use crate::collections::{AlbumRatings, OtherRating, Stars};
+use crate::people::RatingSystem;
+use bae_store::DbError;
 
 // A person's profile, which keeps its member id after the member's removal,
 // with its avatar's stored file, none for a profile with no avatar. An
@@ -28,6 +32,77 @@ sqlive_compose::fragment!(
     FROM ratings AS rated
     WHERE rated.person_id = (SELECT own.member FROM coven_members AS own WHERE own.is_self)
       AND rated.track_id IS NOT NULL
+"#
+);
+
+// The library's rating system for albums, as `albums`, with the ratings of the
+// album `album` that the system shows: every rating under *Stars*, those of
+// three stars or more under *Heart* ([`crate::people::is_heart`]), and none
+// under *None*, whose NULL minimum no rating reaches. `mine` is the rating of
+// the person using this device, `others` each other person's, in name then id
+// order, and `has_raters` whether either shows one. SQLite finds the album's
+// ratings through `ratings_album`.
+sqlive_compose::fragment!(
+    AlbumRatingsShown(album: String) {
+        struct ShownRating { name: String, stars: i64 }
+        mine: Option<i64>,
+        others: json<Vec<ShownRating>>,
+        has_raters: bool,
+    },
+    r#"
+    WITH shown AS MATERIALIZED (
+        SELECT system.albums,
+               (SELECT rated.stars FROM ratings AS rated
+                WHERE rated.album_id = :album
+                  AND rated.person_id = (SELECT own.member FROM coven_members AS own
+                                         WHERE own.is_self)
+                  AND rated.stars >= CASE system.albums WHEN 'stars' THEN 1
+                                                        WHEN 'heart' THEN 3 END) AS mine,
+               (SELECT json_group_array(json_object('name', rater.name, 'stars', rated.stars)
+                                        ORDER BY rater.name, rater.id)
+                FROM ratings AS rated JOIN people AS rater ON rater.id = rated.person_id
+                WHERE rated.album_id = :album
+                  AND rated.person_id IS NOT (SELECT own.member FROM coven_members AS own
+                                              WHERE own.is_self)
+                  AND rated.stars >= CASE system.albums WHEN 'stars' THEN 1
+                                                        WHEN 'heart' THEN 3 END) AS others
+        FROM @crate::people::rating_systems::LibraryRatingSystems AS system
+    )
+    SELECT shown.albums, shown.mine, shown.others,
+           shown.mine IS NOT NULL OR json_array_length(shown.others) > 0 AS has_raters
+    FROM shown
+"#
+);
+
+impl AlbumRatingsShown {
+    /// The library's rating system for albums, and the album's ratings it
+    /// shows.
+    pub fn into_ratings(self) -> Result<(RatingSystem, AlbumRatings), DbError> {
+        let system = self
+            .albums
+            .parse()
+            .map_err(|refusal| DbError::unreadable("a rating system", refusal))?;
+        let stars = |value: i64| {
+            Stars::from_stored(value)
+                .ok_or_else(|| DbError::unreadable("an album rating's stars", value))
+        };
+        let others = self
+            .others
+            .into_iter()
+            .map(|other| Ok(OtherRating { name: other.name, stars: stars(other.stars)? }))
+            .collect::<Result<_, DbError>>()?;
+        let mine = self.mine.map(stars).transpose()?;
+        Ok((system, AlbumRatings { mine, others, has_raters: self.has_raters }))
+    }
+}
+
+// [`AlbumRatingsShown`]'s row, whose plan a test reads.
+#[cfg(test)]
+sqlive_compose::read!(
+    writer AlbumRatingsRead(album: String),
+    r#"
+    SELECT ratings.*
+    FROM @crate::people::fragments::AlbumRatingsShown(album: :album) AS ratings
 "#
 );
 

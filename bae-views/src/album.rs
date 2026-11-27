@@ -304,7 +304,7 @@ impl LibraryViews {
         Ok(self
             .store
             .read(move |sql| find_album_detail_on(&sql, &album_id, None))
-            .process(|rows| rows.map(AlbumDetailRows::process).transpose())
+            .process(AlbumDetailRows::process)
             .await?
             .map(resolve_album_detail))
     }
@@ -321,18 +321,21 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         self.store
-            .subscribe_reconfigurable(initial, |request, sql| match request {
-                Some(request) => find_album_detail_on(
-                    &sql,
-                    &request.album_id,
-                    request.chosen_release_id.as_deref(),
-                ),
-                None => Ok(None),
+            .subscribe_reconfigurable(initial, |request, sql| {
+                request
+                    .as_ref()
+                    .map(|request| {
+                        find_album_detail_on(
+                            &sql,
+                            &request.album_id,
+                            request.chosen_release_id.as_deref(),
+                        )
+                    })
+                    .transpose()
             })
-            .process(|detail| {
-                Ok(AlbumDetailProjection {
-                    detail: detail.map(AlbumDetailRows::process).transpose()?,
-                })
+            .process(|rows| {
+                let detail = rows.map(AlbumDetailRows::process).transpose()?.flatten();
+                Ok(AlbumDetailProjection { detail })
             })
     }
 }
@@ -661,96 +664,84 @@ fn top_album_track_statement() -> String {
     )
 }
 
-/// The album `album_id`'s detail, showing the release `chosen_release_id`
-/// while the album holds it and the primary release otherwise.
+// The album `album` above its releases: its row, its credits, and the
+// library's rating system for albums with the ratings it shows; no row for an
+// album the library does not hold.
+sqlive_compose::read!(
+    writer AlbumDetailHead(album: String),
+    r#"
+    SELECT album.*, credits.*, ratings.*
+    FROM @bae_records::records::fragments::AlbumRow AS album
+    JOIN @bae_records::records::fragments::CreditedAlbum AS credits
+      ON credits.credited_album_id = :album
+    JOIN @bae_people::people::fragments::AlbumRatingsShown(album: :album) AS ratings ON 1
+    WHERE album.row_album_id = :album
+"#
+);
+
+/// What [`AlbumDetailHead`] and the album's releases read of the album
+/// `album_id`, in one snapshot, for a page showing the release
+/// `chosen_release_id`.
 fn find_album_detail_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
     chosen_release_id: Option<&str>,
-) -> Result<Option<AlbumDetailRows>, DbError> {
-    let releases = build_album_release_details_on(sql, album_id)?;
-    if releases.is_empty() {
-        return Ok(None);
-    }
-    // The shown release is the chosen one when the album holds it, else the
-    // first in the album's order, which is the primary release.
-    let (
-        album,
-        (album_rating_system, ratings),
-        primary_release_id,
-        primary_cover_version,
-        shows_release_choices,
-        shown_release_index,
-    ) = sql.query_row(
-        &format!(
-            "SELECT {primary}, {cover}, \
-                    (SELECT COUNT(*) > 1 FROM releases WHERE album_id = a.id), \
-                    (SELECT place FROM ( \
-                        SELECT id, ROW_NUMBER() OVER (ORDER BY album_order, id) - 1 AS place \
-                        FROM releases WHERE album_id = a.id \
-                     ) ORDER BY id IS ?2 DESC, place LIMIT 1), \
-                    a.*, ratings.* \
-             FROM albums a LEFT JOIN ({ratings}) AS ratings ON 1 WHERE a.id = ?1",
-            primary = album_primary_release_sql(),
-            cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
-            ratings = bae_people::people::album_ratings_sql(),
-        ),
-        params![album_id, chosen_release_id],
-        |row| {
-            Ok((
-                row_to_album(row)?,
-                bae_people::people::album_ratings_row(row)?,
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-            ))
-        },
-    )?;
-    Ok(Some(AlbumDetailRows {
-        ratings,
-        album_rating_system,
-        album,
-        artists: get_artists_for_album_on(sql, album_id)?,
-        releases,
-        shown_release_index,
-        shows_release_choices,
-        primary_release_id,
-        primary_cover_version,
-    }))
+) -> Result<AlbumDetailRows, DbError> {
+    let head = AlbumDetailHeadParams { album: album_id.to_string() };
+    Ok(AlbumDetailRows {
+        head: bae_store::statement_optional(sql, &head)?,
+        releases: build_album_release_details_on(sql, album_id)?,
+        chosen_release_id: chosen_release_id.map(str::to_string),
+    })
 }
 
 #[derive(Clone, PartialEq)]
 struct AlbumDetailRows {
-    album: DbAlbum,
-    artists: Vec<LibraryCredit>,
+    head: Option<AlbumDetailHeadRow>,
     releases: Vec<ReleaseDetailRows>,
-    shown_release_index: u32,
-    shows_release_choices: bool,
-    primary_release_id: String,
-    primary_cover_version: Option<String>,
-    ratings: bae_people::collections::AlbumRatings,
-    album_rating_system: bae_people::people::RatingSystem,
+    chosen_release_id: Option<String>,
 }
 
 impl AlbumDetailRows {
-    fn process(self) -> Result<DbAlbumDetail, DbError> {
-        Ok(DbAlbumDetail {
-            album: self.album,
-            artists: self.artists,
-            releases: self
-                .releases
-                .into_iter()
-                .map(ReleaseDetailRows::process)
-                .collect::<Result<_, _>>()?,
-            shown_release_index: self.shown_release_index,
-            shown_release_can_become_primary: self.shown_release_index > 0,
-            shows_release_choices: self.shows_release_choices,
-            primary_release_id: self.primary_release_id,
-            primary_cover_version: self.primary_cover_version,
-            ratings: self.ratings,
-            album_rating_system: self.album_rating_system,
-        })
+    /// The album's detail, showing the chosen release while the album holds it
+    /// and the primary release otherwise; `None` for an unknown album, or one
+    /// with no releases.
+    fn process(self) -> Result<Option<DbAlbumDetail>, DbError> {
+        let releases: Vec<ReleaseDetailRead> =
+            self.releases.into_iter().map(ReleaseDetailRows::process).collect::<Result<_, _>>()?;
+        // The releases come in the album's order, whose first is the primary
+        // release.
+        let Some(primary) = releases.first() else {
+            return Ok(None);
+        };
+        let primary_release_id = primary.detail.release.id.clone();
+        let primary_cover_version =
+            primary.detail.cover.as_ref().map(|cover| cover.version.clone());
+        let Some(head) = self.head else {
+            return Err(DbError::unreadable(
+                format!("the album of release {primary_release_id}"),
+                None::<String>,
+            ));
+        };
+        let shown = self
+            .chosen_release_id
+            .and_then(|chosen| releases.iter().position(|held| held.detail.release.id == chosen))
+            .unwrap_or(0);
+        let shown_release_index = u32::try_from(shown)
+            .map_err(|_error| DbError::unreadable("an album's count of releases", shown))?;
+        let (album_rating_system, ratings) = head.ratings.into_ratings()?;
+        Ok(Some(DbAlbumDetail {
+            album: head.album.into_album()?,
+            artists: head.credits.into_credits()?,
+            shown_release_index,
+            shown_release_can_become_primary: shown_release_index > 0,
+            shows_release_choices: releases.len() > 1,
+            releases,
+            primary_release_id,
+            primary_cover_version,
+            ratings,
+            album_rating_system,
+        }))
     }
 }
 
