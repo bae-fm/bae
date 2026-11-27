@@ -43,6 +43,58 @@ sqlive_compose::read!(
 "#
 );
 
+// The release file `file`, of whichever release holds it.
+sqlive_compose::read!(
+    writer ReleaseFileById(file: String),
+    r#"
+    SELECT record.*
+    FROM @crate::records::file_fragments::ReleaseFileRecord AS record
+    WHERE record.id = :file
+"#
+);
+
+impl super::file_fragments::ReleaseFileRecord {
+    /// The release file the row describes.
+    pub fn into_file(self) -> Result<DbFile, DbError> {
+        let listed = self.listed;
+        let missing = |what: &str| {
+            DbError::unreadable(format!("the {what} of file {}", listed.id), None::<String>)
+        };
+        let file_size = self.file_size.ok_or_else(|| missing("size"))?;
+        let stored = self.stored.ok_or_else(|| missing("stored state"))?;
+        decoded_file(FileColumns {
+            id: listed.id,
+            release_id: listed.release_id,
+            original_filename: listed.original_filename,
+            content_type: listed.content_type,
+            created_at: listed.created_at,
+            file: listed.file,
+            role: listed.role,
+            document_kind: listed.document_kind,
+            source_audio_layout: listed.source_audio_layout,
+            source_audio_content_type: listed.source_audio_content_type,
+            source_audio_container: listed.source_audio_container,
+            source_audio_duration_ms: listed.source_audio_duration_ms,
+            source_audio_sample_rate_hz: listed.source_audio_sample_rate_hz,
+            source_audio_bits_per_sample: listed.source_audio_bits_per_sample,
+            source_audio_bitrate_kbps: listed.source_audio_bitrate_kbps,
+            source_audio_channels: listed.source_audio_channels,
+            file_size,
+            stored: i64::from(stored),
+        })
+    }
+}
+
+/// The release file `file_id`, of whichever release holds it; `None` when the
+/// library holds no such file.
+pub fn release_file_on(
+    sql: &impl bae_store::WriterRead,
+    file_id: &str,
+) -> Result<Option<DbFile>, DbError> {
+    let statement = ReleaseFileByIdParams { file: file_id.to_owned() };
+    bae_store::statement_optional(sql, &statement)?.map(|row| row.record.into_file()).transpose()
+}
+
 /// A release with its files, as the pin, the move to this device and the
 /// deletion of a release take them.
 #[derive(Debug, Clone, PartialEq)]
@@ -71,7 +123,7 @@ pub(super) fn release_with_files_on(
     let files = serde_json::from_str::<Vec<FileColumns>>(&row.files)
         .map_err(|error| DbError::unreadable_json(DOCUMENT, &row.files, error))?
         .into_iter()
-        .map(file_of_document)
+        .map(decoded_file)
         .collect::<Result<Vec<_>, _>>()?;
     Ok(Some(ReleaseWithFiles {
         album_id: row.album_id,
@@ -81,9 +133,8 @@ pub(super) fn release_with_files_on(
     }))
 }
 
-/// The release file `columns` describe, as
-/// [`FileDocuments`](super::file_fragments::FileDocuments) wrote them.
-fn file_of_document(columns: FileColumns) -> Result<DbFile, DbError> {
+/// The release file `columns` describe.
+fn decoded_file(columns: FileColumns) -> Result<DbFile, DbError> {
     file_of(columns).map_err(|(field, reason)| {
         DbError::unreadable("a release's file", format!("{field}: {reason}"))
     })
@@ -124,7 +175,7 @@ impl Records {
                 let columns = serde_json::from_str(&row.listed.file_json).map_err(|error| {
                     DbError::unreadable_json("a release's file", &row.listed.file_json, error)
                 })?;
-                file_of_document(columns).map(Some)
+                decoded_file(columns).map(Some)
             })
             .await
     }

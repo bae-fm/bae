@@ -193,18 +193,6 @@ pub(crate) fn release_queue_on<P: QueuedPayload>(
     Ok(ReleaseQueueSnapshot { rows, total: counts.total, paused })
 }
 
-/// `release_id`'s entries in the download and export queues.
-#[cfg(desktop)]
-pub fn release_queue_entries_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<crate::release_queue::ReleaseQueueEntries, DbError> {
-    Ok(crate::release_queue::ReleaseQueueEntries {
-        download: rows::download_of_release_on(sql, release_id)?,
-        output: rows::output_of_release_on(sql, release_id)?,
-    })
-}
-
 /// Queue `entries` in order, passing over a release already in the queue or
 /// one the library doesn't hold; `true` when any went in.
 #[cfg(desktop)]

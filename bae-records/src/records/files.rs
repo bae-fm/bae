@@ -336,25 +336,21 @@ impl Records {
         &self,
         release_id: &str,
     ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, DbError> {
-        let release_id = release_id.to_string();
+        let statement = AudioAndSheetOriginalsParams { release: release_id.to_string() };
         self.store
             .read(move |sql| {
-                sql.query(AUDIO_AND_SHEET_ORIGINALS, params![release_id], |row| {
-                    let file = super::read::row_to_file(row)?;
-                    let path = row
-                        .get::<_, Option<Vec<u8>>>("original_path")?
-                        .map(coven::path_from_bytes)
-                        .transpose()
-                        .map_err(|error| {
-                            rusqlite::Error::FromSqlConversionFailure(
-                                0,
-                                rusqlite::types::Type::Blob,
-                                Box::new(error),
-                            )
-                        })?;
-                    Ok((file, path))
-                })
-                .map_err(DbError::from)
+                bae_store::statement_rows(&sql, &statement)?
+                    .into_iter()
+                    .map(|row| {
+                        let path =
+                            row.original_path.map(coven::path_from_bytes).transpose().map_err(
+                                |error| {
+                                    DbError::unreadable("an original's path", error.to_string())
+                                },
+                            )?;
+                        Ok((row.record.into_file()?, path))
+                    })
+                    .collect()
             })
             .await
     }
@@ -394,17 +390,18 @@ impl Records {
     }
 }
 
-/// The audio and track sheet rows of the release `?1`, in its file order,
-/// with the path of each one's original on this device (`coven_user_files`
-/// lists only those), NULL where it has none.
-const AUDIO_AND_SHEET_ORIGINALS: &str = concat!(
-    "SELECT ",
-    release_file_columns!(),
-    ", original.path AS original_path \
-     FROM release_files AS f \
-     LEFT JOIN coven_user_files AS original ON original.file = f.file \
-     WHERE f.release_id = ?1 AND f.role IN ('audio', 'track_sheet') \
-     ORDER BY f.original_filename COLLATE natural_order, f.id"
+// The audio and track sheet rows of the release `release`, in its file order,
+// with the path of each one's original on this device (`coven_user_files`
+// lists only those), NULL where it has none.
+sqlive_compose::read!(
+    writer AudioAndSheetOriginals(release: String) { original_path: Option<Vec<u8>> },
+    r#"
+    SELECT record.*, original.path AS original_path
+    FROM @crate::records::file_fragments::ReleaseFileRecord AS record
+    LEFT JOIN coven_user_files AS original ON original.file = record.file
+    WHERE record.release_id = :release AND record.role IN ('audio', 'track_sheet')
+    ORDER BY record.original_filename COLLATE natural_order, record.id
+"#
 );
 
 // Each cover's version, by the release it is the cover of: the version of its

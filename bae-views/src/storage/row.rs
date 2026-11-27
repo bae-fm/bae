@@ -62,7 +62,7 @@ impl StorageListRow {
         let status = status_of(
             self.storage_order,
             entry.clone(),
-            self.storage.failed_move_file().map(str::to_string),
+            self.storage.failed_move().map(|(file, _cause)| file.to_string()),
         )?;
         let date_added =
             bae_util::timestamp::parse_rfc3339(&self.date_added).map_err(|_unparsed| {

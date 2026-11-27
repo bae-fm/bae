@@ -64,8 +64,8 @@ async fn release_detail_files_are_in_case_insensitive_natural_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::storage_inspector::INSPECTOR_FILES),
-                [RELEASE_A],
+                &format!("EXPLAIN QUERY PLAN {}", crate::storage_inspector::InspectedFiles::SQL),
+                rusqlite::named_params! { ":release": RELEASE_A },
                 |row| row.get::<_, String>(3),
             )
             .map_err(DbError::from)

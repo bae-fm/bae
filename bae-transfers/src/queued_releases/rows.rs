@@ -117,36 +117,6 @@ sqlive_compose::read!(
 "#
 );
 
-// The download queue's entry for one release, beside its album's title.
-#[cfg(desktop)]
-sqlive_compose::read!(
-    writer DownloadOfRelease(release: String),
-    r#"
-    SELECT entry.*, release.*, album.*
-    FROM @crate::queued_releases::rows::DownloadQueueRow AS entry
-    LEFT JOIN @bae_records::records::fragments::ReleaseAlbum AS release
-           ON release.release_id = entry.release_id
-    LEFT JOIN @bae_records::records::fragments::AlbumTitle AS album
-           ON album.album_id = release.album_id
-    WHERE entry.release_id = :release
-"#
-);
-
-// The export and save queue's entry for one release, beside its album's title.
-#[cfg(desktop)]
-sqlive_compose::read!(
-    writer OutputOfRelease(release: String),
-    r#"
-    SELECT entry.*, release.*, album.*
-    FROM @crate::queued_releases::rows::OutputQueueRow AS entry
-    LEFT JOIN @bae_records::records::fragments::ReleaseAlbum AS release
-           ON release.release_id = entry.release_id
-    LEFT JOIN @bae_records::records::fragments::AlbumTitle AS album
-           ON album.album_id = release.album_id
-    WHERE entry.release_id = :release
-"#
-);
-
 // Every entry of the export and save queue in the order queued, each beside
 // its album's title.
 #[cfg(any(desktop, test, feature = "test-utils"))]
@@ -188,6 +158,27 @@ fn queued_release(
             format!("the album of queued release {release_id}"),
             None::<String>,
         )),
+    }
+}
+
+#[cfg(desktop)]
+impl crate::release_queue::ReleaseQueueEntries {
+    /// A release's entries in the download and export queues, from each
+    /// queue's row of it, beside the release and its album's title.
+    pub fn of_rows(
+        download: Option<DownloadQueueRow>,
+        output: Option<OutputQueueRow>,
+        release: &ReleaseAlbum,
+        album: &AlbumTitle,
+    ) -> Result<Self, DbError> {
+        Ok(Self {
+            download: download
+                .map(|row| row.into_row(Some(release.clone()), Some(album.clone())))
+                .transpose()?,
+            output: output
+                .map(|row| row.into_row(Some(release.clone()), Some(album.clone())))
+                .transpose()?,
+        })
     }
 }
 
@@ -351,31 +342,6 @@ pub(super) fn output_counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueC
         has_failures: tally.has_failures,
         wait: QueueWait::of(pause.paused, None),
     })
-}
-
-/// `release_id`'s entry of the download queue.
-#[cfg(desktop)]
-pub(super) fn download_of_release_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Option<ReleaseQueueRow<DownloadRequest, ()>>, DbError> {
-    bae_store::statement_optional(
-        sql,
-        &DownloadOfReleaseParams { release: release_id.to_string() },
-    )?
-    .map(|row| row.entry.into_row(row.release, row.album))
-    .transpose()
-}
-
-/// `release_id`'s entry of the export and save queue.
-#[cfg(desktop)]
-pub(super) fn output_of_release_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Option<ReleaseQueueRow<crate::OutputRequest, ()>>, DbError> {
-    bae_store::statement_optional(sql, &OutputOfReleaseParams { release: release_id.to_string() })?
-        .map(|row| row.entry.into_row(row.release, row.album))
-        .transpose()
 }
 
 /// Every entry of the export and save queue, in the order queued.

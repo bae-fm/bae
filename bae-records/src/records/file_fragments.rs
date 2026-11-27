@@ -42,7 +42,10 @@ sqlive_compose::fragment!(
 // Each release file's row, with the columns of `release_files` that
 // [`FileDocuments`] and [`ReleaseFiles`] take as their `files`.
 sqlive_compose::fragment!(
-    ReleaseFileColumns,
+    ReleaseFileColumns {
+        file: coven::FileId,
+        source_audio_duration_ms: Option<u64>,
+    },
     r#"
     SELECT file.id, file.release_id, file.original_filename, file.content_type,
            file.created_at, file.file, file.role, file.document_kind, file.source_audio_layout,
@@ -51,6 +54,22 @@ sqlive_compose::fragment!(
            file.source_audio_bits_per_sample, file.source_audio_bitrate_kbps,
            file.source_audio_channels
     FROM release_files AS file
+"#
+);
+
+// Each release file's row with its size and whether it is stored, as coven
+// records them of the file it references. The row is one table's, each value
+// from coven a subquery, so a read can join it on the right of a LEFT JOIN
+// and still walk the index of `release_files` its order names.
+sqlive_compose::fragment!(
+    ReleaseFileRecord { file_size: Option<u64>, stored: Option<bool> },
+    r#"
+    SELECT listed.*,
+           (SELECT coven.size FROM coven_files AS coven WHERE coven.id = listed.file)
+               AS file_size,
+           (SELECT coven.hash IS NOT NULL FROM coven_files AS coven WHERE coven.id = listed.file)
+               AS stored
+    FROM @crate::records::file_fragments::ReleaseFileColumns AS listed
 "#
 );
 

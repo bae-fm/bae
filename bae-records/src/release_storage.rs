@@ -85,10 +85,12 @@ impl ReleaseStorage {
             .map_err(|_error| bae_store::DbError::unreadable("a release's size", self.total_size))
     }
 
-    /// The name of the file whose changed original made a move of the release
-    /// fail; `None` when no move failed.
-    pub fn failed_move_file(&self) -> Option<&str> {
-        self.failed_move_file.as_deref()
+    /// The release's failed move: the name of the file whose original changed,
+    /// and the text of the error behind the failure when coven kept it; `None`
+    /// while no move failed.
+    pub fn failed_move(&self) -> Option<(&str, Option<&str>)> {
+        let file = self.failed_move_file.as_deref()?;
+        Some((file, self.failed_move_cause.as_deref()))
     }
 
     /// The text that says which other device alone holds the release's audio.

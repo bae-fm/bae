@@ -106,12 +106,14 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             expected,
             "{column:?} descending: {descending}"
         );
-        let statement = crate::release_files::release_files_in(order(column, descending));
+        let statement = crate::release_files::release_files_sql(order(column, descending));
         let plan = db
             .read(move |sql| {
-                sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [RELEASE_A], |row| {
-                    row.get::<_, String>(3)
-                })
+                sql.query(
+                    &format!("EXPLAIN QUERY PLAN {statement}"),
+                    rusqlite::named_params! { ":release": RELEASE_A },
+                    |row| row.get::<_, String>(3),
+                )
                 .map_err(DbError::from)
             })
             .await
@@ -126,7 +128,8 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             // index of the release's and sorted by their coven files' sizes.
             None => assert!(
                 plan.iter()
-                    .any(|step| step.starts_with("SEARCH f USING") && step.contains("release_id=?")),
+                    .any(|step| step.starts_with("SEARCH file USING")
+                        && step.contains("release_id=?")),
                 "{column:?} descending: {descending} finds the release's files by index: {plan:?}"
             ),
         }

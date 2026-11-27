@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::album_detail::{FileDetail, ReleaseUpload};
-use bae_records::release_storage::ReleaseStorageRows;
+use bae_store::{statement_optional, statement_rows};
 pub use bae_sync_status::FileProblem;
 use bae_sync_status::PendingWait;
 use bae_transfers::{DownloadKind, DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
@@ -188,67 +188,204 @@ fn storage_inspector_transfers(
 #[path = "storage_inspector_tests.rs"]
 mod tests;
 
-/// The release `release_id` as the inspector shows it, `None` when the
-/// library holds no such release: its files with their downloads and uploads,
-/// what of it waits to upload, and its download and export entries.
+// Each release file with its phase in its release's queued or active
+// download: the entry's kind, and where the file stands, `waiting`,
+// `downloading` or `done`; both NULL while no entry waits or runs. A pin checks
+// coven's pinned and downloading files. A move checks the copies coven has
+// placed and the one it is downloading into the chosen folder.
+sqlive_compose::fragment!(
+    ReleaseFileDownload {
+        download_kind: Option<DownloadKind>,
+        download_state: Option<String>,
+    },
+    r#"
+    SELECT file.file_id AS download_file_id, file.release_id AS download_release_id,
+           queued.kind AS download_kind,
+           CASE queued.kind
+               WHEN 'pin' THEN CASE
+                   WHEN pin.file IS NOT NULL THEN 'done'
+                   WHEN downloading.file IS NOT NULL THEN 'downloading'
+                   ELSE 'waiting' END
+               WHEN 'move_to_this_device' THEN CASE
+                   WHEN queued.state = 'queued' THEN 'waiting'
+                   WHEN placed.file IS NOT NULL THEN 'done'
+                   WHEN copying.file IS NOT NULL THEN 'downloading'
+                   ELSE 'waiting' END
+           END AS download_state
+    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
+    LEFT JOIN @bae_transfers::download_entry::QueuedDownloadEntry AS queued
+           ON queued.release_id = file.release_id AND queued.state <> 'failed'
+    LEFT JOIN coven_pins AS pin ON queued.kind = 'pin' AND pin.file = file.stored_file
+    LEFT JOIN coven_downloading AS downloading
+           ON queued.kind = 'pin' AND downloading.file = file.stored_file
+    LEFT JOIN coven_device_only_placed AS placed
+           ON queued.kind = 'move_to_this_device' AND placed.file = file.stored_file
+    LEFT JOIN coven_device_only_downloading AS copying
+           ON queued.kind = 'move_to_this_device' AND copying.file = file.stored_file
+"#
+);
+
+// The release `release` as the inspector's transfers show it: its album's
+// title, its storage row (its files' count and size, its upload and its failed
+// move), its entries in the download and export queues, and, while the download
+// queue pins it, how many of its files are downloading, waiting and kept. No
+// row for a release the library does not hold.
+sqlive_compose::read!(
+    writer InspectedRelease(release: String) {
+        struct PinCounts { downloading: u32, waiting: u32, kept: u32 }
+        pins: json<Option<PinCounts>>,
+    },
+    r#"
+    SELECT held.*, album.*, storage.*, download.*, output.*,
+           (SELECT json_object(
+                       'downloading',
+                       COUNT(*) FILTER (WHERE pinning.download_state = 'downloading'),
+                       'waiting',
+                       COUNT(*) FILTER (WHERE pinning.download_state = 'waiting'),
+                       'kept', COUNT(*) FILTER (WHERE pinning.download_state = 'done'))
+            FROM @crate::storage_inspector::ReleaseFileDownload AS pinning
+            WHERE pinning.download_release_id = :release AND pinning.download_kind = 'pin'
+            HAVING COUNT(*) > 0) AS pins
+    FROM @bae_records::records::fragments::ReleaseAlbum AS held
+    JOIN @bae_records::records::fragments::AlbumTitle AS album
+      ON album.album_id = held.album_id
+    JOIN @bae_records::release_storage::ReleaseStorage AS storage
+      ON storage.release_id = :release
+    LEFT JOIN @bae_transfers::queued_releases::rows::DownloadQueueRow AS download
+           ON download.release_id = :release
+    LEFT JOIN @bae_transfers::queued_releases::rows::OutputQueueRow AS output
+           ON output.release_id = :release
+    WHERE held.release_id = :release
+"#
+);
+
+// The files of the release `release` in natural filename order, each with its
+// download, its queued upload and the error behind its upload record when
+// coven keeps one. Apart from its upload, the file carries the record of the
+// move that found its original missing or changed, matched by its path, with
+// the error behind it.
+sqlive_compose::read!(
+    writer InspectedFiles(release: String) {
+        upload_file: Option<coven::FileId>,
+        upload_sending: Option<bool>,
+        upload_pending: Option<coven::PendingRecord>,
+        upload_cause: Option<String>,
+        move_pending: Option<coven::PendingRecord>,
+        move_cause: Option<String>,
+    },
+    r#"
+    SELECT file.*, download.*,
+           upload.file AS upload_file, upload.sending AS upload_sending,
+           upload.pending AS upload_pending, upload_record.cause AS upload_cause,
+           move_record.record AS move_pending, move_record.cause AS move_cause
+    FROM @bae_records::records::file_fragments::ReleaseFileRecord AS file
+    JOIN @crate::storage_inspector::ReleaseFileDownload AS download
+      ON download.download_file_id = file.id
+    LEFT JOIN coven_uploads AS upload ON upload.file = file.file
+    LEFT JOIN coven_pending AS upload_record
+           ON upload_record.file = file.file AND upload_record.record = upload.pending
+    LEFT JOIN coven_user_files AS original ON original.file = file.file
+    LEFT JOIN coven_pending AS move_record
+           ON move_record.position = (SELECT MIN(failed.position) FROM coven_pending AS failed
+                                      WHERE failed.subject_kind = 'move'
+                                        AND failed.reason_kind = 'original'
+                                        AND failed.original_path = original.path)
+    WHERE file.release_id = :release
+    ORDER BY file.original_filename COLLATE natural_order, file.id
+"#
+);
+
+/// What [`InspectedRelease`] and [`InspectedFiles`] read of the release
+/// `release_id`, in one snapshot.
+#[derive(Clone, PartialEq)]
+struct InspectorRows {
+    release_id: String,
+    release: Option<InspectedReleaseRow>,
+    files: Vec<InspectedFilesRow>,
+}
+
 fn storage_inspector_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Option<DbStorageInspector>, DbError> {
-    let Some(release) = sql
-        .query_row(&inspector_release_query(), params![release_id], inspector_release)
-        .optional()?
-    else {
-        return Ok(None);
+) -> Result<InspectorRows, DbError> {
+    let release = release_id.to_string();
+    Ok(InspectorRows {
+        release_id: release.clone(),
+        release: statement_optional(sql, &InspectedReleaseParams { release: release.clone() })?,
+        files: statement_rows(sql, &InspectedFilesParams { release })?,
+    })
+}
+
+impl InspectorRows {
+    /// The release as the inspector's rows hold it; `None` when the library
+    /// holds no such release.
+    fn process(self) -> Result<Option<crate::DbStorageInspector>, DbError> {
+        let Some(row) = self.release else {
+            return Ok(None);
+        };
+        let file_count = row.storage.file_count();
+        let release = crate::DbInspectorRelease {
+            title: row.album.clone().into_title(),
+            file_count: u64::try_from(file_count)
+                .map_err(|_error| DbError::unreadable("a release's file count", file_count))?,
+            total_size: row.storage.total_size()?,
+        };
+        let failed_move = row.storage.failed_move().map(|(file_name, cause)| crate::DbFailedMove {
+            file_name: file_name.to_string(),
+            cause: cause.map(str::to_string),
+        });
+        Ok(Some(crate::DbStorageInspector {
+            release_id: self.release_id,
+            release,
+            files: self.files.into_iter().map(inspector_file).collect::<Result<_, _>>()?,
+            pins: row.pins.map(|pins| crate::DbPinCounts {
+                downloading: pins.downloading,
+                waiting: pins.waiting,
+                kept: pins.kept,
+            }),
+            upload: row.storage.upload()?,
+            failed_move,
+            entries: ReleaseQueueEntries::of_rows(row.download, row.output, &row.held, &row.album)?,
+        }))
+    }
+}
+
+/// One file as the inspector shows it, from its row.
+fn inspector_file(row: InspectedFilesRow) -> Result<DbStorageInspectorFile, DbError> {
+    let file = row.file.into_file()?;
+    let unreadable = |what: &str, value: Option<&str>| {
+        DbError::unreadable(format!("the {what} of file {}", file.id), value)
     };
-    Ok(Some(DbStorageInspector {
-        release_id: release_id.to_string(),
-        release,
-        files: inspector_files_on(sql, release_id)?,
-        pins: pin_counts_on(sql, release_id)?,
-        upload: bae_records::records::queued_uploads::release_upload_on(sql, release_id)?,
-        failed_move: sql
-            .query_row(&failed_move_query(), params![release_id], |row| {
-                Ok(crate::DbFailedMove { file_name: row.get(0)?, cause: row.get(1)? })
-            })
-            .optional()?,
-        entries: bae_transfers::tables::release_queue_entries_on(sql, release_id)?,
-    }))
+    let kind = row.download.download_kind;
+    let download = match (row.download.download_state.as_deref(), kind) {
+        (None, _) => None,
+        (Some("done"), _) => Some(FileDownload::Done),
+        (Some("downloading"), Some(kind)) => {
+            Some(FileDownload::Downloading { kind, file: file.file })
+        }
+        (Some("waiting"), Some(kind)) => Some(FileDownload::Waiting { kind }),
+        (state, _) => return Err(unreadable("download state", state)),
+    };
+    let upload = match row.upload_file {
+        Some(uploading) => Some(DbFileUpload {
+            file: uploading,
+            sending: row.upload_sending.ok_or_else(|| unreadable("upload's sending", None))?,
+            pending: with_cause(row.upload_pending, row.upload_cause),
+        }),
+        None => None,
+    };
+    let move_record = with_cause(row.move_pending, row.move_cause);
+    Ok(DbStorageInspectorFile { file, download, upload, move_record })
 }
 
-/// The release `?1`'s album title and its files' count and total size, as
-/// its storage row keeps them; no row when the library holds no such
-/// release.
-fn inspector_release_query() -> String {
-    format!(
-        "SELECT a.title AS title, storage.file_count AS file_count, \
-             storage.total_size AS total_size \
-         FROM releases AS r \
-         JOIN albums AS a ON a.id = r.album_id \
-         JOIN ({storage}) AS storage ON storage.release_id = r.id \
-         WHERE r.id = ?1",
-        storage = ReleaseStorageRows::SQL,
-    )
-}
-
-/// The release `?1`'s failed move as its storage row keeps it: the name of
-/// the file whose original changed and the text of the error behind the
-/// failure; no row while no move failed.
-fn failed_move_query() -> String {
-    format!(
-        "SELECT storage.failed_move_file, storage.failed_move_cause \
-         FROM ({storage}) AS storage \
-         WHERE storage.release_id = ?1 AND storage.failed_move_file IS NOT NULL",
-        storage = ReleaseStorageRows::SQL,
-    )
-}
-
-/// One row of [`inspector_release_query`].
-fn inspector_release(row: &Row<'_>) -> rusqlite::Result<crate::DbInspectorRelease> {
-    Ok(crate::DbInspectorRelease {
-        title: row.get("title")?,
-        file_count: count_column(row, "file_count")?,
-        total_size: count_column(row, "total_size")?,
+/// `record` with the text of the error behind it, `cause`.
+fn with_cause(
+    record: Option<coven::PendingRecord>,
+    cause: Option<String>,
+) -> Option<coven::PendingRecord> {
+    record.map(|mut record| {
+        record.cause = cause;
+        record
     })
 }
 
@@ -264,12 +401,15 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
-                let Some(release_id) = release_id else {
-                    return Ok(None);
-                };
-                storage_inspector_on(&sql, release_id)
+                release_id
+                    .as_deref()
+                    .map(|release_id| storage_inspector_on(&sql, release_id))
+                    .transpose()
             })
-            .process(|rows| Ok(rows.map(StorageInspector::read)))
+            .process(|rows| {
+                let rows = rows.map(InspectorRows::process).transpose()?.flatten();
+                Ok(rows.map(StorageInspector::read))
+            })
     }
 
     /// Follow the release file `initial` names, or none, as the inspector's
@@ -282,142 +422,12 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<FileDetail>, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |file_id, sql| {
-                let Some(file_id) = file_id else {
-                    return Ok(None);
-                };
-                Ok(sql.query_row(STORAGE_FILE, params![file_id], row_to_file).optional()?)
+            .subscribe_reconfigurable(initial, |file_id, sql| match file_id {
+                Some(file_id) => {
+                    bae_records::records::release_with_files::release_file_on(&sql, file_id)
+                }
+                None => Ok(None),
             })
-            .process(|row| Ok(row.map(FileDetail::from_raw)))
+            .process(|file| Ok(file.map(FileDetail::from_raw)))
     }
-}
-
-/// One release file, by its id.
-const STORAGE_FILE: &str = concat!(
-    "SELECT ",
-    bae_records::release_file_columns!(),
-    " FROM release_files AS f WHERE f.id = ?1"
-);
-
-/// Each file's phase in the release's queued or active download. A pin
-/// checks coven's pinned and downloading files. A move checks the copies
-/// coven has placed and the one it is downloading into the chosen folder.
-macro_rules! file_downloads {
-    () => {
-        "WITH file_downloads AS (SELECT f.id AS file_row, queued.kind AS download_kind, \
-            CASE queued.kind \
-                WHEN 'pin' THEN CASE \
-                    WHEN pin.file IS NOT NULL THEN 'done' \
-                    WHEN downloading.file IS NOT NULL THEN 'downloading' \
-                    ELSE 'waiting' END \
-                WHEN 'move_to_this_device' THEN CASE \
-                    WHEN queued.state = 'queued' THEN 'waiting' \
-                    WHEN placed.file IS NOT NULL THEN 'done' \
-                    WHEN copying.file IS NOT NULL THEN 'downloading' \
-                    ELSE 'waiting' END \
-            END AS download_state \
-         FROM release_files AS f \
-         LEFT JOIN download_queue AS queued \
-            ON queued.release_id = f.release_id AND queued.state <> 'failed' \
-         LEFT JOIN coven_pins AS pin ON queued.kind = 'pin' AND pin.file = f.file \
-         LEFT JOIN coven_downloading AS downloading \
-            ON queued.kind = 'pin' AND downloading.file = f.file \
-         LEFT JOIN coven_device_only_placed AS placed \
-            ON queued.kind = 'move_to_this_device' AND placed.file = f.file \
-         LEFT JOIN coven_device_only_downloading AS copying \
-            ON queued.kind = 'move_to_this_device' AND copying.file = f.file \
-         WHERE f.release_id = ?1) "
-    };
-}
-
-/// A release's files in natural filename order, with each file's download,
-/// its queued upload and the error behind its upload record when coven
-/// keeps one. Apart from its upload, the file carries the record of the move
-/// that found its original missing or changed, matched by its path, with
-/// the error behind it.
-pub(crate) const INSPECTOR_FILES: &str = concat!(
-    file_downloads!(),
-    "SELECT ",
-    bae_records::release_file_columns!(),
-    ", file_downloads.download_kind, file_downloads.download_state, \
-        upload.file AS upload_file, upload.sending AS upload_sending, \
-        upload.pending AS upload_pending, upload_record.cause AS upload_cause, \
-        move_record.record AS move_pending, move_record.cause AS move_cause \
-     FROM release_files AS f \
-     JOIN file_downloads ON file_downloads.file_row = f.id \
-     LEFT JOIN coven_uploads AS upload ON upload.file = f.file \
-     LEFT JOIN coven_pending AS upload_record \
-        ON upload_record.file = f.file AND upload_record.record = upload.pending \
-     LEFT JOIN coven_user_files AS original ON original.file = f.file \
-     LEFT JOIN coven_pending AS move_record \
-        ON move_record.position = (SELECT MIN(m.position) FROM coven_pending AS m \
-                                   WHERE m.subject_kind = 'move' AND m.reason_kind = 'original' \
-                                     AND m.original_path = original.path) \
-     WHERE f.release_id = ?1 \
-     ORDER BY f.original_filename COLLATE natural_order, f.id"
-);
-
-/// How many of the release's files this device keeps, is downloading and has
-/// yet to download, from each file's download (`file_downloads!`), and whether the
-/// download queue pins the release, which is when those counts show.
-const PIN_COUNTS: &str = concat!(
-    file_downloads!(),
-    "SELECT COUNT(*) > 0 AS pinning, \
-        COUNT(*) FILTER (WHERE download_state = 'downloading'), \
-        COUNT(*) FILTER (WHERE download_state = 'waiting'), \
-        COUNT(*) FILTER (WHERE download_state = 'done') \
-     FROM file_downloads WHERE download_kind = 'pin'"
-);
-
-fn pin_counts_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Option<crate::DbPinCounts>, DbError> {
-    Ok(sql.query_row(PIN_COUNTS, params![release_id], |row| {
-        Ok(row.get::<_, bool>(0)?.then_some(crate::DbPinCounts {
-            downloading: row.get(1)?,
-            waiting: row.get(2)?,
-            kept: row.get(3)?,
-        }))
-    })?)
-}
-
-fn inspector_files_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Vec<DbStorageInspectorFile>, DbError> {
-    Ok(sql.query(INSPECTOR_FILES, params![release_id], |row| {
-        let file = row_to_file(row)?;
-        let download = match row.get::<_, Option<String>>("download_state")?.as_deref() {
-            Some("done") => Some(FileDownload::Done),
-            Some("downloading") => {
-                Some(FileDownload::Downloading { kind: row.get("download_kind")?, file: file.file })
-            }
-            Some("waiting") => Some(FileDownload::Waiting { kind: row.get("download_kind")? }),
-            Some(state) => {
-                return Err(bae_store::read::column_conversion_error(row, "download_state", state))
-            }
-            None => None,
-        };
-        let upload = match row.get::<_, Option<coven::FileId>>("upload_file")? {
-            Some(file) => Some(DbFileUpload {
-                file,
-                sending: row.get("upload_sending")?,
-                pending: {
-                    let mut record =
-                        row.get::<_, Option<coven::PendingRecord>>("upload_pending")?;
-                    if let Some(record) = &mut record {
-                        record.cause = row.get("upload_cause")?;
-                    }
-                    record
-                },
-            }),
-            None => None,
-        };
-        let mut move_record = row.get::<_, Option<coven::PendingRecord>>("move_pending")?;
-        if let Some(record) = &mut move_record {
-            record.cause = row.get("move_cause")?;
-        }
-        Ok(DbStorageInspectorFile { file, download, upload, move_record })
-    })?)
 }

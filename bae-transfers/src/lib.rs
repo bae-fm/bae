@@ -8,7 +8,7 @@ pub mod download_entry;
 mod download_snapshot;
 mod output_snapshot;
 pub mod queue_counts;
-mod queued_releases;
+pub mod queued_releases;
 mod release_queue;
 mod release_transfers;
 pub mod storage_moves;

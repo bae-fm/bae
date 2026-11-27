@@ -8,20 +8,6 @@ use bae_store::{DbError, WriteError};
 use coven::CovenWrite;
 use std::collections::{HashMap, HashSet};
 
-/// The columns of a release file row `f` that `row_to_file` reads: its own,
-/// and from coven's record of the file it references, `file_size`, the
-/// file's size, and `stored`, whether the file is stored. A macro so a
-/// caller's `concat!` can build its statement from it.
-#[macro_export]
-macro_rules! release_file_columns {
-    () => {
-        "f.*, (SELECT coven.size FROM coven_files AS coven WHERE coven.id = f.file) \
-         AS file_size, \
-         (SELECT coven.hash IS NOT NULL FROM coven_files AS coven WHERE coven.id = f.file) \
-         AS stored"
-    };
-}
-
 /// A query that lists each move this device is making to move the files of
 /// the release `$release` (an SQL literal naming its id) to the cloud, and
 /// lists each move only once. `coven_moves` lists each file of each move that

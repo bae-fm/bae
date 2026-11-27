@@ -1,5 +1,7 @@
+use crate::records::release_with_files::{ReleaseFileById, ReleaseFileByIdParams};
 use crate::records::*;
 use rusqlite::Connection;
+use sqlive_compose::Returning as _;
 
 /// An in-memory DB on the real schema with one album and release whose
 /// `created_at` is valid, so a test can corrupt one column and prove the
@@ -36,6 +38,16 @@ fn row_to_release_rejects_malformed_created_at() {
         row_to_release,
     );
     assert!(result.is_err());
+}
+
+/// The release file `id`, as [`ReleaseFileById`] reads it.
+fn read_file(conn: &Connection, id: &str) -> rusqlite::Result<DbFile> {
+    let row = conn.query_row(
+        ReleaseFileById::SQL,
+        rusqlite::named_params! { ":file": id },
+        ReleaseFileByIdParams::read,
+    )?;
+    Ok(row.record.into_file().expect("the stored file decodes"))
 }
 
 /// Insert one `release_files` row of the seeded release with the given
@@ -99,17 +111,7 @@ fn only_audio_has_a_layout_and_audio_left_out_of_the_tracklist_has_none() {
         assert!(error.to_string().contains("CHECK constraint failed"), "{id}: {error}");
     }
 
-    let left_out = conn
-        .query_row(
-            concat!(
-                "SELECT ",
-                release_file_columns!(),
-                " FROM release_files AS f WHERE f.id = 'left-out'"
-            ),
-            [],
-            row_to_file,
-        )
-        .unwrap();
+    let left_out = read_file(&conn, "left-out").unwrap();
     let audio = left_out.source_audio.expect("the facts of carried audio read back");
     assert_eq!(audio.layout, None);
 }
@@ -152,17 +154,7 @@ fn only_a_document_has_a_kind_and_every_document_has_one() {
         assert!(error.to_string().contains("CHECK constraint failed"), "{id}: {error}");
     }
 
-    let log = conn
-        .query_row(
-            concat!(
-                "SELECT ",
-                release_file_columns!(),
-                " FROM release_files AS f WHERE f.id = 'rip.log'"
-            ),
-            [],
-            row_to_file,
-        )
-        .unwrap();
+    let log = read_file(&conn, "rip.log").unwrap();
     assert_eq!(log.role, crate::ReleaseFileRole::Document(crate::DocumentKind::RipLog));
 }
 
@@ -198,19 +190,9 @@ fn a_stored_name_that_names_no_file_is_refused() {
 fn a_negative_file_size_is_an_unreadable_column() {
     let conn = seeded_conn();
     insert_file(&conn, "sized", None, None).unwrap();
-    let error = conn
-        .query_row(
-            "SELECT f.*, -5 AS file_size, 0 AS stored FROM release_files AS f WHERE f.id = 'sized'",
-            [],
-            row_to_file,
-        )
-        .unwrap_err();
-    match error {
-        rusqlite::Error::FromSqlConversionFailure(_, _, cause) => {
-            assert!(cause.to_string().starts_with("file_size -5"), "{cause}");
-        }
-        other => panic!("not a column-conversion error: {other}"),
-    }
+    conn.execute("UPDATE coven_files SET size = -5", []).unwrap();
+    let error = read_file(&conn, "sized").unwrap_err();
+    assert!(matches!(error, rusqlite::Error::IntegralValueOutOfRange(_, -5)), "{error:?}");
 }
 
 /// A track of the seeded release with one audio format and one main segment

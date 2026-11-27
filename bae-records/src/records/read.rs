@@ -437,53 +437,29 @@ pub(super) fn source_audio_layout_of(
     }
 }
 
-/// The columns of one release file, under the names `release_file_columns!()`
-/// gives them, read from a row or from a JSON object.
+/// The columns of one release file, under the names
+/// [`ReleaseFileRecord`](super::file_fragments::ReleaseFileRecord) gives them,
+/// as that row or a JSON object holds them.
 #[derive(serde::Deserialize)]
 pub(super) struct FileColumns {
-    id: String,
-    release_id: String,
-    original_filename: String,
-    content_type: String,
-    created_at: String,
-    file: coven::FileId,
-    role: String,
-    document_kind: Option<String>,
-    source_audio_layout: Option<String>,
-    source_audio_content_type: Option<String>,
-    source_audio_container: Option<String>,
-    source_audio_duration_ms: Option<u64>,
-    source_audio_sample_rate_hz: Option<i64>,
-    source_audio_bits_per_sample: Option<i64>,
-    source_audio_bitrate_kbps: Option<i64>,
-    source_audio_channels: Option<i64>,
-    file_size: u64,
-    stored: i64,
-}
-
-impl FileColumns {
-    fn of_row(row: &Row) -> rusqlite::Result<Self> {
-        Ok(Self {
-            id: row.get("id")?,
-            release_id: row.get("release_id")?,
-            original_filename: row.get("original_filename")?,
-            content_type: row.get("content_type")?,
-            created_at: row.get("created_at")?,
-            file: row.get("file")?,
-            role: row.get("role")?,
-            document_kind: row.get("document_kind")?,
-            source_audio_layout: row.get("source_audio_layout")?,
-            source_audio_content_type: row.get("source_audio_content_type")?,
-            source_audio_container: row.get("source_audio_container")?,
-            source_audio_duration_ms: row.get("source_audio_duration_ms")?,
-            source_audio_sample_rate_hz: row.get("source_audio_sample_rate_hz")?,
-            source_audio_bits_per_sample: row.get("source_audio_bits_per_sample")?,
-            source_audio_bitrate_kbps: row.get("source_audio_bitrate_kbps")?,
-            source_audio_channels: row.get("source_audio_channels")?,
-            file_size: bae_store::read::count_column(row, "file_size")?,
-            stored: row.get("stored")?,
-        })
-    }
+    pub(super) id: String,
+    pub(super) release_id: String,
+    pub(super) original_filename: String,
+    pub(super) content_type: String,
+    pub(super) created_at: String,
+    pub(super) file: coven::FileId,
+    pub(super) role: String,
+    pub(super) document_kind: Option<String>,
+    pub(super) source_audio_layout: Option<String>,
+    pub(super) source_audio_content_type: Option<String>,
+    pub(super) source_audio_container: Option<String>,
+    pub(super) source_audio_duration_ms: Option<u64>,
+    pub(super) source_audio_sample_rate_hz: Option<i64>,
+    pub(super) source_audio_bits_per_sample: Option<i64>,
+    pub(super) source_audio_bitrate_kbps: Option<i64>,
+    pub(super) source_audio_channels: Option<i64>,
+    pub(super) file_size: u64,
+    pub(super) stored: i64,
 }
 
 /// Build the release file that `columns` describe. When a column holds a
@@ -566,11 +542,6 @@ pub(super) fn file_of(columns: FileColumns) -> Result<DbFile, (&'static str, Str
         stored: columns.stored != 0,
         created_at,
     })
-}
-
-pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
-    file_of(FileColumns::of_row(row)?)
-        .map_err(|(column, reason)| column_conversion_error(row, column, reason))
 }
 
 pub fn row_to_artist(row: &Row) -> rusqlite::Result<DbArtist> {

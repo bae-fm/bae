@@ -4,7 +4,7 @@
 //! task and its progress live here, since neither outlives the process.
 
 pub mod download_list;
-mod rows;
+pub mod rows;
 pub mod tables;
 mod writes;
 

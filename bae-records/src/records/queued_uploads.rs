@@ -2,7 +2,6 @@
 //! coven's `coven_uploads` beside them.
 
 use super::*;
-use crate::release_storage::ReleaseStorageRows;
 use crate::UploadProgress;
 use bae_store::statement_row;
 
@@ -152,26 +151,6 @@ impl crate::release_storage::ReleaseStorage {
         let missing = if sending > 0 { None } else { self.missing_original_file.clone() };
         Ok(Some(DbReleaseUpload { waiting, sending, stored, missing }))
     }
-}
-
-/// What of the release `release_id` waits in this device's upload queue;
-/// `None` when none of its files waits.
-pub fn release_upload_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
-) -> Result<Option<DbReleaseUpload>, DbError> {
-    Ok(sql
-        .query_row(
-            &format!(
-                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM ({storage}) AS storage \
-                 WHERE storage.release_id = ?1 AND storage.queued_count > 0",
-                storage = ReleaseStorageRows::SQL,
-            ),
-            [release_id],
-            release_upload_in_row,
-        )
-        .optional()?
-        .flatten())
 }
 
 // What this process is sending now, as one row: each file in flight, a

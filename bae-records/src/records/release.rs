@@ -419,21 +419,7 @@ impl Records {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    concat!(
-                        "SELECT ",
-                        release_file_columns!(),
-                        " FROM release_files AS f WHERE f.id = ?"
-                    ),
-                    params![file_id],
-                    row_to_file,
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        self.store.read(move |sql| super::release_with_files::release_file_on(&sql, &file_id)).await
     }
 
     /// Delete a release in one write. Its album's next release in album order
