@@ -6415,7 +6415,7 @@ and a heading's size grows with the window. Corners and gaps take the radius
 and spacing tokens of their role. The page's own layout, its widths and
 section paddings, stays in the page. The top bar of the home page and the docs, and the home page's
 footer, draw the logo as the design system's Logo component does in a line:
-the sheep, then the word "bae" at 0.8 of the sheep's width, in the text
+the sheep, then the word "bae" at 1.14 of the sheep's width, in the text
 color. The home page's hero draws the sheep over the word, floating in
 its glow, as Welcome does. Every sheep on the site is the design system's
 drawing, and the favicons are its small sheep, drawn for 16 and 32 pixels.
@@ -6431,7 +6431,8 @@ step (reading tags, matching a barcode or catalog number, comparing track
 lengths), the album and its releases appear, and bae picks the release the
 folder holds. The home page's pre-1.0 banner is the site's own
 piece, drawn in the design system's warning color: a striped top edge, a
-"!" mark, a glowing dot before "Pre-1.0", and the heading and text.
+"!" mark, and the heading and text. One switch in the site's code shows or
+hides the banner.
 
 ---
 
