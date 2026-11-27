@@ -306,10 +306,7 @@ impl Records {
         let ids = self.ids.clone();
         self.store
             .write(move |sql| {
-                let held = sql
-                    .query(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)?
-                    .pop();
-                let Some(release) = held else {
+                let Some(release) = find_release_by_id_on(&sql, &release_id)? else {
                     return Ok::<_, DbError>(false);
                 };
                 let held = release.pressing.facts;
