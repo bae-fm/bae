@@ -11,14 +11,17 @@ import Testing
 private final class QueuedReads: PulledSubscription, @unchecked Sendable {
     private struct ReadFailed: Error {}
 
-    private let lock = NSLock()
-    private var queued: [Result<Int, any Error>] = []
-    private var waiter: CheckedContinuation<Int, any Error>?
-    private var pullCount = 0
-    private var cancelCount = 0
+    private struct State {
+        var queued: [Result<Int, any Error>] = []
+        var waiter: CheckedContinuation<Int, any Error>?
+        var pulls = 0
+        var cancels = 0
+    }
 
-    var pulls: Int { lock.withLock { pullCount } }
-    var cancels: Int { lock.withLock { cancelCount } }
+    private let state = Recorded(State())
+
+    var pulls: Int { state.value.pulls }
+    var cancels: Int { state.value.cancels }
 
     func answer(_ value: Int) {
         queue(.success(value))
@@ -36,33 +39,33 @@ private final class QueuedReads: PulledSubscription, @unchecked Sendable {
 
     func next() async throws -> Int {
         try await withCheckedThrowingContinuation { continuation in
-            let ready: Result<Int, any Error>? = lock.recording {
-                pullCount += 1
-                if queued.isEmpty {
-                    waiter = continuation
+            let ready: Result<Int, any Error>? = state.change {
+                $0.pulls += 1
+                if $0.queued.isEmpty {
+                    $0.waiter = continuation
                     return nil
                 }
-                return queued.removeFirst()
+                return $0.queued.removeFirst()
             }
             if let ready { continuation.resume(with: ready) }
         }
     }
 
     func cancel() async throws {
-        let waiter = lock.recording {
-            cancelCount += 1
-            let waiter = self.waiter
-            self.waiter = nil
+        let waiter = state.change {
+            $0.cancels += 1
+            let waiter = $0.waiter
+            $0.waiter = nil
             return waiter
         }
         waiter?.resume(throwing: BridgeError.Cancelled)
     }
 
     private func queue(_ read: Result<Int, any Error>) {
-        let waiter = lock.withLock {
-            let waiter = self.waiter
-            self.waiter = nil
-            if waiter == nil { queued.append(read) }
+        let waiter = state.change {
+            let waiter = $0.waiter
+            $0.waiter = nil
+            if waiter == nil { $0.queued.append(read) }
             return waiter
         }
         waiter?.resume(with: read)
@@ -124,8 +127,7 @@ struct ScreenSubscriptionTests {
         let source = QueuedReads()
         let handed = Handed()
         var held: HeldByTheReader? = HeldByTheReader()
-        weak var reader = held
-        Wait.announceRelease(of: try #require(held))
+        let readerReleased = Wait.release(of: try #require(held))
         let subscription = ScreenSubscription(
             source,
             onValue: { [held] in
@@ -141,7 +143,7 @@ struct ScreenSubscriptionTests {
 
         // The reader lets its handlers go once it ends. A reader that pulled
         // on would hold them, parked on a pull past the queued answers.
-        try await Wait.until { reader == nil }
+        try await Wait.until { readerReleased.value }
 
         #expect(handed.values == [1])
         #expect(handed.errors == 0)

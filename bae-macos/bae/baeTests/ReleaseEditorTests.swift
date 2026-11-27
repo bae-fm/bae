@@ -401,7 +401,8 @@ extension ReleaseEditorTests {
     private actor CoreSession {
         private(set) var titles: [String] = []
         let session: PreviewReleaseEditSession
-        private(set) var firstChangeArrived = false
+        private let arrived = Recorded(false)
+        nonisolated var firstChangeArrived: Bool { arrived.value }
         private var heldFirstChange: CheckedContinuation<Void, Never>?
 
         init(release: PreviewReleaseEdit) {
@@ -414,8 +415,7 @@ extension ReleaseEditorTests {
             // The first change is held until the test lets it go, so a later
             // one would land first if the editor didn't wait for it.
             if !firstChangeArrived {
-                firstChangeArrived = true
-                Wait.happened()
+                arrived.change { $0 = true }
                 await withCheckedContinuation { heldFirstChange = $0 }
             }
             titles.append(title)
@@ -470,7 +470,7 @@ extension ReleaseEditorTests {
         let writer = session.fieldWriter
         let first = Task { @MainActor in await writer.setField(.albumTitle, "")
         }
-        try await Wait.until { await core.firstChangeArrived }
+        try await Wait.until { core.firstChangeArrived }
         let second = Task { @MainActor in
             await writer.setField(.albumTitle, "Album Title")
         }

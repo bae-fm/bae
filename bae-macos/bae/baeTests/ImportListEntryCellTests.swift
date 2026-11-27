@@ -13,7 +13,6 @@ struct ImportListEntryCellTests {
         let fetches = Counter()
         let images = ImageStore(fetchLibraryImageBytes: { _, _ in
             fetches.increment()
-            Wait.happened()
             try await Task.sleep(for: .seconds(600))
             return nil
         })

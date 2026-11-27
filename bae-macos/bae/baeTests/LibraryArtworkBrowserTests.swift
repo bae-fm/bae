@@ -18,27 +18,23 @@ struct LibraryArtworkBrowserTests {
     func gridSavesThePick() async throws {
         let art = remote("Booklet", source: .discogs)
         let delivered = DeliveredFocuses()
-        var lookups = 0
+        let lookups = Counter()
         var saved: BridgeCoverSelection?
-        var dismissed = false
+        let dismissed = Recorded(false)
         try await withLibraryBrowser(
             gallery: gallery(remote: [art]),
             delivered: delivered,
             calls: SheetCalls(
-                lookup: {
-                    lookups += 1
-                    Wait.happened()
-                },
+                lookup: { lookups.increment() },
                 onSelect: { saved = $0 },
-                onDone: {
-                    dismissed = true
-                    Wait.happened()
-                }
+                onDone: { dismissed.change { $0 = true } }
             ),
             body: { window, host, lightbox in
                 // Space needs the preview, which shows once the first read
                 // arrives; the lookup can end before that read.
-                try await Wait.until { lookups > 0 && delivered.count > 0 }
+                try await Wait.until {
+                    lookups.count > 0 && delivered.count > 0
+                }
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.space, in: host)
                 try await Wait.until { lightbox.ended() }
@@ -50,7 +46,7 @@ struct LibraryArtworkBrowserTests {
                 try HostedInput.keyDown(.escape, in: panel)
                 try await LayerPanels.closed(modals)
                 try await SnapshotTestSupport.settle(host)
-                #expect(!dismissed)
+                #expect(!dismissed.value)
                 try HostedInput.keyDown(.rightArrow, in: window)
                 // The arrow asks core to focus the next cover; Return waits
                 // for the read that answers.
@@ -61,9 +57,9 @@ struct LibraryArtworkBrowserTests {
                 }
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.return, in: host)
-                try await Wait.until { dismissed }
+                try await Wait.until { dismissed.value }
                 #expect(saved == art.coverChoice.selection)
-                #expect(lookups == 1, "looked up \(lookups) times")
+                #expect(lookups.count == 1, "looked up \(lookups.count) times")
             }
         )
     }
@@ -75,10 +71,10 @@ struct LibraryArtworkBrowserTests {
                 fileURLWithPath: PreviewData.previewArtPath("Cover")
             )
         )
-        let reads = CoverReads()
+        let reads = CallLog<String>()
         let images = ImageStore(fetchReleaseImageBytes: { _, source, _ in
             if case .cover(let image) = source {
-                await reads.record(image.version)
+                reads.record(image.version)
             }
             return bytes
         })
@@ -102,9 +98,9 @@ struct LibraryArtworkBrowserTests {
             try view("v1"),
             size: size
         ) { _, host in
-            try await Wait.until { await reads.versions == ["v1"] }
+            try await Wait.until { reads.all == ["v1"] }
             host.rootView = try view("v2")
-            try await Wait.until { await reads.versions == ["v1", "v2"] }
+            try await Wait.until { reads.all == ["v1", "v2"] }
         }
     }
 }
@@ -160,14 +156,6 @@ extension LibraryArtworkBrowserTests {
         var lookup: () async throws -> Void
         var onSelect: (BridgeCoverSelection) async throws -> Void
         var onDone: () -> Void
-    }
-
-    private actor CoverReads {
-        var versions: [String] = []
-        func record(_ version: String) {
-            versions.append(version)
-            Wait.happened()
-        }
     }
 
     private func remote(_ name: String, source: BridgeCatalog)

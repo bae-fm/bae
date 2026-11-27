@@ -123,16 +123,15 @@ final class FakeInvites: InvitesSubscription, @unchecked Sendable {
         super.init(unsafeFromHandle: handle)
     }
 
-    private let cancelLock = NSLock()
-    private var cancelCount = 0
-    var cancels: Int { cancelLock.withLock { cancelCount } }
+    private let cancelCount = Counter()
+    var cancels: Int { cancelCount.count }
 
     override func next() async throws -> [BridgeInviteEntry] {
         try await values.next()
     }
 
     override func cancel() async throws {
-        cancelLock.recording { cancelCount += 1 }
+        cancelCount.increment()
         values.cancel()
     }
 }

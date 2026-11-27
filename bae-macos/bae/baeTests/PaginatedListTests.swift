@@ -13,29 +13,28 @@ private final class ProbeList: @unchecked Sendable {
     final class View: @unchecked Sendable {
         private let feed = Feed<ListViewDelivery<BridgeAlbum>>()
         fileprivate(set) var stopped = false
-        private let lock = NSLock()
-        private var shownRows: ClosedRange<Int>
-        private var reports: [ClosedRange<Int>] = []
+        /// The ranges of rows on screen the list reported, in order.
+        private let reports: CallLog<ClosedRange<Int>>
         /// The id of the window's first row; nil at the list's top.
         fileprivate var from: String?
         fileprivate var limit = 0
 
         init(_ shown: ClosedRange<Int>) {
-            shownRows = shown
-            reports = [shown]
+            reports = CallLog()
+            reports.record(shown)
         }
 
         /// Every range of rows on screen the list reported, the one it
         /// opened the view with first.
-        var reported: [ClosedRange<Int>] { lock.withLock { reports } }
+        var reported: [ClosedRange<Int>] { reports.all }
 
-        var shown: ClosedRange<Int> { lock.withLock { shownRows } }
+        var shown: ClosedRange<Int> {
+            let reported = reports.all
+            return reported[reported.count - 1]
+        }
 
         fileprivate func show(_ rows: ClosedRange<Int>) {
-            lock.withLock {
-                shownRows = rows
-                reports.append(rows)
-            }
+            reports.record(rows)
         }
 
         fileprivate func emit(_ value: ListViewDelivery<BridgeAlbum>) {
@@ -43,7 +42,6 @@ private final class ProbeList: @unchecked Sendable {
         }
 
         fileprivate func pull() async throws -> ListViewDelivery<BridgeAlbum> {
-            Wait.happened()
             return try await feed.next()
         }
 
@@ -166,19 +164,6 @@ private final class ProbeList: @unchecked Sendable {
     }
 }
 
-/// The failures a list sent to its `onError`.
-private final class Failures: @unchecked Sendable {
-    private let lock = NSLock()
-    private var errors: [any Error] = []
-
-    func record(_ error: any Error) {
-        lock.withLock { errors.append(error) }
-        Wait.happened()
-    }
-
-    var count: Int { lock.withLock { errors.count } }
-}
-
 private func ids(_ range: ClosedRange<Int>) -> [String] {
     range.map { String(format: "a%04d", $0) }
 }
@@ -297,7 +282,7 @@ struct PaginatedListTests {
     )
     func reopenedReadFailureKeepsRows() async throws {
         let probe = ProbeList(ids(0...9))
-        let failures = Failures()
+        let failures = FailureRecorder()
         let list = PaginatedList(
             queries: probe.queries,
             onError: { failures.record($0) }
@@ -310,7 +295,7 @@ struct PaginatedListTests {
         probe.failViews(
             BridgeError.Diagnostic(category: .database, detail: "locked")
         )
-        try await Wait.until { failures.count > 0 }
+        try await Wait.until { !failures.reportedFailures().isEmpty }
         #expect(list.initialLoadError == nil)
         #expect(list.row(at: 0) != nil)
         list.cancel()

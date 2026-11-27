@@ -13,7 +13,8 @@ struct QueueRowRemovalTests {
     @MainActor
     @Test("a removed row is sent to core when its collapse finishes")
     func removeIsSentWhenTheCollapseFinishes() async throws {
-        let removals = RemovalRecorder()
+        // The entries the hosted section asked core to remove.
+        let removals = CallLog<String>()
         let items = Array(PreviewData.queueEntries.prefix(3))
         try await SnapshotTestSupport.withHostedWindow(
             QueueSection(
@@ -67,9 +68,9 @@ struct QueueRowRemovalTests {
             )
             #expect(element.accessibilityPerformPress())
 
-            try await Wait.until { !removals.ids.isEmpty }
-            #expect(removals.ids.count == 1)
-            #expect(items.map(\.id).contains(removals.ids[0]))
+            try await Wait.until { !removals.all.isEmpty }
+            #expect(removals.all.count == 1)
+            #expect(items.map(\.id).contains(removals.all[0]))
         }
     }
 
@@ -115,16 +116,5 @@ struct QueueRowRemovalTests {
                 .first { $0.accessibilityLabel() == title }
         }
         return nil
-    }
-
-    /// The entries the hosted section asked core to remove.
-    @MainActor
-    private final class RemovalRecorder {
-        private(set) var ids: [String] = []
-
-        func record(_ id: String) {
-            ids.append(id)
-            Wait.happened()
-        }
     }
 }

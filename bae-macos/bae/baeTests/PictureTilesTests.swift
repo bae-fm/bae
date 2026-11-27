@@ -1,6 +1,7 @@
 import BaeKit
 import CoreGraphics
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -101,14 +102,14 @@ struct PictureTilesTests {
     func leavingTilesStopTheirReads() async throws {
         let reads = TileReads()
         let images = ImageStore(fetchPictureTile: { _, level, x, y in
-            await reads.started(
+            reads.started(
                 PictureTileKey(level: Int(level), x: Int(x), y: Int(y))
             )
             do {
                 try await Task.neverAnswers()
             }
             catch {
-                await reads.stopped(
+                reads.stopped(
                     PictureTileKey(level: Int(level), x: Int(x), y: Int(y))
                 )
                 throw error
@@ -130,13 +131,13 @@ struct PictureTilesTests {
         let left = PictureTileKey(level: 0, x: 1, y: 0)
         source.request(kept)
         source.request(left)
-        try await Wait.until { await reads.started.count == 2 }
+        try await Wait.until { reads.started.count == 2 }
 
         source.keepOnly([kept])
-        try await Wait.until { await reads.stopped == [left] }
+        try await Wait.until { reads.stopped == [left] }
 
         source.close()
-        try await Wait.until { await reads.stopped == [left, kept] }
+        try await Wait.until { reads.stopped == [left, kept] }
     }
 
     @Test("An arrived tile is drawn from memory and not asked for again")
@@ -145,7 +146,7 @@ struct PictureTilesTests {
         let png = try makePngBytes(width: 512, height: 512)
         let reads = TileReads()
         let images = ImageStore(fetchPictureTile: { _, level, x, y in
-            await reads.started(
+            reads.started(
                 PictureTileKey(level: Int(level), x: Int(x), y: Int(y))
             )
             return png
@@ -170,36 +171,29 @@ struct PictureTilesTests {
 
         source.request(key)
         source.keepOnly([key])
-        #expect(await reads.started == [key])
+        #expect(reads.started == [key])
     }
 }
 
-actor TileReads {
-    private(set) var asked = 0
-    private(set) var started: [PictureTileKey] = []
-    private(set) var stopped: [PictureTileKey] = []
+final class TileReads: Sendable {
+    private let asks = Counter()
+    private let startedLog = CallLog<PictureTileKey>()
+    private let stoppedLog = CallLog<PictureTileKey>()
+
+    var asked: Int { asks.count }
+    var started: [PictureTileKey] { startedLog.all }
+    var stopped: [PictureTileKey] { stoppedLog.all }
 
     /// The number of this ask of the levels, counted from 1.
-    func ask() -> Int {
-        asked += 1
-        Wait.happened()
-        return asked
-    }
+    func ask() -> Int { asks.increment() }
 
-    func started(_ key: PictureTileKey) {
-        started.append(key)
-        Wait.happened()
-    }
+    func started(_ key: PictureTileKey) { startedLog.record(key) }
 
-    func stopped(_ key: PictureTileKey) {
-        stopped.append(key)
-        Wait.happened()
-    }
+    func stopped(_ key: PictureTileKey) { stoppedLog.record(key) }
 }
 
 @MainActor
+@Observable
 private final class ArrivedTiles {
-    var keys: [PictureTileKey] = [] {
-        didSet { Wait.happened() }
-    }
+    var keys: [PictureTileKey] = []
 }

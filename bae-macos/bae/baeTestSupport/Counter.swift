@@ -1,16 +1,23 @@
-import Foundation
+import BaeKit
 
-/// A count that a test's closures raise from any thread and the test reads.
-final class Counter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var raised = 0
+/// A count that a test's closures raise from any thread and the test reads
+/// and waits for.
+final class Counter: Sendable {
+    private let raised = Recorded(0)
 
-    var count: Int { lock.withLock { raised } }
+    var count: Int { raised.value }
 
-    func increment() { lock.withLock { raised += 1 } }
+    /// Raise the count by one and return what it became.
+    @discardableResult
+    func increment() -> Int {
+        raised.change {
+            $0 += 1
+            return $0
+        }
+    }
 
-    func decrement() { lock.withLock { raised -= 1 } }
+    func decrement() { raised.change { $0 -= 1 } }
 
     /// Raise the count to `value` if it is below it.
-    func raise(to value: Int) { lock.withLock { raised = max(raised, value) } }
+    func raise(to value: Int) { raised.change { $0 = max($0, value) } }
 }

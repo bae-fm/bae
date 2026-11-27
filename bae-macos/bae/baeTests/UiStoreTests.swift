@@ -98,17 +98,17 @@ struct UiStoreLibraryBrowserModeTests {
     @MainActor
     func navigateToAlbumSendsReveal() async throws {
         let store = UiStore()
-        var received: [AlbumReveal] = []
+        let received = CallLog<AlbumReveal>()
         let listening = store.albumReveals.requests.sink {
-            received.append($0)
-            Wait.happened()
+            received.record($0)
         }
         defer { listening.cancel() }
 
         store.navigateToAlbum("album-1", trackId: "track-7")
 
         try await Wait.until {
-            received == [AlbumReveal(albumId: "album-1", trackId: "track-7")]
+            received.all
+                == [AlbumReveal(albumId: "album-1", trackId: "track-7")]
         }
     }
 
@@ -178,13 +178,13 @@ struct LibraryNavigationTests {
 
 /// What one listener to held requests has received so far.
 final class RequestListener<Request> {
-    private(set) var received: [Request] = []
+    private let log = CallLog<Request>()
+    var received: [Request] { log.all }
     private var subscription: AnyCancellable?
 
     init(_ requests: HeldRequests<Request>) {
         subscription = requests.requests.sink { [unowned self] in
-            received.append($0)
-            Wait.happened()
+            log.record($0)
         }
     }
 

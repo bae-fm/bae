@@ -32,7 +32,6 @@ extension SnapshotTestSupport {
                 openWindow(hosting: view, size: size)
             }
             released = window
-            Wait.announceRelease(of: window)
             result = try await body(window, host)
             // A click on a view with a double-tap gesture leaves a timer
             // that settles the gesture once a second click can no longer

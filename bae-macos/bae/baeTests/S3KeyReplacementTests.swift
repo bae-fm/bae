@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -190,12 +191,12 @@ private final class RecordedCancellation: BridgeCancellation,
 
     override func cancel() {
         cancelled = true
-        Wait.happened()
     }
 }
 
 /// A key call that waits until the test ends it with an outcome.
 @MainActor
+@Observable
 private final class HeldKeyCall {
     private(set) var received: [String] = []
     private(set) var cancellation: RecordedCancellation?
@@ -214,12 +215,8 @@ private final class HeldKeyCall {
     ) async -> BridgeAccessKeyOutcome {
         received.append(accessKey)
         self.cancellation = cancellation as? RecordedCancellation
-        let outcome = await withCheckedContinuation {
-            waiting = $0
-            Wait.happened()
-        }
+        let outcome = await withCheckedContinuation { waiting = $0 }
         ended = true
-        Wait.happened()
         return outcome
     }
 

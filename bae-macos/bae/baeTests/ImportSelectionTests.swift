@@ -7,16 +7,13 @@ import Testing
 @testable import bae
 
 /// Values a test's stand-in core records from any thread.
-final class CallLog<Value>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var values: [Value] = []
+final class CallLog<Value>: Sendable {
+    private let values = Recorded<[Value]>([])
 
-    var all: [Value] {
-        lock.withLock { values }
-    }
+    var all: [Value] { values.value }
 
     func record(_ value: Value) {
-        lock.recording { values.append(value) }
+        values.change { $0.append(value) }
     }
 }
 
@@ -157,16 +154,13 @@ struct ImportSelectionTests {
         let running = try #require(selection.running)
         #expect(running.action == .skip)
         let view = NSView()
-        var shown: [BridgeSelectionActionProgress?] = []
+        let shown = CallLog<BridgeSelectionActionProgress?>()
         let following = FrameFollowing<BridgeSelectionActionProgress>(
             view: view
-        ) {
-            shown.append($0)
-            Wait.happened()
-        }
+        ) { shown.record($0) }
         following.follow(running.progress)
         try await Wait.until {
-            shown.last
+            shown.all.last
                 == BridgeSelectionActionProgress(
                     completed: 1,
                     total: 3,

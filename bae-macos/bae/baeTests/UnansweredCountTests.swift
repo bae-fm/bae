@@ -32,20 +32,19 @@ struct UnansweredCountTests {
 
 /// Where and with what value a tracked read of the count was told it
 /// changed.
-private final class Tell: @unchecked Sendable {
+private final class Tell: Sendable {
     struct Told {
         let onMainThread: Bool
         let value: Int
     }
 
-    private let lock = NSLock()
-    private var recorded: Told?
+    private let recorded = Recorded<Told?>(nil)
 
-    var told: Told? { lock.withLock { recorded } }
+    var told: Told? { recorded.value }
 
     func record(onMainThread: Bool, value: Int) {
-        lock.recording {
-            recorded = Told(onMainThread: onMainThread, value: value)
+        recorded.change {
+            $0 = Told(onMainThread: onMainThread, value: value)
         }
     }
 }

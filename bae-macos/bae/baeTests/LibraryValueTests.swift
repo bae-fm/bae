@@ -319,7 +319,7 @@ struct ReleaseDetailTests {
 final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
     @unchecked Sendable
 {
-    private final class Read: @unchecked Sendable {
+    private struct Read {
         var pending: [Result<KeyedDetailDelivery<Value, Id>, any Error>] = []
         var waiter:
             CheckedContinuation<KeyedDetailDelivery<Value, Id>, any Error>?
@@ -327,15 +327,18 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
         var asks = 0
     }
 
-    private let lock = NSLock()
-    private var reads: [Read] = []
-    private var ids: [Id] = []
+    private struct State {
+        var reads: [Read] = []
+        var ids: [Id] = []
+    }
 
-    var opened: Int { lock.withLock { reads.count } }
-    var requested: [Id] { lock.withLock { ids } }
+    private let state = Recorded(State())
+
+    var opened: Int { state.value.reads.count }
+    var requested: [Id] { state.value.ids }
 
     func isCancelled(read index: Int) -> Bool {
-        lock.withLock { reads[index].cancelled }
+        state.value.reads[index].cancelled
     }
 
     /// How many times read `index` has been asked for a value. The reader
@@ -343,35 +346,37 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
     /// ask past a delivered value means that value has been handled, applied
     /// or not.
     func asks(read index: Int = 0) -> Int {
-        lock.withLock { reads[index].asks }
+        state.value.reads[index].asks
     }
 
     func query() -> KeyedDetailQuery<Value, Id> {
-        let read = Read()
-        lock.recording { reads.append(read) }
+        let index = state.change {
+            $0.reads.append(Read())
+            return $0.reads.count - 1
+        }
         return KeyedDetailQuery(
-            setId: { [self] id in lock.recording { ids.append(id) } },
+            setId: { [self] id in state.change { $0.ids.append(id) } },
             values: PulledValues(
                 read: { [self] in
                     try await withCheckedThrowingContinuation { continuation in
                         let ready:
                             Result<KeyedDetailDelivery<Value, Id>, any Error>? =
-                                lock.recording {
-                                    read.asks += 1
-                                    if read.pending.isEmpty {
-                                        read.waiter = continuation
+                                state.change {
+                                    $0.reads[index].asks += 1
+                                    if $0.reads[index].pending.isEmpty {
+                                        $0.reads[index].waiter = continuation
                                         return nil
                                     }
-                                    return read.pending.removeFirst()
+                                    return $0.reads[index].pending.removeFirst()
                                 }
                         if let ready { continuation.resume(with: ready) }
                     }
                 },
                 cancel: { [self] in
-                    let waiter = lock.recording {
-                        read.cancelled = true
-                        let waiter = read.waiter
-                        read.waiter = nil
+                    let waiter = state.change {
+                        $0.reads[index].cancelled = true
+                        let waiter = $0.reads[index].waiter
+                        $0.reads[index].waiter = nil
                         return waiter
                     }
                     waiter?.resume(throwing: BridgeError.Cancelled)
@@ -405,13 +410,12 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
     ) {
         let waiter:
             CheckedContinuation<KeyedDetailDelivery<Value, Id>, any Error>? =
-                lock.withLock {
-                    let read = reads[index]
-                    if let waiter = read.waiter {
-                        read.waiter = nil
+                state.change {
+                    if let waiter = $0.reads[index].waiter {
+                        $0.reads[index].waiter = nil
                         return waiter
                     }
-                    read.pending.append(result)
+                    $0.reads[index].pending.append(result)
                     return nil
                 }
         waiter?.resume(with: result)

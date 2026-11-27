@@ -12,14 +12,11 @@ struct QueueNowPlayingNavigationTests {
     /// these tests.
     @MainActor
     private func waitingReveal(in ui: UiStore) async throws -> AlbumReveal? {
-        var reveals: [AlbumReveal] = []
-        let listening = ui.albumReveals.requests.sink {
-            reveals.append($0)
-            Wait.happened()
-        }
+        let reveals = CallLog<AlbumReveal>()
+        let listening = ui.albumReveals.requests.sink { reveals.record($0) }
         defer { listening.cancel() }
-        try await Wait.until { !reveals.isEmpty }
-        return reveals.first
+        try await Wait.until { !reveals.all.isEmpty }
+        return reveals.all.first
     }
 
     @MainActor

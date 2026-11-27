@@ -13,7 +13,7 @@ struct HostingWindowControllerTests {
     func closingLetsTheWindowGo() async throws {
         let owner = WindowOwner()
         weak var released: HostingWindowController?
-        autoreleasepool {
+        let release = autoreleasepool {
             let controller = HostingWindowController(
                 content: Text(verbatim: "Window").modalWindows(ModalWindows()),
                 contentSize: CGSize(width: 200, height: 100),
@@ -23,7 +23,7 @@ struct HostingWindowControllerTests {
             )
             owner.controller = controller
             released = controller
-            Wait.announceRelease(of: controller)
+            return Wait.release(of: controller)
         }
         #expect(released != nil)
 
@@ -32,7 +32,8 @@ struct HostingWindowControllerTests {
         }
 
         #expect(owner.controller == nil)
-        try await Wait.until { released == nil }
+        try await Wait.until { release.value }
+        #expect(released == nil)
     }
 }
 

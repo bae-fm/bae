@@ -1,3 +1,4 @@
+import Observation
 import Testing
 
 @testable import bae
@@ -159,6 +160,7 @@ struct AlbumGridSelectionTests {
 /// pair of cards it is asked for and answers `answer`, or fails with none,
 /// once released when `held`.
 @MainActor
+@Observable
 private final class RangeReads {
     struct Ask: Equatable {
         let from: AlbumGridSelection.Anchor
@@ -183,12 +185,10 @@ private final class RangeReads {
         _ to: AlbumGridSelection.Anchor
     ) async throws -> [String] {
         asked.append(Ask(from: from, to: to))
-        Wait.happened()
         if held {
             await withCheckedContinuation { waiting = $0 }
         }
         answered = true
-        Wait.happened()
         guard let answer else { throw NoAnswer() }
         return answer
     }
@@ -201,8 +201,7 @@ private final class RangeReads {
 }
 
 @MainActor
+@Observable
 private final class FailureRecord {
-    var error: (any Error)? {
-        didSet { Wait.happened() }
-    }
+    var error: (any Error)?
 }

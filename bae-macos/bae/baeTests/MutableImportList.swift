@@ -20,8 +20,9 @@ final class MutableImportList: @unchecked Sendable {
     private var items: [BridgeImportListItem]
     private var views: [View] = []
     private var counts: [ImportFeed<BridgeListCount>] = []
-    private var deliveredIds: Set<String> = []
-    private var answered: (shown: ClosedRange<Int>, start: Int)?
+    private let deliveredIds = Recorded<Set<String>>([])
+    private let answered =
+        Recorded<(shown: ClosedRange<Int>, start: Int)?>(nil)
 
     init(items: [BridgeImportListItem]) {
         self.items = items
@@ -30,30 +31,28 @@ final class MutableImportList: @unchecked Sendable {
     /// Whether the list has sent the item `id` to any view; the answer stays
     /// true after the list closes that view.
     func hasDelivered(_ id: String) -> Bool {
-        lock.withLock { deliveredIds.contains(id) }
+        deliveredIds.value.contains(id)
     }
 
     private func delivery(of shown: ClosedRange<Int>)
         -> ListViewDelivery<BridgeImportListItem>
     {
-        let answer = lock.withLock {
-            let delivery = BridgeListQueries<BridgeImportListItem>
+        let delivery = lock.withLock {
+            BridgeListQueries<BridgeImportListItem>
                 .fixedDelivery(
                     first: shown.lowerBound,
                     last: shown.upperBound,
                     rows: items
                 )
-            deliveredIds.formUnion(delivery.rows.map(\.id))
-            return delivery
         }
-        Wait.happened()
-        return answer
+        deliveredIds.change { $0.formUnion(delivery.rows.map(\.id)) }
+        return delivery
     }
 
     /// The rows on screen a view last reported, and the first position of
     /// the window the list answered them with; nil before a view opens.
     func lastAnswer() -> (shown: ClosedRange<Int>, start: Int)? {
-        lock.withLock { answered }
+        answered.value
     }
 
     /// Answer the rows on screen `shown` that a view reported with the window
@@ -62,7 +61,7 @@ final class MutableImportList: @unchecked Sendable {
         -> ListViewDelivery<BridgeImportListItem>
     {
         let window = delivery(of: shown)
-        lock.withLock { answered = (shown, window.start) }
+        answered.change { $0 = (shown, window.start) }
         return window
     }
 

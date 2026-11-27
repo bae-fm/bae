@@ -83,7 +83,8 @@ struct AddDeviceSheetTests {
         holder.result = .success(Self.adding)
         let handle = PairingHandle()
         let store = MembershipStore(handle: handle)
-        let ended = EndedPairings()
+        // The pairings the sheet ended.
+        let ended = CallLog<String>()
         let sync = Sync(
             addDevice: AddDeviceCalls(end: { pairing in ended.record(pairing) })
         )
@@ -97,8 +98,8 @@ struct AddDeviceSheetTests {
             statuses.deliver(.waiting(request: nil))
             try await Wait.until { store.addDeviceStatus?.face == .code }
         }
-        try await Wait.until { !ended.pairings.isEmpty }
-        #expect(ended.pairings == [Self.adding.id])
+        try await Wait.until { !ended.all.isEmpty }
+        #expect(ended.all == [Self.adding.id])
         // What coven reports once it forgets the pairing reaches no view:
         // the read stopped before the end call.
         try #require(handle.statuses).deliver(.forgotten)
@@ -127,19 +128,6 @@ struct AddDeviceSheetTests {
     }
 }
 
-/// The pairings the sheet ended.
-private final class EndedPairings: @unchecked Sendable {
-    private let lock = NSLock()
-    private var ended: [String] = []
-
-    var pairings: [String] { lock.withLock { ended } }
-
-    func record(_ pairing: String) {
-        lock.withLock { ended.append(pairing) }
-        Wait.happened()
-    }
-}
-
 /// Owns the `result` the sheet binds to, so flipping it propagates through
 /// SwiftUI to the live `AddDeviceSheet` the same way the presenter's off-main
 /// write does.
@@ -162,8 +150,10 @@ private struct AddDeviceHarness: View {
 /// subscription it handed out, so a test delivers what the live read would,
 /// and says when the subscription ends.
 private final class PairingHandle: AppHandle, @unchecked Sendable {
-    private(set) var pairing: String?
-    private(set) var statuses: PairingStatuses?
+    private let followed =
+        Recorded<(pairing: String, statuses: PairingStatuses)?>(nil)
+    var pairing: String? { followed.value?.pairing }
+    var statuses: PairingStatuses? { followed.value?.statuses }
     var cancelled: Bool { statuses?.cancelled ?? false }
 
     init() {
@@ -177,10 +167,8 @@ private final class PairingHandle: AppHandle, @unchecked Sendable {
     override func followAddDevice(
         pairing: String
     ) throws -> AddDeviceStatusSubscription {
-        self.pairing = pairing
         let statuses = PairingStatuses()
-        self.statuses = statuses
-        Wait.happened()
+        followed.change { $0 = (pairing, statuses) }
         return statuses
     }
 }
@@ -193,9 +181,9 @@ private final class PairingStatuses: AddDeviceStatusSubscription,
     private let lock = NSLock()
     private var waiting: [BridgeAddDeviceStatus] = []
     private var puller: CheckedContinuation<BridgeAddDeviceStatus, any Error>?
-    private var wasCancelled = false
+    private let wasCancelled = Recorded(false)
 
-    var cancelled: Bool { lock.withLock { wasCancelled } }
+    var cancelled: Bool { wasCancelled.value }
 
     init() {
         super.init(noHandle: AddDeviceStatusSubscription.NoHandle())
@@ -231,12 +219,12 @@ private final class PairingStatuses: AddDeviceStatusSubscription,
     }
 
     override func cancel() async throws {
-        let puller = lock.recording {
-            wasCancelled = true
+        let puller = lock.withLock {
             let puller = self.puller
             self.puller = nil
             return puller
         }
+        wasCancelled.change { $0 = true }
         puller?.resume(throwing: BridgeError.Cancelled)
     }
 }

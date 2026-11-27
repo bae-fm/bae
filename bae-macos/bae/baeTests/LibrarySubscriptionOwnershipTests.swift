@@ -8,18 +8,17 @@ import Testing
 /// reports, and answers its view and the count with whatever rows a test
 /// emits.
 private final class AlbumListProbe: @unchecked Sendable {
-    private let lock = NSLock()
-    private var shown: ClosedRange<Int>?
+    private let shown = Recorded<ClosedRange<Int>?>(nil)
     private let views = Feed<ListViewDelivery<BridgeAlbumAppearance>>()
     private let counts = Feed<BridgeListCount>()
 
     var queries: BridgeListQueries<BridgeAlbumAppearance> {
         BridgeListQueries(
             view: { [self] first, last in
-                lock.recording { shown = Int(first)...Int(last) }
+                shown.change { $0 = Int(first)...Int(last) }
                 return ListViewQuery(
                     setVisible: { [self] first, last in
-                        lock.recording { shown = Int(first)...Int(last) }
+                        shown.change { $0 = Int(first)...Int(last) }
                     },
                     values: PulledValues(read: { [self] in
                         try await views.next()
@@ -35,7 +34,7 @@ private final class AlbumListProbe: @unchecked Sendable {
     /// Answer the view with `rows` from the top of the list, and the count
     /// with `total`.
     func emit(rows: [BridgeAlbum], total: UInt64) {
-        guard lock.withLock({ shown }) != nil else { return }
+        guard isSubscribed else { return }
         let appearances = rows.map {
             BridgeAlbumAppearance(
                 album: $0,
@@ -47,41 +46,37 @@ private final class AlbumListProbe: @unchecked Sendable {
         counts.emit(BridgeListCount(rows: total, items: total, extra: .none))
     }
 
-    var isSubscribed: Bool {
-        lock.withLock { shown != nil }
-    }
+    var isSubscribed: Bool { shown.value != nil }
 }
 
 /// Stands in for the live library search: records each query it is pointed
 /// at and each time it is opened, and answers with whatever a test emits.
 private final class SearchProbe: @unchecked Sendable {
     private let lock = NSLock()
-    private var recordedQueries: [String?] = []
-    private var opened = 0
-    private var askedCount = 0
+    private let recordedQueries = CallLog<String?>()
+    private let opens = Counter()
+    private let valuesAsked = Counter()
     private var pending: [Result<BridgeLibrarySearchSnapshot, BridgeError>] = []
     private var waiter:
         CheckedContinuation<BridgeLibrarySearchSnapshot, any Error>?
 
     func open() -> LibrarySearch {
-        lock.recording { opened += 1 }
+        opens.increment()
         return LibrarySearch(
             setQuery: { [self] query in
-                lock.recording { recordedQueries.append(query) }
+                recordedQueries.record(query)
             },
             values: PulledValues(read: { [self] in try await nextValue() })
         )
     }
 
-    var openCount: Int { lock.withLock { opened } }
-    var lastQuery: String? {
-        lock.withLock { recordedQueries.last.flatMap { $0 } }
-    }
-    var queries: [String?] { lock.withLock { recordedQueries } }
+    var openCount: Int { opens.count }
+    var lastQuery: String? { recordedQueries.all.last.flatMap { $0 } }
+    var queries: [String?] { recordedQueries.all }
     /// How many times the search has been asked for a value. The store takes
     /// one value at a time and applies it before asking again, so an ask past
     /// a delivered value means that value has been handled, applied or not.
-    var asks: Int { lock.withLock { askedCount } }
+    var asks: Int { valuesAsked.count }
 
     func emitValue(query: String?) {
         deliver(
@@ -129,8 +124,7 @@ private final class SearchProbe: @unchecked Sendable {
 
     private func nextValue() async throws -> BridgeLibrarySearchSnapshot {
         try await withCheckedThrowingContinuation { continuation in
-            let ready = lock.recording {
-                askedCount += 1
+            let ready = lock.withLock {
                 if pending.isEmpty {
                     waiter = continuation
                     return nil
@@ -138,6 +132,7 @@ private final class SearchProbe: @unchecked Sendable {
                 }
                 return pending.removeFirst()
             }
+            valuesAsked.increment()
             if let ready {
                 continuation.resume(with: ready.mapError { $0 as any Error })
             }
@@ -326,14 +321,13 @@ extension LibraryProjectionStoreDetailTests {
 
 /// Stands in for the playlists read: answers once with an empty listing a
 /// person can add to, then waits, and counts the times it was opened.
-private final class PlaylistListingFeed: @unchecked Sendable {
-    private let lock = NSLock()
-    private var opens = 0
+private final class PlaylistListingFeed: Sendable {
+    private let opens = Counter()
 
-    var opened: Int { lock.withLock { opens } }
+    var opened: Int { opens.count }
 
     func open() -> PulledValues<BridgePlaylistListing> {
-        lock.recording { opens += 1 }
+        opens.increment()
         let answered = AnsweredOnce()
         return PulledValues(read: {
             if answered.take() {
@@ -365,14 +359,13 @@ private final class AnsweredOnce: @unchecked Sendable {
 }
 
 /// The composers whose page rows a store opened, in order.
-private final class ComposerRowReads: @unchecked Sendable {
-    private let lock = NSLock()
-    private var recorded: [String] = []
+private final class ComposerRowReads: Sendable {
+    private let recorded = CallLog<String>()
 
-    var artistIds: [String] { lock.withLock { recorded } }
+    var artistIds: [String] { recorded.all }
 
     func opened(_ artistId: String) {
-        lock.recording { recorded.append(artistId) }
+        recorded.record(artistId)
     }
 }
 
@@ -522,22 +515,22 @@ struct LibraryBrowseSessionAlbumProjectionTests {
 /// pointed at, and answers with whatever a test emits.
 private final class AlbumSelectionProbe: @unchecked Sendable {
     private let lock = NSLock()
-    private var openedCount = 0
-    private var requests: [[String]] = []
+    private let opens = Counter()
+    private let requests = CallLog<[String]>()
     private var pending: [BridgeAlbumSelectionSnapshot] = []
     private var waiter:
         CheckedContinuation<BridgeAlbumSelectionSnapshot, any Error>?
-    private var wasCancelled = false
+    private let wasCancelled = Recorded(false)
 
-    var opened: Int { lock.withLock { openedCount } }
-    var requested: [[String]] { lock.withLock { requests } }
-    var cancelled: Bool { lock.withLock { wasCancelled } }
+    var opened: Int { opens.count }
+    var requested: [[String]] { requests.all }
+    var cancelled: Bool { wasCancelled.value }
 
     func query() -> AlbumSelectionQuery {
-        lock.recording { openedCount += 1 }
+        opens.increment()
         return AlbumSelectionQuery(
             setAlbums: { [self] ids in
-                lock.recording { requests.append(ids) }
+                requests.record(ids)
             },
             values: PulledValues(
                 read: { [self] in
@@ -554,7 +547,7 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
                     }
                 },
                 cancel: { [self] in
-                    lock.recording { wasCancelled = true }
+                    wasCancelled.change { $0 = true }
                 }
             )
         )

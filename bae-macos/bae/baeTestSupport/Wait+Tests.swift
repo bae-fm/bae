@@ -1,35 +1,9 @@
 import AppKit
+import BaeKit
 import Foundation
 import ObjectiveC
 
 /// What bae's tests wait for beyond what the shots harness's `Wait` does.
-extension Wait {
-    /// [`until`] for a condition that reads an actor, which observation
-    /// tracking cannot follow: it is read again after every `happened()`.
-    @MainActor
-    static func until(
-        notices: [Notice] = [],
-        file: StaticString = #filePath,
-        line: UInt = #line,
-        _ condition: @MainActor () async throws -> Bool
-    ) async throws {
-        let listening = Listening(notices)
-        defer { listening.stop() }
-        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
-        while true {
-            let wake = Wake()
-            let registration = Wake.register(wake)
-            defer { Wake.unregister(registration) }
-            if try await condition() { return }
-            try await wake.fired(
-                before: end,
-                file: file,
-                line: line
-            )
-        }
-    }
-}
-
 extension Wait.Notice {
     /// A change of `keyPath` on `object`, as key-value observing reports.
     init<Object: NSObject, Value>(
@@ -42,17 +16,6 @@ extension Wait.Notice {
             }
             return Wait.Listener { observation.invalidate() }
         }
-    }
-}
-
-extension NSLock {
-    /// [`withLock`](NSLock/withLock(_:)) for a recorder's change: once the
-    /// change is made and the lock let go, every wait reads its condition
-    /// again.
-    func recording<Result>(_ change: () throws -> Result) rethrows -> Result {
-        let result = try withLock(change)
-        Wait.happened()
-        return result
     }
 }
 
@@ -72,22 +35,29 @@ extension Wait.Notice {
 }
 
 extension Wait {
-    /// Tell every wait when `object` is gone: a wait for a weak reference to
-    /// read `nil` reads it again once the object has deallocated. The
+    /// Whether `object` is gone, which a wait for its release reads. The
     /// announcer lives on the object, so it deinitializes with it.
-    static func announceRelease(of object: AnyObject) {
+    static func release(of object: AnyObject) -> Recorded<Bool> {
+        let released = Recorded(false)
         objc_setAssociatedObject(
             object,
             &ReleaseAnnouncer.key,
-            ReleaseAnnouncer(),
+            ReleaseAnnouncer(released),
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
+        return released
     }
 
     private final class ReleaseAnnouncer {
         nonisolated(unsafe) static var key = 0
 
-        deinit { Wait.happened() }
+        private let released: Recorded<Bool>
+
+        init(_ released: Recorded<Bool>) {
+            self.released = released
+        }
+
+        deinit { released.change { $0 = true } }
     }
 }
 

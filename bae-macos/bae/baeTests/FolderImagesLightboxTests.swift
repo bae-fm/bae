@@ -138,7 +138,6 @@ private final class FakeFolder {
                 )
             )
         )
-        Wait.happened()
     }
 }
 

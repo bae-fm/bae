@@ -7,20 +7,21 @@ import Testing
 
 @Suite("Cover picker")
 struct CoverPickerTests {
-    private actor CoverRecorder {
-        var reads: [String] = []
-        var selected: BridgeCoverSelection?
+    private final class CoverRecorder: Sendable {
+        private let readLog = CallLog<String>()
+        private let selection = Recorded<BridgeCoverSelection?>(nil)
+
+        var reads: [String] { readLog.all }
+        var selected: BridgeCoverSelection? { selection.value }
 
         func read(_ releaseId: String, _ source: BridgeGallerySource) {
             if case .releaseFile(let fileId) = source {
-                reads.append("\(releaseId)/\(fileId)")
-                Wait.happened()
+                readLog.record("\(releaseId)/\(fileId)")
             }
         }
 
-        func select(_ selection: BridgeCoverSelection) {
-            selected = selection
-            Wait.happened()
+        func select(_ selected: BridgeCoverSelection) {
+            selection.change { $0 = selected }
         }
     }
 
@@ -35,7 +36,7 @@ struct CoverPickerTests {
             releaseId,
             source,
             _ in
-            await recorder.read(releaseId, source)
+            recorder.read(releaseId, source)
             return png
         })
         let size = NSSize(width: 960, height: 700)
@@ -44,7 +45,7 @@ struct CoverPickerTests {
                 owner: .release(releaseId: release.id),
                 lightboxLoad: LightboxImageLoad(),
                 refreshCovers: {},
-                onSelect: { await recorder.select($0) },
+                onSelect: { recorder.select($0) },
                 onDone: {}
             )
             .layerEnvironment { $0.environment(images) }
@@ -55,20 +56,15 @@ struct CoverPickerTests {
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
-            try await Wait.until { !(await recorder.reads).isEmpty }
+            try await Wait.until { !recorder.reads.isEmpty }
             try await SnapshotTestSupport.settle(host)
-            #expect(
-                await recorder.reads.contains("release-test/library-image-id")
-            )
+            #expect(recorder.reads.contains("release-test/library-image-id"))
             try await SnapshotTestSupport.settle(host)
-            #expect(
-                !(await recorder.reads).contains("release-test/bitmap-image-id")
-            )
+            #expect(!recorder.reads.contains("release-test/bitmap-image-id"))
             try HostedInput.keyEquivalent(.return, in: host)
-            try await Wait.until { await recorder.selected != nil }
+            try await Wait.until { recorder.selected != nil }
             #expect(
-                await recorder.selected
-                    == .releaseImage(fileId: "library-image-id")
+                recorder.selected == .releaseImage(fileId: "library-image-id")
             )
         }
     }

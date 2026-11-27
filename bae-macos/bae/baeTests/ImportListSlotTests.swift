@@ -59,16 +59,13 @@ extension ImportListHandle {
     }
 }
 
-private final class RecordedImportRequest: @unchecked Sendable {
-    private let lock = NSLock()
-    private var request: BridgeImportListRequest?
+private final class RecordedImportRequest: Sendable {
+    private let request = Recorded<BridgeImportListRequest?>(nil)
 
-    var last: BridgeImportListRequest? {
-        lock.withLock { request }
-    }
+    var last: BridgeImportListRequest? { request.value }
 
     func set(_ request: BridgeImportListRequest) {
-        lock.recording { self.request = request }
+        self.request.change { $0 = request }
     }
 }
 
@@ -76,18 +73,14 @@ private final class RecordedImportRequest: @unchecked Sendable {
 private final class AppliedViewResolver: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Void, Never>?
-    private var requested: [BridgeImportListView] = []
+    private let requested = CallLog<BridgeImportListView>()
 
-    var requests: [BridgeImportListView] {
-        lock.withLock { requested }
-    }
+    var requests: [BridgeImportListView] { requested.all }
 
     func wait(for view: BridgeImportListView) async {
         await withCheckedContinuation { continuation in
-            lock.recording {
-                requested.append(view)
-                self.continuation = continuation
-            }
+            lock.withLock { self.continuation = continuation }
+            requested.record(view)
         }
     }
 
@@ -445,15 +438,16 @@ struct ImportListSlotViewChangeTests {
                 )
             }
         )
-        var opened: [Int] = []
-        let listening = slot.openings.sink { opened.append($0) }
+        let opened = CallLog<Int>()
+        let listening = slot.openings.sink { opened.record($0) }
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(0) != nil }
-        #expect(opened == [0])
+        #expect(opened.all == [0])
 
         slot.setTab(.done)
         try await Wait.until {
-            slot.current?.request.view.tab == .done && opened == [0, 60]
+            slot.current?.request.view.tab == .done
+                && opened.all == [0, 60]
         }
 
         #expect(slot.place?.position == 60)
@@ -484,8 +478,8 @@ struct ImportListSlotViewChangeTests {
                 )
             }
         )
-        var opened: [Int] = []
-        let listening = slot.openings.sink { opened.append($0) }
+        let opened = CallLog<Int>()
+        let listening = slot.openings.sink { opened.record($0) }
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(0) != nil }
         let place = ImportListPlace(row: .atPosition, position: 30, offset: 4)
@@ -496,7 +490,7 @@ struct ImportListSlotViewChangeTests {
             slot.current?.request.view.order == .oldestFirst
         }
 
-        #expect(opened == [0])
+        #expect(opened.all == [0])
         #expect(slot.place == place)
         listening.cancel()
     }

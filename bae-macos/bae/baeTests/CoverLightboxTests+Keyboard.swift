@@ -72,7 +72,7 @@ extension CoverLightboxTests {
             size: size
         ) { window, host in
             try await Wait.until {
-                Set(await recorder.reads.map(\.url)).count >= 2
+                Set(recorder.reads.map(\.url)).count >= 2
             }
             try await SnapshotTestSupport.settle(host)
             try await body(window, host, front, lightbox)

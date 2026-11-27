@@ -59,7 +59,7 @@ struct CoverLightboxTests {
             // The covers load after the first layout; the click is aimed at
             // them, so it waits until both remote ones are read and laid out.
             try await Wait.until {
-                Set(await recorder.reads.map(\.url)).count >= 2
+                Set(recorder.reads.map(\.url)).count >= 2
             }
             try await SnapshotTestSupport.settle(host)
             try open(opening, window: window, host: host)
@@ -125,7 +125,7 @@ struct CoverLightboxTests {
         )
         let recorder = Reads()
         let images = ImageStore(fetchRemoteImage: { image, _ in
-            await recorder.read(Read(url: image.url))
+            recorder.read(Read(url: image.url))
             return bytes
         })
         var selected: CoverItem?
@@ -151,7 +151,7 @@ struct CoverLightboxTests {
             size: size
         ) { window, host in
             try await Wait.until {
-                Set(await recorder.reads.map(\.url)).count >= 2
+                Set(recorder.reads.map(\.url)).count >= 2
             }
             try await SnapshotTestSupport.settle(host)
             // Nothing clicked or opened first: the grid has the keys.
@@ -206,11 +206,11 @@ struct CoverLightboxTests {
         let recorder = Reads()
         let images = ImageStore(
             fetchRemoteImage: { image, _ in
-                await recorder.read(Read(url: image.url))
+                recorder.read(Read(url: image.url))
                 return bytes
             },
             fetchPictureTiles: { source in
-                await recorder.cut(source)
+                recorder.cut(source)
                 throw ImageStoreUnavailable()
             }
         )
@@ -235,8 +235,8 @@ struct CoverLightboxTests {
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, _ in
-            try await Wait.until { await recorder.reads.count >= 3 }
-            let reads = await recorder.reads
+            try await Wait.until { recorder.reads.count >= 3 }
+            let reads = recorder.reads
             let booklet = "https://images.example/Booklet-original.png"
             let back = "https://images.example/Back-original.png"
             // The stage decodes the current image to fit the screen, through
@@ -244,7 +244,7 @@ struct CoverLightboxTests {
             // slot names its pixel size and core picks the copy.
             #expect(reads.contains { $0.url == booklet })
             #expect(reads.contains { $0.url == back })
-            #expect(await recorder.cuts.isEmpty)
+            #expect(recorder.cuts.isEmpty)
         }
     }
 
@@ -252,16 +252,18 @@ struct CoverLightboxTests {
         let url: String
     }
 
-    actor Reads {
-        var reads: [Read] = []
-        var cuts: [BridgeCoverImageSource] = []
-        func read(_ read: Read) {
-            reads.append(read)
-            Wait.happened()
-        }
-        func cut(_ source: BridgeCoverImageSource) {
-            cuts.append(source)
-        }
+    /// What an image store asked for: each provider image read, and each
+    /// image it asked to be cut into tiles.
+    final class Reads: Sendable {
+        private let readLog = CallLog<Read>()
+        private let cutLog = CallLog<BridgeCoverImageSource>()
+
+        var reads: [Read] { readLog.all }
+        var cuts: [BridgeCoverImageSource] { cutLog.all }
+
+        func read(_ read: Read) { readLog.record(read) }
+
+        func cut(_ source: BridgeCoverImageSource) { cutLog.record(source) }
     }
 }
 
@@ -273,7 +275,7 @@ extension CoverLightboxTests {
     {
         ImageStore(
             fetchRemoteImage: { image, _ in
-                await recorder.read(Read(url: image.url))
+                recorder.read(Read(url: image.url))
                 return bytes
             },
             fetchPicture: { _, _, _ in bytes }

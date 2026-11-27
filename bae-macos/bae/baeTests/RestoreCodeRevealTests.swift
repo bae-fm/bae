@@ -17,15 +17,14 @@ struct RestoreCodeRevealTests {
         private let lock = NSLock()
         private var waiting: CheckedContinuation<Void, Never>?
         private var isOpen = false
-        private var _entered = false
+        private let reached = Recorded(false)
 
         /// Whether a generation is waiting at (or went through) the gate.
-        var entered: Bool { lock.withLock { _entered } }
+        var entered: Bool { reached.value }
 
         func pass() async {
             await withCheckedContinuation { continuation in
-                lock.recording {
-                    _entered = true
+                lock.withLock {
                     if isOpen {
                         continuation.resume()
                     }
@@ -33,6 +32,7 @@ struct RestoreCodeRevealTests {
                         waiting = continuation
                     }
                 }
+                reached.change { $0 = true }
             }
         }
 

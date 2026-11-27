@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -12,7 +13,7 @@ struct PictureTileFailureTests {
     func failedTilesAreShownOnce() async throws {
         let reads = TileReads()
         let images = ImageStore(fetchPictureTile: { _, level, x, y in
-            await reads.started(
+            reads.started(
                 PictureTileKey(level: Int(level), x: Int(x), y: Int(y))
             )
             throw ImageStoreUnavailable()
@@ -28,10 +29,7 @@ struct PictureTileFailureTests {
             images: images,
             levelsArrived: { _ in },
             tileArrived: { _ in },
-            failed: { _ in
-                shown.increment()
-                Wait.happened()
-            }
+            failed: { _ in shown.increment() }
         )
         source.request(PictureTileKey(level: 0, x: 0, y: 0))
         source.request(PictureTileKey(level: 0, x: 1, y: 0))
@@ -39,7 +37,7 @@ struct PictureTileFailureTests {
 
         let later = PictureTileKey(level: 0, x: 2, y: 0)
         source.request(later)
-        #expect(!(await reads.started.contains(later)))
+        #expect(!reads.started.contains(later))
         #expect(shown.count == 1)
     }
 
@@ -90,7 +88,7 @@ struct PictureTileFailureTests {
         let reads = TileReads()
         let release = FetchGate()
         let images = ImageStore(fetchPictureTile: { _, level, x, y in
-            await reads.started(
+            reads.started(
                 PictureTileKey(level: Int(level), x: Int(x), y: Int(y))
             )
             await release.pass()
@@ -110,7 +108,7 @@ struct PictureTileFailureTests {
         )
         let key = PictureTileKey(level: 0, x: 0, y: 0)
         source.request(key)
-        try await Wait.until { await reads.started == [key] }
+        try await Wait.until { reads.started == [key] }
 
         source.keepOnly([])
         await release.open()
@@ -118,7 +116,7 @@ struct PictureTileFailureTests {
         source.request(other)
         // The cancelled read failing left no failure standing, so a read
         // for another tile starts.
-        try await Wait.until { await reads.started.contains(other) }
+        try await Wait.until { reads.started.contains(other) }
     }
 
     @Test("A levels read that was cancelled and then fails is not shown")
@@ -129,7 +127,7 @@ struct PictureTileFailureTests {
         let secondMayAnswer = FetchGate()
         let arrived = Counter()
         let images = ImageStore(fetchPictureTiles: { _ in
-            let ask = await asks.ask()
+            let ask = asks.ask()
             if ask == 1 {
                 await release.pass()
                 throw ImageStoreUnavailable()
@@ -146,22 +144,16 @@ struct PictureTileFailureTests {
                 )
             ),
             images: images,
-            levelsArrived: { _ in
-                arrived.increment()
-                Wait.happened()
-            },
+            levelsArrived: { _ in arrived.increment() },
             tileArrived: { _ in },
-            failed: { _ in
-                shown.increment()
-                Wait.happened()
-            }
+            failed: { _ in shown.increment() }
         )
         source.readLevels()
-        try await Wait.until { await asks.asked == 1 }
+        try await Wait.until { asks.asked == 1 }
         let first = try #require(source.levelsRead)
         source.close()
         source.readLevels()
-        try await Wait.until { await asks.asked == 2 }
+        try await Wait.until { asks.asked == 2 }
         // The first read fails now, and is over once its task has ended.
         await release.open()
         await first.value
@@ -173,8 +165,7 @@ struct PictureTileFailureTests {
 }
 
 @MainActor
+@Observable
 private final class FailuresTold {
-    var told: [LightboxFailure] = [] {
-        didSet { Wait.happened() }
-    }
+    var told: [LightboxFailure] = []
 }

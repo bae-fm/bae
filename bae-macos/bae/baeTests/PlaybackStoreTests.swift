@@ -59,10 +59,9 @@ private func contextSnapshot(
 
 /// Records each upcoming list the queue opens and whether the store asked
 /// for it shuffled; a test shows rows in the newest list.
-private final class OpenedLists: @unchecked Sendable {
-    private let lock = NSLock()
-    private var orders: [Bool] = []
-    private var lists: [PreviewQueueList] = []
+private final class OpenedLists: Sendable {
+    private let opened =
+        Recorded<[(shuffled: Bool, list: PreviewQueueList)]>([])
 
     /// A queue whose upcoming queries are `makeList`'s lists.
     func queue(
@@ -71,19 +70,20 @@ private final class OpenedLists: @unchecked Sendable {
         }
     ) -> Queue {
         Queue(upcomingQueries: { [self] shuffled in
-            let list = lock.withLock {
-                orders.append(shuffled)
-                let list = makeList(orders.count)
-                lists.append(list)
+            let list = opened.change {
+                let list = makeList($0.count + 1)
+                $0.append((shuffled, list))
                 return list
             }
-            Wait.happened()
             return list.queries
         })
     }
 
-    var openedOrders: [Bool] { lock.withLock { orders } }
-    var latest: PreviewQueueList { lock.withLock { lists[lists.count - 1] } }
+    var openedOrders: [Bool] { opened.value.map(\.shuffled) }
+    var latest: PreviewQueueList {
+        let lists = opened.value
+        return lists[lists.count - 1].list
+    }
 }
 
 @Suite("PlaybackStore upcoming list")

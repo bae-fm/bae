@@ -28,7 +28,7 @@ private final class QueuedKeyStream: KeyedValueStream, @unchecked Sendable {
         holding value: BridgeFastValue,
         rests: Bool = false
     ) {
-        lock.recording {
+        lock.withLock {
             held[key] = value
             if rests {
                 resting.insert(key)

@@ -57,10 +57,10 @@ struct ArtworkRetryTests {
     func clickingAFailedCoverAsksAgain() async throws {
         let side: CGFloat = 120
         let size = NSSize(width: side, height: side)
-        let attempts = AttemptCount()
+        let attempts = Counter()
         let bytes = try solidPNG()
         let store = ImageStore(fetchRemoteImage: { _, _ in
-            let attempt = await attempts.next()
+            let attempt = attempts.increment()
             if attempt == 1 {
                 throw URLError(.badServerResponse)
             }
@@ -78,7 +78,7 @@ struct ArtworkRetryTests {
                 .environment(store),
             size: size
         ) { window, host in
-            try await Wait.until { await attempts.count == 1 }
+            try await Wait.until { attempts.count == 1 }
             try await SnapshotTestSupport.settle(host)
 
             // The failed tile is drawn once the load's error has reached the
@@ -87,7 +87,7 @@ struct ArtworkRetryTests {
             // has no AppKit view or accessibility element to wait on, so
             // click at each idle of the run loop until the store is asked.
             let end = ContinuousClock.now.advanced(by: HangGuard.duration)
-            while await attempts.count < 2 {
+            while attempts.count < 2 {
                 try HostedInput.click(
                     at: NSPoint(x: side / 2, y: side / 2),
                     in: window
@@ -128,16 +128,6 @@ struct ArtworkRetryTests {
             )
         )
         return try #require(bitmap.representation(using: .png, properties: [:]))
-    }
-}
-
-private actor AttemptCount {
-    private(set) var count = 0
-
-    func next() -> Int {
-        count += 1
-        Wait.happened()
-        return count
     }
 }
 

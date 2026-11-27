@@ -90,9 +90,9 @@ struct ImportFolderEntryTests {
     @Test("every folder of a drop is taken in")
     func everyDroppedFolderIsTakenIn() async throws {
         let folders = [try folder(), try folder()]
-        let added = Added()
+        let added = CallLog<Data>()
         let entry = ImportFolderEntry(
-            importer: Importer(addWatchedFolder: { await added.add($0) }),
+            importer: Importer(addWatchedFolder: { added.record($0) }),
             uiStore: UiStore()
         )
         let providers = folders.map {
@@ -103,15 +103,7 @@ struct ImportFolderEntryTests {
         }
 
         #expect(entry.take(dropped: providers))
-        try await Wait.until { await added.paths.count == folders.count }
-        #expect(Set(await added.paths) == Set(folders.map(\.pathBytes)))
-    }
-}
-
-private actor Added {
-    var paths: [Data] = []
-    func add(_ path: Data) {
-        paths.append(path)
-        Wait.happened()
+        try await Wait.until { added.all.count == folders.count }
+        #expect(Set(added.all) == Set(folders.map(\.pathBytes)))
     }
 }

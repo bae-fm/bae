@@ -11,10 +11,7 @@ struct CoverPickerStateTests {
         var dismissed = false
         state.save(
             { throw StubError.notImplemented },
-            onSaved: {
-                dismissed = true
-                Wait.happened()
-            }
+            onSaved: { dismissed = true }
         )
         try await Wait.until { !state.isSaving }
         #expect(!state.isSaving)
@@ -22,10 +19,7 @@ struct CoverPickerStateTests {
         #expect(state.error != nil)
         state.save(
             {},
-            onSaved: {
-                dismissed = true
-                Wait.happened()
-            }
+            onSaved: { dismissed = true }
         )
         try await Wait.until { !state.isSaving }
         #expect(dismissed)

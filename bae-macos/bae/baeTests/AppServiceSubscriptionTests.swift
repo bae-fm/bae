@@ -57,12 +57,9 @@ struct QueueAdditionTests {
     func addCountsReachTheBadge() async throws {
         let handle = FakeAppHandle()
         let store = PlaybackStore()
-        var addedCounts: [Int] = []
+        let addedCounts = CallLog<Int>()
         let subscription = store.queueItemsAddedPublisher
-            .sink {
-                addedCounts.append($0)
-                Wait.happened()
-            }
+            .sink { addedCounts.record($0) }
         defer { subscription.cancel() }
         let queue = Queue(
             handle: handle,
@@ -73,11 +70,11 @@ struct QueueAdditionTests {
         // Two adds of the same number of tracks each show their own badge.
         queue.addToQueue(["a", "b", "c"])
         queue.insertInQueue(["a", "b", "c"], 1)
-        try await Wait.until { addedCounts == [3, 3] }
+        try await Wait.until { addedCounts.all == [3, 3] }
 
         queue.addNext(["missing"])
         queue.addNext(["a"])
-        try await Wait.until { addedCounts == [3, 3, 1] }
+        try await Wait.until { addedCounts.all == [3, 3, 1] }
     }
 }
 
@@ -544,16 +541,15 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private let syncStatus = FakeSyncStatus()
     private let syncActivity = FakeSyncActivity()
     private let invites = FakeInvites()
-    private let subscribedLock = NSLock()
-    private var subscribedNames: [String] = []
+    private let subscribedNames = CallLog<String>()
 
     /// The membership and library-name reads opened so far, in order.
-    var subscribed: [String] { subscribedLock.withLock { subscribedNames } }
+    var subscribed: [String] { subscribedNames.all }
     /// How many times an invites read has been ended.
     var invitesCancels: Int { invites.cancels }
 
     private func record(_ name: String) {
-        subscribedLock.recording { subscribedNames.append(name) }
+        subscribedNames.record(name)
     }
 
     func deliverSyncActivity(_ activity: BridgeSyncActivity) {
@@ -684,26 +680,27 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         return SilentAdminChanges()
     }
 
-    private let waitingLock = NSLock()
-    private var waitingReads: [(closed: [String], read: FakeOpenInvite)] = []
+    private let waitingReads =
+        CallLog<(closed: [String], read: FakeOpenInvite)>()
     /// The reads of the waiting join request opened so far, each with the
     /// invites it leaves out, in order.
     var waitingRequestReads: [(closed: [String], read: FakeOpenInvite)] {
-        waitingLock.withLock { waitingReads }
+        waitingReads.all
     }
 
-    private var inviteReadList: [(inviteId: String, read: FakeOpenInvite)] = []
+    private let inviteReadList =
+        CallLog<(inviteId: String, read: FakeOpenInvite)>()
     /// The reads of one invite opened so far, each with its invite id, in
     /// order.
     var inviteReads: [(inviteId: String, read: FakeOpenInvite)] {
-        waitingLock.withLock { inviteReadList }
+        inviteReadList.all
     }
 
     override func subscribeInvite(invite: String) throws
         -> OpenInviteSubscription
     {
         let read = FakeOpenInvite()
-        waitingLock.recording { inviteReadList.append((invite, read)) }
+        inviteReadList.record((invite, read))
         return read
     }
 
@@ -711,7 +708,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         -> OpenInviteSubscription
     {
         let read = FakeOpenInvite()
-        waitingLock.recording { waitingReads.append((closed.sorted(), read)) }
+        waitingReads.record((closed.sorted(), read))
         return read
     }
 

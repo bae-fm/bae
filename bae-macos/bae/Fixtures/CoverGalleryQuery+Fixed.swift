@@ -40,23 +40,19 @@ extension CoverGalleryQuery {
 
 /// The focus each value of a fixed query answered, in the order the query
 /// delivered them.
-final class DeliveredFocuses: @unchecked Sendable {
-    private let lock = NSLock()
-    private var focuses: [BridgeCoverKey?] = []
+final class DeliveredFocuses: Sendable {
+    private let focuses = Recorded<[BridgeCoverKey?]>([])
 
     func record(_ focus: BridgeCoverKey?) {
-        lock.withLock { focuses.append(focus) }
-        Wait.happened()
+        focuses.change { $0.append(focus) }
     }
 
     /// How many values the query has delivered.
-    var count: Int {
-        lock.withLock { focuses.count }
-    }
+    var count: Int { focuses.value.count }
 
     /// Whether the query has delivered a value that focuses `key`.
     func delivered(_ key: BridgeCoverKey) -> Bool {
-        lock.withLock { focuses.contains(key) }
+        focuses.value.contains(key)
     }
 }
 
