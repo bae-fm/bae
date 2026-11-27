@@ -13,6 +13,7 @@ use crate::{
     PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState,
     PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
+use bae_store::WriteStatements;
 use bae_track_audio::PreviewTarget;
 use bae_types::mediums::SideHeading;
 use bae_util::timestamp::StoredTimestamp as _;
@@ -138,6 +139,136 @@ impl PreviewedWindow {
     }
 }
 
+sqlive_compose::write!(
+    SetPlaybackState(
+        state: &'static str,
+        track_id: Option<&'p str>,
+        prepared: Option<bool>,
+        waits_on_storage: Option<bool>,
+        duration_ms: Option<i64>,
+        pause_reason: Option<&'static str>,
+        side_boundary_id: Option<&'p str>,
+        ended_side_kind: Option<&'static str>,
+        ended_side: Option<&'p str>,
+        side_resumes_at: Option<i64>,
+    ),
+    r#"
+    UPDATE playback_now
+    SET state = :state, track_id = :track_id, prepared = :prepared,
+        waits_on_storage = :waits_on_storage, duration_ms = :duration_ms,
+        pause_reason = :pause_reason, side_boundary_id = :side_boundary_id,
+        ended_side_kind = :ended_side_kind, ended_side = :ended_side,
+        side_resumes_at = :side_resumes_at
+"#
+);
+
+sqlive_compose::write!(
+    SetPlaybackVolume(volume: f32),
+    r#"UPDATE playback_now SET volume = :volume"#
+);
+
+sqlive_compose::write!(
+    SetPlaybackMuted(is_muted: bool),
+    r#"UPDATE playback_now SET is_muted = :is_muted"#
+);
+
+sqlive_compose::write!(
+    SetRemotePlayback(
+        remote: &'static str,
+        receiver_id: Option<&'p str>,
+        receiver_name: Option<&'p str>,
+        receiver_kind: Option<&'static str>,
+        receiver_model: Option<&'p str>,
+        receiver_address: Option<&'p str>,
+        receiver_takes_volume: Option<bool>,
+        end_detail: Option<&'p str>,
+    ),
+    r#"
+    UPDATE playback_now
+    SET remote = :remote, cast_receiver_id = :receiver_id, cast_receiver_name = :receiver_name,
+        cast_receiver_kind = :receiver_kind, cast_receiver_model = :receiver_model,
+        cast_receiver_address = :receiver_address,
+        cast_receiver_takes_volume = :receiver_takes_volume, remote_end_detail = :end_detail
+"#
+);
+
+sqlive_compose::write!(
+    SetPlaybackPreview(
+        preview: &'static str,
+        path: Option<&'p [u8]>,
+        start_sample: Option<u64>,
+        end_sample: Option<u64>,
+        duration_ms: Option<u64>,
+    ),
+    r#"
+    UPDATE playback_now
+    SET preview = :preview, preview_path = :path, preview_start_sample = :start_sample,
+        preview_end_sample = :end_sample, preview_duration_ms = :duration_ms
+"#
+);
+
+sqlive_compose::write!(
+    SetPlaybackFailure(
+        failure: &'static str,
+        problem: Option<&'static str>,
+        detail: Option<&'p str>,
+        device: Option<&'p str>,
+        device_state: Option<coven::DeviceState>,
+        receiver_id: Option<&'p str>,
+        receiver_name: Option<&'p str>,
+        receiver_kind: Option<&'static str>,
+        receiver_model: Option<&'p str>,
+        receiver_address: Option<&'p str>,
+        receiver_takes_volume: Option<bool>,
+    ),
+    r#"
+    UPDATE playback_now
+    SET failure = :failure, failure_problem = :problem, failure_detail = :detail,
+        failure_device = :device, failure_device_state = :device_state,
+        failure_receiver_id = :receiver_id, failure_receiver_name = :receiver_name,
+        failure_receiver_kind = :receiver_kind, failure_receiver_model = :receiver_model,
+        failure_receiver_address = :receiver_address,
+        failure_receiver_takes_volume = :receiver_takes_volume
+"#
+);
+
+// The row's failure cleared, which ends the failure notice.
+sqlive_compose::write!(
+    ClearPlaybackFailure,
+    r#"
+    UPDATE playback_now
+    SET failure = NULL, failure_problem = NULL, failure_detail = NULL,
+        failure_device = NULL, failure_device_state = NULL,
+        failure_receiver_id = NULL, failure_receiver_name = NULL,
+        failure_receiver_kind = NULL, failure_receiver_model = NULL,
+        failure_receiver_address = NULL, failure_receiver_takes_volume = NULL
+    WHERE failure IS NOT NULL
+"#
+);
+
+// Every column but the volume and mute, as playback starts with them.
+sqlive_compose::write!(
+    ResetPlaybackNow,
+    r#"
+    UPDATE playback_now
+    SET state = 'stopped', track_id = NULL, prepared = NULL, waits_on_storage = NULL,
+        duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL,
+        ended_side_kind = NULL, ended_side = NULL, side_resumes_at = NULL,
+        remote = 'local', cast_receiver_id = NULL, cast_receiver_name = NULL,
+        cast_receiver_kind = NULL, cast_receiver_model = NULL, cast_receiver_address = NULL,
+        cast_receiver_takes_volume = NULL, remote_end_detail = NULL, preview = 'idle',
+        preview_path = NULL, preview_start_sample = NULL, preview_end_sample = NULL,
+        preview_duration_ms = NULL, failure = NULL, failure_problem = NULL,
+        failure_detail = NULL, failure_device = NULL, failure_device_state = NULL,
+        failure_receiver_id = NULL, failure_receiver_name = NULL,
+        failure_receiver_kind = NULL, failure_receiver_model = NULL,
+        failure_receiver_address = NULL, failure_receiver_takes_volume = NULL
+"#
+);
+
+// The volume full and unmuted.
+sqlive_compose::write!(ResetPlaybackLevel, r#"UPDATE playback_now SET volume = 1.0, is_muted = 0"#);
+
 impl PlaybackNowRow {
     /// Write `change` into the row. A state that plays clears the last
     /// failure, and a new failure replaces the one the row holds.
@@ -151,33 +282,27 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
     match change {
         PlaybackChange::State(state) => {
             let columns = StateColumns::of(state);
-            sql.execute(
-                "UPDATE playback_now SET state = ?, track_id = ?, prepared = ?, \
-                     waits_on_storage = ?, duration_ms = ?, pause_reason = ?, \
-                     side_boundary_id = ?, ended_side_kind = ?, ended_side = ?, \
-                     side_resumes_at = ?",
-                params![
-                    columns.state,
-                    columns.track_id,
-                    columns.prepared,
-                    columns.waits_on_storage,
-                    columns.duration_ms,
-                    columns.pause_reason,
-                    columns.side_boundary_id,
-                    columns.ended_side_kind,
-                    columns.ended_side,
-                    columns.side_resumes_at,
-                ],
-            )?;
+            sql.run(&SetPlaybackStateParams {
+                state: columns.state,
+                track_id: columns.track_id,
+                prepared: columns.prepared,
+                waits_on_storage: columns.waits_on_storage,
+                duration_ms: columns.duration_ms,
+                pause_reason: columns.pause_reason,
+                side_boundary_id: columns.side_boundary_id,
+                ended_side_kind: columns.ended_side_kind,
+                ended_side: columns.ended_side.as_deref(),
+                side_resumes_at: columns.side_resumes_at,
+            })?;
             if matches!(state, PlaybackState::Playing { .. }) {
-                sql.execute(CLEAR_FAILURE, [])?;
+                sql.run(&ClearPlaybackFailureParams {})?;
             }
         }
         PlaybackChange::Volume(volume) => {
-            sql.execute("UPDATE playback_now SET volume = ?", [volume])?;
+            sql.run(&SetPlaybackVolumeParams { volume: *volume })?;
         }
         PlaybackChange::Muted(muted) => {
-            sql.execute("UPDATE playback_now SET is_muted = ?", [muted])?;
+            sql.run(&SetPlaybackMutedParams { is_muted: *muted })?;
         }
         PlaybackChange::Remote(remote) => {
             let (kind, device, detail) = match remote {
@@ -188,22 +313,16 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                 }
             };
             let device = ReceiverValues::of(device);
-            sql.execute(
-                "UPDATE playback_now SET remote = ?, cast_receiver_id = ?, \
-                     cast_receiver_name = ?, cast_receiver_kind = ?, \
-                     cast_receiver_model = ?, cast_receiver_address = ?, \
-                     cast_receiver_takes_volume = ?, remote_end_detail = ?",
-                params![
-                    kind,
-                    device.id,
-                    device.name,
-                    device.kind,
-                    device.model,
-                    device.address,
-                    device.takes_volume,
-                    detail,
-                ],
-            )?;
+            sql.run(&SetRemotePlaybackParams {
+                remote: kind,
+                receiver_id: device.id,
+                receiver_name: device.name,
+                receiver_kind: device.kind,
+                receiver_model: device.model,
+                receiver_address: device.address,
+                receiver_takes_volume: device.takes_volume,
+                end_detail: detail,
+            })?;
         }
         PlaybackChange::Preview(preview) => {
             let (kind, clip) = match preview {
@@ -219,59 +338,44 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                 let (path, start_sample, end_sample) = preview_target_values(target);
                 (path, start_sample, end_sample, *duration_ms)
             });
-            sql.execute(
-                "UPDATE playback_now SET preview = ?, preview_path = ?, \
-                     preview_start_sample = ?, preview_end_sample = ?, preview_duration_ms = ?",
-                params![
-                    kind,
-                    clip.as_ref().map(|clip| clip.0.as_slice()),
-                    clip.as_ref().map(|clip| clip.1),
-                    clip.as_ref().and_then(|clip| clip.2),
-                    clip.as_ref().map(|clip| clip.3),
-                ],
-            )?;
+            sql.run(&SetPlaybackPreviewParams {
+                preview: kind,
+                path: clip.as_ref().map(|clip| clip.0.as_slice()),
+                start_sample: clip.as_ref().map(|clip| clip.1),
+                end_sample: clip.as_ref().and_then(|clip| clip.2),
+                duration_ms: clip.as_ref().map(|clip| clip.3),
+            })?;
         }
         PlaybackChange::Failed(reason) => {
             let columns = FailureColumns::of(reason);
             let receiver = ReceiverValues::of(columns.receiver);
-            sql.execute(
-                "UPDATE playback_now SET failure = ?, failure_problem = ?, failure_detail = ?, \
-                     failure_device = ?, failure_device_state = ?, \
-                     failure_receiver_id = ?, failure_receiver_name = ?, \
-                     failure_receiver_kind = ?, failure_receiver_model = ?, \
-                     failure_receiver_address = ?, failure_receiver_takes_volume = ?",
-                params![
-                    columns.failure,
-                    columns.problem,
-                    columns.detail,
-                    columns.device,
-                    columns.device_state,
-                    receiver.id,
-                    receiver.name,
-                    receiver.kind,
-                    receiver.model,
-                    receiver.address,
-                    receiver.takes_volume,
-                ],
-            )?;
+            sql.run(&SetPlaybackFailureParams {
+                failure: columns.failure,
+                problem: columns.problem,
+                detail: columns.detail,
+                device: columns.device,
+                device_state: columns.device_state,
+                receiver_id: receiver.id,
+                receiver_name: receiver.name,
+                receiver_kind: receiver.kind,
+                receiver_model: receiver.model,
+                receiver_address: receiver.address,
+                receiver_takes_volume: receiver.takes_volume,
+            })?;
         }
     }
     Ok(())
 }
 
-/// Clears the row's failure, which ends the failure notice.
-const CLEAR_FAILURE: &str = "UPDATE playback_now \
-     SET failure = NULL, failure_problem = NULL, failure_detail = NULL, \
-         failure_device = NULL, failure_device_state = NULL, \
-         failure_receiver_id = NULL, failure_receiver_name = NULL, \
-         failure_receiver_kind = NULL, failure_receiver_model = NULL, \
-         failure_receiver_address = NULL, failure_receiver_takes_volume = NULL \
-     WHERE failure IS NOT NULL";
-
 /// The person dismissed the failure notice: clear the failure the row holds,
 /// so the notice shows again only for a later failure.
 pub async fn dismiss_playback_failure(store: &Store) -> Result<(), DbError> {
-    store.call(|sql| sql.execute(CLEAR_FAILURE, []).map(drop).map_err(DbError::from)).await
+    store
+        .call(|sql| {
+            sql.run(&ClearPlaybackFailureParams {})?;
+            Ok(())
+        })
+        .await
 }
 
 /// Reset the row to what playback starts with: stopped, on this device's
@@ -281,24 +385,9 @@ pub(super) fn reset_playback_now_on(
     sql: &coven::BulkSqlContext<'_>,
     keep_level: bool,
 ) -> rusqlite::Result<()> {
-    sql.execute(
-        "UPDATE playback_now SET state = 'stopped', track_id = NULL, prepared = NULL, \
-             waits_on_storage = NULL, duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL, \
-             ended_side_kind = NULL, ended_side = NULL, side_resumes_at = NULL, \
-             remote = 'local', cast_receiver_id = NULL, cast_receiver_name = NULL, \
-             cast_receiver_kind = NULL, cast_receiver_model = NULL, \
-             cast_receiver_address = NULL, cast_receiver_takes_volume = NULL, \
-             remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
-             preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
-             failure = NULL, failure_problem = NULL, failure_detail = NULL, \
-             failure_device = NULL, failure_device_state = NULL, \
-             failure_receiver_id = NULL, failure_receiver_name = NULL, \
-             failure_receiver_kind = NULL, failure_receiver_model = NULL, \
-             failure_receiver_address = NULL, failure_receiver_takes_volume = NULL",
-        [],
-    )?;
+    sql.run(&ResetPlaybackNowParams {})?;
     if !keep_level {
-        sql.execute("UPDATE playback_now SET volume = 1.0, is_muted = 0", [])?;
+        sql.run(&ResetPlaybackLevelParams {})?;
     }
     Ok(())
 }

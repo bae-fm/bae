@@ -5,11 +5,10 @@
 //! lists the same receivers. Its table is `picker.sql`; the functions here
 //! read and write it.
 
-use bae_store::statement_row;
 use bae_store::DbError;
 use bae_store::Store;
+use bae_store::{statement_row, WriteStatements};
 use coven::SqlReadContext;
-use rusqlite::params;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 
 use super::receiver::{CastReceiver, RendererKind};
@@ -117,6 +116,23 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
     Ok(CastReceiverList { casting, found, is_empty: row.is_empty })
 }
 
+sqlive_compose::write!(ForgetReceivers, r#"DELETE FROM cast_receiver"#);
+
+sqlive_compose::write!(
+    ListReceiver(
+        id: &'p str,
+        name: &'p str,
+        kind: &'static str,
+        model: Option<&'p str>,
+        address: &'p str,
+        takes_volume: bool,
+    ),
+    r#"
+    INSERT INTO cast_receiver (id, name, kind, model, address, takes_volume)
+    VALUES (:id, :name, :kind, :model, :address, :takes_volume)
+"#
+);
+
 /// The picker's list in the library's store: the receivers discovery last
 /// found, after the one playback is cast to.
 #[derive(Clone)]
@@ -134,20 +150,16 @@ impl CastPicker {
     pub async fn show(&self, receivers: Vec<CastReceiver>) -> Result<(), DbError> {
         self.store
             .call(move |sql| {
-                sql.execute("DELETE FROM cast_receiver", [])?;
+                sql.run(&ForgetReceiversParams {})?;
                 for receiver in &receivers {
-                    sql.execute(
-                        "INSERT INTO cast_receiver (id, name, kind, model, address, takes_volume) \
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                        params![
-                            receiver.id,
-                            receiver.name,
-                            kind_column(receiver.kind),
-                            receiver.model,
-                            receiver.address,
-                            receiver.takes_volume,
-                        ],
-                    )?;
+                    sql.run(&ListReceiverParams {
+                        id: &receiver.id,
+                        name: &receiver.name,
+                        kind: kind_column(receiver.kind),
+                        model: receiver.model.as_deref(),
+                        address: &receiver.address,
+                        takes_volume: receiver.takes_volume,
+                    })?;
                 }
                 Ok(())
             })
@@ -166,7 +178,7 @@ impl CastPicker {
     pub async fn clear(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {
-                sql.execute("DELETE FROM cast_receiver", [])?;
+                sql.run(&ForgetReceiversParams {})?;
                 Ok(())
             })
             .await

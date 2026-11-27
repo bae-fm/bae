@@ -5,6 +5,7 @@
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::*;
 use crate::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
+use bae_store::WriteStatements;
 
 /// The `playback_timeline` row, as playback writes it.
 #[derive(Clone)]
@@ -33,6 +34,41 @@ pub async fn playback_timeline(store: &Store) -> Result<PlaybackTimeline, DbErro
     store.read(|sql| playback_timeline_on(&sql)).await
 }
 
+sqlive_compose::write!(
+    SetPlaybackTimeline(
+        track_id: Option<&'p str>,
+        position_ms: Option<u64>,
+        duration_ms: Option<u64>,
+        moving: Option<bool>,
+        started_at_seek: Option<bool>,
+        preview_path: Option<&'p [u8]>,
+        preview_start_sample: Option<u64>,
+        preview_end_sample: Option<u64>,
+        preview_position_ms: Option<u64>,
+        preview_duration_ms: Option<u64>,
+        preview_moving: Option<bool>,
+    ),
+    r#"
+    UPDATE playback_timeline
+    SET track_id = :track_id, position_ms = :position_ms, duration_ms = :duration_ms,
+        moving = :moving, started_at_seek = :started_at_seek, preview_path = :preview_path,
+        preview_start_sample = :preview_start_sample, preview_end_sample = :preview_end_sample,
+        preview_position_ms = :preview_position_ms, preview_duration_ms = :preview_duration_ms,
+        preview_moving = :preview_moving
+"#
+);
+
+sqlive_compose::write!(
+    ResetPlaybackTimeline,
+    r#"
+    UPDATE playback_timeline
+    SET track_id = NULL, position_ms = NULL, duration_ms = NULL, moving = NULL,
+        started_at_seek = NULL, preview_path = NULL, preview_start_sample = NULL,
+        preview_end_sample = NULL, preview_position_ms = NULL, preview_duration_ms = NULL,
+        preview_moving = NULL
+"#
+);
+
 impl PlaybackTimelineRow {
     /// Write `timeline` as the row's whole value.
     pub async fn write(&self, timeline: &PlaybackTimeline) -> Result<(), DbError> {
@@ -47,37 +83,25 @@ fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Resu
         let (path, start_sample, end_sample) = preview_target_values(&preview.target);
         (path, start_sample, end_sample, preview)
     });
-    sql.execute(
-        "UPDATE playback_timeline SET track_id = ?, position_ms = ?, duration_ms = ?, \
-             moving = ?, started_at_seek = ?, preview_path = ?, preview_start_sample = ?, \
-             preview_end_sample = ?, preview_position_ms = ?, preview_duration_ms = ?, \
-             preview_moving = ?",
-        params![
-            library.map(|line| line.track_id.as_str()),
-            library.map(|line| line.position_ms),
-            library.and_then(|line| line.duration_ms),
-            library.map(|line| line.moving),
-            library.map(|line| line.started_at_seek),
-            preview.as_ref().map(|clip| clip.0.as_slice()),
-            preview.as_ref().map(|clip| clip.1),
-            preview.as_ref().and_then(|clip| clip.2),
-            preview.as_ref().map(|clip| clip.3.position_ms),
-            preview.as_ref().map(|clip| clip.3.duration_ms),
-            preview.as_ref().map(|clip| clip.3.moving),
-        ],
-    )?;
+    sql.run(&SetPlaybackTimelineParams {
+        track_id: library.map(|line| line.track_id.as_str()),
+        position_ms: library.map(|line| line.position_ms),
+        duration_ms: library.and_then(|line| line.duration_ms),
+        moving: library.map(|line| line.moving),
+        started_at_seek: library.map(|line| line.started_at_seek),
+        preview_path: preview.as_ref().map(|clip| clip.0.as_slice()),
+        preview_start_sample: preview.as_ref().map(|clip| clip.1),
+        preview_end_sample: preview.as_ref().and_then(|clip| clip.2),
+        preview_position_ms: preview.as_ref().map(|clip| clip.3.position_ms),
+        preview_duration_ms: preview.as_ref().map(|clip| clip.3.duration_ms),
+        preview_moving: preview.as_ref().map(|clip| clip.3.moving),
+    })?;
     Ok(())
 }
 
 /// Reset the row to what playback starts with: no line.
 pub(super) fn reset_playback_timeline_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
-    sql.execute(
-        "UPDATE playback_timeline SET track_id = NULL, position_ms = NULL, duration_ms = NULL, \
-             moving = NULL, started_at_seek = NULL, preview_path = NULL, \
-             preview_start_sample = NULL, preview_end_sample = NULL, \
-             preview_position_ms = NULL, preview_duration_ms = NULL, preview_moving = NULL",
-        [],
-    )?;
+    sql.run(&ResetPlaybackTimelineParams {})?;
     Ok(())
 }
 

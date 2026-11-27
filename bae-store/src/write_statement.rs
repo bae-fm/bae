@@ -1,9 +1,10 @@
-//! Running a generated `write!` statement in a write's transaction, by the
-//! write itself or by the before-commit function coven runs last in it.
+//! Running a generated `write!` statement in a write's transaction or a bulk
+//! write's, by the write itself or by the before-commit function coven runs
+//! last in it.
 
 use crate::read_statement::row_count;
 use crate::DbError;
-use coven::{CommitSql, CovenWrite, JoiningWrite, MemberWrite};
+use coven::{BulkSqlContext, CommitSql, CovenWrite, JoiningWrite, MemberWrite};
 use sqlive_compose::{Write, WriteReturning};
 
 /// A context that writes, which runs generated writes.
@@ -41,4 +42,4 @@ macro_rules! write_statements {
     )+};
 }
 
-write_statements!(CommitSql, CovenWrite, JoiningWrite, MemberWrite);
+write_statements!(BulkSqlContext, CommitSql, CovenWrite, JoiningWrite, MemberWrite);
