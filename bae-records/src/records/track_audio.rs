@@ -6,18 +6,21 @@ use super::*;
 use crate::resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError};
 
 // The segments of the audio format, in segment order, as a JSON array: each
-// with the coven file, size and container of the release file it names and its scrub
-// points' blob, empty for a segment that stores none. A release file's `file`
-// always names a record in `coven_files` (coven 17.2), so the size is NULL
-// only when no release file has the segment's id.
+// with the coven file, size and container of the release file it names and its
+// scrub points' blob, empty for a segment that stores none. A release file's
+// `file` always names a record in `coven_files` (coven 17.2), so
+// `release_file` is NULL only when no release file has the segment's id.
 sqlive_compose::fragment!(
     AudioFormatSegments on audio_formats {
+        struct StoredSegmentFile {
+            file: coven::FileId,
+            size: u64,
+            container: Option<String>,
+        }
         struct StoredSegment {
             role: String,
             file_id: String,
-            file: Option<coven::FileId>,
-            file_size: Option<u64>,
-            container: Option<String>,
+            release_file: Option<StoredSegmentFile>,
             start_sample: u64,
             end_sample: Option<u64>,
             start_byte: Option<u64>,
@@ -28,9 +31,10 @@ sqlive_compose::fragment!(
     },
     r#"
     SELECT json_group_array(json_object(
-               'role', segment.role, 'file_id', segment.file_id, 'file', file.file,
-               'file_size', stored.size,
-               'container', file.source_audio_container,
+               'role', segment.role, 'file_id', segment.file_id,
+               'release_file', json(CASE WHEN stored.id IS NOT NULL THEN json_object(
+                   'file', file.file, 'size', stored.size,
+                   'container', file.source_audio_container) END),
                'start_sample', segment.start_sample, 'end_sample', segment.end_sample,
                'start_byte', segment.start_byte, 'end_byte', segment.end_byte,
                'scrub_points', hex(scrubbed.points))
@@ -301,10 +305,10 @@ impl TrackAudio {
             .segments
             .into_iter()
             .map(|segment| {
-                let (Some(file), Some(file_size)) = (segment.file, segment.file_size) else {
+                let Some(release_file) = segment.release_file else {
                     return Err(TrackAudioError::FileNotFound(segment.file_id));
                 };
-                let container = segment
+                let container = release_file
                     .container
                     .as_deref()
                     .map(bae_util::audio_container::AudioContainer::from_name)
@@ -322,8 +326,8 @@ impl TrackAudio {
                 Ok(ResolvedTrackAudioSegment {
                     role,
                     file_id: segment.file_id,
-                    file,
-                    file_size,
+                    file: release_file.file,
+                    file_size: release_file.size,
                     container,
                     span: crate::SegmentSpan {
                         start_sample: segment.start_sample,
