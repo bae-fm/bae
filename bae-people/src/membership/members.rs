@@ -18,12 +18,19 @@ impl Membership {
 
     /// This device's name, as Your devices lists it.
     pub async fn this_device_name(&self) -> Result<String, DbError> {
-        self.store.read(|sql| Ok(sql.query_row(THIS_DEVICE_NAME, [], |row| row.get(0))?)).await
+        Ok(self.store.read_row(ThisDeviceNameParams {}).await?.name)
     }
 }
 
-/// The name of this device's own registration.
-const THIS_DEVICE_NAME: &str = "SELECT name FROM coven_devices WHERE is_self AND state = 'active'";
+// The name of this device's own registration.
+sqlive_compose::read!(
+    ThisDeviceName,
+    r#"
+    SELECT own.name
+    FROM coven_devices AS own
+    WHERE own.is_self AND own.state = 'active'
+"#
+);
 
 fn membership_on(sql: &SqlReadContext<'_>) -> Result<Members, DbError> {
     let rows = statement_rows(sql, &CurrentMembersParams {})?;
