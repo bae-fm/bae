@@ -6371,6 +6371,9 @@ the sheep, then the word "bae" at 0.8 of the sheep's width, in the text
 color. The home page's hero draws the sheep over the word, floating in
 its glow, as Welcome does. Every sheep on the site is the design system's
 drawing, and the favicons are its small sheep, drawn for 16 and 32 pixels.
+The home page draws its buttons, notices, chips and status glyphs as the
+design system draws them, and its icons are the design system's Material
+Symbols, the set Android draws, shown only where an icon is the control.
 
 ---
 

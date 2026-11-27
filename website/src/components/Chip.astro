@@ -1,0 +1,27 @@
+---
+// A chip, as the design system's StatusChip draws one: a short word in its
+// tone's colour on the tone's tint, in the website's chip text.
+interface Props {
+  tone?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger';
+}
+
+const { tone = 'neutral' } = Astro.props;
+---
+<span class={`chip chip-${tone} web-chip`}><slot /></span>
+
+<style>
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-line) var(--space-compact);
+    border-radius: var(--radius-chip);
+    white-space: nowrap;
+    color: var(--chip-tone);
+    background: var(--chip-tint);
+  }
+  .chip-neutral { --chip-tone: var(--text-secondary); --chip-tint: var(--neutral-tint); }
+  .chip-accent { --chip-tone: var(--accent); --chip-tint: var(--accent-tint); }
+  .chip-success { --chip-tone: var(--success); --chip-tint: var(--success-tint); }
+  .chip-warning { --chip-tone: var(--warning); --chip-tint: var(--warning-tint); }
+  .chip-danger { --chip-tone: var(--danger); --chip-tint: var(--danger-tint); }
+</style>
