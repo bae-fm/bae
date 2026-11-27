@@ -76,7 +76,7 @@ pub fn credit_name_join(credit: &str, name: &str) -> String {
 /// The other printed name a [`credit_name_join`] found, from its key and
 /// its name: both, or neither when the credit prints its artist's own name.
 /// One without the other is a join no query makes, and `Err` says which.
-fn joined_credit_name(
+pub(super) fn joined_credit_name(
     key: Option<String>,
     name: Option<String>,
 ) -> Result<Option<crate::credits::CreditName>, String> {

@@ -333,11 +333,8 @@ impl StoredRole<'_> {
         let unreadable = |what: &str, value: String| {
             DbError::unreadable(format!("role credit {} {what}", self.id), value)
         };
-        let credit = match (self.credit_name_key, self.credit_name) {
-            (Some(key), Some(name)) => Some(CreditName { key, name }),
-            (None, None) => None,
-            (key, name) => return Err(unreadable("credit name", format!("{key:?} {name:?}"))),
-        };
+        let credit = super::read::joined_credit_name(self.credit_name_key, self.credit_name)
+            .map_err(|error| unreadable("credit name", error))?;
         Ok(ReadRole {
             source: self
                 .source
