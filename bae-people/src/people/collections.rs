@@ -308,8 +308,7 @@ fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> Result<Vec<Playlis
     bae_store::statement_rows(sql, &statement)?
         .into_iter()
         .map(|row| {
-            let position_id = uuid::Uuid::parse_str(&row.position_id)
-                .map_err(|_error| DbError::unreadable("a playlist entry's id", &row.position_id))?;
+            let position_id = stored_uuid("a playlist entry's id", &row.position_id)?;
             Ok(PlaylistEntry { position_id, track_id: row.track_id })
         })
         .collect()

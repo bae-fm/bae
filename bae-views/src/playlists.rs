@@ -4,6 +4,7 @@
 
 use super::*;
 pub use bae_people::collections::{PlaylistCover, PlaylistEntryRow, PlaylistSummary};
+use bae_people::people::playlist_fragments::ListedPlaylist;
 
 /// The playlists this device holds, as the views that list them read them.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,17 +35,37 @@ pub struct PlaylistDetail {
 }
 
 // Every playlist this device holds, by name in the device's language, then id,
-// each row beside whether the person can make one; one row with no playlist
-// when there is none. The read reads `name_sort`, so coven reruns it when the
-// device's language changes.
+// each row beside how many there are. The read reads `name_sort`, so coven
+// reruns it when the device's language changes.
 sqlive_compose::read!(
-    PlaylistList,
+    PlaylistList { total: u64 },
     r#"
-    SELECT viewer.*, playlist.*
-    FROM @bae_people::people::playlist_fragments::OwnProfileExists AS viewer
-    LEFT JOIN @bae_people::people::playlist_fragments::ListedPlaylist AS playlist ON 1
+    SELECT playlist.*, COUNT(*) OVER () AS total
+    FROM @bae_people::people::playlist_fragments::ListedPlaylist AS playlist
     JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
     ORDER BY bae_name_key(playlist.playlist_name, sort.language), playlist.playlist_id
+"#
+);
+
+// The person's own playlists, where Add to playlist can put a track, in the
+// order [`PlaylistList`] lists them, each row beside how many there are.
+sqlive_compose::read!(
+    AddTargets { total: u64 },
+    r#"
+    SELECT playlist.*, COUNT(*) OVER () AS total
+    FROM @bae_people::people::playlist_fragments::ListedPlaylist AS playlist
+    JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+    WHERE playlist.yours
+    ORDER BY bae_name_key(playlist.playlist_name, sort.language), playlist.playlist_id
+"#
+);
+
+// Whether the person can make a playlist.
+sqlive_compose::read!(
+    CanCreatePlaylist,
+    r#"
+    SELECT viewer.*
+    FROM @bae_people::people::playlist_fragments::OwnProfileExists AS viewer
 "#
 );
 
@@ -61,24 +82,32 @@ sqlive_compose::read!(
 "#
 );
 
+/// The playlists of a read's rows, each given beside the count of the read's
+/// rows, with that count: zero for a read with no row.
+fn counted_playlists(
+    rows: impl IntoIterator<Item = (u64, ListedPlaylist)>,
+) -> Result<(Vec<PlaylistSummary>, u64), DbError> {
+    let mut count = 0;
+    let playlists = rows
+        .into_iter()
+        .map(|(total, playlist)| {
+            count = total;
+            playlist.into_summary()
+        })
+        .collect::<Result<_, _>>()?;
+    Ok((playlists, count))
+}
+
 fn playlist_listing_on(sql: &SqlReadContext<'_>) -> Result<PlaylistListing, DbError> {
-    let mut can_create = false;
-    let mut listed = Vec::new();
-    for row in bae_store::statement_rows(sql, &PlaylistListParams {})? {
-        can_create = row.viewer.has_profile();
-        if let Some(playlist) = row.playlist {
-            listed.push(playlist.into_summary()?);
-        }
-    }
-    let add_targets: Vec<PlaylistSummary> =
-        listed.iter().filter(|playlist| playlist.yours).cloned().collect();
-    Ok(PlaylistListing {
-        total: listed.len() as u64,
-        add_target_count: add_targets.len() as u64,
-        listed,
-        add_targets,
-        can_create,
-    })
+    let listed = bae_store::statement_rows(sql, &PlaylistListParams {})?;
+    let (listed, total) =
+        counted_playlists(listed.into_iter().map(|row| (row.total, row.playlist)))?;
+    let targets = bae_store::statement_rows(sql, &AddTargetsParams {})?;
+    let (add_targets, add_target_count) =
+        counted_playlists(targets.into_iter().map(|row| (row.total, row.playlist)))?;
+    let can_create =
+        bae_store::statement_row(sql, &CanCreatePlaylistParams {})?.viewer.has_profile();
+    Ok(PlaylistListing { listed, add_targets, total, add_target_count, can_create })
 }
 
 fn playlist_detail_on(

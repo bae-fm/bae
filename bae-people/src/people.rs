@@ -58,6 +58,11 @@ fn uuid_column(row: &Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
         .map_err(|error| bae_store::read::column_conversion_error(row, index, error))
 }
 
+/// The UUID `text` that `what` holds.
+fn stored_uuid(what: &str, text: &str) -> Result<uuid::Uuid, DbError> {
+    uuid::Uuid::parse_str(text).map_err(|_error| DbError::unreadable(what, text))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Sharing {
     Private,

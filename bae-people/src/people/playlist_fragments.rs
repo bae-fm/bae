@@ -3,7 +3,7 @@
 //! device can make a playlist.
 
 use crate::collections::{PlaylistCover, PlaylistEntryRow, PlaylistSummary, COVER_GRID};
-use crate::people::{PersonRef, Sharing};
+use crate::people::{stored_uuid, PersonRef, Sharing};
 use bae_records::cover_ref;
 use bae_store::DbError;
 use bae_types::count_label::CountLabel;
@@ -119,11 +119,6 @@ impl OwnProfileExists {
     pub fn has_profile(&self) -> bool {
         self.has_profile
     }
-}
-
-/// The UUID `text` that `what` holds.
-fn stored_uuid(what: &str, text: &str) -> Result<uuid::Uuid, DbError> {
-    uuid::Uuid::parse_str(text).map_err(|_error| DbError::unreadable(what, text))
 }
 
 impl ListedPlaylist {
