@@ -24,7 +24,8 @@ whole rust-files-compiled-all scripts/check-rust-files-compiled.py,scripts/rust_
 whole ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
-# clippy's lints and the typed lints, in one compile (scripts/clippy-crates.sh).
+# clippy's lints and the typed lints, over the crates with their test features
+# and then without (scripts/clippy-crates.sh).
 # The `every:` paths pin and build the typed lints' driver (tools/typed-lints)
 # and run clippy with it (scripts/clippy-*.sh): a change to them changes the
 # lints of every crate, so it lints every crate, as a change to

@@ -9,6 +9,14 @@
 # feature resolution), as CI does. tools/typed-lints/clippy.sh runs clippy, so
 # each crate compiles once for clippy's lints and the typed lints.
 #
+# A second run then lints the same crates' libraries and binaries without the
+# test features, which is how the bridge and the apps build them: a function
+# that only test code calls has a caller in the first run and is dead code in
+# theirs. The second run turns on each named crate's features that a release
+# build of the apps turns on: every bae-bridge feature but the two that only
+# Debug builds add (`test-keyring` and `dev-reset`), and the workspace features
+# those turn on. cargo turns on what a feature implies in the crates below.
+#
 # Only the named crates are linted. The workspace crates they depend on
 # compile through the typed lints' driver too, which writes the record the
 # read rule's lints read in the crates after them, and report nothing
@@ -31,38 +39,59 @@ else
 fi
 
 # The first line says whether the run lints every workspace crate; each line
-# after it names a feature to turn on.
+# after it names a feature to turn on, `test <feature>` for the run over every
+# target and `app <feature>` for the run without test features.
 plan=$(
     cargo metadata --format-version 1 --offline --no-deps | python3 -c '
 import json, sys
 metadata = json.load(sys.stdin)
-wanted = set(sys.argv[1:])
-names = {package["name"] for package in metadata["packages"]}
-print("every" if not wanted or names <= wanted else "some")
-for package in metadata["packages"]:
-    name = package["name"]
-    if wanted and name not in wanted:
-        continue
-    for feature in sorted(package["features"]):
+packages = {package["name"]: package for package in metadata["packages"]}
+wanted = set(sys.argv[1:]) or set(packages)
+print("every" if packages.keys() <= wanted else "some")
+for name in sorted(wanted):
+    for feature in sorted(packages[name]["features"]):
         if feature in ("test-utils", "test-instrumentation") or (
             name == "bae-bridge" and feature != "default"
         ):
-            print(f"{name}/{feature}")
+            print(f"test {name}/{feature}")
+
+released, pending = set(), [
+    ("bae-bridge", feature) for feature in packages["bae-bridge"]["features"]
+    if feature not in ("default", "test-keyring", "dev-reset")]
+while pending:
+    name, feature = pending.pop()
+    if (name, feature) in released:
+        continue
+    released.add((name, feature))
+    for entry in packages[name]["features"][feature]:
+        owner, slash, inner = entry.partition("/")
+        if slash and owner in packages:
+            pending.append((owner, inner))
+        elif entry in packages[name]["features"]:
+            pending.append((name, entry))
+for name, feature in sorted(released):
+    if name in wanted:
+        print(f"app {name}/{feature}")
 ' "${crates[@]+"${crates[@]}"}"
 )
 lints_every_crate=$(sed -n 1p <<< "$plan")
-features=$(sed 1d <<< "$plan")
 
-args=(--all-targets)
+selection=()
 if [ "$workspace" -eq 1 ]; then
-    args+=(--workspace)
+    selection+=(--workspace)
 fi
 for crate in "${crates[@]+"${crates[@]}"}"; do
-    args+=(-p "$crate")
+    selection+=(-p "$crate")
 done
-while IFS= read -r feature; do
-    [ -n "$feature" ] && args+=(--features "$feature")
-done <<< "$features"
+test_args=(--all-targets "${selection[@]}")
+# With no target named, cargo builds each crate's library and binaries.
+app_args=("${selection[@]}")
+while read -r kind feature; do
+    case "$kind" in
+        test) test_args+=(--features "$feature") ;;
+        app) app_args+=(--features "$feature") ;;
+    esac
+done <<< "$(sed 1d <<< "$plan")"
 # On whichever machine runs cargo (`builds cargo` sends the check to the host
 # with the most free cores), builds runs scripts/clippy-before.sh first,
 # through BUILDS_CARGO_BEFORE: it points tools/typed-lints/built at the driver
@@ -83,7 +112,7 @@ log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 status=0
 RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" \
-    tools/typed-lints/clippy.sh "${args[@]}" -- -D warnings 2> >(tee "$log" >&2) || status=$?
+    tools/typed-lints/clippy.sh "${test_args[@]}" -- -D warnings 2> >(tee "$log" >&2) || status=$?
 wait
 unreachable=$(sed $'s/\\x1b\\[[0-9;]*m//g' "$log" | grep -E 'does not refer to a reachable' | sort -u || true)
 if [ "$lints_every_crate" = every ] && [ -n "$unreachable" ]; then
@@ -91,4 +120,6 @@ if [ "$lints_every_crate" = every ] && [ -n "$unreachable" ]; then
     echo "$unreachable" >&2
     exit 1
 fi
-exit "$status"
+[ "$status" -eq 0 ] || exit "$status"
+RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" \
+    tools/typed-lints/clippy.sh "${app_args[@]}" -- -D warnings
