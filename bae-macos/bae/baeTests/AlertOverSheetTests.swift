@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Combine
 import SwiftUI
 import Testing
 
@@ -175,6 +176,75 @@ struct AlertOverSheetTests {
                 on: window,
                 attached: false
             )
+        }
+    }
+
+    /// A view that applies both forms of `macAlert` to its own state, which
+    /// `asked` and `named` set, and tells `ran` of each run of its body.
+    private struct Caller: View {
+        let asked: PassthroughSubject<Bool, Never>
+        let named: PassthroughSubject<String?, Never>
+        let ran: () -> Void
+
+        @State
+        private var isAsking = false
+        @State
+        private var name: String?
+
+        var body: some View {
+            ran()
+            return Color.clear
+                .onReceive(asked) { isAsking = $0 }
+                .onReceive(named) { name = $0 }
+                .macAlert(isPresented: $isAsking) { alert("Asked") }
+                .macAlert(item: $name) { alert($0) }
+        }
+
+        private func alert(_ title: String) -> (
+            MacAlertWords, [MacAlertButton]
+        ) {
+            (
+                MacAlertWords(Text(verbatim: title)),
+                [MacAlertButton(Text(verbatim: "OK"))]
+            )
+        }
+    }
+
+    @Test("raising a macAlert doesn't run the body of the view it is on")
+    func theCallerDoesNotReadTheBinding() async throws {
+        let asked = PassthroughSubject<Bool, Never>()
+        let named = PassthroughSubject<String?, Never>()
+        var runs = 0
+        try await SnapshotTestSupport.withHostedWindow(
+            Caller(asked: asked, named: named) { runs += 1 }
+                .modalWindows(modals),
+            size: NSSize(width: 600, height: 400)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let first = runs
+
+            asked.send(true)
+            #expect(
+                await holds { modals.panels.count == 1 },
+                "the alert is raised"
+            )
+            asked.send(false)
+            #expect(
+                await holds { modals.panels.isEmpty },
+                "the alert is withdrawn"
+            )
+            named.send("Named")
+            #expect(
+                await holds { modals.panels.count == 1 },
+                "the item's alert is raised"
+            )
+            named.send(nil)
+            #expect(
+                await holds { modals.panels.isEmpty },
+                "the item's alert is withdrawn"
+            )
+
+            #expect(runs == first)
         }
     }
 

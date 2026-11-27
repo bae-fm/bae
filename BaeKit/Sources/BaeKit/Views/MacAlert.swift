@@ -505,6 +505,42 @@
         }
     }
 
+    /// `macAlert(isPresented:)`'s modifier. It reads the binding in its own
+    /// body, so a change runs this body again and not the caller's.
+    private struct PresentingWhile: ViewModifier {
+        @Binding
+        var isPresented: Bool
+        let alert: () -> (MacAlertWords, [MacAlertButton])
+
+        func body(content: Content) -> some View {
+            content.modifier(
+                Presenting(
+                    presentation: .init(isPresented),
+                    build: { alert() },
+                    finish: { isPresented = false }
+                )
+            )
+        }
+    }
+
+    /// `macAlert(item:)`'s modifier. It reads the binding in its own body, so
+    /// a change runs this body again and not the caller's.
+    private struct PresentingItem<Item>: ViewModifier {
+        @Binding
+        var item: Item?
+        let alert: (Item) -> (MacAlertWords, [MacAlertButton])
+
+        func body(content: Content) -> some View {
+            content.modifier(
+                Presenting(
+                    presentation: .init(item != nil),
+                    build: { item.map(alert) },
+                    finish: { item = nil }
+                )
+            )
+        }
+    }
+
     extension View {
         /// Shows bae's alert while `asker` has a question open.
         public func presentsAlerts(of asker: AlertAsker) -> some View {
@@ -523,11 +559,7 @@
             _ alert: @escaping () -> (MacAlertWords, [MacAlertButton])
         ) -> some View {
             modifier(
-                Presenting(
-                    presentation: .init(isPresented.wrappedValue),
-                    build: { alert() },
-                    finish: { isPresented.wrappedValue = false }
-                )
+                PresentingWhile(isPresented: isPresented, alert: alert)
             )
         }
 
@@ -537,13 +569,7 @@
             item: Binding<Item?>,
             _ alert: @escaping (Item) -> (MacAlertWords, [MacAlertButton])
         ) -> some View {
-            modifier(
-                Presenting(
-                    presentation: .init(item.wrappedValue != nil),
-                    build: { item.wrappedValue.map(alert) },
-                    finish: { item.wrappedValue = nil }
-                )
-            )
+            modifier(PresentingItem(item: item, alert: alert))
         }
 
         /// Shows an item in this view's window, replacing the previous alert

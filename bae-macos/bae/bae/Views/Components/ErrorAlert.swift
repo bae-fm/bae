@@ -23,6 +23,65 @@ private struct ErrorAlert: View {
     }
 }
 
+/// `playbackFailureAlert`'s host. SwiftUI reads a `Binding(get:set:)` as it
+/// is built, so this view builds it, and a failure runs this body again and
+/// not the one of the view the alert is on.
+private struct PlaybackFailureAlert: View {
+    let playbackStore: PlaybackStore
+    let pairAgain: @MainActor (BridgeCastReceiver) -> Void
+    let dismiss: @MainActor () -> Void
+
+    var body: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .macAlert(
+                item: Binding(
+                    get: {
+                        playbackStore.failure.flatMap { failure in
+                            DisplayError(failure).map { (failure, $0) }
+                        }
+                    },
+                    set: { if $0 == nil { dismiss() } }
+                )
+            ) { shown in
+                let (failure, error) = shown
+                if case .audioOutput(.airPlayPairingLost(let receiver)) =
+                    failure
+                {
+                    return CastAlertContent.pairingLost(error: error) {
+                        pairAgain(receiver)
+                    }
+                }
+                return ErrorAlertContent.alert(
+                    title: Text("Error"),
+                    error: error
+                )
+            }
+    }
+}
+
+/// `castRefusalAlert`'s host, which reads the refusal in its own body as
+/// `PlaybackFailureAlert` reads the failure.
+private struct CastRefusalAlert: View {
+    let castStart: CastStart
+
+    var body: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .macAlert(
+                item: Binding(
+                    get: { castStart.refusal },
+                    set: { if $0 == nil { castStart.dismissRefusal() } }
+                )
+            ) { refusal in
+                CastAlertContent.refused(
+                    by: refusal.receiver,
+                    error: refusal.error
+                )
+            }
+    }
+}
+
 extension View {
     /// Hosts the shared alert when the error belongs to this window.
     func errorAlert(_ uiStore: UiStore, in window: ErrorAlertWindow)
@@ -44,37 +103,19 @@ extension View {
         pairAgain: @escaping @MainActor (BridgeCastReceiver) -> Void,
         dismiss: @escaping @MainActor () -> Void
     ) -> some View {
-        macAlert(
-            item: Binding(
-                get: {
-                    playbackStore.failure.flatMap { failure in
-                        DisplayError(failure).map { (failure, $0) }
-                    }
-                },
-                set: { if $0 == nil { dismiss() } }
+        background {
+            PlaybackFailureAlert(
+                playbackStore: playbackStore,
+                pairAgain: pairAgain,
+                dismiss: dismiss
             )
-        ) { shown in
-            let (failure, error) = shown
-            if case .audioOutput(.airPlayPairingLost(let receiver)) = failure {
-                return CastAlertContent.pairingLost(error: error) {
-                    pairAgain(receiver)
-                }
-            }
-            return ErrorAlertContent.alert(title: Text("Error"), error: error)
         }
     }
 
     /// Shows why the receiver of the last cast refused it, titled with the
     /// receiver's name, until the person dismisses it or casts again.
     func castRefusalAlert(_ castStart: CastStart) -> some View {
-        macAlert(
-            item: Binding(
-                get: { castStart.refusal },
-                set: { if $0 == nil { castStart.dismissRefusal() } }
-            )
-        ) { refusal in
-            CastAlertContent.refused(by: refusal.receiver, error: refusal.error)
-        }
+        background { CastRefusalAlert(castStart: castStart) }
     }
 
     /// An alert titled `title` for whichever failure `error` holds, shaped like
