@@ -81,46 +81,69 @@ fn stacks() -> Vec<Vec<AlbumSortCriterion>> {
     stacks
 }
 
-/// How the flat grid under `sort` orders the albums at `left` and `right` of
-/// [`ALBUMS`], worked out from their values: an unknown year after every
-/// year, and an album with no credits before every credit list.
-fn expected_order(sort: &[AlbumSortCriterion], left: usize, right: usize) -> std::cmp::Ordering {
-    let newest_first = [AlbumSortCriterion {
-        field: AlbumSortField::DateAdded,
-        direction: SortDirection::Descending,
-    }];
-    let sort = if sort.is_empty() { &newest_first[..] } else { sort };
-    sort.iter()
-        .map(|criterion| {
-            let (a, b) = (ALBUMS[left], ALBUMS[right]);
-            let ascending = match criterion.field {
-                AlbumSortField::Title => a.0.cmp(b.0),
-                // The artists' ids order as their names do.
-                AlbumSortField::Artist => a.2.cmp(b.2),
-                AlbumSortField::Year => a.1.unwrap_or(i32::MAX).cmp(&b.1.unwrap_or(i32::MAX)),
-                AlbumSortField::DateAdded => added(left).cmp(&added(right)),
-            };
-            match criterion.direction {
-                SortDirection::Ascending => ascending,
-                SortDirection::Descending => ascending.reverse(),
-            }
-        })
-        .find(|ordering| ordering.is_ne())
-        .unwrap_or_else(|| left.cmp(&right))
+/// A stack of sorts and the albums of [`ALBUMS`], by index, in the order the
+/// grid lists them under it.
+type OrderedStack = (&'static [(AlbumSortField, SortDirection)], &'static [usize]);
+
+/// Stacks of one to four sorts, and none, over the flat grid. An unknown year
+/// sorts after every year, an album with no credits before every credit list,
+/// the credit lists then as A, A and B, B, and albums the stack ties by id.
+const FLAT_ORDERS: &[OrderedStack] = {
+    use AlbumSortField::{Artist, DateAdded, Title, Year};
+    use SortDirection::{Ascending as Up, Descending as Down};
+    &[
+        // With no sort, the newest first.
+        (&[], &[10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1]),
+        (&[(Title, Up)], &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+        (&[(DateAdded, Up)], &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+        (&[(Title, Down), (Year, Up)], &[10, 8, 11, 9, 4, 7, 5, 6, 0, 1, 2, 3]),
+        (&[(Year, Down), (Artist, Up)], &[6, 3, 9, 2, 11, 8, 5, 7, 0, 4, 10, 1]),
+        (&[(Artist, Down), (Title, Up)], &[1, 5, 9, 3, 8, 0, 2, 4, 10, 11, 6, 7]),
+        (&[(Year, Up), (DateAdded, Down)], &[10, 7, 4, 0, 1, 11, 8, 5, 2, 9, 6, 3]),
+        (
+            &[(Artist, Up), (Year, Down), (Title, Down), (DateAdded, Up)],
+            &[6, 7, 11, 2, 10, 4, 0, 3, 8, 9, 5, 1],
+        ),
+    ]
+};
+
+/// A stack over the grid grouped by artist: the artists descending, B's group
+/// first, each group by year and then title descending.
+const GROUPED_ORDER: OrderedStack = {
+    use AlbumSortField::{Artist, Title, Year};
+    use SortDirection::{Ascending as Up, Descending as Down};
+    (&[(Artist, Down), (Year, Up), (Title, Down)], &[1, 8, 5, 9, 3, 10, 4, 0, 8, 11, 2, 3])
+};
+
+fn sort_of(stack: &[(AlbumSortField, SortDirection)]) -> Vec<AlbumSortCriterion> {
+    stack.iter().map(|&(field, direction)| AlbumSortCriterion { field, direction }).collect()
+}
+
+fn ids_of(albums: &[usize]) -> Vec<String> {
+    albums.iter().copied().map(album_id).collect()
 }
 
 #[tokio::test]
-async fn every_stacked_sort_orders_the_flat_grid_by_each_sort_in_turn() {
+async fn a_stacked_sort_orders_the_grid_by_each_sort_in_turn() {
     let (db, _dir) = tied_library().await;
     let views = LibraryViews::new(db.clone());
-    for sort in stacks() {
-        let mut expected: Vec<usize> = (0..ALBUMS.len()).collect();
-        expected.sort_by(|a, b| expected_order(&sort, *a, *b));
-        let expected: Vec<String> = expected.into_iter().map(album_id).collect();
-        let listed: Vec<String> =
-            views.get_albums(&sort).await.unwrap().into_iter().map(|album| album.id).collect();
-        assert_eq!(listed, expected, "{sort:?}");
+    for (stack, albums) in FLAT_ORDERS {
+        let listed: Vec<String> = views
+            .get_albums(&sort_of(stack))
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|album| album.id)
+            .collect();
+        assert_eq!(listed, ids_of(albums), "{stack:?}");
     }
+    let (stack, albums) = GROUPED_ORDER;
+    let grouped: Vec<String> = window_of(&views, &sort_of(stack), true, ListWindow::top(100))
+        .await
+        .into_iter()
+        .map(|(id, _key)| id)
+        .collect();
+    assert_eq!(grouped, ids_of(albums), "{stack:?} grouped");
 }
 
 /// The rows of the grid's window of `limit` rows from `window`'s key.
