@@ -601,7 +601,7 @@ mod release_album {
 mod disagreeing_source_ids {
     use super::*;
     use bae_catalogs::credits::ArtistCredit;
-    use bae_import::{ArtistAssignment, Credited, TrackArtistAssignments};
+    use bae_import::{ArtistAssignment, Credited};
     use bae_library::test_libraries::{ImportedRelease, TestLibrary};
 
     /// A library release of one track, imported, and the automation over it.
@@ -663,11 +663,10 @@ mod disagreeing_source_ids {
                 labels: Vec::new(),
                 barcodes: Vec::new(),
             },
-            tracks: vec![AutomationTrackUserEdit::from_core(TrackUserEdit {
+            tracks: vec![AutomationTrackUserEdit {
                 title: "Track One".to_string(),
-                artist_assignments: TrackArtistAssignments::AlbumArtists,
-                file: None,
-            })],
+                artist_assignments: AutomationTrackArtistAssignments::AlbumArtists,
+            }],
         };
         automation
             .call_tool(
@@ -836,6 +835,63 @@ mod library_pressing {
             .expect("the metadata edit lands");
 
         assert_eq!(facts(&library, release_id).await, expected);
+    }
+}
+
+/// A candidate read gives the draft's form as stored, whether or not an
+/// import takes it, and says why one doesn't.
+mod candidate_edit {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_form_an_import_refuses_reads_with_its_values_and_the_reason() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "Album").await;
+        for (tool, mut input) in [
+            (
+                AutomationTool::ImportCandidateEditFieldSet,
+                serde_json::json!({ "field": "album_title", "value": "  " }),
+            ),
+            (
+                AutomationTool::ImportCandidateEditFieldSet,
+                serde_json::json!({ "field": "pressing_year", "value": " 1991 " }),
+            ),
+            (
+                AutomationTool::ImportCandidateLabelsSet,
+                serde_json::json!({
+                    "labels": [{ "name": "Label Name", "catalog_number": "CAT-1" }],
+                }),
+            ),
+            (
+                AutomationTool::ImportCandidateBarcodesSet,
+                serde_json::json!({ "barcodes": ["0123456789012", ""] }),
+            ),
+            (
+                AutomationTool::ImportCandidatePressingFactSet,
+                serde_json::json!({
+                    "fact": { "kind": "medium_count", "medium": "dvd", "count": 2 },
+                }),
+            ),
+        ] {
+            input["candidate_key"] = Value::String(key.clone());
+            fixture.automation.call_tool(tool, input).await.expect("the draft takes the value");
+        }
+
+        let read = serde_json::to_value(fixture.get_candidate(&key).await.expect("the read"))
+            .expect("the candidate serializes");
+        let edit = &read["edit"];
+        assert_eq!(edit["error"], "Album title is required");
+        assert_eq!(edit["album_title"], "  ");
+        assert_eq!(edit["album_year"], "");
+        assert_eq!(edit["pressing"]["year"], " 1991 ");
+        assert_eq!(edit["pressing"]["labels"][0]["name"], "Label Name");
+        assert_eq!(edit["pressing"]["labels"][0]["catalog_number"], "CAT-1");
+        assert_eq!(edit["pressing"]["barcodes"], serde_json::json!(["0123456789012", ""]));
+        assert_eq!(edit["pressing"]["facts"]["media"].as_array().unwrap().len(), 1);
+        assert_eq!(edit["tracks"].as_array().unwrap().len(), 1, "{edit}");
+
+        let listed = serde_json::to_value(fixture.list_candidates().await).unwrap();
+        assert_eq!(listed[0]["edit"], *edit);
     }
 }
 

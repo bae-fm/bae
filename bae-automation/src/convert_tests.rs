@@ -35,6 +35,30 @@ fn pressing_identity_keeps_its_known_parent() {
     );
 }
 
+#[test]
+fn a_form_an_import_takes_reads_with_no_error() {
+    let form = bae_import::RawReleaseEdit::from_user_edit(
+        bae_import::ReleaseUserEdit {
+            metadata: bae_import::ReleaseMetadataEdit {
+                album_title: "Album Alpha".to_string(),
+                album_artist_assignments: bae_import::Credited::plain_list([
+                    bae_import::ArtistAssignment::named("Artist Alpha"),
+                ]),
+                album_year: Some(1987),
+                pressing: Default::default(),
+                tracks: Vec::new(),
+            },
+            facts: Default::default(),
+        },
+        "track",
+    );
+
+    let value = serde_json::to_value(AutomationCandidateEdit::from_core(form)).unwrap();
+
+    assert_eq!(value["error"], serde_json::Value::Null);
+    assert_eq!(value["album_year"], "1987");
+}
+
 /// `release_metadata_update` enforces the same rule as the desktop editor's
 /// Save, so it can't write what the editor would refuse.
 mod release_metadata_update_input {
@@ -122,12 +146,10 @@ mod release_metadata_update_input {
             join: None,
         }];
 
-        let round_trip = AutomationReleaseUserEdit::from_core(bae_import::ReleaseUserEdit {
-            metadata: edit.into_core(),
-            facts: Default::default(),
-        });
+        let round_trip =
+            AutomationCredited::from_core(edit.into_core().album_artist_assignments.remove(0));
         let AutomationArtistAssignment::Picked { credit_name: None, artist: round_trip_artist } =
-            &round_trip.album_artist_assignments[0].artist
+            &round_trip.artist
         else {
             panic!("the existing artist remains an existing artist");
         };

@@ -445,33 +445,32 @@ mirror_struct! {
     fields: { url, max_edge },
 }
 
-impl AutomationPressingEdit {
-    pub(crate) fn from_core(pressing: bae_types::pressing::Pressing) -> Self {
-        let bae_types::pressing::TypedPressing { year, labels, barcodes } = pressing.typed;
-        Self { year, labels, barcodes, facts: pressing.facts }
-    }
-}
-
 mirror_struct! {
     AutomationTypedPressing = bae_types::pressing::TypedPressing,
     into_core: pub(crate) fn,
     fields: { year, labels, barcodes },
 }
 
-impl AutomationReleaseUserEdit {
-    pub(crate) fn from_core(edit: bae_import::ReleaseUserEdit) -> Self {
-        let pressing = edit.pressing();
-        let edit = edit.metadata;
+impl AutomationCandidateEdit {
+    pub(crate) fn from_core(form: bae_import::RawReleaseEdit) -> Self {
+        let error = form.shape().err().map(|error| error.to_string());
+        let bae_import::RawReleaseEdit {
+            album_title,
+            album_artist_assignments,
+            album_year,
+            pressing: bae_import::RawPressingEdit { year, labels, barcodes, facts },
+            tracks,
+        } = form;
         Self {
-            album_title: edit.album_title,
-            album_artist_assignments: edit
-                .album_artist_assignments
+            album_title,
+            album_artist_assignments: album_artist_assignments
                 .into_iter()
                 .map(AutomationCredited::from_core)
                 .collect(),
-            album_year: edit.album_year,
-            pressing: AutomationPressingEdit::from_core(pressing),
-            tracks: edit.tracks.into_iter().map(AutomationTrackUserEdit::from_core).collect(),
+            album_year,
+            pressing: AutomationCandidatePressing { year, labels, barcodes, facts },
+            tracks: tracks.into_iter().map(AutomationTrackUserEdit::from_form_row).collect(),
+            error,
         }
     }
 }
@@ -493,8 +492,9 @@ impl AutomationReleaseMetadataEdit {
 }
 
 impl AutomationTrackUserEdit {
-    /// Drops core's `file`, which automation neither reads nor sets.
-    pub(crate) fn from_core(track: TrackUserEdit) -> Self {
+    /// Drops the form row's id and audio, which automation neither reads nor
+    /// sets.
+    pub(crate) fn from_form_row(track: bae_import::RawTrackEdit) -> Self {
         Self {
             title: track.title,
             artist_assignments: AutomationTrackArtistAssignments::from_core(

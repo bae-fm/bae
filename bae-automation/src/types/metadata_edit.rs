@@ -1,21 +1,28 @@
 use super::*;
 
-/// The metadata a candidate commits with, as automation reads it.
+/// A candidate draft's form, as automation reads it: every value as stored,
+/// and why an import refuses the form, where it does. Mirrors
+/// `bae_import::RawReleaseEdit`.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationReleaseUserEdit {
+pub struct AutomationCandidateEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<AutomationCredited>,
-    pub album_year: Option<i32>,
-    pub pressing: AutomationPressingEdit,
+    /// As typed; empty is unset.
+    pub album_year: String,
+    pub pressing: AutomationCandidatePressing,
     pub tracks: Vec<AutomationTrackUserEdit>,
+    /// Why an import refuses the form; null when the form shapes.
+    pub error: Option<String>,
 }
 
-/// Mirrors `bae_types::pressing::Pressing`.
+/// Mirrors `bae_import::RawPressingEdit`.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationPressingEdit {
-    pub year: Option<i32>,
-    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
-    /// Every barcode the pressing is printed with, in order.
+pub struct AutomationCandidatePressing {
+    /// As typed; empty is unset.
+    pub year: String,
+    /// Every label row, as typed.
+    pub labels: Vec<bae_import::RawLabelEdit>,
+    /// Every barcode row, as typed.
     pub barcodes: Vec<String>,
     pub facts: bae_types::pressing::PressingFacts,
 }

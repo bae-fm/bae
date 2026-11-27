@@ -74,9 +74,8 @@ pub enum AutomationCandidate {
         /// What identified the picked release, with the file each piece was
         /// read off.
         file_evidence: Vec<AutomationFileEvidence>,
-        /// The metadata this candidate will commit with; `None` while nothing
-        /// is picked.
-        edit: Option<AutomationReleaseUserEdit>,
+        /// The candidate draft's form; `None` once it is imported.
+        edit: Option<AutomationCandidateEdit>,
         /// The last import of this candidate that failed.
         failure: Option<AutomationImportFailure>,
     },

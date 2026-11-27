@@ -73,8 +73,13 @@ pub(crate) async fn automation_candidate_from_folder(
             .map(AutomationFileEvidence::from_core)
             .collect(),
         // An imported candidate holds no draft: its release is the library's.
+        // Any other reads as its draft's form, with the mapping table's track
+        // rows.
         edit: draft.map(|draft| {
-            AutomationReleaseUserEdit::from_core(shaped_edit(&draft.metadata_draft, &draft.mapping))
+            AutomationCandidateEdit::from_core(bae_import::RawReleaseEdit {
+                tracks: bae_import::mapping_tracks(&draft.mapping),
+                ..draft.metadata_draft.clone()
+            })
         }),
         failure: draft.and_then(|draft| draft.failure.as_ref()).map(|failure| {
             AutomationImportFailure {
@@ -125,28 +130,6 @@ mirror_enum! {
         BitDepth { bits_per_sample },
         Channels { channels },
     },
-}
-
-/// The metadata a commit of this candidate would write: the form's album
-/// fields with the table's own track rows, normalized the way the commit
-/// normalizes them. A form that will not shape yet — an empty album title —
-/// reads back as the seed it came from.
-fn shaped_edit(
-    edit: &bae_import::RawReleaseEdit,
-    mapping: &bae_import::MappingTable,
-) -> bae_import::ReleaseUserEdit {
-    let mut raw = edit.clone();
-    raw.tracks = bae_import::mapping_tracks(mapping);
-    raw.shape().unwrap_or_else(|_| bae_import::ReleaseUserEdit {
-        metadata: bae_import::ReleaseMetadataEdit {
-            album_title: raw.album_title.clone(),
-            album_artist_assignments: Vec::new(),
-            album_year: None,
-            pressing: Default::default(),
-            tracks: Vec::new(),
-        },
-        facts: Default::default(),
-    })
 }
 
 /// An unimportable folder. The import service records no runtime against one —
