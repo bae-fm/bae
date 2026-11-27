@@ -2066,7 +2066,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "coven-crypto",
  "coven-database",
@@ -2084,7 +2084,7 @@ dependencies = [
 [[package]]
 name = "coven-crypto"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -2116,7 +2116,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "coven-crypto",
  "coven-format",
@@ -2137,7 +2137,7 @@ dependencies = [
 [[package]]
 name = "coven-format"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "coven-crypto",
  "coven-foundation",
@@ -2153,7 +2153,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "block2",
  "futures-lite",
@@ -2182,7 +2182,7 @@ dependencies = [
 [[package]]
 name = "coven-merge"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "coven-foundation",
  "rusqlite",
@@ -2192,12 +2192,12 @@ dependencies = [
 [[package]]
 name = "coven-schema"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 
 [[package]]
 name = "coven-storage"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "async-trait",
  "aws-credential-types",
@@ -2237,7 +2237,7 @@ dependencies = [
 [[package]]
 name = "coven-sync"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "async-trait",
  "const-random",
@@ -4593,7 +4593,7 @@ checksum = "1a80800c0488c3a21695ea981a54918fbb37abf04f4d0720c453632255e2ff0e"
 [[package]]
 name = "panic-as-error"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "tracing",
 ]
@@ -5859,7 +5859,7 @@ dependencies = [
 [[package]]
 name = "sqlive"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "futures-lite",
  "panic-as-error",
@@ -5875,7 +5875,7 @@ dependencies = [
 [[package]]
 name = "sqlive-compose"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "hex",
  "proc-macro2",
@@ -5891,7 +5891,7 @@ dependencies = [
 [[package]]
 name = "sqlive-compose-macros"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5901,7 +5901,7 @@ dependencies = [
 [[package]]
 name = "sqlive-reads"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 dependencies = [
  "rusqlite",
  "sqlite3-parser",
@@ -7003,7 +7003,7 @@ dependencies = [
 [[package]]
 name = "windows-reserved-names"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=64b47d2ff41724fd67fcc23e09958208c171958d#64b47d2ff41724fd67fcc23e09958208c171958d"
+source = "git+https://github.com/bae-fm/coven?rev=763ea705ae4b690d81406d082efa3c2ddfac968d#763ea705ae4b690d81406d082efa3c2ddfac968d"
 
 [[package]]
 name = "windows-result"
