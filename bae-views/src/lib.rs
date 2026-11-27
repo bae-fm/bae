@@ -97,13 +97,6 @@ use rusqlite::{params, OptionalExtension, Row};
 use std::collections::BTreeSet;
 use time::UtcDateTime;
 
-/// The UUID column `column` (its name or index) of `row` holds as text,
-/// surfacing text that is no UUID as a column-conversion error.
-fn uuid_column<I: rusqlite::RowIndex + Copy>(row: &Row, column: I) -> rusqlite::Result<uuid::Uuid> {
-    let value: String = row.get(column)?;
-    uuid::Uuid::parse_str(&value).map_err(|error| column_conversion_error(row, column, error))
-}
-
 include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 
 /// The schema this crate's tests open their stores on: records' and release
