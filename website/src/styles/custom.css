@@ -315,10 +315,10 @@ starlight-toc nav a[aria-current='true']:hover {
 	border-inline-start-color: var(--accent-orchid);
 }
 
-/* ---- Selection: pink, with the ink drawn on the pink fill ---- */
+/* ---- Selection: the accent's selection colour under white text ---- */
 ::selection {
-	background: var(--accent-pink);
-	color: var(--on-accent-pink-fill);
+	background: var(--accent-pink-selection);
+	color: var(--on-fill);
 }
 
 /* Disable sidebar section collapsing */
