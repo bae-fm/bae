@@ -211,14 +211,7 @@ async fn a_queue_holds_one_active_entry_at_most() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
     activate_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap();
-    let second = db
-        .call(|sql| {
-            Ok(sql.execute(
-                "UPDATE download_queue SET state = 'active' WHERE release_id = ?",
-                [RELEASE_B],
-            )?)
-        })
-        .await;
+    let second = activate_queued_release::<DownloadRequest>(&db, RELEASE_B).await;
     assert!(second.is_err(), "a second active entry is refused");
 }
 

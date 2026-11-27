@@ -21,11 +21,6 @@ fn row_id(kind: u32, i: u64) -> String {
     format!("{i:08x}-{kind:04x}-4000-8000-{i:012x}")
 }
 
-/// Release `i`'s id, as an SQL expression over `i`.
-pub fn release_id_sql() -> String {
-    row_id_sql(3)
-}
-
 /// Track `i`'s id, as an SQL expression over `i`.
 pub fn track_id_sql() -> String {
     row_id_sql(6)

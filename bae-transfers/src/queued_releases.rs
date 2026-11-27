@@ -6,6 +6,7 @@
 pub mod download_list;
 mod rows;
 pub mod tables;
+mod writes;
 
 use crate::download_snapshot::DownloadRequest;
 #[cfg(any(desktop, test, feature = "test-utils"))]

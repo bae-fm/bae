@@ -728,12 +728,8 @@ mod window_cost {
         let records = bae_records::test_fixtures::test_records(db);
         db.write(move |sql| {
             bulk_library::insert_on(&sql, start, end)?;
-            bae_transfers::tables::bulk::queue_downloads_on(
-                &sql,
-                start,
-                end,
-                &bulk_library::release_id_sql(),
-            )?;
+            let releases: Vec<String> = (start..end).map(bulk_library::release_id).collect();
+            bae_transfers::tables::bulk::queue_downloads_on(&sql, start, &releases)?;
             bae_playback::tables::fill_context_lane_on(
                 &sql,
                 start,

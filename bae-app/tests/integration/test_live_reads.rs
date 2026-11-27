@@ -128,9 +128,13 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
     queueing.set_downloads_paused(true).await.unwrap();
     load.push(bae_util::test_spawn::task(async move {
         loop {
-            let release = format!("'{queued}'");
+            let release = queued.clone();
             db.call(move |sql| {
-                bae_transfers::tables::bulk::queue_downloads_on(sql, 1, 2, &release)
+                bae_transfers::tables::bulk::queue_downloads_on(
+                    sql,
+                    1,
+                    std::slice::from_ref(&release),
+                )
             })
             .await
             .unwrap();

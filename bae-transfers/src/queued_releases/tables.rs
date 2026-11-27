@@ -6,9 +6,11 @@
 //! queries, whose statements are in `rows` and
 //! [`download_list`](super::download_list).
 //!
-//! Its tables are `tables.sql`.
+//! Its tables are `tables.sql`, and the statements that write them are in
+//! `writes`.
 
 use super::rows;
+use super::writes::{self, QueueWrites};
 use crate::download_entry::DownloadKind;
 use crate::download_snapshot::DownloadRequest;
 use crate::output_snapshot::{OutputKind, OutputRequest};
@@ -17,27 +19,18 @@ use crate::release_queue::ReleaseQueueRow;
 #[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
-use bae_records::release_storage::ReleaseStorageRows;
-use bae_store::{DbError, Store};
+use bae_store::{DbError, Store, WriteStatements};
 use coven::{CovenWrite, SqlReadContext};
-#[cfg(desktop)]
-use rusqlite::types::Value;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::OptionalExtension;
 
-/// What a queue's entries carry beyond their release, and the table that
-/// holds them.
-pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
+/// What a queue's entries carry beyond their release, and how the queue reads
+/// and writes its table.
+pub trait QueuedPayload: QueueWrites + Clone + PartialEq + Send + Sync + 'static {
     /// The queue's row in `release_queues`.
     const QUEUE: &'static str;
-    const TABLE: &'static str;
-    /// The payload's columns, in the order [`Self::values`] gives them.
-    const COLUMNS: &'static [&'static str];
     /// What a look at the queue sees of the network: coven's word on it for
     /// a queue whose entries need it, nothing for the others.
     type Network: Send + 'static;
-    /// Only the queues desktop fills by entry read it.
-    #[cfg(desktop)]
-    fn values(&self) -> Result<Vec<Value>, DbError>;
     /// The entry the worker takes next, unless the queue is paused or, for a
     /// queue that needs the network, coven says the device has none: the
     /// active entry if there is one, else the first queued. An active entry is
@@ -70,20 +63,7 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
 /// folder.
 impl QueuedPayload for DownloadRequest {
     const QUEUE: &'static str = "download";
-    const TABLE: &'static str = "download_queue";
-    const COLUMNS: &'static [&'static str] = &["kind", "target_dir"];
     type Network = Option<bool>;
-
-    #[cfg(desktop)]
-    fn values(&self) -> Result<Vec<Value>, DbError> {
-        Ok(match self {
-            Self::Pin => vec![Value::Text("pin".to_string()), Value::Null],
-            Self::MoveToThisDevice { target_dir } => vec![
-                Value::Text("move_to_this_device".to_string()),
-                Value::Blob(coven::path_bytes(target_dir)),
-            ],
-        })
-    }
 
     fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
         rows::next_download_on(sql)
@@ -130,40 +110,7 @@ impl QueuedPayload for DownloadRequest {
 /// preset and filename and folder name patterns whole.
 impl QueuedPayload for OutputRequest {
     const QUEUE: &'static str = "output";
-    const TABLE: &'static str = "output_queue";
-    const COLUMNS: &'static [&'static str] =
-        &["target_dir", "kind", "preset", "filename_pattern", "folder_pattern", "extras"];
     type Network = ();
-
-    #[cfg(desktop)]
-    fn values(&self) -> Result<Vec<Value>, DbError> {
-        let (kind, preset, filename_pattern, folder_pattern, extras) = match &self.kind {
-            OutputKind::Export => ("export", None, None, None, None),
-            OutputKind::Save { preset, filename_pattern, folder_pattern, extras } => (
-                "save",
-                Some(serde_json::to_string(preset).map_err(|error| {
-                    DbError::encode(format!("save preset {}", preset.id), error)
-                })?),
-                Some(serde_json::to_string(filename_pattern).map_err(|error| {
-                    DbError::encode(format!("save filename pattern of {}", preset.id), error)
-                })?),
-                Some(serde_json::to_string(folder_pattern).map_err(|error| {
-                    DbError::encode(format!("save folder pattern of {}", preset.id), error)
-                })?),
-                Some(serde_json::to_string(extras).map_err(|error| {
-                    DbError::encode(format!("save extras of {}", preset.id), error)
-                })?),
-            ),
-        };
-        Ok(vec![
-            Value::Blob(coven::path_bytes(&self.target_dir)),
-            Value::Text(kind.to_string()),
-            preset.map_or(Value::Null, Value::Text),
-            filename_pattern.map_or(Value::Null, Value::Text),
-            folder_pattern.map_or(Value::Null, Value::Text),
-            extras.map_or(Value::Null, Value::Text),
-        ])
-    }
 
     fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
         rows::next_output_on(sql)
@@ -236,18 +183,6 @@ pub(super) fn output_request(
     Ok(OutputRequest { target_dir, kind })
 }
 
-/// `release_id, created_at` and the payload's columns, each prefixed by
-/// `prefix`.
-#[cfg(desktop)]
-fn entry_columns<P: QueuedPayload>(prefix: &str) -> String {
-    ["release_id", "created_at"]
-        .iter()
-        .chain(P::COLUMNS)
-        .map(|column| format!("{prefix}{column}"))
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
 #[cfg(any(desktop, test, feature = "test-utils"))]
 pub(crate) fn release_queue_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
@@ -277,25 +212,9 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     entries: &[ReleaseQueueEntry<P>],
 ) -> Result<bool, DbError> {
-    let placeholders =
-        (1..=2 + P::COLUMNS.len()).map(|at| format!("?{at}")).collect::<Vec<_>>().join(", ");
-    // The statement that queues the release also counts its files and adds up
-    // their size, so the row keeps both after the library deletes the release.
-    let insert = format!(
-        "INSERT INTO {table} ({columns}, file_count, total_size, state) \
-         SELECT {placeholders}, COUNT(rf.id), COALESCE(SUM(file.size), 0), 'queued' \
-         FROM release_files rf JOIN coven_files file ON file.id = rf.file \
-         WHERE rf.release_id = ?1 \
-         ON CONFLICT (release_id) DO NOTHING",
-        table = P::TABLE,
-        columns = entry_columns::<P>(""),
-    );
     let mut added = false;
     for entry in entries {
-        let mut values =
-            vec![Value::Text(entry.release_id.clone()), Value::Integer(entry.created_at)];
-        values.extend(entry.payload.values()?);
-        added |= sql.execute(&insert, rusqlite::params_from_iter(values))? > 0;
+        added |= P::insert_on(sql, entry)? > 0;
     }
     Ok(added)
 }
@@ -354,26 +273,7 @@ pub(crate) fn enqueue_pins_on(
     created_at: i64,
 ) -> Result<ReleasesQueued, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
-    let added = sql.execute(
-        &format!(
-            "INSERT INTO download_queue (release_id, created_at, file_count, total_size, state, kind) \
-             SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
-                    'queued', 'pin' \
-             FROM json_each(:release_ids) AS requested \
-             JOIN ({storage}) AS storage ON storage.release_id = requested.value \
-             WHERE NOT storage.pinned \
-             ORDER BY requested.key \
-             ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
-                 file_count = excluded.file_count, total_size = excluded.total_size, \
-                 kind = 'pin', target_dir = NULL \
-             WHERE download_queue.state = 'failed'",
-            storage = ReleaseStorageRows::SQL,
-        ),
-        rusqlite::named_params! {
-            ":created_at": created_at,
-            ":release_ids": release_ids,
-        },
-    )? > 0;
+    let added = sql.run(&writes::QueuePinsParams { created_at, releases: &release_ids })? > 0;
     Ok(ReleasesQueued { added, missing: missing_releases_on(sql, &release_ids)? })
 }
 
@@ -385,14 +285,7 @@ pub(crate) fn activate_queued_release_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
-    Ok(sql.execute(
-        &format!(
-            "UPDATE {} SET state = 'active' WHERE release_id = ?1 AND state IN ('queued', 'active') \
-               AND NOT (SELECT paused FROM release_queues WHERE queue = ?2)",
-            P::TABLE
-        ),
-        params![release_id, P::QUEUE],
-    )? > 0)
+    Ok(P::activate_on(sql, release_id)? > 0)
 }
 
 /// The active entry for `release_id` finished: it leaves the queue.
@@ -401,10 +294,7 @@ pub(crate) fn finish_queued_release_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
-    Ok(sql.execute(
-        &format!("DELETE FROM {} WHERE release_id = ? AND state = 'active'", P::TABLE),
-        [release_id],
-    )? > 0)
+    Ok(P::finish_on(sql, release_id)? > 0)
 }
 
 /// `release_id`'s entry failed, starting or running: it stays listed
@@ -414,14 +304,7 @@ pub(crate) fn fail_queued_release_on<P: QueuedPayload>(
     release_id: &str,
     error: &str,
 ) -> Result<bool, DbError> {
-    Ok(sql.execute(
-        &format!(
-            "UPDATE {} SET state = 'failed', error = ?2 \
-             WHERE release_id = ?1 AND state IN ('queued', 'active')",
-            P::TABLE
-        ),
-        params![release_id, error],
-    )? > 0)
+    Ok(P::fail_on(sql, release_id, error)? > 0)
 }
 
 /// The running work of `release_id`'s entry failed: it stays listed with
@@ -432,13 +315,7 @@ pub(crate) fn fail_active_release_on<P: QueuedPayload>(
     release_id: &str,
     error: &str,
 ) -> Result<bool, DbError> {
-    Ok(sql.execute(
-        &format!(
-            "UPDATE {} SET state = 'failed', error = ?2 WHERE release_id = ?1 AND state = 'active'",
-            P::TABLE
-        ),
-        params![release_id, error],
-    )? > 0)
+    Ok(P::fail_active_on(sql, release_id, error)? > 0)
 }
 
 /// Queue every failed entry again, in its place; `true` when any had
@@ -446,10 +323,7 @@ pub(crate) fn fail_active_release_on<P: QueuedPayload>(
 pub(crate) fn retry_failed_releases_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
 ) -> Result<bool, DbError> {
-    Ok(sql.execute(
-        &format!("UPDATE {} SET state = 'queued', error = NULL WHERE state = 'failed'", P::TABLE),
-        [],
-    )? > 0)
+    Ok(P::retry_all_on(sql)? > 0)
 }
 
 /// Queue `release_id`'s failed entry again, in its place; `true` when it
@@ -458,13 +332,7 @@ pub(crate) fn retry_failed_release_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
-    Ok(sql.execute(
-        &format!(
-            "UPDATE {} SET state = 'queued', error = NULL WHERE release_id = ?1 AND state = 'failed'",
-            P::TABLE
-        ),
-        params![release_id],
-    )? > 0)
+    Ok(P::retry_on(sql, release_id)? > 0)
 }
 
 /// Pause or resume the queue, saying whether it was paused. Pausing puts the
@@ -478,15 +346,9 @@ pub(crate) fn set_release_queue_paused_on<P: QueuedPayload>(
         sql.query_row("SELECT paused FROM release_queues WHERE queue = ?", [P::QUEUE], |row| {
             row.get(0)
         })?;
-    sql.execute(
-        "UPDATE release_queues SET paused = ?2 WHERE queue = ?1",
-        params![P::QUEUE, paused],
-    )?;
+    sql.run(&writes::SetQueuePausedParams { queue: P::QUEUE, paused })?;
     if paused {
-        sql.execute(
-            &format!("UPDATE {} SET state = 'queued' WHERE state = 'active'", P::TABLE),
-            [],
-        )?;
+        P::requeue_active_on(sql)?;
     }
     Ok(was)
 }
@@ -499,7 +361,7 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
     release_id: &str,
 ) -> Result<bool, DbError> {
     P::cancelling_in(sql, release_id)?;
-    Ok(sql.execute(&format!("DELETE FROM {} WHERE release_id = ?", P::TABLE), [release_id])? > 0)
+    Ok(P::delete_on(sql, release_id)? > 0)
 }
 
 /// Queue to move to this device into `target_dir`, in the order given, each of
@@ -517,27 +379,11 @@ pub(crate) fn enqueue_moves_to_this_device_on(
     created_at: i64,
 ) -> Result<ReleasesQueued, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
-    let added = sql.execute(
-        &format!(
-            "INSERT INTO download_queue \
-             (release_id, created_at, file_count, total_size, state, kind, target_dir) \
-         SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
-                'queued', 'move_to_this_device', :target_dir \
-         FROM json_each(:release_ids) AS requested \
-         JOIN ({storage}) AS storage ON storage.release_id = requested.value \
-         ORDER BY requested.key \
-         ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
-             file_count = excluded.file_count, total_size = excluded.total_size, \
-             kind = 'move_to_this_device', target_dir = excluded.target_dir \
-         WHERE download_queue.state = 'failed'",
-            storage = ReleaseStorageRows::SQL,
-        ),
-        rusqlite::named_params! {
-            ":created_at": created_at,
-            ":release_ids": release_ids,
-            ":target_dir": coven::path_bytes(target_dir),
-        },
-    )? > 0;
+    let added = sql.run(&writes::QueueMovesToThisDeviceParams {
+        created_at,
+        releases: &release_ids,
+        target_dir: coven::path_bytes(target_dir),
+    })? > 0;
     Ok(ReleasesQueued { added, missing: missing_releases_on(sql, &release_ids)? })
 }
 
@@ -546,8 +392,8 @@ pub(crate) fn enqueue_moves_to_this_device_on(
 /// queue and its pause are kept, as coven's upload pause is: the entry that
 /// was downloading runs again.
 pub fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
-    sql.execute("DELETE FROM output_queue", [])?;
-    sql.execute("UPDATE release_queues SET paused = 0 WHERE queue = 'output'", [])?;
+    sql.run(&writes::ClearOutputQueueParams {})?;
+    sql.run(&writes::SetQueuePausedParams { queue: OutputRequest::QUEUE, paused: false })?;
     Ok(())
 }
 
@@ -598,22 +444,19 @@ pub mod worker_moves {
 pub mod bulk {
     use super::*;
 
-    /// Queue the releases `start..end` to download, release `i` at place `i`
-    /// and named by `release_id_sql`, an SQL expression over `i`. No one
-    /// queues a hundred thousand releases within a run, so they go in by one
-    /// set-based statement.
+    /// Queue `release_ids` to pin, the first at place `start` and each next
+    /// one a place later. No one queues a hundred thousand releases within a
+    /// run, so they go in by one set-based statement.
     pub fn queue_downloads_on(
         sql: &CovenWrite<'_>,
         start: u64,
-        end: u64,
-        release_id_sql: &str,
+        release_ids: &[String],
     ) -> Result<(), DbError> {
-        let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
-        sql.execute_batch(&format!(
-            "{rows} INSERT INTO download_queue \
-                    (position, release_id, created_at, file_count, total_size, state, kind) \
-                 SELECT i, {release_id_sql}, i, 0, 0, 'queued', 'pin' FROM k;"
-        ))?;
+        let releases = serde_json::Value::from(release_ids.to_vec()).to_string();
+        sql.run(&writes::QueueDownloadsAtPlacesParams {
+            start: bae_store::query::to_i64(start, "download_queue.position")?,
+            releases: &releases,
+        })?;
         Ok(())
     }
 }
