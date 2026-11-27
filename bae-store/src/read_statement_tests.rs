@@ -41,7 +41,9 @@ impl Returning for Bodies {
     }
 }
 
-impl Read for Bodies {}
+impl Read for Bodies {
+    const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[{"object":{"Table":{"name":"notes","within":null}},"from":"main.\"notes\" AS n","qualifier":"n","term":{"Compare":{"column":"topic","affinity":"Text","operand":{"Parameter":0},"ordering":0,"inclusive":false}},"carried":null,"place":{"Statement":{"offset":19,"line":1,"column":20}},"unread":false,"columns":["body","id","topic"],"memberships":[],"either":[]}],"order":[0],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":1,"cores":1,"edges":0}},"schema":{"objects":{"notes":{"stored":"notes","kind":"table","definition":["CREATE TABLE notes (id INTEGER PRIMARY KEY, topic TEXT NOT NULL, body TEXT NOT NULL) STRICT"]}},"functions":{}}}"#;
+}
 
 /// How many notes a topic has.
 struct Count {
@@ -70,7 +72,9 @@ impl Returning for Count {
     }
 }
 
-impl Read for Count {}
+impl Read for Count {
+    const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[{"object":{"Table":{"name":"notes","within":null}},"from":"main.\"notes\" AS n","qualifier":"n","term":{"Compare":{"column":"topic","affinity":"Text","operand":{"Parameter":0},"ordering":0,"inclusive":false}},"carried":null,"place":{"Statement":{"offset":30,"line":1,"column":31}},"unread":false,"columns":["topic"],"memberships":[],"either":[]}],"order":[0],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":1,"cores":1,"edges":0}},"schema":{"objects":{"notes":{"stored":"notes","kind":"table","definition":["CREATE TABLE notes (id INTEGER PRIMARY KEY, topic TEXT NOT NULL, body TEXT NOT NULL) STRICT"]}},"functions":{"count":[{"arguments":0,"aggregate":true,"deterministic":false,"builtin":true},{"arguments":1,"aggregate":true,"deterministic":false,"builtin":true}]}}}"#;
+}
 
 /// A statement whose row does not read.
 #[derive(Clone, PartialEq)]
@@ -98,7 +102,27 @@ impl Returning for Failing {
     }
 }
 
-impl Read for Failing {}
+impl Read for Failing {
+    const PLAN: &'static str = r#"{"plan":{"sources":{"Ok":{"sources":[],"order":[],"inlined":[],"fts5_shadows":[],"sorted":null,"windows":[]}},"unreported":{"Known":[]},"size":{"sources":0,"cores":1,"edges":0}},"schema":{"objects":{},"functions":{}}}"#;
+}
+
+/// Each read written here ships the plan sqlive-compose's compiler builds of
+/// its SQL against `LIBRARY`, as a generated read does.
+#[test]
+fn each_read_ships_the_plan_its_compiler_builds() {
+    let schema: Vec<String> = Schema::new(LIBRARY).sql().map(str::to_owned).collect();
+    let probe = sqlive_reads::SchemaProbe::open(&schema, &[], &[]).unwrap();
+    let differ: Vec<String> =
+        [(Bodies::SQL, Bodies::PLAN), (Count::SQL, Count::PLAN), (Failing::SQL, Failing::PLAN)]
+            .into_iter()
+            .filter_map(|(sql, plan)| {
+                let built = probe.compiled_plan(sql).unwrap().expect("sqlive analyzes the read");
+                let built = built.encode();
+                (built != plan).then(|| format!("{sql}\n  ships {plan}\n  built r#\"{built}\"#"))
+            })
+            .collect();
+    assert!(differ.is_empty(), "{}", differ.join("\n"));
+}
 
 fn topic(name: &str) -> Topic {
     Topic { topic: name.to_owned() }

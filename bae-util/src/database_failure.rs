@@ -65,12 +65,13 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         E::Lock(error) => lock_failure(error),
         // The handle takes no call until reopened. Damage under it is the
         // damage; anything else stays refused.
-        E::StatePersistence(cause) | E::CheckpointFailed(cause) | E::StatisticsFailed(cause) => {
-            match coven_database_failure(cause) {
-                Damaged => Damaged,
-                Busy | Refused => Refused,
-            }
-        }
+        E::StatePersistence(cause)
+        | E::CheckpointFailed(cause)
+        | E::StatisticsFailed(cause)
+        | E::MemoryJudgingFailed(cause) => match coven_database_failure(cause) {
+            Damaged => Damaged,
+            Busy | Refused => Refused,
+        },
         // What failed first is what the call met; the failed rollback or
         // cleanup after it rides in the detail.
         E::Rollback { operation, .. } | E::StagingCleanup { operation, .. } => {
@@ -82,6 +83,9 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         // tables only: in a bulk write, or in the before-commit function the
         // app registers. Made again, the write breaks the same rule.
         E::SyncedTableInBulkWrite { .. } | E::SyncedTableBeforeCommit { .. } => Refused,
+        // bae's build compiled the read against another schema or another
+        // coven: made again, the read brings the same plan.
+        E::CompiledSchemaDiffers(_) | E::UndecodablePlan(_) => Refused,
         E::NoClaim
         | E::ClaimNumberExhausted
         | E::WriteNumberExhausted
@@ -90,7 +94,7 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         | E::StateEncoding(_)
         | E::RollbackFailed
         | E::WallTimer(_)
-        | E::UpkeepThread(_)
+        | E::Thread(_)
         | E::ClaimRead(_)
         | E::StoreClosed
         | E::Shutdown(_)
