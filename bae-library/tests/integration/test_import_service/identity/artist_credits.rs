@@ -248,7 +248,7 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
 /// The one live query an open import pane reads its candidate through.
 type PaneQuery = coven::ReconfigurableLiveQuery<
     Option<bae_import::CandidateKey>,
-    Option<bae_import::ImportCandidateDetailProjection>,
+    Option<bae_import::ImportCandidateDetail>,
     bae_import::ImportError,
 >;
 

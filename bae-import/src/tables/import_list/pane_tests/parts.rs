@@ -99,7 +99,7 @@ fn group_pressing(key: &str) -> ReleaseRecord {
 async fn pane_draft(
     db: &Store,
     candidate: &crate::folder_scanner::FolderCandidate,
-) -> DraftProjection {
+) -> crate::CandidateDraftPane {
     crate::tables::ImportTables::new(db.clone())
         .load_import_candidate(&candidate.key())
         .await
@@ -157,13 +157,15 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
         .load_import_candidate(&candidate.key())
         .await
         .unwrap()
-        .expect("the scanned candidate has a pane")
-        .resolve();
+        .expect("the scanned candidate has a pane");
 
     let files = &detail.files;
     assert_eq!(files.track_count, 2);
     // The mapping statement sums the two five-second tracks.
-    assert_eq!(pane_draft(&db, &candidate).await.track_length_ms, 10_000);
+    assert_eq!(
+        pane_draft(&db, &candidate).await.release_lines.and_then(|lines| lines.length),
+        bae_util::duration::DurationUnits::from_millis(10_000)
+    );
     assert_eq!(
         files.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Uniform {
@@ -245,8 +247,7 @@ async fn the_pane_summarizes_audio_files_that_disagree() {
         .load_import_candidate(&candidate.key())
         .await
         .unwrap()
-        .expect("the scanned candidate has a pane")
-        .resolve();
+        .expect("the scanned candidate has a pane");
 
     use bae_records::source_audio::{SourceAudioDifference, SourceAudioSummary};
     assert_eq!(
@@ -407,11 +408,13 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
         .unwrap()
         .expect("the scanned candidate has a pane");
 
-    let Some(bae_identify::IdentifyStateView::Failed {
-        failure_lines: Some(failure_lines), ..
-    }) = detail.stored_verdict
+    let bae_identify::IdentifyStateView::Failed { failure_lines: Some(failure_lines), .. } =
+        detail.resumed_identify_state
     else {
-        panic!("a failed verdict resumes failed with lines, got {:?}", detail.stored_verdict);
+        panic!(
+            "a failed verdict resumes failed with lines, got {:?}",
+            detail.resumed_identify_state
+        );
     };
     assert_eq!(failure_lines.all, vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover]);
 }
@@ -449,9 +452,10 @@ async fn a_verdict_whose_cells_show_every_failure_has_no_failure_lines() {
         .unwrap()
         .expect("the scanned candidate has a pane");
 
-    let Some(bae_identify::IdentifyStateView::Failed { failure_lines, .. }) = detail.stored_verdict
+    let bae_identify::IdentifyStateView::Failed { failure_lines, .. } =
+        detail.resumed_identify_state
     else {
-        panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
+        panic!("a failed verdict resumes failed, got {:?}", detail.resumed_identify_state);
     };
     assert_eq!(failure_lines, None);
 }
@@ -495,11 +499,13 @@ async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
         .unwrap()
         .expect("the scanned candidate has a pane");
 
-    let Some(bae_identify::IdentifyStateView::Failed {
-        failure_lines: Some(failure_lines), ..
-    }) = detail.stored_verdict
+    let bae_identify::IdentifyStateView::Failed { failure_lines: Some(failure_lines), .. } =
+        detail.resumed_identify_state
     else {
-        panic!("a failed verdict resumes failed with lines, got {:?}", detail.stored_verdict);
+        panic!(
+            "a failed verdict resumes failed with lines, got {:?}",
+            detail.resumed_identify_state
+        );
     };
     assert_eq!(failure_lines.all, failures);
     assert_eq!(failure_lines.pick_failures, Some(vec![cover]));
@@ -541,11 +547,13 @@ async fn a_verdict_with_no_failed_fetch_of_its_pick_has_no_pick_failures() {
         .unwrap()
         .expect("the scanned candidate has a pane");
 
-    let Some(bae_identify::IdentifyStateView::Failed {
-        failure_lines: Some(failure_lines), ..
-    }) = detail.stored_verdict
+    let bae_identify::IdentifyStateView::Failed { failure_lines: Some(failure_lines), .. } =
+        detail.resumed_identify_state
     else {
-        panic!("a failed verdict resumes failed with lines, got {:?}", detail.stored_verdict);
+        panic!(
+            "a failed verdict resumes failed with lines, got {:?}",
+            detail.resumed_identify_state
+        );
     };
     assert_eq!(failure_lines.all, failures);
     assert_eq!(failure_lines.pick_failures, None);

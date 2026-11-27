@@ -14,14 +14,7 @@ async fn the_pane_reads_a_grouped_and_a_skipped_candidate() {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let read = |key: crate::CandidateKey| {
         let tables = tables.clone();
-        async move {
-            tables
-                .load_import_candidate(&key)
-                .await
-                .unwrap()
-                .expect("the list lists the key")
-                .resolve()
-        }
+        async move { tables.load_import_candidate(&key).await.unwrap().expect("the list lists the key") }
     };
 
     let grouping = read(crate::CandidateKey::grouping("pair")).await;

@@ -282,12 +282,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<crate::ImportCandidateDetail>, crate::ImportError> {
-        Ok(self
-            .services
-            .tables
-            .load_import_candidate(key)
-            .await?
-            .map(crate::ImportCandidateDetailProjection::resolve))
+        self.services.tables.load_import_candidate(key).await
     }
 
     /// The pane's live read of the candidate the request names; `None` for
@@ -298,7 +293,7 @@ impl ImportServiceHandle {
         initial: Option<crate::CandidateKey>,
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
-        Option<crate::ImportCandidateDetailProjection>,
+        Option<crate::ImportCandidateDetail>,
         crate::ImportError,
     > {
         self.services.tables.subscribe_import_candidate(initial)

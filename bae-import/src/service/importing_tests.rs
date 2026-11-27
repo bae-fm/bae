@@ -537,12 +537,8 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
     assert_eq!(drafts().await, 1, "the deletion seeds the blank draft");
     assert_eq!(covers().await, 1, "the deletion stores the folder's cover");
     assert_eq!(shown_row(&test).await, vec!["pending|Box Set Renamed|-".to_string()]);
-    let pane = tables
-        .load_import_candidate(&candidate_key)
-        .await
-        .unwrap()
-        .expect("the folder is listed")
-        .resolve();
+    let pane =
+        tables.load_import_candidate(&candidate_key).await.unwrap().expect("the folder is listed");
     let draft = pane.draft().expect("a folder nobody imported holds a draft");
     assert!(draft.metadata_draft.is_blank(), "{:?}", draft.metadata_draft);
     assert_eq!(draft.metadata_draft.tracks.len(), 3);

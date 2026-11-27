@@ -219,7 +219,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let pane_reader = bae_util::test_spawn::task(async move {
         while let Some(event) = pane.next_inline().await {
             if let Some(projection) = event.result.expect("the pane reads") {
-                let skipped = projection.resolve().skipped;
+                let skipped = projection.skipped;
                 pane_tx.send_replace(Some((skipped, Counted::of(&pane.runs()))));
             }
         }

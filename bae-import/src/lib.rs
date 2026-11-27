@@ -227,10 +227,11 @@ impl ImportServices {
 #[cfg(desktop)]
 pub use apply_steps::{CatalogApplyId, CatalogApplyStep, CatalogApplySteps};
 #[cfg(desktop)]
+pub(crate) use candidate_detail::ListedRelease;
+#[cfg(desktop)]
 pub use candidate_detail::{
     CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement, CandidateStage,
-    DraftProjection, ImportCandidateDetail, ImportCandidateDetailProjection, ListedRelease,
-    PaneFile, PaneFileRole, PaneFiles, ProjectedStage,
+    ImportCandidateDetail, PaneFile, PaneFileRole, PaneFiles,
 };
 #[cfg(desktop)]
 pub use candidate_key::CandidateKey;

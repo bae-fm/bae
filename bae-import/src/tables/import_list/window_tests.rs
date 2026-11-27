@@ -955,8 +955,7 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
         }))
     );
 
-    let pane =
-        tables.load_import_candidate(&key).await.unwrap().expect("the folder has a pane").resolve();
+    let pane = tables.load_import_candidate(&key).await.unwrap().expect("the folder has a pane");
     let draft = pane.draft().expect("a folder nobody imported holds a draft");
     assert_eq!(
         draft.metadata_draft,

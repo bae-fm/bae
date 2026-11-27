@@ -218,7 +218,7 @@ impl AppServices {
         &self,
     ) -> coven::ReconfigurableLiveQuery<
         Option<bae_import::CandidateKey>,
-        Option<bae_import::ImportCandidateDetailProjection>,
+        Option<ImportCandidateDetail>,
         bae_import::ImportError,
     > {
         self.inner.import.subscribe_candidate(None)
@@ -229,17 +229,14 @@ impl AppServices {
         &self,
         query: coven::ReconfigurableLiveQuery<
             Option<bae_import::CandidateKey>,
-            Option<bae_import::ImportCandidateDetailProjection>,
+            Option<ImportCandidateDetail>,
             bae_import::ImportError,
         >,
     ) -> crate::live_reads::LiveImportCandidate {
         crate::live_reads::LiveImportCandidate::new(
             bae_store::live_query::LiveRead::new(
                 self.inner.manager.until_closed(query),
-                |read, rows| {
-                    let value = rows.map(bae_import::ImportCandidateDetailProjection::resolve);
-                    Some(bae_library::DetailSnapshot { id: read.request.clone(), value })
-                },
+                |read, value| Some(bae_library::DetailSnapshot { id: read.request.clone(), value }),
             ),
             self.inner.identification.shown_candidate(),
         )

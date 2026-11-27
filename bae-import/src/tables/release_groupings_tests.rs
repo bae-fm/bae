@@ -115,7 +115,7 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
         .expect("the release is still listed");
     assert!(!detail.actionable);
     assert!(
-        detail.resolve().live.actions.contains(&crate::CandidateAction::Separate),
+        detail.live.actions.contains(&crate::CandidateAction::Separate),
         "a grouping that cannot be worked on is still read apart again"
     );
 

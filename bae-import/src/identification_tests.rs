@@ -501,7 +501,10 @@ impl Fixture {
             .await
             .unwrap()
             .expect("the candidate reads back");
-        match detail.stored_verdict.expect("the identification run stores a verdict") {
+        match detail.resumed_identify_state {
+            bae_identify::IdentifyStateView::Idle => {
+                panic!("the identification run stores a verdict")
+            }
             bae_identify::IdentifyStateView::Found { decision, .. } => {
                 (decision.pick().is_some(), decision.folder_check().cloned())
             }

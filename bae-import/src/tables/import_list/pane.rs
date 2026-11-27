@@ -6,13 +6,18 @@
 
 use super::listed::ListedColumns;
 use super::*;
-use crate::candidate_detail::ImportCandidateDetailProjection;
+use crate::candidate_detail::{
+    CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement, CandidateStage,
+    ImportCandidateDetail,
+};
 use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::import_state::fragments::PickedLibraryStatus;
 use crate::tables::import_state::{file_evidence_of_json, stored_verdict_view};
-use crate::ImportedRelease;
-use crate::{DraftProjection, ProjectedStage};
+use crate::triage::{import_status_of, stated_folder_check, CandidateLiveState, TriagePlacement};
+use crate::MetadataProvenance;
+use crate::{ImportedRelease, TriageTab};
+use bae_identify::IdentifyStateView;
 use bae_store::statement_rows;
 
 use super::pane_read::{PaneDraftParams, PaneDraftRow, PaneHeadParams, PaneHeadRow};
@@ -231,7 +236,9 @@ fn detail_rows(
 }
 
 impl CandidateDetailRows {
-    pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, crate::ImportError> {
+    /// The pane's value, shaped from the rows of one candidate's reads: the
+    /// candidate with the commands and state its standing gives it.
+    pub(super) fn process(self) -> Result<ImportCandidateDetail, crate::ImportError> {
         let Self { head, stage } = self;
         let HeadRows {
             candidate,
@@ -248,69 +255,151 @@ impl CandidateDetailRows {
         } = head;
         let listed = listed.listed(&candidate.key())?;
         let signals = current.as_ref().and_then(|state| state.signals.clone());
-        let lookup_choices =
-            current.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default();
-
         // The verdict write stores each row's judgement against the
         // candidate's own text, so the rows are already in their new order
         // after the person discounts a catalog number.
         let stored_verdict = stored_verdict_view(current.as_ref(), cards);
-        let stage = match stage {
-            StageRows::Imported(release) => ProjectedStage::Imported { release },
+        let import_step = standing.import;
+        let (stored_status, placement, stage) = match stage {
+            StageRows::Imported(release) => (
+                import_status_of(Some(&release), source_error.as_ref(), None),
+                CandidatePanePlacement::Done,
+                CandidateStage::Imported { release },
+            ),
             StageRows::Drafting(draft) => {
-                let DraftRows {
-                    draft,
-                    draft_blank,
-                    draft_valid,
-                    failure,
-                    pane_failure,
-                    mapping,
-                    album_artists,
-                    records,
-                    picked_library_status,
-                    album,
-                    cover,
-                } = *draft;
-                let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
-                    mapping.read(album_artists.is_some())?;
-                ProjectedStage::Drafting(Box::new(DraftProjection {
-                    metadata_provenance: current
-                        .as_ref()
-                        .and_then(|state| state.metadata_provenance.clone()),
-                    release_link: current.as_ref().and_then(|state| state.release_link.clone()),
-                    metadata_author: current
-                        .as_ref()
-                        .map_or(crate::MetadataAuthor::Nobody, |state| state.metadata_author),
-                    records,
-                    picked_library_status,
-                    album,
-                    metadata_draft: draft.release_edit(),
-                    draft_blank,
-                    draft_valid,
-                    album_artists,
-                    mapping,
-                    track_length_ms,
-                    cover,
-                    lookup_choices,
-                    failure,
-                    pane_failure,
-                }))
+                let status = import_status_of(
+                    None,
+                    source_error.as_ref(),
+                    draft.failure.as_ref().map(|failure| &failure.reason),
+                );
+                let (placement, pane) = draft.pane(PaneStanding {
+                    placement: listed.basis.placement,
+                    actionable,
+                    identifying: standing.identifying(),
+                    importing: standing.importing(),
+                    current,
+                    stored_verdict: stored_verdict.as_ref(),
+                })?;
+                (status, placement, CandidateStage::Drafting(Box::new(pane)))
             }
         };
-        Ok(ImportCandidateDetailProjection {
+        let import_status = match import_step {
+            Some(step) => Some(CandidateImportStatus::Importing { step }),
+            None => stored_status.map(CandidateImportStatus::of),
+        };
+        Ok(ImportCandidateDetail {
             candidate,
             files,
             part_count,
-            source_error,
             actionable,
             skipped,
-            stored_verdict,
-            signals,
+            // A candidate with no stored verdict shows no run.
+            resumed_identify_state: stored_verdict.unwrap_or(IdentifyStateView::Idle),
+            placement,
+            live: CandidateLiveState::of(listed.actions, standing, listed.standing),
+            import_status,
             file_evidence,
-            standing,
-            listed,
+            signals,
             stage,
         })
+    }
+}
+
+/// What the rest of a candidate's rows say about the draft it holds.
+struct PaneStanding<'a> {
+    placement: TriagePlacement,
+    actionable: bool,
+    identifying: bool,
+    importing: bool,
+    current: Option<DbImportCandidateState<bae_identify::signals::PaneSignals>>,
+    stored_verdict: Option<&'a IdentifyStateView>,
+}
+
+impl DraftRows {
+    /// Where the pane places a candidate that holds this draft, and what it
+    /// draws of the draft.
+    fn pane(
+        self,
+        standing: PaneStanding<'_>,
+    ) -> Result<(CandidatePanePlacement, CandidateDraftPane), crate::ImportError> {
+        let Self {
+            draft,
+            draft_blank,
+            draft_valid,
+            failure,
+            pane_failure,
+            mapping,
+            album_artists,
+            records,
+            picked_library_status,
+            album,
+            cover,
+        } = self;
+        let PaneStanding { placement, actionable, identifying, importing, current, stored_verdict } =
+            standing;
+        let (metadata_provenance, release_link, metadata_author, lookup_choices) = match current {
+            Some(state) => (
+                state.metadata_provenance,
+                state.release_link,
+                state.metadata_author,
+                state.lookup_choices,
+            ),
+            None => (None, None, crate::MetadataAuthor::Nobody, Default::default()),
+        };
+        // The check against the folder the stored verdict's found release
+        // failed, as the verdict's write stored it.
+        let verdict_folder_check = match stored_verdict {
+            Some(IdentifyStateView::Found { decision, .. }) => decision.folder_check().cloned(),
+            _ => None,
+        }
+        .filter(|_| actionable);
+        let opens_on = crate::MetadataPresentation::opening(
+            identifying,
+            stored_verdict.is_some(),
+            metadata_provenance.is_some() || release_link.is_some(),
+            stated_folder_check(metadata_author, draft_valid, verdict_folder_check.clone())
+                .is_some(),
+        );
+        // The catalogs the linked release is described in, as the row names
+        // them: only a linked candidate names any.
+        let linked_records = (actionable && release_link.is_some()).then_some(records);
+        let pane_placement = match placement.tab() {
+            TriageTab::Pending => CandidatePanePlacement::Pending {
+                folder_check: (placement == TriagePlacement::Pending)
+                    .then(|| {
+                        stated_folder_check(metadata_author, draft_valid, verdict_folder_check)
+                    })
+                    .flatten(),
+                records: linked_records,
+            },
+            TriageTab::Skipped => CandidatePanePlacement::Skipped { records: linked_records },
+            TriageTab::Done => CandidatePanePlacement::Done,
+        };
+        let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
+            mapping.read(album_artists.is_some())?;
+        let metadata_draft = draft.release_edit();
+        let pane = CandidateDraftPane {
+            picked_library_status,
+            album,
+            pressing_offers: metadata_draft.pressing.offers(),
+            // A draft read from the files' own tags states no edition or copy.
+            release_lines: (!matches!(metadata_provenance, Some(MetadataProvenance::FileMetadata)))
+                .then(|| metadata_draft.pressing.release_lines(track_length_ms)),
+            metadata_draft,
+            album_artists,
+            metadata_draft_is_blank: draft_blank,
+            metadata_provenance,
+            release_link,
+            mapping,
+            cover,
+            lookup_choices,
+            // The attempt running now is what the pane shows; an earlier
+            // failure is behind it.
+            failure: if importing { None } else { failure },
+            pane_failure,
+            opens_on,
+        };
+        Ok((pane_placement, pane))
     }
 }
 
@@ -323,7 +412,7 @@ impl ImportTables {
         initial: Option<crate::CandidateKey>,
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
-        Option<ImportCandidateDetailProjection>,
+        Option<ImportCandidateDetail>,
         crate::ImportError,
     > {
         self.store
@@ -368,7 +457,7 @@ impl ImportTables {
     pub(crate) async fn load_import_candidate(
         &self,
         key: &crate::CandidateKey,
-    ) -> Result<Option<ImportCandidateDetailProjection>, crate::ImportError> {
+    ) -> Result<Option<ImportCandidateDetail>, crate::ImportError> {
         let key = Some(key.clone());
         self.store
             .read(move |sql| {

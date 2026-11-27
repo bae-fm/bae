@@ -126,8 +126,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
         .load_import_candidate(&crate::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
-        .expect("the scanned candidate has a pane")
-        .resolve();
+        .expect("the scanned candidate has a pane");
     let crate::CandidatePanePlacement::Pending { records: pane_records, .. } = &detail.placement
     else {
         panic!("a picked candidate is pending, got {:?}", detail.placement);
@@ -216,8 +215,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .load_import_candidate(&crate::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
-        .expect("the scanned candidate reads back")
-        .resolve();
+        .expect("the scanned candidate reads back");
     assert_eq!(
         pane.placement,
         crate::CandidatePanePlacement::Pending {
@@ -231,9 +229,9 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .unwrap()
         .expect("the candidate reads back");
     assert!(
-        matches!(detail.stored_verdict, Some(bae_identify::IdentifyStateView::Found { .. })),
+        matches!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Found { .. }),
         "a found verdict resumes as Found, got {:?}",
-        detail.stored_verdict
+        detail.resumed_identify_state
     );
     assert_eq!(
         detail.signals.expect("the stored signals read back").origin,
@@ -331,8 +329,9 @@ async fn the_detail_resumes_the_stored_verdict() {
         .unwrap()
         .expect("the scanned candidate reads back");
 
-    let Some(bae_identify::IdentifyStateView::Found { groups, .. }) = &detail.stored_verdict else {
-        panic!("expected the stored Found, got {:?}", detail.stored_verdict);
+    let bae_identify::IdentifyStateView::Found { groups, .. } = &detail.resumed_identify_state
+    else {
+        panic!("expected the stored Found, got {:?}", detail.resumed_identify_state);
     };
     assert_eq!(
         groups
@@ -379,7 +378,8 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         .unwrap()
         .expect("the scanned candidate reads back");
 
-    let Some(bae_identify::IdentifyStateView::Found { run: Some(run), .. }) = detail.stored_verdict
+    let bae_identify::IdentifyStateView::Found { run: Some(run), .. } =
+        detail.resumed_identify_state
     else {
         panic!("a stored Found resumes with the ledger its run recorded");
     };
@@ -416,7 +416,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         .unwrap()
         .expect("the scanned candidate still reads back");
 
-    assert_eq!(detail.stored_verdict, None);
+    assert_eq!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Idle);
 }
 
 /// The pane of a candidate its import put in the library is placed Done, which
@@ -433,12 +433,7 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
     let key = candidate.key();
     let detail = |db: Store, key: crate::CandidateKey| async move {
         let tables = crate::tables::ImportTables::new(db);
-        tables
-            .load_import_candidate(&key)
-            .await
-            .unwrap()
-            .expect("the scanned candidate has a pane")
-            .resolve()
+        tables.load_import_candidate(&key).await.unwrap().expect("the scanned candidate has a pane")
     };
 
     assert!(matches!(
@@ -500,8 +495,7 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
         .load_import_candidate(&key)
         .await
         .unwrap()
-        .expect("the stored candidate has a detail")
-        .resolve();
+        .expect("the stored candidate has a detail");
 
     assert!(detail.live.facts.importing());
     assert_eq!(
@@ -532,8 +526,7 @@ async fn the_pane_s_import_status_says_the_step_the_import_is_at() {
             .load_import_candidate(&key)
             .await
             .unwrap()
-            .expect("the stored candidate has a detail")
-            .resolve();
+            .expect("the stored candidate has a detail");
         assert_eq!(detail.import_status, Some(crate::CandidateImportStatus::Importing { step }));
     }
 }
@@ -909,8 +902,7 @@ async fn pane_folder_check_reads_the_stored_draft_validity() {
         let tables = tables.clone();
         let key = crate::CandidateKey::folder(&candidate.path);
         async move {
-            let detail =
-                tables.load_import_candidate(&key).await.unwrap().expect("the pane").resolve();
+            let detail = tables.load_import_candidate(&key).await.unwrap().expect("the pane");
             let crate::CandidatePanePlacement::Pending { folder_check, .. } = detail.placement
             else {
                 panic!("a typed draft is pending, got {:?}", detail.placement);

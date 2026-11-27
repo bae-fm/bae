@@ -474,8 +474,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
                 .expect("the query stays open")
                 .result
                 .unwrap()
-                .expect("the candidate stays stored")
-                .resolve();
+                .expect("the candidate stays stored");
             if detail.is_added() {
                 return detail.live.facts.importing();
             }
