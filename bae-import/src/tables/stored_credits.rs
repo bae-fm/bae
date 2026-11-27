@@ -33,7 +33,8 @@ pub(crate) fn line_of(json: Option<&str>) -> Result<Option<CreditLine>, serde_js
     json.map(line_text).transpose()
 }
 
-fn line_text(json: &str) -> Result<CreditLine, serde_json::Error> {
+/// The credit line in a stored credits text.
+pub(crate) fn line_text(json: &str) -> Result<CreditLine, serde_json::Error> {
     serde_json::from_str::<Vec<StoredCredit>>(json)
         .map(|credits| CreditLine::from_stored_credits(&credits))
 }

@@ -367,13 +367,9 @@ pub(super) fn groups_from(cards: Vec<StoredCard>) -> Result<Vec<ReleaseGroup>, D
                     .artists
                     .iter()
                     .map(|artist| {
-                        serde_json::from_str::<Vec<bae_types::credits::StoredCredit>>(artist)
-                            .map(|credits| {
-                                bae_types::credits::CreditLine::from_stored_credits(&credits)
-                            })
-                            .map_err(|error| {
-                                DbError::unreadable_json("a card's stored artist", artist, error)
-                            })
+                        crate::tables::stored_credits::line_text(artist).map_err(|error| {
+                            DbError::unreadable_json("a card's stored artist", artist, error)
+                        })
                     })
                     .collect::<Result<_, _>>()?,
                 labels: card.labels,
