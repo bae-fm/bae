@@ -33,7 +33,6 @@ impl CandidateEditField {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PressingFactEdit {
     Area(Option<bae_types::pressing::ReleaseArea>),
-    Media(Vec<bae_types::pressing::MediaCount>),
     /// How many of one carrier the pressing holds: a count of zero removes
     /// the carrier, and a carrier the pressing lacks is added at the end.
     MediumCount(bae_types::pressing::MediaCount),
@@ -80,14 +79,6 @@ impl PressingFactEdit {
     pub fn apply(self, facts: &mut bae_types::pressing::PressingFacts) {
         match self {
             Self::Area(area) => facts.area = area,
-            Self::Media(media) => {
-                facts.media = bae_types::pressing::MediaCount::tally(
-                    media
-                        .into_iter()
-                        .filter(|counted| counted.count > 0)
-                        .map(|counted| (counted.medium, counted.count)),
-                )
-            }
             Self::MediumCount(bae_types::pressing::MediaCount { medium, count }) => {
                 match facts.media.iter().position(|counted| counted.medium == medium) {
                     Some(at) if count == 0 => {

@@ -151,7 +151,11 @@ media list names each carrier and how many of it there are (two CDs, one
 vinyl record). Its labels are a list of library labels (§2.3), each with the
 catalog number it gives the pressing; a place may state a catalog number
 alone. Its labels, its barcodes and its media are each kept one row per place
-in the list, and a save replaces the whole list. A saved
+in the list, and a save of the release writes each list as the editor then
+holds it. The editor and the automation tools change the media one carrier at
+a time: a change sets how many of one carrier the pressing holds, zero removes
+the carrier, a carrier the list lacks joins its end, and the other counts stay
+as they are. A saved
 CUE sheet's `CATALOG` line states the barcode when every one names the same
 product, and none otherwise.
 
@@ -6895,7 +6899,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_candidate_labels_set` | set its labels and catalog numbers |
 | `import_candidate_barcodes_set` | set its barcodes |
 | `import_candidate_album_set` | pick the library album it joins, or leave it to its records |
-| `import_candidate_pressing_fact_set` | choose its area, media, status, packaging or Discogs details |
+| `import_candidate_pressing_fact_set` | choose its area, status, packaging or Discogs details, or set one medium's count: zero removes the medium, a medium the draft lacks is added after the others, and the other counts stay |
 | `import_candidate_cover_set` | choose its cover |
 | `import_start` | import a candidate as stored, or once the pick its run is reading is stored |
 | `release_detail_get` | read a library release |

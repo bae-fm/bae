@@ -17,9 +17,13 @@ pub enum AutomationPressingFactEdit {
         #[schemars(schema_with = "area_schema")]
         area: Option<ReleaseArea>,
     },
-    Media {
-        #[schemars(schema_with = "media_schema")]
-        media: Vec<MediaCount>,
+    /// How many of one medium the pressing holds: zero removes the medium, a
+    /// medium the pressing lacks is added after the others, and the other
+    /// counts stay as they are.
+    MediumCount {
+        #[schemars(schema_with = "medium_schema")]
+        medium: Medium,
+        count: u32,
     },
     Status {
         #[schemars(schema_with = "status_schema")]
@@ -94,14 +98,19 @@ fn area_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     })
 }
 
+/// A medium's key.
+fn medium_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({ "type": "string", "enum": keys(Medium::ALL, Medium::key) })
+}
+
 /// Each carrier with how many of it.
-fn media_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+fn media_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     schemars::json_schema!({
         "type": "array",
         "items": {
             "type": "object",
             "properties": {
-                "medium": { "type": "string", "enum": keys(Medium::ALL, Medium::key) },
+                "medium": medium_schema(generator),
                 "count": { "type": "integer", "minimum": 1 },
             },
             "required": ["medium", "count"],
@@ -164,7 +173,9 @@ impl AutomationPressingFactEdit {
         use bae_import::PressingFactEdit;
         match self {
             Self::Area { area } => PressingFactEdit::Area(area),
-            Self::Media { media } => PressingFactEdit::Media(media),
+            Self::MediumCount { medium, count } => {
+                PressingFactEdit::MediumCount(MediaCount { medium, count })
+            }
             Self::Status { status } => PressingFactEdit::Status(status),
             Self::Packaging { packaging } => PressingFactEdit::Packaging(packaging),
             Self::DiscogsDetails { discogs_details } => {

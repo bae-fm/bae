@@ -185,3 +185,41 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
 
     assert_eq!(json["storage_state"], serde_json::json!({"place": "on_one_device"}));
 }
+
+/// `import_candidate_pressing_fact_set` as an MCP client sends it.
+mod pressing_fact_input {
+    use super::*;
+    use bae_types::pressing::{MediaCount, Medium, PressingFacts};
+
+    fn request(fact: serde_json::Value) -> Result<CandidatePressingFactInput, serde_json::Error> {
+        serde_json::from_value(serde_json::json!({ "candidate_key": "key", "fact": fact }))
+    }
+
+    fn facts(media: &[(Medium, u32)]) -> PressingFacts {
+        PressingFacts {
+            media: media.iter().map(|&(medium, count)| MediaCount { medium, count }).collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_medium_count_request_changes_only_that_medium() {
+        let mut held = facts(&[(Medium::Cd, 1), (Medium::Dvd, 1)]);
+        request(serde_json::json!({ "kind": "medium_count", "medium": "dvd", "count": 3 }))
+            .unwrap()
+            .fact
+            .into_core()
+            .apply(&mut held);
+        assert_eq!(held, facts(&[(Medium::Cd, 1), (Medium::Dvd, 3)]));
+    }
+
+    /// No request replaces the whole media list.
+    #[test]
+    fn a_whole_media_list_is_refused() {
+        let refused = request(serde_json::json!({
+            "kind": "media",
+            "media": [{ "medium": "cd", "count": 1 }],
+        }));
+        assert!(refused.is_err());
+    }
+}
