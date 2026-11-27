@@ -4,6 +4,55 @@
 //! page at a time.
 
 use super::*;
+use crate::album_detail::AlbumSearchResult;
+use bae_records::records::fragments::AlbumSummary;
+use bae_store::{statement_row, statement_rows};
+
+// A page of the albums a search for `pattern` lists: of the first `cap`
+// albums that hold it, those at the places from `offset` on, in title order,
+// ties going by id, at most `limit`. The read walks the listing's title index, tests each album against
+// the albums the search finds, and stops at the `cap`th album that holds the
+// pattern. `INDEXED BY` holds it to that index: left to choose, SQLite reads
+// the albums the search finds by id and sorts them all. Every album holds a
+// release (§2.1), so every album has a listing row. The statement reads what
+// an album shows only for the albums of the page.
+sqlive_compose::read!(
+    writer SearchAlbums(pattern: Option<String>, cap: i64, offset: i64, limit: i64),
+    r#"
+    SELECT shown.*
+    FROM (SELECT capped.album_id, capped.title_sort_key
+          FROM (SELECT entry.album_id, entry.title_sort_key
+                FROM album_listing AS entry INDEXED BY idx_album_listing_title
+                WHERE entry.album_id IN (
+                    SELECT found.album_id
+                    FROM @crate::album_search::AlbumsFound(pattern: :pattern) AS found)
+                ORDER BY entry.title_sort_key, entry.album_id
+                LIMIT :cap) AS capped
+          ORDER BY capped.title_sort_key, capped.album_id
+          LIMIT :limit OFFSET :offset) AS picked
+    CROSS JOIN @bae_records::records::fragments::AlbumSummary AS shown
+            ON shown.summary_album_id = picked.album_id
+    ORDER BY picked.title_sort_key, picked.album_id
+"#
+);
+
+// How many albums a search for `pattern` lists: those that hold it, counting
+// at most `cap`. The count needs no order, so it sorts nothing.
+sqlive_compose::read!(
+    writer SearchAlbumCount(pattern: Option<String>, cap: i64) { albums: u64 },
+    r#"
+    SELECT COUNT(*) AS albums
+    FROM (SELECT entry.album_id
+          FROM album_listing AS entry
+          WHERE entry.album_id IN (
+              SELECT found.album_id
+              FROM @crate::album_search::AlbumsFound(pattern: :pattern) AS found)
+          LIMIT :cap) AS counted
+"#
+);
+
+/// How many albums a media browser's search lists.
+const LISTED: u64 = crate::SEARCH_RESULT_LIMIT as u64;
 
 impl LibraryViews {
     /// Follow one page of the albums a search for `query` lists: the albums
@@ -15,20 +64,18 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
-        let order = search_album_order();
-        let read_order = order.clone();
-        self.store.subscribe_list_page(
-            page,
-            order,
-            search_album_statement,
-            move |sql, seek, limit| match &pattern {
-                Some(pattern) => {
-                    search_album_rows_on(sql, pattern, LISTED, &read_order, seek, limit)
-                }
+        self.store
+            .subscribe(move |sql| match &pattern {
+                Some(pattern) => search_albums_on(&sql, pattern, LISTED, page),
                 None => Ok(Vec::new()),
-            },
-            |rows| Ok(search_album_rows(rows)),
-        )
+            })
+            .process(|albums| {
+                let albums = albums
+                    .into_iter()
+                    .map(|album| album_hit(album).map(AlbumSearchResult::from_raw))
+                    .collect::<Result<_, _>>()?;
+                Ok(crate::ListRows::SearchAlbums(albums))
+            })
     }
 
     /// Follow how many albums a search for `query` lists: the albums it
@@ -40,157 +87,58 @@ impl LibraryViews {
     ) -> coven::LiveQuery<u64, DbError> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
         self.store.subscribe(move |sql| match &pattern {
-            Some(pattern) => search_album_count_on(&sql, pattern),
+            Some(pattern) => {
+                let statement = SearchAlbumCountParams {
+                    pattern: Some(pattern.clone()),
+                    cap: bae_store::list_windows::sql_bound(LISTED),
+                };
+                Ok(statement_row(&sql, &statement)?.albums)
+            }
             None => Ok(0),
         })
     }
 }
 
-/// The albums a search lists, as a media browser lists them.
-fn search_album_rows(rows: Vec<DbAlbumSearchResult>) -> crate::ListRows {
-    crate::ListRows::SearchAlbums(
-        rows.into_iter().map(crate::album_detail::AlbumSearchResult::from_raw).collect(),
-    )
-}
-
-/// How many albums a media browser's search lists.
-const LISTED: u64 = crate::SEARCH_RESULT_LIMIT as u64;
-
-/// The order of the albums a search lists: by title, ties going by id, over
-/// the albums' `album_listing` rows as the alias `listing`. The rows hold
-/// each title's sort key, so a read takes the albums in order from the
-/// listing's title index and computes no key.
-fn search_album_order() -> ListOrder {
-    ListOrder::new(vec![
-        SortTerm::ascending("listing.title_sort_key"),
-        SortTerm::ascending("listing.album_id"),
-    ])
-}
-
-/// The albums a search lists, as a FROM clause over the alias `listing`: the
-/// listing rows of the first `:cap` albums that hold the search pattern
-/// `:pattern`, in [`search_album_order`]. The read walks the listing's title
-/// index, tests each album against the albums the search finds, and stops at
-/// the `:cap`th album that holds the pattern. `INDEXED BY` holds it to that
-/// index: left to choose, SQLite reads the albums the search finds by id and
-/// sorts them all. Every album holds a release (§2.1), so every album has a
-/// listing row.
-fn search_album_from() -> String {
-    format!(
-        "FROM (SELECT listing.album_id, listing.title_sort_key \
-               FROM album_listing listing INDEXED BY idx_album_listing_title \
-               WHERE {matches} ORDER BY {order} LIMIT :cap) listing",
-        matches = album_matches_sql("listing.album_id", ":pattern"),
-        order = search_album_order().clause(),
-    )
-}
-
-/// The albums `seek` reads in `order`, each with its key: at most `limit` of
-/// them. The seek reads among the first `cap` albums that hold the search
-/// `pattern`.
-fn search_album_rows_on(
+/// The albums of the first `cap` a search for `pattern` lists that are at
+/// `page`'s places, as read.
+fn search_albums_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     cap: u64,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbAlbumSearchResult>>, DbError> {
-    let statement = search_album_statement(order, seek);
-    with_search_album_params(pattern, cap, seek, limit, |params| {
-        Ok(sql.query(&statement, params, |row| Ok((album_hit_row(row)?, order.key_of(row)?)))?)
-    })
+    page: ListPage,
+) -> Result<Vec<AlbumSummary>, DbError> {
+    let statement = SearchAlbumsParams {
+        pattern: Some(pattern.to_string()),
+        cap: bae_store::list_windows::sql_bound(cap),
+        offset: bae_store::list_windows::sql_bound(page.offset),
+        limit: bae_store::list_windows::sql_bound(page.limit),
+    };
+    Ok(statement_rows(sql, &statement)?.into_iter().map(|row| row.shown).collect())
 }
 
-/// The first `limit` albums a library search for `pattern` lists, in
-/// [`search_album_order`], and how many that is. The statement that lists
-/// the albums also counts them.
+/// The first `limit` albums a library search for `pattern` lists, in title
+/// order, and how many that is.
 pub(super) fn first_search_albums_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     limit: u64,
 ) -> Result<(Vec<DbAlbumSearchResult>, u64), DbError> {
-    let order = search_album_order();
-    let seek = order.everything();
-    let statement = search_album_statement(&order, &seek);
-    with_search_album_params(pattern, limit, &seek, limit, |params| {
-        counted_rows(sql, &statement, params, album_hit_row)
-    })
+    let albums = search_albums_on(sql, pattern, limit, ListPage { offset: 0, limit })?;
+    let listed = albums.len() as u64;
+    Ok((albums.into_iter().map(album_hit).collect::<Result<_, _>>()?, listed))
 }
 
-/// The statement that reads the albums `seek` holds in `order`, each with
-/// its key, over the parameters [`with_search_album_params`] binds. The
-/// statement reads each album's main release, cover and credit line only for
-/// the albums the seek returns.
-fn search_album_statement(order: &ListOrder, seek: &Seek) -> String {
-    format!(
-        r#"
-        SELECT a.id, a.title, a.year,
-               {primary_release} AS primary_release_id,
-               {primary_cover} AS cover_version,
-               {artist_names} AS artist_name,
-               {keys}
-        FROM (
-            SELECT listing.album_id, listing.title_sort_key {from}
-            WHERE {condition}
-            ORDER BY {ordering} {limit}
-        ) listing
-        CROSS JOIN albums a ON a.id = listing.album_id
-        ORDER BY {ordering}
-        "#,
-        primary_release = album_primary_release_sql(),
-        primary_cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
-        artist_names = album_credits_json_sql(),
-        keys = order.key_columns(),
-        from = search_album_from(),
-        condition = order.condition(seek),
-        ordering = order.ordering(seek),
-        limit = seek.limit_clause(),
-    )
-}
-
-/// Runs `run` with the parameters a [`search_album_statement`] over `seek`
-/// reads: the seek's own, the window's `limit`, the search
-/// `pattern`, and the `cap` on how many of the albums that hold it the seek
-/// reads among.
-fn with_search_album_params<T>(
-    pattern: &str,
-    cap: u64,
-    seek: &Seek,
-    limit: u64,
-    run: impl FnOnce(&[(&str, &dyn rusqlite::ToSql)]) -> T,
-) -> T {
-    let cap = bae_store::list_windows::sql_bound(cap);
-    seek.bound(limit, |params| {
-        let mut params = params.to_vec();
-        params.push((":pattern", &pattern as &dyn rusqlite::ToSql));
-        params.push((":cap", &cap as &dyn rusqlite::ToSql));
-        run(params.as_slice())
-    })
-}
-
-fn album_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbAlbumSearchResult> {
+/// An album as a search lists it.
+fn album_hit(shown: AlbumSummary) -> Result<DbAlbumSearchResult, DbError> {
+    let album = shown.into_row()?.process()?;
     Ok(DbAlbumSearchResult {
-        id: row.get("id")?,
-        title: row.get("title")?,
-        year: row.get("year")?,
-        primary_release_id: row.get("primary_release_id")?,
-        cover_version: row.get("cover_version")?,
-        artist_line: credit_line_column(row, "artist_name")?,
+        id: album.id,
+        title: album.title,
+        year: album.year,
+        primary_release_id: album.primary_release_id,
+        cover_version: album.cover_version,
+        artist_line: album.artist_line,
     })
-}
-
-/// How many albums a search for `pattern` lists: those that hold it, counting
-/// at most [`LISTED`]. The count needs no order, so it sorts nothing.
-fn search_album_count_on(sql: &SqlReadContext<'_>, pattern: &str) -> Result<u64, DbError> {
-    Ok(sql.query_row(
-        &format!(
-            "SELECT COUNT(*) AS count FROM (SELECT 1 FROM albums a WHERE {} LIMIT ?2)",
-            album_matches_sql("a.id", "?1"),
-        ),
-        params![pattern, bae_store::list_windows::sql_bound(LISTED)],
-        |row| count_column::<u64>(row, "count"),
-    )?)
 }
 
 #[cfg(test)]

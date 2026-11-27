@@ -2,6 +2,7 @@
 //! of a key are separate live queries, and a write to an artist the search
 //! finds reruns them.
 
+use super::{ArtistSearchBefore, ArtistSearchCount, ArtistSearchKeyAt, ArtistSearchWindow};
 use crate::LibrarySearchQuery;
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
@@ -267,4 +268,34 @@ async fn the_picker_folds_case_past_ascii() {
         ids(&found(&db, "émile").await),
         vec!["7ad27fb9-cd6e-4fa9-9ab8-6c9f9a5f6a07", "6fc16ea8-bc5d-4e98-8fa7-5b8e8f4e5f06"]
     );
+}
+
+/// Every read of what the text finds reaches each artist it reads by an
+/// index search, never a scan of the artists. The search's order depends on the text, so no index keeps
+/// it, and the window sorts the artists the text finds.
+#[tokio::test]
+async fn artist_search_reads_scan_no_artists() {
+    let (db, _tmp) = seeded().await;
+    for statement in [
+        ArtistSearchWindow::SQL,
+        ArtistSearchBefore::SQL,
+        ArtistSearchKeyAt::SQL,
+        ArtistSearchCount::SQL,
+    ] {
+        let steps = db
+            .read(move |sql| {
+                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+                crate::tests::plan_steps(&sql, statement, unbound)
+            })
+            .await
+            .unwrap();
+        eprintln!("PLAN artists: {steps:#?}");
+        assert!(
+            !steps.iter().any(|step| ["artist", "discogs", "musicbrainz"]
+                .iter()
+                .any(|alias| step.detail == format!("SCAN {alias}")
+                    || step.detail.starts_with(&format!("SCAN {alias} ")))),
+            "{steps:?}"
+        );
+    }
 }

@@ -453,37 +453,13 @@ impl ArtistImageVersion {
     }
 }
 
-// Every artist image's version, whose SQL a statement built as text holds.
-sqlive_compose::read!(
-    writer ArtistImageVersions,
-    r#"
-    SELECT image.*
-    FROM @crate::records::files::ArtistImageVersion AS image
-"#
-);
-
 /// The version of the cover of the release `release_id` (a SQL expression),
 /// found by the covers' key; NULL when the release has no cover.
 pub fn cover_version_sql(release_id: &str) -> String {
-    image_version_sql(&LibraryImageType::Cover, release_id)
-}
-
-/// The version of the image of the artist `artist_id` (a SQL expression),
-/// found by the artist images' key; NULL when the artist has no image.
-pub fn artist_image_version_sql(artist_id: &str) -> String {
-    image_version_sql(&LibraryImageType::Artist, artist_id)
-}
-
-/// The version of the image of `image_type` keyed by `id` (a SQL
-/// expression), as a statement built as text holds it.
-fn image_version_sql(image_type: &LibraryImageType, id: &str) -> String {
-    let versions = match image_type {
-        LibraryImageType::Cover => CoverVersions::SQL,
-        LibraryImageType::Artist => ArtistImageVersions::SQL,
-    };
     format!(
         "(SELECT image_version.version FROM ({versions}) AS image_version \
-         WHERE image_version.id = {id})"
+         WHERE image_version.id = {release_id})",
+        versions = CoverVersions::SQL
     )
 }
 

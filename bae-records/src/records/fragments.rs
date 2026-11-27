@@ -379,6 +379,18 @@ sqlive_compose::fragment!(
 "#
 );
 
+// Each album's primary release ([`AlbumPrimaryRelease`]) by the album, as a
+// row a read joins to; no row for an album that holds no release.
+sqlive_compose::fragment!(
+    PrimaryReleaseOfAlbum,
+    r#"
+    SELECT album.id AS primary_of_album_id, release.id AS primary_release_id
+    FROM albums AS album
+    JOIN releases AS release
+      ON release.id = @crate::records::fragments::AlbumPrimaryRelease(parent: album)
+"#
+);
+
 // The album the release `release` is in (`current_album_id`) and the library
 // album a save files it under once its records are `records`
 // (`target_album_id`, NULL for a new album), each record as

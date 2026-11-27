@@ -1,5 +1,5 @@
 //! This fixture times one window of a list at each size. The fixture reads
-//! the window at the top, the middle and the end by scrolling (the range
+//! the window at the top, the middle and the end by scrolling (the window
 //! from a row's key, `list_windows`) and by a jump (the key at a position by
 //! offset, then that range). The fixture also times how many rows come before a key at
 //! the middle and the end. Each time is the median of several runs.

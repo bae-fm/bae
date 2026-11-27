@@ -1,6 +1,5 @@
 //! An album's tracks as a media browser lists them: its main release's, in
-//! playing order, read a page at a time from a track's key on, over
-//! libraries written through the records domain's own writes.
+//! playing order, read a page at a time, over libraries written through the records domain's own writes.
 
 use super::*;
 use bae_records::test_fixtures::library::RecordsFixture;
@@ -86,4 +85,30 @@ async fn a_page_follows_a_renamed_track_and_the_count_follows_the_main_release()
     let counted =
         tokio::time::timeout(HANG_GUARD, count.next_inline()).await.unwrap().unwrap().unwrap();
     assert_eq!(counted, 1);
+}
+
+/// A page of an album's tracks, and their count, search the primary
+/// release's tracks through the index of releases' positions, and sort none
+/// of them.
+#[tokio::test]
+async fn an_albums_tracks_are_read_in_order_from_the_position_index() {
+    let (db, _tmp) = crate::tests::library().await;
+    for statement in [AlbumTrackPage::SQL, AlbumTrackCount::SQL] {
+        let steps = db
+            .read(move |sql| {
+                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+                crate::tests::plan_steps(&sql, statement, unbound)
+            })
+            .await
+            .unwrap();
+        eprintln!("PLAN tracks: {steps:#?}");
+        assert!(
+            steps.iter().any(|step| step.detail.contains("tracks_release_position (release_id=?")),
+            "{steps:?}"
+        );
+        assert!(
+            !steps.iter().any(|step| step.own && step.detail.starts_with("USE TEMP B-TREE")),
+            "{steps:?}"
+        );
+    }
 }

@@ -1,13 +1,11 @@
 //! What crosses the views: an album's credits are one ordered list
 //! (`album_artists` from position 0) that every reader of an album's artists
-//! reads whole, and the paged lists' windows read from a row beside them,
-//! every seek of every sort an index search. The list-window helpers here
-//! serve every list's tests.
+//! reads whole, and the paged lists' windows read from a row beside them. The
+//! list-window helpers here serve every list's tests.
 
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
-use bae_store::list_windows::Seek;
 use bae_store::test_fixtures::temp_db;
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
@@ -178,27 +176,8 @@ pub(super) async fn assert_windows_seek_their_first_term(
     }
 }
 
-/// The plan of `statement` under `seek`'s parameters and `extra`, one step
-/// per line.
-pub(super) async fn plan(
-    db: &Store,
-    statement: String,
-    seek: Seek,
-    extra: Vec<(&'static str, rusqlite::types::Value)>,
-) -> Vec<PlanStep> {
-    db.read(move |sql| {
-        seek.bound(50, |params| {
-            let mut params = params.to_vec();
-            params.extend(extra.iter().map(|(name, value)| (*name, value as &dyn rusqlite::ToSql)));
-            plan_steps(&sql, &statement, params.as_slice())
-        })
-    })
-    .await
-    .unwrap()
-}
-
-/// The aliases the lists' statements read their rows as, which a seek reads
-/// by an index search, never a scan.
+/// The aliases the lists' statements read their rows as, which each
+/// statement reads by an index search, never a scan.
 pub(super) const LIST_ALIASES: &[&str] = &["listing", "artist", "link", "a", "r", "q"];
 
 /// Whether `step` sorts rows for an ORDER BY.
@@ -398,7 +377,7 @@ async fn a_composer_window_under_three_criteria_holds_the_rows_at_its_places() {
 /// What one window of each paged list costs to read, at the top, the middle
 /// and the end of the list, at 20,000, 50,000 and 100,000 rows: reached by a
 /// jump, which reads it by its offset, and by scrolling, which reads it from
-/// the row beside it (`list_windows`): the row after the window at the top,
+/// the row beside it: the row after the window at the top,
 /// and the row before it lower down. Each window is read by the reads its live
 /// query runs, its rows decoded as that query decodes them. At 100,000 rows
 /// the Storage Manager list is also measured narrowed by a search that finds

@@ -74,14 +74,12 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let album_id = album_id.to_string();
-        let order = album_track_order();
-        let read_order = order.clone();
-        self.store.subscribe_list_page(
-            page,
-            order,
-            album_track_statement,
-            move |sql, seek, limit| album_track_rows_on(sql, &album_id, &read_order, seek, limit),
-            |rows| Ok(album_track_rows(rows)),
+        self.store.subscribe(move |sql| album_track_page_on(&sql, &album_id, page)).process(
+            |tracks| {
+                Ok(crate::ListRows::AlbumTracks(
+                    tracks.into_iter().map(release_track).collect::<Result<_, _>>()?,
+                ))
+            },
         )
     }
 
@@ -91,18 +89,8 @@ impl LibraryViews {
         &self,
         album_id: &str,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
-        let album_id = album_id.to_string();
-        self.store.subscribe(move |sql| {
-            Ok(sql.query_row(
-                &format!(
-                    "SELECT COUNT(*) AS count {} WHERE {}",
-                    TRACK_HIT_FROM.as_str(),
-                    album_track_filter()
-                ),
-                rusqlite::named_params! { ":album_id": album_id },
-                |row| count_column::<u64>(row, "count"),
-            )?)
-        })
+        let statement = AlbumTrackCountParams { album: album_id.to_string() };
+        self.store.subscribe(move |sql| Ok(bae_store::statement_row(&sql, &statement)?.tracks))
     }
 
     /// The track `track_id` of the release `release_id` as a browse item shows
@@ -439,7 +427,8 @@ fn release_track(shown: DisplayedTrack) -> Result<crate::album_detail::TrackSear
 }
 
 /// What a track hit shows: the track, its release's album, its credit line and
-/// its release's cover version, as columns of [`TRACK_HIT_FROM`].
+/// its release's cover version, as columns over the track `t` and
+/// [`TRACK_HIT_JOINS`].
 static TRACK_HIT_COLUMNS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     format!(
         "t.id, t.title, t.duration_ms, t.release_id, \
@@ -454,11 +443,6 @@ static TRACK_HIT_COLUMNS: std::sync::LazyLock<String> = std::sync::LazyLock::new
 /// and the release's album `a`.
 const TRACK_HIT_JOINS: &str = "JOIN releases r ON t.release_id = r.id \
      JOIN albums a ON r.album_id = a.id";
-
-/// The tables a track hit reads: the track `t`, its release `r` and the
-/// release's album `a`.
-static TRACK_HIT_FROM: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| format!("FROM tracks t {TRACK_HIT_JOINS}"));
 
 fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
     Ok(DbTrackSearchResult {
@@ -501,7 +485,7 @@ fn search_library_on(
     pattern: &str,
     limit: i64,
 ) -> Result<DbLibrarySearchResults, DbError> {
-    // Each section's statement counts its own rows beside them.
+    // Each section counts the rows it lists.
     let (albums, album_count) = first_search_albums_on(sql, pattern, limit as u64)?;
     let (tracks, track_count) =
         counted_rows(sql, &first_tracks_found_sql(), params![pattern, limit], track_hit_row)?;
@@ -772,60 +756,46 @@ pub struct LibrarySearchProjection {
     pub results: DbLibrarySearchResults,
 }
 
-/// An album's tracks as a media browser lists them.
-fn album_track_rows(rows: Vec<DbTrackSearchResult>) -> crate::ListRows {
-    crate::ListRows::AlbumTracks(
-        rows.into_iter().map(crate::album_detail::TrackSearchResult::from_raw).collect(),
-    )
-}
+// A page of the album `album`'s tracks: those of its primary release at the
+// places from `offset` on, in playing order, at most `limit`. A release holds
+// one track at each position, so the position tells every two tracks apart.
+sqlive_compose::read!(
+    writer AlbumTrackPage(album: String, offset: i64, limit: i64),
+    r#"
+    SELECT shown.*
+    FROM @bae_records::records::fragments::PrimaryReleaseOfAlbum AS chosen
+    CROSS JOIN @bae_records::records::track_display::DisplayedTrack AS shown
+            ON shown.release_id = chosen.primary_release_id
+    WHERE chosen.primary_of_album_id = :album
+    ORDER BY shown.playing_position
+    LIMIT :limit OFFSET :offset
+"#
+);
 
-/// The order of an album's tracks: playing order. A release holds one track
-/// at each position, and the list holds one release's tracks, so the position
-/// tells every two tracks apart.
-fn album_track_order() -> ListOrder {
-    ListOrder::new(vec![SortTerm::ascending("t.position")])
-}
+// How many tracks the album `album` lists: its primary release's.
+sqlive_compose::read!(
+    writer AlbumTrackCount(album: String) { tracks: u64 },
+    r#"
+    SELECT COUNT(*) AS tracks
+    FROM @bae_records::records::fragments::PrimaryReleaseOfAlbum AS chosen
+    CROSS JOIN @bae_records::records::spread_fragments::TrackRow AS held
+            ON held.release_id = chosen.primary_release_id
+    WHERE chosen.primary_of_album_id = :album
+"#
+);
 
-/// Which track hits ([`TRACK_HIT_FROM`]) the album `:album_id` lists: its
-/// main release's tracks.
-fn album_track_filter() -> String {
-    format!("a.id = :album_id AND r.id = {}", album_primary_release_sql())
-}
-
-/// The statement reading the album `:album_id`'s tracks `seek` holds, in
-/// `order`, each with its key.
-fn album_track_statement(order: &ListOrder, seek: &Seek) -> String {
-    format!(
-        "SELECT {columns}, {keys} {from}
-         WHERE {filter} AND {condition}
-         ORDER BY {ordering} {limit}",
-        columns = TRACK_HIT_COLUMNS.as_str(),
-        keys = order.key_columns(),
-        from = TRACK_HIT_FROM.as_str(),
-        filter = album_track_filter(),
-        condition = order.condition(seek),
-        ordering = order.ordering(seek),
-        limit = seek.limit_clause(),
-    )
-}
-
-/// The album `album_id`'s tracks that `seek` reads in `order`, at most
-/// `limit`, each with its key.
-fn album_track_rows_on(
+/// The album `album_id`'s tracks at `page`'s places.
+fn album_track_page_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbTrackSearchResult>>, DbError> {
-    let statement = album_track_statement(order, seek);
-    Ok(seek.bound(limit, |params| {
-        let mut params = params.to_vec();
-        params.push((":album_id", &album_id as &dyn rusqlite::ToSql));
-        sql.query(&statement, params.as_slice(), |row| {
-            Ok((track_hit_row(row)?, order.key_of(row)?))
-        })
-    })?)
+    page: ListPage,
+) -> Result<Vec<DisplayedTrack>, DbError> {
+    let statement = AlbumTrackPageParams {
+        album: album_id.to_string(),
+        offset: bae_store::list_windows::sql_bound(page.offset),
+        limit: bae_store::list_windows::sql_bound(page.limit),
+    };
+    Ok(bae_store::statement_rows(sql, &statement)?.into_iter().map(|row| row.shown).collect())
 }
 
 #[cfg(test)]

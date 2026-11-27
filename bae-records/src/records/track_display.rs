@@ -46,7 +46,7 @@ sqlive_compose::fragment!(
 );
 
 // Each track as playback shows it: its id as `display_track_id`, its length,
-// its title, its release, the credits it shows and the release as it shows it.
+// its title, its release and place in that release's playing order, the credits it shows and the release as it shows it.
 // The fragment reads `tracks` alone, so that SQLite flattens it where a read
 // puts it on the right of a LEFT JOIN: a subquery that is itself a join would
 // be built there for every track in the library.
@@ -54,6 +54,7 @@ sqlive_compose::fragment!(
     DisplayedTrack { duration_ms: u64 },
     r#"
     SELECT track.id AS display_track_id, track.duration_ms, track.title, track.release_id,
+           track.position AS playing_position,
            @crate::records::credit_fragments::TrackCredits(parent: track) AS credits,
            @crate::records::track_display::ShownRelease(parent: track) AS release
     FROM tracks AS track

@@ -16,15 +16,6 @@ pub fn shown_artist_id(artist_id: &str) -> String {
     format!("(SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = {artist_id})")
 }
 
-/// Whether the `artists` row aliased `alias` shows as itself — it was not
-/// merged into another artist — so listings include it.
-pub fn artist_is_shown(alias: &str) -> String {
-    format!(
-        "EXISTS (SELECT 1 FROM artist_shown_as shown_as \
-         WHERE shown_as.artist_id = {alias}.id AND shown_as.shown_artist_id = {alias}.id)"
-    )
-}
-
 /// The column of an image's table that names the file the image is read
 /// from: a cover's browse copy, or the artist image's own file.
 pub(super) fn image_file_column(image_type: &LibraryImageType) -> &'static str {

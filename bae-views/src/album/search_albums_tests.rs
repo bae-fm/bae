@@ -132,32 +132,30 @@ async fn a_search_counts_its_albums_live() {
 }
 
 /// A search reads its albums in title order from the listing's title index,
-/// so it stops at its cap: neither the first albums library search lists nor
-/// a page of them computes a title's key or sorts albums, at any level of
-/// the statement.
+/// so it stops at its cap: its page, which also reads the first albums
+/// library search lists, computes no title's key and sorts no albums, at any
+/// level of the statement.
 #[tokio::test]
 async fn a_search_reads_its_albums_in_order_from_the_title_index() {
     let (db, _tmp) = crate::tests::library().await;
-    let order = search_album_order();
-    let params = vec![
-        (":pattern", rusqlite::types::Value::Text(search_pattern("album 1"))),
-        (":cap", rusqlite::types::Value::Integer(LISTED as i64)),
-    ];
-    let page = order.from_place(2, search_album_statement);
-    for (what, seek) in [("first albums", order.everything()), ("page", page)] {
-        let statement = search_album_statement(&order, &seek);
+    for (what, statement) in [("page", SearchAlbums::SQL), ("count", SearchAlbumCount::SQL)] {
         assert!(!statement.contains("bae_name_key"), "{what}: {statement}");
-        let steps = crate::tests::plan(&db, statement, seek.clone(), params.clone()).await;
-        assert!(
-            steps
-                .iter()
-                .any(|step| step.detail.contains("USING COVERING INDEX idx_album_listing_title")),
-            "{what}: {steps:?}"
-        );
-        assert!(
-            !steps.iter().any(|step| step.detail.starts_with("USE TEMP B-TREE FOR")
-                && step.detail.ends_with("ORDER BY")),
-            "{what}: {steps:?}"
-        );
+        let steps = db
+            .read(move |sql| {
+                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+                crate::tests::plan_steps(&sql, statement, unbound)
+            })
+            .await
+            .unwrap();
+        eprintln!("PLAN {what}: {steps:#?}");
+        if what == "page" {
+            assert!(
+                steps.iter().any(|step| step
+                    .detail
+                    .contains("USING COVERING INDEX idx_album_listing_title")),
+                "{what}: {steps:?}"
+            );
+        }
+        assert!(!crate::tests::sorts_at_any_level(&steps), "{what}: {steps:?}");
     }
 }

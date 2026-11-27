@@ -3,9 +3,136 @@
 //! of their own; the picker opens new queries for each new text.
 
 use super::*;
-use crate::sort_key_sql;
-use bae_records::records::artist_credit_names::{credit_names_column, credit_names_json_sql};
-use rusqlite::named_params;
+use crate::list_sort::{key, key_values};
+use bae_records::records::files::ArtistImageVersion;
+use bae_store::list_windows::{sql_bound, SortValue};
+use bae_store::{statement_optional, statement_row, statement_rows};
+
+// Each artist the text `text` finds, with what the search orders it by: its
+// `match_rank`, 0 for a library or provider id or an exact name or sort-name
+// match, 1 for a name or sort name starting with the text and 2 for the rest;
+// and `ranked_name_key`, its name's sort key in the device's language. The
+// text finds by library or provider id, or as library search finds artists,
+// by the search pattern `pattern`. Merged-away artists are never found.
+sqlive_compose::fragment!(
+    RankedArtists(text: String, pattern: String) {
+        match_rank: i64,
+        ranked_name_key: Vec<u8>
+    },
+    r#"
+    SELECT artist.artist_id AS ranked_artist_id,
+           CASE
+               WHEN artist.artist_id = :text
+                 OR artist.discogs_artist_id = :text
+                 OR artist.musicbrainz_artist_id = :text
+                 OR bae_fold_case(artist.name) = bae_fold_case(:text)
+                 OR bae_fold_case(artist.sort_name) = bae_fold_case(:text) THEN 0
+               WHEN substr(bae_fold_case(artist.name), 1, length(bae_fold_case(:text)))
+                      = bae_fold_case(:text)
+                 OR substr(bae_fold_case(artist.sort_name), 1, length(bae_fold_case(:text)))
+                      = bae_fold_case(:text) THEN 1
+               ELSE 2
+           END AS match_rank,
+           bae_name_key(artist.name, (
+               SELECT sort.language
+               FROM @bae_records::records::name_sort::NameSortLanguage AS sort))
+               AS ranked_name_key
+    FROM @bae_records::records::browse_fragments::ArtistRecord AS artist
+    JOIN @bae_records::records::browse_fragments::ShownArtist AS shown
+      ON shown.artist_id = artist.artist_id AND shown.shown_artist_id = artist.artist_id
+    WHERE artist.artist_id IN (
+              SELECT :text
+              UNION ALL
+              SELECT discogs.artist_id
+              FROM @bae_records::records::browse_fragments::ArtistRecord AS discogs
+              WHERE discogs.discogs_artist_id = :text
+              UNION ALL
+              SELECT musicbrainz.artist_id
+              FROM @bae_records::records::browse_fragments::ArtistRecord AS musicbrainz
+              WHERE musicbrainz.musicbrainz_artist_id = :text
+              UNION ALL
+              SELECT found.artist_id
+              FROM @crate::album_search::ArtistsFound(pattern: :pattern) AS found)
+"#
+);
+
+// The window of what the text finds: the artists from the window's first key
+// on, by rank, name and id, each with its key, image and other printed names.
+// The subquery picks the window's artists, so only their rows are read.
+sqlive_compose::read!(
+    writer ArtistSearchWindow(
+        text: String,
+        pattern: String,
+        limit: i64,
+        key_rank: bae_store::list_windows::SortValue,
+        key_name: bae_store::list_windows::SortValue,
+        key_id: String,
+    ) { order_rank: i64, order_name: Vec<u8>, order_id: String },
+    r#"
+    SELECT picked.match_rank AS order_rank, picked.ranked_name_key AS order_name,
+           picked.ranked_artist_id AS order_id,
+           artist.*, image.*, names.*
+    FROM (SELECT ranked.ranked_artist_id, ranked.match_rank, ranked.ranked_name_key
+          FROM @crate::artist_search::RankedArtists(text: :text, pattern: :pattern) AS ranked
+          WHERE (ranked.match_rank, ranked.ranked_name_key, ranked.ranked_artist_id)
+                >= (:key_rank, :key_name, :key_id)
+          ORDER BY ranked.match_rank, ranked.ranked_name_key, ranked.ranked_artist_id
+          LIMIT :limit) AS picked
+    CROSS JOIN @bae_records::records::browse_fragments::ArtistRecord AS artist
+            ON artist.artist_id = picked.ranked_artist_id
+    LEFT JOIN @bae_records::records::files::ArtistImageVersion AS image
+           ON image.id = picked.ranked_artist_id
+    CROSS JOIN @bae_records::records::artist_credit_names::ArtistOtherNames AS names
+            ON names.names_artist_id = picked.ranked_artist_id
+    ORDER BY picked.match_rank, picked.ranked_name_key, picked.ranked_artist_id
+"#
+);
+
+// How many of the artists the text finds come before the row at a key.
+sqlive_compose::read!(
+    writer ArtistSearchBefore(
+        text: String,
+        pattern: String,
+        key_rank: bae_store::list_windows::SortValue,
+        key_name: bae_store::list_windows::SortValue,
+        key_id: String,
+    ) { artists_before: u64 },
+    r#"
+    SELECT COUNT(*) AS artists_before
+    FROM @crate::artist_search::RankedArtists(text: :text, pattern: :pattern) AS ranked
+    WHERE (ranked.match_rank, ranked.ranked_name_key, ranked.ranked_artist_id)
+          < (:key_rank, :key_name, :key_id)
+"#
+);
+
+// The key of the artist at a position of what the text finds, or of the last
+// one when it finds fewer; no row when it finds none, since SQLite reads its
+// offset of -1 as 0.
+sqlive_compose::read!(
+    writer ArtistSearchKeyAt(text: String, pattern: String, position: i64) {
+        order_rank: i64,
+        order_name: Vec<u8>,
+        order_id: String
+    },
+    r#"
+    SELECT ranked.match_rank AS order_rank, ranked.ranked_name_key AS order_name,
+           ranked.ranked_artist_id AS order_id
+    FROM @crate::artist_search::RankedArtists(text: :text, pattern: :pattern) AS ranked
+    ORDER BY ranked.match_rank, ranked.ranked_name_key, ranked.ranked_artist_id
+    LIMIT 1 OFFSET min(:position, (
+        SELECT COUNT(*)
+        FROM @crate::artist_search::RankedArtists(text: :text, pattern: :pattern) AS counted) - 1)
+"#
+);
+
+// How many artists the text finds.
+sqlive_compose::read!(
+    writer ArtistSearchCount(text: String, pattern: String) { artists: u64 },
+    r#"
+    SELECT COUNT(*) AS artists
+    FROM @crate::artist_search::RankedArtists(text: :text, pattern: :pattern) AS ranked
+"#
+);
 
 /// One artist an artist search found, with its image's version and its other
 /// printed names in name order, read in the artist's own row.
@@ -26,10 +153,10 @@ impl LibraryViews {
         limit: u64,
     ) -> Result<Vec<DbArtist>, DbError> {
         let query = query.clone();
-        let order = artist_search_order();
         self.store
             .read(move |sql| {
-                Ok(artist_search_rows_on(&sql, &query, &order, &order.everything(), limit)?
+                Ok(artist_search_window_on(&sql, &query, &ListWindow::top(limit))?
+                    .rows
                     .into_iter()
                     .map(|(row, _)| row.artist)
                     .collect())
@@ -37,21 +164,18 @@ impl LibraryViews {
             .await
     }
 
-    /// Follow one window of what the artist picker's text finds: a range of
-    /// the search's order (`list_windows`), which coven reruns for a write
-    /// inside it alone. No query (a blank text) finds nothing; its window
-    /// answers with no rows.
+    /// Follow one window of what the artist picker's text finds: the artists
+    /// from a key of the search's order on. No query (a blank text) finds
+    /// nothing; its window answers with no rows.
     pub fn subscribe_artist_search_window(
         &self,
         query: Option<crate::LibrarySearchQuery>,
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbArtistSearchRow>, bae_store::DbError>
     {
-        let order = artist_search_order();
-        let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| match &query {
-            Some(query) => artist_search_rows_on(sql, query, &read_order, seek, limit),
-            None => Ok(Vec::new()),
+        self.store.subscribe_reconfigurable(initial, move |window, sql| match &query {
+            Some(query) => artist_search_window_on(&sql, query, window),
+            None => Ok(WindowRead { window: window.clone(), rows: Vec::new() }),
         })
     }
 
@@ -62,22 +186,26 @@ impl LibraryViews {
         query: Option<crate::LibrarySearchQuery>,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
         self.store.subscribe(move |sql| match &query {
-            Some(query) => artist_search_count_on(&sql, query),
+            Some(query) => {
+                let statement = ArtistSearchCountParams {
+                    text: query.as_str().to_string(),
+                    pattern: search_pattern(query.as_str()),
+                };
+                Ok(statement_row(&sql, &statement)?.artists)
+            }
             None => Ok(0),
         })
     }
 
     /// Follow how many of the artists the text finds come before the row at
-    /// a key, a count over the search's order. The caller can change the key
-    /// without opening a new live query.
+    /// a key. The caller can change the key without opening a new live query.
     pub fn subscribe_artist_search_position(
         &self,
         query: Option<crate::LibrarySearchQuery>,
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        let order = artist_search_order();
         self.store.subscribe_reconfigurable(initial, move |key, sql| match &query {
-            Some(query) => artist_search_rows_before_on(&sql, query, &order, key),
+            Some(query) => artist_search_rows_before_on(&sql, query, key),
             None => Ok(0),
         })
     }
@@ -92,14 +220,7 @@ impl LibraryViews {
         let Some(query) = query else {
             return Ok(None);
         };
-        let order = artist_search_order();
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    artist_search_rows_on(&sql, &query, &order, seek, limit)
-                })
-            })
-            .await
+        self.store.read(move |sql| artist_search_key_at_on(&sql, &query, position)).await
     }
 }
 
@@ -119,127 +240,77 @@ pub fn resolve_artist_search_window(read: WindowRead<DbArtistSearchRow>) -> crat
     })
 }
 
-/// The artists the text `:text` finds: by library or provider id, or as
-/// library search finds artists, by the search pattern `:pattern` binds
-/// ([`artists_found_sql`]). Merged-away artists are never found.
-fn artist_search_filter() -> String {
-    format!(
-        r#"
-        {shown}
-          AND (id = :text
-           OR discogs_artist_id = :text
-           OR musicbrainz_artist_id = :text
-           OR id IN ({found}))
-        "#,
-        shown = artist_is_shown("artists"),
-        found = artists_found_sql(":pattern"),
-    )
+/// The key of the artist ranked `rank` with the name key `name` and the id
+/// `id`.
+fn artist_search_key(rank: i64, name: Vec<u8>, id: String) -> OrderKey {
+    key([SortValue::Integer(rank)], name, id)
 }
 
-/// The artists a text finds in their order: library and provider ids and
-/// exact name or sort-name matches ahead of prefixes, then substrings; name
-/// and library id stabilize each rank, so windows never overlap or skip.
-/// The order names the text by the parameter `:text`.
-pub(crate) fn artist_search_order() -> ListOrder {
-    ListOrder::new(vec![
-        SortTerm::ascending(
-            "CASE
-                WHEN id = :text
-                  OR discogs_artist_id = :text
-                  OR musicbrainz_artist_id = :text
-                  OR bae_fold_case(name) = bae_fold_case(:text)
-                  OR bae_fold_case(sort_name) = bae_fold_case(:text) THEN 0
-                WHEN substr(bae_fold_case(name), 1, length(bae_fold_case(:text)))
-                       = bae_fold_case(:text)
-                  OR substr(bae_fold_case(sort_name), 1, length(bae_fold_case(:text)))
-                       = bae_fold_case(:text) THEN 1
-                ELSE 2
-            END",
-        ),
-        SortTerm::ascending(sort_key_sql("name")),
-        SortTerm::ascending("id"),
-    ])
-}
-
-fn artist_search_count_on(
+/// The artists `query` finds that `window` holds, each with its key.
+fn artist_search_window_on(
     sql: &SqlReadContext<'_>,
     query: &crate::LibrarySearchQuery,
-) -> Result<u64, DbError> {
-    let pattern = search_pattern(query.as_str());
-    sql.query_row(
-        &format!("SELECT COUNT(*) FROM artists WHERE {}", artist_search_filter()),
-        named_params! { ":text": query.as_str(), ":pattern": pattern },
-        |row| row.get::<_, i64>(0),
-    )
-    .map(|count| count as u64)
-    .map_err(DbError::from)
+    window: &ListWindow,
+) -> Result<WindowRead<DbArtistSearchRow>, DbError> {
+    // No artist comes before the top: no rank is below 0, and no name key or
+    // id below the empty one.
+    let ([key_rank], key_name, key_id) = match &window.from {
+        Some(from) => key_values(from)?,
+        None => ([SortValue::Integer(0)], SortValue::Blob(Vec::new()), String::new()),
+    };
+    let statement = ArtistSearchWindowParams {
+        text: query.as_str().to_string(),
+        pattern: search_pattern(query.as_str()),
+        limit: sql_bound(window.limit),
+        key_rank,
+        key_name,
+        key_id,
+    };
+    let rows = statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| {
+            let found = DbArtistSearchRow {
+                artist: row.artist.into_artist()?,
+                image_version: row.image.and_then(ArtistImageVersion::into_version),
+                credit_names: row.names.into_names().0,
+            };
+            Ok((found, artist_search_key(row.order_rank, row.order_name, row.order_id)))
+        })
+        .collect::<Result<_, DbError>>()?;
+    Ok(WindowRead { window: window.clone(), rows })
 }
 
-/// How many of the artists `query` finds come before the row at `key`.
+/// How many of the artists `query` finds come before the row at `at`.
 fn artist_search_rows_before_on(
     sql: &SqlReadContext<'_>,
     query: &crate::LibrarySearchQuery,
-    order: &ListOrder,
-    key: &OrderKey,
+    at: &OrderKey,
 ) -> Result<u64, DbError> {
-    let pattern = search_pattern(query.as_str());
-    let text = query.as_str();
-    bae_store::list_windows::rows_before_on(
-        sql,
-        "FROM artists",
-        Some(&artist_search_filter()),
-        &[(":text", &text), (":pattern", &pattern)],
-        order,
-        key,
-    )
+    let ([key_rank], key_name, key_id) = key_values(at)?;
+    let statement = ArtistSearchBeforeParams {
+        text: query.as_str().to_string(),
+        pattern: search_pattern(query.as_str()),
+        key_rank,
+        key_name,
+        key_id,
+    };
+    Ok(statement_row(sql, &statement)?.artists_before)
 }
 
-/// The artists `query` finds that `seek` reads in `order`, at most `limit`,
-/// each with its key. The key columns come before the artist's columns, so
-/// coven finds the last row's sort values among the result columns.
-fn artist_search_rows_on(
+/// The key of the artist at `position` of what `query` finds, or of the last
+/// one when it finds fewer.
+fn artist_search_key_at_on(
     sql: &SqlReadContext<'_>,
     query: &crate::LibrarySearchQuery,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbArtistSearchRow>>, DbError> {
-    let pattern = search_pattern(query.as_str());
-    let statement = format!(
-        r#"
-        SELECT {keys},
-               {image} AS image_version,
-               {credit_names} AS credit_names_json,
-               *
-        FROM artists
-        WHERE {filter} AND {condition}
-        ORDER BY {ordering}
-        {limit}
-        "#,
-        filter = artist_search_filter(),
-        image = artist_image_version_sql("artists.id"),
-        credit_names = credit_names_json_sql("artists.id", &sort_key_sql("credit_name.name")),
-        keys = order.key_columns(),
-        condition = order.condition(seek),
-        ordering = order.ordering(seek),
-        limit = seek.limit_clause(),
-    );
-    let text = query.as_str();
-    Ok(seek.bound(limit, |params| {
-        let mut params = params.to_vec();
-        params.push((":text", &text as &dyn rusqlite::ToSql));
-        params.push((":pattern", &pattern as &dyn rusqlite::ToSql));
-        sql.query(&statement, params.as_slice(), |row| {
-            Ok((
-                DbArtistSearchRow {
-                    artist: row_to_artist(row)?,
-                    image_version: row.get("image_version")?,
-                    credit_names: credit_names_column(row, "credit_names_json")?,
-                },
-                order.key_of(row)?,
-            ))
-        })
-    })?)
+    position: u64,
+) -> Result<Option<OrderKey>, DbError> {
+    let statement = ArtistSearchKeyAtParams {
+        text: query.as_str().to_string(),
+        pattern: search_pattern(query.as_str()),
+        position: sql_bound(position),
+    };
+    Ok(statement_optional(sql, &statement)?
+        .map(|row| artist_search_key(row.order_rank, row.order_name, row.order_id)))
 }
 
 #[cfg(test)]
