@@ -10,12 +10,14 @@ async fn the_uploading_releases_read_their_storage_in_queue_order() {
         plan(
             &db,
             format!(
-                "SELECT release_id FROM ({}) ORDER BY position",
-                crate::records::query::UPLOADING_RELEASES
+                "SELECT storage.release_id FROM ({}) AS storage \
+                 WHERE storage.first_queued_position IS NOT NULL \
+                 ORDER BY storage.first_queued_position",
+                crate::release_storage::ReleaseStorageRows::SQL
             )
         )
         .await,
-        vec!["SEARCH uploading USING COVERING INDEX idx_release_storage_uploading (first_queued_position>?)".to_string()]
+        vec!["SEARCH kept USING COVERING INDEX idx_release_storage_uploading (first_queued_position>?)".to_string()]
     );
 }
 

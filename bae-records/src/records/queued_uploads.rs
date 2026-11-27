@@ -2,6 +2,7 @@
 //! coven's `coven_uploads` beside them.
 
 use super::*;
+use crate::release_storage::ReleaseStorageRows;
 use crate::UploadProgress;
 use bae_store::UPLOADS_PAUSED;
 
@@ -45,33 +46,22 @@ sqlive_compose::read!(
 "#
 );
 
-/// The counts of a release's upload, beside `release_storage storage` joined
-/// to [`ReleasesSending`] as `sending`: how many of its files are queued,
-/// how many of those only wait and how many are being sent, and how many are
-/// stored. [`release_upload_progress_in_row`] and [`release_upload_in_row`]
-/// map them.
-macro_rules! release_upload_count_columns {
-    () => {
-        "storage.queued_count AS queued_count, \
-         storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
-         COALESCE(sending.files, 0) AS sending_files, \
-         storage.file_count - storage.queued_count AS stored_files"
-    };
-}
+/// The counts of a release's upload as the import list's window reads them,
+/// beside `release_storage storage` joined to [`ReleasesSending`] as
+/// `sending`: how many of its files are queued, how many of those only wait
+/// and how many are being sent, and how many are stored.
+/// [`release_upload_progress_in_row`] maps them.
+pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = "storage.queued_count AS queued_count, \
+     storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
+     COALESCE(sending.files, 0) AS sending_files, \
+     storage.file_count - storage.queued_count AS stored_files";
 
-/// `release_upload_count_columns!` alone, for a read that shows only how
-/// many of a release's files wait and how many are being sent.
-pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
-
-/// The columns a release's upload reads beside `release_storage storage`
-/// joined to [`ReleasesSending`] as `sending`, which
-/// [`release_upload_in_row`] maps: its counts
-/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the name of the release file whose
-/// missing original a move of the release waits for, which the release's
-/// storage row stores. How far the files being sent have got is the
-/// release's transfer.
-pub const RELEASE_UPLOAD_COLUMNS: &str =
-    concat!(release_upload_count_columns!(), ", storage.missing_original_file");
+/// The columns of a release's storage row `storage` ([`ReleaseStorageRows`])
+/// that [`release_upload_in_row`] maps: the counts of its upload, and the
+/// name of the release file whose missing original a move of the release
+/// waits for.
+pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count, storage.waiting_files, \
+     storage.sending_files, storage.stored_files, storage.missing_original_file";
 
 // What holds the upload queue back, as one row: `upload_wait` names the wait
 // ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the earliest
@@ -179,11 +169,9 @@ pub fn release_upload_on(
     Ok(sql
         .query_row(
             &format!(
-                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM release_storage storage \
-                 LEFT JOIN ({sending}) sending \
-                     ON sending.release_id = storage.release_id \
+                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM ({storage}) AS storage \
                  WHERE storage.release_id = ?1 AND storage.queued_count > 0",
-                sending = ReleasesSending::SQL,
+                storage = ReleaseStorageRows::SQL,
             ),
             [release_id],
             release_upload_in_row,
@@ -200,26 +188,18 @@ const FILES_SENDING: &str = "SELECT sending.file AS file, f.release_id AS releas
      LEFT JOIN release_files AS f ON f.file = sending.file \
      LEFT JOIN coven_files AS coven ON coven.id = sending.file";
 
-/// Of the release whose `release_storage` row is `storage`, the bytes of its
-/// files stored: its whole size less the sizes of its files still queued to
-/// upload.
-pub const RELEASE_BYTES_STORED: &str = "storage.total_size - COALESCE(( \
-         SELECT SUM(coven.size) FROM release_files AS f \
-         JOIN coven_upload_queue AS queued ON queued.file = f.file \
-         JOIN coven_files AS coven ON coven.id = f.file \
-         WHERE f.release_id = storage.release_id), 0)";
-
 /// Each release with files this process is sending now: of its whole size,
 /// the bytes of its files stored. Each release is found by its files from
 /// the files in flight.
 fn releases_sending_bytes() -> String {
     format!(
         "SELECT storage.release_id AS release_id, \
-             {RELEASE_BYTES_STORED} AS bytes_stored, \
+             storage.bytes_stored AS bytes_stored, \
              storage.total_size AS bytes_total \
-         FROM release_storage AS storage \
+         FROM ({storage}) AS storage \
          WHERE storage.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
-             JOIN release_files AS f ON f.file = sending.file)"
+             JOIN release_files AS f ON f.file = sending.file)",
+        storage = ReleaseStorageRows::SQL,
     )
 }
 

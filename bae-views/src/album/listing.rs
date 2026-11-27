@@ -80,7 +80,8 @@ pub(crate) fn album_card_columns() -> String {
 /// `primary_storage`.
 pub(crate) fn primary_storage_join() -> String {
     format!(
-        "LEFT JOIN release_storage primary_storage ON primary_storage.release_id = {primary}",
+        "LEFT JOIN ({storage}) AS primary_storage ON primary_storage.release_id = {primary}",
+        storage = bae_records::release_storage::ReleaseStorageRows::SQL,
         primary = album_primary_release_sql(),
     )
 }

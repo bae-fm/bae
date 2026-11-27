@@ -2,7 +2,6 @@
 //! files are: the columns every read of a release's storage state carries, and
 //! what a selection of releases allows as one statement over them.
 
-use bae_records::records::query::RELEASE_STORAGE_PINNED;
 use bae_types::release_storage::ReleaseStorageAction;
 use rusqlite::Row;
 
@@ -70,7 +69,7 @@ impl DbStorageActions {
 
 /// Whether a release's files wait to upload or a transfer of them runs, for
 /// the release `release` (an SQL expression naming its id) whose
-/// `release_storage` row is `storage`: files wait in the upload queue, or its
+/// storage row is `storage`: files wait in the upload queue, or its
 /// download queue entry runs, or is a move to this device waiting. Starting
 /// another storage action then would conflict with it.
 fn transitioning_sql(release: &str) -> String {
@@ -83,7 +82,7 @@ fn transitioning_sql(release: &str) -> String {
 }
 
 /// The columns of the storage actions the release `release` (an SQL
-/// expression naming its id) offers, beside its `release_storage` row
+/// expression naming its id) offers, beside its storage row
 /// `storage`: one `can_<action>` for each, and `transitioning`.
 ///
 /// A release mid-transition offers none. A release not in storage offers
@@ -98,7 +97,7 @@ pub(crate) fn storage_action_columns(release: &str) -> String {
     // so the offer of Upload waits for storage itself.
     let connected = "(SELECT storage = 'connected' FROM coven_sync_status)";
     let stored = "COALESCE(storage.stored = 1, 0)";
-    let pinned = format!("COALESCE({RELEASE_STORAGE_PINNED}, 0)");
+    let pinned = "COALESCE(storage.pinned, 0)";
     format!(
         "({offered} AND {connected} AND NOT {stored}) AS can_upload, \
          ({offered} AND {stored} AND NOT {pinned}) AS can_pin, \

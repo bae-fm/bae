@@ -9,8 +9,9 @@ use crate::album_detail::StoragePage;
 use crate::album_detail::StorageRow;
 use crate::storage_actions::{selection_action_columns, storage_action_columns};
 use bae_records::records::queued_uploads::{
-    upload_queue_wait_in_row, ReleasesSending, UploadQueueHold, RELEASE_UPLOAD_COLUMNS,
+    upload_queue_wait_in_row, UploadQueueHold, RELEASE_UPLOAD_COLUMNS,
 };
+use bae_records::release_storage::ReleaseStorageRows;
 
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
@@ -429,7 +430,7 @@ fn storage_row_columns(extra: &str) -> String {
          storage.file_count, \
          storage.total_size, \
          storage.failed_move_file, \
-         {RELEASE_STORAGE_PINNED} AS pinned, \
+         storage.pinned, \
          listing.storage_order, \
          listing.created_at AS date_added, \
          {release_cover} AS release_cover_version, \
@@ -448,11 +449,10 @@ fn storage_row_columns(extra: &str) -> String {
 /// statement names itself.
 fn storage_row_joins() -> String {
     format!(
-        "CROSS JOIN release_storage storage ON storage.release_id = listing.release_id \
+        "CROSS JOIN ({storage}) AS storage ON storage.release_id = listing.release_id \
          JOIN releases r ON r.id = listing.release_id \
-         JOIN albums a ON a.id = listing.album_id \
-         LEFT JOIN ({sending}) sending ON sending.release_id = listing.release_id",
-        sending = ReleasesSending::SQL,
+         JOIN albums a ON a.id = listing.album_id",
+        storage = ReleaseStorageRows::SQL,
     )
 }
 
@@ -554,8 +554,9 @@ pub(crate) fn storage_counts_on(
     };
     let statement = format!(
         "SELECT COUNT(*), COALESCE(SUM(st.total_size), 0) \
-         FROM release_storage st JOIN releases r ON r.id = st.release_id \
+         FROM ({storage}) AS st JOIN releases r ON r.id = st.release_id \
          WHERE {stored} AND {searched}",
+        storage = ReleaseStorageRows::SQL,
         stored = stored_value(filter)
             .map_or_else(|| "1".to_string(), |stored| format!("st.stored = {stored}")),
         searched = storage_search_condition(StorageRows::Searched, "r.album_id"),

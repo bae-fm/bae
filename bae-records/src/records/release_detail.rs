@@ -4,7 +4,6 @@
 //! stored, or queued to upload.
 
 use super::files::cover_version_sql;
-use super::query::*;
 use super::read::*;
 use super::release_credits::{credit_rows_column, release_credits_json_sql};
 use super::release_tracks::{total_duration_sql, track_groups_column, track_groups_json_sql};
@@ -81,8 +80,8 @@ pub fn release_details_on<X>(
                 {records} AS records, \
                 EXISTS (SELECT 1 FROM release_records rr WHERE rr.release_id = rel.id) \
                     AS has_records, \
-                {elsewhere} AS elsewhere, \
-                {RELEASE_STORAGE_PINNED} AS pinned, \
+                storage.elsewhere AS elsewhere, \
+                storage.pinned AS pinned, \
                 storage.stored = 1 AS remote, \
                 {upload_columns}, \
                 {cover_version} AS cover_version, \
@@ -93,8 +92,7 @@ pub fn release_details_on<X>(
                 (SELECT number FROM release_number_in_album WHERE release_id = rel.id) \
                     AS release_number{extra_columns} \
          FROM releases rel \
-         JOIN release_storage storage ON storage.release_id = rel.id \
-         LEFT JOIN ({sending}) sending ON sending.release_id = rel.id \
+         JOIN ({storage}) AS storage ON storage.release_id = rel.id \
          WHERE {condition}",
         labels = super::pressing_columns::release_labels_sql("rel.id"),
         barcodes = super::pressing_columns::release_barcodes_sql("rel.id"),
@@ -113,12 +111,11 @@ pub fn release_details_on<X>(
             "NULL"
         ),
         records = release_records_json_sql("rel.id"),
-        elsewhere = ELSEWHERE_OF_RELEASE,
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
         cover_version = cover_version_sql("rel.id"),
         extra_columns =
             if extra_columns.is_empty() { String::new() } else { format!(", {extra_columns}") },
-        sending = super::queued_uploads::ReleasesSending::SQL,
+        storage = crate::release_storage::ReleaseStorageRows::SQL,
         condition = set.condition(),
     );
     Ok(sql.query(&statement, params![set.id()], |row| {
@@ -389,21 +386,11 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
     })
 }
 
-/// The JSON text `null` when no other device alone holds an audio file of
-/// the release, and otherwise a JSON array of the device that the release's
-/// storage row `storage` names as holding one, in hex, and coven's
-/// registration of it: its name, its state, whether a member removed its
-/// person from the library and whether it is this device, or `null` when
-/// coven registers no such device.
-const ELSEWHERE_OF_RELEASE: &str = "CASE WHEN storage.audio_elsewhere_device IS NULL \
-     THEN 'null' ELSE json_array(hex(storage.audio_elsewhere_device), \
-     json((SELECT json_array(d.name, d.state, m.removed, d.is_self) \
-           FROM coven_devices d JOIN coven_members m ON m.member = d.member \
-           WHERE d.device = storage.audio_elsewhere_device))) END";
-
 /// The other device a release's audio is on, from `column` of a row that
-/// holds [`ELSEWHERE_OF_RELEASE`]. `elsewhere_in_row` returns `None` when no
-/// other device alone holds an audio file of the release. A device that coven
+/// holds a storage row's `elsewhere`
+/// ([`crate::release_storage::ReleaseStorage`]). `elsewhere_in_row` returns
+/// `None` when no other device alone holds an audio file of the release. A
+/// device that coven
 /// doesn't register, or that is this device, fails the read: the release's
 /// storage row names only a device that coven's record of a file names, and
 /// never this one, so either is a bug.

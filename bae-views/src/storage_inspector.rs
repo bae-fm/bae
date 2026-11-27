@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::album_detail::{FileDetail, ReleaseUpload};
+use bae_records::release_storage::ReleaseStorageRows;
 pub use bae_sync_status::FileProblem;
 use bae_sync_status::PendingWait;
 use bae_transfers::{DownloadKind, DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
@@ -194,8 +195,9 @@ fn storage_inspector_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<DbStorageInspector>, DbError> {
-    let Some(release) =
-        sql.query_row(INSPECTOR_RELEASE, params![release_id], inspector_release).optional()?
+    let Some(release) = sql
+        .query_row(&inspector_release_query(), params![release_id], inspector_release)
+        .optional()?
     else {
         return Ok(None);
     };
@@ -206,7 +208,7 @@ fn storage_inspector_on(
         pins: pin_counts_on(sql, release_id)?,
         upload: bae_records::records::queued_uploads::release_upload_on(sql, release_id)?,
         failed_move: sql
-            .query_row(FAILED_MOVE, params![release_id], |row| {
+            .query_row(&failed_move_query(), params![release_id], |row| {
                 Ok(crate::DbFailedMove { file_name: row.get(0)?, cause: row.get(1)? })
             })
             .optional()?,
@@ -215,22 +217,33 @@ fn storage_inspector_on(
 }
 
 /// The release `?1`'s album title and its files' count and total size, as
-/// `release_storage` keeps them; no row when the library holds no such
+/// its storage row keeps them; no row when the library holds no such
 /// release.
-const INSPECTOR_RELEASE: &str = "SELECT a.title AS title, storage.file_count AS file_count, \
-         storage.total_size AS total_size \
-     FROM releases AS r \
-     JOIN albums AS a ON a.id = r.album_id \
-     JOIN release_storage AS storage ON storage.release_id = r.id \
-     WHERE r.id = ?1";
+fn inspector_release_query() -> String {
+    format!(
+        "SELECT a.title AS title, storage.file_count AS file_count, \
+             storage.total_size AS total_size \
+         FROM releases AS r \
+         JOIN albums AS a ON a.id = r.album_id \
+         JOIN ({storage}) AS storage ON storage.release_id = r.id \
+         WHERE r.id = ?1",
+        storage = ReleaseStorageRows::SQL,
+    )
+}
 
-/// The release `?1`'s failed move as `release_storage` keeps it: the name of
+/// The release `?1`'s failed move as its storage row keeps it: the name of
 /// the file whose original changed and the text of the error behind the
 /// failure; no row while no move failed.
-const FAILED_MOVE: &str = "SELECT failed_move_file, failed_move_cause FROM release_storage \
-     WHERE release_id = ?1 AND failed_move_file IS NOT NULL";
+fn failed_move_query() -> String {
+    format!(
+        "SELECT storage.failed_move_file, storage.failed_move_cause \
+         FROM ({storage}) AS storage \
+         WHERE storage.release_id = ?1 AND storage.failed_move_file IS NOT NULL",
+        storage = ReleaseStorageRows::SQL,
+    )
+}
 
-/// One row of [`INSPECTOR_RELEASE`].
+/// One row of [`inspector_release_query`].
 fn inspector_release(row: &Row<'_>) -> rusqlite::Result<crate::DbInspectorRelease> {
     Ok(crate::DbInspectorRelease {
         title: row.get("title")?,

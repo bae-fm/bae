@@ -3,8 +3,8 @@
 
 use super::*;
 use bae_diagnostics::UiError;
-use bae_records::records::query::RELEASE_STORAGE_PINNED;
 use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UploadQueueHold};
+use bae_records::release_storage::ReleaseStorageRows;
 use bae_sync_status::SyncStatusSnapshot;
 use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
@@ -165,12 +165,13 @@ fn upload_queue_counts_on(
         &format!(
             "SELECT (SELECT COUNT(*) FROM upload_batch) AS batch_total, \
                  (SELECT COUNT(*) FROM upload_batch AS batch \
-                  JOIN release_storage AS storage ON storage.release_id = batch.release_id \
+                  JOIN ({storage}) AS storage ON storage.release_id = batch.release_id \
                   WHERE storage.stored = 1 AND storage.queued_count = 0) AS batch_done, \
                  (SELECT COUNT(*) FROM coven_sending) AS uploads_sending, \
                  hold.upload_wait, hold.upload_wait_at \
              FROM ({hold}) AS hold",
             hold = UploadQueueHold::SQL,
+            storage = ReleaseStorageRows::SQL,
         ),
         [],
         |row| {
@@ -206,7 +207,7 @@ pub(crate) struct DownloadLine {
 
 impl DownloadLine {
     /// The Pinning line: a release is done once every file is pinned.
-    pub(crate) const PINS: Self = Self { kind: "pin", stored_done: RELEASE_STORAGE_PINNED };
+    pub(crate) const PINS: Self = Self { kind: "pin", stored_done: "storage.pinned" };
     /// The Moving to this device line: a release is done once it is no longer stored
     /// in the cloud.
     pub(crate) const MOVING_TO_THIS_DEVICE: Self =
@@ -238,9 +239,10 @@ fn download_batch_on(
             "SELECT COUNT(*) AS batch_total, \
                  COUNT(*) FILTER (WHERE {}) AS batch_done \
              FROM download_batch AS batch \
-             LEFT JOIN release_storage AS storage ON storage.release_id = batch.release_id \
+             LEFT JOIN ({storage}) AS storage ON storage.release_id = batch.release_id \
              WHERE batch.kind = ?1",
-            line.done()
+            line.done(),
+            storage = ReleaseStorageRows::SQL,
         ),
         [line.kind],
         transfer_batch_in_row,

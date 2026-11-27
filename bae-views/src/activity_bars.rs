@@ -5,7 +5,7 @@
 //! in bae-library adds it to these rows and sends each line's bar.
 
 use crate::sync_activity::DownloadLine;
-use bae_records::records::queued_uploads::RELEASE_BYTES_STORED;
+use bae_records::release_storage::ReleaseStorageRows;
 use bae_store::DbError;
 
 /// A transfer line's bar as the tables give it: the share of its batch's
@@ -51,11 +51,11 @@ pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRo
     let moving_to_this_device = &DownloadLine::MOVING_TO_THIS_DEVICE;
     Ok(ActivityBarRows {
         uploads: batch_bar_on(sql, &upload_batch_bytes(), UPLOAD_MOVING, &[])?,
-        pins: batch_bar_on(sql, &download_batch_bytes(pins), DOWNLOAD_MOVING, &[&pins.kind])?,
+        pins: batch_bar_on(sql, &download_batch_bytes(pins), &download_moving(), &[&pins.kind])?,
         moving_to_this_device: batch_bar_on(
             sql,
             &download_batch_bytes(moving_to_this_device),
-            DOWNLOAD_MOVING,
+            &download_moving(),
             &[&moving_to_this_device.kind],
         )?,
     })
@@ -97,9 +97,10 @@ fn batch_bar_on<Key: rusqlite::types::FromSql>(
 fn upload_batch_bytes() -> String {
     format!(
         "batch_bytes AS (SELECT SUM(storage.total_size) AS total, \
-             SUM({RELEASE_BYTES_STORED}) AS done \
+             SUM(storage.bytes_stored) AS done \
          FROM upload_batch AS batch \
-         JOIN release_storage AS storage ON storage.release_id = batch.release_id)"
+         JOIN ({storage}) AS storage ON storage.release_id = batch.release_id)",
+        storage = ReleaseStorageRows::SQL,
     )
 }
 
@@ -121,22 +122,28 @@ fn download_batch_bytes(line: &DownloadLine) -> String {
         "batch_bytes AS (SELECT SUM(storage.total_size) AS total, \
              COALESCE(SUM(storage.total_size) FILTER (WHERE {}), 0) AS done \
          FROM download_batch AS batch \
-         JOIN release_storage AS storage ON storage.release_id = batch.release_id \
+         JOIN ({storage}) AS storage ON storage.release_id = batch.release_id \
          WHERE batch.kind = ?1)",
-        line.done()
+        line.done(),
+        storage = ReleaseStorageRows::SQL,
     )
 }
 
 /// A download line's moving release: the release downloading as the line's
 /// kind (`?1`) now, keyed by release, with its size's share of the batch.
-const DOWNLOAD_MOVING: &str = "moving AS (SELECT batch.release_id AS key, \
-         CAST(storage.total_size AS REAL) / batch_bytes.total AS share \
-     FROM download_batch AS batch \
-     JOIN release_storage AS storage ON storage.release_id = batch.release_id \
-     JOIN download_queue AS queue ON queue.release_id = batch.release_id \
-         AND queue.kind = batch.kind AND queue.state = 'active' \
-     JOIN batch_bytes ON batch_bytes.total > 0 \
-     WHERE batch.kind = ?1)";
+fn download_moving() -> String {
+    format!(
+        "moving AS (SELECT batch.release_id AS key, \
+             CAST(storage.total_size AS REAL) / batch_bytes.total AS share \
+         FROM download_batch AS batch \
+         JOIN ({storage}) AS storage ON storage.release_id = batch.release_id \
+         JOIN download_queue AS queue ON queue.release_id = batch.release_id \
+             AND queue.kind = batch.kind AND queue.state = 'active' \
+         JOIN batch_bytes ON batch_bytes.total > 0 \
+         WHERE batch.kind = ?1)",
+        storage = ReleaseStorageRows::SQL,
+    )
+}
 
 #[cfg(test)]
 #[path = "activity_bars_tests.rs"]

@@ -15,6 +15,7 @@ use crate::release_queue::{
     QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
     ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState,
 };
+use bae_records::release_storage::ReleaseStorageRows;
 use bae_store::list_windows::{Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::column_conversion_error;
 use bae_store::DbError;
@@ -435,14 +436,14 @@ pub(crate) fn enqueue_pins_on(
              SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
                     'queued', 'pin' \
              FROM json_each(:release_ids) AS requested \
-             JOIN release_storage AS storage ON storage.release_id = requested.value \
-             WHERE NOT {pinned} \
+             JOIN ({storage}) AS storage ON storage.release_id = requested.value \
+             WHERE NOT storage.pinned \
              ORDER BY requested.key \
              ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
                  file_count = excluded.file_count, total_size = excluded.total_size, \
                  kind = 'pin', target_dir = NULL \
              WHERE download_queue.state = 'failed'",
-            pinned = bae_records::records::query::RELEASE_STORAGE_PINNED,
+            storage = ReleaseStorageRows::SQL,
         ),
         rusqlite::named_params! {
             ":created_at": created_at,
@@ -631,17 +632,20 @@ pub(crate) fn enqueue_moves_to_this_device_on(
 ) -> Result<DownloadsQueued, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
     let added = sql.execute(
-        "INSERT INTO download_queue \
+        &format!(
+            "INSERT INTO download_queue \
              (release_id, created_at, file_count, total_size, state, kind, target_dir) \
          SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
                 'queued', 'move_to_this_device', :target_dir \
          FROM json_each(:release_ids) AS requested \
-         JOIN release_storage AS storage ON storage.release_id = requested.value \
+         JOIN ({storage}) AS storage ON storage.release_id = requested.value \
          ORDER BY requested.key \
          ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
              file_count = excluded.file_count, total_size = excluded.total_size, \
              kind = 'move_to_this_device', target_dir = excluded.target_dir \
          WHERE download_queue.state = 'failed'",
+            storage = ReleaseStorageRows::SQL,
+        ),
         rusqlite::named_params! {
             ":created_at": created_at,
             ":release_ids": release_ids,

@@ -347,15 +347,21 @@ impl Records {
         Ok(Some(self.store.file_ref(file).await?))
     }
 
-    /// The releases whose own files are queued, in upload queue order
-    /// (`UPLOADING_RELEASES`). Image uploads, a release's cover among them,
-    /// remain visible in the queue but are no release uploading.
+    /// The releases whose own files are queued, in upload queue order, as
+    /// their storage rows keep their first queued files' places. Image
+    /// uploads, a release's cover among them, remain visible in the queue but
+    /// are no release uploading.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn uploading_releases(&self) -> Result<Vec<String>, DbError> {
         self.store
             .read(|sql| {
                 sql.query(
-                    &format!("SELECT release_id FROM ({UPLOADING_RELEASES}) ORDER BY position"),
+                    &format!(
+                        "SELECT storage.release_id FROM ({storage}) AS storage \
+                         WHERE storage.first_queued_position IS NOT NULL \
+                         ORDER BY storage.first_queued_position",
+                        storage = crate::release_storage::ReleaseStorageRows::SQL,
+                    ),
                     [],
                     |row| row.get::<_, String>(0),
                 )
