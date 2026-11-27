@@ -2,7 +2,6 @@
 //! lookup by the hash uses its unique index.
 
 use bae_records::test_fixtures::live_query::{live_db, RELEASE_ID};
-use bae_store::test_fixtures::exec;
 
 /// Whether this device imported a folder's files is a lookup by its hash,
 /// which the hash's uniqueness indexes.
@@ -34,25 +33,30 @@ fn imported_content_hash_lookup_uses_its_unique_index() {
 async fn one_folder_hash_records_one_release() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    exec(
-        &db,
-        "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
-        &[RELEASE_ID, "folder-hash"],
-    )
-    .await;
+    let first = db
+        .call(|sql| super::record_on(sql, RELEASE_ID, "folder-hash"))
+        .await
+        .expect("the release's origin records");
+    assert!(matches!(first, super::OriginRecord::Recorded));
     let mut copy = records.find_release_by_id(RELEASE_ID).await.unwrap().unwrap();
     copy.id = bae_util::test_ids::test_uuid("second-imported-copy");
     records.insert_release(&copy).await.unwrap();
     let second = copy.id.clone();
-    let refused = db
-        .call(move |conn| {
-            conn.execute(
-                "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
-                rusqlite::params![second, "folder-hash"],
-            )
-            .map(|_| ())
-            .map_err(bae_store::DbError::from)
+    // The answer leaves the write apart from its result: the insert it comes
+    // from failed, which fails the write.
+    let (answered, answer) = std::sync::mpsc::channel();
+    let written = db
+        .call(move |sql| {
+            answered.send(super::record_on(sql, &second, "folder-hash")?).expect("the test waits");
+            Ok(())
         })
         .await;
-    assert!(refused.is_err(), "a second release of the same files is refused");
+    assert!(written.is_err(), "a second release of the same files is refused");
+    assert!(
+        matches!(
+            answer.recv(),
+            Ok(super::OriginRecord::Taken { release_id }) if release_id == RELEASE_ID
+        ),
+        "the refusal names the release that holds the files"
+    );
 }

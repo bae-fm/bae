@@ -6,8 +6,17 @@
 //! Its table is `import_origin.sql`.
 
 use super::*;
+use bae_store::WriteStatements;
 
 pub(crate) mod fragments;
+
+sqlive_compose::write!(
+    InsertReleaseOrigin(release_id: &'p str, content_hash: &'p str),
+    r#"
+    INSERT INTO local_release_origin (release_id, content_hash)
+    VALUES (:release_id, :content_hash)
+"#
+);
 
 /// What recording an import's origin found.
 pub(super) enum OriginRecord {
@@ -26,10 +35,7 @@ pub(super) fn record_on(
     release_id: &str,
     content_hash: &str,
 ) -> Result<OriginRecord, DbError> {
-    match sql.execute(
-        "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
-        params![release_id, content_hash],
-    ) {
+    match sql.run(&InsertReleaseOriginParams { release_id, content_hash }) {
         Ok(_) => {
             // Imported, its candidates leave the import list, and their
             // pictures' copies with them.
