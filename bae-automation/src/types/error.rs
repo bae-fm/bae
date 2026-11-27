@@ -103,7 +103,8 @@ impl From<LibraryError> for AutomationError {
             LibraryError::ReleaseEditLoad(e) => Self::Internal(e.to_string()),
             // Another write reached the release between this call's open and
             // its save; calling again works on what the library holds now.
-            error @ LibraryError::ReleaseEditStale { .. } => Self::Import(error.to_string()),
+            error @ (LibraryError::ReleaseEditStale { .. }
+            | LibraryError::ReleaseChangedDuringEdit { .. }) => Self::Import(error.to_string()),
             LibraryError::Internal(e) => Self::Internal(e),
             LibraryError::AppDir(e) => Self::Internal(e.to_string()),
             LibraryError::Preferences(e) => Self::Internal(e.to_string()),

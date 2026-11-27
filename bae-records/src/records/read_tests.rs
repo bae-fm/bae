@@ -312,40 +312,6 @@ fn the_schema_refuses_audio_format_values_out_of_range() {
     }
 }
 
-/// A stored value playback can't use is an error naming the track, never a
-/// number wrapped into a different one.
-#[test]
-fn an_unusable_audio_format_value_is_an_error_naming_the_track() {
-    let conn = seeded_audio_segment();
-    for (column, value) in [
-        ("sample_rate", "4294967296"),
-        ("sample_rate", "-1"),
-        ("channels", "0"),
-        ("bits_per_sample", "33"),
-    ] {
-        conn.execute_batch("PRAGMA ignore_check_constraints = ON").unwrap();
-        conn.execute(
-            &format!("UPDATE audio_formats SET {column} = {value} WHERE id = 'format-1'"),
-            [],
-        )
-        .unwrap();
-        conn.execute_batch("PRAGMA ignore_check_constraints = OFF").unwrap();
-        let error = conn
-            .query_row("SELECT * FROM audio_formats WHERE id = 'format-1'", [], row_to_audio_format)
-            .expect_err(column);
-        let message = error.to_string();
-        assert!(
-            message.contains("track-1") && message.contains(column),
-            "{column} = {value}: {message}"
-        );
-        conn.execute(
-            "UPDATE audio_formats SET sample_rate = 44100, channels = 2, bits_per_sample = 16 WHERE id = 'format-1'",
-            [],
-        )
-        .unwrap();
-    }
-}
-
 /// A credit's other printed name is its key and its name together: a list
 /// holding one without the other is unreadable, as a row holding it is.
 #[test]

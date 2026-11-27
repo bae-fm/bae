@@ -139,9 +139,10 @@ impl ReleaseDetail {
 // The title of the album a release is in, with its year, its credits and
 // whether it is a compilation.
 sqlive_compose::fragment!(
-    ReleaseAlbumFacts { year: Option<i64>, is_compilation: bool },
+    ReleaseAlbumFacts { year: Option<i64>, is_compilation: bool, album_created_at: String },
     r#"
-    SELECT album.id AS album_id, album.year, album.is_compilation
+    SELECT album.id AS album_id, album.year, album.is_compilation,
+           album.created_at AS album_created_at
     FROM albums AS album
 "#
 );
@@ -152,65 +153,16 @@ impl ReleaseAlbumFacts {
         self.is_compilation
     }
 
+    /// When the album was made.
+    pub fn created_at(&self) -> Result<time::UtcDateTime, DbError> {
+        bae_util::timestamp::parse_rfc3339(&self.album_created_at).map_err(|_unparsed| {
+            DbError::unreadable("an album's created_at", &self.album_created_at)
+        })
+    }
+
     /// The album's year, if it states one.
     pub fn year(&self) -> Result<Option<i32>, DbError> {
         album_year(self.year)
-    }
-}
-
-// A release as its editor reads it: its detail, with no person's stars, beside
-// its album's title, year and credits; no row for a release the library does
-// not hold.
-sqlive_compose::read!(
-    writer ReleaseEditorDetail(release: String),
-    r#"
-    SELECT detail.*, facts.*, album.*
-    FROM @crate::records::release_detail::ReleaseDetail(
-        stars: @crate::records::track_group_fragments::NoTrackStars) AS detail
-    JOIN @crate::records::release_detail::ReleaseAlbumFacts AS facts
-      ON facts.album_id = detail.album_id
-    JOIN @crate::records::fragments::LibraryAlbum AS album ON album.album_id = detail.album_id
-    WHERE detail.detail_release_id = :release
-"#
-);
-
-/// A release's detail beside its album's title, year and credits, as the
-/// release editor reads it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReleaseEditorRows {
-    row: ReleaseEditorDetailRow,
-}
-
-/// The release `release_id` as its editor reads it; `None` when the library
-/// holds no such release.
-pub fn release_editor_rows_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
-) -> Result<Option<ReleaseEditorRows>, DbError> {
-    let statement = ReleaseEditorDetailParams { release: release_id.to_owned() };
-    Ok(bae_store::statement_optional(sql, &statement)?.map(|row| ReleaseEditorRows { row }))
-}
-
-/// [`ReleaseEditorRows`] read: the release's detail and its album's title,
-/// year and credits.
-pub struct ReleaseEditorFacts {
-    pub detail: DbReleaseDetail,
-    pub album_title: String,
-    pub album_year: Option<i32>,
-    pub album_artists: Vec<crate::credits::LibraryCredit>,
-}
-
-impl ReleaseEditorRows {
-    /// The rows read into the release's values.
-    pub fn decoded(self) -> Result<ReleaseEditorFacts, DbError> {
-        let album_year = self.row.facts.year()?;
-        let (_, album_title, credits) = self.row.album.into_parts()?;
-        Ok(ReleaseEditorFacts {
-            detail: self.row.detail.decoded()?,
-            album_title,
-            album_year,
-            album_artists: super::read::credits_from_json(&credits)?,
-        })
     }
 }
 

@@ -2676,13 +2676,19 @@ person left as it was keeps the library label it named.
 
 Every editor holds a form of its own, so the editor sheet and the import
 pane open on the same release, or MCP's re-identify while either is open,
-never share an edit, an apply or a pick. A save's one write first checks the
-release against what its form opened on: if the library no longer holds it
-so (another editor saved it, MCP wrote its fields, or someone renamed an
-artist it credits), bae refuses the save and writes nothing, and the editor
-says the release changed after it opened; *Cancel* opens it again as it is
-now. Only the cover, which the editor writes at once, never makes a form out
-of date. The check and the rows are one write, so nothing lands between them.
+never share an edit, an apply or a pick. A save first reads everything it
+starts from in one statement: the release as an editor opening then would
+read it, the album a save files it under, its CUE sheets' tracks, its stored
+audio, its files and the person's earlier decisions about its sheets. If the
+library no longer holds the release as the form opened on it (another editor
+saved it, MCP wrote its fields, or someone renamed an artist it credits),
+bae refuses the save and writes nothing, and the editor says the release
+changed after it opened; *Cancel* opens it again as it is now. The save then
+reads any audio its sheets move to, and its one write first runs the same
+statement again and refuses the save the same way when anything it read has
+changed. Only the cover, which the editor writes at once, and an upload that
+finishes never make a form out of date. That check and the rows are one
+write, so nothing lands between them.
 After a save, the editor works in a fresh form opened on what it saved. When
 the person, another device or MCP deletes a release while its editor is open,
 the editor closes: in the album detail the release's sheet closes, and in the
@@ -7041,7 +7047,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `output_status` | read the export queue |
 | `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value to a form of its own and save it, records and album with it, into the album its records name or a library album given over them |
 | `release_album_set` | move a release into a library album, which keeps its own title and artists, as the editor's album picker does |
-| `release_metadata_update` | apply a metadata edit: the album fields, the pressing's year, labels and barcodes, and each track's title and artists (a track's place is the source's, not edited); the pressing's area, media, status, packaging and Discogs details stay as they are, and an edit that names them is refused |
+| `release_metadata_update` | apply a metadata edit: the album fields, the pressing's year, labels and barcodes, and each track's title and artists (a track's place is the source's, not edited); the pressing's area, media, status, packaging and Discogs details stay as they are, and an edit that names them is refused. The edit reads the release, its album and its tracks in one statement, and its write runs the statement again: if they changed in between, it writes nothing and answers `ChangedMeanwhile` |
 | `release_pressing_fact_set` | choose a library release's area, status or packaging, add or remove one Discogs detail, or set one medium's count, as `import_candidate_pressing_fact_set` does for a draft; bae reads and writes the release in one write, so the other values stay as the library then holds them |
 | `library_search` | search the library |
 
@@ -7064,7 +7070,7 @@ detail:
 | `DeviceResetRequired` | resets the device (§6.4): when another installation replaced this one or the member's keys changed, bae asks first and shows the reset's warning; when another installation uses this device's id and this copy is the one behind, bae resets at once without asking |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |
 | `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate or the library's artists changed before its write, and importing again works on what now stands |
-| `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist that an import's or MCP's credit picked and that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
+| `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a release that changed while MCP's `release_metadata_update` edited it, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist that an import's or MCP's credit picked and that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
 | `InvalidEdit` | fixes what they typed, as the line says: an album title, an artist, an artist's name, a year |
 | `FilenamePatternInvalid`, `FolderPatternInvalid` | fixes the file or folder name pattern in Settings: a save named by a pattern that can't make a name wrote nothing, and the detail says why |
 | `WatchedFolderOverlap` | watches another folder: the one they asked for lies in a watched folder, or holds one that bae started watching while it added theirs, and the detail names both |

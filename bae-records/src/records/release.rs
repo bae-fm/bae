@@ -1,5 +1,4 @@
 use super::*;
-use bae_util::timestamp::StoredTimestamp as _;
 
 /// A release's metadata as an edit leaves it: album fields, release pressing
 /// fields, the track rows named by `track_updates` (existing track ID → edited
@@ -267,33 +266,6 @@ impl Records {
             })
             .await?;
         Ok(())
-    }
-
-    /// Write a release's metadata rows in one transaction (see
-    /// `write_release_metadata_on`), keeping what its pressing is as the
-    /// library holds it.
-    pub async fn update_release_metadata_user_edit(
-        &self,
-        metadata: ReleaseMetadataRows,
-    ) -> Result<(), IdentityWriteError> {
-        let pressing =
-            PressingParts::new(&*self.ids, self.store.now_utc(), &metadata.release.pressing);
-        let now = self.store.now_utc().to_rfc3339();
-        self.store
-            .write(move |sql| {
-                let emptiable = Emptiable::of_releases(&sql, &[metadata.release.id.as_str()])?;
-                write_release_metadata_on(
-                    &sql,
-                    &metadata,
-                    AlbumFields::Written,
-                    PressingFactsWrite::Kept,
-                    &now,
-                    &pressing_write(&pressing),
-                    GonePicked::Refuse,
-                )?;
-                Ok(emptiable.remove_emptied(&sql)?)
-            })
-            .await
     }
 
     /// Make `change` to what the release `release_id`'s pressing is, reading

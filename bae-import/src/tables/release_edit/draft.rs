@@ -25,11 +25,11 @@ struct FormTrackJson<'a> {
 /// The form as the draft's reads bind it: the release, whether the person
 /// applied values, and each list as a JSON array.
 pub(super) struct FormParams {
-    release: String,
+    pub(super) release: String,
     applied: bool,
     /// Whether the form links the release to records of its own, an
     /// apply's or none, in place of the release's.
-    relinked: bool,
+    pub(super) relinked: bool,
     /// Whether the form links the release to records of its own, an
     /// apply's or none, in place of the release's, and those name any, so
     /// they name the album a save files the release under.
@@ -45,8 +45,8 @@ pub(super) struct FormParams {
     moves: String,
     /// What the form does to the release's CUE sheets and tracks, as the
     /// sheet files' and the layout's reads bind it.
-    edits: String,
-    records: String,
+    pub(super) edits: String,
+    pub(super) records: String,
     pick_kind: &'static str,
     pick_album: Option<String>,
 }

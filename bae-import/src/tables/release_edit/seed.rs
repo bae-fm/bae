@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::{DraftAlbum, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
+use bae_records::records::release_edit_rows::EditorReleaseFacts;
 
 /// A release as the editor reads it: its detail, its album's title, year and
 /// artists, and its tracks' audio in release order.
@@ -14,37 +15,10 @@ pub struct ReleaseEditContext {
     pub tracks: Vec<bae_records::DbReleaseEditTrack>,
 }
 
-/// The rows that make up a release's edit seed, as `sql` holds them: its
-/// detail with its album's title, year and artists, and its tracks' audio in
-/// release order. `None` when the release is gone.
-pub(crate) fn release_edit_rows_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
-) -> Result<Option<ReleaseEditRows>, DbError> {
-    let Some(release) = bae_records::records::release_editor_rows_on(sql, release_id)? else {
-        return Ok(None);
-    };
-    let tracks = bae_records::records::release_edit_tracks_on(sql, release_id)?;
-    Ok(Some(ReleaseEditRows { release, tracks }))
-}
-
-/// [`release_edit_rows_on`]'s rows.
-pub(crate) struct ReleaseEditRows {
-    release: bae_records::records::ReleaseEditorRows,
-    tracks: Vec<bae_records::DbReleaseEditTrack>,
-}
-
-impl ReleaseEditRows {
-    /// The rows as the editor reads them.
-    pub(crate) fn processed(self) -> Result<ReleaseEditContext, DbError> {
-        let Self { release, tracks } = self;
-        let bae_records::records::ReleaseEditorFacts {
-            detail,
-            album_title,
-            album_year,
-            album_artists,
-        } = release.decoded()?;
-        Ok(ReleaseEditContext { detail, album_title, album_year, album_artists, tracks })
+impl From<EditorReleaseFacts> for ReleaseEditContext {
+    fn from(facts: EditorReleaseFacts) -> Self {
+        let EditorReleaseFacts { detail, album, album_artists, tracks } = facts;
+        Self { detail, album_title: album.title, album_year: album.year, album_artists, tracks }
     }
 }
 

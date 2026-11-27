@@ -54,24 +54,42 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// The write that gives a release `new_records`: the records, and the
-    /// album they file it under (policy in [`Self::set_records`]), as
-    /// [`bae_records::records::fragments::FiledByRecords`]
-    /// names it. A new album takes the id of the group the records name,
-    /// else a fresh one, and the current album's fields.
+    /// [`Self::records_change_filed`] for `release_id` as the library holds
+    /// it now.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(super) async fn records_change(
         &self,
         release_id: &str,
         new_records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Result<bae_records::RecordsChange, LibraryError> {
-        let target =
+        let filed =
             self.records.records_target_album(release_id, &new_records).await?.ok_or_else(
                 || LibraryError::release_missing(release_id, super::ReleaseWork::Edit),
             )?;
-        let (target_album_id, new_album) = match target.target_album_id {
+        let current =
+            self.records.find_album_by_id(&filed.current_album_id).await?.ok_or_else(|| {
+                LibraryError::AlbumMissing { album_id: filed.current_album_id.clone() }
+            })?;
+        Ok(self.records_change_filed(release_id, new_records, filed, &current))
+    }
+
+    /// The write that gives a release `new_records`: the records, and the
+    /// album they file it under (policy in [`Self::set_records`]), which
+    /// `filed` names as
+    /// [`bae_records::records::fragments::FiledByRecords`] does. A new album
+    /// takes the id of the group the records name, else a fresh one, and the
+    /// fields of `current`, the album the release is in.
+    pub(super) fn records_change_filed(
+        &self,
+        release_id: &str,
+        new_records: Vec<bae_catalogs::records::ReleaseRecord>,
+        filed: bae_records::records::release_records::RecordsTargetAlbum,
+        current: &DbAlbum,
+    ) -> bae_records::RecordsChange {
+        let (target_album_id, new_album) = match filed.target_album_id {
             Some(album_id) => (album_id, None),
             None => {
-                let fresh = self.fresh_album_for_release(&target.current_album_id).await?;
+                let fresh = self.fresh_album_like(current);
                 let album = match bae_records::identity::album_id_for_records(&new_records) {
                     Some(group_album_id) => DbAlbum { id: group_album_id, ..fresh },
                     None => fresh,
@@ -79,35 +97,24 @@ impl LibraryManager {
                 (album.id.clone(), Some(album))
             }
         };
-        Ok(bae_records::RecordsChange {
+        bae_records::RecordsChange {
             release_id: release_id.to_string(),
             records: new_records,
-            current_album_id: target.current_album_id,
+            current_album_id: filed.current_album_id,
             target_album_id,
             new_album,
-        })
+        }
     }
 
-    /// A fresh album row mirroring `seed_album_id`'s metadata, for when
-    /// `set_records` needs a brand-new album. `set_records` doesn't touch
-    /// metadata, so the new album reflects what the release already had; the caller
-    /// can reseed it.
-    pub(super) async fn fresh_album_for_release(
-        &self,
-        seed_album_id: &str,
-    ) -> Result<DbAlbum, LibraryError> {
-        let source =
-            self.records.find_album_by_id(seed_album_id).await?.ok_or_else(|| {
-                LibraryError::AlbumMissing { album_id: seed_album_id.to_string() }
-            })?;
-        let now = bae_store::utc_now(self.clock.as_ref());
-        Ok(DbAlbum {
+    /// A fresh album row with `album`'s metadata, for a release that moves
+    /// into a new album. Moving a release changes no metadata, so the new
+    /// album states what the release already had.
+    pub(super) fn fresh_album_like(&self, album: &DbAlbum) -> DbAlbum {
+        DbAlbum {
             id: self.ids.new_id().to_string(),
-            title: source.title,
-            year: source.year,
-            is_compilation: source.is_compilation,
-            created_at: now,
-        })
+            created_at: bae_store::utc_now(self.clock.as_ref()),
+            ..album.clone()
+        }
     }
 }
 

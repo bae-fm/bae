@@ -85,13 +85,14 @@ impl ReleaseEditPlan {
     }
 }
 
-/// Why a save of an editor's form was refused. Nothing of it landed.
+/// Why an edit of a release, its editor's save or a metadata edit, was
+/// refused. Nothing of it landed.
 #[cfg(desktop)]
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseEditRefusal {
-    /// The release is no longer as the editor opened on it, as the save's
-    /// own write found it.
-    #[error("the release changed after the editor opened")]
+    /// The release is no longer as the edit read it, as the edit's own write
+    /// found it.
+    #[error("the release changed after it was read")]
     Stale,
     /// The library no longer holds the release.
     #[error("the release is gone")]
@@ -104,17 +105,56 @@ pub enum ReleaseEditRefusal {
     Identity(#[from] IdentityRefusal),
 }
 
-/// Why a save of an editor's form did not commit.
+/// Why an edit of a release did not commit.
 #[cfg(desktop)]
 pub type ReleaseEditSaveError = WriteError<ReleaseEditRefusal>;
 
 #[cfg(desktop)]
 impl Records {
+    /// Write the rows a metadata edit leaves a release, which it made from
+    /// `read`, in one transaction (see `write_release_metadata_on`), keeping
+    /// what the release's pressing is as the library holds it. The write
+    /// reads the release again first, and refuses one that is not as `read`
+    /// holds it as [`ReleaseEditRefusal::Stale`], and one the library no
+    /// longer holds as [`ReleaseEditRefusal::Gone`].
+    pub async fn update_release_metadata_user_edit(
+        &self,
+        metadata: ReleaseMetadataRows,
+        read: super::ReleaseToEdit,
+    ) -> Result<(), ReleaseEditSaveError> {
+        let pressing =
+            PressingParts::new(&*self.ids, self.store.now_utc(), &metadata.release.pressing);
+        let now = self.store.now_utc().to_rfc3339();
+        self.store
+            .write(move |sql| {
+                match super::release_to_edit_on(&sql, &read.release.id)? {
+                    None => return Err(WriteError::Refused(ReleaseEditRefusal::Gone)),
+                    Some(held) if held != read => {
+                        return Err(WriteError::Refused(ReleaseEditRefusal::Stale))
+                    }
+                    Some(_) => {}
+                }
+                let emptiable = Emptiable::of_releases(&sql, &[metadata.release.id.as_str()])?;
+                write_release_metadata_on(
+                    &sql,
+                    &metadata,
+                    AlbumFields::Written,
+                    super::release::PressingFactsWrite::Kept,
+                    &now,
+                    &pressing_write(&pressing),
+                    GonePicked::Refuse,
+                )
+                .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
+                Ok(emptiable.remove_emptied(&sql)?)
+            })
+            .await
+    }
+
     /// Save an editor's form: in one transaction, all of it or none, first
-    /// check, as `still_as_opened` says, that the release is still as the
-    /// editor opened on it, then write `plan`: move the release and replace
-    /// its records where its change says (see `set_records_on`), then write
-    /// its rows, then the audio of the tracks `rebound` moves to other
+    /// check, as `inputs_unchanged` says, that the library still holds what
+    /// the save read before it, then write `plan`: move the release and
+    /// replace its records where its change says (see `set_records_on`), then
+    /// write its rows, then the audio of the tracks `rebound` moves to other
     /// files and the tracks it deletes and adds, then the layout of the
     /// tracks `layout` read before that, when it read one, then what
     /// `sheet_decisions` writes of the person's choices about CUE sheets,
@@ -122,8 +162,8 @@ impl Records {
     /// `gone` says what the save does with a picked artist or
     /// album the library no longer holds. Last it reads what `saved` reads
     /// of the release as this save wrote it, and returns that.
-    /// Before it writes anything, the save refuses a release that is not as
-    /// the editor opened on it as [`ReleaseEditRefusal::Stale`], and one the
+    /// Before it writes anything, the save refuses a release changed since
+    /// the save read it as [`ReleaseEditRefusal::Stale`], and one the
     /// library no longer holds as [`ReleaseEditRefusal::Gone`]; the checks run
     /// in the write, so no other write lands between them and the rows, and
     /// none lands between the rows and what `saved` reads.
@@ -131,7 +171,7 @@ impl Records {
         &self,
         plan: ReleaseEditPlan,
         gone: GonePicks,
-        still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
+        inputs_unchanged: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
             + Send
             + 'static,
         layout: impl for<'ctx> FnOnce(
@@ -152,7 +192,7 @@ impl Records {
         let ids = self.ids.clone();
         self.store
             .write(move |sql| {
-                still_as_opened(&sql)?.map_err(WriteError::Refused)?;
+                inputs_unchanged(&sql)?.map_err(WriteError::Refused)?;
                 let (unpicked, gone_artists) = match gone {
                     GonePicks::Unpick { unpicked } => (unpicked, GonePicked::AsCredit),
                     GonePicks::Refuse => (None, GonePicked::Refuse),

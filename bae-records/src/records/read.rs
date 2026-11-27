@@ -609,48 +609,6 @@ pub(super) fn track_bit_depth(
         })
 }
 
-pub(super) fn row_to_audio_format(row: &Row) -> rusqlite::Result<DbAudioFormat> {
-    let track_id: String = row.get("track_id")?;
-    let count = |column: &str| {
-        track_audio_count(row.get(column)?, column, &track_id)
-            .map_err(|reason| column_conversion_error(row, column, reason))
-    };
-    let bits_per_sample = track_bit_depth(row.get("bits_per_sample")?, &track_id)
-        .map_err(|reason| column_conversion_error(row, "bits_per_sample", reason))?;
-    Ok(DbAudioFormat {
-        id: row.get("id")?,
-        content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
-        pregap_samples: optional_count_column(row, "pregap_samples")?,
-        generated_pregap_samples: optional_count_column(row, "generated_pregap_samples")?,
-        sample_rate: count("sample_rate")?,
-        bits_per_sample,
-        channels: count("channels")?,
-        track_loudness_lufs: row.get("track_loudness_lufs")?,
-        track_peak_linear: row.get("track_peak_linear")?,
-        created_at: rfc3339_column(row, "created_at")?,
-        track_id,
-    })
-}
-
-pub(super) fn row_to_audio_segment(row: &Row) -> rusqlite::Result<DbAudioSegment> {
-    let role_text: String = row.get("role")?;
-    let role = DbAudioSegmentRole::from_db_value(&role_text).ok_or_else(|| {
-        column_conversion_error(row, "role", format!("unknown audio segment role: {role_text}"))
-    })?;
-    Ok(DbAudioSegment {
-        id: row.get("id")?,
-        audio_format_id: row.get("audio_format_id")?,
-        segment_index: row.get("segment_index")?,
-        role,
-        file_id: row.get("file_id")?,
-        start_sample: count_column(row, "start_sample")?,
-        end_sample: optional_count_column(row, "end_sample")?,
-        start_byte: optional_count_column(row, "start_byte")?,
-        end_byte: optional_count_column(row, "end_byte")?,
-        created_at: rfc3339_column(row, "created_at")?,
-    })
-}
-
 #[cfg(test)]
 #[path = "read_tests.rs"]
 mod tests;

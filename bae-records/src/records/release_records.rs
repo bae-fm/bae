@@ -45,6 +45,7 @@ impl Records {
     /// records are `records`, and the album it is in now, as
     /// [`FiledByRecords`](super::fragments::FiledByRecords) names them;
     /// `None` when the library holds no such release.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn records_target_album(
         &self,
         release_id: &str,
@@ -253,6 +254,7 @@ sqlive_compose::read!(
 /// are `records`, and the album it is in now, as
 /// [`FiledByRecords`](super::fragments::FiledByRecords) names them; `None`
 /// when the library holds no such release.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn records_target_album_on(
     sql: &impl bae_store::WriterRead,
     release_id: &str,
@@ -273,6 +275,7 @@ pub fn records_target_album_on(
 
 // [`FiledByRecords`](super::fragments::FiledByRecords) over the records of
 // the JSON array `records` ([`records_json`]).
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     writer RecordsTargetAlbumOfJson(release: String, records: String),
     r#"

@@ -97,10 +97,17 @@ pub mod credit_fragments;
 pub mod editor_files;
 #[cfg(desktop)]
 pub mod editor_tracks;
+#[cfg(desktop)]
+pub use editor_tracks::draft_release_edit_row_of;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub use editor_tracks::draft_release_edit_tracks_on;
 #[cfg(desktop)]
-pub use editor_tracks::{draft_release_edit_row_of, release_edit_tracks_on};
+pub mod release_edit_rows;
+#[cfg(desktop)]
+pub use release_edit_rows::{
+    editor_release_on, release_to_edit_on, DbAddedSheetFile, DbReleaseSaveFacts,
+    EditorReleaseFacts, ReleaseToEdit,
+};
 pub mod file_fragments;
 pub mod place_fragments;
 mod release_credits;
@@ -111,9 +118,7 @@ pub mod track_group_fragments;
 pub use editor_files::EditorReleaseFilesParams;
 #[cfg(desktop)]
 pub use release_detail::release_files_on;
-pub use release_detail::{
-    release_editor_rows_on, OtherDeviceError, ReleaseEditorFacts, ReleaseEditorRows,
-};
+pub use release_detail::OtherDeviceError;
 pub mod export_numbers;
 mod release_file;
 mod release_locality;

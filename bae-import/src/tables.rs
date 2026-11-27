@@ -53,8 +53,9 @@ pub use import_state::{
     ImportCommitRefusal, NewImportCandidateVerdict, PreparationRefusal, VerdictPick,
 };
 pub use release_edit::{
-    release_edit_form_on, release_edit_layout_on, release_edit_still_as_opened_on,
+    release_edit_form_on, release_edit_layout_on, release_save_inputs_unchanged_on,
     store_release_edit_sheet_decisions_on, ReleaseEditContext, ReleaseEditSeedRefusal,
+    ReleaseSaveInputs,
 };
 pub(crate) use release_groupings::{
     require_combination_idle, CandidateEntry, GroupingFacts, ScannedEntry,

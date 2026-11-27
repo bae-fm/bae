@@ -8,7 +8,7 @@
 //! which writes each file's layout from them.
 
 use super::*;
-use bae_store::{statement_row, statement_rows};
+use bae_store::statement_row;
 #[cfg(desktop)]
 use sqlive_compose::Statement as _;
 
@@ -114,86 +114,68 @@ pub struct SheetTrackChanges {
     pub medium_id: String,
 }
 
-// The tracks a save of the edits `edits` deletes from the release
-// `release`, in release order.
-sqlive_compose::read!(
-    writer DroppedTracksInOrder(release: String, edits: String),
-    r#"
-    SELECT dropped.*
-    FROM @crate::records::sheet_fragments::DroppedSheetTracks(
-        release: :release, edits: :edits) AS dropped
-    ORDER BY dropped.position
-"#
-);
+impl super::release_edit_rows::DbReleaseSaveFacts {
+    /// What the edits `edits`, which the facts were read for, do to the
+    /// release's tracks.
+    pub fn track_changes(&self, edits: &SheetEdits) -> Result<SheetTrackChanges, DbError> {
+        track_changes_of(&self.dropped, &self.added, self.first_medium.as_deref(), edits)
+    }
+}
 
-// The files a save of the edits `edits` adds a track for, each with its name,
-// in the order their first deleted track sat.
-sqlive_compose::read!(
-    writer AddedFilesInOrder(release: String, edits: String),
-    r#"
-    WITH added AS (
-        SELECT fresh.*
-        FROM @crate::records::sheet_fragments::SheetAddedFiles(
-            release: :release, edits: :edits) AS fresh)
-    SELECT added.file_id AS file_id, f.original_filename AS name
-    FROM added
-    JOIN release_files AS f ON f.id = added.file_id
-    ORDER BY added.first_position
-"#
-);
-
-// The release's first medium.
-sqlive_compose::read!(
-    writer FirstMedium(release: String),
-    r#"
-    SELECT held.id
-    FROM release_mediums AS held
-    WHERE held.release_id = :release
-    ORDER BY held.position
-    LIMIT 1
-"#
-);
-
-/// What the edits `edits` do to the tracks of the release `release_id`.
-pub fn sheet_track_changes_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
+/// What the edits `edits` do to the tracks of a release, from the tracks they
+/// delete, the files they add tracks for and the release's first medium.
+fn track_changes_of(
+    dropped: &[String],
+    added: &[super::release_edit_rows::DbAddedSheetFile],
+    first_medium: Option<&str>,
     edits: &SheetEdits,
 ) -> Result<SheetTrackChanges, DbError> {
-    let release = release_id.to_string();
-    let json = edits.json()?;
-    let dropped = DroppedTracksInOrderParams { release: release.clone(), edits: json.clone() };
-    let dropped =
-        statement_rows(sql, &dropped)?.into_iter().map(|row| row.dropped.into_track_id()).collect();
     let bindings = edits
         .picks
         .iter()
         .filter(|pick| !edits.ignored.contains(&pick.sheet_file_id))
         .cloned()
         .collect();
-    let added = AddedFilesInOrderParams { release: release.clone(), edits: json };
-    let added = statement_rows(sql, &added)?
-        .into_iter()
-        .map(|row| AddedFile {
-            typed_title: edits.titles.get(&row.file_id).cloned(),
-            file_id: row.file_id,
-            name: row.name,
+    let added = added
+        .iter()
+        .map(|file| AddedFile {
+            typed_title: edits.titles.get(&file.file_id).cloned(),
+            file_id: file.file_id.clone(),
+            name: file.name.clone(),
         })
         .collect();
-    let medium_id = statement_row(sql, &FirstMediumParams { release })?.id;
-    Ok(SheetTrackChanges { dropped, bindings, added, medium_id })
+    let medium_id = first_medium
+        .ok_or_else(|| DbError::unreadable("a release's first medium", None::<String>))?
+        .to_string();
+    Ok(SheetTrackChanges { dropped: dropped.to_vec(), bindings, added, medium_id })
 }
 
-impl Records {
-    /// What the edits `edits` do to the tracks of the release `release_id`.
-    pub async fn get_sheet_track_changes(
-        &self,
-        release_id: &str,
-        edits: &SheetEdits,
-    ) -> Result<SheetTrackChanges, DbError> {
-        let (release_id, edits) = (release_id.to_string(), edits.clone());
-        self.store.read(move |sql| sheet_track_changes_on(&sql, &release_id, &edits)).await
-    }
+// What the edits `edits` do to the tracks of the release `release`.
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::read!(
+    writer OneSheetChanges(release: String, edits: String),
+    r#"
+    SELECT changes.*
+    FROM @crate::records::release_edit_rows::SheetChanges(
+        release: :release, edits: :edits) AS changes
+"#
+);
+
+/// What the edits `edits` do to the tracks of the release `release_id`.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn sheet_track_changes_on(
+    sql: &impl bae_store::WriterRead,
+    release_id: &str,
+    edits: &SheetEdits,
+) -> Result<SheetTrackChanges, DbError> {
+    let statement = OneSheetChangesParams { release: release_id.to_string(), edits: edits.json()? };
+    let changes = statement_row(sql, &statement)?.changes;
+    track_changes_of(
+        &super::release_edit_rows::rows_of(&changes.dropped, "the tracks a save deletes")?,
+        &super::release_edit_rows::rows_of(&changes.added, "the files a save adds tracks for")?,
+        changes.first_medium.as_deref(),
+        edits,
+    )
 }
 
 /// The editor's Files caption for a sheet that carves no tracks in the draft.
@@ -257,50 +239,11 @@ pub struct DbReleaseAudio {
 
 /// A track a CUE sheet carves: the sheet's file id, and the text of the
 /// sheet's `FILE` line the track is under.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct DbCarvedTrack {
     pub track_id: String,
     pub sheet_file_id: String,
     pub file_reference: String,
-}
-
-impl Records {
-    /// The audio of the release `release_id`'s tracks, from one read.
-    pub async fn get_release_audio(&self, release_id: &str) -> Result<DbReleaseAudio, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                let formats = sql.query(
-                    "SELECT af.* FROM audio_formats af JOIN tracks t ON t.id = af.track_id \
-                     WHERE t.release_id = ? ORDER BY t.position",
-                    params![release_id],
-                    row_to_audio_format,
-                )?;
-                let segments = sql.query(
-                    "SELECT s.* FROM audio_format_segments s \
-                     JOIN audio_formats af ON af.id = s.audio_format_id \
-                     JOIN tracks t ON t.id = af.track_id \
-                     WHERE t.release_id = ? ORDER BY t.position, s.segment_index",
-                    params![release_id],
-                    row_to_audio_segment,
-                )?;
-                let carved = sql.query(
-                    "SELECT c.track_id, c.sheet_file_id, c.file_reference FROM carved_tracks c \
-                     JOIN tracks t ON t.id = c.track_id WHERE t.release_id = ? \
-                     ORDER BY t.position",
-                    params![release_id],
-                    |row| {
-                        Ok(DbCarvedTrack {
-                            track_id: row.get(0)?,
-                            sheet_file_id: row.get(1)?,
-                            file_reference: row.get(2)?,
-                        })
-                    },
-                )?;
-                Ok(DbReleaseAudio { formats, segments, carved })
-            })
-            .await
-    }
 }
 
 /// A track a save adds, under the key of its file: the track's row, which

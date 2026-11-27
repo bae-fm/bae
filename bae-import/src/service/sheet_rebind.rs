@@ -38,8 +38,10 @@ use crate::ImportError;
 /// whole, built from the audio facts the file's import stored, as the
 /// import builds a loose file's. The library works out which tracks the
 /// save deletes and which files it adds a track for from the form's edits.
+/// The release, its tracks, their audio, its files and the earlier
+/// decisions are as `inputs`, the save's read, holds them.
 pub async fn rebound_sheet_audio(
-    tables: &crate::tables::ImportTables,
+    inputs: &crate::tables::ReleaseSaveInputs,
     records: &bae_records::Records,
     budget: &coven::FileBudget,
     diagnostics: &bae_diagnostics::Diagnostics,
@@ -53,15 +55,15 @@ pub async fn rebound_sheet_audio(
         return Ok(None);
     }
     let release_id = form.release_id.as_str();
-    let files = records.get_files_for_release(release_id).await?;
-    let audio = records.get_release_audio(release_id).await?;
-    let changes = records.get_sheet_track_changes(release_id, &edits).await?;
+    let (files, audio) = (&inputs.facts.files, &inputs.facts.audio);
+    let changes = inputs.facts.track_changes(&edits)?;
     let dropped: HashSet<&str> = changes.dropped.iter().map(String::as_str).collect();
-    let tracks: Vec<bae_records::DbTrack> = records
-        .get_tracks_for_release(release_id)
-        .await?
-        .into_iter()
+    let tracks: Vec<bae_records::DbTrack> = inputs
+        .release
+        .tracks
+        .iter()
         .filter(|track| !dropped.contains(track.id.as_str()))
+        .cloned()
         .collect();
     let rebound: Vec<_> = changes
         .bindings
@@ -71,7 +73,8 @@ pub async fn rebound_sheet_audio(
     let analyses = if rebound.is_empty() {
         Vec::new()
     } else {
-        analyze_rebound_sheets(tables, records, budget, diagnostics, &files, release_id, &rebound)
+        let decisions = inputs.decisions.clone();
+        analyze_rebound_sheets(decisions, records, budget, diagnostics, files, release_id, &rebound)
             .await?
     };
 
@@ -79,13 +82,13 @@ pub async fn rebound_sheet_audio(
     for analysis in &analyses {
         for audio_file in &analysis.audio_files {
             if !file_ids.contains_key(&audio_file.path) {
-                let file = by_path(&files, &audio_file.path)?;
+                let file = by_path(files, &audio_file.path)?;
                 file_ids.insert(audio_file.path.clone(), file.id.clone());
             }
         }
     }
 
-    let mut to_build = moved_tracks(&tracks, &audio, &files, &analyses)?;
+    let mut to_build = moved_tracks(&tracks, audio, files, &analyses)?;
     let moved_count = to_build.len();
     let now = bae_store::utc_now(clock.as_ref());
     let added: Vec<NewTrack> = {
@@ -183,7 +186,7 @@ pub async fn rebound_sheet_audio(
         &mut formats,
         &segments,
         &measured,
-        &files,
+        files,
         diagnostics,
     )
     .await?;
@@ -217,9 +220,9 @@ pub async fn rebound_sheet_audio(
 /// The sheets whose lines `rebinds` bind to other audio files, read with the
 /// audio their lines then play from: the sheet files and the audio files
 /// of the release, with the person's earlier decisions and the picks over
-/// them.
+/// them: `decisions` and the picks.
 async fn analyze_rebound_sheets(
-    tables: &crate::tables::ImportTables,
+    mut decisions: crate::folder_scanner::CandidateFileEdits,
     records: &bae_records::Records,
     budget: &coven::FileBudget,
     diagnostics: &bae_diagnostics::Diagnostics,
@@ -236,7 +239,6 @@ async fn analyze_rebound_sheets(
             })
             .map(|file| file.original_filename.clone())
     };
-    let mut decisions = tables.load_release_sheet_decisions(release_id).await?;
     let mut sheets: Vec<String> = Vec::new();
     for (pick, audio_file_id) in rebinds {
         let sheet = named(&pick.sheet_file_id)?;

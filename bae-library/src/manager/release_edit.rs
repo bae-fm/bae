@@ -13,12 +13,15 @@
 //! Nothing re-reads a catalog or the files' tags: the form holds what the
 //! apply read.
 //!
-//! A save checks, in its one write, the release against what its form
-//! opened on: the save refuses a release the library no longer holds as it
-//! did (another editor saved it, MCP wrote its fields, or a synced edit
-//! arrived) with [`LibraryError::ReleaseEditStale`] and writes nothing, so no
-//! save overwrites values its editor never showed. Cancel opens the editor
-//! again on the release as it is now.
+//! A save reads what it starts from in one statement
+//! ([`bae_import::tables::ReleaseSaveInputs`]) and refuses a release the
+//! library no longer holds as its form opened on it (another editor saved
+//! it, MCP wrote its fields, or a synced edit arrived) with
+//! [`LibraryError::ReleaseEditStale`]. Its write runs that statement again
+//! and refuses with the same error when anything it read changed since. A
+//! refused save writes nothing, so no save overwrites values its editor
+//! never showed. Cancel opens the editor again on the release as it is
+//! now.
 
 use super::*;
 
@@ -38,15 +41,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<bae_import::ReleaseEditForm, LibraryError> {
-        use bae_import::tables::ReleaseEditSeedRefusal as R;
-        self.import_tables.read_release_edit_form(release_id).await?.map_err(
-            |refusal| match refusal {
-                R::ReleaseMissing(release_id) => {
-                    LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
-                }
-                R::Unreadable(error) => LibraryError::from(error),
-            },
-        )
+        self.import_tables.read_release_edit_form(release_id).await?.map_err(seed_refusal)
     }
 
     /// The live read of a release editor's draft, which reads nothing until
@@ -145,10 +140,12 @@ impl LibraryManager {
     /// wrote it, and the method returns the form opened on that.
     ///
     /// Refused with [`LibraryError::ReleaseEditStale`], writing nothing, when
-    /// the library no longer holds the release as the form opened on it. The
-    /// write itself finds that out, and whether the library holds the picked
-    /// artists and album: it reads the release, the artists and the album as
-    /// they stand, so no write lands between the checks and the rows.
+    /// the library no longer holds the release as the form opened on it, or
+    /// holds anything the save read differently by the time it writes. The
+    /// write itself finds the latter out, and whether the library holds the
+    /// picked artists and album: it reads the save's inputs, the artists and
+    /// the album as they stand, so no write lands between the checks and the
+    /// rows.
     pub async fn save_release_edit(
         &self,
         form: bae_import::ReleaseEditForm,
@@ -157,33 +154,28 @@ impl LibraryManager {
         let release_id = form.release_id.clone();
         let shaped = form.edit.shape()?;
         shaped.metadata.validate()?;
-        let opened = self.load_release_for_edit(&release_id).await?;
-        let records = match &form.records {
-            Some(records) => records.clone(),
-            None => self.records.get_release_records(&release_id).await?,
-        };
-        let plan =
-            self.release_edit_plan(&form, &form.album_pick, &shaped, &opened, &records).await?;
+        let inputs =
+            self.import_tables.read_release_save_inputs(&form).await?.map_err(seed_refusal)?;
+        if inputs.seed != form.opened {
+            return Err(LibraryError::ReleaseEditStale { release_id });
+        }
+        let plan = self.release_edit_plan(&form, &form.album_pick, &shaped, &inputs)?;
         let gone = match (gone, &form.album_pick) {
             (GonePick::Refuse, _) => bae_records::GonePicks::Refuse,
             (GonePick::Unpick, bae_import::AlbumPick::Album { .. }) => {
                 bae_records::GonePicks::Unpick {
-                    unpicked: Some(
-                        self.release_edit_plan(
-                            &form,
-                            &bae_import::AlbumPick::Records,
-                            &shaped,
-                            &opened,
-                            &records,
-                        )
-                        .await?,
-                    ),
+                    unpicked: Some(self.release_edit_plan(
+                        &form,
+                        &bae_import::AlbumPick::Records,
+                        &shaped,
+                        &inputs,
+                    )?),
                 }
             }
             (GonePick::Unpick, _) => bae_records::GonePicks::Unpick { unpicked: None },
         };
         let rebound = bae_import::service::rebound_sheet_audio(
-            &self.import_tables,
+            &inputs,
             &self.records,
             &self.files,
             &self.diagnostics,
@@ -197,8 +189,8 @@ impl LibraryManager {
             || rebound.as_ref().is_some_and(|audio| !audio.dropped.is_empty());
         let saved_id = release_id.clone();
         let (opened_form, layout_form, decisions_form) = (form.clone(), form.clone(), form);
-        let still_as_opened = move |sql: &coven::CovenWrite<'_>| {
-            bae_import::tables::release_edit_still_as_opened_on(sql, &opened_form)
+        let inputs_unchanged = move |sql: &coven::CovenWrite<'_>| {
+            bae_import::tables::release_save_inputs_unchanged_on(sql, &opened_form, &inputs)
         };
         let layout = move |sql: &coven::CovenWrite<'_>| {
             lays_out
@@ -223,7 +215,7 @@ impl LibraryManager {
             .save_release_edit_atomic(
                 plan,
                 gone,
-                still_as_opened,
+                inputs_unchanged,
                 layout,
                 rebound,
                 sheet_decisions,
@@ -233,32 +225,37 @@ impl LibraryManager {
             .map_err(|error| release_edit_save_error(error, &release_id))
     }
 
-    /// What a save of `form` writes with the album pick `pick`: where the
-    /// release goes, its rows, and whether the album keeps its own fields.
-    async fn release_edit_plan(
+    /// What a save of `form`, which read `inputs`, writes with the album
+    /// pick `pick`: where the release goes, its rows, and whether the album
+    /// keeps its own fields.
+    fn release_edit_plan(
         &self,
         form: &bae_import::ReleaseEditForm,
         pick: &bae_import::AlbumPick,
         shaped: &bae_import::ReleaseUserEdit,
-        opened: &(String, DbRelease, DbAlbum, Vec<DbTrack>),
-        records: &[bae_catalogs::records::ReleaseRecord],
+        inputs: &bae_import::tables::ReleaseSaveInputs,
     ) -> Result<bae_records::ReleaseEditPlan, LibraryError> {
         let release_id = form.release_id.as_str();
         let edit = &form.edit;
-        let (current_album_id, release, current_album, existing_tracks) = opened;
+        let bae_records::records::ReleaseToEdit { release, album: current_album, tracks } =
+            &inputs.release;
+        let current_album_id = &current_album.id;
+        // The records the release has once saved: the form's, where it
+        // replaces them, else its own.
+        let records = form.records.as_ref().unwrap_or(&inputs.records);
         let change = match (pick, &form.records) {
             (bae_import::AlbumPick::Album { album_id }, _) => Some(bae_records::RecordsChange {
                 release_id: release_id.to_string(),
-                records: records.to_vec(),
+                records: records.clone(),
                 current_album_id: current_album_id.clone(),
                 target_album_id: album_id.clone(),
                 new_album: None,
             }),
             (bae_import::AlbumPick::New, _) => {
-                let new_album = self.fresh_album_for_release(current_album_id).await?;
+                let new_album = self.fresh_album_like(current_album);
                 Some(bae_records::RecordsChange {
                     release_id: release_id.to_string(),
-                    records: records.to_vec(),
+                    records: records.clone(),
                     current_album_id: current_album_id.clone(),
                     target_album_id: new_album.id.clone(),
                     new_album: Some(new_album),
@@ -275,9 +272,12 @@ impl LibraryManager {
                     new_album: None,
                 })
             }
-            (bae_import::AlbumPick::Records, Some(records)) => {
-                Some(self.records_change(release_id, records.clone()).await?)
-            }
+            (bae_import::AlbumPick::Records, Some(records)) => Some(self.records_change_filed(
+                release_id,
+                records.clone(),
+                inputs.facts.filed.clone(),
+                current_album,
+            )),
             (bae_import::AlbumPick::Records, None) => None,
         };
         let target_album_id = change
@@ -333,7 +333,7 @@ impl LibraryManager {
                 bae_records::ReleaseEditWrite::Fields(self.release_metadata_rows(
                     album_row,
                     release.clone(),
-                    existing_tracks,
+                    tracks,
                     &bae_import::ReleaseUserEdit {
                         metadata: shaped.metadata.clone().normalized(),
                         facts: shaped.facts.clone(),
@@ -359,6 +359,17 @@ pub enum GonePick {
     Refuse,
 }
 
+/// Why bae can't read a release as its editor does, as the library words it.
+fn seed_refusal(refusal: bae_import::tables::ReleaseEditSeedRefusal) -> LibraryError {
+    use bae_import::tables::ReleaseEditSeedRefusal as R;
+    match refusal {
+        R::ReleaseMissing(release_id) => {
+            LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
+        }
+        R::Unreadable(error) => LibraryError::from(error),
+    }
+}
+
 /// A save's refusal as the library words it: a release changed since the
 /// editor opened is [`LibraryError::ReleaseEditStale`].
 fn release_edit_save_error(
@@ -377,6 +388,10 @@ fn release_edit_save_error(
 #[cfg(test)]
 #[path = "release_edit_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "release_edit_inputs_tests.rs"]
+mod inputs_tests;
 
 #[cfg(test)]
 #[path = "release_edit_album_tests.rs"]

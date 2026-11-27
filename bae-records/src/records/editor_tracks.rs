@@ -1,10 +1,13 @@
 //! A release's tracks as the release editor reads their audio: as the library
-//! holds them, which the editor opens on ([`release_edit_tracks_on`]), and as
-//! a form's draft lays them out ([`draft_release_edit_tracks_on`]).
+//! holds them, which the editor opens on
+//! ([`EditorRelease`](super::release_edit_rows::EditorRelease)), and as a
+//! form's draft lays them out
+//! ([`DraftEditorTrackRows`]).
 
 use super::read::source_audio_layout_of;
 use super::release_tracks::{track_position_of, track_side_of};
 use super::*;
+#[cfg(any(test, feature = "test-utils"))]
 use bae_store::statement_rows;
 
 // The rows of the release editor's tracks, over the release `release` and the
@@ -174,25 +177,6 @@ sqlive_compose::fragment!(
 "#
 );
 
-// The release's tracks as the library holds them: each at its place on the
-// release's mediums, on the files it plays from.
-sqlive_compose::read!(
-    writer StoredEditorTracks(release: String, edits: String),
-    r#"
-    SELECT shown.*
-    FROM @crate::records::editor_tracks::EditorTrackRows(
-        release: :release, edits: :edits,
-        mediums: (SELECT medium.id, medium.release_id, medium.position, medium.medium,
-                         medium.side_count
-                  FROM release_mediums AS medium WHERE medium.release_id = :release),
-        places: (SELECT held.id, held.release_id, held.medium_id, held.side,
-                        held.track_number, held.stated_length_ms, held.position
-                 FROM tracks AS held WHERE held.release_id = :release)) AS shown
-    WHERE NOT shown.empty_side
-    ORDER BY shown.placed_medium, shown.placed_position
-"#
-);
-
 // The rows of the editor's tracks ([`EditorTrackRows`]) as a release
 // editor's form lays them out
 // ([`ReleaseLaidPlaces`](super::layout_fragments::ReleaseLaidPlaces)), on the
@@ -325,118 +309,158 @@ fn document<T: serde::de::DeserializeOwned>(
         .map_err(|error| DbError::unreadable_json(format!("the {what} of {row_id}"), json, error))
 }
 
+/// A row of the editor's tracks that is a track the library holds, with the
+/// columns of [`EditorTrackRows`] such a row has.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredEditorTrack {
+    row_id: String,
+    side_kind: String,
+    side_ordinal: i64,
+    place_number: i64,
+    listed_length_ms: Option<i64>,
+    track: Option<String>,
+    audio_format_count: i64,
+    main_segment_count: i64,
+    main_segment: Option<String>,
+    sheet: Option<String>,
+}
+
+/// `value` of the row `row_id` in the integer type its column takes.
+fn narrowed<T: TryFrom<i64>>(value: i64, row_id: &str) -> Result<T, DbError> {
+    T::try_from(value).map_err(|_error| unreadable_row(row_id, format!("{value} is out of range")))
+}
+
+fn unreadable_row(row_id: &str, reason: String) -> DbError {
+    DbError::unreadable(format!("the release editor's row {row_id}"), reason)
+}
+
+/// Where the row `row_id` places its track.
+fn row_position(
+    row_id: &str,
+    side_kind: &str,
+    side_ordinal: i64,
+    place_number: i64,
+) -> Result<bae_types::mediums::TrackPosition, DbError> {
+    track_position_of(side_kind, narrowed(side_ordinal, row_id)?, narrowed(place_number, row_id)?)
+        .map_err(|reason| unreadable_row(row_id, reason))
+}
+
+/// The first main segment of the row `row_id`, as its column `json` writes
+/// it.
+fn row_segment(row_id: &str, json: Option<&str>) -> Result<Option<SegmentJson>, DbError> {
+    json.map(|json| document(json, "segment", row_id)).transpose()
+}
+
+impl StoredEditorTrack {
+    /// The track the row is.
+    pub(super) fn decoded(self) -> Result<DbReleaseEditTrack, DbError> {
+        let row_id = self.row_id;
+        let unreadable = |reason: String| unreadable_row(&row_id, reason);
+        let position =
+            row_position(&row_id, &self.side_kind, self.side_ordinal, self.place_number)?;
+        let main_segment = row_segment(&row_id, self.main_segment.as_deref())?
+            .map(|segment| {
+                let file = match (segment.found, segment.name) {
+                    (true, Some(name)) => Some(DbReleaseEditSourceFile {
+                        name,
+                        layout: segment
+                            .layout
+                            .as_deref()
+                            .map(source_audio_layout_of)
+                            .transpose()
+                            .map_err(unreadable)?,
+                    }),
+                    (false, _) => None,
+                    (true, None) => {
+                        return Err(unreadable(format!(
+                            "release file {} has no name",
+                            segment.file_id
+                        )))
+                    }
+                };
+                Ok(DbReleaseEditSegment {
+                    file_id: segment.file_id,
+                    start_ms: segment.start_ms,
+                    file,
+                })
+            })
+            .transpose()?;
+        let sheet = self
+            .sheet
+            .as_deref()
+            .map(|json| {
+                let sheet: SheetJson = document(json, "CUE sheet", &row_id)?;
+                Ok::<_, DbError>(DbReleaseEditSheet {
+                    file_id: sheet.file_id,
+                    name: sheet.name,
+                    place: sheet.place.decoded().map_err(unreadable)?,
+                    side_choices: crate::DbSheetSideColumns::decoded_list(sheet.side_choices)
+                        .map_err(unreadable)?,
+                    line_count: sheet.line_count,
+                    file_reference: sheet.file_reference,
+                    unbound_lines: sheet.unbound_lines,
+                    audio_options: sheet.audio_options,
+                })
+            })
+            .transpose()?;
+        let track =
+            self.track.ok_or_else(|| unreadable("the library holds no such track".to_string()))?;
+        let track: TrackColumns = document(&track, "track", &row_id)?;
+        Ok(DbReleaseEditTrack {
+            track: track_of_columns(track).map_err(unreadable)?,
+            position,
+            listed_length_ms: self
+                .listed_length_ms
+                .map(|length| narrowed(length, &row_id))
+                .transpose()?,
+            audio_format_count: self.audio_format_count,
+            main_segment_count: self.main_segment_count,
+            main_segment,
+            sheet,
+        })
+    }
+}
+
 /// One row of the editor's tracks: a track the library holds, the track a
 /// save adds for an audio file, or a side no track sits on.
 fn row_of(row: EditorTrackRows) -> Result<DbReleaseEditRow, DbError> {
     let row_id = row.row_id;
-    let unreadable =
-        |reason: String| DbError::unreadable(format!("the release editor's row {row_id}"), reason);
-    let narrow = |value: i64| {
-        u32::try_from(value).map_err(|_error| unreadable(format!("{value} is out of range")))
-    };
-    let count = |value: i64| {
-        u64::try_from(value).map_err(|_error| unreadable(format!("{value} is out of range")))
-    };
-    let ordinal = narrow(row.side_ordinal)?;
     if row.empty_side {
-        return track_side_of(&row.side_kind, ordinal)
+        return track_side_of(&row.side_kind, narrowed(row.side_ordinal, &row_id)?)
             .map(DbReleaseEditRow::EmptySide)
-            .map_err(unreadable);
+            .map_err(|reason| unreadable_row(&row_id, reason));
     }
-    let position = track_position_of(&row.side_kind, ordinal, narrow(row.place_number)?)
-        .map_err(unreadable)?;
-    let segment: Option<SegmentJson> =
-        row.main_segment.as_deref().map(|json| document(json, "segment", &row_id)).transpose()?;
     if row.is_added {
-        let name = segment
+        let unreadable = |reason: &str| unreadable_row(&row_id, reason.to_string());
+        let name = row_segment(&row_id, row.main_segment.as_deref())?
             .and_then(|segment| segment.name)
-            .ok_or_else(|| unreadable("an added track's file has no name".to_string()))?;
+            .ok_or_else(|| unreadable("an added track's file has no name"))?;
         let duration_ms = row
             .file_duration_ms
-            .ok_or_else(|| unreadable("an added track's file has no length".to_string()))?;
+            .ok_or_else(|| unreadable("an added track's file has no length"))?;
         return Ok(DbReleaseEditRow::Added(DbReleaseEditAdded {
+            duration_ms: narrowed(duration_ms, &row_id)?,
+            position: row_position(&row_id, &row.side_kind, row.side_ordinal, row.place_number)?,
             file: super::sheet_files::AddedFile {
                 typed_title: row.added_title,
-                file_id: row_id.clone(),
+                file_id: row_id,
                 name,
             },
-            duration_ms: count(duration_ms)?,
-            position,
         }));
     }
-    let main_segment = segment
-        .map(|segment| {
-            let file = match (segment.found, segment.name) {
-                (true, Some(name)) => Some(DbReleaseEditSourceFile {
-                    name,
-                    layout: segment
-                        .layout
-                        .as_deref()
-                        .map(source_audio_layout_of)
-                        .transpose()
-                        .map_err(unreadable)?,
-                }),
-                (false, _) => None,
-                (true, None) => {
-                    return Err(unreadable(format!("release file {} has no name", segment.file_id)))
-                }
-            };
-            Ok(DbReleaseEditSegment { file_id: segment.file_id, start_ms: segment.start_ms, file })
-        })
-        .transpose()?;
-    let sheet = row
-        .sheet
-        .as_deref()
-        .map(|json| {
-            let sheet: SheetJson = document(json, "CUE sheet", &row_id)?;
-            Ok::<_, DbError>(DbReleaseEditSheet {
-                file_id: sheet.file_id,
-                name: sheet.name,
-                place: sheet.place.decoded().map_err(unreadable)?,
-                side_choices: crate::DbSheetSideColumns::decoded_list(sheet.side_choices)
-                    .map_err(unreadable)?,
-                line_count: sheet.line_count,
-                file_reference: sheet.file_reference,
-                unbound_lines: sheet.unbound_lines,
-                audio_options: sheet.audio_options,
-            })
-        })
-        .transpose()?;
-    let track =
-        row.track.ok_or_else(|| unreadable("the library holds no such track".to_string()))?;
-    let track: TrackColumns = document(&track, "track", &row_id)?;
-    Ok(DbReleaseEditRow::Stored(Box::new(DbReleaseEditTrack {
-        track: track_of_columns(track).map_err(unreadable)?,
-        position,
-        listed_length_ms: row.listed_length_ms.map(count).transpose()?,
+    let stored = StoredEditorTrack {
+        row_id,
+        side_kind: row.side_kind,
+        side_ordinal: row.side_ordinal,
+        place_number: row.place_number,
+        listed_length_ms: row.listed_length_ms,
+        track: row.track,
         audio_format_count: row.audio_format_count,
         main_segment_count: row.main_segment_count,
-        main_segment,
-        sheet,
-    })))
-}
-
-/// The tracks of the release `release_id` as the release editor reads their
-/// audio, in release order, each on the mediums and files the library holds
-/// it on.
-pub fn release_edit_tracks_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
-) -> Result<Vec<DbReleaseEditTrack>, DbError> {
-    let params = StoredEditorTracksParams {
-        release: release_id.to_string(),
-        edits: super::sheet_files::NO_SHEET_EDITS.to_string(),
+        main_segment: row.main_segment,
+        sheet: row.sheet,
     };
-    statement_rows(sql, &params)?
-        .into_iter()
-        .map(|row| match row_of(row.shown)? {
-            DbReleaseEditRow::Stored(track) => Ok(*track),
-            other => Err(DbError::unreadable(
-                format!("a stored track of release {release_id}"),
-                format!("{other:?}"),
-            )),
-        })
-        .collect()
+    Ok(DbReleaseEditRow::Stored(Box::new(stored.decoded()?)))
 }
 
 /// One row of a form's draft tracks ([`DraftEditorTrackRows`]): a track the

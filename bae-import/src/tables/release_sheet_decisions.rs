@@ -78,6 +78,91 @@ sqlive_compose::write!(
 "#
 );
 
+// The decisions the person made about the release `release`'s sheets, naming
+// each file by its name in the release: the JSON arrays of the bindings of
+// their `FILE` lines and of the sides they are on.
+sqlive_compose::fragment!(
+    ReleaseSheetDecisions(release: String) {
+        sheet_bindings: String,
+        sheet_places: String
+    },
+    r#"
+    SELECT (SELECT json_group_array(json_object(
+                       'sheet', sheet.original_filename, 'reference', binding.file_reference,
+                       'audio', audio.original_filename)
+                       ORDER BY sheet.original_filename, binding.file_reference)
+            FROM @bae_records::records::file_fragments::ReleaseFileColumns AS sheet
+            JOIN release_sheet_bindings AS binding ON binding.sheet_file_id = sheet.id
+            LEFT JOIN @bae_records::records::file_fragments::ReleaseFileColumns AS audio
+                   ON audio.id = binding.audio_file_id
+            WHERE sheet.release_id = :release) AS sheet_bindings,
+           (SELECT json_group_array(json_object(
+                       'sheet', sheet.original_filename, 'place', place.place,
+                       'medium', place.medium, 'side', place.side)
+                       ORDER BY sheet.original_filename)
+            FROM @bae_records::records::file_fragments::ReleaseFileColumns AS sheet
+            JOIN release_sheet_places AS place ON place.sheet_file_id = sheet.id
+            WHERE sheet.release_id = :release) AS sheet_places
+"#
+);
+
+// The decisions the person made about one release's sheets.
+sqlive_compose::read!(
+    writer OneReleaseSheetDecisions(release: String),
+    r#"
+    SELECT decided.*
+    FROM @crate::tables::release_sheet_decisions::ReleaseSheetDecisions(
+        release: :release) AS decided
+"#
+);
+
+/// One binding as [`ReleaseSheetDecisions`] writes it.
+#[derive(serde::Deserialize)]
+struct BindingJson {
+    sheet: String,
+    reference: String,
+    audio: Option<String>,
+}
+
+/// One sheet's side as [`ReleaseSheetDecisions`] writes it.
+#[derive(serde::Deserialize)]
+struct PlaceJson {
+    sheet: String,
+    place: String,
+    medium: Option<i64>,
+    side: Option<i64>,
+}
+
+impl ReleaseSheetDecisions {
+    /// The decisions the rows hold. Their revision is zero, because a stored
+    /// release does not track edit revisions.
+    pub(crate) fn decoded(self) -> Result<CandidateFileEdits, DbError> {
+        fn rows<T: serde::de::DeserializeOwned>(json: &str) -> Result<Vec<T>, DbError> {
+            serde_json::from_str(json).map_err(|error| {
+                DbError::unreadable_json("a release's sheet decisions", json, error)
+            })
+        }
+        let mut edits = CandidateFileEdits::default();
+        for binding in rows::<BindingJson>(&self.sheet_bindings)? {
+            edits.sheet_bindings.set_reference(
+                binding.sheet,
+                binding.reference,
+                UserSheetBinding::from_stored_file(binding.audio),
+            );
+        }
+        for stored in rows::<PlaceJson>(&self.sheet_places)? {
+            let place = SheetPlace::from_columns(
+                &format!("the release_sheet_places row of {}", stored.sheet),
+                &stored.place,
+                stored.medium,
+                stored.side,
+            )?;
+            edits.sheet_places.set(stored.sheet, place);
+        }
+        Ok(edits)
+    }
+}
+
 /// Write the sheet decisions in `decided`, which name files by their path in
 /// the release, as rows over the release's files `file_ids` (each path with
 /// the id of its `release_files` row). A candidate's decisions name only its
@@ -153,69 +238,17 @@ pub(super) fn store_sheet_binding_decisions_on(
 
 impl ImportTables {
     /// The decisions the person made about `release_id`'s sheets, naming each
-    /// file by its path in the release, as the import's decisions did. The
-    /// returned edits have revision zero, because a stored release does not
-    /// track edit revisions.
+    /// file by its path in the release, as the import's decisions did
+    /// ([`ReleaseSheetDecisions`]).
     pub(crate) async fn load_release_sheet_decisions(
         &self,
         release_id: &str,
     ) -> Result<CandidateFileEdits, DbError> {
-        let release_id = release_id.to_string();
-        let (binding_rows, place_rows) = self
-            .store
-            .read(move |sql| {
-                let bindings = sql.query(
-                    "SELECT sheet.original_filename, binding.file_reference, \
-                            audio.original_filename \
-                     FROM release_files AS sheet \
-                     JOIN release_sheet_bindings AS binding ON binding.sheet_file_id = sheet.id \
-                     LEFT JOIN release_files AS audio ON audio.id = binding.audio_file_id \
-                     WHERE sheet.release_id = ?",
-                    [&release_id],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, String>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                        ))
-                    },
-                )?;
-                let places = sql.query(
-                    "SELECT sheet.original_filename, place.place, place.medium, place.side \
-                     FROM release_files AS sheet \
-                     JOIN release_sheet_places AS place ON place.sheet_file_id = sheet.id \
-                     WHERE sheet.release_id = ?",
-                    [&release_id],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, String>(1)?,
-                            row.get::<_, Option<i64>>(2)?,
-                            row.get::<_, Option<i64>>(3)?,
-                        ))
-                    },
-                )?;
-                Ok((bindings, places))
-            })
-            .await?;
-        let mut edits = CandidateFileEdits::default();
-        for (sheet, reference, audio) in binding_rows {
-            edits.sheet_bindings.set_reference(
-                sheet,
-                reference,
-                UserSheetBinding::from_stored_file(audio),
-            );
-        }
-        for (sheet, kind, medium, side) in place_rows {
-            let place = SheetPlace::from_columns(
-                &format!("the release_sheet_places row of {sheet}"),
-                &kind,
-                medium,
-                side,
-            )?;
-            edits.sheet_places.set(sheet, place);
-        }
-        Ok(edits)
+        let statement = OneReleaseSheetDecisionsParams { release: release_id.to_string() };
+        self.store
+            .read(move |sql| bae_store::statement_row(&sql, &statement))
+            .process(|row| row.decided.decoded())
+            .await
     }
 }
 

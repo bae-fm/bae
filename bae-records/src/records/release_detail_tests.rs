@@ -131,7 +131,7 @@ async fn the_statements_place_tracks_by_one_rule() {
 
     let (rows, places) = db
         .read(move |sql| {
-            let rows = release_editor_rows_on(&sql, release)?.unwrap();
+            let rows = editor_release_on(&sql, release)?.unwrap();
             let places = release_tracks::track_places_on(
                 &sql,
                 &ids.iter().map(|(id, ..)| id.clone()).collect::<Vec<_>>(),
@@ -202,9 +202,14 @@ async fn the_statements_place_tracks_by_one_rule() {
     #[cfg(desktop)]
     {
         let edited = db
-            .read(move |sql| super::editor_tracks::release_edit_tracks_on(&sql, release))
+            .read(move |sql| {
+                Ok(crate::records::editor_release_on(&sql, release)?.expect("the release"))
+            })
             .await
-            .unwrap();
+            .unwrap()
+            .decoded()
+            .unwrap()
+            .tracks;
         let edited: Vec<_> =
             edited.into_iter().map(|track| (track.track.id, track.position)).collect();
         assert_eq!(edited, expected);
@@ -328,7 +333,7 @@ async fn elsewhere_of(store: &bae_store::Store, release: &'static str) -> Option
 /// `release`'s detail as its editor reads it from `store`.
 async fn editor_detail_of(store: &bae_store::Store, release: &'static str) -> DbReleaseDetail {
     store
-        .read(move |sql| Ok(release_editor_rows_on(&sql, release)?.expect("the release")))
+        .read(move |sql| Ok(editor_release_on(&sql, release)?.expect("the release")))
         .await
         .unwrap()
         .decoded()
@@ -411,7 +416,7 @@ async fn a_stored_device_coven_does_not_register_or_this_device_fails_the_read()
         .await;
     let detail_error = || async {
         store
-            .read(|sql| Ok(release_editor_rows_on(&sql, RELEASE_A)?.expect("the release")))
+            .read(|sql| Ok(editor_release_on(&sql, RELEASE_A)?.expect("the release")))
             .await
             .unwrap()
             .decoded()

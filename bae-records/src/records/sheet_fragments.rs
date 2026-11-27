@@ -94,13 +94,6 @@ sqlive_compose::fragment!(
 "#
 );
 
-impl DroppedSheetTracks {
-    /// The deleted track's id.
-    pub(super) fn into_track_id(self) -> String {
-        self.track_id
-    }
-}
-
 // Each file that deleted tracks played and no track that stays plays once the
 // picks are written, which the save adds a track for, with the sheet and the
 // place in the release of the first deleted track that played it.

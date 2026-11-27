@@ -165,11 +165,13 @@ impl Records {
     /// what `edit` changes of them. The save keeps what the pressing is, so
     /// an `edit` that changes it panics:
     /// [`Records::change_release_pressing_facts`] changes that.
+    #[cfg(desktop)]
     pub async fn save_release_metadata_for_test(
         &self,
         release_id: &str,
         edit: impl FnOnce(&mut ReleaseMetadataRows),
-    ) -> Result<(), IdentityWriteError> {
+    ) -> Result<(), crate::ReleaseEditSaveError> {
+        let read = self.find_release_to_edit(release_id).await?.expect("the release");
         let mut rows = self.release_metadata_for_test(release_id).await?;
         let facts = rows.release.pressing.facts.clone();
         edit(&mut rows);
@@ -177,7 +179,7 @@ impl Records {
             rows.release.pressing.facts, facts,
             "a metadata save keeps what the pressing is: change_release_pressing_facts changes it"
         );
-        self.update_release_metadata_user_edit(rows).await
+        self.update_release_metadata_user_edit(rows, read).await
     }
 
     /// `release_id`'s metadata as an edit of it starts from: the album, the
@@ -323,11 +325,12 @@ impl Records {
 
     /// Rename `album_id` as a person's metadata edit of its first release
     /// does.
+    #[cfg(desktop)]
     pub async fn rename_album_for_test(
         &self,
         album_id: &str,
         title: &str,
-    ) -> Result<(), IdentityWriteError> {
+    ) -> Result<(), crate::ReleaseEditSaveError> {
         let release = self.edited_release_of_for_test(album_id).await?;
         self.save_release_metadata_for_test(&release, |rows| rows.album.title = title.to_string())
             .await
@@ -335,11 +338,12 @@ impl Records {
 
     /// Credit `album_id` to the library artists `artists`, in that order, as
     /// a person's metadata edit of its first release does, picking each.
+    #[cfg(desktop)]
     pub async fn credit_album_for_test(
         &self,
         album_id: &str,
         artists: &[&str],
-    ) -> Result<(), IdentityWriteError> {
+    ) -> Result<(), crate::ReleaseEditSaveError> {
         let release = self.edited_release_of_for_test(album_id).await?;
         let mut credited = Vec::new();
         for artist in artists {
@@ -365,11 +369,12 @@ impl Records {
     }
 
     /// Rename `track_id` as a person's metadata edit of its release does.
+    #[cfg(desktop)]
     pub async fn rename_track_for_test(
         &self,
         track_id: &str,
         title: &str,
-    ) -> Result<(), IdentityWriteError> {
+    ) -> Result<(), crate::ReleaseEditSaveError> {
         let track = self.find_track_by_id(track_id).await?.expect("the track to rename");
         self.save_release_metadata_for_test(&track.release_id, |rows| {
             for (id, track) in &mut rows.track_updates {

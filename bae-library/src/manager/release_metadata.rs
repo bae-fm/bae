@@ -4,30 +4,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Load the album id, release, album, and existing tracks for a release
-    /// being edited — the shared prelude of `release_edit_seed` and
-    /// `apply_release_metadata_user_edit`.
-    pub(super) async fn load_release_for_edit(
-        &self,
-        release_id: &str,
-    ) -> Result<(String, DbRelease, DbAlbum, Vec<DbTrack>), LibraryError> {
-        let album_id =
-            self.records.find_album_id_for_release(release_id).await?.ok_or_else(|| {
-                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
-            })?;
-        let release =
-            self.records.find_release_by_id(release_id).await?.ok_or_else(|| {
-                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
-            })?;
-        let album = self
-            .records
-            .find_album_by_id(&album_id)
-            .await?
-            .ok_or_else(|| LibraryError::AlbumMissing { album_id: album_id.clone() })?;
-        let existing_tracks = self.records.get_tracks_for_release(release_id).await?;
-        Ok((album_id, release, album, existing_tracks))
-    }
-
     /// Apply a user-supplied edit of an existing release's typed metadata,
     /// MCP's `release_metadata_update`. What the pressing is stays as the
     /// library holds it ([`Self::change_release_pressing_fact`]).
@@ -39,20 +15,40 @@ impl LibraryManager {
     /// trimmed.
     ///
     /// Writes only the rows `release_metadata_rows` describes, without the
-    /// pressing's facts; see it for the row-level contract.
+    /// pressing's facts; see it for the row-level contract. The edit reads
+    /// the release, its album and its tracks in one statement, and its write
+    /// runs that statement again: a release changed in between is refused as
+    /// [`LibraryError::ReleaseChangedDuringEdit`], writing nothing.
     pub async fn apply_release_metadata_user_edit(
         &self,
         release_id: &str,
         edit: &bae_import::ReleaseMetadataEdit,
     ) -> Result<(), LibraryError> {
-        let (_, release, album, existing_tracks) = self.load_release_for_edit(release_id).await?;
+        let missing = || LibraryError::release_missing(release_id, super::ReleaseWork::Edit);
+        let read = self.records.find_release_to_edit(release_id).await?.ok_or_else(missing)?;
         let edit = edit.clone().normalized();
         edit.validate()?;
-        let edit =
-            bae_import::ReleaseUserEdit { metadata: edit, facts: release.pressing.facts.clone() };
-        let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
-        self.records.update_release_metadata_user_edit(metadata).await?;
-        Ok(())
+        let edit = bae_import::ReleaseUserEdit {
+            metadata: edit,
+            facts: read.release.pressing.facts.clone(),
+        };
+        let metadata = self.release_metadata_rows(
+            read.album.clone(),
+            read.release.clone(),
+            &read.tracks,
+            &edit,
+        )?;
+        self.records.update_release_metadata_user_edit(metadata, read).await.map_err(|error| {
+            use bae_records::ReleaseEditRefusal as R;
+            LibraryError::of_write(error, &|refusal| match refusal {
+                R::Stale => {
+                    LibraryError::ReleaseChangedDuringEdit { release_id: release_id.to_string() }
+                }
+                R::Gone => missing(),
+                R::AlbumGone { album_id } => LibraryError::AlbumMissing { album_id },
+                R::Identity(refusal) => LibraryError::Identity(refusal),
+            })
+        })
     }
 
     /// Make one choice of what a library release's pressing is, such as one

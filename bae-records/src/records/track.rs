@@ -227,45 +227,6 @@ impl Records {
             })
             .await
     }
-    /// Find audio format by track ID. Caller-provided ID — may not exist.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn find_audio_format_by_track_id(
-        &self,
-        track_id: &str,
-    ) -> Result<Option<DbAudioFormat>, DbError> {
-        let track_id = track_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    "SELECT * FROM audio_formats WHERE track_id = ?",
-                    params![track_id],
-                    row_to_audio_format,
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn get_audio_segments_for_format(
-        &self,
-        audio_format_id: &str,
-    ) -> Result<Vec<DbAudioSegment>, DbError> {
-        let audio_format_id = audio_format_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query(
-                    "SELECT * FROM audio_format_segments \
-                 WHERE audio_format_id = ? \
-                 ORDER BY segment_index",
-                    params![audio_format_id],
-                    row_to_audio_segment,
-                )
-                .map_err(DbError::from)
-            })
-            .await
-    }
 }
 
 #[cfg(test)]

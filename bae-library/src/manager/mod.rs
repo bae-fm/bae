@@ -176,6 +176,10 @@ pub enum LibraryError {
     /// opened on it, and wrote nothing.
     #[error("Release '{release_id}' changed since its editor opened")]
     ReleaseEditStale { release_id: String },
+    /// A metadata edit found, in its write, the release changed since the
+    /// edit read it, and wrote nothing.
+    #[error("Release '{release_id}' changed while it was being edited")]
+    ReleaseChangedDuringEdit { release_id: String },
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
@@ -442,6 +446,7 @@ impl LibraryError {
                 ReleaseWork::Transfer => C::Internal,
             },
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
+            LibraryError::ReleaseChangedDuringEdit { .. } => C::ChangedMeanwhile,
             LibraryError::FilenamePattern(_) => C::FilenamePatternInvalid,
             LibraryError::FolderPattern(_) => C::FolderPatternInvalid,
             LibraryError::Export(_) => C::Export,

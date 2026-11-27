@@ -368,8 +368,7 @@ async fn check_scrub_points_sync(devices: &mut crate::test_libraries::TwoDevices
         .await
         .unwrap()
         .expect("the track's audio format");
-    let segment =
-        manager.records.get_audio_segments_for_format(&format.id).await.unwrap().remove(0);
+    let segment = manager.records.get_audio_segments_for_format(&format).await.unwrap().remove(0);
     let points = [
         ScrubPoint { sample: 0, byte: 8_288, exact_from: 0 },
         ScrubPoint { sample: 442_368, byte: 1_760_512, exact_from: 442_368 },

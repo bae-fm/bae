@@ -75,16 +75,14 @@ async fn summary(files: &[File]) -> Option<SourceAudioSummary> {
         )
         .await;
     }
-    db.read(
-        |sql| Ok(crate::records::release_editor_rows_on(&sql, RELEASE_A)?.expect("the release")),
-    )
-    .await
-    .unwrap()
-    .decoded()
-    .unwrap()
-    .detail
-    .files
-    .source_audio
+    db.read(|sql| Ok(crate::records::editor_release_on(&sql, RELEASE_A)?.expect("the release")))
+        .await
+        .unwrap()
+        .decoded()
+        .unwrap()
+        .detail
+        .files
+        .source_audio
 }
 
 #[tokio::test]
