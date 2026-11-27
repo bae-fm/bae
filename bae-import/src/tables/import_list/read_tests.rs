@@ -404,32 +404,69 @@ async fn whole(
     rows.into_iter().map(|(item, _key)| item).collect()
 }
 
-/// A list of grouped folders read as a chain of windows holds every item
-/// exactly once, in the order one window over the whole list holds them,
-/// with the members' headers named; and so it does after a scan adds folders
-/// above where the chain started.
+/// In each order, a list of grouped and ungrouped releases, some dated, read
+/// as a chain of windows holds every item exactly once, in the order one
+/// window over the whole list holds them, as many items as the list counts,
+/// and a window from the key at any position starts at that position's item;
+/// and so it does after a scan adds folders.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_chain_of_windows_holds_every_item_once_across_a_scan() {
     use crate::{ImportListOrder, ImportListView, PendingFilter};
-    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    grow_grouped_import_list(&db, &tmp, 0, 300).await;
-    let list = ImportListRequest::of(ImportListView {
-        tab: crate::TriageTab::Pending,
-        search: None,
-        pending_filter: PendingFilter::All,
-        // The folders a later scan adds sort first.
-        order: ImportListOrder::PathDescending,
-    });
-    let everything = whole(&tables, &list).await;
-    assert!(everything.len() > 300, "the groups' headers are items too");
-    for page in [7, 10, 64] {
-        assert_eq!(chain(&tables, &list, page).await, everything, "pages of {page}");
+    for order in [
+        ImportListOrder::NewestFirst,
+        ImportListOrder::OldestFirst,
+        ImportListOrder::PathAscending,
+        ImportListOrder::PathDescending,
+    ] {
+        let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
+        let tables = crate::tables::ImportTables::new(db.clone());
+        grow_mixed_import_list(&db, &tmp, 0, 300).await;
+        let list = ImportListRequest::of(ImportListView {
+            tab: crate::TriageTab::Pending,
+            search: None,
+            pending_filter: PendingFilter::All,
+            order,
+        });
+        let everything = every_position(&tables, &list).await;
+        assert!(everything.len() > 300, "the groups' headers are items too");
+        grow_mixed_import_list(&db, &tmp, 300, 360).await;
+        let grown = every_position(&tables, &list).await;
+        assert!(grown.len() > everything.len(), "{order:?}, after the scan");
     }
-    grow_grouped_import_list(&db, &tmp, 300, 305).await;
-    let grown = whole(&tables, &list).await;
-    assert!(grown.len() > everything.len());
-    assert_eq!(chain(&tables, &list, 10).await, grown, "after the scan");
+}
+
+/// The whole list, having checked that it counts as many items as one window
+/// over it holds, that chains of windows hold the same items, and that the
+/// key at each of a spread of positions starts a window at that item and
+/// has that position.
+async fn every_position(
+    tables: &crate::tables::ImportTables,
+    list: &ImportListRequest,
+) -> Vec<crate::list::ImportListItem> {
+    let order = list.view.order;
+    let everything = whole(tables, list).await;
+    let count = tables.read_import_list_for_test(list.clone(), Vec::new()).await.unwrap().count;
+    assert_eq!(count.rows, everything.len() as u64, "{order:?}");
+    for page in [7, 64] {
+        assert_eq!(chain(tables, list, page).await, everything, "{order:?}, pages of {page}");
+    }
+    let last = everything.len() as u64 - 1;
+    for offset in (0..last).step_by(11).chain([last]) {
+        let key = tables.import_key_at(list.clone(), offset).await.unwrap().unwrap();
+        let window = tables.read_import_window(list.clone(), from(&key, 10)).await.unwrap();
+        let wanted: Vec<_> = everything.iter().skip(offset as usize).take(10).cloned().collect();
+        let held: Vec<_> = window.rows.into_iter().map(|(item, _key)| item).collect();
+        assert_eq!(held, wanted, "{order:?}, a window from the key at {offset}");
+        let position = tables
+            .subscribe_import_position(list.clone(), key)
+            .next_inline()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap();
+        assert_eq!(position, offset, "{order:?}, the position of the key at {offset}");
+    }
+    everything
 }
 
 /// A text-filtered list read as a chain holds what one window over it holds,
@@ -537,6 +574,35 @@ pub(crate) async fn grow_import_list(
     .await
 }
 
+/// Scan `start..end` more folders, in each ten of them five in a group of
+/// their own and five in no group, most with a folder date several share and
+/// every seventh with none. A later scan's dates are newer.
+async fn grow_mixed_import_list(
+    db: &Store,
+    tmp: &bae_util::test_files::TestFolder,
+    start: u64,
+    end: u64,
+) {
+    scan_dated_folders(
+        db,
+        tmp,
+        start,
+        end,
+        |i| match i % 10 {
+            0..=4 => format!("Group {:05}/Album {i}", i / 10),
+            _ => format!("Album {i}"),
+        },
+        |i| {
+            (i % 7 != 0).then(|| {
+                crate::folder_scanner::FolderDate::AddedToDirectory(
+                    1_700_000_000 + (start + (i * 37) % 40) as i64,
+                )
+            })
+        },
+    )
+    .await;
+}
+
 /// Scan `start..end` more folders as `Group {g:05}/Album {i}`, five albums to
 /// a group, so every five albums have a header, all of them open.
 async fn grow_grouped_import_list(
@@ -559,13 +625,27 @@ async fn grow_flat_import_list(
     scan_folders(db, tmp, start, end, |i| format!("Album {i}")).await
 }
 
-/// Scan the folders `name(start)..name(end)` into a watched folder of their own.
+/// Scan the folders `name(start)..name(end)`, none with a folder date, into a
+/// watched folder of their own.
 async fn scan_folders(
     db: &Store,
     tmp: &bae_util::test_files::TestFolder,
     start: u64,
     end: u64,
     name: impl Fn(u64) -> String,
+) -> Duration {
+    scan_dated_folders(db, tmp, start, end, name, |_| None).await
+}
+
+/// Scan the folders `name(start)..name(end)`, each with the folder date `date`
+/// gives it, into a watched folder of their own.
+async fn scan_dated_folders(
+    db: &Store,
+    tmp: &bae_util::test_files::TestFolder,
+    start: u64,
+    end: u64,
+    name: impl Fn(u64) -> String,
+    date: impl Fn(u64) -> Option<crate::folder_scanner::FolderDate>,
 ) -> Duration {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = tmp.create_folder(format!("watched-{start}"));
@@ -588,7 +668,7 @@ async fn scan_folders(
                             &name(i),
                         )),
                         seed: crate::tables::folder_scans::ScanItemSeed::Tags(None),
-                        folder_date: None,
+                        folder_date: date(i),
                     },
                 )
             })
