@@ -380,11 +380,12 @@ const AUDIO_AND_SHEET_ORIGINALS: &str = concat!(
 );
 
 // Each cover's version, by the release it is the cover of: the version of its
-// browse copy.
+// browse copy. `source_file` is the release file the cover is made from, NULL
+// for a cover made from no file of the release.
 sqlive_compose::fragment!(
     CoverVersion { version: Option<String> },
     r#"
-    SELECT cover.id,
+    SELECT cover.id, cover.source_file,
            (SELECT stored.version
             FROM @bae_store::file_version::StoredFileVersion AS stored
             WHERE stored.file = cover.browse_file) AS version
@@ -521,17 +522,4 @@ impl Records {
         let release_id = release_id.to_string();
         self.store.subscribe(move |sql| release_files_kept_on(&sql, &release_id))
     }
-}
-
-/// The SQL condition that a file whose content type is `content_type` (an SQL
-/// expression) is an image bae can show: one of the formats a cover can be made
-/// from. The gallery shows these images, and a release's Files list leaves them
-/// out, so each image of a release is in exactly one of them.
-pub fn showable_image_sql(content_type: &str) -> String {
-    let types = bae_util::content_type::ContentType::SUPPORTED_COVERS
-        .iter()
-        .map(|content_type| format!("'{}'", content_type.as_str()))
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("{content_type} IN ({types})")
 }

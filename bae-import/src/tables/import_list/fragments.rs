@@ -275,7 +275,10 @@ sqlive_compose::fragment!(
             SELECT free.file_id
             FROM @bae_records::records::file_fragments::UnplayedFiles(
                 listed: (SELECT f.relative_path,
-                             f.role = 'artwork' AND bae_supported_cover(f.relative_path)
+                             f.relative_path IN (
+                                 SELECT shown.relative_path
+                                 FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork(
+                                     key: :key) AS shown)
                          FROM f),
                 track_reads: (SELECT NULL, rows.sheet_id
                               FROM rows

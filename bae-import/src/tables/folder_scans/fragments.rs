@@ -165,8 +165,10 @@ sqlive_compose::fragment!(
             JOIN sheet_tracks ON sheet_tracks.relative_path = sheet.relative_path
             WHERE sheet.sheet_binding = 'resolved' AND sheet.sheet_place = 'side'
             ), entries AS (
-            SELECT f.position, f.role,(f.role = 'artwork' AND
-                bae_supported_cover(f.relative_path)) AS cover, json_object('name',
+            SELECT f.position, f.role, f.relative_path IN (
+                SELECT shown.relative_path
+                FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork(key: :key)
+                    AS shown) AS cover, json_object('name',
                 f.relative_path, 'size', f.size, 'file_name', f.file_name, 'path',
                 hex(f.absolute_path), 'modified_at_ns', f.modified_at_ns, 'role', f.role,
                 'content_type', f.audio_content_type, 'sample_rate_hz', f.audio_sample_rate_hz,

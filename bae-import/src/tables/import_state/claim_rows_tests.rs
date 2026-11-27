@@ -241,20 +241,13 @@ async fn read_from(
 /// The covers the picker of `content_hash` lists as its pressing's.
 async fn offered_covers(db: &Store, content_hash: &str) -> Vec<RemoteCover> {
     let content_hash = content_hash.to_owned();
-    let json: Vec<String> = db
+    let rows = db
         .read(move |sql| {
-            Ok(sql.query(
-                &format!(
-                    "SELECT cover FROM ({}) ORDER BY position",
-                    offered_covers_sql("(SELECT ? AS content_hash)")
-                ),
-                [content_hash],
-                |row| row.get(0),
-            )?)
+            Ok(bae_store::statement_rows(&sql, &super::OfferedCoversOfParams { content_hash })?)
         })
         .await
         .unwrap();
-    json.iter().map(|cover| serde_json::from_str(cover).unwrap()).collect()
+    rows.iter().map(|row| serde_json::from_str(&row.offered.cover).unwrap()).collect()
 }
 
 async fn offered(db: &Store, content_hash: &str) -> Vec<(String, CoverStanding)> {

@@ -84,8 +84,7 @@ mod verdict_rows;
 pub(super) use candidate_rows::{CandidateRows, OneCandidate};
 use cards_read::verdict_cards_of_column;
 pub(super) use claim_rows::{
-    claimed_records_of_json, offered_covers_sql, store_claims_of_albums_on,
-    store_claims_of_releases_on,
+    claimed_records_of_json, store_claims_of_albums_on, store_claims_of_releases_on,
 };
 pub(crate) use cover_rows::StoredCover;
 use failure_rows::delete_failure_on;

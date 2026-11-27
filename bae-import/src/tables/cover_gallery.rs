@@ -12,6 +12,7 @@ use super::*;
 use crate::{CoverImageSource, CoverSelection};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::{CoverLabel, RemoteCover};
+use bae_store::statement_row;
 
 mod candidate;
 mod walk;
@@ -131,44 +132,55 @@ pub struct CoverGallery {
     pub focus: Option<GalleryFocus>,
 }
 
-/// The release's gallery under one filter, as the statement that binds the
-/// release as `:release` reads it: its saved cover only under all and only when
-/// the cover is made from no image file of the release (one made from an image
-/// file is that file's entry), catalog covers under all or their catalog, image files under
-/// all or the release's files, each file in name order. The release focuses
-/// its saved cover, or the file the cover is made from, unless the request
-/// names another.
-fn release_gallery_sql() -> String {
-    format!(
-        "
-WITH items (rank, pos, kind, key, preferred, item) AS (
-    SELECT 0, 0, 'saved', NULL, 1, json_object('kind', 'saved', 'version', version)
-    FROM (SELECT {cover_version} AS version)
-    WHERE :filter = 'all' AND version IS NOT NULL
-      AND (SELECT cover.source_file FROM covers AS cover WHERE cover.id = :release) IS NULL
-    UNION ALL
-    SELECT 1, entry.position, 'remote', json_extract(entry.cover, '$.image.url'), 0,
-           json_object('kind', 'remote', 'cover', json(entry.cover))
-    FROM release_cover_entry AS entry
-    WHERE entry.release_id = :release AND :filter IN ('all', entry.source)
-    UNION ALL
-    SELECT 2, ROW_NUMBER() OVER (ORDER BY file.original_filename COLLATE natural_order, file.id),
-           'file', file.id,
-           COALESCE(file.id = (SELECT cover.source_file FROM covers AS cover
-                               WHERE cover.id = :release), 0),
-           json_object('kind', 'release_file', 'id', file.id, 'name', file.original_filename)
-    FROM release_files AS file
-    WHERE file.release_id = :release AND :filter IN ('all', 'release_files')
-      AND {showable}
-){walk}",
-        cover_version = bae_records::records::files::cover_version_sql(":release"),
-        showable = bae_records::records::files::showable_image_sql("file.content_type"),
-        walk = walk::walk_sql(
-            "(SELECT fetch.linked FROM release_cover_fetch AS fetch \
-              WHERE fetch.release_id = :release)"
-        ),
-    )
-}
+// The gallery of the library release `:release` under one filter: its saved
+// cover only under all and only when the cover is made from no image file of
+// the release (one made from an image file is that file's entry), catalog
+// covers under all or their catalog, image files under all or the release's
+// files, each file in name order. The release focuses its saved cover, or the
+// file the cover is made from, unless the request names another.
+sqlive_compose::read!(
+    ReleaseGallery(
+        release: String,
+        filter: &'static str,
+        focus_kind: Option<&'static str>,
+        focus_key: Option<String>
+    ) { fetched: Option<bool> },
+    r#"
+    SELECT (SELECT fetch.linked FROM release_cover_fetch AS fetch
+            WHERE fetch.release_id = :release) AS fetched,
+           walk.*
+    FROM @crate::tables::cover_gallery::walk::PickerWalk(
+        filter: :filter, focus_kind: :focus_kind, focus_key: :focus_key,
+        items: (
+            SELECT 0, 0, 'saved', NULL, 1,
+                   json_object('kind', 'saved', 'version', saved.version)
+            FROM @bae_records::records::files::CoverVersion AS saved
+            WHERE saved.id = :release AND :filter = 'all'
+              AND saved.version IS NOT NULL AND saved.source_file IS NULL
+            UNION ALL
+            SELECT 1, entry.position, 'remote', json_extract(entry.cover, '$.image.url'), 0,
+                   json_object('kind', 'remote', 'cover', json(entry.cover))
+            FROM release_cover_entry AS entry
+            WHERE entry.release_id = :release AND :filter IN ('all', entry.source)
+            UNION ALL
+            SELECT 2,
+                   ROW_NUMBER() OVER (
+                       ORDER BY file.original_filename COLLATE natural_order, file.file_id),
+                   'file', file.file_id,
+                   COALESCE(file.file_id = (
+                       SELECT made.source_file
+                       FROM @bae_records::records::files::CoverVersion AS made
+                       WHERE made.id = :release), 0),
+                   json_object('kind', 'release_file', 'id', file.file_id,
+                               'name', file.original_filename)
+            FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
+            WHERE file.release_id = :release AND :filter IN ('all', 'release_files')
+              AND file.content_type IN (
+                  SELECT shown.content_type
+                  FROM @bae_records::records::file_fragments::ShowableImageTypes AS shown)
+        )) AS walk
+"#
+);
 
 /// Whose covers a picker shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,33 +215,33 @@ fn cover_gallery_on(
     request: &CoverGalleryRequest,
 ) -> Result<CoverGallery, DbError> {
     let (focus_kind, focus_key) = request.focus.as_ref().map(CoverKey::columns).unzip();
-    let focus_key = focus_key.flatten();
+    let focus_key = focus_key.flatten().map(str::to_string);
     let filter = request.filter.column();
     match &request.owner {
-        CoverGalleryOwner::Release(release_id) => sql
-            .query_row(
-                &release_gallery_sql(),
-                named_params! {
-                    ":release": release_id,
-                    ":filter": filter,
-                    ":focus_kind": focus_kind,
-                    ":focus_key": focus_key,
+        CoverGalleryOwner::Release(release_id) => {
+            let row = statement_row(
+                sql,
+                &ReleaseGalleryParams {
+                    release: release_id.clone(),
+                    filter,
+                    focus_kind,
+                    focus_key,
                 },
-                walk::GalleryColumns::read,
-            )?
-            .gallery(Some(release_id)),
-        CoverGalleryOwner::Candidate(key) => sql
-            .query_row(
-                &candidate::candidate_gallery_sql(),
-                named_params! {
-                    ":key": key,
-                    ":filter": filter,
-                    ":focus_kind": focus_kind,
-                    ":focus_key": focus_key,
+            )?;
+            row.walk.gallery(row.fetched, Some(release_id))
+        }
+        CoverGalleryOwner::Candidate(key) => {
+            let row = statement_row(
+                sql,
+                &candidate::CandidateGalleryParams {
+                    key: key.clone(),
+                    filter,
+                    focus_kind,
+                    focus_key,
                 },
-                walk::GalleryColumns::read,
-            )?
-            .gallery(None),
+            )?;
+            row.walk.gallery(row.fetched, None)
+        }
     }
 }
 

@@ -6,54 +6,72 @@
 use super::*;
 use crate::folder_scanner::FileVersion;
 
-/// The rest of a picker's statement, after the statement's own tables end
-/// with `items (rank, pos, kind, key, preferred, item)`: one row for each
-/// cover it shows, its section's rank (0 the saved cover, 1 a catalog's, 2 an
-/// image file), its place in the section, its key's kind and value, whether
-/// it is the owner's own cover, and the cover as an [`ItemJson`]. The
-/// statement binds `:filter`, and the focused cover's key as `:focus_kind`
-/// and `:focus_key` (both NULL for none); `fetched` is the expression for the
-/// fetch's `linked` column.
-///
-/// The picker focuses the cover the request names, else the owner's own
-/// cover, else its first, while it shows any. The covers before and after it
-/// wrap around the ends, and there are none when the picker shows one cover.
-pub(super) fn walk_sql(fetched: &str) -> String {
-    // The statement names `walk` twice and `items` once: SQLite expands a
-    // common table at each place a statement names it, and refuses a
-    // statement whose expansions open too many cursors.
-    format!(
-        ",
-walk AS MATERIALIZED (
-    SELECT *, ROW_NUMBER() OVER (ORDER BY rank, pos) - 1 AS n, COUNT(*) OVER () AS total
-    FROM items
-),
-focused AS (
-    SELECT n FROM walk
-    ORDER BY (kind, key) IS (:focus_kind, :focus_key) DESC, preferred DESC, n
-    LIMIT 1
-)
-SELECT {fetched},
-       :filter <> 'release_files',
-       :filter IN ('all', 'release_files'),
-       MAX(CASE WHEN w.rank = 0 THEN w.item END),
-       json_group_array(json(w.item) ORDER BY w.n) FILTER (WHERE w.rank = 1),
-       COUNT(*) FILTER (WHERE w.rank = 1),
-       json_group_array(json(w.item) ORDER BY w.n) FILTER (WHERE w.rank = 2),
-       COUNT(*) FILTER (WHERE w.rank = 2),
-       COUNT(w.n),
-       CASE WHEN COUNT(w.n) > 0 THEN json_object(
-           'item', json(MAX(CASE WHEN w.n = f.n THEN w.item END)),
-           'position', MAX(f.n),
-           'neighbors', CASE WHEN COUNT(w.n) > 1 THEN json_object(
-               'previous', json(MAX(CASE WHEN w.n = (f.n + w.total - 1) % w.total
-                                         THEN json_object('kind', w.kind, 'key', w.key) END)),
-               'next', json(MAX(CASE WHEN w.n = (f.n + 1) % w.total
-                                     THEN json_object('kind', w.kind, 'key', w.key) END))) END)
-       END
-FROM walk AS w LEFT JOIN focused AS f"
+// The part every picker's statement shares, over the caller's `items`: one
+// row for each cover it shows, with its section's rank (0 the saved cover, 1 a
+// catalog's, 2 an image file), its place in the section, its key's kind and
+// value, whether it is the owner's own cover, and the cover as an
+// [`ItemJson`]. The one row lists them in the order the picker walks them:
+// each section's covers and count, the total, and the cover the picker focuses
+// with its place among them and the covers before and after it.
+//
+// The picker focuses the cover `focus_kind` and `focus_key` name (both NULL
+// for none), else the owner's own cover, else its first, while it shows any.
+// The covers before and after it wrap around the ends, and there are none when
+// the picker shows one cover.
+//
+// The statement names `walk` twice and `items` once: SQLite expands a common
+// table at each place a statement names it, and refuses a statement whose
+// expansions open too many cursors.
+sqlive_compose::fragment!(
+    PickerWalk(filter: &'static str, focus_kind: Option<&'static str>, focus_key: Option<String>)
+    with items(
+        rank INTEGER, pos INTEGER, kind TEXT, key TEXT, preferred INTEGER, item TEXT
+    ) {
+        shows_remote: bool,
+        shows_files: bool,
+        saved: Option<String>,
+        remote: String,
+        remote_count: u32,
+        files: String,
+        files_count: u32,
+        total: u32,
+        focus: Option<String>
+    },
+    r#"
+    WITH walk AS MATERIALIZED (
+        SELECT items.rank, items.pos, items.kind, items.key, items.preferred, items.item,
+               ROW_NUMBER() OVER (ORDER BY items.rank, items.pos) - 1 AS n,
+               COUNT(*) OVER () AS total
+        FROM items
+    ),
+    focused AS (
+        SELECT walk.n FROM walk
+        ORDER BY (walk.kind, walk.key) IS (:focus_kind, :focus_key) DESC,
+                 walk.preferred DESC, walk.n
+        LIMIT 1
     )
-}
+    SELECT :filter <> 'release_files' AS shows_remote,
+           :filter IN ('all', 'release_files') AS shows_files,
+           MAX(CASE WHEN w.rank = 0 THEN w.item END) AS saved,
+           json_group_array(json(w.item) ORDER BY w.n) FILTER (WHERE w.rank = 1) AS remote,
+           COUNT(*) FILTER (WHERE w.rank = 1) AS remote_count,
+           json_group_array(json(w.item) ORDER BY w.n) FILTER (WHERE w.rank = 2) AS files,
+           COUNT(*) FILTER (WHERE w.rank = 2) AS files_count,
+           COUNT(w.n) AS total,
+           CASE WHEN COUNT(w.n) > 0 THEN json_object(
+               'item', json(MAX(CASE WHEN w.n = f.n THEN w.item END)),
+               'position', MAX(f.n),
+               'neighbors', CASE WHEN COUNT(w.n) > 1 THEN json_object(
+                   'previous', json(MAX(CASE WHEN w.n = (f.n + w.total - 1) % w.total
+                                             THEN json_object('kind', w.kind, 'key', w.key)
+                                        END)),
+                   'next', json(MAX(CASE WHEN w.n = (f.n + 1) % w.total
+                                         THEN json_object('kind', w.kind, 'key', w.key)
+                                    END))) END)
+           END AS focus
+    FROM walk AS w LEFT JOIN focused AS f
+"#
+);
 
 /// One cover as a picker's statement returns it.
 #[derive(serde::Deserialize)]
@@ -180,39 +198,15 @@ fn covers(json: &str, release_id: Option<&str>) -> Result<Vec<GalleryCover>, DbE
     items.into_iter().map(|item| item.cover(release_id)).collect()
 }
 
-/// The row [`walk_sql`] ends a statement with, as SQLite holds it.
-pub(super) struct GalleryColumns {
-    fetched: Option<bool>,
-    shows_remote: bool,
-    shows_files: bool,
-    saved: Option<String>,
-    remote: String,
-    remote_count: u32,
-    files: String,
-    files_count: u32,
-    total: u32,
-    focus: Option<String>,
-}
-
-impl GalleryColumns {
-    pub(super) fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            fetched: row.get(0)?,
-            shows_remote: row.get(1)?,
-            shows_files: row.get(2)?,
-            saved: row.get(3)?,
-            remote: row.get(4)?,
-            remote_count: row.get(5)?,
-            files: row.get(6)?,
-            files_count: row.get(7)?,
-            total: row.get(8)?,
-            focus: row.get(9)?,
-        })
-    }
-
+impl PickerWalk {
     /// The gallery these columns hold, for the picker of the library release
-    /// `release_id`, or of a candidate (`None`).
-    pub(super) fn gallery(self, release_id: Option<&str>) -> Result<CoverGallery, DbError> {
+    /// `release_id`, or of a candidate (`None`), whose last fetch stored
+    /// `fetched` as its `linked` column.
+    pub(super) fn gallery(
+        self,
+        fetched: Option<bool>,
+        release_id: Option<&str>,
+    ) -> Result<CoverGallery, DbError> {
         let section = |shows: bool, json: &str, count: u32| {
             shows
                 .then(|| Ok::<_, DbError>(CoverSection { items: covers(json, release_id)?, count }))
@@ -253,7 +247,7 @@ impl GalleryColumns {
             .transpose()?;
         Ok(CoverGallery {
             current,
-            fetch: CoverFetch::of_column(self.fetched),
+            fetch: CoverFetch::of_column(fetched),
             remote,
             files,
             total: self.total,

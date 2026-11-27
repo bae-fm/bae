@@ -46,6 +46,18 @@ sqlive_compose::fragment!(
 "#
 );
 
+// The files of the candidate `:key` that bae can show as its pictures: artwork
+// of a format a cover can be made from. The cover picker offers them, and the
+// pane shows them as images and leaves them out of its Files list.
+sqlive_compose::fragment!(
+    ShowableArtwork(key: crate::CandidateKey),
+    r#"
+    SELECT offered.*
+    FROM @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key) AS offered
+    WHERE offered.role = 'artwork' AND bae_supported_cover(offered.relative_path)
+"#
+);
+
 sqlive_compose::fragment!(
     CandidateTagSnapshot(key: crate::CandidateKey),
     r#"

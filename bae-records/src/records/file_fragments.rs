@@ -131,3 +131,18 @@ sqlive_compose::fragment!(
     FROM listed
 "#
 );
+
+// [`ShowableImageTypes`]'s rows, which a test compares with the formats a
+// cover can be made from.
+#[cfg(test)]
+sqlive_compose::read!(
+    ShownImageTypes,
+    r#"
+    SELECT shown.*
+    FROM @crate::records::file_fragments::ShowableImageTypes AS shown
+"#
+);
+
+#[cfg(test)]
+#[path = "file_fragments_tests.rs"]
+mod tests;

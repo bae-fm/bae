@@ -235,25 +235,18 @@ impl ImportTables {
     }
 }
 
-/// The SQL of the rows the picker of each candidate the table `candidates`
-/// holds (by its `content_hash`) lists as the covers its linked pressing
-/// offers: `(position, source, cover)`, the cover as `RemoteCover` JSON. It
-/// lists them only while the candidate's draft is the one bae read from that
-/// pressing.
-pub(crate) fn offered_covers_sql(candidates: &str) -> String {
-    format!(
-        "SELECT offered.position, offered.source, offered.cover \
-         FROM import_candidate_offered_cover AS offered JOIN {candidates} USING (content_hash) \
-         WHERE EXISTS (SELECT 1 FROM import_candidate_draft_provenance AS provenance \
-                       JOIN import_candidate_release_link AS link \
-                           ON link.content_hash = provenance.content_hash \
-                          AND link.kind = 'pressing' \
-                          AND (link.source, link.release_id) \
-                              = (provenance.source, provenance.release_id) \
-                       WHERE provenance.content_hash = offered.content_hash \
-                         AND provenance.kind = 'external_release')"
-    )
-}
+// `row_fragments::OfferedCovers` of the content `:content_hash`, in the order offered,
+// which tests read.
+#[cfg(test)]
+sqlive_compose::read!(
+    OfferedCoversOf(content_hash: String),
+    r#"
+    SELECT offered.*
+    FROM @crate::tables::import_state::row_fragments::OfferedCovers AS offered
+    WHERE offered.offered_hash = :content_hash
+    ORDER BY offered.position
+"#
+);
 
 #[cfg(test)]
 #[path = "claim_rows_tests.rs"]

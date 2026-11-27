@@ -139,3 +139,22 @@ sqlive_compose::fragment!(
     )
 "#
 );
+
+// The covers each candidate's linked pressing offers its picker, by the
+// candidate's content hash, each cover as `RemoteCover` JSON. A candidate has
+// them only while its draft is the one bae read from that pressing.
+sqlive_compose::fragment!(
+    OfferedCovers,
+    r#"
+    SELECT offered.content_hash AS offered_hash, offered.position, offered.source, offered.cover
+    FROM import_candidate_offered_cover AS offered
+    WHERE EXISTS (SELECT 1 FROM import_candidate_draft_provenance AS provenance
+                  JOIN import_candidate_release_link AS link
+                      ON link.content_hash = provenance.content_hash
+                     AND link.kind = 'pressing'
+                     AND (link.source, link.release_id)
+                         = (provenance.source, provenance.release_id)
+                  WHERE provenance.content_hash = offered.content_hash
+                    AND provenance.kind = 'external_release')
+"#
+);

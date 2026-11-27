@@ -57,14 +57,6 @@ pub use folder_images::{
     FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot,
 };
 
-/// The SQL condition that the scanned file `file` (a table alias over
-/// `scan_candidate_file`'s columns) is an image the gallery shows: artwork of
-/// a format a cover can be made from. The cover picker, the pane's images and
-/// the Files list all read it from here.
-pub(crate) fn showable_artwork_sql(file: &str) -> String {
-    format!("({file}.role = 'artwork' AND bae_supported_cover({file}.relative_path))")
-}
-
 fn pending_filter_column(filter: PendingFilter) -> &'static str {
     match filter {
         PendingFilter::All => "all",
