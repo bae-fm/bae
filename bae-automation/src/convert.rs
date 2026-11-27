@@ -458,7 +458,7 @@ impl AutomationCandidateEdit {
             album_title,
             album_artist_assignments,
             album_year,
-            pressing: bae_import::RawPressingEdit { year, labels, barcodes, facts },
+            pressing,
             tracks,
         } = form;
         Self {
@@ -468,7 +468,7 @@ impl AutomationCandidateEdit {
                 .map(AutomationCredited::from_core)
                 .collect(),
             album_year,
-            pressing: AutomationCandidatePressing { year, labels, barcodes, facts },
+            pressing,
             tracks: tracks.into_iter().map(AutomationTrackUserEdit::from_form_row).collect(),
             error,
         }

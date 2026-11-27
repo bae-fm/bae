@@ -9,22 +9,10 @@ pub struct AutomationCandidateEdit {
     pub album_artist_assignments: Vec<AutomationCredited>,
     /// As typed; empty is unset.
     pub album_year: String,
-    pub pressing: AutomationCandidatePressing,
+    pub pressing: bae_import::RawPressingEdit,
     pub tracks: Vec<AutomationTrackUserEdit>,
     /// Why an import refuses the form; null when the form shapes.
     pub error: Option<String>,
-}
-
-/// Mirrors `bae_import::RawPressingEdit`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationCandidatePressing {
-    /// As typed; empty is unset.
-    pub year: String,
-    /// Every label row, as typed.
-    pub labels: Vec<bae_import::RawLabelEdit>,
-    /// Every barcode row, as typed.
-    pub barcodes: Vec<String>,
-    pub facts: bae_types::pressing::PressingFacts,
 }
 
 /// A change of a library release's typed metadata. Mirrors
