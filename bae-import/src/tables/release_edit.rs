@@ -37,11 +37,11 @@ pub enum ReleaseEditSeedRefusal {
 fn seed_of(
     release_id: &str,
     rows: Option<ReleaseEditRows>,
-) -> Result<ReleaseEditSeed, ReleaseEditSeedRefusal> {
-    match rows {
+) -> Result<Result<ReleaseEditSeed, ReleaseEditSeedRefusal>, DbError> {
+    Ok(match rows {
         None => Err(ReleaseEditSeedRefusal::ReleaseMissing(release_id.to_string())),
-        Some(rows) => release_edit_seed(rows.processed()).map_err(ReleaseEditSeedRefusal::from),
-    }
+        Some(rows) => release_edit_seed(rows.processed()?).map_err(ReleaseEditSeedRefusal::from),
+    })
 }
 
 /// The seed of the release `release_id` as the write `sql` finds it.
@@ -49,7 +49,7 @@ fn seed_on(
     sql: &CovenWrite<'_>,
     release_id: &str,
 ) -> Result<Result<ReleaseEditSeed, ReleaseEditSeedRefusal>, DbError> {
-    Ok(seed_of(release_id, release_edit_rows_on(sql, release_id)?))
+    seed_of(release_id, release_edit_rows_on(sql, release_id)?)
 }
 
 /// The check a save of `form` makes in its own write: the library still
@@ -96,7 +96,7 @@ impl ImportTables {
         self.store
             .read(move |sql| release_edit_rows_on(&sql, &read_id))
             .process(move |rows| {
-                Ok(seed_of(&release_id, rows)
+                Ok(seed_of(&release_id, rows)?
                     .map(|seed| ReleaseEditForm::opened_on(release_id.clone(), seed)))
             })
             .await
@@ -184,7 +184,7 @@ impl ImportTables {
         let release_id = release_id.to_string();
         self.store
             .read(move |sql| release_edit_rows_on(&sql, &release_id))
-            .process(|rows| Ok(rows.map(ReleaseEditRows::processed)))
+            .process(|rows| rows.map(ReleaseEditRows::processed).transpose())
             .await
     }
 }

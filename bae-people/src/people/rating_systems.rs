@@ -153,6 +153,11 @@ pub fn is_heart(stars: Stars) -> bool {
 }
 
 impl LibraryRatingSystems {
+    /// How the library shows its tracks' ratings.
+    pub fn track_system(&self) -> Result<RatingSystem, DbError> {
+        Ok(self.systems()?.tracks)
+    }
+
     fn systems(&self) -> Result<RatingSystems, DbError> {
         let system = |stored: &str| {
             stored.parse().map_err(|refusal| DbError::unreadable("a rating system", refusal))

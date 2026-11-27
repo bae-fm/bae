@@ -1,330 +1,246 @@
 //! A release as its detail reads it: its tracks by side with their credits
 //! and works, its credits by role, its files with the lists among them, its
 //! records, the other device its audio is on, and whether it is pinned,
-//! stored, or queued to upload.
+//! stored, or queued to upload. [`ReleaseDetail`] is the one statement of it,
+//! which every read of a release's detail spreads.
 
-use super::files::cover_version_sql;
 use super::read::*;
-use super::release_credits::{credit_rows_column, release_credits_json_sql};
-use super::release_tracks::{total_duration_sql, track_groups_column, track_groups_json_sql};
 use super::*;
 
-/// The stars expression to pass when the caller wants no person's stars:
-/// NULL.
-pub const NO_STARS: &str = "NULL";
+// One release's detail, a row for each release: its row's columns, then its
+// labels, barcodes, media, Discogs details, tracks in groups (each with the
+// stars `stars` gives it), credits, files, records, storage row, cover and
+// number in its album.
+sqlive_compose::fragment!(
+    ReleaseDetail
+    with stars(track_id TEXT, stars INTEGER) {
+        release_number: Option<i64>
+    },
+    r#"
+    SELECT rel.id AS detail_release_id, rel.album_id, rel.album_order, rel.release_name, rel.year,
+           rel.country, rel.region, rel.status, rel.packaging, rel.source_folder_name,
+           rel.album_loudness_lufs, rel.album_peak_linear, rel.created_at,
+           @crate::records::pressing_columns::ReleaseLabels(parent: rel) AS labels,
+           @crate::records::pressing_columns::ReleaseBarcodes(parent: rel) AS barcodes,
+           @crate::records::pressing_columns::ReleaseMedia(parent: rel) AS media,
+           @crate::records::pressing_columns::ReleaseDiscogsDetails(parent: rel)
+               AS discogs_details,
+           @crate::records::track_group_fragments::TotalDuration(parent: rel)
+               AS total_duration,
+           @crate::records::track_group_fragments::TrackGroups(
+               parent: rel, stars: (SELECT * FROM stars)) AS groups,
+           @crate::records::credit_fragments::ReleaseCredits(parent: rel) AS credits,
+           @crate::records::credit_fragments::ReleaseHasCredits(parent: rel) AS credit_presence,
+           @crate::records::track_group_fragments::PerformsWorks(parent: rel) AS work_presence,
+           @crate::records::file_fragments::ReleaseFiles(
+               parent: rel,
+               files: (SELECT file.id, file.release_id, file.original_filename,
+                              file.content_type, file.created_at, file.file, file.role,
+                              file.document_kind, file.source_audio_layout,
+                              file.source_audio_content_type, file.source_audio_container,
+                              file.source_audio_duration_ms, file.source_audio_sample_rate_hz,
+                              file.source_audio_bits_per_sample,
+                              file.source_audio_bitrate_kbps, file.source_audio_channels
+                       FROM release_files AS file WHERE file.release_id = rel.id),
+               segments: (SELECT segment.file_id
+                          FROM release_files AS heard
+                          JOIN audio_format_segments AS segment ON segment.file_id = heard.id
+                          WHERE heard.release_id = rel.id),
+               carved: (SELECT cut.sheet_file_id
+                        FROM release_files AS carving
+                        JOIN carved_tracks AS cut ON cut.sheet_file_id = carving.id
+                        WHERE carving.release_id = rel.id),
+               sheets: (SELECT NULL, NULL WHERE 0)) AS file_lists,
+           described.*,
+           storage.*,
+           cover.*,
+           picture.source_file AS cover_source_file,
+           picture.embedded_file AS cover_embedded_file,
+           (SELECT numbered.number FROM release_number_in_album AS numbered
+            WHERE numbered.release_id = rel.id) AS release_number
+    FROM releases AS rel
+    JOIN @crate::records::fragments::ReleaseRecords AS described
+      ON described.records_release_id = rel.id
+    JOIN @crate::release_storage::ReleaseStorage AS storage ON storage.release_id = rel.id
+    LEFT JOIN covers AS picture ON picture.id = rel.id
+    LEFT JOIN @crate::records::files::CoverVersion AS cover ON cover.id = picture.id
+"#
+);
 
-/// The releases a read of their detail covers.
-#[derive(Debug, Clone, Copy)]
-pub enum ReleaseSet<'a> {
-    /// One release, by its id.
-    One(&'a str),
-    /// Every release of an album, by the album's id, in the album's order.
-    OfAlbum(&'a str),
-}
-
-impl ReleaseSet<'_> {
-    /// The condition and the order of the set over a row `rel` of `releases`,
-    /// binding the id as `?1`.
-    fn condition(&self) -> &'static str {
-        match self {
-            Self::One(_) => "rel.id = ?1 ORDER BY rel.id",
-            Self::OfAlbum(_) => "rel.album_id = ?1 ORDER BY rel.album_order, rel.id",
-        }
+impl ReleaseDetail {
+    /// The release the detail is of.
+    pub fn release_id(&self) -> &str {
+        &self.detail_release_id
     }
 
-    fn id(&self) -> &str {
-        match self {
-            Self::One(id) | Self::OfAlbum(id) => id,
-        }
+    /// The release's row.
+    fn release(&self) -> Result<DbRelease, DbError> {
+        let facts = super::pressing_columns::facts_of_columns(
+            self.country.clone(),
+            self.region.clone(),
+            self.status.as_deref(),
+            self.packaging.as_deref(),
+            &self.discogs_details.discogs_details,
+            &self.media.media,
+        )?;
+        Ok(DbRelease {
+            id: self.detail_release_id.clone(),
+            album_id: self.album_id.clone(),
+            release_name: self.release_name.clone(),
+            pressing: bae_types::pressing::Pressing {
+                typed: bae_types::pressing::TypedPressing {
+                    year: self
+                        .year
+                        .map(|year| {
+                            i32::try_from(year)
+                                .map_err(|_error| DbError::unreadable("a release's year", year))
+                        })
+                        .transpose()?,
+                    labels: super::pressing_columns::labels_of_json(&self.labels.labels)?,
+                    barcodes: super::pressing_columns::barcodes_of_json(&self.barcodes.barcodes)?,
+                },
+                facts,
+            },
+            source_folder_name: self.source_folder_name.clone(),
+            album_loudness_lufs: self.album_loudness_lufs,
+            album_peak_linear: self.album_peak_linear,
+            created_at: bae_util::timestamp::parse_rfc3339(&self.created_at).map_err(
+                |_unparsed| DbError::unreadable("a release's created_at", &self.created_at),
+            )?,
+        })
+    }
+
+    /// The release's detail, one entry per track. A value no column of the
+    /// library may hold fails.
+    pub fn decoded(self) -> Result<DbReleaseDetail, DbError> {
+        let release = self.release()?;
+        let total = self.total_duration.total_duration_ms;
+        let number = self
+            .release_number
+            .ok_or_else(|| DbError::unreadable("a release's number in its album", &release.id))?;
+        let cover = self.cover.and_then(|cover| cover.version).map(|version| DbReleaseCover {
+            version,
+            source: CoverSource::of_columns(self.cover_source_file, self.cover_embedded_file),
+        });
+        let upload = self.storage.upload()?;
+        let elsewhere = elsewhere_of_json(self.storage.elsewhere())?;
+        let (pinned, remote) = (self.storage.pinned(), self.storage.stored()?);
+        Ok(DbReleaseDetail {
+            total_duration_ms: u64::try_from(total)
+                .map_err(|_error| DbError::unreadable("a release's total length", total))?,
+            track_groups: super::release_tracks::track_groups_of_json(&self.groups.track_groups)?,
+            credits: super::release_credits::credit_rows_of_json(&self.credits.credit_rows)?,
+            has_credits: self.credit_presence.has_credits,
+            performs_works: self.work_presence.performs_works,
+            files: release_files_of_json(&self.file_lists.release_files)?,
+            has_records: self.described.records_kind().is_some(),
+            records: super::read::records_of_json(self.described.records_json())?,
+            elsewhere,
+            pinned,
+            remote,
+            upload,
+            cover,
+            release_number: number,
+            release,
+        })
     }
 }
 
-/// The release `release_id`'s rows as its detail reads them, beside the
-/// `extra_columns` (SQL over the release `rel`, empty for none) that `extra` reads; `None`
-/// when the release does not exist. See [`release_details_on`].
-pub fn release_detail_rows_on<X>(
+// The title of the album a release is in, with its year, its credits and
+// whether it is a compilation.
+sqlive_compose::fragment!(
+    ReleaseAlbumFacts { year: Option<i64>, is_compilation: bool },
+    r#"
+    SELECT album.id AS album_id, album.year, album.is_compilation
+    FROM albums AS album
+"#
+);
+
+impl ReleaseAlbumFacts {
+    /// Whether the album is a compilation.
+    pub fn is_compilation(&self) -> bool {
+        self.is_compilation
+    }
+
+    /// The album's year, if it states one.
+    pub fn year(&self) -> Result<Option<i32>, DbError> {
+        self.year
+            .map(|year| {
+                i32::try_from(year).map_err(|_error| DbError::unreadable("an album's year", year))
+            })
+            .transpose()
+    }
+}
+
+// A release as its editor reads it: its detail, with no person's stars, beside
+// its album's title, year and credits; no row for a release the library does
+// not hold.
+sqlive_compose::read!(
+    ReleaseEditorDetail(release: String),
+    r#"
+    SELECT detail.*, facts.*, album.*
+    FROM @crate::records::release_detail::ReleaseDetail(
+        stars: @crate::records::track_group_fragments::NoTrackStars) AS detail
+    JOIN @crate::records::release_detail::ReleaseAlbumFacts AS facts
+      ON facts.album_id = detail.album_id
+    JOIN @crate::records::fragments::LibraryAlbum AS album ON album.album_id = detail.album_id
+    WHERE detail.detail_release_id = :release
+"#
+);
+
+/// A release's detail beside its album's title, year and credits, as the
+/// release editor reads it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReleaseEditorRows {
+    row: ReleaseEditorDetailRow,
+}
+
+/// The release `release_id` as its editor reads it; `None` when the library
+/// holds no such release.
+pub fn release_editor_rows_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
-    my_stars: &str,
-    extra_columns: &str,
-    extra: fn(&Row<'_>) -> rusqlite::Result<X>,
-) -> Result<Option<(DbReleaseDetailRows, X)>, DbError> {
-    Ok(release_details_on(sql, ReleaseSet::One(release_id), my_stars, extra_columns, extra)?
-        .into_iter()
-        .next())
+) -> Result<Option<ReleaseEditorRows>, DbError> {
+    let statement = ReleaseEditorDetailParams { release: release_id.to_owned() };
+    Ok(bae_store::statement_optional(sql, &statement)?.map(|row| ReleaseEditorRows { row }))
 }
 
-/// The rows of the detail of each release of `set`, in one statement. Each
-/// release is one row whose columns hold its tracks in groups (each with the
-/// stars `my_stars` gives it, an SQL expression over the track `track`, or
-/// [`NO_STARS`]), its credits, its files, records and the other device its
-/// audio is on, and whether it is pinned, stored, or queued to upload. Each
-/// row also holds `extra_columns`, further columns of the release `rel`,
-/// which `extra` reads.
-pub fn release_details_on<X>(
-    sql: &impl coven::SqlRead,
-    set: ReleaseSet<'_>,
-    my_stars: &str,
-    extra_columns: &str,
-    extra: fn(&Row<'_>) -> rusqlite::Result<X>,
-) -> Result<Vec<(DbReleaseDetailRows, X)>, DbError> {
-    let statement = format!(
-        "SELECT rel.*, {labels} AS labels, {barcodes} AS barcodes, {media} AS media, \
-                {discogs_details} AS discogs_details, \
-                {total_duration} AS total_duration_ms, \
-                {track_groups} AS track_groups, \
-                {credits} AS credits, \
-                {has_credits} AS has_credits, \
-                {performs_works} AS performs_works, \
-                {files} AS files, \
-                {records} AS records, \
-                EXISTS (SELECT 1 FROM release_records rr WHERE rr.release_id = rel.id) \
-                    AS has_records, \
-                storage.elsewhere AS elsewhere, \
-                storage.pinned AS pinned, \
-                storage.stored = 1 AS remote, \
-                {upload_columns}, \
-                {cover_version} AS cover_version, \
-                (SELECT cover.source_file FROM covers AS cover WHERE cover.id = rel.id) \
-                    AS cover_source_file, \
-                (SELECT cover.embedded_file FROM covers AS cover WHERE cover.id = rel.id) \
-                    AS cover_embedded_file, \
-                (SELECT number FROM release_number_in_album WHERE release_id = rel.id) \
-                    AS release_number{extra_columns} \
-         FROM releases rel \
-         JOIN ({storage}) AS storage ON storage.release_id = rel.id \
-         WHERE {condition}",
-        labels = super::pressing_columns::release_labels_sql("rel.id"),
-        barcodes = super::pressing_columns::release_barcodes_sql("rel.id"),
-        media = super::pressing_columns::release_media_sql("rel.id"),
-        discogs_details = super::pressing_columns::release_discogs_details_sql("rel.id"),
-        total_duration = total_duration_sql("rel.id"),
-        track_groups = track_groups_json_sql("rel.id", my_stars),
-        credits = release_credits_json_sql("rel.id"),
-        has_credits = super::release_credits::release_has_credits_sql("rel.id"),
-        performs_works = performs_works_sql("rel.id"),
-        files = release_files_json_sql(
-            "rel.id",
-            "release_files",
-            "audio_format_segments",
-            "carved_tracks",
-            "NULL"
-        ),
-        records = release_records_json_sql("rel.id"),
-        upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
-        cover_version = cover_version_sql("rel.id"),
-        extra_columns =
-            if extra_columns.is_empty() { String::new() } else { format!(", {extra_columns}") },
-        storage = crate::release_storage::ReleaseStorageRows::SQL,
-        condition = set.condition(),
-    );
-    Ok(sql.query(&statement, params![set.id()], |row| {
-        let detail = DbReleaseDetailRows {
-            release: row_to_release(row)?,
-            total_duration_ms: bae_store::read::count_column(row, "total_duration_ms")?,
-            track_groups: track_groups_column(row, "track_groups")?,
-            credits: credit_rows_column(row, "credits")?,
-            has_credits: row.get("has_credits")?,
-            performs_works: row.get("performs_works")?,
-            files: release_files_column(row, "files")?,
-            records: records_column(row, "records")?,
-            has_records: row.get("has_records")?,
-            elsewhere: elsewhere_in_row(row, "elsewhere")?,
-            pinned: row.get("pinned")?,
-            remote: row.get("remote")?,
-            upload: super::queued_uploads::release_upload_in_row(row)?,
-            cover: cover_in_row(row)?,
-            release_number: row.get("release_number")?,
-        };
-        Ok((detail, extra(row)?))
-    })?)
+/// [`ReleaseEditorRows`] read: the release's detail and its album's title,
+/// year and credits.
+pub struct ReleaseEditorFacts {
+    pub detail: DbReleaseDetail,
+    pub album_title: String,
+    pub album_year: Option<i32>,
+    pub album_artists: Vec<crate::credits::LibraryCredit>,
 }
 
-/// The cover the columns `cover_version`, `cover_source_file` and
-/// `cover_embedded_file` of a release detail row state: all are NULL for a
-/// release with no cover.
-fn cover_in_row(row: &Row) -> rusqlite::Result<Option<DbReleaseCover>> {
-    let version: Option<String> = row.get("cover_version")?;
-    let source_file: Option<String> = row.get("cover_source_file")?;
-    let embedded_file: Option<String> = row.get("cover_embedded_file")?;
-    Ok(version.map(|version| DbReleaseCover {
-        version,
-        source: CoverSource::of_columns(source_file, embedded_file),
-    }))
-}
-
-/// A release's rows as [`release_details_on`] read them.
-#[derive(Clone, PartialEq)]
-pub struct DbReleaseDetailRows {
-    release: DbRelease,
-    total_duration_ms: u64,
-    track_groups: Vec<DbTrackGroup>,
-    credits: Vec<DbCreditRow>,
-    has_credits: bool,
-    performs_works: bool,
-    files: DbReleaseFiles,
-    records: Vec<bae_catalogs::records::ReleaseRecord>,
-    has_records: bool,
-    elsewhere: Option<OtherDevice>,
-    pinned: bool,
-    remote: bool,
-    upload: Option<DbReleaseUpload>,
-    cover: Option<DbReleaseCover>,
-    release_number: i64,
-}
-
-impl DbReleaseDetailRows {
-    /// The release the rows are of.
-    pub fn release(&self) -> &DbRelease {
-        &self.release
-    }
-
-    /// The release's detail, one entry per track.
-    pub fn process(self) -> DbReleaseDetail {
-        DbReleaseDetail {
-            release: self.release,
-            total_duration_ms: self.total_duration_ms,
-            track_groups: self.track_groups,
-            credits: self.credits,
-            has_credits: self.has_credits,
-            performs_works: self.performs_works,
-            files: self.files,
-            records: self.records,
-            has_records: self.has_records,
-            elsewhere: self.elsewhere,
-            pinned: self.pinned,
-            remote: self.remote,
-            upload: self.upload,
-            cover: self.cover,
-            release_number: self.release_number,
-        }
+impl ReleaseEditorRows {
+    /// The rows read into the release's values.
+    pub fn decoded(self) -> Result<ReleaseEditorFacts, DbError> {
+        let album_year = self.row.facts.year()?;
+        let (_, album_title, credits) = self.row.album.into_parts()?;
+        Ok(ReleaseEditorFacts {
+            detail: self.row.detail.decoded()?,
+            album_title,
+            album_year,
+            album_artists: super::read::credits_from_json(&credits)?,
+        })
     }
 }
 
-/// Whether any track of the release `release` (an SQL expression naming its
-/// id) performs a work.
-fn performs_works_sql(release: &str) -> String {
-    format!(
-        "EXISTS (SELECT 1 FROM track_works tw JOIN tracks t ON t.id = tw.track_id \
-         WHERE t.release_id = {release})"
-    )
-}
-
-/// The release `release` (an SQL expression naming its id)'s files, as the
-/// table `table` with the columns of `release_files` holds them, and among
-/// them the images the gallery shows ([`super::files::showable_image_sql`]) and
-/// the files no track plays from, each in the release's file order, with the number of
-/// files, the number of images, the files' total size and the summary of
-/// their audio, as one JSON object for [`release_files_column`]. A track
-/// plays from each file a segment of the table `segments` (with the column
-/// `file_id` of `audio_format_segments`) reads, and from each CUE sheet that
-/// carves it, by [`super::files::unplayed_files_cte`], which leaves out the images
-/// the gallery shows. `carved` is the table of the CUE sheets' tracks
-/// (`carved_tracks`, or the part of it that stays), and `sheet_without_tracks` the SQL that
-/// gives the file `listed.id` the JSON of the row of a CUE sheet none of whose
-/// tracks stay, or NULL
-/// for any other file; `carried` then lists the files no track plays from in
-/// the same order as `others`, each file or sheet with no track in its place.
-fn release_files_json_sql(
-    release: &str,
-    table: &str,
-    segments: &str,
-    carved: &str,
-    sheet_without_tracks: &str,
-) -> String {
-    let image = super::files::showable_image_sql("listed.content_type");
-    let list = |condition: &str| {
-        format!(
-            "json_group_array(json(listed.file_json) \
-                 ORDER BY listed.original_filename COLLATE natural_order, listed.id) \
-             FILTER (WHERE {condition})"
-        )
-    };
-    format!(
-        "(WITH {unplayed} SELECT json_object( \
-              'files', json({files}), 'images', json({images}), \
-              'others', json({others}), 'carried', json({carried}), \
-              'has_others', COALESCE(SUM(listed.in_files), 0) > 0, \
-              'count', COUNT(*), 'image_count', COUNT(*) FILTER (WHERE {image}), \
-              'total_size', COALESCE(SUM(listed.size), 0), \
-              'source_audio', {source_audio}) \
-          FROM (SELECT f.id, f.original_filename, f.content_type, \
-                       f.id IN (SELECT file_id FROM unplayed_files) AS in_files, \
-                       coven.size AS size, {file_json} AS file_json, {sheet_without_tracks} AS sheet_without_tracks \
-                FROM {table} AS f \
-                JOIN coven_files AS coven ON coven.id = f.file \
-                WHERE f.release_id = {release}) AS listed)",
-        unplayed = super::files::unplayed_files_cte(
-            &format!(
-                "(SELECT id AS file_id, {image} AS showable_image \
-                  FROM release_files AS listed \
-                  WHERE release_id = {release})"
-            ),
-            &format!(
-                "(SELECT file_id AS audio_file_id, NULL AS sheet_file_id FROM {segments} \
-                  UNION ALL \
-                  SELECT NULL, sheet_file_id FROM {carved})"
-            ),
-        ),
-        files = list("1"),
-        images = list(&image),
-        others = list("listed.in_files"),
-        carried = "json_group_array(CASE WHEN listed.sheet_without_tracks IS NULL \
-                                         THEN json_object('file', json(listed.file_json)) \
-                                         ELSE json_object('sheet', json(listed.sheet_without_tracks)) END \
-                       ORDER BY listed.original_filename COLLATE natural_order, listed.id) \
-                   FILTER (WHERE listed.in_files)",
-        file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
-        source_audio = crate::source_audio::source_audio_summary_sql(&format!(
-            "SELECT ROW_NUMBER() OVER (ORDER BY f.original_filename COLLATE natural_order, \
-                                                f.id) AS position, \
-                    f.source_audio_layout AS layout, \
-                    f.source_audio_content_type AS content_type, \
-                    f.source_audio_sample_rate_hz AS sample_rate_hz, \
-                    f.source_audio_bits_per_sample AS bits_per_sample, \
-                    f.source_audio_bitrate_kbps AS bitrate_kbps, \
-                    f.source_audio_channels AS channels, \
-                    f.source_audio_duration_ms AS duration_ms \
-             FROM {table} AS f WHERE f.release_id = {release}"
-        )),
-        release = release,
-    )
-}
-
-/// The release editor's Files rows and their CUE placement choices.
+/// The release editor's Files rows and their CUE placement choices
+/// ([`super::editor_files::EditorReleaseFiles`]).
 #[cfg(desktop)]
 pub fn release_files_on(
     sql: &impl coven::SqlRead,
-    layout: &super::layout::LayoutParams<'_>,
+    form: super::editor_files::EditorReleaseFilesParams,
 ) -> Result<DbReleaseFiles, DbError> {
-    let choices = super::sheet_side_choices_sql(&super::layout::base_mediums_source());
-    Ok(sql.query_row(
-        &format!(
-            "WITH {}, {}, {}, choices AS MATERIALIZED (SELECT * FROM {choices}) SELECT {} AS files",
-            super::release_tracks::track_places_ctes(
-                super::MediumsSource::Release,
-                "m.release_id = :release"
-            ),
-            super::sheet_files::sheet_files_ctes(":release", ":edits"),
-            super::sheet_files::sheet_audio_options_ctes(":release"),
-            release_files_json_sql(
-                ":release",
-                "laid_files",
-                "laid_segments",
-                "(SELECT * FROM carved_tracks \
-                  WHERE track_id NOT IN (SELECT track_id FROM dropped_tracks))",
-                &super::sheet_files::sheet_without_tracks_json_sql("f.id"),
-            )
-        ),
-        rusqlite::named_params! {
-            ":release": layout.release_id, ":edits": layout.edits,
-            ":applied": layout.applied, ":mediums": layout.mediums,
-        },
-        |row| release_files_column(row, "files"),
-    )?)
+    let row = bae_store::statement_row(sql, &form)?;
+    release_files_of_json(&row.files.release_files)
 }
 
-/// One entry of the `carried` list of [`release_files_json_sql`].
+/// One entry of the `carried` list of
+/// [`ReleaseFiles`](super::file_fragments::ReleaseFiles).
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum CarriedColumns {
@@ -332,8 +248,9 @@ enum CarriedColumns {
     Sheet(super::sheet_files::SheetWithoutTracksColumns),
 }
 
-/// The release's files as [`release_files_json_sql`] read them into `column`.
-fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbReleaseFiles> {
+/// The release's files as [`ReleaseFiles`](super::file_fragments::ReleaseFiles)
+/// wrote them into its document `json`.
+fn release_files_of_json(json: &str) -> Result<DbReleaseFiles, DbError> {
     #[derive(serde::Deserialize)]
     struct Stored {
         files: Vec<FileColumns>,
@@ -347,31 +264,26 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         #[serde(deserialize_with = "crate::source_audio::SourceAudioSummary::deserialize_stored")]
         source_audio: Option<crate::source_audio::SourceAudioSummary>,
     }
-    let stored: Stored = bae_store::read::json_column(row, column)?;
+    const DOCUMENT: &str = "a release's files";
+    let stored: Stored = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json(DOCUMENT, json, error))?;
+    let file = |columns: FileColumns| {
+        file_of(columns)
+            .map_err(|(field, reason)| DbError::unreadable(DOCUMENT, format!("{field}: {reason}")))
+    };
     let carried = stored
         .carried
         .into_iter()
         .map(|carried| match carried {
-            CarriedColumns::File(file) => {
-                file_of(file).map(DbCarriedFile::File).map_err(|(field, reason)| {
-                    column_conversion_error(row, column, format!("{field}: {reason}"))
-                })
-            }
+            CarriedColumns::File(columns) => file(columns).map(DbCarriedFile::File),
             CarriedColumns::Sheet(sheet) => sheet
                 .decoded()
                 .map(DbCarriedFile::Sheet)
-                .map_err(|reason| column_conversion_error(row, column, reason)),
+                .map_err(|reason| DbError::unreadable(DOCUMENT, reason)),
         })
-        .collect::<rusqlite::Result<Vec<_>>>()?;
+        .collect::<Result<Vec<_>, DbError>>()?;
     let files = |columns: Vec<FileColumns>| {
-        columns
-            .into_iter()
-            .map(|file| {
-                file_of(file).map_err(|(field, reason)| {
-                    column_conversion_error(row, column, format!("{field}: {reason}"))
-                })
-            })
-            .collect::<rusqlite::Result<Vec<_>>>()
+        columns.into_iter().map(file).collect::<Result<Vec<_>, DbError>>()
     };
     Ok(DbReleaseFiles {
         files: files(stored.files)?,
@@ -386,22 +298,22 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
     })
 }
 
-/// The other device a release's audio is on, from `column` of a row that
-/// holds a storage row's `elsewhere`
-/// ([`crate::release_storage::ReleaseStorage`]). `elsewhere_in_row` returns
-/// `None` when no other device alone holds an audio file of the release. A
-/// device that coven
+/// The other device a release's audio is on, from the `elsewhere` text of its
+/// storage row ([`crate::release_storage::ReleaseStorage`]); `None` when no
+/// other device alone holds an audio file of the release. A device that coven
 /// doesn't register, or that is this device, fails the read: the release's
 /// storage row names only a device that coven's record of a file names, and
 /// never this one, so either is a bug.
-fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<OtherDevice>> {
+fn elsewhere_of_json(json: &str) -> Result<Option<OtherDevice>, DbError> {
     type Registration = (String, String, i64, i64);
+    const COLUMN: &str = "a release's other device";
     let Some((device, registration)) =
-        bae_store::read::json_column::<Option<(String, Option<Registration>)>, _>(row, column)?
+        serde_json::from_str::<Option<(String, Option<Registration>)>>(json)
+            .map_err(|error| DbError::unreadable_json(COLUMN, json, error))?
     else {
         return Ok(None);
     };
-    let fail = |cause: String| bae_store::read::column_conversion_error(row, column, cause);
+    let fail = |cause: String| DbError::unreadable(COLUMN, cause);
     let Some((name, state, member_removed, is_self)) = registration else {
         return Err(fail(format!(
             "the release's storage row names the device {device}, which coven doesn't register"
@@ -413,9 +325,7 @@ fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<Othe
              that alone holds one of its audio files"
         )));
     }
-    let state = state
-        .parse()
-        .map_err(|error| bae_store::read::column_conversion_error(row, column, error))?;
+    let state = state.parse().map_err(|error| fail(format!("{error}")))?;
     Ok(Some(other_device(name, state, member_removed != 0)))
 }
 

@@ -21,15 +21,7 @@ pub(crate) fn release_edit_rows_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Option<ReleaseEditRows>, DbError> {
-    let Some((detail, (album_title, album_year, album_artists))) =
-        bae_records::records::release_detail_rows_on(
-            sql,
-            release_id,
-            bae_records::records::NO_STARS,
-            &bae_records::records::read::album_of_release_sql(),
-            bae_records::records::read::album_of_release_columns,
-        )?
-    else {
+    let Some(release) = bae_records::records::release_editor_rows_on(sql, release_id)? else {
         return Ok(None);
     };
     let tracks = bae_records::records::release_edit_tracks_on(
@@ -38,29 +30,26 @@ pub(crate) fn release_edit_rows_on(
         bae_records::records::MediumsSource::Release,
         [release_id],
     )?;
-    Ok(Some(ReleaseEditRows { detail, album_title, album_year, album_artists, tracks }))
+    Ok(Some(ReleaseEditRows { release, tracks }))
 }
 
 /// [`release_edit_rows_on`]'s rows.
 pub(crate) struct ReleaseEditRows {
-    detail: bae_records::records::DbReleaseDetailRows,
-    album_title: String,
-    album_year: Option<i32>,
-    album_artists: Vec<bae_records::credits::LibraryCredit>,
+    release: bae_records::records::ReleaseEditorRows,
     tracks: Vec<bae_records::DbReleaseEditTrack>,
 }
 
 impl ReleaseEditRows {
     /// The rows as the editor reads them.
-    pub(crate) fn processed(self) -> ReleaseEditContext {
-        let Self { detail, album_title, album_year, album_artists, tracks } = self;
-        ReleaseEditContext {
-            detail: detail.process(),
+    pub(crate) fn processed(self) -> Result<ReleaseEditContext, DbError> {
+        let Self { release, tracks } = self;
+        let bae_records::records::ReleaseEditorFacts {
+            detail,
             album_title,
             album_year,
             album_artists,
-            tracks,
-        }
+        } = release.decoded()?;
+        Ok(ReleaseEditContext { detail, album_title, album_year, album_artists, tracks })
     }
 }
 

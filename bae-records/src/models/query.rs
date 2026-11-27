@@ -328,7 +328,7 @@ pub struct DbReleaseFiles {
     pub image_count: u32,
     pub total_size: u64,
     /// What the release's audio is, summarized over the audio files its
-    /// tracklist plays (`source_audio_summary_sql`); `None` when it has none.
+    /// tracklist plays (`AudioSummary`); `None` when it has none.
     pub source_audio: Option<crate::source_audio::SourceAudioSummary>,
 }
 

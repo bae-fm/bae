@@ -109,12 +109,6 @@ pub fn album_credits_beside_json_sql(artist_expr: &str) -> String {
     )
 }
 
-/// The track `track_alias`'s own credits as a JSON array, `[]` for none: a
-/// track with none takes its album's ([`track_credits_json_sql`]).
-pub fn track_own_credits_json_sql(track_alias: &str) -> String {
-    format!("COALESCE({}, '[]')", track_own_credits_sql(track_alias))
-}
-
 /// The credits the track `track_alias` shows, as a JSON array: its own, else
 /// its album `a`'s. The one place that rule is written: every read of a
 /// track's shown credits goes through it.

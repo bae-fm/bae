@@ -296,7 +296,15 @@ pub(crate) fn release_edit_draft_rows_on(
             release,
             |row| row.get(0),
         )?,
-        files: bae_records::records::release_files_on(sql, &params.layout())?,
+        files: bae_records::records::release_files_on(
+            sql,
+            bae_records::records::EditorReleaseFilesParams {
+                release: params.release.clone(),
+                applied: params.applied,
+                mediums: params.mediums.clone(),
+                edits: params.edits.clone(),
+            },
+        )?,
         deletes_track_data: deletes_track_data_on(sql, &params)?,
         records: match &form.records {
             Some(records) => records.clone(),

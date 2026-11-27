@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::album_detail::{ReleaseDetail, ReleaseResolveCtx};
-use bae_people::people::{RatingSystem, RATING_SYSTEMS_SQL};
+use bae_store::{statement_optional, statement_rows};
 
 impl LibraryViews {
     /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
@@ -29,8 +29,8 @@ impl LibraryViews {
     ) -> Result<Option<DbReleaseDetail>, DbError> {
         let release_id = release_id.to_string();
         self.store
-            .read(move |sql| build_release_detail_on(&sql, &release_id))
-            .process(|rows| Ok(rows.map(|rows| rows.process().detail)))
+            .read(move |sql| find_release_detail_context_on(&sql, &release_id))
+            .process(|rows| rows.map(|rows| Ok(rows.process()?.detail)).transpose())
             .await
     }
 
@@ -42,7 +42,7 @@ impl LibraryViews {
         let release_id = release_id.to_string();
         self.store
             .read(move |sql| find_release_detail_context_on(&sql, &release_id))
-            .process(|rows| Ok(rows.map(ReleaseContextRows::process)))
+            .process(|rows| rows.map(ReleaseDetailRows::process_context).transpose())
             .await
     }
 
@@ -58,8 +58,10 @@ impl LibraryViews {
                 Some(release_id) => find_release_detail_context_on(&sql, release_id),
                 None => Ok(None),
             })
-            .process(|context| {
-                Ok(ReleaseDetailProjection { context: context.map(ReleaseContextRows::process) })
+            .process(|rows| {
+                Ok(ReleaseDetailProjection {
+                    context: rows.map(ReleaseDetailRows::process_context).transpose()?,
+                })
             })
     }
 }
@@ -98,133 +100,102 @@ pub struct ReleaseDetailProjection {
     pub context: Option<ReleaseDetailContext>,
 }
 
-/// The release's detail rows beside its album's compilation flag and year, in
-/// one statement; `None` when the release doesn't exist.
+// A release as its detail view reads it: records' detail of it, with the
+// stars this device's person gave its tracks, beside its album's compilation
+// flag and year, its entry in the download queue, the storage actions it offers
+// and how the library shows ratings.
+sqlive_compose::fragment!(
+    ViewedRelease,
+    r#"
+    SELECT release.*, album.*, download.*, actions.*, systems.*
+    FROM @bae_records::records::release_detail::ReleaseDetail(
+        stars: @bae_people::people::fragments::OwnTrackStars) AS release
+    JOIN @bae_records::records::release_detail::ReleaseAlbumFacts AS album
+      ON album.album_id = release.album_id
+    LEFT JOIN @bae_transfers::download_entry::QueuedDownloadEntry AS download
+           ON download.release_id = release.detail_release_id
+    JOIN @crate::storage_actions::ReleaseStorageActions AS actions
+      ON actions.actions_release_id = release.detail_release_id
+    JOIN @bae_people::people::rating_systems::LibraryRatingSystems AS systems ON 1
+"#
+);
+
+// [`ViewedRelease`] of the release `release`; no row for a release the
+// library does not hold.
+sqlive_compose::read!(
+    ViewedReleaseDetail(release: String),
+    r#"
+    SELECT viewed.*
+    FROM @crate::release::ViewedRelease AS viewed
+    WHERE viewed.detail_release_id = :release
+"#
+);
+
+// [`ViewedRelease`] of each release of the album `album`, in the album's
+// order.
+sqlive_compose::read!(
+    ViewedAlbumReleases(album: String),
+    r#"
+    SELECT viewed.*
+    FROM @crate::release::ViewedRelease AS viewed
+    WHERE viewed.album_id = :album
+    ORDER BY viewed.album_order, viewed.detail_release_id
+"#
+);
+
+/// The release's detail rows beside its album's compilation flag and year;
+/// `None` when the release doesn't exist.
 pub(crate) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Option<ReleaseContextRows>, DbError> {
-    Ok(release_detail_rows_on(
-        sql,
-        release_id,
-        &bae_people::people::own_track_stars_sql("track"),
-        &format!(
-            "{}, \
-             (SELECT a.is_compilation FROM albums a WHERE a.id = rel.album_id) \
-                 AS album_is_compilation, \
-             (SELECT a.year FROM albums a WHERE a.id = rel.album_id) AS album_year",
-            release_detail_columns()
-        ),
-        release_context_columns,
-    )?
-    .map(|(rows, (columns, is_compilation, album_year))| ReleaseContextRows {
-        detail: ReleaseDetailRows { rows, columns },
-        is_compilation,
-        album_year,
-    }))
-}
-
-/// The columns of [`find_release_detail_context_on`]'s statement beside the
-/// release's rows and its album's compilation flag and year.
-fn release_context_columns(
-    row: &Row<'_>,
-) -> rusqlite::Result<(ReleaseDetailColumns, bool, Option<i32>)> {
-    Ok((ReleaseDetailColumns::read(row)?, row.get("album_is_compilation")?, row.get("album_year")?))
-}
-
-#[derive(Clone, PartialEq)]
-pub(crate) struct ReleaseContextRows {
-    detail: ReleaseDetailRows,
-    is_compilation: bool,
-    album_year: Option<i32>,
-}
-
-impl ReleaseContextRows {
-    pub(crate) fn process(self) -> ReleaseDetailContext {
-        let ReleaseDetailRead { detail, download, actions, tracks_rating_system } =
-            self.detail.process();
-        ReleaseDetailContext {
-            detail,
-            download,
-            actions,
-            is_compilation: self.is_compilation,
-            album_year: self.album_year,
-            tracks_rating_system,
-        }
-    }
-}
-
-/// The columns beside a release `rel`'s detail rows: its entry in the
-/// download queue, its storage actions and how its track ratings show.
-fn release_detail_columns() -> String {
-    format!(
-        "{}, {}, (SELECT tracks FROM ({RATING_SYSTEMS_SQL})) AS tracks_rating_system",
-        bae_transfers::download_entry_sql("rel.id"),
-        crate::storage_actions::storage_action_columns("rel.id")
-    )
-}
-
-#[derive(Clone, PartialEq)]
-struct ReleaseDetailColumns {
-    download: Option<bae_transfers::DownloadEntry>,
-    actions: crate::DbStorageActions,
-    tracks_rating_system: RatingSystem,
-}
-
-impl ReleaseDetailColumns {
-    fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            download: bae_transfers::download_entry_column(row)?,
-            actions: crate::DbStorageActions::of_row(row)?,
-            tracks_rating_system: bae_store::read::parsed_column(row, "tracks_rating_system")?,
-        })
-    }
-}
-
-/// The release's rows as its detail reads them, beside its entry in the
-/// download queue and the storage actions it offers; `None` when the release
-/// doesn't exist.
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) fn build_release_detail_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
 ) -> Result<Option<ReleaseDetailRows>, DbError> {
-    Ok(find_release_detail_context_on(sql, release_id)?.map(|context| context.detail))
+    let statement = ViewedReleaseDetailParams { release: release_id.to_owned() };
+    Ok(statement_optional(sql, &statement)?.map(|row| ReleaseDetailRows(row.viewed)))
 }
 
 /// The detail rows of each release of the album `album_id`, in the album's
-/// order, with each release's download entry, storage actions and track
-/// rating system, in one statement.
+/// order, in one statement.
 pub(crate) fn build_album_release_details_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
 ) -> Result<Vec<ReleaseDetailRows>, DbError> {
-    Ok(bae_records::records::release_details_on(
-        sql,
-        bae_records::records::ReleaseSet::OfAlbum(album_id),
-        &bae_people::people::own_track_stars_sql("track"),
-        &release_detail_columns(),
-        ReleaseDetailColumns::read,
-    )?
-    .into_iter()
-    .map(|(rows, columns)| ReleaseDetailRows { rows, columns })
-    .collect())
+    let statement = ViewedAlbumReleasesParams { album: album_id.to_owned() };
+    Ok(statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| ReleaseDetailRows(row.viewed))
+        .collect())
 }
 
+/// One release's [`ViewedRelease`] row.
 #[derive(Clone, PartialEq)]
-pub(crate) struct ReleaseDetailRows {
-    rows: DbReleaseDetailRows,
-    columns: ReleaseDetailColumns,
-}
+pub(crate) struct ReleaseDetailRows(ViewedRelease);
 
 impl ReleaseDetailRows {
-    pub(crate) fn process(self) -> ReleaseDetailRead {
-        ReleaseDetailRead {
-            detail: self.rows.process(),
-            download: self.columns.download,
-            actions: self.columns.actions,
-            tracks_rating_system: self.columns.tracks_rating_system,
-        }
+    /// The rows read into the release's values.
+    pub(crate) fn process(self) -> Result<ReleaseDetailRead, DbError> {
+        let ViewedRelease { release, download, actions, systems, .. } = self.0;
+        Ok(ReleaseDetailRead {
+            detail: release.decoded()?,
+            download: download.as_ref().map(|queued| queued.entry()).transpose()?,
+            actions: actions.actions(),
+            tracks_rating_system: systems.track_system()?,
+        })
+    }
+
+    /// The rows read into the release's detail context.
+    pub(crate) fn process_context(self) -> Result<ReleaseDetailContext, DbError> {
+        let is_compilation = self.0.album.is_compilation();
+        let album_year = self.0.album.year()?;
+        let ReleaseDetailRead { detail, download, actions, tracks_rating_system } =
+            self.process()?;
+        Ok(ReleaseDetailContext {
+            detail,
+            download,
+            actions,
+            is_compilation,
+            album_year,
+            tracks_rating_system,
+        })
     }
 }
 

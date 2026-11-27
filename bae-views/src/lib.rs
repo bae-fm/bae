@@ -37,7 +37,7 @@ pub mod release;
 mod release_files;
 mod search;
 pub mod storage;
-mod storage_actions;
+pub mod storage_actions;
 mod storage_browse;
 #[cfg(desktop)]
 pub mod storage_inspector;
@@ -86,7 +86,6 @@ use bae_records::records::name_sort::sort_key_sql;
 use bae_records::records::pressing_columns::{read_media, release_media_sql};
 use bae_records::records::query::*;
 use bae_records::records::read::*;
-use bae_records::records::{release_detail_rows_on, DbReleaseDetailRows};
 use bae_records::*;
 use bae_store::list_windows::{key_at, Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::*;

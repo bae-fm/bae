@@ -143,34 +143,6 @@ pub fn credit_line_of_json(json: &str) -> Result<bae_types::credits::CreditLine,
     Ok(crate::credits::library_line(&credits_from_json(json)?))
 }
 
-/// The title, year and credits of the album of the release `rel`, as columns
-/// a read of the release passes as its extra columns and
-/// [`album_of_release_columns`] reads.
-pub fn album_of_release_sql() -> String {
-    format!(
-        "(SELECT a.title FROM albums a WHERE a.id = rel.album_id) AS album_of_release_title, \
-         (SELECT a.year FROM albums a WHERE a.id = rel.album_id) AS album_of_release_year, \
-         (SELECT {credits} FROM albums a WHERE a.id = rel.album_id) \
-             AS album_of_release_credits",
-        credits = super::query::album_credits_json_sql(),
-    )
-}
-
-/// Read the album's title, year and credits that [`album_of_release_sql`]
-/// selects, in a row closure.
-pub fn album_of_release_columns(
-    row: &Row<'_>,
-) -> rusqlite::Result<(String, Option<i32>, Vec<LibraryCredit>)> {
-    let credits: String = row.get("album_of_release_credits")?;
-    Ok((
-        row.get("album_of_release_title")?,
-        row.get("album_of_release_year")?,
-        credits_from_json(&credits).map_err(|error| {
-            column_conversion_error(row, "album_of_release_credits", error.to_string())
-        })?,
-    ))
-}
-
 /// The credits a JSON column of [`super::query::album_credits_json_sql`] or
 /// [`super::query::track_credits_json_sql`] holds, in list order.
 pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbError> {
@@ -522,15 +494,6 @@ pub(super) const FILE_ROW_COLUMNS: [&str; 16] = [
     "source_audio_bitrate_kbps",
     "source_audio_channels",
 ];
-
-/// A JSON object of one release file for [`file_of`]: `f`, a row of
-/// `release_files`, with the `size` coven records for it and whether it is
-/// `stored` (SQL expressions).
-pub(super) fn file_json_sql(size: &str, stored: &str) -> String {
-    let columns: Vec<String> =
-        FILE_ROW_COLUMNS.iter().map(|name| format!("'{name}', f.{name}")).collect();
-    format!("json_object({}, 'file_size', {size}, 'stored', {stored})", columns.join(", "))
-}
 
 impl FileColumns {
     fn of_row(row: &Row) -> rusqlite::Result<Self> {

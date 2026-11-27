@@ -129,19 +129,18 @@ async fn the_statements_place_tracks_by_one_rule() {
     });
     fixture.write(&crate::test_fixtures::test_records(&db)).await;
 
-    let (groups, places) = db
+    let (rows, places) = db
         .read(move |sql| {
-            let (detail, ()) =
-                release_detail_rows_on(&sql, release, NO_STARS, "", |_| Ok(()))?.unwrap();
-            let groups = detail.process().track_groups;
+            let rows = release_editor_rows_on(&sql, release)?.unwrap();
             let places = release_tracks::track_places_on(
                 &sql,
                 &ids.iter().map(|(id, ..)| id.clone()).collect::<Vec<_>>(),
             )?;
-            Ok((groups, places))
+            Ok((rows, places))
         })
         .await
         .unwrap();
+    let groups = rows.decoded().unwrap().detail.track_groups;
 
     let numbers = db
         .read(move |sql| {
@@ -244,19 +243,104 @@ async fn side_headings_of_a_later_medium_count_the_mediums_before_it() {
     assert_eq!(cds, [SideHeading::Disc { disc: 2 }]);
 }
 
+/// The detail's statement states by key which carriers are played side by
+/// side, and it names every carrier `Medium::is_sided` does and no other.
+#[tokio::test]
+async fn the_detail_letters_the_sides_of_exactly_the_sided_carriers() {
+    use crate::test_fixtures::library::RecordsFixture;
+    use bae_types::mediums::{ReleaseMedium, TrackSide};
+    use bae_types::pressing::Medium;
+    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let release = "5b0c1f2e-7d34-4a8e-9c1b-2f6a4d8e0b01";
+    let ids: Vec<String> = Medium::ALL
+        .iter()
+        .map(|medium| bae_util::test_ids::test_uuid(&format!("carrier-{}", medium.key())))
+        .collect();
+    let tracks: Vec<(&str, &str)> = ids.iter().map(|id| (id.as_str(), "Track Title")).collect();
+    RecordsFixture::new()
+        .album("5b0c1f2e-7d34-4a8e-9c1b-2f6a4d8e0b02", "Album Title", None, &[])
+        .release("5b0c1f2e-7d34-4a8e-9c1b-2f6a4d8e0b02", release)
+        .tracks(release, &tracks)
+        .edit(|rows| {
+            rows.mediums = Medium::ALL
+                .iter()
+                .zip(1..)
+                .map(|(carrier, position)| {
+                    let mut row = crate::DbReleaseMedium::new_test(release);
+                    row.id = format!("{release}-medium-{position}");
+                    row.position = std::num::NonZeroU16::new(position).unwrap();
+                    row.medium = ReleaseMedium::one_sided(Some(*carrier));
+                    row
+                })
+                .collect();
+            for (track, medium) in rows.tracks.iter_mut().zip(&rows.mediums) {
+                track.medium_id = medium.id.clone();
+            }
+        })
+        .write(&crate::test_fixtures::test_records(&db))
+        .await;
+
+    let detail = editor_detail_of(&db, release).await;
+
+    let lettered: Vec<bool> = detail
+        .track_groups
+        .iter()
+        .map(|group| matches!(group.side, TrackSide::Sided { .. }))
+        .collect();
+    let sided: Vec<bool> = Medium::ALL.iter().map(|medium| medium.is_sided()).collect();
+    assert_eq!(lettered, sided);
+}
+
+/// The detail's statement states by content type which images the gallery
+/// shows: each format a cover can be made from, and no other.
+#[tokio::test]
+async fn the_detail_shows_exactly_the_images_a_cover_can_be_made_from() {
+    use crate::test_fixtures::aggregate_ordering::{insert_file, release_detail_db};
+    use crate::test_fixtures::RELEASE_A;
+    use bae_util::content_type::ContentType;
+    let (db, tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let mut types = ContentType::SUPPORTED_COVERS.to_vec();
+    types.extend(["image/bmp", "image/tiff", "image/svg+xml"].map(ContentType::from_mime));
+    for (position, content_type) in types.iter().enumerate() {
+        insert_file(
+            &db,
+            &tmp,
+            crate::NewReleaseFile {
+                id: bae_util::test_ids::test_uuid(&format!("shown-file-{position}")),
+                release_id: RELEASE_A.to_string(),
+                original_filename: format!("picture {position}"),
+                content_type: content_type.clone(),
+                role: crate::ReleaseFileRole::Other,
+                source_audio: None,
+                created_at: time::UtcDateTime::now(),
+            },
+            1,
+        )
+        .await;
+    }
+
+    let detail = editor_detail_of(&db, RELEASE_A).await;
+
+    let shown: Vec<&ContentType> =
+        detail.files.images.iter().map(|file| &file.content_type).collect();
+    assert_eq!(shown, ContentType::SUPPORTED_COVERS.iter().collect::<Vec<_>>());
+}
+
 /// Reads `release`'s detail from `store` and returns the other device it
 /// names, or `None` when the release plays here.
 async fn elsewhere_of(store: &bae_store::Store, release: &'static str) -> Option<OtherDevice> {
+    editor_detail_of(store, release).await.elsewhere
+}
+
+/// `release`'s detail as its editor reads it from `store`.
+async fn editor_detail_of(store: &bae_store::Store, release: &'static str) -> DbReleaseDetail {
     store
-        .read(move |sql| {
-            Ok(release_detail_rows_on(&sql, release, NO_STARS, "", |_| Ok(()))?
-                .expect("the release")
-                .0
-                .process()
-                .elsewhere)
-        })
+        .read(move |sql| Ok(release_editor_rows_on(&sql, release)?.expect("the release")))
         .await
         .unwrap()
+        .decoded()
+        .unwrap()
+        .detail
 }
 
 /// A release is on another device when that device alone holds one of its
@@ -334,8 +418,10 @@ async fn a_stored_device_coven_does_not_register_or_this_device_fails_the_read()
         .await;
     let detail_error = || async {
         store
-            .read(|sql| release_detail_rows_on(&sql, RELEASE_A, NO_STARS, "", |_| Ok(())))
+            .read(|sql| Ok(release_editor_rows_on(&sql, RELEASE_A)?.expect("the release")))
             .await
+            .unwrap()
+            .decoded()
             .err()
             .expect("the read fails")
             .to_string()

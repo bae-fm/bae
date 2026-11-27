@@ -340,17 +340,6 @@ pub fn album_ratings_sql() -> String {
     )
 }
 
-/// The stars this device's person gave the track `track_alias`, an
-/// expression for a statement over `tracks`: NULL for a track they did not
-/// rate. SQLite finds the rating through `ratings`' key on the person and the track.
-pub fn own_track_stars_sql(track_alias: &str) -> String {
-    format!(
-        "(SELECT r.stars FROM ratings AS r WHERE r.track_id = {track_alias}.id \
-          AND r.person_id = (SELECT own.member FROM ({own}) AS own))",
-        own = OWN_MEMBER_SQL,
-    )
-}
-
 /// Read the rating system and ratings that [`album_ratings_sql`] selects.
 pub fn album_ratings_row(row: &Row<'_>) -> rusqlite::Result<(RatingSystem, AlbumRatings)> {
     let stars_of = crate::collections::stars_from_sql;

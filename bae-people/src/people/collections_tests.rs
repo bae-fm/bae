@@ -2,7 +2,7 @@
 //! statement states, read along an index rather than sorted after the read,
 //! and playlists and profiles list by name in the language they are asked in.
 
-use crate::people::collections::{album_ratings_sql, own_track_stars_sql, PLAYLIST_ENTRIES_SQL};
+use crate::people::collections::{album_ratings_sql, PLAYLIST_ENTRIES_SQL};
 use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -33,8 +33,8 @@ async fn a_playlists_entries_read_in_order_without_a_sort() {
     );
 }
 
-/// SQLite finds the album's ratings through the album's index and a person's
-/// track stars through the ratings' key, without scanning every rating.
+/// SQLite finds the album's ratings through the album's index, without
+/// scanning every rating.
 #[tokio::test]
 async fn ratings_are_found_by_index() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
@@ -42,17 +42,5 @@ async fn ratings_are_found_by_index() {
     assert!(
         album.iter().any(|step| step.contains("ratings_album")),
         "the album's ratings are not read along ratings_album: {album:?}"
-    );
-    let tracks = plan(
-        &db,
-        format!(
-            "SELECT {} FROM tracks AS track WHERE track.release_id = ?1",
-            own_track_stars_sql("track")
-        ),
-    )
-    .await;
-    assert!(
-        tracks.iter().any(|step| step.contains("SEARCH r USING")),
-        "SQLite does not use the ratings' key to find a person's track stars: {tracks:?}"
     );
 }

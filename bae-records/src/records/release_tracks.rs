@@ -6,12 +6,12 @@
 //! played side by side (a record, a cassette) is on a lettered side, the
 //! letters counting the sides of the release's sided mediums in order; a
 //! track on another medium is on a numbered disc when the release holds more
-//! than one medium, and only a number otherwise. [`track_places_ctes`] is the
-//! one statement of that rule: every statement that names a track's side or
-//! disc, the import pane's among them, places its tracks through it, on the
+//! than one medium, and only a number otherwise.
+//! [`TrackPlaces`](super::place_fragments::TrackPlaces) states that rule for
+//! compiled reads, over the mediums and places each gives it, and
+//! [`track_places_ctes`] states it for statements built as text, on the
 //! mediums its [`MediumsSource`] names.
 
-use super::query::*;
 use super::read::*;
 use super::*;
 use bae_types::mediums::{side_letters, TrackPosition, TrackSide};
@@ -111,36 +111,6 @@ pub fn track_places_ctes(source: MediumsSource<'_>, release_filter: &str) -> Str
             FROM {places} p JOIN medium m ON m.id = p.medium_id AND m.release_id = p.release_id)",
         medium = medium_cte(source.mediums(), release_filter),
         places = source.places(),
-    )
-}
-
-/// The common table expressions the statements over a release's tracks
-/// start from, for the release `release` (an SQL expression naming its id),
-/// on the mediums `source` names: those of [`track_places_ctes`], and
-/// `placed`, each of the release's tracks with its side's kind and ordinal,
-/// its number on the side, and `extra_columns`, further columns of the track
-/// `track` and its place `place` of the release `r` of the album `a`, each
-/// starting with a comma.
-pub(super) fn placed_tracks_ctes(
-    release: &str,
-    source: MediumsSource<'_>,
-    extra_columns: &str,
-    extra_joins: &str,
-) -> String {
-    format!(
-        "{places}, \
-         placed AS ( \
-            SELECT track.id AS id, track.title AS title, track.duration_ms AS duration_ms, \
-                   place.position AS position, place.number AS number, \
-                   place.side_kind AS side_kind, place.side_ordinal AS side_ordinal \
-                   {extra_columns} \
-            FROM tracks track \
-            JOIN place ON place.id = track.id \
-            JOIN releases r ON r.id = track.release_id \
-            JOIN albums a ON a.id = r.album_id \
-            {extra_joins} \
-            WHERE track.release_id = {release})",
-        places = track_places_ctes(source, &format!("m.release_id = {release}")),
     )
 }
 
@@ -272,76 +242,22 @@ struct GroupJson {
     tracks: Vec<TrackJson>,
 }
 
-/// The tracks of the release `release` (an SQL expression naming its id) in
-/// playing order, grouped by side or disc (a run of tracks on one side is one
-/// group), as a JSON array of groups for [`track_groups_column`]: each group
-/// with its tracks' lengths added up, whether the release has more than one
-/// group, where its second column starts, and its tracks.
-pub(super) fn track_groups_json_sql(release: &str, my_stars: &str) -> String {
-    format!(
-        "(WITH {placed}, \
-         island AS ( \
-            SELECT placed.*, \
-                   ROW_NUMBER() OVER (ORDER BY position) \
-                   - ROW_NUMBER() OVER (PARTITION BY side_kind, side_ordinal ORDER BY position) \
-                       AS island \
-            FROM placed), \
-         grouped AS ( \
-            SELECT side_kind, side_ordinal, MIN(position) AS first_position, \
-                   SUM(duration_ms) AS total_duration_ms, \
-                   COUNT(*) OVER () > 1 AS shows_time, \
-                   CASE WHEN COUNT(*) > 8 THEN (COUNT(*) + 1) / 2 END AS second_column_start, \
-                   json_group_array(json_object( \
-                       'id', id, 'title', title, 'duration_ms', duration_ms, 'number', number, \
-                       'own_credits', json(own_credits), 'shown_credits', json(shown_credits), \
-                       'works', json(works), 'my_stars', my_stars) ORDER BY position) AS tracks \
-            FROM island \
-            GROUP BY side_kind, side_ordinal, island) \
-         SELECT json_group_array(json_object( \
-                    'side_kind', side_kind, 'side_ordinal', side_ordinal, \
-                    'total_duration_ms', total_duration_ms, 'shows_time', shows_time, \
-                    'second_column_start', second_column_start, \
-                    'tracks', json(tracks)) ORDER BY first_position) \
-         FROM grouped)",
-        placed = placed_tracks_ctes(
-            release,
-            MediumsSource::Release,
-            &format!(
-                ", {own} AS own_credits, {shown} AS shown_credits, \
-                   (SELECT json_group_array(json_object( \
-                        'work_id', w.id, 'title', w.title, 'composer_names', {composer_names}) \
-                        ORDER BY tw.position, tw.id) \
-                    FROM track_works tw JOIN works w ON w.id = tw.work_id \
-                    WHERE tw.track_id = track.id) AS works, \
-                   {my_stars} AS my_stars",
-                own = track_own_credits_json_sql("track"),
-                shown = track_credits_json_sql("track"),
-                composer_names = work_composer_names_sql("w.id"),
-            ),
-            ""
-        ),
-    )
-}
-
-/// The release's track groups as [`track_groups_json_sql`] read them into
-/// `column`.
-pub(super) fn track_groups_column(
-    row: &Row<'_>,
-    column: &str,
-) -> rusqlite::Result<Vec<DbTrackGroup>> {
-    let groups: Vec<GroupJson> = bae_store::read::json_column(row, column)?;
+/// The release's track groups, as
+/// [`TrackGroups`](super::track_group_fragments::TrackGroups) wrote them into
+/// its document `json`.
+pub(super) fn track_groups_of_json(json: &str) -> Result<Vec<DbTrackGroup>, DbError> {
+    const DOCUMENT: &str = "a release's track groups";
+    let groups: Vec<GroupJson> = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json(DOCUMENT, json, error))?;
+    let unreadable = |reason: String| DbError::unreadable(DOCUMENT, reason);
     groups
         .into_iter()
         .map(|group| {
-            let unreadable = |reason: String| column_conversion_error(row, column, reason);
             let side = track_side_of(&group.side_kind, group.side_ordinal).map_err(unreadable)?;
             let tracks = group
                 .tracks
                 .into_iter()
                 .map(|track| {
-                    let credits = |credits| {
-                        credits_of(credits).map_err(|error| unreadable(error.to_string()))
-                    };
                     Ok(DbTrackWithArtists {
                         position: track_position_of(
                             &group.side_kind,
@@ -349,8 +265,8 @@ pub(super) fn track_groups_column(
                             track.number,
                         )
                         .map_err(unreadable)?,
-                        artists: credits(track.own_credits)?,
-                        shown_artists: credits(track.shown_credits)?,
+                        artists: credits_of(track.own_credits)?,
+                        shown_artists: credits_of(track.shown_credits)?,
                         works: track
                             .works
                             .into_iter()
@@ -373,7 +289,7 @@ pub(super) fn track_groups_column(
                         duration_ms: track.duration_ms,
                     })
                 })
-                .collect::<rusqlite::Result<Vec<_>>>()?;
+                .collect::<Result<Vec<_>, DbError>>()?;
             Ok(DbTrackGroup {
                 side,
                 tracks,
@@ -383,12 +299,6 @@ pub(super) fn track_groups_column(
             })
         })
         .collect()
-}
-
-/// How long the tracks of the release `release` (an SQL expression naming
-/// its id) play.
-pub(super) fn total_duration_sql(release: &str) -> String {
-    format!("(SELECT COALESCE(SUM(duration_ms), 0) FROM tracks WHERE release_id = {release})")
 }
 
 /// The places of the tracks the JSON array `?1` names, in the array's order,

@@ -2,10 +2,12 @@
 //! once a release editor's form binds lines to other audio files of the
 //! release, and what a save then writes over the old file's rows.
 //!
-//! One statement lays the files out ([`sheet_files_ctes`]), so the editor's
-//! draft, which shows the tracks, the sheet's Audio file pop-up and the
-//! release's Files list from it, and the save, which writes each file's
-//! layout from it, never disagree.
+//! [`sheet_files_ctes`] lays the files out for the editor's draft, which
+//! shows the tracks and the sheet's Audio file pop-up from it, and for the
+//! save, which writes each file's layout from it. The editor's Files list
+//! reads the same layout through
+//! [`EditorReleaseFiles`](super::editor_files::EditorReleaseFiles), whose
+//! common table expressions state the same rules.
 
 use super::*;
 
@@ -337,51 +339,6 @@ impl Records {
         let (release_id, edits) = (release_id.to_string(), edits.json()?);
         self.store.read(move |sql| sheet_track_changes_on(&sql, &release_id, &edits)).await
     }
-}
-
-#[cfg(desktop)]
-fn first_sheet_places_sql() -> String {
-    let sided = super::release::SIDED;
-    let side = super::release_tracks::sheet_side_sql(sided, "place.side");
-    let kind = super::release_tracks::sheet_side_kind_sql(sided);
-    let ordinal = super::release_tracks::sheet_side_ordinal_sql(
-        sided,
-        "place.side_ordinal",
-        "place.medium_position",
-    );
-    format!(
-        "SELECT c.sheet_file_id, place.medium_position, {side} AS side, \
-                {kind} AS kind, {ordinal} AS ordinal, \
-                ROW_NUMBER() OVER (PARTITION BY c.sheet_file_id ORDER BY place.position) AS n \
-         FROM carved_tracks c JOIN place ON place.id = c.track_id"
-    )
-}
-
-/// The Files list's caption for a sheet whose tracks the edit deletes,
-/// with its bindings and the side it was on, if the form still places it.
-#[cfg(desktop)]
-pub fn sheet_without_tracks_json_sql(file: &str) -> String {
-    let first = first_sheet_places_sql();
-    format!(
-        "(SELECT json_object( \
-                'file_id', first.sheet_file_id, 'name', sheet.original_filename, \
-                'place', json(CASE WHEN ignored.sheet_file_id IS NULL THEN json_object( \
-                    'medium', first.medium_position, 'side', first.side, \
-                    'kind', first.kind, 'ordinal', first.ordinal) END), \
-                'bound_count', options.bound_count, \
-                'bound', json(options.bound), 'unbound', json(options.unbound), \
-                'side_choices', json({choices})) \
-         FROM release_files sheet \
-         JOIN sheet_line_options options ON options.sheet_file_id = sheet.id \
-         LEFT JOIN ignored_sheets ignored ON ignored.sheet_file_id = sheet.id \
-         JOIN ({first}) first \
-             ON first.sheet_file_id = sheet.id AND first.n = 1 \
-         WHERE sheet.id = {file} \
-           AND NOT EXISTS (SELECT 1 FROM carved_tracks c \
-                           WHERE c.sheet_file_id = sheet.id \
-                             AND c.track_id NOT IN (SELECT track_id FROM dropped_tracks)))",
-        choices = super::release_tracks::sheet_side_choices_json_sql(),
-    )
 }
 
 /// The editor's Files caption for a sheet that carves no tracks in the draft.

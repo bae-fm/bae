@@ -50,6 +50,20 @@ sqlive_compose::fragment!(
 "#
 );
 
+impl ReleaseRecords {
+    /// The release's records, as the JSON array
+    /// [`crate::records::read::records_of_json`] reads.
+    pub(crate) fn records_json(&self) -> &str {
+        &self.records
+    }
+
+    /// What the records identify the release as; `None` when no catalog
+    /// describes it.
+    pub(crate) fn records_kind(&self) -> Option<&str> {
+        self.records_kind.as_deref()
+    }
+}
+
 sqlive_compose::fragment!(
     AlbumCredits on albums { credits: String },
     r#"

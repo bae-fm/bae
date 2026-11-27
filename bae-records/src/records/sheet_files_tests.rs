@@ -416,7 +416,7 @@ async fn an_added_track_stays_on_the_disc_of_the_sheet() {
 }
 
 async fn files_for_edits(db: &Store, edits: String) -> DbReleaseFiles {
-    db.read(move |sql| super::release_files_on(&sql, &stored_layout(&edits))).await.unwrap()
+    db.read(move |sql| super::release_files_on(&sql, stored_files_form(edits))).await.unwrap()
 }
 
 fn stored_layout(edits: &str) -> LayoutParams<'_> {
@@ -427,6 +427,15 @@ fn stored_layout(edits: &str) -> LayoutParams<'_> {
         places: "[]",
         carving: "[]",
         moves: "[]",
+        edits,
+    }
+}
+
+fn stored_files_form(edits: String) -> crate::records::EditorReleaseFilesParams {
+    crate::records::EditorReleaseFilesParams {
+        release: RELEASE_A.to_owned(),
+        applied: false,
+        mediums: "[]".to_owned(),
         edits,
     }
 }

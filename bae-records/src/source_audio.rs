@@ -6,10 +6,9 @@
 //! different average for every file, and those files are one format. A shared
 //! lossy format states the release's average bitrate instead.
 //!
-//! One SQL statement, [`source_audio_summary_sql`], computes the summary for
-//! every surface: the library's album detail and release editor read it over
-//! a release's stored files, and the import pane reads it over a scanned
-//! folder's files.
+//! One fragment, [`AudioSummary`], computes the summary for every surface:
+//! the library's album detail and release editor read it over a release's
+//! stored files, and the import pane reads it over a scanned folder's files.
 
 use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
@@ -84,67 +83,89 @@ pub(crate) fn audio_codec(
     ))
 }
 
-/// An SQL expression for the summary of the audio files that the statement
-/// `audio` selects: a JSON object that [`SourceAudioSummary::deserialize_stored`]
-/// reads, or NULL when no file counts.
-///
-/// `audio` returns one row for each file, with the columns `position` (the
-/// order the files are read in), `layout` (`'file'` or `'cue'`, NULL for a
-/// file the tracklist leaves out), `content_type`, `sample_rate_hz`,
-/// `bits_per_sample`, `bitrate_kbps`, `channels` and `duration_ms`. The
-/// summary leaves out a file with no layout and a file whose content type,
-/// sample rate or channels the scan did not read.
-///
-/// When every file has the same layout, codec, sample rate, bit depth and
-/// channels, the summary is that format, with the average of the files'
-/// bitrates, each file's weighted by its duration (each file counts once when
-/// no file states a duration). Otherwise the summary lists each fact the files
-/// disagree on, with its values in the order the files first show them.
-pub fn source_audio_summary_sql(audio: &str) -> String {
-    let differing = |column: &str| {
-        format!(
-            "json((SELECT json_group_array({column} ORDER BY first) \
-                   FROM (SELECT {column}, MIN(position) AS first FROM audio \
-                         WHERE {column} IS NOT NULL GROUP BY {column}) \
-                   HAVING COUNT(*) >= 2))"
-        )
-    };
-    format!(
-        "json((WITH audio AS ( \
-              SELECT position, layout, bae_audio_codec(content_type) AS codec, \
-                     sample_rate_hz, bits_per_sample, bitrate_kbps, channels, \
-                     COALESCE(duration_ms, 0) AS duration_ms \
-              FROM ({audio}) \
-              WHERE layout IS NOT NULL AND content_type IS NOT NULL \
-                AND sample_rate_hz IS NOT NULL AND channels IS NOT NULL), \
-          rated AS (SELECT bitrate_kbps, duration_ms FROM audio WHERE bitrate_kbps IS NOT NULL) \
-          SELECT CASE WHEN EXISTS (SELECT 1 FROM audio) THEN json_object( \
-              'uniform', (SELECT COUNT(*) FROM (SELECT DISTINCT layout, codec, sample_rate_hz, \
-                                                       bits_per_sample, channels \
-                                                FROM audio)) = 1, \
-              'first', json((SELECT json_object('layout', layout, 'codec', codec, \
-                                                'sample_rate_hz', sample_rate_hz, \
-                                                'bits_per_sample', bits_per_sample, \
-                                                'channels', channels) \
-                             FROM audio ORDER BY position LIMIT 1)), \
-              'bitrate_kbps', \
-                  (SELECT CASE WHEN COUNT(*) = 0 THEN NULL \
-                               WHEN SUM(duration_ms) > 0 \
-                               THEN (SUM(bitrate_kbps * duration_ms) + SUM(duration_ms) / 2) \
-                                    / SUM(duration_ms) \
-                               ELSE (SUM(bitrate_kbps) + COUNT(*) / 2) / COUNT(*) END \
-                   FROM rated), \
-              'layouts', {layouts}, 'codecs', {codecs}, 'sample_rates_hz', {rates}, \
-              'bits_per_sample', {bits}, 'channels', {channels}) END))",
-        layouts = differing("layout"),
-        codecs = differing("codec"),
-        rates = differing("sample_rate_hz"),
-        bits = differing("bits_per_sample"),
-        channels = differing("channels"),
-    )
-}
+// The summary of the audio files `counted` gives, as a JSON object that
+// [`SourceAudioSummary::deserialize_stored`] reads, or NULL when no file
+// counts. `counted` gives one row for each file: `position` (the order the
+// files are read in), `layout` (`'file'` or `'cue'`, NULL for a file the
+// tracklist leaves out) and the audio facts the scan read. The summary leaves
+// out a file with no layout and a file whose content type, sample rate or
+// channels the scan did not read.
+//
+// When every file has the same layout, codec, sample rate, bit depth and
+// channels, the summary is that format, with the average of the files'
+// bitrates, each file's weighted by its duration (each file counts once when
+// no file states a duration). Otherwise the summary lists each fact the files
+// disagree on, with its values in the order the files first show them.
+sqlive_compose::fragment!(
+    AudioSummary
+    with counted(
+        position INTEGER, layout TEXT, content_type TEXT, sample_rate_hz INTEGER,
+        bits_per_sample INTEGER, bitrate_kbps INTEGER, channels INTEGER,
+        duration_ms INTEGER
+    ) { summary: Option<String> },
+    r#"
+    SELECT CASE WHEN collected.files > 0 THEN (
+        SELECT json_object(
+            'uniform', COUNT(DISTINCT json_array(
+                           audio.value ->> 0, audio.value ->> 1, audio.value ->> 2,
+                           audio.value ->> 3, audio.value ->> 5)) = 1,
+            'first', json((SELECT json_object(
+                               'layout', first.value ->> 0, 'codec', first.value ->> 1,
+                               'sample_rate_hz', first.value ->> 2,
+                               'bits_per_sample', first.value ->> 3,
+                               'channels', first.value ->> 5)
+                           FROM json_each(collected.listed) AS first
+                           ORDER BY first.key LIMIT 1)),
+            'bitrate_kbps',
+                CASE WHEN COUNT(audio.value ->> 4) = 0 THEN NULL
+                     WHEN SUM(audio.value ->> 6) FILTER (WHERE audio.value ->> 4 IS NOT NULL) > 0
+                     THEN (SUM((audio.value ->> 4) * (audio.value ->> 6))
+                           + SUM(audio.value ->> 6)
+                                 FILTER (WHERE audio.value ->> 4 IS NOT NULL) / 2)
+                          / SUM(audio.value ->> 6) FILTER (WHERE audio.value ->> 4 IS NOT NULL)
+                     ELSE (SUM(audio.value ->> 4) + COUNT(audio.value ->> 4) / 2)
+                          / COUNT(audio.value ->> 4) END,
+            'layouts', json((SELECT json_group_array(stated ORDER BY first)
+                FROM (SELECT of_file.value ->> 0 AS stated, MIN(of_file.key) AS first
+                      FROM json_each(collected.listed) AS of_file
+                      WHERE of_file.value ->> 0 IS NOT NULL GROUP BY 1)
+                HAVING COUNT(*) >= 2)),
+            'codecs', json((SELECT json_group_array(stated ORDER BY first)
+                FROM (SELECT of_file.value ->> 1 AS stated, MIN(of_file.key) AS first
+                      FROM json_each(collected.listed) AS of_file
+                      WHERE of_file.value ->> 1 IS NOT NULL GROUP BY 1)
+                HAVING COUNT(*) >= 2)),
+            'sample_rates_hz', json((SELECT json_group_array(stated ORDER BY first)
+                FROM (SELECT of_file.value ->> 2 AS stated, MIN(of_file.key) AS first
+                      FROM json_each(collected.listed) AS of_file
+                      WHERE of_file.value ->> 2 IS NOT NULL GROUP BY 1)
+                HAVING COUNT(*) >= 2)),
+            'bits_per_sample', json((SELECT json_group_array(stated ORDER BY first)
+                FROM (SELECT of_file.value ->> 3 AS stated, MIN(of_file.key) AS first
+                      FROM json_each(collected.listed) AS of_file
+                      WHERE of_file.value ->> 3 IS NOT NULL GROUP BY 1)
+                HAVING COUNT(*) >= 2)),
+            'channels', json((SELECT json_group_array(stated ORDER BY first)
+                FROM (SELECT of_file.value ->> 5 AS stated, MIN(of_file.key) AS first
+                      FROM json_each(collected.listed) AS of_file
+                      WHERE of_file.value ->> 5 IS NOT NULL GROUP BY 1)
+                HAVING COUNT(*) >= 2)))
+        FROM json_each(collected.listed) AS audio) END AS summary
+    FROM (
+        SELECT json_group_array(json_array(
+                   counted.layout, bae_audio_codec(counted.content_type),
+                   counted.sample_rate_hz, counted.bits_per_sample, counted.bitrate_kbps,
+                   counted.channels, COALESCE(counted.duration_ms, 0))
+                   ORDER BY counted.position) AS listed,
+               COUNT(*) AS files
+        FROM counted
+        WHERE counted.layout IS NOT NULL AND counted.content_type IS NOT NULL
+          AND counted.sample_rate_hz IS NOT NULL AND counted.channels IS NOT NULL
+    ) AS collected
+"#
+);
 
-/// The JSON object [`source_audio_summary_sql`] computes.
+/// The JSON object [`AudioSummary`] computes.
 #[derive(serde::Deserialize)]
 struct StoredSummary {
     uniform: i64,
@@ -212,8 +233,8 @@ impl StoredSummary {
 }
 
 impl SourceAudioSummary {
-    /// Reads the JSON object that [`source_audio_summary_sql`] computes, or
-    /// `None` from its NULL; for a `#[serde(deserialize_with)]` field.
+    /// Reads the JSON object that [`AudioSummary`] computes, or `None` from
+    /// its NULL; for a `#[serde(deserialize_with)]` field.
     pub fn deserialize_stored<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<Self>, D::Error> {

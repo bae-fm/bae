@@ -537,3 +537,26 @@ async fn a_long_group_splits_its_tracks_across_two_columns() {
     );
     assert!(!detail.has_credits);
 }
+
+/// The detail finds the person's stars on each of a release's tracks through
+/// the ratings' key, without scanning their ratings.
+#[tokio::test]
+async fn the_detail_finds_a_tracks_stars_by_the_ratings_key() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!("EXPLAIN QUERY PLAN {}", crate::release::ViewedReleaseDetail::SQL),
+                rusqlite::named_params! { ":release": RELEASE_A },
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter().any(|step| step.starts_with("SEARCH rated USING")
+            && step.contains("person_id=? AND track_id=?")),
+        "SQLite does not find a track's stars by the ratings' key: {plan:#?}"
+    );
+}

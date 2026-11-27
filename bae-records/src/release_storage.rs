@@ -59,6 +59,27 @@ sqlive_compose::fragment!(
 "#
 );
 
+impl ReleaseStorage {
+    /// Whether this device keeps every file of the release pinned and whole.
+    pub(crate) fn pinned(&self) -> bool {
+        self.pinned
+    }
+
+    /// Whether the release is in storage.
+    pub(crate) fn stored(&self) -> Result<bool, bae_store::DbError> {
+        match self.stored {
+            0 => Ok(false),
+            1 => Ok(true),
+            other => Err(bae_store::DbError::unreadable("a release's stored flag", other)),
+        }
+    }
+
+    /// The text that says which other device alone holds the release's audio.
+    pub(crate) fn elsewhere(&self) -> &str {
+        &self.elsewhere
+    }
+}
+
 // Every release's storage row, whose SQL a statement built as text holds.
 sqlive_compose::read!(
     ReleaseStorageRows,

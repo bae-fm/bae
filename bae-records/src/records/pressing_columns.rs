@@ -17,6 +17,54 @@ use bae_types::pressing::{
 };
 use rusqlite::Row;
 
+// The library release's labels as one JSON array of each label's name, as the
+// library label it names shows it, and its catalog number, in order; `[]` for
+// a release with none. [`labels_of_json`] reads it.
+sqlive_compose::fragment!(
+    ReleaseLabels on releases { labels: String },
+    r#"
+    SELECT json_group_array(json_object(
+               'name', shown.name, 'catalog_number', placed.catalog_number)
+               ORDER BY placed.position) AS labels
+    FROM release_labels AS placed
+    LEFT JOIN label_shown_as AS shown_as ON shown_as.label_id = placed.label_id
+    LEFT JOIN labels AS shown ON shown.id = shown_as.shown_label_id
+    WHERE placed.release_id = @parent.id
+"#
+);
+
+// The library release's barcodes as one JSON array, in order.
+sqlive_compose::fragment!(
+    ReleaseBarcodes on releases { barcodes: String },
+    r#"
+    SELECT json_group_array(barcode.barcode ORDER BY barcode.position) AS barcodes
+    FROM release_barcodes AS barcode
+    WHERE barcode.release_id = @parent.id
+"#
+);
+
+// The library release's media as one JSON array of each carrier and its
+// count, in order.
+sqlive_compose::fragment!(
+    ReleaseMedia on releases { media: String },
+    r#"
+    SELECT json_group_array(json_object('medium', counted.medium, 'count', counted.count)
+               ORDER BY counted.position) AS media
+    FROM release_media AS counted
+    WHERE counted.release_id = @parent.id
+"#
+);
+
+// The library release's Discogs details as one JSON array of keys, in order.
+sqlive_compose::fragment!(
+    ReleaseDiscogsDetails on releases { discogs_details: String },
+    r#"
+    SELECT json_group_array(stated.detail ORDER BY stated.position) AS discogs_details
+    FROM release_discogs_details AS stated
+    WHERE stated.release_id = @parent.id
+"#
+);
+
 /// One pressing's facts as column values.
 pub struct FactColumns {
     pub country: Option<&'static str>,
@@ -84,6 +132,43 @@ pub(super) fn release_labels_sql(release_id: &str) -> String {
           LEFT JOIN labels shown ON shown.id = shown_as.shown_label_id \
           WHERE placed.release_id = {release_id})"
     )
+}
+
+/// The labels [`ReleaseLabels`] wrote into its document `json`, each with its
+/// catalog number.
+pub(super) fn labels_of_json(json: &str) -> Result<Vec<ReleaseLabel>, bae_store::DbError> {
+    document("a release's labels", json)
+}
+
+/// The barcodes [`ReleaseBarcodes`] wrote into its document `json`.
+pub(super) fn barcodes_of_json(json: &str) -> Result<Vec<String>, bae_store::DbError> {
+    document("a release's barcodes", json)
+}
+
+/// A release's facts from its key columns' values and the documents
+/// [`ReleaseDiscogsDetails`] and [`ReleaseMedia`] wrote.
+pub(super) fn facts_of_columns(
+    country: Option<String>,
+    region: Option<String>,
+    status: Option<&str>,
+    packaging: Option<&str>,
+    discogs_details: &str,
+    media: &str,
+) -> Result<PressingFacts, bae_store::DbError> {
+    let details = document("a release's Discogs details", discogs_details)?;
+    let mut facts = facts_without_media_of(country, region, status, packaging, details)
+        .map_err(|reason| bae_store::DbError::unreadable("a release's pressing", reason))?;
+    facts.media = document("a release's media", media)?;
+    Ok(facts)
+}
+
+/// The value the JSON document `json`, named `name`, spells.
+fn document<T: serde::de::DeserializeOwned>(
+    name: &'static str,
+    json: &str,
+) -> Result<T, bae_store::DbError> {
+    serde_json::from_str(json)
+        .map_err(|error| bae_store::DbError::unreadable_json(name, json, error))
 }
 
 /// Read a `labels` column: every label, each with its catalog number.

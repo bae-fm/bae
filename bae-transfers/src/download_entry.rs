@@ -89,6 +89,37 @@ pub fn download_entry_sql(release: &str) -> String {
     [column("kind"), column("state"), column("error")].join(", ")
 }
 
+impl QueuedDownloadEntry {
+    /// The entry; an error for a state no entry has.
+    pub fn entry(&self) -> Result<DownloadEntry, bae_store::DbError> {
+        let kind = [DownloadKind::Pin, DownloadKind::MoveToThisDevice]
+            .into_iter()
+            .find(|kind| kind.key() == self.kind)
+            .ok_or_else(|| bae_store::DbError::unreadable("a download's kind", &self.kind))?;
+        let step = step_of(&self.state, || {
+            self.error.clone().ok_or_else(|| {
+                bae_store::DbError::unreadable("a failed download's error", None::<String>)
+            })
+        })?
+        .ok_or_else(|| bae_store::DbError::unreadable("a download's state", &self.state))?;
+        Ok(DownloadEntry { kind, step })
+    }
+}
+
+/// Where an entry in the state `state` stands, reading its error through
+/// `error` for a failed one; `None` for a state no entry has.
+fn step_of<E>(
+    state: &str,
+    error: impl FnOnce() -> Result<String, E>,
+) -> Result<Option<DownloadStep>, E> {
+    Ok(match state {
+        "queued" => Some(DownloadStep::Queued),
+        "active" => Some(DownloadStep::Running),
+        "failed" => Some(DownloadStep::Failed { error: error()? }),
+        _ => None,
+    })
+}
+
 /// The entry [`download_entry_sql`] read from `row`; `None` when the release
 /// has none.
 pub fn download_entry_column(row: &Row<'_>) -> rusqlite::Result<Option<DownloadEntry>> {
@@ -97,17 +128,12 @@ pub fn download_entry_column(row: &Row<'_>) -> rusqlite::Result<Option<DownloadE
         return Ok(None);
     };
     let kind = row.get("download_kind")?;
-    let step = match state.as_str() {
-        "queued" => DownloadStep::Queued,
-        "active" => DownloadStep::Running,
-        "failed" => DownloadStep::Failed { error: row.get("download_error")? },
-        other => {
-            return Err(bae_store::read::column_conversion_error(
-                row,
-                state_column,
-                format!("download state {other} names no phase"),
-            ))
-        }
-    };
+    let step = step_of(&state, || row.get("download_error"))?.ok_or_else(|| {
+        bae_store::read::column_conversion_error(
+            row,
+            state_column,
+            format!("download state {state} names no phase"),
+        )
+    })?;
     Ok(Some(DownloadEntry { kind, step }))
 }

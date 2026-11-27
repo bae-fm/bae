@@ -356,7 +356,7 @@ impl LibraryViews {
         Ok(self
             .store
             .read(move |sql| find_album_detail_on(&sql, &album_id, None))
-            .process(|rows| Ok::<_, DbError>(rows.map(AlbumDetailRows::process)))
+            .process(|rows| rows.map(AlbumDetailRows::process).transpose())
             .await?
             .map(resolve_album_detail))
     }
@@ -382,7 +382,9 @@ impl LibraryViews {
                 None => Ok(None),
             })
             .process(|detail| {
-                Ok(AlbumDetailProjection { detail: detail.map(AlbumDetailRows::process) })
+                Ok(AlbumDetailProjection {
+                    detail: detail.map(AlbumDetailRows::process).transpose()?,
+                })
             })
     }
 }
@@ -764,11 +766,15 @@ struct AlbumDetailRows {
 }
 
 impl AlbumDetailRows {
-    fn process(self) -> DbAlbumDetail {
-        DbAlbumDetail {
+    fn process(self) -> Result<DbAlbumDetail, DbError> {
+        Ok(DbAlbumDetail {
             album: self.album,
             artists: self.artists,
-            releases: self.releases.into_iter().map(ReleaseDetailRows::process).collect(),
+            releases: self
+                .releases
+                .into_iter()
+                .map(ReleaseDetailRows::process)
+                .collect::<Result<_, _>>()?,
             shown_release_index: self.shown_release_index,
             shown_release_can_become_primary: self.shown_release_index > 0,
             shows_release_choices: self.shows_release_choices,
@@ -776,7 +782,7 @@ impl AlbumDetailRows {
             primary_cover_version: self.primary_cover_version,
             ratings: self.ratings,
             album_rating_system: self.album_rating_system,
-        }
+        })
     }
 }
 

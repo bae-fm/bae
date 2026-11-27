@@ -95,14 +95,21 @@ mod emptied;
 pub mod layout;
 pub mod sheet_files;
 use emptied::Emptiable;
+pub mod credit_fragments;
+#[cfg(desktop)]
+pub mod editor_files;
+pub mod file_fragments;
+pub mod place_fragments;
 mod release_credits;
 mod release_deletion;
-mod release_detail;
+pub mod release_detail;
+pub mod track_group_fragments;
+#[cfg(desktop)]
+pub use editor_files::EditorReleaseFilesParams;
 #[cfg(desktop)]
 pub use release_detail::release_files_on;
 pub use release_detail::{
-    release_detail_rows_on, release_details_on, DbReleaseDetailRows, OtherDeviceError, ReleaseSet,
-    NO_STARS,
+    release_editor_rows_on, OtherDeviceError, ReleaseEditorFacts, ReleaseEditorRows,
 };
 mod export_numbers;
 mod release_file;

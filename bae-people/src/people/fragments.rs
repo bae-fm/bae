@@ -16,3 +16,15 @@ sqlive_compose::fragment!(
     LEFT JOIN @bae_store::file_version::StoredFileVersion AS avatar ON avatar.file = p.avatar_id
 "#
 );
+
+// The stars the person using this device gave each track they rated: the
+// `stars` relation of a read that shows them their own.
+sqlive_compose::fragment!(
+    OwnTrackStars { track_id: Option<String> },
+    r#"
+    SELECT rated.track_id, rated.stars
+    FROM ratings AS rated
+    WHERE rated.person_id = (SELECT own.member FROM coven_members AS own WHERE own.is_self)
+      AND rated.track_id IS NOT NULL
+"#
+);
