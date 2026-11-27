@@ -32,12 +32,14 @@ pub enum AlbumFields {
 /// as an edit of typed values alone does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum PressingFactsWrite {
+    #[cfg(desktop)]
     Written,
     Kept,
 }
 
 /// Write `release`'s pressing over its row, its labels naming the library
 /// labels `pressing` decides.
+#[cfg(desktop)]
 pub(super) fn update_release_pressing_on(
     tx: &CovenWrite<'_>,
     release: &DbRelease,
@@ -142,6 +144,7 @@ pub(super) fn write_release_metadata_on(
     }
 
     match pressing_facts {
+        #[cfg(desktop)]
         PressingFactsWrite::Written => update_release_pressing_on(tx, release, pressing)?,
         PressingFactsWrite::Kept => update_release_typed_pressing_on(tx, release, pressing)?,
     }
