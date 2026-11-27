@@ -21,8 +21,10 @@ in those families, are the website's: no app draws them, so they name no role
 and no iOS style, and a size that grows with the window is a CSS `clamp()`.
 theme-gen writes each as `--type-<style>-size`, `-weight`, `-line-height` and
 `-letter-spacing`, and as a class `.<style>` that sets the style from them.
-The site's own layout (its type sizes, line heights, widths, section paddings
-and letter spacing) stays in the page.
+Every line of the site's text takes one of these styles: the home page puts
+the class on each element, and the docs map Starlight's type scale and their
+headings, sidebar and contents list onto the properties. The site's own
+layout (its widths and section paddings) stays in the page.
 
 Appearance settings have three independent choices: System/Light/Dark mode,
 Blue/Orchid/Pink/Lime/Mint/Sky accent, and

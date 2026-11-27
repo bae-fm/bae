@@ -73,11 +73,19 @@ export default defineConfig({
 			// writes (npm run theme); custom.css maps Starlight onto them.
 			customCss: ['./src/generated/tokens.css', './src/styles/custom.css'],
 			// Fenced code blocks render through Expressive Code, which has its
-			// own theming and ignores custom.css. Set its surfaces in the same
-			// tokens so code blocks match the rest of the docs. JetBrains Mono
-			// comes in already, via --sl-font-mono.
+			// own theming and ignores custom.css. Set its surfaces and its text in
+			// the same tokens so code blocks match the rest of the docs: code in
+			// the web-code style and the frames' titles in web-detail.
 			expressiveCode: {
 				styleOverrides: {
+					codeFontFamily: 'var(--font-web-mono)',
+					codeFontSize: 'var(--type-web-code-size)',
+					codeFontWeight: 'var(--type-web-code-weight)',
+					codeLineHeight: 'var(--type-web-code-line-height)',
+					uiFontFamily: 'var(--font-web-body)',
+					uiFontSize: 'var(--type-web-detail-size)',
+					uiFontWeight: 'var(--type-web-detail-weight)',
+					uiLineHeight: 'var(--type-web-detail-line-height)',
 					borderRadius: 'var(--radius-card)',
 					borderColor: 'var(--hairline)',
 					codeBackground: 'var(--well)',

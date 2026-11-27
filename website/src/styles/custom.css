@@ -1,11 +1,12 @@
 /* bae docs theme: the home page's look, in the design system's tokens.
-   Mona Sans display, Hanken body, JetBrains Mono code. Colours and fonts go
-   through Starlight's own custom properties; raw selectors only appear where
-   a variable cannot express the intent (heading font face, pink inline code,
-   table radius, the current sidebar item, gradient asides, TOC border). */
+   Mona Sans display, Hanken body, JetBrains Mono code. Colours, fonts and
+   text sizes go through Starlight's own custom properties; raw selectors only
+   appear where a variable cannot express the intent (a text style's weight,
+   line height and letter spacing, pink inline code, table radius, the current
+   sidebar item, asides, TOC border). */
 
 /* Fonts. Loaded before the variable block so the families resolve. */
-@import url('https://fonts.googleapis.com/css2?family=Mona+Sans:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Mona+Sans:wght@700;800&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* Starlight's own properties, mapped onto the design system's tokens
    (tokens.css, which theme-gen writes). The tokens take their dark or light
@@ -14,6 +15,33 @@
 :root {
 	--sl-font: var(--font-web-body);
 	--sl-font-mono: var(--font-web-mono);
+
+	/* Starlight's type scale, each step the size of the website's text style
+	   nearest it: text to read is web-lead, code web-code, the headings
+	   web-title, web-heading and web-subheading, and Starlight's small steps
+	   the label, detail and mono sizes. */
+	--sl-text-2xs: var(--type-web-mono-size);
+	--sl-text-xs: var(--type-web-detail-size);
+	--sl-text-sm: var(--type-web-link-size);
+	--sl-text-base: var(--type-web-lead-size);
+	--sl-text-lg: var(--type-web-subheading-size);
+	--sl-text-xl: var(--type-web-heading-size);
+	--sl-text-2xl: var(--type-web-heading-size);
+	--sl-text-3xl: var(--type-web-title-size);
+	--sl-text-4xl: var(--type-web-title-size);
+	--sl-text-5xl: var(--type-web-title-size);
+	--sl-text-6xl: var(--type-web-headline-size);
+	--sl-text-body: var(--type-web-lead-size);
+	--sl-text-body-sm: var(--type-web-detail-size);
+	--sl-text-code: var(--type-web-code-size);
+	--sl-text-code-sm: var(--type-web-mono-size);
+	--sl-text-h1: var(--type-web-title-size);
+	--sl-text-h2: var(--type-web-heading-size);
+	--sl-text-h3: var(--type-web-subheading-size);
+	--sl-text-h4: var(--type-web-label-size);
+	--sl-text-h5: var(--type-web-label-size);
+	--sl-text-h6: var(--type-web-label-size);
+	--sl-line-height: var(--type-web-lead-line-height);
 
 	/* Accent ramp: links, active nav, focus rings. */
 	--sl-color-accent-low: var(--accent-orchid-selection);
@@ -45,24 +73,30 @@
 	--sl-color-text-accent: var(--accent-orchid);
 }
 
-/* ---- Headings: Mona Sans display face over the Hanken body ---- */
+/* ---- Headings: the website's text styles ---- */
 /* Scoped to article content and the page title so the display face never
    leaks onto UI chrome headings (the site title, sidebar groups, the TOC
-   "On this page" heading), which the mock keeps in Hanken or mono. */
-.sl-markdown-content :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)),
-.content-panel h1 {
-	font-family: var(--font-web-display);
-	font-weight: 700;
-}
-
+   "On this page" heading), which keep their own styles below. A page's
+   title is web-title, h2 web-heading, h3 web-subheading and the rest
+   web-label. */
 .sl-markdown-content h1:not(:where(.not-content *)),
 .content-panel h1 {
-	font-weight: 800;
-	letter-spacing: -0.025em;
+	font: var(--type-web-title-weight) var(--type-web-title-size) / var(--type-web-title-line-height) var(--font-web-display);
+	letter-spacing: var(--type-web-title-letter-spacing);
 }
 
 .sl-markdown-content h2:not(:where(.not-content *)) {
-	letter-spacing: -0.015em;
+	font: var(--type-web-heading-weight) var(--type-web-heading-size) / var(--type-web-heading-line-height) var(--font-web-display);
+	letter-spacing: var(--type-web-heading-letter-spacing);
+}
+
+.sl-markdown-content h3:not(:where(.not-content *)) {
+	font: var(--type-web-subheading-weight) var(--type-web-subheading-size) / var(--type-web-subheading-line-height) var(--font-web-display);
+	letter-spacing: var(--type-web-subheading-letter-spacing);
+}
+
+.sl-markdown-content :is(h4, h5, h6):not(:where(.not-content *)) {
+	font: var(--type-web-label-weight) var(--type-web-label-size) / var(--type-web-label-line-height) var(--font-web-body);
 }
 
 /* ---- Top bar: sticky blurred chrome ---- */
@@ -75,22 +109,21 @@
 }
 
 /* ---- Left sidebar nav ---- */
-/* Group labels in mono, uppercase, faint. The label text is the .large span
-   inside each section summary's .group-label. */
+/* Group labels in the eyebrow style, uppercase, faint. The label text is
+   the .large span inside each section summary's .group-label. */
 .sidebar-content .group-label .large {
-	font-family: var(--sl-font-mono);
-	font-size: var(--sl-text-xs);
+	font: var(--type-web-eyebrow-weight) var(--type-web-eyebrow-size) / var(--type-web-eyebrow-line-height) var(--font-web-mono);
+	letter-spacing: var(--type-web-eyebrow-letter-spacing);
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
 	color: var(--text-tertiary);
-	font-weight: 500;
 }
 
-/* Nav links: rounded, secondary text by default, surface hover. */
+/* Nav links: the link style, rounded, secondary text by default, surface
+   hover. */
 .sidebar-content a {
+	font: var(--type-web-link-weight) var(--type-web-link-size) / var(--type-web-link-line-height) var(--font-web-body);
 	border-radius: var(--radius-control);
 	color: var(--text-secondary);
-	font-weight: 500;
 }
 .sidebar-content a:hover {
 	background-color: var(--surface);
@@ -104,19 +137,18 @@
 .sidebar-content a[aria-current='page']:focus {
 	background-color: var(--accent-orchid-selection);
 	color: var(--on-fill);
-	font-weight: 600;
 }
 
-/* ---- Article body ---- */
+/* ---- Article body: the lead style ---- */
 .sl-markdown-content {
-	font-family: var(--sl-font);
+	font: var(--type-web-lead-weight) var(--type-web-lead-size) / var(--type-web-lead-line-height) var(--font-web-body);
 }
 
-/* Lead paragraph emphasis is primary text. */
+/* Emphasis is primary text, in the label's weight. */
 .sl-markdown-content strong,
 .sl-markdown-content b {
 	color: var(--text-primary);
-	font-weight: 600;
+	font-weight: var(--type-web-label-weight);
 }
 
 /* ---- Inline code: surface, pink text, hairline, chip radius ---- */
@@ -157,7 +189,7 @@
 	border: 1px solid var(--hairline);
 	border-radius: var(--radius-panel);
 	overflow: hidden;
-	font-size: var(--sl-text-sm);
+	font: var(--type-web-body-weight) var(--type-web-body-size) / var(--type-web-body-line-height) var(--font-web-body);
 }
 .sl-markdown-content :is(th, td):not(:where(.not-content *)) {
 	border-bottom: 1px solid var(--hairline);
@@ -174,14 +206,12 @@
 .sl-markdown-content thead th:not(:where(.not-content *)) {
 	background-color: var(--elevated);
 	color: var(--text-primary);
-	font-family: var(--font-web-display);
-	font-weight: 700;
-	font-size: var(--sl-text-xs);
+	font: var(--type-web-label-weight) var(--type-web-label-size) / var(--type-web-label-line-height) var(--font-web-body);
 }
 .sl-markdown-content tbody th:not(:where(.not-content *)) {
 	background-color: var(--surface);
 	color: var(--text-primary);
-	font-weight: 600;
+	font-weight: var(--type-web-label-weight);
 }
 .sl-markdown-content tbody td:not(:where(.not-content *)) {
 	color: var(--text-secondary);
@@ -237,18 +267,18 @@
 }
 
 /* ---- Right "On this page" table of contents ---- */
-/* Heading reads as the mock's mono uppercase eyebrow. */
+/* The heading is the eyebrow style, uppercase. */
 starlight-toc nav h2 {
-	font-family: var(--sl-font-mono);
-	font-size: var(--sl-text-2xs);
+	font: var(--type-web-eyebrow-weight) var(--type-web-eyebrow-size) / var(--type-web-eyebrow-line-height) var(--font-web-mono);
+	letter-spacing: var(--type-web-eyebrow-letter-spacing);
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	font-weight: 500;
 	color: var(--text-tertiary);
 }
-/* Inactive links sit on a faint hairline rail. starlight-toc is the desktop
-   wrapper, so the mobile dropdown TOC is left untouched. */
+/* Links are the detail style and sit on a faint hairline rail.
+   starlight-toc is the desktop wrapper, so the mobile dropdown TOC is left
+   untouched. */
 starlight-toc nav a {
+	font: var(--type-web-detail-weight) var(--type-web-detail-size) / var(--type-web-detail-line-height) var(--font-web-body);
 	border-inline-start: 2px solid var(--hairline);
 	color: var(--text-tertiary);
 }
@@ -297,4 +327,10 @@ starlight-toc nav a[aria-current='true']:hover {
 /* Hide the caret icon */
 .sidebar-content details > summary svg.caret {
 	display: none;
+}
+
+/* ---- Previous and next links: each page's title in the subheading style ---- */
+.pagination-links .link-title {
+	font: var(--type-web-subheading-weight) var(--type-web-subheading-size) / var(--type-web-subheading-line-height) var(--font-web-display);
+	letter-spacing: var(--type-web-subheading-letter-spacing);
 }

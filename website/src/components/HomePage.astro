@@ -44,7 +44,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 <link rel="preload" as="image" href={sheepUrl} fetchpriority="high" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@700;800&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <script is:inline>
   (function(){
     var root=document.documentElement;
@@ -85,7 +85,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .navin{display:flex;align-items:center;gap:26px;height:66px;}
   .brand{flex:none;}
   .navlinks{margin-inline-start:auto;display:flex;gap:var(--space-group);align-items:center;min-width:0;}
-  .navlinks a{font-size:14.5px;color:var(--text-secondary);font-weight:500;white-space:nowrap;}
+  .navlinks a{color:var(--text-secondary);white-space:nowrap;}
   .navlinks a:hover{color:var(--text-primary);}
   .desktoplinks{display:flex;gap:26px;align-items:center;}
   .navlinks .btn.pink{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
@@ -104,18 +104,18 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .navpanel::before,.langpanel::before{content:"";position:absolute;top:-7px;right:19px;width:12px;height:12px;transform:rotate(45deg);background:var(--elevated);border-left:1px solid var(--hairline);border-top:1px solid var(--hairline);}
   html[dir="rtl"] .navpanel::before,html[dir="rtl"] .langpanel::before{left:19px;right:auto;}
   .menulinks{display:grid;gap:var(--space-inline);margin-bottom:var(--space-field-inset);padding-bottom:var(--space-field-inset);border-bottom:1px solid var(--hairline);}
-  .menulinks a,.langmenu a,.languageitem{display:flex;align-items:center;justify-content:space-between;gap:var(--space-group);border-radius:var(--radius-control);padding:var(--space-field-inset) var(--space-group);color:var(--text-secondary);font-size:14px;font-weight:600;}
+  .menulinks a,.langmenu a,.languageitem{display:flex;align-items:center;justify-content:space-between;gap:var(--space-group);border-radius:var(--radius-control);padding:var(--space-field-inset) var(--space-group);color:var(--text-secondary);}
   .menulinks a:hover,.langmenu a:hover,.languageitem:hover{background:var(--hover);color:var(--text-primary);}
   .menulang summary{list-style:none;}
   .menulang summary::-webkit-details-marker{display:none;}
   .languageitem{cursor:pointer;}
   .languageitem .languagemark{color:var(--text-tertiary);transition:transform .18s;}
   .menulang[open] .languageitem .languagemark{transform:rotate(180deg);}
-  .langtitle{font-family:var(--font-web-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);padding:var(--space-line) var(--space-group) var(--space-related);}
+  .langtitle{text-transform:uppercase;color:var(--text-tertiary);padding:var(--space-line) var(--space-group) var(--space-related);}
   .langmenu{display:grid;grid-template-columns:1fr;gap:var(--space-line);max-height:min(52vh,390px);overflow:auto;padding-right:3px;}
   .langmenu a[aria-current="true"]{background:var(--accent-orchid-selection);color:var(--on-fill);}
   /* Buttons as the design system draws them: the action a page is for in the accent's deep fill under white words, any other outlined beside it, each with a state layer under the pointer. */
-  .btn{display:inline-flex;align-items:center;font-family:var(--font-web-body);font-size:14.5px;font-weight:600;padding:11px 20px;border-radius:999px;border:0;background:transparent;box-shadow:inset 0 0 0 1px var(--text-secondary);color:var(--text-primary);cursor:pointer;transition:background .22s;}
+  .btn{display:inline-flex;align-items:center;padding:11px 20px;border-radius:999px;border:0;background:transparent;box-shadow:inset 0 0 0 1px var(--text-secondary);color:var(--text-primary);cursor:pointer;transition:background .22s;}
   .btn:hover,.navpopup[open] > .btn{background:var(--hover);}
   .btn.pink{background:var(--accent-pink-selection);box-shadow:none;color:var(--on-fill);}
   .btn.pink:hover{background:linear-gradient(var(--hover),var(--hover)),var(--accent-pink-selection);}
@@ -130,7 +130,6 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .navin{gap:var(--space-group);}
     .wrap{padding:0 16px;}
     .navlinks{gap:var(--space-related);}
-    .navlinks a{font-size:13.5px;}
     .navlinks .btn.pink{padding:var(--space-field-inset) 15px;max-width:38vw;}
     .navpanel{width:calc(100vw - 32px);right:-8px;}
   }
@@ -138,49 +137,46 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   /* hero */
   header.hero{padding:130px 0 70px;position:relative;overflow:hidden;}
   .heroin{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:30px;align-items:center;}
-  h1.jumbo{font-family:var(--font-web-display);font-weight:800;font-size:clamp(46px,6.4vw,82px);line-height:.98;letter-spacing:-.035em;margin:0;margin-top:32px;}
+  h1.jumbo{margin:0;margin-top:32px;}
   h1.jumbo .pink{color:var(--accent-pink);} h1.jumbo .violet{color:var(--accent-orchid);}
-  .dek{margin:26px 0 0;font-size:clamp(16px,1.4vw,18.5px);line-height:1.62;color:var(--text-secondary);max-width:48ch;}
-  .dek b{color:var(--text-primary);font-weight:600;}
+  .dek{margin:26px 0 0;color:var(--text-secondary);max-width:48ch;}
+  .dek b{color:var(--text-primary);font-weight:var(--type-web-label-weight);}
   .devstatus{margin-top:26px;max-width:520px;}
   .devstatus .chip{margin-bottom:var(--space-compact);}
   .cta{display:flex;gap:13px;margin-top:34px;flex-wrap:wrap;align-items:center;}
-  .cta .meta{font-family:var(--font-web-mono);font-size:12px;color:var(--text-tertiary);}
+  .cta .meta{color:var(--text-tertiary);}
   .hero .cta .meta{margin-left:8px;}
 
   .herosheep{position:relative;display:grid;place-items:center;}
-  .note{position:absolute;background:var(--elevated);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-field-inset) 14px;font-size:12.5px;font-weight:600;box-shadow:0 12px 30px var(--shadow);animation:floaty 5s ease-in-out infinite;}
+  .note{position:absolute;background:var(--elevated);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-field-inset) 14px;box-shadow:0 12px 30px var(--shadow);animation:floaty 5s ease-in-out infinite;}
   .note .notehead{display:flex;align-items:center;gap:var(--space-compact);}
-  .note .s{display:block;font-family:var(--font-web-mono);font-size:10.5px;color:var(--text-tertiary);font-weight:400;margin-top:var(--space-line);}
+  .note .s{display:block;color:var(--text-tertiary);margin-top:var(--space-line);}
   .note.one{top:8%;left:-6%;} .note.two{bottom:12%;right:-4%;animation-delay:1.2s;}
 
   .trust{display:flex;gap:30px;flex-wrap:wrap;margin-top:36px;padding-top:26px;border-top:1px solid var(--hairline);position:relative;}
   .trust .t{display:flex;flex-direction:column;gap:3px;}
-  .trust .t b{font-family:var(--font-web-display);font-weight:700;font-size:23px;}
-  .trust .t span{font-size:12.5px;color:var(--text-tertiary);}
+  .trust .t span{color:var(--text-tertiary);}
 
   /* features */
   .sec{padding:84px 0;}
   .center{text-align:center;max-width:620px;margin:0 auto 50px;}
-  .eyebrow{font-family:var(--font-web-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-pink);margin-bottom:14px;}
-  h2.sech{font-family:var(--font-web-display);font-weight:800;font-size:clamp(32px,4.4vw,52px);letter-spacing:-.025em;margin:0 0 14px;line-height:1.02;}
-  .center p{font-size:17px;color:var(--text-secondary);line-height:1.6;margin:0;}
+  .eyebrow{text-transform:uppercase;color:var(--accent-pink);margin-bottom:14px;}
+  h2.sech{margin:0 0 14px;}
+  .center p{color:var(--text-secondary);margin:0;}
   .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}
   .fcard{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:28px;}
   .fcard .top{margin-bottom:18px;}
-  .fcard .no{font-family:var(--font-web-mono);font-size:12px;color:var(--text-tertiary);}
-  .fcard h3{font-family:var(--font-web-display);font-weight:700;font-size:21px;letter-spacing:-.01em;margin:0 0 var(--space-related);}
-  .fcard p{margin:0;font-size:14.5px;line-height:1.6;color:var(--text-secondary);}
+  .fcard .no{color:var(--text-tertiary);}
+  .fcard h3{margin:0 0 var(--space-related);}
+  .fcard p{margin:0;color:var(--text-secondary);}
   .fcard .tags{margin-top:var(--space-edge);display:flex;gap:var(--space-compact);flex-wrap:wrap;}
 
   /* how it works diagram */
   .diagram{display:flex;align-items:stretch;gap:0;margin-top:var(--space-related);}
   .dnode{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:11px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:28px 18px;}
   .dnode.dhub{flex:1.18;background:var(--elevated);border-color:var(--accent-mint);}
-  .dname{font-family:var(--font-web-display);font-weight:700;font-size:17px;letter-spacing:-.01em;}
-  .dnode.dhub .dname{font-size:19px;}
-  .dsub{font-family:var(--font-web-mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-tertiary);}
-  .dprov{font-size:11.5px;line-height:1.5;color:var(--text-secondary);max-width:30ch;}
+  .dsub{text-transform:uppercase;color:var(--text-tertiary);}
+  .dprov{color:var(--text-secondary);max-width:30ch;}
   .dwire{flex:0 0 auto;align-self:center;position:relative;display:grid;place-items:center;min-width:108px;min-height:50px;padding:0 var(--space-compact);}
   .dwire::before{content:"";position:absolute;left:4px;right:4px;top:50%;height:2px;transform:translateY(-50%);background:repeating-linear-gradient(90deg,color-mix(in srgb, var(--accent-mint) calc(var(--opacity-tint-strong) * 100%), transparent) 0 6px,transparent 6px 13px);animation:wireflow .9s linear infinite;}
   /* The label sits on the page's colour, so the wire stops at its edges. */
@@ -189,7 +185,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   html[dir="rtl"] .dwire::before{animation-name:wireflowrtl;}
   @keyframes wireflowrtl{to{background-position:-13px 0;}}
   .dfoot{text-align:center;margin-top:28px;}
-  .dfoot a{font-size:13.5px;color:var(--text-tertiary);font-weight:500;}
+  .dfoot a{color:var(--text-tertiary);}
   .dfoot a:hover{color:var(--accent-mint);}
   @media (prefers-reduced-motion: reduce){.dwire::before{animation:none;}}
   @media(max-width:860px){
@@ -204,19 +200,17 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .stack{margin-top:var(--space-related);display:flex;flex-direction:column;align-items:stretch;}
   .platerow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
   .plate{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:22px 14px;}
-  .plate b{font-family:var(--font-web-display);font-weight:700;font-size:16px;letter-spacing:-.01em;}
   .legs{display:grid;grid-template-columns:repeat(4,1fr);height:24px;}
   .legs i{justify-self:center;width:2px;height:100%;background:linear-gradient(180deg,transparent,color-mix(in srgb, var(--accent-orchid) calc(var(--opacity-tint-strong) * 100%), transparent));}
   .core{border-radius:var(--radius-panel);border:1px solid var(--accent-orchid);background:var(--elevated);padding:26px 28px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;}
   .core .ctext{display:flex;flex-direction:column;gap:5px;min-width:0;}
-  .core .ctitle{font-family:var(--font-web-display);font-weight:800;font-size:clamp(20px,2.6vw,27px);letter-spacing:-.02em;}
-  .core .csub{font-family:var(--font-web-mono);font-size:11.5px;letter-spacing:.03em;color:var(--text-secondary);}
+  .core .csub{color:var(--text-secondary);}
   .legs-down{display:grid;grid-template-columns:repeat(3,1fr);height:24px;}
   .legs-down i{justify-self:center;width:2px;height:100%;background:linear-gradient(180deg,color-mix(in srgb, var(--accent-orchid) calc(var(--opacity-tint-strong) * 100%), transparent),color-mix(in srgb, var(--warning) calc(var(--opacity-tint) * 100%), transparent));}
   .deprow{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-group);}
   .dep{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-edge) var(--space-group);}
-  .dep b{font-family:var(--font-web-mono);font-weight:600;font-size:13px;letter-spacing:.02em;color:var(--text-primary);}
-  .dep span{font-family:var(--font-web-mono);font-size:11px;letter-spacing:.02em;color:var(--text-tertiary);}
+  .dep b{color:var(--text-primary);}
+  .dep span{color:var(--text-tertiary);}
   @media(max-width:640px){
     .platerow{grid-template-columns:repeat(2,1fr);}
     /* 4 column-aligned legs don't map onto a 2x2 grid; collapse to one
@@ -231,14 +225,14 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   /* providers */
   .minigrid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-edge);}
   .mini{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:var(--space-section);}
-  .mini h4{font-family:var(--font-web-display);font-weight:700;font-size:17px;letter-spacing:-.01em;margin:0 0 var(--space-compact);}
-  .mini p{margin:0;font-size:13.5px;line-height:1.55;color:var(--text-secondary);}
+  .mini h4{margin:0 0 var(--space-compact);}
+  .mini p{margin:0;color:var(--text-secondary);}
   @media(max-width:860px){.minigrid{grid-template-columns:1fr;}}
 
   /* end */
   .endcta{text-align:center;padding:96px 0;}
   .endcta .sheep{display:flex;justify-content:center;margin-bottom:26px;}
-  .endcta h2{font-family:var(--font-web-display);font-weight:800;font-size:clamp(36px,5.2vw,68px);letter-spacing:-.03em;line-height:1;margin:0 0 16px;}
+  .endcta h2{margin:0 0 16px;}
   .endcta h2 .pink{color:var(--accent-pink);} .endcta h2 .violet{color:var(--accent-orchid);}
   /* end-CTA cycling final word ("home" / "everywhere") -- all scoped under .endcta */
   /* No-JS fallback: static "home." keeps the sentence intact.
@@ -295,26 +289,24 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .endcta h2 .cyc-caret{display:none;animation:none;}
     .endcta h2 .cyc-word{transition:opacity .6s ease;}
   }
-  .endcta p{font-size:17px;color:var(--text-secondary);margin:0 0 30px;}
+  .endcta p{color:var(--text-secondary);margin:0 0 30px;}
 
   footer{border-top:1px solid var(--hairline);padding:42px 0;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
   footer .links{display:flex;gap:22px;flex-wrap:wrap;}
-  footer a{font-size:14px;color:var(--text-secondary);font-weight:500;} footer a:hover{color:var(--accent-pink);}
-  footer .cp{font-family:var(--font-web-mono);font-size:11px;color:var(--text-tertiary);}
+  footer a{color:var(--text-secondary);} footer a:hover{color:var(--accent-pink);}
+  footer .cp{color:var(--text-tertiary);}
 
   @media(max-width:860px){.heroin{grid-template-columns:1fr;}.herosheep{order:-1;}.cards{grid-template-columns:1fr;}header.hero{padding-bottom:24px;}.sec{padding:52px 0;}}
   @media(max-width:560px){
     .heroin{gap:42px;}
-    h1.jumbo{line-height:1.05;}
-    .dek{margin-top:32px;line-height:1.68;}
+    .dek{margin-top:32px;}
     .hero .cta{justify-content:center;}
     .cta{margin-top:46px;gap:15px;}
     .cta .meta{flex-basis:100%;text-align:center;margin-top:2px;}
     .hero .cta .meta{margin-left:0;}
     .trust{flex-direction:column;align-items:center;gap:22px;margin-top:34px;padding-top:34px;padding-bottom:34px;border-bottom:1px solid var(--hairline);}
     .trust .t{align-items:center;text-align:center;gap:4px;}
-    .trust .t b{font-size:29px;}
-    .trust .t span{font-size:15.5px;color:var(--text-secondary);}
+    .trust .t span{color:var(--text-secondary);}
   }
 </style>
 </head>
@@ -323,19 +315,19 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   <span class="brand"><Logo kind="inline" size={40} /></span>
   <div class="navlinks">
     <div class="desktoplinks">
-      <a href={href('/guide/installation')}>{text.navDocs}</a>
-      <a href="https://github.com/bae-fm/bae">GitHub</a>
+      <a class="web-link" href={href('/guide/installation')}>{text.navDocs}</a>
+      <a class="web-link" href="https://github.com/bae-fm/bae">GitHub</a>
     </div>
-    <a class="btn pink" href="#get">{text.navDownload}</a>
+    <a class="btn pink web-label" href="#get">{text.navDownload}</a>
     <details class="navpopup desktoplang" data-nav-popup>
-      <summary class="btn languagebtn" aria-label={text.languageLabel}>
+      <summary class="btn languagebtn web-label" aria-label={text.languageLabel}>
         <span>{currentLocaleLabel}</span>
         <Symbol name="expand_more" size={20} />
       </summary>
       <div class="langpanel">
         <div class="langmenu">
           {localeLinks.map((entry) => (
-            <a href={entry.url} data-locale-choice={entry.code} aria-current={entry.code === locale ? 'true' : undefined}>{entry.label}</a>
+            <a class="web-label" href={entry.url} data-locale-choice={entry.code} aria-current={entry.code === locale ? 'true' : undefined}>{entry.label}</a>
           ))}
         </div>
       </div>
@@ -344,15 +336,15 @@ const macUrl = macFullUrl ?? href('/guide/installation');
       <summary class="iconbtn menubtn" aria-label={`${text.navDocs}, GitHub, ${text.languageLabel}`}><Symbol name="menu" size={24} /></summary>
       <div class="navpanel">
         <div class="menulinks">
-          <a href={href('/guide/installation')}>{text.navDocs}</a>
-          <a href="https://github.com/bae-fm/bae">GitHub</a>
+          <a class="web-label" href={href('/guide/installation')}>{text.navDocs}</a>
+          <a class="web-label" href="https://github.com/bae-fm/bae">GitHub</a>
         </div>
         <details class="menulang">
-          <summary class="languageitem">{text.languageLabel}<Symbol name="expand_more" size={20} class="languagemark" /></summary>
-          <div class="langtitle">{currentLocaleLabel}</div>
+          <summary class="languageitem web-label">{text.languageLabel}<Symbol name="expand_more" size={20} class="languagemark" /></summary>
+          <div class="langtitle web-eyebrow">{currentLocaleLabel}</div>
           <div class="langmenu">
             {localeLinks.map((entry) => (
-              <a href={entry.url} data-locale-choice={entry.code} aria-current={entry.code === locale ? 'true' : undefined}>{entry.label}</a>
+              <a class="web-label" href={entry.url} data-locale-choice={entry.code} aria-current={entry.code === locale ? 'true' : undefined}>{entry.label}</a>
             ))}
           </div>
         </details>
@@ -365,94 +357,94 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   <div class="wrap heroin">
     <div>
 
-      <h1 class="jumbo r d1">{text.heroTitle[0]}<br/><span class="pink">{text.heroTitle[1]}</span></h1>
-      <p class="dek r d2">{text.heroText} <b style="white-space:nowrap;">{text.heroBold}</b></p>
+      <h1 class="jumbo web-headline r d1">{text.heroTitle[0]}<br/><span class="pink">{text.heroTitle[1]}</span></h1>
+      <p class="dek web-lead r d2">{text.heroText} <b style="white-space:nowrap;">{text.heroBold}</b></p>
       <div class="devstatus r d3">
         <Notice tone="warning" title={text.statusTitle} subtitle={text.statusText} label={text.statusLabel}>
           <Chip tone="warning">{text.statusKicker}</Chip>
         </Notice>
       </div>
       <div class="cta r d3">
-        <a class="btn pink" href={macUrl}>{text.downloadMac}</a>
-        <a class="btn" href="#features">{text.seeFeatures}</a>
-        <span class="meta">{text.platformMeta}</span>
+        <a class="btn pink web-label" href={macUrl}>{text.downloadMac}</a>
+        <a class="btn web-label" href="#features">{text.seeFeatures}</a>
+        <span class="meta web-mono">{text.platformMeta}</span>
       </div>
       <div class="trust r d3">
         {text.trust.map(([title, subtitle]) => (
-          <div class="t"><b>{title}</b><span>{subtitle}</span></div>
+          <div class="t"><b class="web-heading">{title}</b><span class="web-detail">{subtitle}</span></div>
         ))}
       </div>
     </div>
     <div class="herosheep r d2">
       <Logo kind="pair" size={320} bob glow />
-      <div class="note one"><span class="notehead"><StatusGlyph tone="success" size={15} />{text.noteSynced}</span><span class="s">{text.noteSyncedSub}</span></div>
-      <div class="note two">{text.noteCloud}<span class="s">{text.noteCloudSub}</span></div>
+      <div class="note one"><span class="notehead web-detail-strong"><StatusGlyph tone="success" size={15} />{text.noteSynced}</span><span class="s web-mono">{text.noteSyncedSub}</span></div>
+      <div class="note two"><span class="web-detail-strong">{text.noteCloud}</span><span class="s web-mono">{text.noteCloudSub}</span></div>
     </div>
   </div>
 </header>
 
 <section class="sec" id="how"><div class="wrap">
   <div class="center r">
-    <div class="eyebrow">{text.syncEyebrow}</div>
-    <h2 class="sech">{text.syncTitle[0]} <span style="white-space:nowrap;">{text.syncTitle[1]}</span></h2>
+    <div class="eyebrow web-eyebrow">{text.syncEyebrow}</div>
+    <h2 class="sech web-title">{text.syncTitle[0]} <span style="white-space:nowrap;">{text.syncTitle[1]}</span></h2>
     <p>{text.syncText}</p>
   </div>
   <div class="diagram r d1">
     <div class="dnode">
-      <div class="dname">{text.desktop}</div>
-      <div class="dsub">{text.holdsKeys}</div>
+      <div class="dname web-subheading">{text.desktop}</div>
+      <div class="dsub web-eyebrow">{text.holdsKeys}</div>
     </div>
     <div class="dwire"><span class="dlabel"><Chip>{text.encrypted}</Chip></span></div>
     <div class="dnode dhub">
-      <div class="dname">{text.cloudStorage}</div>
-      <div class="dprov">Google&nbsp;Drive · Dropbox · iCloud · OneDrive · S3</div>
+      <div class="dname web-subheading">{text.cloudStorage}</div>
+      <div class="dprov web-detail">Google&nbsp;Drive · Dropbox · iCloud · OneDrive · S3</div>
     </div>
     <div class="dwire"><span class="dlabel"><Chip>{text.encrypted}</Chip></span></div>
     <div class="dnode">
-      <div class="dname">{text.phone}</div>
-      <div class="dsub">{text.holdsKeys}</div>
+      <div class="dname web-subheading">{text.phone}</div>
+      <div class="dsub web-eyebrow">{text.holdsKeys}</div>
     </div>
   </div>
-  <p class="dfoot r d2"><a href={href('/reference/encryption')}>{text.encryptionLink}</a></p>
+  <p class="dfoot r d2"><a class="web-link" href={href('/reference/encryption')}>{text.encryptionLink}</a></p>
 </div></section>
 
 <section class="sec" id="features"><div class="wrap">
   <div class="center r">
-    <div class="eyebrow">{text.libraryEyebrow}</div>
-    <h2 class="sech">{text.libraryTitle[0]}<br/>{text.libraryTitle[1]}</h2>
+    <div class="eyebrow web-eyebrow">{text.libraryEyebrow}</div>
+    <h2 class="sech web-title">{text.libraryTitle[0]}<br/>{text.libraryTitle[1]}</h2>
     <p>{text.libraryText}</p>
   </div>
   <div class="cards">
     <div class="fcard r">
       <div class="top">
-        <span class="no">01</span>
+        <span class="no web-mono">01</span>
       </div>
-      <h3>{text.cards[0][0]}</h3>
-      <p>{text.cards[0][1]}</p>
+      <h3 class="web-heading">{text.cards[0][0]}</h3>
+      <p class="web-body">{text.cards[0][1]}</p>
       <div class="tags">{text.cards[0][2].map((tag) => <Chip>{tag}</Chip>)}</div>
     </div>
     <div class="fcard r d1">
       <div class="top">
-        <span class="no">02</span>
+        <span class="no web-mono">02</span>
       </div>
-      <h3>{text.cards[1][0]}</h3>
-      <p>{text.cards[1][1]}</p>
+      <h3 class="web-heading">{text.cards[1][0]}</h3>
+      <p class="web-body">{text.cards[1][1]}</p>
       <div class="tags">{text.cards[1][2].map((tag) => <Chip>{tag}</Chip>)}</div>
     </div>
     <div class="fcard r">
       <div class="top">
-        <span class="no">03</span>
+        <span class="no web-mono">03</span>
       </div>
-      <h3>{text.cards[2][0]}</h3>
-      <p>{text.cards[2][1]}</p>
+      <h3 class="web-heading">{text.cards[2][0]}</h3>
+      <p class="web-body">{text.cards[2][1]}</p>
       <div class="tags">{text.cards[2][2].map((tag) => <Chip>{tag}</Chip>)}</div>
     </div>
     <div class="fcard r d1">
       <div class="top">
-        <span class="no">04</span>
+        <span class="no web-mono">04</span>
       </div>
-      <h3>{text.cards[3][0]}</h3>
-      <p>{text.cards[3][1]}</p>
+      <h3 class="web-heading">{text.cards[3][0]}</h3>
+      <p class="web-body">{text.cards[3][1]}</p>
       <div class="tags">{text.cards[3][2].map((tag) => <Chip>{tag}</Chip>)}</div>
     </div>
   </div>
@@ -460,29 +452,29 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
 <section class="sec" id="engine"><div class="wrap">
   <div class="center r">
-    <div class="eyebrow">{text.engineEyebrow}</div>
-    <h2 class="sech">{text.engineTitle[0]} <span style="white-space:nowrap;">{text.engineTitle[1]}</span></h2>
+    <div class="eyebrow web-eyebrow">{text.engineEyebrow}</div>
+    <h2 class="sech web-title">{text.engineTitle[0]} <span style="white-space:nowrap;">{text.engineTitle[1]}</span></h2>
     <p>{text.engineText}</p>
   </div>
   <div class="stack r d1">
     <div class="platerow">
-      <div class="plate"><b>iOS</b></div>
-      <div class="plate"><b>macOS</b></div>
-      <div class="plate"><b>Windows</b></div>
-      <div class="plate"><b>Android</b></div>
+      <div class="plate"><b class="web-subheading">iOS</b></div>
+      <div class="plate"><b class="web-subheading">macOS</b></div>
+      <div class="plate"><b class="web-subheading">Windows</b></div>
+      <div class="plate"><b class="web-subheading">Android</b></div>
     </div>
     <div class="legs"><i></i><i></i><i></i><i></i></div>
     <div class="core">
       <div class="ctext">
-        <div class="ctitle">{text.rustCore}</div>
-        <div class="csub">{text.rustCoreSub}</div>
+        <div class="ctitle web-heading">{text.rustCore}</div>
+        <div class="csub web-mono">{text.rustCoreSub}</div>
       </div>
       <Chip>{text.sharedRustCore}</Chip>
     </div>
     <div class="legs-down"><i></i><i></i><i></i></div>
     <div class="deprow">
       {text.deps.map(([name, label]) => (
-        <div class="dep"><b>{name}</b><span>{label}</span></div>
+        <div class="dep"><b class="web-subheading">{name}</b><span class="web-mono">{label}</span></div>
       ))}
     </div>
   </div>
@@ -490,38 +482,38 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
 <section class="sec" style="padding-top:0;"><div class="wrap">
   <div class="center r" style="margin-bottom:34px;">
-    <div class="eyebrow">{text.playbackEyebrow}</div>
-    <h2 class="sech">{text.playbackTitle}</h2>
+    <div class="eyebrow web-eyebrow">{text.playbackEyebrow}</div>
+    <h2 class="sech web-title">{text.playbackTitle}</h2>
   </div>
   <div class="minigrid">
     <div class="mini r">
-      <h4>{text.minis[0][0]}</h4>
-      <p>{text.minis[0][1]}</p>
+      <h4 class="web-subheading">{text.minis[0][0]}</h4>
+      <p class="web-body">{text.minis[0][1]}</p>
     </div>
     <div class="mini r d1">
-      <h4>{text.minis[1][0]}</h4>
-      <p>{text.minis[1][1]}</p>
+      <h4 class="web-subheading">{text.minis[1][0]}</h4>
+      <p class="web-body">{text.minis[1][1]}</p>
     </div>
     <div class="mini r d2">
-      <h4>{text.minis[2][0]}</h4>
-      <p>{text.minis[2][1]}</p>
+      <h4 class="web-subheading">{text.minis[2][0]}</h4>
+      <p class="web-body">{text.minis[2][1]}</p>
     </div>
   </div>
 </div></section>
 
 <section class="endcta" id="get"><div class="wrap">
   <div class="sheep r"><Logo kind="sheep" size={120} /></div>
-  <h2 class="r d1" aria-label={text.endAria} data-cycle-words={JSON.stringify(text.cycleWords)}>{text.endPrefix} <span class="cyc" aria-hidden="true"><span class="cyc-word cyc-pink">{text.cycleWords[0]}</span><span class="cyc-dot">.</span></span><span class="cyc-fallback">{text.endFallback}</span></h2>
-  <p class="r d2">{text.endText}</p>
+  <h2 class="web-headline r d1" aria-label={text.endAria} data-cycle-words={JSON.stringify(text.cycleWords)}>{text.endPrefix} <span class="cyc" aria-hidden="true"><span class="cyc-word cyc-pink">{text.cycleWords[0]}</span><span class="cyc-dot">.</span></span><span class="cyc-fallback">{text.endFallback}</span></h2>
+  <p class="web-lead r d2">{text.endText}</p>
   <div class="cta r d3" style="justify-content:center;">
-    <a class="btn pink" href={macUrl}>{text.downloadMac}</a>
+    <a class="btn pink web-label" href={macUrl}>{text.downloadMac}</a>
   </div>
 </div></section>
 
 <footer><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;width:100%;">
   <Logo kind="inline" size={40} />
-  <div class="links"><a href={href('/guide/installation')}>{text.navDocs}</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
-  <span class="cp">{text.footerStatus}</span>
+  <div class="links"><a class="web-link" href={href('/guide/installation')}>{text.navDocs}</a><a class="web-link" href="https://github.com/bae-fm/bae">GitHub</a></div>
+  <span class="cp web-mono">{text.footerStatus}</span>
 </div></footer>
 
 <script is:inline>
