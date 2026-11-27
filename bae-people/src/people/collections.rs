@@ -7,6 +7,104 @@ use crate::collections::{
     PlaylistEntry, RatingTarget, Stars,
 };
 use crate::people::{PersonProfile, Sharing};
+use bae_store::WriteStatements;
+
+sqlive_compose::write!(
+    KeepRating(
+        id: &'p str,
+        person: coven::MemberId,
+        album: Option<&'p str>,
+        track: Option<&'p str>,
+        stars: i64,
+    ),
+    r#"
+    INSERT INTO ratings (id, person_id, album_id, track_id, stars)
+    VALUES (:id, :person, :album, :track, :stars)
+    ON CONFLICT (id) DO UPDATE SET stars = excluded.stars
+"#
+);
+
+sqlive_compose::write!(DeleteRating(id: &'p str), r#"DELETE FROM ratings WHERE id = :id"#);
+
+sqlive_compose::write!(
+    InsertPlaylist(
+        id: &'p str,
+        person: coven::MemberId,
+        name: &'p str,
+        audience: &'p coven::Audience,
+    ),
+    r#"
+    INSERT INTO playlists (id, person_id, name, audience)
+    VALUES (:id, :person, :name, :audience)
+"#
+);
+
+sqlive_compose::write!(
+    SetPlaylist(id: &'p str, name: &'p str, audience: &'p coven::Audience),
+    r#"UPDATE playlists SET name = :name, audience = :audience WHERE id = :id"#
+);
+
+sqlive_compose::write!(DeletePlaylist(id: &'p str), r#"DELETE FROM playlists WHERE id = :id"#);
+
+sqlive_compose::write!(
+    InsertPlaylistEntry(playlist: &'p str, entry: &'p str, track: &'p str, position: i64),
+    r#"
+    INSERT INTO playlist_entries (playlist_id, position_id, track_id, position)
+    VALUES (:playlist, :entry, :track, :position)
+"#
+);
+
+// An entry after the playlist's last one.
+sqlive_compose::write!(
+    AppendPlaylistEntry(playlist: &'p str, entry: &'p str, track: &'p str),
+    r#"
+    INSERT INTO playlist_entries (playlist_id, position_id, track_id, position)
+    SELECT :playlist, :entry, :track, COALESCE(MAX(held.position) + 1, 0)
+    FROM playlist_entries AS held
+    WHERE held.playlist_id = :playlist
+"#
+);
+
+sqlive_compose::write!(
+    DeletePlaylistEntry(playlist: &'p str, entry: &'p str),
+    r#"DELETE FROM playlist_entries WHERE playlist_id = :playlist AND position_id = :entry"#
+);
+
+// The entry `entry` at place `to` among the playlist's others, and every entry
+// numbered from 0 in that order.
+sqlive_compose::write!(
+    MovePlaylistEntry(playlist: &'p str, entry: &'p str, to: i64),
+    r#"
+    WITH others AS (
+        SELECT position_id, ROW_NUMBER() OVER (ORDER BY position) - 1 AS place
+        FROM playlist_entries WHERE playlist_id = :playlist AND position_id <> :entry),
+    placed AS (
+        SELECT position_id, CASE WHEN place >= :to THEN place + 1 ELSE place END AS place
+        FROM others
+        UNION ALL
+        SELECT :entry, MIN(:to, (SELECT COUNT(*) FROM others)))
+    UPDATE playlist_entries SET position = placed.place FROM placed
+    WHERE playlist_entries.playlist_id = :playlist
+      AND playlist_entries.position_id = placed.position_id
+"#
+);
+
+// The playlist's entries numbered from 0, with `entries` numbers left free
+// before the entry now at place `at`.
+sqlive_compose::write!(
+    MakeRoomForPlaylistEntries(playlist: &'p str, at: i64, entries: i64),
+    r#"
+    WITH placed AS (
+        SELECT position_id, ROW_NUMBER() OVER (ORDER BY position) - 1 AS place
+        FROM playlist_entries WHERE playlist_id = :playlist)
+    UPDATE playlist_entries
+    SET position = CASE WHEN placed.place >= :at THEN placed.place + :entries
+                        ELSE placed.place END
+    FROM placed
+    WHERE playlist_entries.playlist_id = :playlist
+      AND playlist_entries.position_id = placed.position_id
+"#
+);
 
 impl People {
     pub async fn set_rating(
@@ -23,9 +121,17 @@ impl People {
             let id = format!("{person}:{kind}:{target_id}");
             match stars {
                 Some(stars) => {
-                    sql.execute("INSERT INTO ratings (id, person_id, album_id, track_id, stars) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(id) DO UPDATE SET stars = excluded.stars", params![id, person.to_string(), album, track, stars as i64])?;
+                    sql.run(&KeepRatingParams {
+                        id: &id,
+                        person,
+                        album: album.as_deref(),
+                        track: track.as_deref(),
+                        stars: stars as i64,
+                    })?;
                 }
-                None => { sql.execute("DELETE FROM ratings WHERE id = ?", [id])?; }
+                None => {
+                    sql.run(&DeleteRatingParams { id: &id })?;
+                }
             }
             Ok(Ok(()))
         })
@@ -71,22 +177,23 @@ impl People {
                 name,
                 audience: sharing.audience(person.private_circle),
             };
-            sql.execute(
-                "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
-                params![
-                    playlist.id.to_string(),
-                    playlist.person.to_string(),
-                    playlist.name,
-                    playlist.audience
-                ],
-            )?;
+            let id = playlist.id.to_string();
+            sql.run(&InsertPlaylistParams {
+                id: &id,
+                person: playlist.person,
+                name: &playlist.name,
+                audience: &playlist.audience,
+            })?;
             let track_ids = tracks.ordered_leaving_out_missing_picks(sql)?;
             assert!(positions.len() >= track_ids.len(), "a position id for each entry");
-            for (position, (position_id, track_id)) in positions.iter().zip(&track_ids).enumerate() {
-                sql.execute(
-                    "INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) VALUES (?, ?, ?, ?)",
-                    params![playlist.id.to_string(), position_id.to_string(), track_id, position as i64],
-                )?;
+            for (position, (position_id, track_id)) in positions.iter().zip(&track_ids).enumerate()
+            {
+                sql.run(&InsertPlaylistEntryParams {
+                    playlist: &id,
+                    entry: &position_id.to_string(),
+                    track: track_id,
+                    position: position as i64,
+                })?;
             }
             Ok(Ok(playlist))
         })
@@ -104,10 +211,11 @@ impl People {
     ) -> Result<(), CollectionError> {
         let name = bae_store::EnteredName::parse(name)?.into_string();
         self.change_playlist(id, move |sql, person| {
-            sql.execute(
-                "UPDATE playlists SET name = ?, audience = ? WHERE id = ?",
-                params![name, sharing.audience(person.private_circle), id.to_string()],
-            )?;
+            sql.run(&SetPlaylistParams {
+                id: &id.to_string(),
+                name: &name,
+                audience: &sharing.audience(person.private_circle),
+            })?;
             Ok(Ok(()))
         })
         .await
@@ -115,7 +223,7 @@ impl People {
 
     pub async fn delete_playlist(&self, id: uuid::Uuid) -> Result<(), CollectionError> {
         self.change_playlist(id, move |sql, _| {
-            sql.execute("DELETE FROM playlists WHERE id = ?", [id.to_string()])?;
+            sql.run(&DeletePlaylistParams { id: &id.to_string() })?;
             Ok(Ok(()))
         })
         .await
@@ -147,10 +255,15 @@ impl People {
             let track_ids = tracks.ordered_on(sql, bae_records::TrackReading::Named)?;
             assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
             for (position, track) in positions.iter().zip(&track_ids) {
-                sql.execute("INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) SELECT ?1, ?2, ?3, COALESCE(MAX(position) + 1, 0) FROM playlist_entries WHERE playlist_id = ?1", params![playlist.to_string(), position.to_string(), track])?;
+                sql.run(&AppendPlaylistEntryParams {
+                    playlist: &playlist.to_string(),
+                    entry: &position.to_string(),
+                    track,
+                })?;
             }
             Ok(Ok(()))
-        }).await
+        })
+        .await
     }
 
     pub async fn remove_playlist_entry(
@@ -159,10 +272,10 @@ impl People {
         position: uuid::Uuid,
     ) -> Result<(), CollectionError> {
         self.change_playlist(playlist, move |sql, _| {
-            let changed = sql.execute(
-                "DELETE FROM playlist_entries WHERE playlist_id = ? AND position_id = ?",
-                params![playlist.to_string(), position.to_string()],
-            )?;
+            let changed = sql.run(&DeletePlaylistEntryParams {
+                playlist: &playlist.to_string(),
+                entry: &position.to_string(),
+            })?;
             Ok(if changed == 1 { Ok(()) } else { Err(CollectionError::Missing) })
         })
         .await
@@ -181,20 +294,11 @@ impl People {
             let Some(to) = place_among_others_on(sql, playlist, position, place)? else {
                 return Ok(Err(CollectionError::Missing));
             };
-            sql.execute(
-                "WITH others AS ( \
-                     SELECT position_id, ROW_NUMBER() OVER (ORDER BY position) - 1 AS place \
-                     FROM playlist_entries WHERE playlist_id = ?1 AND position_id <> ?2), \
-                 placed AS ( \
-                     SELECT position_id, CASE WHEN place >= ?3 THEN place + 1 ELSE place END \
-                            AS place FROM others \
-                     UNION ALL \
-                     SELECT ?2, MIN(?3, (SELECT COUNT(*) FROM others))) \
-                 UPDATE playlist_entries SET position = placed.place FROM placed \
-                 WHERE playlist_entries.playlist_id = ?1 \
-                   AND playlist_entries.position_id = placed.position_id",
-                params![playlist.to_string(), position.to_string(), to],
-            )?;
+            sql.run(&MovePlaylistEntryParams {
+                playlist: &playlist.to_string(),
+                entry: &position.to_string(),
+                to,
+            })?;
             Ok(Ok(()))
         })
         .await
@@ -222,24 +326,18 @@ impl People {
             };
             let track_ids = tracks.ordered_on(sql, bae_records::TrackReading::Named)?;
             assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
-            sql.execute(
-                "WITH placed AS ( \
-                     SELECT position_id, ROW_NUMBER() OVER (ORDER BY position) - 1 AS place \
-                     FROM playlist_entries WHERE playlist_id = ?1) \
-                 UPDATE playlist_entries \
-                 SET position = CASE WHEN placed.place >= ?2 THEN placed.place + ?3 \
-                                     ELSE placed.place END \
-                 FROM placed \
-                 WHERE playlist_entries.playlist_id = ?1 \
-                   AND playlist_entries.position_id = placed.position_id",
-                params![playlist.to_string(), at, track_ids.len() as i64],
-            )?;
+            sql.run(&MakeRoomForPlaylistEntriesParams {
+                playlist: &playlist.to_string(),
+                at,
+                entries: track_ids.len() as i64,
+            })?;
             for (offset, (position, track)) in positions.iter().zip(&track_ids).enumerate() {
-                sql.execute(
-                    "INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) \
-                     VALUES (?1, ?2, ?3, ?4)",
-                    params![playlist.to_string(), position.to_string(), track, at + offset as i64],
-                )?;
+                sql.run(&InsertPlaylistEntryParams {
+                    playlist: &playlist.to_string(),
+                    entry: &position.to_string(),
+                    track,
+                    position: at + offset as i64,
+                })?;
             }
             Ok(Ok(()))
         })

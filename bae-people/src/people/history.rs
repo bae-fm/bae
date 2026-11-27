@@ -1,8 +1,27 @@
 use super::profiles::{writer_on, Writer};
 use super::*;
 use crate::history::{HistoryEntry, HistoryPlay, PlayRecordError};
+use bae_store::WriteStatements;
 use bae_util::timestamp::StoredTimestamp as _;
 use std::time::Duration;
+
+// A play's row, which a later write of the same play only lengthens.
+sqlive_compose::write!(
+    RecordPlay(
+        id: &'p str,
+        person: coven::MemberId,
+        track: &'p str,
+        started_at: &'p str,
+        played_on: &'p str,
+        played_ms: i64,
+        audience: coven::Audience,
+    ),
+    r#"
+    INSERT INTO history (id, person_id, track_id, started_at, played_on, played_ms, audience)
+    VALUES (:id, :person, :track, :started_at, :played_on, :played_ms, :audience)
+    ON CONFLICT (id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)
+"#
+);
 
 impl People {
     /// Capture the person's setting once. A later setting change cannot publish this play.
@@ -46,14 +65,25 @@ impl People {
         }
         let entry = play.entry.clone();
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
-        self.inner.store.call(move |sql| {
-            if writer_on(sql)?.map(|writer| writer.member) != Some(entry.person) {
-                return Ok(Err(PlayRecordError::PersonChanged(entry.person)));
-            }
-            // The first write stores the day, and the play keeps it.
-            sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_on, played_ms, audience) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), entry.played_on.to_string(), played_ms, entry.audience])?;
-            Ok(Ok(true))
-        }).await?
+        self.inner
+            .store
+            .call(move |sql| {
+                if writer_on(sql)?.map(|writer| writer.member) != Some(entry.person) {
+                    return Ok(Err(PlayRecordError::PersonChanged(entry.person)));
+                }
+                // The first write stores the day, and the play keeps it.
+                sql.run(&RecordPlayParams {
+                    id: &entry.id.to_string(),
+                    person: entry.person,
+                    track: &entry.track_id,
+                    started_at: &entry.started_at.to_rfc3339(),
+                    played_on: &entry.played_on.to_string(),
+                    played_ms,
+                    audience: entry.audience,
+                })?;
+                Ok(Ok(true))
+            })
+            .await?
     }
 
     /// Every play the library holds, newest first: what the tests of
