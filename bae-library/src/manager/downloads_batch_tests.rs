@@ -247,6 +247,26 @@ async fn the_pin_bar_fills_with_each_release_pinned() {
     pin_bar_until(&mut bars, first / total).await;
 }
 
+/// While a pin downloads, the Pinning line's bar rows list its release with
+/// its size's share of the batch, and the other download line lists none.
+#[tokio::test]
+async fn the_pin_bar_rows_list_the_release_downloading() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let releases = pinnable_releases(&test, 2).await;
+    let first = release_size(manager, &releases[0]).await as f64;
+    let total = first + release_size(manager, &releases[1]).await as f64;
+
+    queue_pins(manager, &releases).await;
+    let _entry = manager.started_pin_entry_for_test(&releases[0]).await;
+    let bars = manager.store.read(|sql| bae_views::activity_bars_on(&sql)).await.unwrap();
+    assert_eq!(
+        bars.pins.moving,
+        [bae_views::MovingShare { key: releases[0].clone(), share: first / total }]
+    );
+    assert_eq!(bars.moving_to_this_device.moving, []);
+}
+
 /// Watch the Pinning line's bar until it is `want`.
 async fn pin_bar_until(bars: &mut crate::ActivityBarsWatch, want: f64) {
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {

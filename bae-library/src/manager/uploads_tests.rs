@@ -330,13 +330,15 @@ async fn a_storage_row_counts_the_file_being_sent() {
 }
 
 /// The sync activity spins as a file's send starts, while nothing joins or
-/// leaves the queue, and its release's line goes once the send ends.
+/// leaves the queue, the Uploading line's bar rows list the file being sent
+/// with its share of the batch, and the release's line goes once the send
+/// ends.
 #[tokio::test]
 async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    insert_release_with_queued_uploads(
+    let release = insert_release_with_queued_uploads(
         manager,
         &temp_dir,
         "sending",
@@ -374,6 +376,9 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
             wait: None
         })
     );
+    let files = release_files(manager, &release.id).await;
+    let bars = manager.store.read(|sql| bae_views::activity_bars_on(&sql)).await.unwrap();
+    assert_eq!(bars.uploads.moving, [bae_views::MovingShare { key: files[0].file, share: 1.0 }]);
     created.await.unwrap();
     resume.send(()).unwrap();
     while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}

@@ -20,7 +20,7 @@ pub struct BatchBar<Key> {
 
 /// A file or release that bae is transferring now, and its share of its
 /// batch's bytes.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 pub struct MovingShare<Key> {
     pub key: Key,
     /// Its size divided by the batch's size, from 0 to 1.
@@ -51,8 +51,7 @@ pub struct ActivityBarRows {
 sqlive_compose::fragment!(
     UploadBar {
         upload_done: f64,
-        struct UploadingFile { key: coven::FileId, share: f64 }
-        upload_moving: json<Vec<UploadingFile>>,
+        upload_moving: json<Vec<crate::activity_bars::MovingShare<coven::FileId>>>,
     },
     r#"
     SELECT COALESCE(CAST(bytes.done AS REAL) / NULLIF(bytes.total, 0), 0.0) AS upload_done,
@@ -79,8 +78,7 @@ sqlive_compose::fragment!(
 sqlive_compose::fragment!(
     DownloadBar(kind: String) {
         done_share: f64,
-        struct DownloadingRelease { key: String, share: f64 }
-        moving: json<Vec<DownloadingRelease>>,
+        moving: json<Vec<crate::activity_bars::MovingShare<String>>>,
     },
     r#"
     SELECT COALESCE(CAST(bytes.done AS REAL) / NULLIF(bytes.total, 0), 0.0) AS done_share,
@@ -121,14 +119,7 @@ pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRo
         },
     )?;
     Ok(ActivityBarRows {
-        uploads: BatchBar {
-            done: uploads.upload_done,
-            moving: uploads
-                .upload_moving
-                .into_iter()
-                .map(|file| MovingShare { key: file.key, share: file.share })
-                .collect(),
-        },
+        uploads: BatchBar { done: uploads.upload_done, moving: uploads.upload_moving },
         pins: pins.into_bar(),
         moving_to_this_device: moves.into_bar(),
     })
@@ -136,14 +127,7 @@ pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRo
 
 impl DownloadBar {
     fn into_bar(self) -> BatchBar<String> {
-        BatchBar {
-            done: self.done_share,
-            moving: self
-                .moving
-                .into_iter()
-                .map(|release| MovingShare { key: release.key, share: release.share })
-                .collect(),
-        }
+        BatchBar { done: self.done_share, moving: self.moving }
     }
 }
 
