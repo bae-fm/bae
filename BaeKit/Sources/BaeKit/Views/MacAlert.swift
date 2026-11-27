@@ -541,16 +541,26 @@
         }
     }
 
-    extension View {
-        /// Shows bae's alert while `asker` has a question open.
-        public func presentsAlerts(of asker: AlertAsker) -> some View {
-            modifier(
+    /// `presentsAlerts(of:)`'s modifier. It reads the asker's question in its
+    /// own body, so a question runs this body again and not the caller's.
+    private struct PresentingAsked: ViewModifier {
+        let asker: AlertAsker
+
+        func body(content: Content) -> some View {
+            content.modifier(
                 Presenting(
                     presentation: .init(asker.asked != nil),
                     build: { asker.asked.map { ($0.words, $0.buttons) } },
                     finish: { asker.close() }
                 )
             )
+        }
+    }
+
+    extension View {
+        /// Shows bae's alert while `asker` has a question open.
+        public func presentsAlerts(of asker: AlertAsker) -> some View {
+            modifier(PresentingAsked(asker: asker))
         }
 
         /// Shows bae's alert while `isPresented`; any button closes it.

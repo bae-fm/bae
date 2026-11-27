@@ -210,6 +210,18 @@ struct AlertOverSheetTests {
         }
     }
 
+    /// A view that presents an asker's questions and tells `ran` of each run
+    /// of its body.
+    private struct AskerCaller: View {
+        let asker: AlertAsker
+        let ran: () -> Void
+
+        var body: some View {
+            ran()
+            return Color.clear.presentsAlerts(of: asker)
+        }
+    }
+
     @Test("raising a macAlert doesn't run the body of the view it is on")
     func theCallerDoesNotReadTheBinding() async throws {
         let asked = PassthroughSubject<Bool, Never>()
