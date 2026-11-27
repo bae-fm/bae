@@ -13,7 +13,7 @@
 // its row names. SQLite's `hex` of NULL is an empty string, not NULL, so the
 // device's part is chosen on `coven_file_device` itself.
 sqlive_compose::fragment!(
-    StoredFileVersion { version: String },
+    StoredFileVersion { file: coven::FileId, version: String },
     r#"
     SELECT coven.id AS file,
            coven.id || CASE WHEN coven_file_device(coven.coordinates) IS NULL THEN ''
@@ -22,6 +22,13 @@ sqlive_compose::fragment!(
     FROM coven_files AS coven
 "#
 );
+
+impl StoredFileVersion {
+    /// The file and its version.
+    pub fn into_parts(self) -> (coven::FileId, String) {
+        (self.file, self.version)
+    }
+}
 
 // Every stored file's version, whose SQL a statement built as text holds.
 sqlive_compose::read!(

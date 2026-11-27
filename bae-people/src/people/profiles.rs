@@ -98,7 +98,7 @@ impl People {
             .store
             .read(move |sql| {
                 statement_optional(&sql, &ProfileOfParams { member })?
-                    .map(|row| row.profile.into_profile())
+                    .map(|row| Ok(row.profile.into_profile()))
                     .transpose()
             })
             .await
@@ -266,29 +266,23 @@ fn this_devices_person_on(
 
 fn person(member: Member, profile: Option<Profile>) -> Result<Person, DbError> {
     Ok(Person {
-        profile: profile.map(Profile::into_profile).transpose()?,
+        profile: profile.map(Profile::into_profile),
         membership: member.into_membership()?,
     })
 }
 
 impl Profile {
-    fn into_profile(self) -> Result<PersonProfile, DbError> {
-        let avatar = self
-            .avatar_id
-            .map(|file| {
-                let version = self.avatar_version.ok_or_else(|| {
-                    DbError::unreadable(format!("the avatar of {}", self.id), "no stored file")
-                })?;
-                Ok::<_, DbError>(Avatar { file, version })
-            })
-            .transpose()?;
-        Ok(PersonProfile {
+    fn into_profile(self) -> PersonProfile {
+        PersonProfile {
             id: self.id,
             name: self.name,
             private_circle: self.private_circle,
             history_sharing: self.history_sharing,
-            avatar,
-        })
+            avatar: self.avatar.map(|stored| {
+                let (file, version) = stored.into_parts();
+                Avatar { file, version }
+            }),
+        }
     }
 }
 
