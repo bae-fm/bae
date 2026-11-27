@@ -221,7 +221,9 @@ abstract class ShotsHarness : DefaultTask() {
     @TaskAction
     fun write() {
         processes.exec {
-            commandLine("builds", "shots", "harness", "--into", outputDir.get().asFile.path, "android")
+            // env finds builds on this build's PATH. A program named alone is found on the PATH that the
+            // Gradle daemon's JVM started with, so a daemon would run the builds of the build that started it.
+            commandLine("/usr/bin/env", "builds", "shots", "harness", "--into", outputDir.get().asFile.path, "android")
         }
     }
 }
