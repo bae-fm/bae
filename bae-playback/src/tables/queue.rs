@@ -283,58 +283,15 @@ impl PlaybackQueueTables {
 
     /// The track that plays next: Up Next's first, or else the context lane's
     /// track after the playing one.
-    #[expect(
-        clippy::read_keyed_statement,
-        reason = "kept finding: reads the next context track keyed by the queue row the first statement returned"
-    )]
     pub async fn front(&self) -> Result<Option<String>, DbError> {
-        self.store
-            .read(|sql| {
-                let manual = sql
-                    .query_row(
-                        "SELECT track_id FROM playback_manual ORDER BY position LIMIT 1",
-                        [],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                if manual.is_some() {
-                    return Ok(manual);
-                }
-                let row = queue_row_on(&sql)?;
-                Ok(sql
-                    .query_row(
-                        &format!(
-                            "SELECT track_id FROM playback_context \
-                             WHERE {column} > ?1 ORDER BY {column} LIMIT 1",
-                            column = row.order_column()
-                        ),
-                        [row.cursor],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
-            })
-            .await
+        self.store.read(|sql| super::queue_reads::queue_front_on(&sql)).await
     }
 
     /// The context lane's next track when it plays straight on from the
     /// playing one: Up Next empty and the lane in its own order. The only
     /// track a side or disc pause can fall before.
     pub async fn next_in_order(&self) -> Result<Option<String>, DbError> {
-        self.store
-            .read(|sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT c.track_id FROM playback_queue q \
-                         JOIN playback_context c ON c.ordered > q.ordered_cursor \
-                         WHERE q.shuffled = 0 \
-                           AND NOT EXISTS (SELECT 1 FROM playback_manual) \
-                         ORDER BY c.ordered LIMIT 1",
-                        [],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
-            })
-            .await
+        self.store.read(|sql| super::queue_reads::next_in_order_on(&sql)).await
     }
 
     /// Every track of the context lane, played or not, in lane order.

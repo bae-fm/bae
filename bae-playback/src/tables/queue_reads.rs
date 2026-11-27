@@ -160,6 +160,30 @@ sqlive_compose::fragment!(
 "#
 );
 
+// The first row of the session's up-next list: the track that plays next.
+sqlive_compose::read!(
+    QueueFront(limit: i64),
+    r#"
+    SELECT front.*
+    FROM @crate::tables::queue_reads::SessionUpNext(limit: :limit) AS front
+"#
+);
+
+// The context lane's track after the playing one, while the lane reads in its
+// own order and Up Next is empty; no row otherwise.
+sqlive_compose::read!(
+    NextInOrder,
+    r#"
+    SELECT later.track_id
+    FROM playback_queue AS queue
+    JOIN playback_context AS later ON later.ordered > queue.ordered_cursor
+    WHERE queue.shuffled = 0
+      AND NOT EXISTS (SELECT 1 FROM playback_manual)
+    ORDER BY later.ordered
+    LIMIT 1
+"#
+);
+
 // The queue as its screens show it: a row for each Up Next entry, in order,
 // each beside the queue's head and flags, and one row with no entry when Up
 // Next is empty.
@@ -219,6 +243,16 @@ fn session_up_next_on(sql: &SqlReadContext<'_>, limit: u64) -> Result<Vec<QueueI
         .into_iter()
         .map(|row| queue_item(row.item.entry, row.item.track))
         .collect()
+}
+
+/// The track that plays next, as the session's up-next list starts.
+pub(super) fn queue_front_on(sql: &SqlReadContext<'_>) -> Result<Option<String>, DbError> {
+    Ok(statement_optional(sql, &QueueFrontParams { limit: 1 })?.map(|row| row.front.track_id))
+}
+
+/// The track [`NextInOrder`] reads.
+pub(super) fn next_in_order_on(sql: &SqlReadContext<'_>) -> Result<Option<String>, DbError> {
+    Ok(statement_optional(sql, &NextInOrderParams {})?.map(|row| row.track_id))
 }
 
 pub(super) fn queue_value_on(

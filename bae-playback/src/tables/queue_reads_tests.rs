@@ -57,6 +57,28 @@ async fn session_up_next(db: &Store, limit: u64) -> Vec<String> {
     items.into_iter().map(|item| item.track_id).collect()
 }
 
+/// The track that plays next is one statement, whichever lane it comes from,
+/// and so is the next track in the context's own order.
+#[tokio::test]
+async fn the_next_track_is_one_statement() {
+    let (db, _tmp, tracks) = release_db(4).await;
+    let queue = PlaybackQueueTables::new(db.clone());
+    up_next_with_both_lanes(&db, &tracks, false).await;
+
+    let counter = db.track_work_for_test().await.unwrap();
+    assert_eq!(queue.front().await.unwrap(), Some(tracks[2].clone()), "Up Next's first");
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert_eq!(queue.next_in_order().await.unwrap(), None, "Up Next holds tracks");
+    assert_eq!(counter.take().app_read_statements, 1);
+
+    queue.clear_manual().await.unwrap();
+    let counter = db.track_work_for_test().await.unwrap();
+    assert_eq!(queue.front().await.unwrap(), Some(tracks[2].clone()), "the context's next");
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert_eq!(queue.next_in_order().await.unwrap(), Some(tracks[2].clone()));
+    assert_eq!(counter.take().app_read_statements, 1);
+}
+
 /// The session's list is Up Next, then the context lane's tracks after the
 /// playing one in the order the lane reads in, cut at the limit, shuffled or
 /// not.
