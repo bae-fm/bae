@@ -3,7 +3,6 @@
 
 use bae_store::{DbError, Store};
 use coven::{CovenWrite, SqlReadContext};
-use rusqlite::params;
 
 mod admin_operations;
 pub use admin_operations::{InviteError, RefusedInviteDismissError};

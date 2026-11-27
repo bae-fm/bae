@@ -9,7 +9,7 @@ use crate::admin_change::{
     AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangePlace, AdminChangeState,
     AdminChanges,
 };
-use bae_store::statement_row;
+use bae_store::{statement_row, WriteStatements};
 use rusqlite::types::{FromSql, FromSqlError, ValueRef};
 
 /// What an admin change changes, as its `admin_operations` row holds it.
@@ -190,6 +190,25 @@ fn fresh_change_outcome(outcome: coven::FreshChangeOutcome) -> coven::ChangeOutc
     }
 }
 
+sqlive_compose::write!(
+    InsertAdminOperation(
+        operation: i64,
+        member: Option<coven::MemberId>,
+        device: Option<coven::DeviceId>,
+        role: Option<coven::MemberRole>,
+        name: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO admin_operations (operation, member, device, role, name)
+    VALUES (:operation, :member, :device, :role, :name)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteAdminOperation(operation: i64),
+    r#"DELETE FROM admin_operations WHERE operation = :operation"#
+);
+
 /// Record what the change journaled as `operation` changes, in its write.
 pub(super) fn insert_admin_operation(
     sql: &CovenWrite<'_>,
@@ -203,11 +222,7 @@ pub(super) fn insert_admin_operation(
         AdminTarget::Device(device) => (None, Some(*device), None, None),
         AdminTarget::Approval(member, invitee) => (Some(*member), None, None, invitee.as_deref()),
     };
-    sql.execute(
-        "INSERT INTO admin_operations (operation, member, device, role, name) \
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![operation.0, member, device, role, name],
-    )?;
+    sql.run(&InsertAdminOperationParams { operation: operation.0, member, device, role, name })?;
     Ok(())
 }
 
@@ -254,8 +269,7 @@ impl Membership {
         let acknowledged = self
             .store
             .call(move |sql| {
-                let deleted = sql
-                    .execute("DELETE FROM admin_operations WHERE operation = ?1", [operation.0])?;
+                let deleted = sql.run(&DeleteAdminOperationParams { operation: operation.0 })?;
                 if deleted == 0 {
                     return Ok(false);
                 }
