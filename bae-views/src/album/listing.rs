@@ -4,11 +4,55 @@
 //! Its tables and the triggers keeping them are `listing.sql`.
 
 use super::*;
+use bae_store::{statement_row, statement_rows};
 
-pub(super) fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row("SELECT COUNT(*) FROM album_listing", [], |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)
-        .map_err(DbError::from)
+// The flat grid's counts: its albums, each of which is one row, and whether
+// the library holds a track.
+sqlive_compose::read!(
+    FlatAlbumCounts { albums: u64, can_shuffle: bool },
+    r#"
+    SELECT (SELECT COUNT(*) FROM album_listing AS listing) AS albums,
+           EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track)
+               AS can_shuffle
+"#
+);
+
+// The counts of the grid grouped by artist: its albums; its rows, one for
+// each album under each of its artists, the sum of the artists' album counts;
+// and whether the library holds a track.
+sqlive_compose::read!(
+    GroupedAlbumCounts { albums: u64, appearances: u64, can_shuffle: bool },
+    r#"
+    SELECT (SELECT COUNT(*) FROM album_listing AS listing) AS albums,
+           (SELECT COALESCE(SUM(artist.album_count), 0) FROM artist_listing AS artist)
+               AS appearances,
+           EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track)
+               AS can_shuffle
+"#
+);
+
+/// How many rows the album grid has, flat or grouped by artist, and whether
+/// the library has a track to shuffle.
+pub(super) fn album_counts_on(
+    sql: &SqlReadContext<'_>,
+    group_by_artist: bool,
+) -> Result<AlbumCounts, DbError> {
+    if group_by_artist {
+        let row = statement_row(sql, &GroupedAlbumCountsParams {})?;
+        return Ok(AlbumCounts {
+            albums: row.albums,
+            rows: row.appearances,
+            can_shuffle: row.can_shuffle,
+            grouped: true,
+        });
+    }
+    let row = statement_row(sql, &FlatAlbumCountsParams {})?;
+    Ok(AlbumCounts {
+        albums: row.albums,
+        rows: row.albums,
+        can_shuffle: row.can_shuffle,
+        grouped: false,
+    })
 }
 
 /// How many rows of the album grid come before the row at `key`.
@@ -28,31 +72,112 @@ pub(crate) fn album_rows_before_on(
     )
 }
 
-/// The grid grouped by artist's sections: each artist in the grouped order
-/// with its name, its picture and where its albums start in the grid's rows.
+// The sections of the grid grouped by artist with the artists ascending: each
+// artist in the grouped order with its name, where its albums start in the
+// grid's rows, how many there are and the version of its picture.
+sqlive_compose::read!(
+    AscendingArtistSections { first_position: u64, image_version: Option<String> },
+    r#"
+    SELECT artist.artist_id, artist.name,
+           SUM(artist.album_count) OVER (
+               ORDER BY artist.sort_name_sort_key, artist.artist_id ROWS UNBOUNDED PRECEDING)
+               - artist.album_count AS first_position,
+           artist.album_count,
+           (SELECT image.version
+            FROM @bae_records::records::files::ArtistImageVersion AS image
+            WHERE image.id = artist.artist_id) AS image_version
+    FROM artist_listing AS artist
+    ORDER BY artist.sort_name_sort_key, artist.artist_id
+"#
+);
+
+// [`AscendingArtistSections`] with the artists descending.
+sqlive_compose::read!(
+    DescendingArtistSections { first_position: u64, image_version: Option<String> },
+    r#"
+    SELECT artist.artist_id, artist.name,
+           SUM(artist.album_count) OVER (
+               ORDER BY artist.sort_name_sort_key DESC, artist.artist_id DESC
+               ROWS UNBOUNDED PRECEDING)
+               - artist.album_count AS first_position,
+           artist.album_count,
+           (SELECT image.version
+            FROM @bae_records::records::files::ArtistImageVersion AS image
+            WHERE image.id = artist.artist_id) AS image_version
+    FROM artist_listing AS artist
+    ORDER BY artist.sort_name_sort_key DESC, artist.artist_id DESC
+"#
+);
+
+/// The sections of the grid grouped by artist, the artists in `direction`.
 pub(super) fn album_sections_on(
     sql: &SqlReadContext<'_>,
     direction: SortDirection,
 ) -> Result<Vec<crate::LibraryBrowseSection>, DbError> {
-    Ok(sql.query(&album_browse_sections_query(direction), [], |row| {
-        Ok(crate::LibraryBrowseSection {
-            id: row.get(0)?,
-            title: row.get(1)?,
-            image: bae_records::artist_image_ref(&row.get::<_, String>(0)?, row.get(4)?),
-            first_position: row.get::<_, i64>(2)? as u64,
-            album_count: row.get::<_, i64>(3)? as u64,
-        })
-    })?)
+    macro_rules! sections {
+        ($params:expr) => {
+            statement_rows(sql, &$params)?
+                .into_iter()
+                .map(|row| {
+                    section(
+                        row.artist_id,
+                        row.name,
+                        row.first_position,
+                        row.album_count,
+                        row.image_version,
+                    )
+                })
+                .collect()
+        };
+    }
+    match direction {
+        SortDirection::Ascending => sections!(AscendingArtistSectionsParams {}),
+        SortDirection::Descending => sections!(DescendingArtistSectionsParams {}),
+    }
 }
 
-/// How many places the grid grouped by artist has: one for each album under
-/// each of its artists, the sum of the artists' album counts.
-pub(super) fn album_appearance_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row("SELECT COALESCE(SUM(album_count), 0) FROM artist_listing", [], |row| {
-        row.get::<_, i64>(0)
+/// One artist's section of the grid grouped by artist.
+fn section(
+    artist_id: String,
+    name: String,
+    first_position: u64,
+    album_count: i64,
+    image_version: Option<String>,
+) -> Result<crate::LibraryBrowseSection, DbError> {
+    Ok(crate::LibraryBrowseSection {
+        image: bae_records::artist_image_ref(&artist_id, image_version),
+        id: artist_id,
+        title: name,
+        first_position,
+        album_count: u64::try_from(album_count)
+            .map_err(|_error| DbError::unreadable("an artist's album count", album_count))?,
     })
-    .map(|count| count as u64)
-    .map_err(DbError::from)
+}
+
+// The ids of `requested`, a JSON array of album ids, that the grid does not
+// show, in id order: the grid shows an album that has a listing row.
+sqlive_compose::read!(
+    UnshownAlbums(requested: String) { album_id: String },
+    r#"
+    SELECT requested.value AS album_id
+    FROM json_each(:requested) AS requested
+    WHERE requested.value IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM album_listing AS listing
+                      WHERE listing.album_id = requested.value)
+    ORDER BY requested.value
+"#
+);
+
+/// The albums of `requested` that the grid does not show, by id.
+pub(super) fn unshown_albums_on(
+    sql: &SqlReadContext<'_>,
+    requested: &std::collections::BTreeSet<String>,
+) -> Result<Vec<String>, DbError> {
+    let requested = serde_json::to_string(requested).expect("album ids serialize as JSON");
+    Ok(statement_rows(sql, &UnshownAlbumsParams { requested })?
+        .into_iter()
+        .map(|row| row.album_id)
+        .collect())
 }
 
 /// The table holding every term of the album list's order, flat or grouped
@@ -274,25 +399,6 @@ pub(super) fn grouped_artist_direction(sort: &[AlbumSortCriterion]) -> SortDirec
         .map_or(SortDirection::Ascending, |c| c.direction)
 }
 
-/// The grid's sections when grouped by artist: each artist in the grouped
-/// order with its name, where its albums start in the rows, how many there
-/// are, and the version of its picture. `direction` is the grouped order's
-/// Artist direction.
-pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
-    let dir = sort_direction_sql(direction);
-    let order = format!("artist.sort_name_sort_key {dir}, artist.artist_id {dir}");
-    format!(
-        "SELECT artist.artist_id, artist.name, \
-                SUM(artist.album_count) OVER (ORDER BY {order} ROWS UNBOUNDED PRECEDING) \
-                    - artist.album_count, \
-                artist.album_count, \
-                {image} AS image_version \
-         FROM artist_listing artist \
-         ORDER BY {order}",
-        image = bae_records::records::files::artist_image_version_sql("artist.artist_id"),
-    )
-}
-
 /// The credits of each row of the album grid that show another artist than
 /// the one whose group lists it, as a JSON array (a SQL expression over
 /// `album_browse_order`'s relation): NULL when the album has none, and for
@@ -302,13 +408,6 @@ fn album_credits_beside_sql(group_by_artist: bool) -> String {
         bae_records::records::query::album_credits_beside_json_sql("link.artist_id")
     } else {
         "NULL".to_string()
-    }
-}
-
-fn sort_direction_sql(direction: SortDirection) -> &'static str {
-    match direction {
-        SortDirection::Ascending => "ASC",
-        SortDirection::Descending => "DESC",
     }
 }
 

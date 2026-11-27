@@ -4,13 +4,11 @@
 //! an album's card is in the grid (`place`).
 
 use super::*;
-use listing::{
-    album_appearance_count_on, album_count_on, album_sections_on, grouped_artist_direction,
-};
 pub(crate) use listing::{
     album_browse_order, album_card_columns, album_rows_before_on, album_rows_on,
     primary_storage_join, AlbumAppearanceRow,
 };
+use listing::{album_counts_on, album_sections_on, grouped_artist_direction, unshown_albums_on};
 
 mod listing;
 mod place;
@@ -236,13 +234,7 @@ impl LibraryViews {
         &self,
         group_by_artist: bool,
     ) -> coven::LiveQuery<AlbumCounts, bae_store::DbError> {
-        self.store.subscribe(move |sql| {
-            let albums = album_count_on(&sql)?;
-            let rows = if group_by_artist { album_appearance_count_on(&sql)? } else { albums };
-            let can_shuffle =
-                sql.query_row("SELECT EXISTS (SELECT 1 FROM tracks)", [], |row| row.get(0))?;
-            Ok(AlbumCounts { albums, rows, can_shuffle, grouped: group_by_artist })
-        })
+        self.store.subscribe(move |sql| album_counts_on(&sql, group_by_artist))
     }
 
     /// Follow how many rows of the album grid come before the row at a key,
@@ -297,16 +289,8 @@ impl LibraryViews {
         &self,
         initial: BTreeSet<String>,
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>, bae_store::DbError> {
-        self.store.subscribe_reconfigurable(initial, move |requested, sql| {
-            let requested = serde_json::to_string(requested).expect("album ids serialize as JSON");
-            Ok(sql.query(
-                "SELECT requested.value FROM json_each(?1) requested \
-                 WHERE NOT EXISTS (SELECT 1 FROM albums a WHERE a.id = requested.value) \
-                 ORDER BY requested.value",
-                [requested],
-                |row| row.get::<_, String>(0),
-            )?)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, |requested, sql| unshown_albums_on(&sql, requested))
     }
 
     /// The albums of `album_ids` the browse lists, each once at its first
@@ -343,7 +327,7 @@ impl LibraryViews {
 
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
-        self.store.read(|sql| album_count_on(&sql)).await
+        self.store.read(|sql| Ok(album_counts_on(&sql, false)?.albums)).await
     }
 
     /// The album's detail as its view shows it, showing its primary release.
