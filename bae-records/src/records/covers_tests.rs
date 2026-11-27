@@ -52,8 +52,10 @@ async fn a_cover_made_from_a_release_file_names_it_and_keeps_no_original() {
 
     let row = records.cover_source_for_test(RELEASE_A).await.unwrap().expect("the cover row");
     assert_eq!(row, CoverSource::ReleaseFile { file_id: IMAGE_FILE.to_string() });
-    let browse = records.cover_copy_file(RELEASE_A, CoverCopy::Browse).await.unwrap();
-    let large = records.cover_copy_file(RELEASE_A, CoverCopy::Large).await.unwrap();
+    let browse =
+        records.cover_copy(RELEASE_A, CoverCopy::Browse).await.unwrap().map(|copy| copy.file);
+    let large =
+        records.cover_copy(RELEASE_A, CoverCopy::Large).await.unwrap().map(|copy| copy.file);
     assert_eq!(read(&db, browse).await.unwrap(), b"browse");
     assert_eq!(read(&db, large).await.unwrap(), b"large");
     assert!(records.cover_original_file_for_test(RELEASE_A).await.unwrap().is_none());
@@ -76,7 +78,8 @@ async fn a_cover_made_from_embedded_art_names_its_audio_file_and_keeps_no_origin
     let row = records.cover_source_for_test(RELEASE_A).await.unwrap().expect("the cover row");
     assert_eq!(row, CoverSource::Embedded { file_id: AUDIO_FILE.to_string() });
     assert!(records.cover_original_file_for_test(RELEASE_A).await.unwrap().is_none());
-    let browse = records.cover_copy_file(RELEASE_A, CoverCopy::Browse).await.unwrap();
+    let browse =
+        records.cover_copy(RELEASE_A, CoverCopy::Browse).await.unwrap().map(|copy| copy.file);
     assert_eq!(read(&db, browse).await.unwrap(), b"browse");
 }
 
@@ -126,7 +129,8 @@ async fn a_new_cover_replaces_the_source_and_both_copies() {
     let row = records.cover_source_for_test(RELEASE_A).await.unwrap().expect("the cover row");
     assert_eq!(row, CoverSource::ReleaseFile { file_id: IMAGE_FILE.to_string() });
     assert!(records.cover_original_file_for_test(RELEASE_A).await.unwrap().is_none());
-    let browse = records.cover_copy_file(RELEASE_A, CoverCopy::Browse).await.unwrap();
+    let browse =
+        records.cover_copy(RELEASE_A, CoverCopy::Browse).await.unwrap().map(|copy| copy.file);
     assert_eq!(read(&db, browse).await.unwrap(), b"new browse");
     assert_ne!(records.cover_version(RELEASE_A).await.unwrap(), version_before);
 }
@@ -137,6 +141,30 @@ async fn a_release_with_no_cover_has_no_row_and_no_files() {
     let records = crate::test_fixtures::test_records(&db);
 
     assert!(records.cover_source_for_test(RELEASE_A).await.unwrap().is_none());
-    assert!(records.cover_copy_file(RELEASE_A, CoverCopy::Large).await.unwrap().is_none());
+    assert!(records.cover_copy(RELEASE_A, CoverCopy::Large).await.unwrap().is_none());
     assert!(records.cover_original_file_for_test(RELEASE_A).await.unwrap().is_none());
+}
+
+/// A cover's copy, an artist's image and a cover's version are each read as
+/// one statement.
+#[tokio::test]
+async fn each_picture_is_one_statement() {
+    let (db, _folder) = library().await;
+    let records = crate::test_fixtures::test_records(&db);
+    records
+        .write_cover(cover(
+            NewCoverPicture::ReleaseFile { file_id: IMAGE_FILE.to_string() },
+            "browse",
+            "large",
+        ))
+        .await
+        .unwrap();
+
+    let counter = db.track_work_for_test().await.unwrap();
+    assert!(records.cover_copy(RELEASE_A, CoverCopy::Large).await.unwrap().is_some());
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert!(records.artist_picture("missing-artist").await.unwrap().is_none());
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert!(records.cover_version(RELEASE_A).await.unwrap().is_some());
+    assert_eq!(counter.take().app_read_statements, 1);
 }

@@ -34,7 +34,7 @@ impl LibraryManager {
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<coven::FileRef>, LibraryError> {
-        self.library_image_file(id, image_type).await
+        Ok(self.records.library_image_file(id, image_type).await?)
     }
 
     /// Write `cover` as the cover of its release, for tests that need one
@@ -127,7 +127,8 @@ impl LibraryManager {
                 self.read_cover_copy(&image.id, copy).await
             }
             LibraryImageType::Artist => {
-                self.read_library_image_bytes(&image.id, &image.image_type).await
+                let artist = self.read_library_image(&image.id, &image.image_type).await?;
+                Ok(artist.map(|image| image.bytes))
             }
         }
     }
@@ -147,30 +148,36 @@ impl LibraryManager {
         release_id: &str,
         copy: CoverCopy,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        let Some(file) = self.records.cover_copy_file(release_id, copy).await? else {
+        let Some(picture) = self.records.cover_copy(release_id, copy).await? else {
             return Ok(None);
         };
-        self.read_image_file(&format!("{copy:?} copy of {release_id}'s cover"), &file)
+        self.read_image_file(&format!("{copy:?} copy of {release_id}'s cover"), &picture.file)
             .await
             .map(Some)
     }
 
-    /// Read a library image's bytes by its subject id and kind; for a cover,
-    /// its large copy. `None` when this device has no file for it.
-    pub async fn read_library_image_bytes(
+    /// A library image by its subject id and kind, its format with its bytes,
+    /// both from one read of its row; for a cover, its large copy. `None` when
+    /// the library holds no such image.
+    pub async fn read_library_image(
         &self,
         id: &str,
         image_type: &LibraryImageType,
-    ) -> Result<Option<Vec<u8>>, LibraryError> {
-        match image_type {
-            LibraryImageType::Cover => self.read_cover_copy(id, CoverCopy::Large).await,
+    ) -> Result<Option<LibraryImage>, LibraryError> {
+        let (picture, what) = match image_type {
+            LibraryImageType::Cover => (
+                self.records.cover_copy(id, CoverCopy::Large).await?,
+                format!("large copy of {id}'s cover"),
+            ),
             LibraryImageType::Artist => {
-                let Some(file) = self.library_image_file(id, image_type).await? else {
-                    return Ok(None);
-                };
-                self.read_image_file(&format!("image {id}"), &file).await.map(Some)
+                (self.records.artist_picture(id).await?, format!("image {id}"))
             }
-        }
+        };
+        let Some(picture) = picture else {
+            return Ok(None);
+        };
+        let bytes = self.read_image_file(&what, &picture.file).await?;
+        Ok(Some(LibraryImage { content_type: picture.content_type, bytes }))
     }
 
     pub(super) async fn read_image_file(
@@ -183,16 +190,6 @@ impl LibraryManager {
             .read_file(file, &lease)
             .await
             .map_err(|e| LibraryError::file_read(format!("read {what}"), e))
-    }
-
-    /// The coven file a library image's row references, as this device
-    /// reads it now. `None` when there is no such row.
-    async fn library_image_file(
-        &self,
-        id: &str,
-        image_type: &LibraryImageType,
-    ) -> Result<Option<coven::FileRef>, LibraryError> {
-        Ok(self.records.library_image_file(id, image_type).await?)
     }
 
     /// The files a pin of the release `release_id` keeps; `None` when the
@@ -225,6 +222,13 @@ impl LibraryManager {
         }
         Ok(pinnable)
     }
+}
+
+/// A library image as a client outside the app takes it.
+pub struct LibraryImage {
+    /// The format the bytes are in.
+    pub content_type: bae_util::content_type::ContentType,
+    pub bytes: Vec<u8>,
 }
 
 /// One file of a release's pinned set, with the plaintext byte size its row

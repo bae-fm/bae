@@ -9,6 +9,53 @@ pub enum ImageWriteRefusal {
     Superseded { image_type: LibraryImageType, subject_id: String },
 }
 
+/// One stored picture of the library, a cover's copy or an artist's image, as
+/// a reader of its bytes takes it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LibraryPicture {
+    /// The format the picture's bytes are in.
+    pub content_type: ContentType,
+    /// The coven file with the bytes, as this device reads it now.
+    pub file: coven::FileRef,
+}
+
+// The format of one release's cover copies and the coven files of both; no
+// row for a release with no cover.
+sqlive_compose::read!(
+    OneCoverCopies(release: String) {
+        browse_file: coven::FileId,
+        large_file: coven::FileId,
+    },
+    r#"
+    SELECT cover.content_type, cover.browse_file, cover.large_file
+    FROM covers AS cover
+    WHERE cover.id = :release
+"#
+);
+
+// The format and coven file of one artist's image; no row for an artist with
+// no image.
+sqlive_compose::read!(
+    OneArtistPicture(artist: String) {
+        file: coven::FileId,
+    },
+    r#"
+    SELECT image.content_type, image.file
+    FROM artist_images AS image
+    WHERE image.id = :artist
+"#
+);
+
+// One release's cover's version; no row for a release with no cover.
+sqlive_compose::read!(
+    OneCoverVersion(release: String),
+    r#"
+    SELECT cover.*
+    FROM @crate::records::files::CoverVersion AS cover
+    WHERE cover.id = :release
+"#
+);
+
 /// Why an image's replacement did not commit.
 pub type ImageWriteError = WriteError<ImageWriteRefusal>;
 
@@ -112,49 +159,37 @@ impl Records {
             .await
     }
 
-    /// The artist's image row; `None` when the artist has none.
-    pub async fn find_artist_image(
+    /// The artist's image, its format and bytes' file read as one statement;
+    /// `None` when the artist has none.
+    pub async fn artist_picture(&self, artist_id: &str) -> Result<Option<LibraryPicture>, DbError> {
+        let statement = OneArtistPictureParams { artist: artist_id.to_owned() };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        match row {
+            Some(row) => self.picture(&row.content_type, row.file).await.map(Some),
+            None => Ok(None),
+        }
+    }
+
+    async fn picture(
         &self,
-        artist_id: &str,
-    ) -> Result<Option<DbArtistImage>, DbError> {
-        let artist_id = artist_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    "SELECT id, content_type FROM artist_images WHERE id = ?",
-                    params![artist_id],
-                    |row| {
-                        Ok(DbArtistImage {
-                            artist_id: row.get("id")?,
-                            content_type: ContentType::from_mime(
-                                &row.get::<_, String>("content_type")?,
-                            ),
-                        })
-                    },
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        content_type: &str,
+        file: coven::FileId,
+    ) -> Result<LibraryPicture, DbError> {
+        Ok(LibraryPicture {
+            content_type: ContentType::from_mime(content_type),
+            file: self.store.file_ref(file).await?,
+        })
     }
 
     /// The format of the release's cover copies; `None` when it has no cover.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn cover_content_type(
         &self,
         release_id: &str,
     ) -> Result<Option<ContentType>, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    "SELECT content_type FROM covers WHERE id = ?",
-                    params![release_id],
-                    |row| Ok(ContentType::from_mime(&row.get::<_, String>(0)?)),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        let copy = self.cover_copy(release_id, CoverCopy::Large).await?;
+        Ok(copy.map(|copy| copy.content_type))
     }
 
     /// What the release's cover is made from and the coven file that holds
@@ -199,18 +234,24 @@ impl Records {
         Ok(self.cover_picture(release_id).await?.map(|picture| picture.source))
     }
 
-    /// The coven file of the release's cover copy `copy`, as this device
-    /// reads it now; `None` when the release has no cover.
-    pub async fn cover_copy_file(
+    /// The release's cover copy `copy`, its format and bytes' file read as one
+    /// statement; `None` when the release has no cover.
+    pub async fn cover_copy(
         &self,
         release_id: &str,
         copy: CoverCopy,
-    ) -> Result<Option<coven::FileRef>, DbError> {
-        let column = match copy {
-            CoverCopy::Browse => "browse_file",
-            CoverCopy::Large => "large_file",
+    ) -> Result<Option<LibraryPicture>, DbError> {
+        let statement = OneCoverCopiesParams { release: release_id.to_owned() };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        let Some(row) = row else {
+            return Ok(None);
         };
-        self.cover_file_in(release_id, column).await
+        let file = match copy {
+            CoverCopy::Browse => row.browse_file,
+            CoverCopy::Large => row.large_file,
+        };
+        self.picture(&row.content_type, file).await.map(Some)
     }
 
     /// The coven file of the release's cover original, as this device reads
@@ -221,7 +262,24 @@ impl Records {
         &self,
         release_id: &str,
     ) -> Result<Option<coven::FileRef>, DbError> {
-        self.cover_file_in(release_id, "original_file").await
+        let release_id = release_id.to_string();
+        let Some(file) = self
+            .store
+            .read(move |sql| {
+                Ok(sql
+                    .query_row(
+                        "SELECT original_file FROM covers WHERE id = ?",
+                        params![release_id],
+                        |row| row.get::<_, Option<coven::FileId>>(0),
+                    )
+                    .optional()?
+                    .flatten())
+            })
+            .await?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(self.store.file_ref(file).await?))
     }
 
     /// The coven file of the preview of the release file `file_id`, as this
@@ -249,43 +307,12 @@ impl Records {
         Ok(Some(self.store.file_ref(file).await?))
     }
 
-    async fn cover_file_in(
-        &self,
-        release_id: &str,
-        column: &'static str,
-    ) -> Result<Option<coven::FileRef>, DbError> {
-        let release_id = release_id.to_string();
-        let Some(file) = self
-            .store
-            .read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        &format!("SELECT {column} FROM covers WHERE id = ?"),
-                        params![release_id],
-                        |row| row.get::<_, Option<coven::FileId>>(0),
-                    )
-                    .optional()?
-                    .flatten())
-            })
-            .await?
-        else {
-            return Ok(None);
-        };
-        Ok(Some(self.store.file_ref(file).await?))
-    }
-
     /// The version of one release's cover, or `None` when it has no cover.
     pub async fn cover_version(&self, release_id: &str) -> Result<Option<String>, DbError> {
-        self.find_image_version(&LibraryImageType::Cover, release_id).await
-    }
-
-    async fn find_image_version(
-        &self,
-        image_type: &LibraryImageType,
-        id: &str,
-    ) -> Result<Option<String>, DbError> {
-        let (image_type, id) = (image_type.clone(), id.to_string());
-        self.store.read(move |sql| image_version_on(&sql, &image_type, &id)).await
+        let statement = OneCoverVersionParams { release: release_id.to_owned() };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        Ok(row.and_then(|row| row.cover.version))
     }
 
     /// The original coven records on this device for a release file's coven
@@ -445,33 +472,14 @@ pub fn artist_image_version_sql(artist_id: &str) -> String {
 /// The version of the image of `image_type` keyed by `id` (a SQL
 /// expression), as a statement built as text holds it.
 fn image_version_sql(image_type: &LibraryImageType, id: &str) -> String {
-    format!("({})", image_version_select(image_type, id))
-}
-
-/// The select of the version of the image of `image_type` keyed by `id` (a SQL
-/// expression), which returns no row when there is no such image.
-fn image_version_select(image_type: &LibraryImageType, id: &str) -> String {
     let versions = match image_type {
         LibraryImageType::Cover => CoverVersions::SQL,
         LibraryImageType::Artist => ArtistImageVersions::SQL,
     };
     format!(
-        "SELECT image_version.version FROM ({versions}) AS image_version \
-         WHERE image_version.id = {id}"
+        "(SELECT image_version.version FROM ({versions}) AS image_version \
+         WHERE image_version.id = {id})"
     )
-}
-
-/// The version of one image row, or `None` when there is no such row.
-pub(super) fn image_version_on<Q: coven::SqlRead>(
-    sql: &Q,
-    image_type: &LibraryImageType,
-    id: &str,
-) -> Result<Option<String>, DbError> {
-    Ok(sql
-        .query_row(&image_version_select(image_type, "?"), params![id], |row| {
-            row.get::<_, String>(0)
-        })
-        .optional()?)
 }
 
 /// The coven file one image row names (a cover's browse copy), or `None` when there is no such row.

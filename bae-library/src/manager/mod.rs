@@ -77,6 +77,7 @@ mod release_edit;
 #[cfg(desktop)]
 mod release_metadata;
 pub use config::LiveSaveChoice;
+pub use coven_files::LibraryImage;
 pub use device_storage::{DeviceStorage, StorageKind, StoragePart};
 pub use people::{DeviceCutOff, DeviceRemoval};
 #[cfg(desktop)]
