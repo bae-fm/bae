@@ -244,8 +244,8 @@ impl Store {
 
     /// A live query of two statements that read one snapshot: each request
     /// becomes each statement, and the result holds every row each returned.
-    /// A read that is too large for SQLite to prepare as one statement is two,
-    /// one for each concern of the screen.
+    /// A concern's read that is too large for SQLite to prepare as one
+    /// statement is two.
     pub fn subscribe_reconfigurable_statements<P, A, B, E>(
         &self,
         initial_request: P,

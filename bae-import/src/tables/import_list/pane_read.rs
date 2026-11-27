@@ -1,8 +1,10 @@
-//! The candidate pane's reads. SQLite refuses to prepare the pane as one
-//! statement, which nests every fragment's subqueries too deep, so it reads
-//! its two concerns in one snapshot: the candidate as the scan, the list and
-//! the candidate's state hold it, and what it files under, which is the draft
-//! it holds or the release this device imported from it.
+//! The candidate pane's reads. The pane is one concern: one release, read for
+//! one request. SQLite refuses to prepare it as one statement, which nests
+//! every fragment's subqueries too deep, so one live query runs two
+//! statements in one snapshot. The head reads the candidate as the scan, the
+//! list and the candidate's state hold it, and the draft reads what it files
+//! under, which is the draft it holds or the release this device imported from
+//! it. The pane's value takes fields of both.
 
 sqlive_compose::read!(
     PaneHead(key: Option<crate::CandidateKey>),
