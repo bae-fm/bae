@@ -40,7 +40,9 @@ struct ReleaseSelectionFailureTests {
     @Test("A release refused for its track count says both counts on its row")
     func trackCountRefusalStatesBothCounts() async throws {
         let groups = PreviewData.searchStateFoundExact.identifiedGroups
-        let pressing = try #require(groups.first?.pressings.first)
+        let pressing = try #require(
+            groups.first?.sections.flatMap(\.pressings).first
+        )
         let category = BridgeErrorCategory.metadataTrackCount(
             folderTracks: 12,
             releaseTracks: 10
@@ -145,7 +147,7 @@ struct ReleaseSelectionFailureTests {
     func unexpectedDetailsCanBeCopied(_ diagnostic: String) async throws {
         let pressing = try #require(
             PreviewData.searchStateFoundExact.identifiedGroups.first?
-                .pressings.first
+                .sections.flatMap(\.pressings).first
         )
         let failure = try await failedSelection(
             pressing: pressing,
@@ -171,7 +173,7 @@ struct ReleaseSelectionFailureTests {
     func failureLineSayingItAllHasNoCopyControl() async throws {
         let pressing = try #require(
             PreviewData.searchStateFoundExact.identifiedGroups.first?
-                .pressings.first
+                .sections.flatMap(\.pressings).first
         )
         let detail =
             "the release's [Disc { disc: 1 }, Disc { disc: 3 }] fit the folder's audio equally"

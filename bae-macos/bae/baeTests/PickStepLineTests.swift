@@ -15,7 +15,7 @@ struct PickStepLineTests {
     @Test("a pick reading from a catalog shows its step on its row")
     func readingNamesTheCatalog() async throws {
         let pressing = try #require(
-            PreviewData.searchGroupExact.pressings.first
+            PreviewData.searchGroupExact.sections.flatMap(\.pressings).first
         )
         let size = NSSize(width: 620, height: 120)
         try await SnapshotTestSupport.withHostedWindow(

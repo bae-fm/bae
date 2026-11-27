@@ -471,7 +471,7 @@ struct FindOnlineReadingPickTests {
         let reading = try #require(
             PreviewData.searchStateReadingPick.identifiedGroups.first
         )
-        let read = try #require(reading.pressings.first)
+        let read = try #require(reading.sections.flatMap(\.pressings).first)
         #expect(read.chosen)
         guard case .unattended = section(reading).loading(read) else {
             Issue.record("the row being read shows no unattended read")
@@ -481,7 +481,7 @@ struct FindOnlineReadingPickTests {
         let found = try #require(
             PreviewData.searchStateFoundExact.identifiedGroups.first
         )
-        for pressing in found.pressings {
+        for pressing in found.sections.flatMap(\.pressings) {
             #expect(!pressing.chosen)
             #expect(section(found).loading(pressing) == nil)
         }
@@ -532,7 +532,7 @@ struct PickedRowTests {
     @Test("the row being read draws as loading, not as selected")
     func theRowBeingReadIsNotSelected() throws {
         let pressing = try #require(
-            PreviewData.searchGroupExact.pressings.first
+            PreviewData.searchGroupExact.sections.flatMap(\.pressings).first
         )
 
         let reading = section(
@@ -546,7 +546,7 @@ struct PickedRowTests {
     @Test("the row being read cannot be picked again")
     func theRowBeingReadCannotBePickedAgain() throws {
         let pressing = try #require(
-            PreviewData.searchGroupExact.pressings.first
+            PreviewData.searchGroupExact.sections.flatMap(\.pressings).first
         )
 
         #expect(!row(pressing, loading: .followed(nil)).isPickable)
