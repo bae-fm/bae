@@ -1,7 +1,7 @@
 use super::*;
 use coven::{RecordedInviteStage as Stage, RecordedJoiner as Joiner};
 
-/// Open an in-memory library, where coven makes the views `INVITE_ROWS`
+/// Open an in-memory library, where coven makes the views `ListedInvites`
 /// reads beside the library's own `people`.
 fn views() -> rusqlite::Connection {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
@@ -15,7 +15,7 @@ fn views() -> rusqlite::Connection {
 type Shown = (i64, String, Option<bool>, Option<String>, Option<Vec<u8>>);
 
 fn rows(conn: &rusqlite::Connection) -> Vec<Shown> {
-    conn.prepare(INVITE_ROWS)
+    conn.prepare(ListedInvites::SQL)
         .unwrap()
         .query_map([], |row| {
             Ok((
@@ -158,7 +158,7 @@ fn a_request_shows_the_name_a_new_person_typed() {
 }
 
 /// Open invites and the ones a sharing refusal ended are one list.
-/// `INVITE_ROWS` lists them in the order coven started their operations and
+/// `ListedInvites` lists them in the order coven started their operations and
 /// leaves out operations of any other kind or with any other outcome.
 #[test]
 fn open_and_refused_invites_are_listed_in_the_order_they_were_made() {
@@ -181,12 +181,12 @@ fn open_and_refused_invites_are_listed_in_the_order_they_were_made() {
     );
 }
 
-/// The operation of the invite `WAITING_REQUEST` returns, leaving out the
+/// The operation of the invite `FirstWaitingRequest` returns, leaving out the
 /// invites built from the numbers in `closed`.
 fn waiting_request(conn: &rusqlite::Connection, closed: &[u8]) -> Option<i64> {
     let closed: Vec<String> = closed.iter().map(|&n| invite_id(n).0.to_string()).collect();
     let closed = serde_json::Value::from(closed).to_string();
-    conn.prepare(WAITING_REQUEST)
+    conn.prepare(FirstWaitingRequest::SQL)
         .unwrap()
         .query_map([closed], |row| row.get("operation"))
         .unwrap()
@@ -220,7 +220,7 @@ fn an_invite_is_read_by_its_id_while_it_is_open() {
     invite(&conn, 1, Stage::Waiting { joiner: None });
     let dan = invite(&conn, 2, dan_waiting());
     let by_id = |n: u8| -> Option<i64> {
-        conn.prepare(INVITE_BY_ID)
+        conn.prepare(InviteOfId::SQL)
             .unwrap()
             .query_map([invite_id(n).0.to_string()], |row| row.get("operation"))
             .unwrap()

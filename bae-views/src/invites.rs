@@ -2,6 +2,8 @@
 //! refusal to share ended.
 
 use super::*;
+use bae_store::{statement_optional, statement_rows};
+use coven::types::{FromSql, ValueRef};
 
 /// One of this device's open invites, with the pending record of its
 /// operation when coven holds one that is not the invite's own waiting: a
@@ -49,95 +51,171 @@ impl InviteEntry {
     }
 }
 
-/// This device's open invites, as rows of the shape [`INVITE_ROWS`] lists:
-/// each with the pending record of its operation unless that record is the
-/// invite's own waiting (the join request at its own path while no request
-/// has arrived, and the admin's decision once one has), and the name its
-/// request shows. A request shows the name a new person typed, or for a
-/// member getting access again the name of their profile. The statements
-/// that use it add their own WHERE and ORDER BY.
-macro_rules! open_invite_rows {
-    () => {
-        "SELECT i.operation AS operation, 'open' AS kind, i.invite AS invite, \
-                i.request_member IS NOT NULL AS has_request, \
-                CASE WHEN i.request_member IS NULL THEN NULL \
-                     ELSE COALESCE(i.joiner_name, person.name) END AS requester, \
-                pending.record AS record, pending.cause AS cause, NULL AS outcome \
-         FROM coven_invites AS i \
-         LEFT JOIN coven_pending AS pending \
-             ON pending.subject_kind = 'operation' AND pending.operation = i.operation \
-            AND NOT (i.stage = 'waiting' \
-                     AND ((i.request_member IS NULL AND pending.reason_kind = 'missing') \
-                          OR (i.request_member IS NOT NULL AND pending.reason_kind = 'paused'))) \
-         LEFT JOIN people AS person ON person.id = i.request_member "
-    };
-}
-
-/// Every row of People's invites in the order coven started their operations:
-/// this device's open invites, and each invite whose operation ended with a
-/// sharing refusal nobody has dismissed: `coven_operations` lists an invite
-/// only once a sharing refusal ends it.
-const INVITE_ROWS: &str = concat!(
-    open_invite_rows!(),
-    "UNION ALL \
-     SELECT o.operation, 'refused', NULL, NULL, NULL, NULL, NULL, o.outcome \
-     FROM coven_operations AS o \
-     WHERE o.kind = 'Invite' \
-     ORDER BY operation"
+// This device's open invites: each with the pending record of its operation
+// unless that record is the invite's own waiting (the join request at its own
+// path while no request has arrived, and the admin's decision once one has),
+// and the name its request shows. A request shows the name a new person typed,
+// or for a member getting access again the name of their profile.
+sqlive_compose::fragment!(
+    OpenInviteRows {
+        invite_id: String,
+        stage: String,
+        has_request: bool,
+        requester: Option<String>,
+        record: Option<Vec<u8>>,
+        cause: Option<String>
+    },
+    r#"
+    SELECT i.operation, i.invite, i.invite_id, i.stage,
+           i.request_member IS NOT NULL AS has_request,
+           CASE WHEN i.request_member IS NULL THEN NULL
+                ELSE COALESCE(i.joiner_name, person.name) END AS requester,
+           pending.record AS record, pending.cause AS cause
+    FROM coven_invites AS i
+    LEFT JOIN coven_pending AS pending
+        ON pending.subject_kind = 'operation' AND pending.operation = i.operation
+       AND NOT (i.stage = 'waiting'
+                AND ((i.request_member IS NULL AND pending.reason_kind = 'missing')
+                     OR (i.request_member IS NOT NULL AND pending.reason_kind = 'paused')))
+    LEFT JOIN @bae_people::people::fragments::Profile AS person
+        ON person.id = i.request_member
+"#
 );
 
-/// The open invite whose id, as canonical UUID text, is `?1`, while it is
-/// open.
-const INVITE_BY_ID: &str = concat!(open_invite_rows!(), "WHERE i.invite_id = ?1");
-
-/// The first open invite, in the order coven started their operations, whose
-/// join request waits for the admin's decision, leaving out the invites whose
-/// ids the JSON array `?1` holds.
-const WAITING_REQUEST: &str = concat!(
-    open_invite_rows!(),
-    "WHERE i.stage = 'waiting' AND i.request_member IS NOT NULL \
-       AND i.invite_id NOT IN (SELECT value FROM json_each(?1)) \
-     ORDER BY i.operation LIMIT 1"
+// Every row of People's invites in the order coven started their operations:
+// this device's open invites, and each invite whose operation ended with a
+// sharing refusal nobody has dismissed: `coven_operations` lists an invite
+// only once a sharing refusal ends it.
+sqlive_compose::read!(
+    ListedInvites {
+        operation: i64,
+        kind: String,
+        invite: Option<Vec<u8>>,
+        has_request: Option<bool>,
+        requester: Option<String>,
+        record: Option<Vec<u8>>,
+        cause: Option<String>,
+        outcome: Option<coven::InviteOutcome>
+    },
+    r#"
+    WITH open_invites AS (
+        SELECT open.* FROM @crate::invites::OpenInviteRows AS open
+    )
+    SELECT listed.operation, 'open' AS kind, listed.invite, listed.has_request,
+           listed.requester, listed.record, listed.cause, NULL AS outcome
+    FROM open_invites AS listed
+    UNION ALL
+    SELECT ended.operation, 'refused', NULL, NULL, NULL, NULL, NULL, ended.outcome
+    FROM coven_operations AS ended
+    WHERE ended.kind = 'Invite'
+    ORDER BY operation
+"#
 );
 
-/// Wrap the reason a row the statement read cannot become an invite in the
-/// error the row reader returns.
-fn conversion(error: Box<dyn std::error::Error + Send + Sync>) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Blob, error)
+// The open invite whose id, as canonical UUID text, is `:invite`, while it is
+// open.
+sqlive_compose::read!(
+    InviteOfId(invite: String),
+    r#"
+    SELECT open.*
+    FROM @crate::invites::OpenInviteRows AS open
+    WHERE open.invite_id = :invite
+"#
+);
+
+// The first open invite, in the order coven started their operations, whose
+// join request waits for the admin's decision, leaving out the invites whose
+// ids the JSON array `:closed` holds.
+sqlive_compose::read!(
+    FirstWaitingRequest(closed: String),
+    r#"
+    SELECT open.*
+    FROM @crate::invites::OpenInviteRows AS open
+    WHERE open.stage = 'waiting' AND open.has_request
+      AND open.invite_id NOT IN (SELECT closed.value FROM json_each(:closed) AS closed)
+    ORDER BY open.operation
+    LIMIT 1
+"#
+);
+
+/// The columns of an open invite, as either read of them returns them.
+struct OpenColumns {
+    operation: i64,
+    invite: Vec<u8>,
+    has_request: bool,
+    requester: Option<String>,
+    record: Option<Vec<u8>>,
+    cause: Option<String>,
 }
 
-/// Build the [`OpenInvite`] for one row of `open_invite_rows`.
-fn open_invite(row: &rusqlite::Row<'_>) -> rusqlite::Result<OpenInvite> {
-    let operation = coven::OperationId(row.get("operation")?);
-    let invite = coven::Invite::from_columns(&row.get::<_, Vec<u8>>("invite")?, operation)
-        .map_err(|error| conversion(Box::new(error)))?;
-    let held = row
-        .get::<_, Option<coven::PendingRecord>>("record")?
-        .map(|mut record| {
-            record.cause = row.get("cause")?;
-            Ok::<_, rusqlite::Error>(bae_sync_status::PendingWait::of(&record))
-        })
-        .transpose()?;
-    let requester = row.get::<_, Option<String>>("requester")?;
-    // A recovering member's request carries no name; a member with no
-    // profile is a row no writer here makes.
-    if row.get::<_, bool>("has_request")? && requester.is_none() {
-        return Err(conversion(
-            format!("the member recovering with invite {operation:?} has no name in people").into(),
-        ));
+impl From<OpenInviteRows> for OpenColumns {
+    fn from(row: OpenInviteRows) -> Self {
+        Self {
+            operation: row.operation,
+            invite: row.invite,
+            has_request: row.has_request,
+            requester: row.requester,
+            record: row.record,
+            cause: row.cause,
+        }
     }
-    Ok(OpenInvite { invite, held, requester })
 }
 
-/// Build the [`InviteEntry`] for one row of [`INVITE_ROWS`].
-fn invite_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<InviteEntry> {
-    match row.get::<_, String>("kind")?.as_str() {
-        "open" => Ok(InviteEntry::Open(open_invite(row)?)),
+impl OpenColumns {
+    /// The invite these columns hold.
+    fn open_invite(self) -> Result<OpenInvite, DbError> {
+        let operation = coven::OperationId(self.operation);
+        let unreadable = |cause: String| {
+            DbError::unreadable(format!("the invite of operation {}", operation.0), cause)
+        };
+        let invite = coven::Invite::from_columns(&self.invite, operation)
+            .map_err(|error| unreadable(error.to_string()))?;
+        let held = self
+            .record
+            .map(|record| {
+                let mut record = coven::PendingRecord::column_result(ValueRef::Blob(&record))
+                    .map_err(|error| unreadable(error.to_string()))?;
+                record.cause = self.cause;
+                Ok::<_, DbError>(bae_sync_status::PendingWait::of(&record))
+            })
+            .transpose()?;
+        // A recovering member's request carries no name; a member with no
+        // profile is a row no writer here makes.
+        if self.has_request && self.requester.is_none() {
+            return Err(unreadable(
+                "the member recovering with it has no name in people".to_string(),
+            ));
+        }
+        Ok(OpenInvite { invite, held, requester: self.requester })
+    }
+}
+
+/// The entry one row of [`ListedInvites`] lists.
+fn invite_entry(row: ListedInvitesRow) -> Result<InviteEntry, DbError> {
+    let operation = row.operation;
+    let missing = |what: &str| {
+        DbError::unreadable(
+            format!("the {what} of the invite of operation {operation}"),
+            None::<i64>,
+        )
+    };
+    match row.kind.as_str() {
+        "open" => Ok(InviteEntry::Open(
+            OpenColumns {
+                operation,
+                invite: row.invite.ok_or_else(|| missing("state"))?,
+                has_request: row.has_request.ok_or_else(|| missing("request"))?,
+                requester: row.requester,
+                record: row.record,
+                cause: row.cause,
+            }
+            .open_invite()?,
+        )),
         _ => {
             let coven::InviteOutcome::SharingRefused { account, refusal } =
-                row.get::<_, coven::InviteOutcome>("outcome")?;
+                row.outcome.ok_or_else(|| missing("outcome"))?;
             Ok(InviteEntry::Refused(RefusedInvite {
-                operation: coven::OperationId(row.get("operation")?),
+                operation: coven::OperationId(operation),
                 address: account,
                 refusal,
             }))
@@ -152,7 +230,9 @@ impl LibraryViews {
     /// `coven_invites`, `coven_pending` and `coven_operations` in one
     /// statement, in the order coven started their operations.
     pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<InviteEntry>, bae_store::DbError> {
-        self.store.subscribe(|sql| Ok(sql.query(INVITE_ROWS, [], invite_entry)?))
+        self.store.subscribe(|sql| {
+            statement_rows(&sql, &ListedInvitesParams {})?.into_iter().map(invite_entry).collect()
+        })
     }
 
     /// The open invite `invite`, live: none once it has ended, by approval,
@@ -163,7 +243,9 @@ impl LibraryViews {
     ) -> coven::LiveQuery<Option<OpenInvite>, bae_store::DbError> {
         let invite = invite.0.to_string();
         self.store.subscribe(move |sql| {
-            Ok(sql.query(INVITE_BY_ID, [invite.as_str()], open_invite)?.pop())
+            statement_optional(&sql, &InviteOfIdParams { invite: invite.clone() })?
+                .map(|row| OpenColumns::from(row.open).open_invite())
+                .transpose()
         })
     }
 
@@ -180,7 +262,9 @@ impl LibraryViews {
         )
         .to_string();
         self.store.subscribe(move |sql| {
-            Ok(sql.query(WAITING_REQUEST, [closed.as_str()], open_invite)?.pop())
+            statement_optional(&sql, &FirstWaitingRequestParams { closed: closed.clone() })?
+                .map(|row| OpenColumns::from(row.open).open_invite())
+                .transpose()
         })
     }
 }
