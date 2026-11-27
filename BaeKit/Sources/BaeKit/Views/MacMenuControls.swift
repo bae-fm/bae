@@ -106,6 +106,12 @@
                     } label: {
                         label
                     }
+                    // A menu takes the accessibility properties of the views
+                    // in its label as its own, so one hidden view there, such
+                    // as a background, would hide the whole pop-up. This
+                    // shows the menu itself. A caller that hides the button
+                    // still hides it.
+                    .accessibilityHidden(false)
                     .accessibilityAction(.default, open)
                 }
         }

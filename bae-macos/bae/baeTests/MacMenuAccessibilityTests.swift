@@ -145,6 +145,36 @@ struct MacMenuAccessibilityTests {
         }
     }
 
+    @Test("a hidden view in a menu button's label leaves its pop-up")
+    func aHiddenViewInTheLabelLeavesThePopUp() async throws {
+        let size = NSSize(width: 120, height: 44)
+        try await SnapshotTestSupport.withHostedWindow(
+            MacButton(
+                kind: .plain,
+                menu: {
+                    MacMenuItem(verbatim: "First") {}
+                }
+            ) {
+                Text(verbatim: "Choose")
+                    .background {
+                        Color.clear.accessibilityHidden(true)
+                    }
+            },
+            size: size
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let tree = try AccessibilityTree.read(
+                of: window,
+                subject: "the menu button with a hidden background"
+            )
+            let node = try #require(
+                tree.nodes.first { Self.popUpRoles.contains($0.role) },
+                "the tree holds no pop-up"
+            )
+            #expect(node.description == "Choose")
+        }
+    }
+
     /// A titled window shown on screen for a menu to open over. The test
     /// closes it and then lets it go: a window that released itself on
     /// close would be released a second time, which crashes the test host.
