@@ -192,93 +192,18 @@ sqlive_compose::fragment!(
             JOIN candidate ON unit.watched_folder_path = candidate.watched_folder_path AND
                 unit.candidate_path = candidate.path
             ), 'source_audio', json((
-                WITH audio AS (
-                SELECT position, layout, bae_audio_codec(content_type) AS codec, sample_rate_hz,
-                    bits_per_sample, bitrate_kbps, channels, COALESCE(duration_ms, 0) AS
-                    duration_ms
-                    FROM (
-                    SELECT f.position, CASE WHEN carved.relative_path IS NULL THEN 'file' ELSE
-                        'cue' END AS layout, f.audio_content_type AS content_type,
-                        f.audio_sample_rate_hz AS sample_rate_hz, f.audio_bits_per_sample AS
-                        bits_per_sample, f.audio_bitrate_kbps AS bitrate_kbps, f.audio_channels
-                        AS channels, f.audio_duration_ms AS duration_ms
-                    FROM f
-                    LEFT JOIN carved ON carved.relative_path = f.relative_path
-                    WHERE f.role = 'audio'
-                )
-                WHERE layout IS NOT NULL AND content_type IS NOT NULL AND sample_rate_hz IS NOT
-                    NULL AND channels IS NOT NULL
-                ), rated AS (
-                SELECT bitrate_kbps, duration_ms
-                FROM audio
-                WHERE bitrate_kbps IS NOT NULL
-                ) SELECT CASE WHEN EXISTS (
-                SELECT 1
-                FROM audio
-                ) THEN json_object('uniform',(
-                SELECT COUNT(*)
-                    FROM (
-                    SELECT DISTINCT layout, codec, sample_rate_hz, bits_per_sample, channels
-                    FROM audio
-                )
-                ) = 1, 'first', json((
-                SELECT json_object('layout', layout, 'codec', codec, 'sample_rate_hz',
-                    sample_rate_hz, 'bits_per_sample', bits_per_sample, 'channels', channels)
-                FROM audio
-                ORDER BY position
-                LIMIT 1
-                )), 'bitrate_kbps',(
-                SELECT CASE WHEN COUNT(*) = 0 THEN NULL WHEN SUM(duration_ms) > 0 THEN
-                    (SUM(bitrate_kbps * duration_ms) + SUM(duration_ms) / 2) / SUM(duration_ms)
-                    ELSE (SUM(bitrate_kbps) + COUNT(*) / 2) / COUNT(*) END
-                FROM rated
-                ), 'layouts', json((
-                SELECT json_group_array(layout ORDER BY first)
-                    FROM (
-                    SELECT layout, MIN(position) AS first
-                    FROM audio
-                    WHERE layout IS NOT NULL
-                    GROUP BY layout
-                )
-                HAVING COUNT(*) >= 2
-                )), 'codecs', json((
-                SELECT json_group_array(codec ORDER BY first)
-                    FROM (
-                    SELECT codec, MIN(position) AS first
-                    FROM audio
-                    WHERE codec IS NOT NULL
-                    GROUP BY codec
-                )
-                HAVING COUNT(*) >= 2
-                )), 'sample_rates_hz', json((
-                SELECT json_group_array(sample_rate_hz ORDER BY first)
-                    FROM (
-                    SELECT sample_rate_hz, MIN(position) AS first
-                    FROM audio
-                    WHERE sample_rate_hz IS NOT NULL
-                    GROUP BY sample_rate_hz
-                )
-                HAVING COUNT(*) >= 2
-                )), 'bits_per_sample', json((
-                SELECT json_group_array(bits_per_sample ORDER BY first)
-                    FROM (
-                    SELECT bits_per_sample, MIN(position) AS first
-                    FROM audio
-                    WHERE bits_per_sample IS NOT NULL
-                    GROUP BY bits_per_sample
-                )
-                HAVING COUNT(*) >= 2
-                )), 'channels', json((
-                SELECT json_group_array(channels ORDER BY first)
-                    FROM (
-                    SELECT channels, MIN(position) AS first
-                    FROM audio
-                    WHERE channels IS NOT NULL
-                    GROUP BY channels
-                )
-                HAVING COUNT(*) >= 2
-            ))) END
-        ))) AS pane_files
+                SELECT summed.summary
+                FROM @bae_records::source_audio::AudioSummary(
+                    counted: (SELECT f.position,
+                                  CASE WHEN carved.relative_path IS NULL THEN 'file'
+                                       ELSE 'cue' END,
+                                  f.audio_content_type, f.audio_sample_rate_hz,
+                                  f.audio_bits_per_sample, f.audio_bitrate_kbps,
+                                  f.audio_channels, f.audio_duration_ms
+                              FROM f
+                              LEFT JOIN carved ON carved.relative_path = f.relative_path
+                              WHERE f.role = 'audio')) AS summed
+            ))) AS pane_files
 "#);
 
 // What was read from the tags of each file of a stored file-tag snapshot, in

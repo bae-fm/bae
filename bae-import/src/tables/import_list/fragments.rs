@@ -110,34 +110,23 @@ sqlive_compose::fragment!(
                 'path', hex(absolute_path))
             FROM f
             WHERE role = 'audio'
-            ), medium AS (
-            SELECT m.id, m.release_id, m.position, m.medium, m.side_count, COALESCE(m.medium IN
-                ('vinyl', 'shellac', 'acetate', 'cassette', 'dcc', 'edison_disc', 'pathe_disc'),
-                0) AS sided, COALESCE(SUM(CASE WHEN COALESCE(m.medium IN ('vinyl', 'shellac',
-                'acetate', 'cassette', 'dcc', 'edison_disc', 'pathe_disc'), 0) THEN m.side_count
-                ELSE 0 END) OVER (PARTITION BY m.release_id ORDER BY m.position ROWS BETWEEN
-                UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS sides_before, COUNT(*) OVER
-                (PARTITION BY m.release_id) AS medium_count
-                FROM (
-                SELECT position AS id, content_hash AS release_id, position, medium, side_count
-                FROM @crate::tables::import_state::row_fragments::DraftMediumRows(key: :key) AS drafted
-            ) m
-                WHERE m.release_id =(
+            ), drafted_mediums AS (
+            SELECT drafted.position AS id, drafted.content_hash AS release_id,
+                drafted.position, drafted.medium, drafted.side_count
+            FROM @crate::tables::import_state::row_fragments::DraftMediumRows(key: :key) AS drafted
+            WHERE drafted.content_hash =(
                 SELECT content_hash
                 FROM candidate
             )
+            ), drafted_places AS (
+            SELECT drafted.track_id, drafted.content_hash, drafted.medium, drafted.side,
+                drafted.track_number, drafted.stated_length_ms, drafted.position
+            FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS drafted
             ), place AS (
-            SELECT p.id, p.release_id, p.position, p.medium_id, p.side, p.track_number AS
-                number, p.stated_length_ms, m.position AS medium_position, m.medium AS carrier,
-                CASE WHEN m.sided THEN 'sided' WHEN m.medium_count > 1 THEN 'disc' ELSE 'flat'
-                END AS side_kind, CASE WHEN m.sided THEN m.sides_before + p.side WHEN
-                m.medium_count > 1 THEN m.position ELSE 0 END AS side_ordinal
-                FROM (
-                SELECT track_id AS id, content_hash AS release_id, medium AS medium_id, side,
-                    track_number, stated_length_ms, position
-                FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS drafted
-            ) p
-            JOIN medium m ON m.id = p.medium_id AND m.release_id = p.release_id
+            SELECT placed.*
+            FROM @bae_records::records::place_fragments::TrackPlaces(
+                mediums: (SELECT * FROM drafted_mediums),
+                places: (SELECT * FROM drafted_places)) AS placed
             ), rows AS (
                 SELECT t.position, t.title, t.track_id, t.track_json AS track_json, p.side_kind, p.side_ordinal, p.number, u.file_kind,
                 u.sheet_id, u.file_id AS unit_file_id, u.slice_index, u.duration_ms AS unit_ms,
@@ -147,7 +136,7 @@ sqlive_compose::fragment!(
                 NOT NULL AND bae_lengths_disagree(u.duration_ms, t.stated_length_ms) THEN
                 t.stated_length_ms END AS listed_ms
             FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS t
-            JOIN place AS p ON p.id = t.track_id AND p.release_id = t.content_hash
+            JOIN place AS p ON p.track_id = t.track_id AND p.release_id = t.content_hash
                 LEFT JOIN @crate::tables::import_list::fragments::DraftUnits(key: :key) AS matched
                 ON matched.draft_track_id = t.track_id
                 LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS u ON
@@ -173,14 +162,10 @@ sqlive_compose::fragment!(
             SELECT referenced.*
             FROM @crate::tables::folder_scans::row_fragments::CandidateSheetReferences(key: :key) AS referenced
             ), side_choice_rows AS (
-            SELECT m.position AS medium, side.value AS side, CASE WHEN m.sided THEN 'sided' ELSE
-                'disc' END AS kind, CASE WHEN m.sided THEN m.sides_before + side.value ELSE
-                m.position END AS ordinal
-                FROM medium m
-                JOIN
-                    json_each('[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255]')
-                    AS side ON side.value = 1 OR (m.sided AND side.value <= m.side_count)
-                ORDER BY m.position, side.value
+            SELECT choice.*
+            FROM @bae_records::records::place_fragments::SheetSideChoices(
+                mediums: (SELECT * FROM drafted_mediums)) AS choice
+            ORDER BY choice.medium, choice.side
             ), side_choices AS (
             SELECT json_group_array(json_object('medium', c.medium, 'side', c.side, 'kind',
                 c.kind, 'ordinal', c.ordinal) ORDER BY c.medium, c.side) AS json
@@ -287,22 +272,17 @@ sqlive_compose::fragment!(
                 GROUP BY side_no
             )
             ), unplayed_files(file_id) AS (
-            SELECT listed.file_id
-                FROM (
-                SELECT f.relative_path AS file_id,(f.role = 'artwork' AND
-                    bae_supported_cover(f.relative_path)) AS showable_image
-                FROM f
-            ) AS listed
-                WHERE NOT listed.showable_image AND NOT EXISTS (
-                SELECT 1
-                    FROM rows
-                    WHERE rows.sheet_id = listed.file_id
-            ) AND NOT EXISTS (
-                SELECT 1
-                FROM @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS
-                    offered
-                    WHERE offered.file_id = listed.file_id
-            )
+            SELECT free.file_id
+            FROM @bae_records::records::file_fragments::UnplayedFiles(
+                listed: (SELECT f.relative_path,
+                             f.role = 'artwork' AND bae_supported_cover(f.relative_path)
+                         FROM f),
+                track_reads: (SELECT NULL, rows.sheet_id
+                              FROM rows
+                              UNION ALL
+                              SELECT offered.file_id, NULL
+                              FROM @crate::tables::folder_scans::row_fragments::CandidateUnits(
+                                  key: :key) AS offered)) AS free
             ), left_out(relative_path, position) AS (
             SELECT unread.relative_path, unread.position
             FROM @crate::tables::import_list::fragments::LeftOutAudio(key: :key) AS unread
