@@ -18,6 +18,7 @@ export default {
   noteSyncedSub: 'across your devices',
   noteCloud: 'Your cloud',
   noteCloudSub: 'Dropbox, iCloud, OneDrive',
+  syncEyebrow: 'Private',
   syncTitle: ['For you and yours,', 'on every device'],
   syncText:
     'Your devices sync through your cloud storage, encrypted the whole way. Only you and the people you invite can read your library.',
@@ -26,7 +27,7 @@ export default {
   holdsKeys: 'holds the keys',
   cloudStorage: 'Your cloud storage',
   cloudEncrypted: 'encrypted data',
-  libraryEyebrow: 'Library',
+  libraryEyebrow: 'Curated',
   libraryTitle: ['Your whole collection,', 'release-accurate'],
   libraryText: 'Bring the albums you own into one library, then take them anywhere.',
   cards: [
@@ -35,7 +36,7 @@ export default {
     ['Playback details', 'Albums keep their playback details: vinyl and cassette recordings pause on side breaks. CUE sheets enable playing pregaps from CDs.', ['CD pregaps', 'Vinyl side breaks']],
     ['You control it', 'Your music stays yours. Your files stay where you put them. You control your library.', ['Your files', 'No lock-in']],
   ],
-  engineEyebrow: 'Under the hood',
+  engineEyebrow: 'Native',
   engineTitle: ['Native apps on', 'every platform'],
   engineText:
     'Each app is native to its platform. They all use the same Rust core for your library, playback, sync, and encryption.',
@@ -47,7 +48,7 @@ export default {
     ['SQLite', 'library database'],
     ['Cloud storage', 'sync backend'],
   ],
-  playbackEyebrow: 'Playback',
+  playbackEyebrow: 'Faithful',
   playbackTitle: 'Built around your files',
   minis: [
     ['Original quality', 'Your files stay exactly as they are. Playback uses the original files.'],
