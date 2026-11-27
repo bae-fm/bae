@@ -300,7 +300,6 @@ sqlive_compose::fragment!(
 sqlive_compose::fragment!(
     TagSnapshot with wanted(at INTEGER, candidate_key BLOB, found TEXT) {
         snapshot_at: i64,
-        snapshot_key: crate::CandidateKey,
         scan_generation: i64,
         tag_file_edit_revision: i64,
         cover_source_relative_path: Option<String>,
@@ -310,7 +309,6 @@ sqlive_compose::fragment!(
     },
     r#"
     SELECT wanted.at AS snapshot_at,
-        snapshot.candidate_path AS snapshot_key,
         snapshot.scan_generation,
         snapshot.file_edit_revision AS tag_file_edit_revision,
         snapshot.embedded_cover_source_relative_path AS cover_source_relative_path,
