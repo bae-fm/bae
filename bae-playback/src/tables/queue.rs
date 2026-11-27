@@ -11,6 +11,7 @@
 use super::queue_fill::{fill_on, ContextFill, ContextFilled};
 use super::*;
 use crate::{QueueEntry, QueueEntryId, QueueLane, RepeatMode};
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 
 /// The table holding each lane's rows and how the lane orders them.
 impl QueueLane {
@@ -109,9 +110,7 @@ impl PlaybackQueueTables {
     pub async fn repeat(&self) -> Result<RepeatMode, DbError> {
         self.store
             .read(|sql| {
-                Ok(sql.query_row("SELECT repeat FROM playback_queue", [], |row| {
-                    repeat_from_row(row, 0)
-                })?)
+                Ok(sql.query_row("SELECT repeat FROM playback_queue", [], |row| row.get(0))?)
             })
             .await
     }
@@ -633,24 +632,24 @@ fn entry_after_place_on(
     lane: QueueLane,
     entry: i64,
     position: u64,
-) -> rusqlite::Result<Option<i64>> {
+) -> Result<Option<i64>, DbError> {
     let offset = i64::try_from(position).unwrap_or(i64::MAX);
     let shuffled = queue_row_on(sql)?.shuffled;
     // The context lane's rows as the screens show them start after its
     // playing track; Up Next shows every row.
-    let after = match lane {
-        QueueLane::Manual => String::new(),
+    match lane {
+        QueueLane::Manual => Ok(sql
+            .query_row(
+                "SELECT entry FROM playback_manual WHERE entry <> ?1 \
+                 ORDER BY position LIMIT 1 OFFSET ?2",
+                params![entry, offset],
+                |row| row.get(0),
+            )
+            .optional()?),
         QueueLane::Context => {
-            format!(" AND {}", super::queue_upcoming::after_the_playing_track(shuffled))
+            super::queue_upcoming::upcoming_entry_at_on(sql, shuffled, entry, offset)
         }
-    };
-    let statement = format!(
-        "SELECT lane.entry FROM {table} lane WHERE lane.entry <> ?1{after} \
-         ORDER BY lane.{column} LIMIT 1 OFFSET ?2",
-        table = lane.table(),
-        column = lane.order_column(shuffled),
-    );
-    sql.query_row(&statement, params![entry, offset], |row| row.get(0)).optional()
+    }
 }
 
 /// Move the entry to just before `before`, or to the end of its lane without
@@ -819,17 +818,14 @@ pub(crate) fn repeat_column(mode: RepeatMode) -> &'static str {
     }
 }
 
-/// The repeat mode `row`'s column `column` stores.
-pub(super) fn repeat_from_row<I: rusqlite::RowIndex + Copy>(
-    row: &Row<'_>,
-    column: I,
-) -> rusqlite::Result<RepeatMode> {
-    match row.get::<_, String>(column)?.as_str() {
-        "off" => Ok(RepeatMode::Off),
-        "track" => Ok(RepeatMode::Track),
-        "context" => Ok(RepeatMode::Context),
-        other => {
-            Err(column_conversion_error(row, column, format!("unknown repeat mode {other:?}")))
+/// The repeat mode a `repeat` column stores.
+impl FromSql for RepeatMode {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_str()? {
+            "off" => Ok(RepeatMode::Off),
+            "track" => Ok(RepeatMode::Track),
+            "context" => Ok(RepeatMode::Context),
+            other => Err(FromSqlError::Other(format!("unknown repeat mode {other:?}").into())),
         }
     }
 }

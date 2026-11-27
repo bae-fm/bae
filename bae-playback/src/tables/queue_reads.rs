@@ -1,14 +1,191 @@
 //! The queue screens' reads of the playback queue tables: the queue value,
 //! with Up Next whole and what the context lane plays from, and the head of
-//! what plays next as a system media session lists it. The `queue_upcoming`
-//! module reads the context lane's upcoming tracks as a list for the queue
-//! screens.
+//! what plays next as a system media session lists it, with the fragments
+//! they are composed of. The `queue_upcoming` module reads the context lane's
+//! upcoming tracks as a list for the queue screens.
 
-use super::queue::context_order_column;
-use super::queue_upcoming::after_the_playing_track_in_order;
-use super::track_display::{track_display_columns, track_display_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
-use crate::{ContextSource, QueueItem};
+use crate::{ContextSource, QueueItem, RepeatMode};
+
+// How the queue repeats.
+sqlive_compose::fragment!(
+    QueueRepeat { repeat: crate::RepeatMode },
+    r#"
+    SELECT queue.repeat
+    FROM playback_queue AS queue
+"#
+);
+
+impl QueueRepeat {
+    /// How the queue repeats.
+    pub(super) fn into_mode(self) -> RepeatMode {
+        self.repeat
+    }
+}
+
+// The queue's head: whether shuffle is on, and what the context lane plays
+// from, with the title of its album when it plays one release.
+sqlive_compose::fragment!(
+    QueueHead { shuffled: bool },
+    r#"
+    SELECT queue.shuffled, queue.source_kind, queue.source_release_id,
+           source_release.*, source_album.*
+    FROM playback_queue AS queue
+    LEFT JOIN @bae_records::records::fragments::ReleaseAlbum AS source_release
+           ON source_release.release_id = queue.source_release_id
+    LEFT JOIN @bae_records::records::fragments::AlbumTitle AS source_album
+           ON source_album.album_id = source_release.album_id
+"#
+);
+
+impl QueueHead {
+    /// Whether shuffle is on, and what the context lane plays from. The
+    /// table's CHECK keeps `source_kind` NULL exactly when the queue has no
+    /// cursor, so a queue with a source kind has a context.
+    fn into_parts(self) -> Result<(bool, Option<crate::ResolvedContext>), DbError> {
+        let release_id = self.source_release_id;
+        let context = match self.source_kind {
+            Some(kind) => Some(crate::ResolvedContext {
+                source: ContextSource::from_columns(&kind, release_id.clone()).map_err(
+                    |_unwritten| {
+                        DbError::unreadable(
+                            "playback_queue.source_kind and source_release_id",
+                            (&kind, &release_id),
+                        )
+                    },
+                )?,
+                source_title: self.source_album.map(|album| album.into_title()),
+            }),
+            None => None,
+        };
+        Ok((self.shuffled, context))
+    }
+}
+
+// Whether the transport can step either way, how many entries Up Next holds,
+// and whether nothing is to play after the playing track. The playing track
+// is the one at the lane's cursor, in shuffled order when shuffle is on and in
+// list order otherwise; with no cursor, no track comes before or after it.
+// `follows` is true when a track plays after the playing track: a track in Up
+// Next, or a track in the context lane past its cursor. `has_next` is true
+// when `follows` is true or repeat is on, and `is_empty` is true when
+// `follows` is false. The CTE is materialized, so a read that puts the flags
+// beside each row of a list computes them once.
+sqlive_compose::fragment!(
+    QueueFlags { has_next: bool, has_previous: bool, up_next_count: u32, is_empty: bool },
+    r#"
+    WITH flagged AS MATERIALIZED (
+        SELECT queue.repeat,
+               EXISTS (SELECT 1 FROM playback_manual)
+               OR EXISTS (SELECT 1 FROM playback_context AS later
+                          WHERE CASE queue.shuffled
+                                    WHEN 1 THEN later.shuffled ELSE later.ordered END
+                                > CASE queue.shuffled
+                                    WHEN 1 THEN queue.shuffled_cursor
+                                    ELSE queue.ordered_cursor END) AS follows,
+               EXISTS (SELECT 1 FROM playback_context AS earlier
+                       WHERE CASE queue.shuffled
+                                 WHEN 1 THEN earlier.shuffled ELSE earlier.ordered END
+                             < CASE queue.shuffled
+                                 WHEN 1 THEN queue.shuffled_cursor
+                                 ELSE queue.ordered_cursor END) AS before,
+               (SELECT COUNT(*) FROM playback_manual) AS up_next_count
+        FROM playback_queue AS queue)
+    SELECT flagged.repeat <> 'off' OR flagged.follows AS has_next,
+           flagged.before AS has_previous,
+           flagged.up_next_count AS up_next_count,
+           NOT flagged.follows AS is_empty
+    FROM flagged
+"#
+);
+
+// The rows of a lane that `lane_rows` gives, each with its track as the queue
+// rows show it: the entry's id, which is `QueueEntryId`'s text ('m' for Up
+// Next or 'c' for the context lane, then the entry number), the track and the
+// place the rows are in order by.
+sqlive_compose::fragment!(
+    QueueItems
+    with lane_rows(entry TEXT, track_id TEXT, position INTEGER)
+    { entry: String, position: i64 },
+    r#"
+    SELECT queued.entry, queued.position, track.*
+    FROM lane_rows AS queued
+    JOIN @bae_records::records::track_display::DisplayedTrack AS track
+      ON track.display_track_id = queued.track_id
+"#
+);
+
+impl QueueItems {
+    /// The row as the queue screens show it.
+    fn into_item(self) -> Result<QueueItem, DbError> {
+        Ok(QueueItem {
+            entry_id: self.entry,
+            track_id: self.track.track_id().to_owned(),
+            duration_ms: self.track.duration_ms(),
+            display: self.track.into_display()?,
+        })
+    }
+}
+
+// The rows of the session's up-next list, at most `:limit`: the Up Next rows,
+// then the context lane's rows after the playing track in the queue's current
+// order, numbered in that order. Each part reads at most `:limit` rows through
+// the index of its order, from where the part starts. The fragment has one
+// context part for each order, and each reads its cursor from the queue row
+// only while the queue reads in that order, so the other part reads no rows.
+sqlive_compose::fragment!(
+    SessionUpNext(limit: i64) { entry: String, track_id: String, position: i64 },
+    r#"
+    SELECT merged.entry, merged.track_id,
+           ROW_NUMBER() OVER (ORDER BY merged.part, merged.place) AS position
+    FROM (
+        SELECT * FROM (
+            SELECT 'm' || manual.entry AS entry, manual.track_id, 0 AS part,
+                   manual.position AS place
+            FROM playback_manual AS manual
+            ORDER BY manual.position LIMIT :limit)
+        UNION ALL SELECT * FROM (
+            SELECT 'c' || lane.entry, lane.track_id, 1, lane.ordered
+            FROM playback_context AS lane
+            WHERE lane.ordered > (SELECT queue.ordered_cursor FROM playback_queue AS queue
+                                  WHERE queue.shuffled = 0)
+            ORDER BY lane.ordered LIMIT :limit)
+        UNION ALL SELECT * FROM (
+            SELECT 'c' || lane.entry, lane.track_id, 1, lane.shuffled
+            FROM playback_context AS lane
+            WHERE lane.shuffled > (SELECT queue.shuffled_cursor FROM playback_queue AS queue
+                                   WHERE queue.shuffled = 1)
+            ORDER BY lane.shuffled LIMIT :limit)
+        ORDER BY part, place LIMIT :limit) AS merged
+"#
+);
+
+// The queue as its screens show it: a row for each Up Next entry, in order,
+// each beside the queue's head and flags, and one row with no entry when Up
+// Next is empty.
+sqlive_compose::read!(
+    QueueValue,
+    r#"
+    SELECT head.*, flags.*, item.*
+    FROM @crate::tables::queue_reads::QueueHead AS head
+    JOIN @crate::tables::queue_reads::QueueFlags AS flags ON 1
+    LEFT JOIN @crate::tables::queue_reads::QueueItems(
+        lane_rows: (SELECT 'm' || manual.entry, manual.track_id, manual.position
+                    FROM playback_manual AS manual)) AS item ON 1
+    ORDER BY item.position
+"#
+);
+
+// The session's up-next list, each row with its track.
+sqlive_compose::read!(
+    SessionUpNextItems(limit: i64),
+    r#"
+    SELECT item.*
+    FROM @crate::tables::queue_reads::QueueItems(
+        lane_rows: @crate::tables::queue_reads::SessionUpNext(limit: :limit)) AS item
+    ORDER BY item.position
+"#
+);
 
 /// Follow the queue as its screens show it: Up Next whole, what the context
 /// lane plays from, and whether the transport can step either way.
@@ -36,174 +213,35 @@ pub fn subscribe_session_up_next(
     store.subscribe(move |sql| session_up_next_on(&sql, limit))
 }
 
-/// The rows of the session's up-next list, at most `?1`: the Up Next rows,
-/// then the lane's rows after the playing track in the queue's current
-/// order. Each part reads at most `?1` rows through the index of its order,
-/// from where the part starts. The statement has one lane part for each
-/// order, and [`after_the_playing_track_in_order`] keeps the rows of only the
-/// queue's current one. The statement joins the parts in order, keeps the
-/// first `?1`, and numbers them so that the track join keeps their order.
-pub(super) fn session_up_next_rows() -> String {
-    let lane = |shuffled: bool| {
-        format!(
-            "SELECT * FROM ( \
-                 SELECT 'c' || lane.entry, lane.track_id, 1, lane.{place} \
-                 FROM playback_context lane \
-                 WHERE {after} \
-                 ORDER BY lane.{place} LIMIT ?1)",
-            place = context_order_column(shuffled),
-            after = after_the_playing_track_in_order(shuffled),
-        )
-    };
-    format!(
-        "SELECT entry, lane_track, ROW_NUMBER() OVER (ORDER BY lane, place) AS position \
-         FROM ( \
-             SELECT * FROM ( \
-                 SELECT 'm' || entry AS entry, track_id AS lane_track, 0 AS lane, \
-                        position AS place \
-                 FROM playback_manual ORDER BY position LIMIT ?1) \
-             UNION ALL {ordered} \
-             UNION ALL {shuffled} \
-             ORDER BY lane, place LIMIT ?1)",
-        ordered = lane(false),
-        shuffled = lane(true),
-    )
-}
-
 fn session_up_next_on(sql: &SqlReadContext<'_>, limit: u64) -> Result<Vec<QueueItem>, DbError> {
-    Ok(sql.query(
-        &queue_items_sql(&session_up_next_rows()),
-        [i64::try_from(limit).unwrap_or(i64::MAX)],
-        queue_item_from_row,
-    )?)
+    let statement = SessionUpNextItemsParams { limit: bae_store::list_windows::sql_bound(limit) };
+    statement_rows(sql, &statement)?.into_iter().map(|row| row.item.into_item()).collect()
 }
 
-/// The statement that reads the rows `rows` picks — a `SELECT entry,
-/// track_id AS lane_track, position …` in lane order, already cut to the page
-/// asked for — each with its track as the queue rows show it. The `rows`
-/// query applies its LIMIT and OFFSET before this statement joins the tracks,
-/// so SQLite never joins a skipped row to its track. The statement returns
-/// every column `rows` selects, then the track's columns.
-pub(super) fn queue_items_sql(rows: &str) -> String {
-    format!(
-        "SELECT e.*, t.id AS track_id, t.duration_ms, {columns} \
-         FROM ({rows}) e \
-         JOIN tracks t ON t.id = e.lane_track \
-         {joins} \
-         ORDER BY e.position",
-        columns = track_display_columns(""),
-        joins = TRACK_DISPLAY_JOINS,
-    )
-}
-
-/// The context lane's rows as one statement: `lane`'s columns over
-/// `playback_context lane` and each row's track as [`queue_items_sql`] reads
-/// it, for the rows `condition` keeps, in `tail`'s order and limit. The
-/// statement sorts by the lane's own columns, so a window's LIMIT bounds the
-/// rows its reruns depend on.
-pub(super) fn queue_items_window_sql(lane: &str, condition: &str, tail: &str) -> String {
-    format!(
-        "SELECT {lane}, t.id AS track_id, t.duration_ms, {columns} \
-         FROM playback_context lane \
-         JOIN tracks t ON t.id = lane.track_id \
-         {joins} \
-         WHERE {condition} {tail}",
-        columns = track_display_columns(""),
-        joins = TRACK_DISPLAY_JOINS,
-    )
-}
-
-/// One queue row as [`queue_items_sql`] reads it.
-pub(super) fn queue_item_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QueueItem> {
-    Ok(QueueItem {
-        entry_id: row.get("entry")?,
-        track_id: row.get("track_id")?,
-        display: track_display_from_row(row, "")?,
-        duration_ms: row.get("duration_ms")?,
-    })
-}
-
-fn queue_items_on(sql: &SqlReadContext<'_>, rows: &str) -> Result<Vec<QueueItem>, DbError> {
-    Ok(sql.query(&queue_items_sql(rows), [], queue_item_from_row)?)
-}
-
-/// The `playback_queue` row as the queue screens read it.
-struct QueueHead {
-    shuffled: bool,
-    context: Option<crate::ResolvedContext>,
-}
-
-fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    type Head = (bool, Option<String>, Option<String>, Option<String>);
-    let (shuffled, source_kind, source_release_id, source_title): Head = sql.query_row(
-        "SELECT q.shuffled, q.source_kind, q.source_release_id, a.title \
-         FROM playback_queue q \
-         LEFT JOIN releases r ON r.id = q.source_release_id \
-         LEFT JOIN albums a ON a.id = r.album_id",
-        [],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-    )?;
-    // The table's CHECK keeps `source_kind` NULL exactly when the queue has
-    // no cursor, so a queue with a source kind has a context.
-    let context = match source_kind {
-        Some(source_kind) => Some(crate::ResolvedContext {
-            source: ContextSource::from_columns(&source_kind, source_release_id.clone()).map_err(
-                |_unwritten| {
-                    DbError::unreadable(
-                        "playback_queue.source_kind and source_release_id",
-                        (&source_kind, &source_release_id),
-                    )
-                },
-            )?,
-            source_title,
-        }),
-        None => None,
-    };
-    Ok(QueueHead { shuffled, context })
-}
-
-fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapshot, DbError> {
-    let head = queue_head_on(sql)?;
-    // The entry ids are `QueueEntryId`'s text: 'm' for Up Next or 'c' for the
-    // context lane, then the entry number.
-    let manual = queue_items_on(
-        sql,
-        "SELECT 'm' || entry AS entry, track_id AS lane_track, position FROM playback_manual \
-         ORDER BY position",
-    )?;
-    // The playing track is the one at the lane's cursor, in shuffled order
-    // when shuffle is on and in list order otherwise; with no cursor, no
-    // track comes before or after it. `follows` is true when a track plays
-    // after the playing track: a track in Up Next, or a track in the context
-    // lane past its cursor.
-    // `has_next` is true when `follows` is true or repeat is on, and
-    // `is_empty` is true when `follows` is false.
-    let place = "CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END";
-    let cursor = "CASE q.shuffled WHEN 1 THEN q.shuffled_cursor ELSE q.ordered_cursor END";
-    let (has_next, has_previous, up_next_count, is_empty): (bool, bool, u32, bool) = sql
-        .query_row(
-            &format!(
-                "SELECT repeat <> 'off' OR follows, before, up_next_count, NOT follows \
-                 FROM (SELECT q.repeat, \
-                              EXISTS (SELECT 1 FROM playback_manual) \
-                              OR EXISTS (SELECT 1 FROM playback_context c \
-                                         WHERE {place} > {cursor}) AS follows, \
-                              EXISTS (SELECT 1 FROM playback_context c \
-                                      WHERE {place} < {cursor}) AS before, \
-                              (SELECT COUNT(*) FROM playback_manual) AS up_next_count \
-                       FROM playback_queue q)"
-            ),
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )?;
+pub(super) fn queue_value_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<crate::ResolvedQueueSnapshot, DbError> {
+    let rows = statement_rows(sql, &QueueValueParams {})?;
+    // Every row repeats the one head and its flags.
+    let mut head = None;
+    let mut manual = Vec::new();
+    for row in rows {
+        if let Some(item) = row.item {
+            manual.push(item.into_item()?);
+        }
+        head.get_or_insert((row.head, row.flags));
+    }
+    let (head, flags) =
+        head.ok_or_else(|| DbError::unreadable("the queue's row", None::<String>))?;
+    let (shuffled, context) = head.into_parts()?;
     Ok(crate::ResolvedQueueSnapshot {
         manual,
-        context: head.context,
-        shuffled: head.shuffled,
-        has_next,
-        has_previous,
-        up_next_count,
-        is_empty,
+        context,
+        shuffled,
+        has_next: flags.has_next,
+        has_previous: flags.has_previous,
+        up_next_count: flags.up_next_count,
+        is_empty: flags.is_empty,
     })
 }
 

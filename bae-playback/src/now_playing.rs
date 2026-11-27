@@ -4,20 +4,7 @@
 //! [`NowPlayingDisplay::of`] marks the track removed when the library no
 //! longer holds it.
 
-/// A track as the now-playing bar, the queue, and the system media controls
-/// show it, read from the library's current state.
-#[derive(Debug, Clone, PartialEq)]
-pub struct TrackDisplay {
-    pub title: String,
-    pub artist_line: bae_types::credits::CreditLine,
-    pub album_id: String,
-    /// The release the track is on, which may be any of its album's releases.
-    pub release_id: String,
-    pub album_title: String,
-    /// The track's own release's cover, versioned, so new bytes replace the
-    /// copy a UI decoded; `None` when that release has no cover.
-    pub cover_image: Option<bae_records::ImageRef>,
-}
+pub use bae_records::TrackDisplay;
 
 /// The playing track as the playback service knows it: which track, and the
 /// duration its prepared audio plays for — `None` when its length is unknown.

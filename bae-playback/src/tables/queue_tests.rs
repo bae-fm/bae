@@ -371,44 +371,42 @@ async fn plan(db: &Store, sql: &str, args: Vec<rusqlite::types::Value>) -> Strin
     .unwrap()
 }
 
-/// The queue's reads walk the index of the order the lane reads in from the
-/// playing track rather than scanning the lane, and a deleted track's rows are found by its
-/// id.
+/// The upcoming list's reads walk the index of the order they read in from
+/// the playing track rather than scanning the lane, a window finds each row's
+/// track by its key without sorting the rows, and a deleted track's rows are
+/// found by its id.
 #[tokio::test]
 async fn the_queue_reads_are_planned_on_the_indexes() {
+    use super::queue_upcoming::*;
     let (db, _tmp, _tracks) = release_db(3).await;
-    let int = |value: i64| rusqlite::types::Value::Integer(value);
-    for (column, index) in [("ordered", 1), ("shuffled", 2)] {
-        let window = plan(
-            &db,
-            &format!(
-                "SELECT e.entry, t.id FROM (SELECT 'c' || entry AS entry, track_id, {column} \
-                 AS position FROM playback_context WHERE {column} > ? ORDER BY {column} \
-                 LIMIT 100 OFFSET 10000) e \
-                 JOIN tracks t ON t.id = e.track_id ORDER BY e.position"
-            ),
-            vec![int(1)],
-        )
-        .await;
-        assert!(
-            window.contains(&format!(
-                "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_{index} ({column}>?)"
-            )) && window.contains("INDEX sqlite_autoindex_tracks_1 (id=?)")
-                && !window.contains("TEMP B-TREE"),
-            "{window}"
-        );
-        let count = plan(
-            &db,
-            &format!("SELECT count(*) FROM playback_context WHERE {column} > ?"),
-            vec![int(1)],
-        )
-        .await;
-        assert!(
-            count.contains(&format!(
-                "USING COVERING INDEX sqlite_autoindex_playback_context_{index} ({column}>?)"
-            )),
-            "{count}"
-        );
+    let ints = |count: usize| vec![rusqlite::types::Value::Integer(1); count];
+    let ordered = [
+        WindowTopOrdered::SQL,
+        WindowFromOrdered::SQL,
+        CountOrdered::SQL,
+        CountBeforeOrdered::SQL,
+        LastPlaceOfFirstOrdered::SQL,
+    ];
+    let shuffled = [
+        WindowTopShuffled::SQL,
+        WindowFromShuffled::SQL,
+        CountShuffled::SQL,
+        CountBeforeShuffled::SQL,
+        LastPlaceOfFirstShuffled::SQL,
+    ];
+    for (column, index, reads) in [("ordered", 1, ordered), ("shuffled", 2, shuffled)] {
+        for (at, (read, parameters)) in reads.into_iter().zip([1, 2, 0, 1, 1]).enumerate() {
+            let plan = plan(&db, read, ints(parameters)).await;
+            let seek = format!("INDEX sqlite_autoindex_playback_context_{index} ({column}>?");
+            assert!(plan.contains(&seek), "{column} read {at}: {plan}");
+            if at < 2 {
+                assert!(
+                    plan.contains("SEARCH track USING INDEX sqlite_autoindex_tracks_1 (id=?)")
+                        && !plan.contains("USE TEMP B-TREE FOR ORDER BY"),
+                    "{column} window {at}: {plan}"
+                );
+            }
+        }
     }
     let text = |value: &str| rusqlite::types::Value::Text(value.to_string());
     for (table, index) in [
@@ -430,18 +428,40 @@ async fn the_session_up_next_list_is_planned_on_the_indexes() {
     let (db, _tmp, _tracks) = release_db(3).await;
     let rows = plan(
         &db,
-        &super::queue_reads::session_up_next_rows(),
+        super::queue_reads::SessionUpNextItems::SQL,
         vec![rusqlite::types::Value::Integer(100)],
     )
     .await;
     for walk in [
-        "SCAN playback_manual USING INDEX sqlite_autoindex_playback_manual_1",
+        "SCAN manual USING INDEX sqlite_autoindex_playback_manual_1",
         "SEARCH lane USING INDEX sqlite_autoindex_playback_context_1 (ordered>?)",
         "SEARCH lane USING INDEX sqlite_autoindex_playback_context_2 (shuffled>?)",
     ] {
         assert!(rows.contains(walk), "{walk}: {rows}");
     }
     assert!(!rows.contains("SCAN lane"), "{rows}");
+}
+
+/// Each read that shows tracks finds them by their keys: the display of one
+/// track, the playing one beside the now-playing row, which a LEFT JOIN reads,
+/// and the queue's rows.
+#[tokio::test]
+async fn the_track_displays_are_planned_on_the_tracks_key() {
+    let (db, _tmp, _tracks) = release_db(3).await;
+    for (read, parameters) in [
+        (super::track_display::OneTrackDisplay::SQL, 1),
+        (super::now::PlayingNow::SQL, 0),
+        (super::queue_reads::QueueValue::SQL, 0),
+        (super::queue_reads::SessionUpNextItems::SQL, 1),
+    ] {
+        let arguments = vec![rusqlite::types::Value::Integer(1); parameters];
+        let plan = plan(&db, read, arguments).await;
+        assert!(
+            plan.contains("SEARCH track USING INDEX sqlite_autoindex_tracks_1 (id=?)")
+                && !plan.contains("SCAN track "),
+            "{plan}"
+        );
+    }
 }
 
 /// A context row is named by its entry, as an Up Next row is, and no entry

@@ -115,6 +115,7 @@ mod export_numbers;
 mod release_file;
 mod release_locality;
 mod release_tracks;
+pub mod track_display;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
 pub use release_tracks::{
     sheet_side_choices_sql, track_places_ctes, track_places_on, track_position_of, track_side_of,

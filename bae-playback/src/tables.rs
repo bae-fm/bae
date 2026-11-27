@@ -11,7 +11,7 @@ pub mod now;
 mod preview_target;
 mod queue;
 mod queue_fill;
-mod queue_reads;
+pub mod queue_reads;
 mod queue_upcoming;
 mod resume;
 mod timeline;
@@ -57,8 +57,6 @@ mod tests;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod window_cost;
 
-use bae_records::records::query::*;
-use bae_records::records::read::*;
 use bae_store::read::*;
 use bae_store::*;
 use coven::{CovenWrite, SqlReadContext};

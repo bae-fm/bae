@@ -2,79 +2,247 @@
 //! one, in the order the lane reads in, read as one window from a place on,
 //! with the lane's own count and the position of a key in it. The lane's
 //! places are dense integers, so a place is the key.
+//!
+//! The lane has two orders, and SQL fixes which column a statement sorts by,
+//! so each read is one statement for each order, and the request picks one.
 
-use super::queue::context_order_column;
-use super::queue_reads::{queue_item_from_row, queue_items_sql, queue_items_window_sql};
 use super::*;
-use crate::QueueItem;
-use bae_store::list_windows::{key_at, Keyed, ListOrder, OrderKey, Seek, SortTerm};
+use crate::{QueueEntryId, QueueItem};
+use bae_store::list_windows::{sql_bound, Keyed, OrderKey, SortValue};
 use bae_store::{ListWindow, WindowRead};
 
-/// The upcoming tracks' order: the lane's place in the order it reads in,
-/// which is its own while shuffle is off and the shuffled one while it is on.
-/// Its term is over `playback_context lane`.
-pub(super) fn upcoming_order(shuffled: bool) -> ListOrder {
-    ListOrder::new(vec![SortTerm::ascending(format!("lane.{}", context_order_column(shuffled)))])
+// The context lane's rows after its playing one in its own order: those
+// placed past that order's cursor. When no track is playing, the cursor is
+// NULL and the fragment gives no rows.
+sqlive_compose::fragment!(
+    UpcomingOrdered,
+    r#"
+    SELECT lane.entry, lane.ordered AS place
+    FROM playback_context AS lane
+    WHERE lane.ordered > (SELECT queue.ordered_cursor FROM playback_queue AS queue)
+"#
+);
+
+// The context lane's rows after its playing one in the shuffled order: those
+// placed past that order's cursor. When no track is playing, the cursor is
+// NULL and the fragment gives no rows.
+sqlive_compose::fragment!(
+    UpcomingShuffled,
+    r#"
+    SELECT lane.entry, lane.shuffled AS place
+    FROM playback_context AS lane
+    WHERE lane.shuffled > (SELECT queue.shuffled_cursor FROM playback_queue AS queue)
+"#
+);
+
+sqlive_compose::read!(
+    WindowTopOrdered(limit: i64),
+    r#"
+    SELECT lane.ordered, lane.entry, track.*
+    FROM playback_context AS lane
+    JOIN @bae_records::records::track_display::DisplayedTrack AS track
+      ON track.display_track_id = lane.track_id
+    WHERE lane.ordered > (SELECT queue.ordered_cursor FROM playback_queue AS queue)
+    ORDER BY lane.ordered
+    LIMIT :limit
+"#
+);
+
+sqlive_compose::read!(
+    WindowFromOrdered(from: i64, limit: i64),
+    r#"
+    SELECT lane.ordered, lane.entry, track.*
+    FROM playback_context AS lane
+    JOIN @bae_records::records::track_display::DisplayedTrack AS track
+      ON track.display_track_id = lane.track_id
+    WHERE lane.ordered > (SELECT queue.ordered_cursor FROM playback_queue AS queue)
+      AND lane.ordered >= :from
+    ORDER BY lane.ordered
+    LIMIT :limit
+"#
+);
+
+sqlive_compose::read!(
+    WindowTopShuffled(limit: i64),
+    r#"
+    SELECT lane.shuffled, lane.entry, track.*
+    FROM playback_context AS lane
+    JOIN @bae_records::records::track_display::DisplayedTrack AS track
+      ON track.display_track_id = lane.track_id
+    WHERE lane.shuffled > (SELECT queue.shuffled_cursor FROM playback_queue AS queue)
+    ORDER BY lane.shuffled
+    LIMIT :limit
+"#
+);
+
+sqlive_compose::read!(
+    WindowFromShuffled(from: i64, limit: i64),
+    r#"
+    SELECT lane.shuffled, lane.entry, track.*
+    FROM playback_context AS lane
+    JOIN @bae_records::records::track_display::DisplayedTrack AS track
+      ON track.display_track_id = lane.track_id
+    WHERE lane.shuffled > (SELECT queue.shuffled_cursor FROM playback_queue AS queue)
+      AND lane.shuffled >= :from
+    ORDER BY lane.shuffled
+    LIMIT :limit
+"#
+);
+
+sqlive_compose::read!(
+    CountOrdered { count: u64 },
+    r#"
+    SELECT COUNT(*) AS count
+    FROM @crate::tables::queue_upcoming::UpcomingOrdered AS upcoming
+"#
+);
+
+sqlive_compose::read!(
+    CountBeforeOrdered(place: i64) { count: u64 },
+    r#"
+    SELECT COUNT(*) AS count
+    FROM @crate::tables::queue_upcoming::UpcomingOrdered AS upcoming
+    WHERE upcoming.place < :place
+"#
+);
+
+// The place of the last of the first `:count` upcoming rows, NULL when there
+// are none.
+sqlive_compose::read!(
+    LastPlaceOfFirstOrdered(count: i64) { place: Option<i64> },
+    r#"
+    SELECT MAX(first.place) AS place
+    FROM (SELECT upcoming.*
+          FROM @crate::tables::queue_upcoming::UpcomingOrdered AS upcoming
+          ORDER BY upcoming.place
+          LIMIT :count) AS first
+"#
+);
+
+sqlive_compose::read!(
+    CountShuffled { count: u64 },
+    r#"
+    SELECT COUNT(*) AS count
+    FROM @crate::tables::queue_upcoming::UpcomingShuffled AS upcoming
+"#
+);
+
+sqlive_compose::read!(
+    CountBeforeShuffled(place: i64) { count: u64 },
+    r#"
+    SELECT COUNT(*) AS count
+    FROM @crate::tables::queue_upcoming::UpcomingShuffled AS upcoming
+    WHERE upcoming.place < :place
+"#
+);
+
+// The place of the last of the first `:count` upcoming rows, NULL when there
+// are none.
+sqlive_compose::read!(
+    LastPlaceOfFirstShuffled(count: i64) { place: Option<i64> },
+    r#"
+    SELECT MAX(first.place) AS place
+    FROM (SELECT upcoming.*
+          FROM @crate::tables::queue_upcoming::UpcomingShuffled AS upcoming
+          ORDER BY upcoming.place
+          LIMIT :count) AS first
+"#
+);
+
+// The entry that a row moved to place `:offset` of the upcoming list goes
+// before: the entry there once the moved row `:moved` is left out.
+sqlive_compose::read!(
+    EntryAtPlaceOrdered(moved: i64, offset: i64),
+    r#"
+    SELECT upcoming.*
+    FROM @crate::tables::queue_upcoming::UpcomingOrdered AS upcoming
+    WHERE upcoming.entry <> :moved
+    ORDER BY upcoming.place
+    LIMIT 1 OFFSET :offset
+"#
+);
+
+sqlive_compose::read!(
+    EntryAtPlaceShuffled(moved: i64, offset: i64),
+    r#"
+    SELECT upcoming.*
+    FROM @crate::tables::queue_upcoming::UpcomingShuffled AS upcoming
+    WHERE upcoming.entry <> :moved
+    ORDER BY upcoming.place
+    LIMIT 1 OFFSET :offset
+"#
+);
+
+/// The entry among the upcoming rows of the `shuffled` order that the row
+/// `moved`, moved to `offset` among them, goes before; `None` when the offset
+/// is past their end.
+pub(super) fn upcoming_entry_at_on(
+    sql: &impl coven::SqlRead,
+    shuffled: bool,
+    moved: i64,
+    offset: i64,
+) -> Result<Option<i64>, DbError> {
+    Ok(if shuffled {
+        statement_optional(sql, &EntryAtPlaceShuffledParams { moved, offset })?
+            .map(|row| row.upcoming.entry)
+    } else {
+        statement_optional(sql, &EntryAtPlaceOrderedParams { moved, offset })?
+            .map(|row| row.upcoming.entry)
+    })
 }
 
-/// The rows of the context lane after its playing one, as a condition over
-/// `playback_context lane`: those placed past the cursor of the order the lane
-/// reads in. When no track is playing, the cursor is NULL and the condition
-/// matches no rows.
-pub(super) fn after_the_playing_track(shuffled: bool) -> String {
-    after_the_cursor(shuffled, "playback_queue")
+/// The key of the upcoming row at `place`: the place is the whole of it.
+fn key_of(place: i64) -> OrderKey {
+    OrderKey::new(vec![SortValue::Integer(place)])
 }
 
-/// [`after_the_playing_track`] for a statement that reads both orders at
-/// once: the condition matches rows only while the queue's order is the
-/// `shuffled` one, since the other order's part reads its cursor from no row.
-pub(super) fn after_the_playing_track_in_order(shuffled: bool) -> String {
-    after_the_cursor(shuffled, &format!("playback_queue WHERE shuffled = {}", u8::from(shuffled)))
+/// The place that `key` of the upcoming list names.
+fn place_of(key: &OrderKey) -> Result<i64, DbError> {
+    match key.values() {
+        [SortValue::Integer(place)] => Ok(*place),
+        other => Err(DbError::unreadable("a key of the upcoming list", format!("{other:?}"))),
+    }
 }
 
-/// The rows placed past the cursor of the `shuffled` order, which the
-/// statement reads from the single row that `queue` selects.
-fn after_the_cursor(shuffled: bool, queue: &str) -> String {
-    format!(
-        "lane.{place} > (SELECT {cursor} FROM {queue})",
-        place = context_order_column(shuffled),
-        cursor = if shuffled { "shuffled_cursor" } else { "ordered_cursor" },
-    )
+/// The upcoming row at `place`, entry `entry` of the context lane, as the
+/// queue rows show it, with its key.
+fn keyed_item(
+    place: i64,
+    entry: i64,
+    track: bae_records::records::track_display::DisplayedTrack,
+) -> Result<Keyed<QueueItem>, DbError> {
+    let item = QueueItem {
+        entry_id: QueueEntryId::Context(entry).to_string(),
+        track_id: track.track_id().to_owned(),
+        duration_ms: track.duration_ms(),
+        display: track.into_display()?,
+    };
+    Ok((item, key_of(place)))
 }
 
-/// The upcoming tracks `seek` reads in the lane's order, at most `limit`,
-/// each with its key. A window's statement is one SELECT over the lane joined
-/// to each track, returning the lane's place as its key column, so coven
-/// reruns it for a write at or before its last row alone. A read by offset
-/// applies LIMIT and OFFSET in an inner query before the join, so SQLite
-/// never joins the skipped rows to their tracks.
-pub(super) fn upcoming_rows_on(
+/// `window`'s rows of the upcoming list in the `shuffled` order.
+fn upcoming_window_on(
     sql: &SqlReadContext<'_>,
     shuffled: bool,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<QueueItem>>, DbError> {
-    let order = upcoming_order(shuffled);
-    let lane = format!(
-        "'c' || lane.entry AS entry, lane.track_id AS lane_track, {place} AS position, {keys}",
-        place = format_args!("lane.{}", context_order_column(shuffled)),
-        keys = order.key_columns(),
-    );
-    let condition = format!(
-        "{after} AND {seek}",
-        after = after_the_playing_track(shuffled),
-        seek = order.condition(seek),
-    );
-    let tail = format!("ORDER BY {} {}", order.ordering(seek), seek.limit_clause());
-    let statement = match seek.by_offset() {
-        true => queue_items_sql(&format!(
-            "SELECT {lane} FROM playback_context lane WHERE {condition} {tail}"
-        )),
-        false => queue_items_window_sql(&lane, &condition, &tail),
+    window: &ListWindow,
+) -> Result<WindowRead<QueueItem>, DbError> {
+    let limit = sql_bound(window.limit);
+    let from = window.from.as_ref().map(place_of).transpose()?;
+    macro_rules! rows {
+        ($statement:expr, $column:ident) => {
+            statement_rows(sql, &$statement)?
+                .into_iter()
+                .map(|row| keyed_item(row.$column, row.entry, row.track))
+                .collect::<Result<Vec<_>, DbError>>()?
+        };
+    }
+    let rows = match (shuffled, from) {
+        (false, None) => rows!(WindowTopOrderedParams { limit }, ordered),
+        (false, Some(from)) => rows!(WindowFromOrderedParams { from, limit }, ordered),
+        (true, None) => rows!(WindowTopShuffledParams { limit }, shuffled),
+        (true, Some(from)) => rows!(WindowFromShuffledParams { from, limit }, shuffled),
     };
-    Ok(seek.bound(limit, |params| {
-        sql.query(&statement, params, |row| Ok((queue_item_from_row(row)?, order.key_of(row)?)))
-    })?)
+    Ok(WindowRead { window: window.clone(), rows })
 }
 
 /// Every one of the context lane's tracks after the playing one, as the queue
@@ -83,13 +251,9 @@ pub(super) fn upcoming_rows_on(
 pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
     store
         .read(|sql| {
-            let shuffled: bool =
-                sql.query_row("SELECT shuffled FROM playback_queue", [], |row| row.get(0))?;
-            let order = upcoming_order(shuffled);
-            Ok(upcoming_rows_on(&sql, shuffled, &order.everything(), u64::MAX)?
-                .into_iter()
-                .map(|(item, _key)| item)
-                .collect())
+            let shuffled = super::queue_reads::queue_value_on(&sql)?.shuffled;
+            let window = upcoming_window_on(&sql, shuffled, &ListWindow::top(u64::MAX))?;
+            Ok(window.rows.into_iter().map(|(item, _key)| item).collect())
         })
         .await
 }
@@ -102,8 +266,8 @@ pub fn subscribe_upcoming_window(
     shuffled: bool,
     initial: ListWindow,
 ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<QueueItem>, bae_store::DbError> {
-    store.subscribe_list_window(initial, upcoming_order(shuffled), move |sql, seek, limit| {
-        upcoming_rows_on(sql, shuffled, seek, limit)
+    store.subscribe_reconfigurable(initial, move |window, sql| {
+        upcoming_window_on(&sql, shuffled, window)
     })
 }
 
@@ -114,36 +278,46 @@ pub fn subscribe_upcoming_count(
     shuffled: bool,
 ) -> coven::LiveQuery<u64, bae_store::DbError> {
     store.subscribe(move |sql| {
-        Ok(sql.query_row(
-            &format!(
-                "SELECT COUNT(*) FROM playback_context lane WHERE {}",
-                after_the_playing_track(shuffled)
-            ),
-            [],
-            |row| row.get(0),
-        )?)
+        Ok(if shuffled {
+            statement_row(&sql, &CountShuffledParams {})?.count
+        } else {
+            statement_row(&sql, &CountOrderedParams {})?.count
+        })
     })
 }
 
 /// Follow how many upcoming tracks come before the row at `initial`, a count
-/// over index ranges; when the caller changes the key, the same live query
+/// over an index range; when the caller changes the key, the same live query
 /// counts again for the new key.
 pub fn subscribe_upcoming_position(
     store: &Store,
     shuffled: bool,
     initial: OrderKey,
 ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-    let order = upcoming_order(shuffled);
     store.subscribe_reconfigurable(initial, move |key, sql| {
-        bae_store::list_windows::rows_before_on(
-            &sql,
-            "FROM playback_context lane",
-            Some(&after_the_playing_track(shuffled)),
-            &[],
-            &order,
-            key,
-        )
+        let place = place_of(key)?;
+        Ok(if shuffled {
+            statement_row(&sql, &CountBeforeShuffledParams { place })?.count
+        } else {
+            statement_row(&sql, &CountBeforeOrderedParams { place })?.count
+        })
     })
+}
+
+/// The key of the upcoming track at `position`, or of the last one when the
+/// lane ends before it, read on `sql`; `None` when nothing is upcoming.
+pub(super) fn upcoming_key_at_on(
+    sql: &impl coven::SqlRead,
+    shuffled: bool,
+    position: u64,
+) -> Result<Option<OrderKey>, DbError> {
+    let count = sql_bound(position.saturating_add(1));
+    let place = if shuffled {
+        statement_row(sql, &LastPlaceOfFirstShuffledParams { count })?.place
+    } else {
+        statement_row(sql, &LastPlaceOfFirstOrderedParams { count })?.place
+    };
+    Ok(place.map(key_of))
 }
 
 /// The key of the upcoming track at `position`, or of the last one when the
@@ -153,11 +327,5 @@ pub async fn upcoming_key_at(
     shuffled: bool,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {
-    store
-        .read(move |sql| {
-            key_at(&upcoming_order(shuffled), position, &mut |seek, limit| {
-                upcoming_rows_on(&sql, shuffled, seek, limit)
-            })
-        })
-        .await
+    store.read(move |sql| upcoming_key_at_on(&sql, shuffled, position)).await
 }

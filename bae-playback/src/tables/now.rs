@@ -3,11 +3,7 @@
 //! playing track's display and the queue's repeat mode. Its table is `now.sql`.
 //! The fragments here are what other reads take from the row.
 
-use super::preview_target::{preview_target_from_row, preview_target_values};
-use super::queue::repeat_from_row;
-use super::track_display::{
-    now_track_display_from_row, track_display_columns, NOW_TRACK_DISPLAY_JOINS,
-};
+use super::preview_target::preview_target_values;
 use super::*;
 use crate::renderer::picker::kind_column;
 use crate::renderer::{CastReceiver, RendererKind};
@@ -108,8 +104,7 @@ impl Casting {
             address: self.cast_receiver_address,
             takes_volume: self.cast_receiver_takes_volume,
         }
-        .receiver(&CAST_RECEIVER)
-        .map_err(|column| DbError::unreadable(format!("playback_now.{column}"), None::<String>))
+        .read(&CAST_RECEIVER)
     }
 }
 
@@ -133,13 +128,9 @@ impl PreviewedWindow {
     /// The stretch of a file the preview player holds, playing or paused.
     /// The table's CHECKs give a row that previews its path and its start.
     pub fn target(self) -> Result<PreviewTarget, DbError> {
-        let missing =
-            |column: &str| DbError::unreadable(format!("playback_now.{column}"), None::<String>);
         Ok(PreviewTarget::sample_range(
-            bae_store::path_column::decode(
-                self.previewed_path.ok_or_else(|| missing("preview_path"))?,
-            )?,
-            self.previewed_start_sample.ok_or_else(|| missing("preview_start_sample"))?,
+            bae_store::path_column::decode(required(self.previewed_path, "preview_path")?)?,
+            required(self.previewed_start_sample, "preview_start_sample")?,
             self.previewed_end_sample,
         ))
     }
@@ -428,7 +419,6 @@ struct ReceiverColumns {
     id: &'static str,
     name: &'static str,
     kind: &'static str,
-    model: &'static str,
     address: &'static str,
     takes_volume: &'static str,
 }
@@ -438,7 +428,6 @@ const CAST_RECEIVER: ReceiverColumns = ReceiverColumns {
     id: "cast_receiver_id",
     name: "cast_receiver_name",
     kind: "cast_receiver_kind",
-    model: "cast_receiver_model",
     address: "cast_receiver_address",
     takes_volume: "cast_receiver_takes_volume",
 };
@@ -448,7 +437,6 @@ const FAILURE_RECEIVER: ReceiverColumns = ReceiverColumns {
     id: "failure_receiver_id",
     name: "failure_receiver_name",
     kind: "failure_receiver_kind",
-    model: "failure_receiver_model",
     address: "failure_receiver_address",
     takes_volume: "failure_receiver_takes_volume",
 };
@@ -505,65 +493,13 @@ impl<'a> FailureColumns<'a> {
 
 /// A column value the schema's CHECKs rule out: the row is one nothing here
 /// wrote.
-fn unknown(row: &Row<'_>, column: &str, value: &str) -> rusqlite::Error {
-    column_conversion_error(row, column, format!("playback_now.{column} holds {value:?}"))
+fn unknown(column: &str, value: &str) -> DbError {
+    DbError::unreadable(format!("playback_now.{column}"), value)
 }
 
-/// The row's track state, apart from the track's display.
-fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
-    let state: String = row.get("state")?;
-    if state == "stopped" {
-        return Ok(PlaybackState::Stopped);
-    }
-    let track_id: String = row.get("track_id")?;
-    let duration_ms: Option<i64> = row.get("duration_ms")?;
-    let track = PlayingTrack { track_id, duration_ms: duration_ms.map(|duration| duration as u64) };
-    Ok(match state.as_str() {
-        "loading" => PlaybackState::Loading {
-            track: if row.get::<_, bool>("prepared")? {
-                LoadingTrack::Prepared(track)
-            } else {
-                LoadingTrack::Unprepared(track.track_id)
-            },
-            waits_on_storage: row.get("waits_on_storage")?,
-        },
-        "playing" => PlaybackState::Playing { track },
-        "paused" => {
-            let reason: String = row.get("pause_reason")?;
-            let reason = match reason.as_str() {
-                "manual" => PlaybackPauseReason::Manual,
-                "side_ended" => {
-                    let kind: String = row.get("ended_side_kind")?;
-                    let ended: String = row.get("ended_side")?;
-                    let resumes_at: Option<i64> = row.get("side_resumes_at")?;
-                    PlaybackPauseReason::SideEnded(PlaybackSidePausePrompt {
-                        id: row.get("side_boundary_id")?,
-                        ended: match kind.as_str() {
-                            "sided" => SideHeading::Sided { side_letter: ended },
-                            "disc" => SideHeading::Disc {
-                                disc: ended
-                                    .parse()
-                                    .map_err(|_not_a_number| unknown(row, "ended_side", &ended))?,
-                            },
-                            other => return Err(unknown(row, "ended_side_kind", other)),
-                        },
-                        countdown: resumes_at
-                            .map(|millis| {
-                                bae_util::timestamp::from_unix_timestamp_millis(millis)
-                                    .map(|resumes_at| PlaybackSideCountdown { resumes_at })
-                                    .map_err(|_out_of_range| {
-                                        unknown(row, "side_resumes_at", &millis.to_string())
-                                    })
-                            })
-                            .transpose()?,
-                    })
-                }
-                other => return Err(unknown(row, "pause_reason", other)),
-            };
-            PlaybackState::Paused { track, reason }
-        }
-        other => return Err(unknown(row, "state", other)),
-    })
+/// `value`, which the schema's CHECKs give the row in `column`.
+fn required<T>(value: Option<T>, column: &str) -> Result<T, DbError> {
+    value.ok_or_else(|| DbError::unreadable(format!("playback_now.{column}"), None::<String>))
 }
 
 /// A receiver as the columns that name one hold it.
@@ -577,134 +513,221 @@ struct StoredReceiver {
 }
 
 impl StoredReceiver {
-    /// The receiver these values name; every one but the model is present.
-    /// A missing one is returned as the name of its column in `columns`.
-    fn receiver(self, columns: &ReceiverColumns) -> Result<CastReceiver, &'static str> {
+    /// The receiver these values name, from the row's `columns`; every one
+    /// but the model is present.
+    fn read(self, columns: &ReceiverColumns) -> Result<CastReceiver, DbError> {
         Ok(CastReceiver {
-            id: self.id.ok_or(columns.id)?,
-            name: self.name.ok_or(columns.name)?,
-            kind: self.kind.ok_or(columns.kind)?,
+            id: required(self.id, columns.id)?,
+            name: required(self.name, columns.name)?,
+            kind: required(self.kind, columns.kind)?,
             model: self.model,
-            address: self.address.ok_or(columns.address)?,
-            takes_volume: self.takes_volume.ok_or(columns.takes_volume)?,
+            address: required(self.address, columns.address)?,
+            takes_volume: required(self.takes_volume, columns.takes_volume)?,
         })
     }
 }
 
-/// The receiver a row names in `columns`.
-fn receiver_from_row(row: &Row<'_>, columns: &ReceiverColumns) -> rusqlite::Result<CastReceiver> {
-    StoredReceiver {
-        id: row.get(columns.id)?,
-        name: row.get(columns.name)?,
-        kind: row.get(columns.kind)?,
-        model: row.get(columns.model)?,
-        address: row.get(columns.address)?,
-        takes_volume: row.get(columns.takes_volume)?,
-    }
-    .receiver(columns)
-    .map_err(|column| unknown(row, column, "NULL"))
-}
+// The row as the screens show it, with the queue's repeat mode, the stretch
+// of a file it previews, and the current display of the track it names,
+// loading, playing or paused; the display is NULL when the row names no track
+// the library holds.
+sqlive_compose::read!(
+    PlayingNow {
+        prepared: Option<bool>,
+        waits_on_storage: Option<bool>,
+        duration_ms: Option<u64>,
+        side_resumes_at: Option<i64>,
+        volume: f32,
+        is_muted: bool,
+        cast_receiver_kind: Option<crate::renderer::RendererKind>,
+        cast_receiver_takes_volume: Option<bool>,
+        preview_duration_ms: Option<u64>,
+        failure_device_state: Option<coven::DeviceState>,
+        failure_receiver_kind: Option<crate::renderer::RendererKind>,
+        failure_receiver_takes_volume: Option<bool>
+    },
+    r#"
+    SELECT now.state, now.track_id, now.prepared, now.waits_on_storage, now.duration_ms,
+           now.pause_reason, now.side_boundary_id, now.ended_side_kind, now.ended_side,
+           now.side_resumes_at, now.volume, now.is_muted,
+           now.remote, now.cast_receiver_id, now.cast_receiver_name, now.cast_receiver_kind,
+           now.cast_receiver_model, now.cast_receiver_address, now.cast_receiver_takes_volume,
+           now.remote_end_detail, now.preview_duration_ms,
+           now.failure, now.failure_problem, now.failure_detail, now.failure_device,
+           now.failure_device_state, now.failure_receiver_id, now.failure_receiver_name,
+           now.failure_receiver_kind, now.failure_receiver_model, now.failure_receiver_address,
+           now.failure_receiver_takes_volume,
+           queued.*, previewed.*, shown.*
+    FROM playback_now AS now
+    JOIN @crate::tables::queue_reads::QueueRepeat AS queued ON 1
+    LEFT JOIN @crate::tables::now::PreviewedWindow AS previewed ON 1
+    LEFT JOIN @bae_records::records::track_display::DisplayedTrack AS shown
+           ON shown.display_track_id = now.track_id
+"#
+);
 
-fn remote_from_row(row: &Row<'_>) -> rusqlite::Result<RemotePlayback> {
-    let remote: String = row.get("remote")?;
-    if remote == "local" {
-        return Ok(RemotePlayback::Local);
-    }
-    let device = receiver_from_row(row, &CAST_RECEIVER)?;
-    Ok(match remote.as_str() {
-        "on" => RemotePlayback::On(device),
-        "ended" => RemotePlayback::Ended { device, detail: row.get("remote_end_detail")? },
-        other => return Err(unknown(row, "remote", other)),
-    })
-}
-
-fn preview_from_row(row: &Row<'_>) -> rusqlite::Result<PreviewState> {
-    let preview: String = row.get("preview")?;
-    if preview == "idle" {
-        return Ok(PreviewState::Idle);
-    }
-    let target =
-        preview_target_from_row(row)?.ok_or_else(|| unknown(row, "preview_path", "NULL"))?;
-    let duration_ms: u64 = row.get("preview_duration_ms")?;
-    Ok(match preview.as_str() {
-        "playing" => PreviewState::Playing { target, duration_ms },
-        "paused" => PreviewState::Paused { target, duration_ms },
-        other => return Err(unknown(row, "preview", other)),
-    })
-}
-
-fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackErrorReason>> {
-    let failure: Option<String> = row.get("failure")?;
-    let Some(failure) = failure else {
-        return Ok(None);
-    };
-    let diagnostic = |failure| -> rusqlite::Result<PlaybackErrorReason> {
-        Ok(PlaybackErrorReason::Diagnostic { failure, detail: row.get("failure_detail")? })
-    };
-    let reason = match failure.as_str() {
-        "sync_disconnected" => PlaybackErrorReason::SyncDisconnected,
-        "on_other_device" => {
-            let name: String = row.get("failure_device")?;
-            PlaybackErrorReason::OnOtherDevice(bae_records::OtherDevice::of(
-                name,
-                row.get("failure_device_state")?,
-            ))
+impl PlayingNowRow {
+    /// The row's track state, apart from the track's display.
+    fn state(&self) -> Result<PlaybackState, DbError> {
+        if self.state == "stopped" {
+            return Ok(PlaybackState::Stopped);
         }
-        "original_missing" => PlaybackErrorReason::OriginalMissing,
-        "audio_output" => {
-            let problem: String = row.get("failure_problem")?;
-            PlaybackErrorReason::AudioOutput {
-                problem: match problem.as_str() {
-                    "device_unavailable" => AudioOutputProblem::DeviceUnavailable,
-                    "unsupported_format" => AudioOutputProblem::UnsupportedFormat,
-                    "airplay_refused" => AudioOutputProblem::AirPlayRefused,
-                    "airplay_pairing_lost" => AudioOutputProblem::AirPlayPairingLost {
-                        receiver: receiver_from_row(row, &FAILURE_RECEIVER)?,
-                    },
-                    other => return Err(unknown(row, "failure_problem", other)),
+        let track_id = required(self.track_id.clone(), "track_id")?;
+        let track = PlayingTrack { track_id, duration_ms: self.duration_ms };
+        Ok(match self.state.as_str() {
+            "loading" => PlaybackState::Loading {
+                track: if required(self.prepared, "prepared")? {
+                    LoadingTrack::Prepared(track)
+                } else {
+                    LoadingTrack::Unprepared(track.track_id)
                 },
+                waits_on_storage: required(self.waits_on_storage, "waits_on_storage")?,
+            },
+            "playing" => PlaybackState::Playing { track },
+            "paused" => PlaybackState::Paused { track, reason: self.pause_reason()? },
+            other => return Err(unknown("state", other)),
+        })
+    }
+
+    /// Why the paused row is paused.
+    fn pause_reason(&self) -> Result<PlaybackPauseReason, DbError> {
+        let reason = required(self.pause_reason.as_deref(), "pause_reason")?;
+        Ok(match reason {
+            "manual" => PlaybackPauseReason::Manual,
+            "side_ended" => {
+                let kind = required(self.ended_side_kind.as_deref(), "ended_side_kind")?;
+                let ended = required(self.ended_side.clone(), "ended_side")?;
+                PlaybackPauseReason::SideEnded(PlaybackSidePausePrompt {
+                    id: required(self.side_boundary_id.clone(), "side_boundary_id")?,
+                    ended: match kind {
+                        "sided" => SideHeading::Sided { side_letter: ended },
+                        "disc" => SideHeading::Disc {
+                            disc: ended
+                                .parse()
+                                .map_err(|_not_a_number| unknown("ended_side", &ended))?,
+                        },
+                        other => return Err(unknown("ended_side_kind", other)),
+                    },
+                    countdown: self
+                        .side_resumes_at
+                        .map(|millis| {
+                            bae_util::timestamp::from_unix_timestamp_millis(millis)
+                                .map(|resumes_at| PlaybackSideCountdown { resumes_at })
+                                .map_err(|_out_of_range| {
+                                    unknown("side_resumes_at", &millis.to_string())
+                                })
+                        })
+                        .transpose()?,
+                })
             }
+            other => return Err(unknown("pause_reason", other)),
+        })
+    }
+
+    /// Where playback goes.
+    fn remote(&self) -> Result<RemotePlayback, DbError> {
+        if self.remote == "local" {
+            return Ok(RemotePlayback::Local);
         }
-        "internal" => diagnostic(PlaybackDiagnostic::Internal)?,
-        "renderer" => diagnostic(PlaybackDiagnostic::Renderer)?,
-        other => return Err(unknown(row, "failure", other)),
-    };
-    Ok(Some(reason))
+        let device = StoredReceiver {
+            id: self.cast_receiver_id.clone(),
+            name: self.cast_receiver_name.clone(),
+            kind: self.cast_receiver_kind,
+            model: self.cast_receiver_model.clone(),
+            address: self.cast_receiver_address.clone(),
+            takes_volume: self.cast_receiver_takes_volume,
+        }
+        .read(&CAST_RECEIVER)?;
+        Ok(match self.remote.as_str() {
+            "on" => RemotePlayback::On(device),
+            "ended" => RemotePlayback::Ended {
+                device,
+                detail: required(self.remote_end_detail.clone(), "remote_end_detail")?,
+            },
+            other => return Err(unknown("remote", other)),
+        })
+    }
+
+    /// What the preview player holds.
+    fn preview(&self) -> Result<PreviewState, DbError> {
+        let Some(previewed) = &self.previewed else {
+            return Ok(PreviewState::Idle);
+        };
+        let target = previewed.clone().target()?;
+        let duration_ms = required(self.preview_duration_ms, "preview_duration_ms")?;
+        Ok(match previewed.previewed_state.as_str() {
+            "playing" => PreviewState::Playing { target, duration_ms },
+            "paused" => PreviewState::Paused { target, duration_ms },
+            other => return Err(unknown("preview", other)),
+        })
+    }
+
+    /// Why playback last failed.
+    fn failure(&self) -> Result<Option<PlaybackErrorReason>, DbError> {
+        let Some(failure) = self.failure.as_deref() else {
+            return Ok(None);
+        };
+        let diagnostic = |failure| -> Result<PlaybackErrorReason, DbError> {
+            let detail = required(self.failure_detail.clone(), "failure_detail")?;
+            Ok(PlaybackErrorReason::Diagnostic { failure, detail })
+        };
+        let reason = match failure {
+            "sync_disconnected" => PlaybackErrorReason::SyncDisconnected,
+            "on_other_device" => PlaybackErrorReason::OnOtherDevice(bae_records::OtherDevice::of(
+                required(self.failure_device.clone(), "failure_device")?,
+                required(self.failure_device_state, "failure_device_state")?,
+            )),
+            "original_missing" => PlaybackErrorReason::OriginalMissing,
+            "audio_output" => {
+                let problem = required(self.failure_problem.as_deref(), "failure_problem")?;
+                PlaybackErrorReason::AudioOutput {
+                    problem: match problem {
+                        "device_unavailable" => AudioOutputProblem::DeviceUnavailable,
+                        "unsupported_format" => AudioOutputProblem::UnsupportedFormat,
+                        "airplay_refused" => AudioOutputProblem::AirPlayRefused,
+                        "airplay_pairing_lost" => AudioOutputProblem::AirPlayPairingLost {
+                            receiver: StoredReceiver {
+                                id: self.failure_receiver_id.clone(),
+                                name: self.failure_receiver_name.clone(),
+                                kind: self.failure_receiver_kind,
+                                model: self.failure_receiver_model.clone(),
+                                address: self.failure_receiver_address.clone(),
+                                takes_volume: self.failure_receiver_takes_volume,
+                            }
+                            .read(&FAILURE_RECEIVER)?,
+                        },
+                        other => return Err(unknown("failure_problem", other)),
+                    },
+                }
+            }
+            "internal" => diagnostic(PlaybackDiagnostic::Internal)?,
+            "renderer" => diagnostic(PlaybackDiagnostic::Renderer)?,
+            other => return Err(unknown("failure", other)),
+        };
+        Ok(Some(reason))
+    }
 }
 
 /// The row as the screens show it, with the queue's repeat mode and the
-/// current display of the track it names, loading, playing or paused, in one
-/// statement; a track the library no longer holds shows as removed.
+/// current display of the track it names; a track the library no longer holds
+/// shows as removed.
 fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<NowPlayingValues, DbError> {
-    let (values, repeat_mode, failure, display) = sql.query_row(
-        &format!(
-            "SELECT n.*, q.repeat, {columns} \
-             FROM playback_now n CROSS JOIN playback_queue q {joins}",
-            columns = track_display_columns("display_"),
-            joins = NOW_TRACK_DISPLAY_JOINS,
-        ),
-        [],
-        |row| {
-            Ok((
-                PlaybackValues {
-                    state: state_from_row(row)?,
-                    volume: row.get("volume")?,
-                    is_muted: row.get("is_muted")?,
-                    remote: remote_from_row(row)?,
-                    preview: preview_from_row(row)?,
-                },
-                repeat_from_row(row, "repeat")?,
-                failure_from_row(row)?,
-                now_track_display_from_row(row)?,
-            ))
-        },
-    )?;
+    let row = statement_row(sql, &PlayingNowParams {})?;
+    let values = PlaybackValues {
+        state: row.state()?,
+        volume: row.volume,
+        is_muted: row.is_muted,
+        remote: row.remote()?,
+        preview: row.preview()?,
+    };
+    let failure = row.failure()?;
+    let display = row.shown.map(|shown| shown.into_display()).transpose()?;
     let display = NowPlayingDisplay::of(display);
     let playback = values.map_tracks(
         |track| NowPlayingTrack { track, display: display.clone() },
         |track_id| NowPlayingTrack { track: track_id, display: display.clone() },
     );
-    Ok(NowPlayingValues { playback, repeat_mode, failure })
+    Ok(NowPlayingValues { playback, repeat_mode: row.queued.into_mode(), failure })
 }
 
 /// Plant damage for a test: the table `playback_now` is gone, so the volume

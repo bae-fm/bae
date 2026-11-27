@@ -30,6 +30,7 @@ pub use track_list::{TrackList, TrackReading};
 // Only an import names its own artist credits from outside bae-records.
 pub use records::artist_credit_names::CreditNameError;
 pub use records::name_sort::SortLanguageError;
+pub use records::track_display::TrackDisplay;
 pub use records::AlbumFields;
 #[cfg(desktop)]
 pub use records::RecordsChange;

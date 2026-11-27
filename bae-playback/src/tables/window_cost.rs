@@ -2,23 +2,17 @@
 //! library's window-cost harness.
 
 use super::*;
-use bae_store::test_fixtures::window_cost::{median, offsets, report, LIMIT};
+use bae_store::test_fixtures::window_cost::{median, offsets, report};
 
 /// What the playback queue's upcoming windows cost to read.
 pub async fn measure_playback_queue(store: &Store, n: u64) {
-    // A window that jumps into the context lane's upcoming tracks finds them
-    // by offset alone: SQLite skips the lane's earlier places by offset
-    // before it reads any track.
+    // A jump into the context lane's upcoming tracks reads the key at its
+    // position: SQLite steps over the lane's earlier places and reads no
+    // track.
     for (at, offset) in offsets(n) {
         let timing = median(store, move |sql| {
-            let order = super::queue_upcoming::upcoming_order(false);
-            Ok(super::queue_upcoming::upcoming_rows_on(
-                sql,
-                false,
-                &order.at_offset(offset),
-                LIMIT,
-            )?
-            .len())
+            let key = super::queue_upcoming::upcoming_key_at_on(sql, false, offset)?;
+            Ok(usize::from(key.is_some()))
         })
         .await;
         report("queue_upcoming", "lane", "jump", at, offset, n, timing);
