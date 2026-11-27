@@ -47,19 +47,32 @@ pub(super) fn process_window(rows: WindowRows) -> Result<ImportWindow, DbError> 
     rows.try_map_rows(StoredItem::shaped)
 }
 
-/// One item's columns of a row of a window's read.
+/// One item's columns of a row of a window's read, by what the item is.
 #[derive(Clone, PartialEq)]
-pub(super) struct StoredItem {
-    item: String,
-    release: Option<StoredRelease>,
-    /// The `ListedHeader` document.
+pub(super) enum StoredItem {
+    /// A group's header, as its `ListedHeader` document.
+    Header(String),
+    Candidate {
+        release: StoredRelease,
+        /// For a member of a group.
+        member: Option<StoredMember>,
+    },
+    /// A folder that failed validation.
+    Invalid(StoredRelease),
+}
+
+/// What a member of a group reads beside its own row.
+#[derive(Clone, PartialEq)]
+pub(super) struct StoredMember {
+    /// Its group's `ListedHeader` document.
     header: String,
-    ends_group: Option<bool>,
+    /// Whether the list shows no member of the group after it.
+    last: bool,
 }
 
 /// The columns of a release's item.
 #[derive(Clone, PartialEq)]
-struct StoredRelease {
+pub(super) struct StoredRelease {
     watched_folder_path: Vec<u8>,
     key: CandidateKey,
     has_summary: Option<bool>,
@@ -90,10 +103,10 @@ macro_rules! stored_item {
     ($row:ident) => {{
         let header =
             $row.header.expect("a header fragment gives a document for every row").listed_header;
-        let release = match ($row.release_key, $row.release_root) {
-            (Some(key), Some(root)) => Some(StoredRelease {
-                watched_folder_path: root,
-                key,
+        let release = || {
+            Ok::<_, DbError>(StoredRelease {
+                watched_folder_path: required($row.release_root, "watched folder")?,
+                key: required($row.release_key, "key")?,
                 has_summary: $row.has_summary,
                 shown_title: $row.shown_title,
                 shown_credits: $row.shown_credits,
@@ -108,14 +121,15 @@ macro_rules! stored_item {
                 },
                 actions: required($row.actions, "actions")?.actions,
                 row: required($row.listed, "listed")?.listed_row,
-            }),
-            _ => None,
+            })
         };
-        Ok::<_, DbError>(StoredItem {
-            item: $row.item,
-            release,
-            header,
-            ends_group: $row.ends_group,
+        Ok::<_, DbError>(match Item::of(&$row.item)? {
+            Item::Group => StoredItem::Header(header),
+            Item::Candidate => StoredItem::Candidate {
+                release: release()?,
+                member: $row.ends_group.map(|last| StoredMember { header, last }),
+            },
+            Item::Invalid => StoredItem::Invalid(release()?),
         })
     }};
 }
@@ -295,25 +309,25 @@ fn required<T>(column: Option<T>, name: &str) -> Result<T, DbError> {
 impl StoredItem {
     /// The item as the list shows it.
     fn shaped(self) -> Result<ImportListItem, DbError> {
-        let header = row_columns::header(&self.header)?;
-        let item = Item::of(&self.item)?;
-        if item == Item::Group {
-            let header = required(header, "header")?;
-            return Ok(ImportListItem::GroupHeader(header));
-        }
-        let release = required(self.release, "placement")?;
-        let group = header
-            .map(|header| {
-                Ok::<_, DbError>(ImportGroupMember {
-                    header,
-                    last: required(self.ends_group, "ends_group")?,
-                })
-            })
-            .transpose()?;
-        let columns = row_columns::release_columns(&release.row)?;
-        match item {
-            Item::Candidate => candidate_item(release, columns, group),
-            Item::Invalid | Item::Group => invalid_item(release, columns),
+        let header = |json: &str| required(row_columns::header(json)?, "header");
+        match self {
+            Self::Header(json) => Ok(ImportListItem::GroupHeader(header(&json)?)),
+            Self::Candidate { release, member } => {
+                let group = member
+                    .map(|member| {
+                        Ok::<_, DbError>(ImportGroupMember {
+                            header: header(&member.header)?,
+                            last: member.last,
+                        })
+                    })
+                    .transpose()?;
+                let columns = row_columns::release_columns(&release.row)?;
+                candidate_item(release, columns, group)
+            }
+            Self::Invalid(release) => {
+                let columns = row_columns::release_columns(&release.row)?;
+                invalid_item(release, columns)
+            }
         }
     }
 }
