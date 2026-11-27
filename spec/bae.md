@@ -2266,10 +2266,10 @@ the thumbnails under it; the cover in the picker's preview, with its ringed
 tile; and the picture a lightbox shows, with its thumbnail in the strip. The
 other pictures a screen shows come next, and the ones it only expects to show
 come last. Core reads a candidate's pictures in that order, and a read that
-requests share waits in the first of the turns they ask. Besides the places a
-disk's reads take, each disk has one more that only a picture the person looks
-at takes, so that its read does not wait for the other pictures' reads under way
-to end. The Mac and Android apps decode the pictures they have the bytes of in
+requests share waits in the first of the turns they ask. Besides the places its
+reads of any picture take, each disk, and each network share too, has one more
+that only a picture the person looks at takes, so that its read does not wait
+for the other pictures' reads under way to end. The Mac and Android apps decode the pictures they have the bytes of in
 the same order. When the person moves to another picture, the new one goes first
 and the one before takes its turn among the others again. A read under way goes
 on.
