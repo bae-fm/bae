@@ -6412,11 +6412,13 @@ table, which stays empty there (§4.7).
 
 A list is stored as rows, one per item, when its items have an identity of
 their own, when a query filters, sorts, joins, counts or indexes them, or when
-they are edited one at a time: a release's labels, barcodes, media and Discogs
-details are rows, and so are a failed verdict's lookup failures. A list that is
-only ever stored whole and read whole is one JSON value in one column: a
-draft's media and Discogs details, a queued save's preset. coven merges a synced row cell by
-cell, so a synced JSON list is one cell, set whole by its editor.
+it syncs and is edited one item at a time: a release's labels, barcodes, media
+and Discogs details are rows, and so are a failed verdict's lookup failures.
+Any other list that is read whole is one JSON value in one column: a draft's
+media and Discogs details, which never sync and which core changes one at a
+time by loading the draft and saving it whole, and a queued save's preset.
+coven merges a synced row cell by cell, so a synced JSON list is one cell, set
+whole by its editor.
 
 bae gives coven the collation `natural_order`, which coven registers on every
 connection to a library: it orders text the way a person reads folder names

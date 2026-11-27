@@ -1,5 +1,7 @@
 use super::*;
 use bae_util::timestamp::StoredTimestamp as _;
+use rusqlite::params_from_iter;
+use rusqlite::types::Value;
 #[cfg(any(test, feature = "test-utils", desktop))]
 use rusqlite::Params;
 
@@ -179,16 +181,8 @@ pub(super) fn replace_release_barcodes(
     barcodes: &[String],
     row_ids: &[String],
 ) -> Result<(), DbError> {
-    assert_eq!(barcodes.len(), row_ids.len(), "a write holds an id for each barcode it makes");
-    conn.execute("DELETE FROM release_barcodes WHERE release_id = ?", params![release_id])?;
-    for (position, (barcode, id)) in barcodes.iter().zip(row_ids).enumerate() {
-        conn.execute(
-            "INSERT INTO release_barcodes (id, release_id, position, barcode) \
-             VALUES (?, ?, ?, ?)",
-            params![id, release_id, position as i64, barcode],
-        )?;
-    }
-    Ok(())
+    let rows = barcodes.iter().map(|barcode| [Value::from(barcode.clone())]);
+    replace_release_list(conn, "release_barcodes", ["barcode"], release_id, rows, row_ids)
 }
 
 /// Make the release `release_id`'s media exactly `media`, in order, each row
@@ -199,16 +193,10 @@ pub(super) fn replace_release_media(
     media: &[bae_types::pressing::MediaCount],
     row_ids: &[String],
 ) -> Result<(), DbError> {
-    assert_eq!(media.len(), row_ids.len(), "a write holds an id for each medium it makes");
-    conn.execute("DELETE FROM release_media WHERE release_id = ?", params![release_id])?;
-    for (position, (count, id)) in media.iter().zip(row_ids).enumerate() {
-        conn.execute(
-            "INSERT INTO release_media (id, release_id, position, medium, count) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![id, release_id, position as i64, count.medium.key(), i64::from(count.count)],
-        )?;
-    }
-    Ok(())
+    let rows = media.iter().map(|counted| {
+        [Value::from(counted.medium.key().to_string()), Value::from(i64::from(counted.count))]
+    });
+    replace_release_list(conn, "release_media", ["medium", "count"], release_id, rows, row_ids)
 }
 
 /// Make the release `release_id`'s Discogs details exactly `details`, in
@@ -219,14 +207,35 @@ pub(super) fn replace_release_discogs_details(
     details: &[bae_types::pressing::DiscogsDetail],
     row_ids: &[String],
 ) -> Result<(), DbError> {
-    assert_eq!(details.len(), row_ids.len(), "a write holds an id for each detail it makes");
-    conn.execute("DELETE FROM release_discogs_details WHERE release_id = ?", params![release_id])?;
-    for (position, (detail, id)) in details.iter().zip(row_ids).enumerate() {
-        conn.execute(
-            "INSERT INTO release_discogs_details (id, release_id, position, detail) \
-             VALUES (?, ?, ?, ?)",
-            params![id, release_id, position as i64, detail.key()],
-        )?;
+    let rows = details.iter().map(|detail| [Value::from(detail.key().to_string())]);
+    replace_release_list(conn, "release_discogs_details", ["detail"], release_id, rows, row_ids)
+}
+
+/// Make `table`'s rows of the release `release_id` one for each of `rows`,
+/// which give each row's values of `columns`: in order, numbered from zero,
+/// each under its id of `row_ids`.
+fn replace_release_list<const N: usize>(
+    conn: &CovenWrite<'_>,
+    table: &'static str,
+    columns: [&'static str; N],
+    release_id: &str,
+    rows: impl ExactSizeIterator<Item = [Value; N]>,
+    row_ids: &[String],
+) -> Result<(), DbError> {
+    assert_eq!(rows.len(), row_ids.len(), "a write holds an id for each {table} row it makes");
+    conn.execute(&format!("DELETE FROM {table} WHERE release_id = ?"), params![release_id])?;
+    let insert = format!(
+        "INSERT INTO {table} (id, release_id, position, {}) VALUES (?, ?, ?{})",
+        columns.join(", "),
+        ", ?".repeat(N),
+    );
+    for (position, (values, id)) in rows.zip(row_ids).enumerate() {
+        let place = [
+            Value::from(id.clone()),
+            Value::from(release_id.to_string()),
+            Value::from(position as i64),
+        ];
+        conn.execute(&insert, params_from_iter(place.into_iter().chain(values)))?;
     }
     Ok(())
 }
