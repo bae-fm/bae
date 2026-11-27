@@ -61,7 +61,7 @@ pub struct TrackTableRow {
     /// stores for it, or will store once the import writes it.
     pub length_ms: u64,
     /// The length the track's source lists, kept only when it is more than
-    /// [`bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS`] from
+    /// [`bae_catalogs::track_lengths::LENGTH_DISAGREEMENT_MS`] from
     /// `length_ms`.
     pub listed_length_ms: Option<u64>,
     pub artist: TrackArtistDisplay,

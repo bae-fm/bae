@@ -10,7 +10,7 @@ use crate::types::{AudioFile, CandidateDraft};
 use crate::{
     ImportError, MappingContainer, SheetBound, SheetBoundAudio, TrackTableRow, TrackTableRun,
 };
-use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
+use bae_catalogs::track_lengths::LENGTH_DISAGREEMENT_MS;
 use bae_types::pressing::{made_of, Medium};
 use bae_util::test_files::TestFolder;
 use std::path::Path;

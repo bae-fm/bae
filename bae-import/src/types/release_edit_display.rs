@@ -21,7 +21,7 @@ pub struct ReleaseEditTrackContext {
     pub start_ms: u64,
     pub duration_ms: u64,
     /// The length the track's source lists, kept only when it is more than
-    /// [`bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS`] from
+    /// [`bae_catalogs::track_lengths::LENGTH_DISAGREEMENT_MS`] from
     /// `duration_ms`, as the import's mapping table keeps it.
     pub listed_length_ms: Option<u64>,
     /// How the track's place reads ("A1", "3"), which the editor shows and

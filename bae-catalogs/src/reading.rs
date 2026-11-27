@@ -11,10 +11,11 @@
 //! are. Nothing else lays a tracklist out.
 
 use crate::catalog::{Catalog, LookupCatalog};
-use crate::medium_coverage::{candidate_sets, lengths_disagree, Fit, MediumCoverage, MediumShape};
+use crate::medium_coverage::{candidate_sets, Fit, MediumCoverage, MediumShape};
 use crate::release_values::ReleaseValues;
 use crate::search::SourceTracks;
 use crate::source_release::SourceRelease;
+use crate::track_lengths::lengths_disagree;
 use crate::AudioOrigin;
 use crate::CatalogError;
 use std::collections::BTreeSet;

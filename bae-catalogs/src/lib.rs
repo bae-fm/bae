@@ -19,6 +19,7 @@ pub mod failure;
 pub mod rate_limiter;
 pub mod records;
 pub mod remote_image;
+pub mod track_lengths;
 pub mod works;
 
 include!(concat!(env!("OUT_DIR"), "/schema.rs"));
