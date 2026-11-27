@@ -163,21 +163,30 @@ sqlive_compose::fragment!(
 "#
 );
 
+// The works whose title holds the search pattern `pattern`, each with its
+// title's sort key. A read that takes them in title order walks the entries'
+// title index, as [`TracksFoundByTitle`] does for tracks.
+sqlive_compose::fragment!(
+    WorksFoundByTitle(pattern: Option<String>),
+    r#"
+    SELECT entry.work_id, entry.title_sort_key
+    FROM work_search_entry AS entry INDEXED BY idx_work_search_entry_title
+    WHERE entry.entry IN (
+        SELECT titled.rowid FROM work_search AS titled WHERE titled.title GLOB :pattern)
+"#
+);
+
 // The first `limit` works whose title holds the search pattern `pattern`, in
 // title order, ties going by id, each with its place in that order, from 1, how
-// many works these are, and the work as its rows show it, with its cover. The
-// read walks the entries' title index, as [`TracksFoundByTitle`] does for
-// tracks.
+// many works these are, and the work as its rows show it, with its cover.
 sqlive_compose::fragment!(
     FoundWorks(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (ORDER BY picked.title_sort_key, picked.work_id) AS place,
            COUNT(*) OVER () AS listed, work.*, cover.*
-    FROM (SELECT entry.work_id, entry.title_sort_key
-          FROM work_search_entry AS entry INDEXED BY idx_work_search_entry_title
-          WHERE entry.entry IN (
-              SELECT titled.rowid FROM work_search AS titled WHERE titled.title GLOB :pattern)
-          ORDER BY entry.title_sort_key, entry.work_id
+    FROM (SELECT found.work_id, found.title_sort_key
+          FROM @crate::library_search::WorksFoundByTitle(pattern: :pattern) AS found
+          ORDER BY found.title_sort_key, found.work_id
           LIMIT :limit) AS picked
     CROSS JOIN @bae_records::records::browse_fragments::WorkSummary AS work
             ON work.work_id = picked.work_id
@@ -208,10 +217,9 @@ sqlive_compose::read!(
                        WHERE listing.artist_id IN (
                            SELECT matched.artist_id
                            FROM @crate::album_search::ArtistsFound(pattern: :pattern) AS matched))
-            OR EXISTS (SELECT 1 FROM work_search_entry AS entry
-                       WHERE entry.entry IN (
-                           SELECT titled.rowid FROM work_search AS titled
-                           WHERE titled.title GLOB :pattern))) AS found,
+            OR EXISTS (SELECT 1
+                       FROM @crate::library_search::WorksFoundByTitle(
+                                pattern: :pattern) AS matched)) AS found,
            album.*, track.*, artist.*, composer.*, work.*
     FROM json_each(:places) AS slot
     LEFT JOIN @crate::album::search_albums::FoundAlbums(pattern: :pattern, limit: :limit) AS album
