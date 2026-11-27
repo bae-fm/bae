@@ -11,6 +11,7 @@ run the same gate with build-linux.sh / build-windows.sh.
 
 Requires dotnet, cargo, and the pinned uniffi-bindgen-cs.
 FFMPEG_DIR selects the FFmpeg distribution (default: bae-ffmpeg/dist).
+LIBVIPS_DIR selects the libvips distribution (default: bae-libvips/dist).
 EOF
 }
 
@@ -37,6 +38,12 @@ done
 BINDGEN="$(scripts/csharp-bindgen.sh --path)"
 export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
 ./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
+export LIBVIPS_DIR="${LIBVIPS_DIR:-$REPO/bae-libvips/dist}"
+if [[ ! -f "$LIBVIPS_DIR/lib/libvips.42.dylib" ]]; then
+    echo "$LIBVIPS_DIR/lib holds no libvips.42.dylib." >&2
+    echo 'Run scripts/prepare-libvips.sh to build bae-libvips/dist.' >&2
+    exit 1
+fi
 
 # The bridge is copied out of Cargo's target directory as soon as it is built,
 # so a later build there cannot change it between the build and the binding
@@ -64,5 +71,5 @@ if [[ ! -x "$DOTNET_ROOT/dotnet" ]]; then
     exit 1
 fi
 export DOTNET_ROOT
-export DYLD_LIBRARY_PATH="$LIB_DIR:$FFMPEG_DIR/lib"
+export DYLD_LIBRARY_PATH="$LIB_DIR:$FFMPEG_DIR/lib:$LIBVIPS_DIR/lib"
 "$DOTNET_ROOT/dotnet" test bae-avalonia/bae-avalonia.Tests -c Debug
