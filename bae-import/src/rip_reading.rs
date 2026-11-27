@@ -29,6 +29,11 @@ pub(crate) fn read_document_text(
     bae_util::text_encoding::read_text_file(&path.display().to_string(), place.open(path)?)
 }
 
+/// A rip document's text, or why it is left out.
+fn read_document(path: &Path, place: LeasePlace) -> Result<String, LeftOut> {
+    read_document_text(path, place).map(|read| read.text).map_err(|error| LeftOut::io(&error))
+}
+
 /// Whether a document is an AccurateRip report that found the disc: a line
 /// `[AccurateRip ID: <id>] found.`, as CUETools writes into its `.accurip`
 /// report. AccurateRip's database holds CDs alone, so a disc found in it is
@@ -271,11 +276,7 @@ pub(crate) fn read_rip_artifacts(
     read_categorized(
         categorized,
         |file| Some(&file.relative_path),
-        &|document| {
-            read_document_text(document.path, lease.place_blocking())
-                .map(|read| read.text)
-                .map_err(|error| LeftOut::io(&error))
-        },
+        &|document| read_document(document.path, lease.place_blocking()),
         inputs,
     )
 }

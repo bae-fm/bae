@@ -9,11 +9,7 @@ use bae_util::test_files::TestFolder;
 
 /// The text of each document read from the file at its path.
 fn on_disk(lease: &FileLease) -> impl Fn(&RipDocument<'_>) -> Result<String, LeftOut> + '_ {
-    |document| {
-        read_document_text(document.path, lease.place_blocking())
-            .map(|read| read.text)
-            .map_err(|error| LeftOut::io(&error))
-    }
+    |document| read_document(document.path, lease.place_blocking())
 }
 
 /// `artifacts` read from the files at its documents' paths, leaving out
