@@ -482,24 +482,25 @@ pub fn image_file_on<Q: coven::SqlRead>(
         .optional()?)
 }
 
-/// Whether this device keeps each of the release `?1`'s files whole, as
-/// `coven_pins` says.
-const RELEASE_FILES_KEPT: &str = "SELECT f.id, pin.file IS NOT NULL \
-     FROM release_files AS f \
-     LEFT JOIN coven_pins AS pin ON pin.file = f.file \
-     WHERE f.release_id = ?1";
+// Whether this device keeps each of the release `:release`'s files whole, as
+// `coven_pins` says.
+sqlive_compose::read!(
+    ReleaseFilesKeptRead(release: String) { kept: bool },
+    r#"
+    SELECT f.id, pin.file IS NOT NULL AS kept
+    FROM release_files AS f
+    LEFT JOIN coven_pins AS pin ON pin.file = f.file
+    WHERE f.release_id = :release
+"#
+);
 
-/// [`RELEASE_FILES_KEPT`] for `release_id`, by release file id.
+/// [`ReleaseFilesKeptRead`] of `release_id`, by release file id.
 fn release_files_kept_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<std::collections::BTreeMap<String, bool>, DbError> {
-    Ok(sql
-        .query(RELEASE_FILES_KEPT, [release_id], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?))
-        })?
-        .into_iter()
-        .collect())
+    let params = ReleaseFilesKeptReadParams { release: release_id.to_string() };
+    Ok(bae_store::statement_rows(sql, &params)?.into_iter().map(|row| (row.id, row.kept)).collect())
 }
 
 impl Records {
