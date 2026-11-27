@@ -61,7 +61,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   body{margin:0;background:var(--background);color:var(--text-primary);font-family:var(--font-web-body);-webkit-font-smoothing:antialiased;overflow-x:hidden;}
   a{color:inherit;text-decoration:none;}
   ::selection{background:var(--accent-pink);color:var(--on-accent-pink-fill);}
-  .wrap{max-width:1140px;margin:0 auto;padding:0 28px;}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--space-section);}
 
   .js.is-loading .r,
   .js.is-ready .r:not(.is-in):not(.is-shown){opacity:0;transform:translateY(22px) scale(.99);will-change:opacity,transform;}
@@ -82,27 +82,25 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   /* nav */
   nav{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--backdrop);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .3s;}
   nav.scrolled{border-bottom:1px solid var(--hairline);}
-  .navin{display:flex;align-items:center;gap:26px;height:66px;}
+  .navin{display:flex;align-items:center;gap:var(--space-section);height:66px;}
   .brand{flex:none;}
   .navlinks{margin-inline-start:auto;display:flex;gap:var(--space-group);align-items:center;min-width:0;}
   .navlinks a{color:var(--text-secondary);white-space:nowrap;}
   .navlinks a:hover{color:var(--text-primary);}
-  .desktoplinks{display:flex;gap:26px;align-items:center;}
+  .desktoplinks{display:flex;gap:var(--space-section);align-items:center;}
   .navlinks .btn.pink{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
   .navpopup{position:relative;flex:none;}
   .navpopup summary{list-style:none;}
   .navpopup summary::-webkit-details-marker{display:none;}
   /* An icon button, as Android's: the symbol in the text colour on no fill, a state layer under the pointer. */
-  .iconbtn{width:46px;height:46px;border-radius:999px;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--text-primary);transition:background .22s;}
+  .iconbtn{width:var(--size-android-hit-target);height:var(--size-android-hit-target);border-radius:999px;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--text-primary);transition:background .22s;}
   .iconbtn:hover,.navpopup[open] > .iconbtn{background:var(--hover);}
   .iconbtn:focus-visible,.btn:focus-visible{outline:2px solid var(--accent-pink);outline-offset:3px;}
   .languagebtn{display:flex;align-items:center;gap:var(--space-inline);max-width:170px;}
   .languagebtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .menubtn{display:none;}
-  .navpanel,.langpanel{position:absolute;top:calc(100% + 12px);right:0;width:min(320px,calc(100vw - 56px));padding:var(--space-group);border:1px solid var(--hairline);border-radius:var(--radius-panel);background:var(--elevated);backdrop-filter:blur(18px);box-shadow:0 24px 70px var(--shadow);}
+  .navpanel,.langpanel{position:absolute;top:calc(100% + var(--space-group));right:0;width:min(320px,calc(100vw - 56px));padding:var(--space-group);border:1px solid var(--hairline);border-radius:var(--radius-panel);background:var(--elevated);backdrop-filter:blur(18px);box-shadow:0 24px 70px var(--shadow);}
   html[dir="rtl"] .navpanel,html[dir="rtl"] .langpanel{left:0;right:auto;direction:rtl;}
-  .navpanel::before,.langpanel::before{content:"";position:absolute;top:-7px;right:19px;width:12px;height:12px;transform:rotate(45deg);background:var(--elevated);border-left:1px solid var(--hairline);border-top:1px solid var(--hairline);}
-  html[dir="rtl"] .navpanel::before,html[dir="rtl"] .langpanel::before{left:19px;right:auto;}
   .menulinks{display:grid;gap:var(--space-inline);margin-bottom:var(--space-field-inset);padding-bottom:var(--space-field-inset);border-bottom:1px solid var(--hairline);}
   .menulinks a,.langmenu a,.languageitem{display:flex;align-items:center;justify-content:space-between;gap:var(--space-group);border-radius:var(--radius-control);padding:var(--space-field-inset) var(--space-group);color:var(--text-secondary);}
   .menulinks a:hover,.langmenu a:hover,.languageitem:hover{background:var(--hover);color:var(--text-primary);}
@@ -112,10 +110,10 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .languageitem .languagemark{color:var(--text-tertiary);transition:transform .18s;}
   .menulang[open] .languageitem .languagemark{transform:rotate(180deg);}
   .langtitle{text-transform:uppercase;color:var(--text-tertiary);padding:var(--space-line) var(--space-group) var(--space-related);}
-  .langmenu{display:grid;grid-template-columns:1fr;gap:var(--space-line);max-height:min(52vh,390px);overflow:auto;padding-right:3px;}
+  .langmenu{display:grid;grid-template-columns:1fr;gap:var(--space-line);max-height:min(52vh,390px);overflow:auto;padding-right:var(--space-line);}
   .langmenu a[aria-current="true"]{background:var(--accent-orchid-selection);color:var(--on-fill);}
-  /* Buttons as the design system draws them: the action a page is for in the accent's deep fill under white words, any other outlined beside it, each with a state layer under the pointer. */
-  .btn{display:inline-flex;align-items:center;padding:11px 20px;border-radius:999px;border:0;background:transparent;box-shadow:inset 0 0 0 1px var(--text-secondary);color:var(--text-primary);cursor:pointer;transition:background .22s;}
+  /* Buttons as the design system draws them, as Android's: 40px tall, the action a page is for in the accent's deep fill under white words, any other outlined beside it, each with a state layer under the pointer. */
+  .btn{display:inline-flex;align-items:center;padding:var(--space-field-inset) var(--space-section);border-radius:999px;border:0;background:transparent;box-shadow:inset 0 0 0 1px var(--text-secondary);color:var(--text-primary);cursor:pointer;transition:background .22s;}
   .btn:hover,.navpopup[open] > .btn{background:var(--hover);}
   .btn.pink{background:var(--accent-pink-selection);box-shadow:none;color:var(--on-fill);}
   .btn.pink:hover{background:linear-gradient(var(--hover),var(--hover)),var(--accent-pink-selection);}
@@ -124,48 +122,48 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .menubtn{display:grid;}
     .navlinks .btn.pink{max-width:min(42vw,180px);}
     .menulang{border-bottom:0;}
-    .menulang .langmenu{margin-top:var(--space-inline);padding:0 3px 0 0;}
+    .menulang .langmenu{margin-top:var(--space-inline);padding:0 var(--space-line) 0 0;}
   }
   @media(max-width:560px){
     .navin{gap:var(--space-group);}
-    .wrap{padding:0 16px;}
+    .wrap{padding:0 var(--space-edge);}
     .navlinks{gap:var(--space-related);}
-    .navlinks .btn.pink{padding:var(--space-field-inset) 15px;max-width:38vw;}
-    .navpanel{width:calc(100vw - 32px);right:-8px;}
+    .navlinks .btn.pink{padding:var(--space-field-inset) var(--space-edge);max-width:38vw;}
+    .navpanel{width:calc(100vw - 2 * var(--space-edge));right:calc(-1 * var(--space-related));}
   }
 
   /* hero */
   header.hero{padding:130px 0 70px;position:relative;overflow:hidden;}
-  .heroin{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:30px;align-items:center;}
-  h1.jumbo{margin:0;margin-top:32px;}
+  .heroin{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-page);align-items:center;}
+  h1.jumbo{margin:0;margin-top:var(--space-page);}
   h1.jumbo .pink{color:var(--accent-pink);} h1.jumbo .violet{color:var(--accent-orchid);}
-  .dek{margin:26px 0 0;color:var(--text-secondary);max-width:48ch;}
+  .dek{margin:var(--space-section) 0 0;color:var(--text-secondary);max-width:48ch;}
   .dek b{color:var(--text-primary);font-weight:var(--type-web-label-weight);}
-  .devstatus{margin-top:26px;max-width:520px;}
+  .devstatus{margin-top:var(--space-section);max-width:520px;}
   .devstatus .chip{margin-bottom:var(--space-compact);}
-  .cta{display:flex;gap:13px;margin-top:34px;flex-wrap:wrap;align-items:center;}
+  .cta{display:flex;gap:var(--space-group);margin-top:var(--space-page);flex-wrap:wrap;align-items:center;}
   .cta .meta{color:var(--text-tertiary);}
-  .hero .cta .meta{margin-left:8px;}
+  .hero .cta .meta{margin-left:var(--space-related);}
 
   .herosheep{position:relative;display:grid;place-items:center;}
-  .note{position:absolute;background:var(--elevated);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-field-inset) 14px;box-shadow:0 12px 30px var(--shadow);animation:floaty 5s ease-in-out infinite;}
+  .note{position:absolute;background:var(--elevated);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-field-inset) var(--space-group);box-shadow:0 12px 30px var(--shadow);animation:floaty 5s ease-in-out infinite;}
   .note .notehead{display:flex;align-items:center;gap:var(--space-compact);}
   .note .s{display:block;color:var(--text-tertiary);margin-top:var(--space-line);}
   .note.one{top:8%;left:-6%;} .note.two{bottom:12%;right:-4%;animation-delay:1.2s;}
 
-  .trust{display:flex;gap:30px;flex-wrap:wrap;margin-top:36px;padding-top:26px;border-top:1px solid var(--hairline);position:relative;}
-  .trust .t{display:flex;flex-direction:column;gap:3px;}
+  .trust{display:flex;gap:var(--space-page);flex-wrap:wrap;margin-top:var(--space-page);padding-top:var(--space-section);border-top:1px solid var(--hairline);position:relative;}
+  .trust .t{display:flex;flex-direction:column;gap:var(--space-line);}
   .trust .t span{color:var(--text-tertiary);}
 
   /* features */
   .sec{padding:84px 0;}
   .center{text-align:center;max-width:620px;margin:0 auto 50px;}
-  .eyebrow{text-transform:uppercase;color:var(--accent-pink);margin-bottom:14px;}
-  h2.sech{margin:0 0 14px;}
+  .eyebrow{text-transform:uppercase;color:var(--accent-pink);margin-bottom:var(--space-group);}
+  h2.sech{margin:0 0 var(--space-group);}
   .center p{color:var(--text-secondary);margin:0;}
-  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}
-  .fcard{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:28px;}
-  .fcard .top{margin-bottom:18px;}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-edge);}
+  .fcard{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:var(--space-section);}
+  .fcard .top{margin-bottom:var(--space-edge);}
   .fcard .no{color:var(--text-tertiary);}
   .fcard h3{margin:0 0 var(--space-related);}
   .fcard p{margin:0;color:var(--text-secondary);}
@@ -173,18 +171,18 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
   /* how it works diagram */
   .diagram{display:flex;align-items:stretch;gap:0;margin-top:var(--space-related);}
-  .dnode{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:11px;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:28px 18px;}
+  .dnode{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:var(--space-field-inset);background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:var(--space-section) var(--space-edge);}
   .dnode.dhub{flex:1.18;background:var(--elevated);border-color:var(--accent-mint);}
   .dsub{text-transform:uppercase;color:var(--text-tertiary);}
   .dprov{color:var(--text-secondary);max-width:30ch;}
   .dwire{flex:0 0 auto;align-self:center;position:relative;display:grid;place-items:center;min-width:108px;min-height:50px;padding:0 var(--space-compact);}
-  .dwire::before{content:"";position:absolute;left:4px;right:4px;top:50%;height:2px;transform:translateY(-50%);background:repeating-linear-gradient(90deg,color-mix(in srgb, var(--accent-mint) calc(var(--opacity-tint-strong) * 100%), transparent) 0 6px,transparent 6px 13px);animation:wireflow .9s linear infinite;}
+  .dwire::before{content:"";position:absolute;left:var(--space-inline);right:var(--space-inline);top:50%;height:2px;transform:translateY(-50%);background:repeating-linear-gradient(90deg,color-mix(in srgb, var(--accent-mint) calc(var(--opacity-tint-strong) * 100%), transparent) 0 6px,transparent 6px 13px);animation:wireflow .9s linear infinite;}
   /* The label sits on the page's colour, so the wire stops at its edges. */
   .dlabel{position:relative;z-index:1;display:inline-flex;border-radius:var(--radius-chip);background:var(--background);}
   @keyframes wireflow{to{background-position:13px 0;}}
   html[dir="rtl"] .dwire::before{animation-name:wireflowrtl;}
   @keyframes wireflowrtl{to{background-position:-13px 0;}}
-  .dfoot{text-align:center;margin-top:28px;}
+  .dfoot{text-align:center;margin-top:var(--space-section);}
   .dfoot a{color:var(--text-tertiary);}
   .dfoot a:hover{color:var(--accent-mint);}
   @media (prefers-reduced-motion: reduce){.dwire::before{animation:none;}}
@@ -192,32 +190,32 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .diagram{flex-direction:column;align-items:stretch;}
     .dnode,.dnode.dhub{flex:none;}
     .dwire{width:100%;min-height:58px;}
-    .dwire::before{left:50%;right:auto;top:6px;bottom:6px;height:auto;width:2px;transform:translateX(-50%);background:repeating-linear-gradient(0deg,color-mix(in srgb, var(--accent-mint) calc(var(--opacity-tint-strong) * 100%), transparent) 0 6px,transparent 6px 13px);animation:wireflowv .9s linear infinite;}
+    .dwire::before{left:50%;right:auto;top:var(--space-compact);bottom:var(--space-compact);height:auto;width:2px;transform:translateX(-50%);background:repeating-linear-gradient(0deg,color-mix(in srgb, var(--accent-mint) calc(var(--opacity-tint-strong) * 100%), transparent) 0 6px,transparent 6px 13px);animation:wireflowv .9s linear infinite;}
   }
   @keyframes wireflowv{to{background-position:0 13px;}}
 
   /* engine: native UIs on one Rust core */
   .stack{margin-top:var(--space-related);display:flex;flex-direction:column;align-items:stretch;}
-  .platerow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
-  .plate{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:22px 14px;}
-  .legs{display:grid;grid-template-columns:repeat(4,1fr);height:24px;}
+  .platerow{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-group);}
+  .plate{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:var(--space-section) var(--space-group);}
+  .legs{display:grid;grid-template-columns:repeat(4,1fr);height:var(--space-section);}
   .legs i{justify-self:center;width:2px;height:100%;background:linear-gradient(180deg,transparent,color-mix(in srgb, var(--accent-orchid) calc(var(--opacity-tint-strong) * 100%), transparent));}
-  .core{border-radius:var(--radius-panel);border:1px solid var(--accent-orchid);background:var(--elevated);padding:26px 28px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;}
-  .core .ctext{display:flex;flex-direction:column;gap:5px;min-width:0;}
+  .core{border-radius:var(--radius-panel);border:1px solid var(--accent-orchid);background:var(--elevated);padding:var(--space-section);display:flex;align-items:center;justify-content:space-between;gap:var(--space-edge);flex-wrap:wrap;}
+  .core .ctext{display:flex;flex-direction:column;gap:var(--space-inline);min-width:0;}
   .core .csub{color:var(--text-secondary);}
-  .legs-down{display:grid;grid-template-columns:repeat(3,1fr);height:24px;}
+  .legs-down{display:grid;grid-template-columns:repeat(3,1fr);height:var(--space-section);}
   .legs-down i{justify-self:center;width:2px;height:100%;background:linear-gradient(180deg,color-mix(in srgb, var(--accent-orchid) calc(var(--opacity-tint-strong) * 100%), transparent),color-mix(in srgb, var(--warning) calc(var(--opacity-tint) * 100%), transparent));}
   .deprow{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-group);}
-  .dep{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-edge) var(--space-group);}
+  .dep{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-inline);text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-edge) var(--space-group);}
   .dep b{color:var(--text-primary);}
   .dep span{color:var(--text-tertiary);}
   @media(max-width:640px){
     .platerow{grid-template-columns:repeat(2,1fr);}
     /* 4 column-aligned legs don't map onto a 2x2 grid; collapse to one
        centered connector that also gives the plate grid room above the core. */
-    .legs{display:flex;justify-content:center;height:28px;}
+    .legs{display:flex;justify-content:center;height:var(--space-section);}
     .legs i:not(:first-child){display:none;}
-    .core{flex-direction:column;align-items:flex-start;gap:14px;}
+    .core{flex-direction:column;align-items:flex-start;gap:var(--space-group);}
     .legs-down{display:flex;justify-content:center;}
     .legs-down i:not(:first-child){display:none;}
   }
@@ -231,8 +229,8 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
   /* end */
   .endcta{text-align:center;padding:96px 0;}
-  .endcta .sheep{display:flex;justify-content:center;margin-bottom:26px;}
-  .endcta h2{margin:0 0 16px;}
+  .endcta .sheep{display:flex;justify-content:center;margin-bottom:var(--space-section);}
+  .endcta h2{margin:0 0 var(--space-edge);}
   .endcta h2 .pink{color:var(--accent-pink);} .endcta h2 .violet{color:var(--accent-orchid);}
   /* end-CTA cycling final word ("home" / "everywhere") -- all scoped under .endcta */
   /* No-JS fallback: static "home." keeps the sentence intact.
@@ -261,7 +259,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   /* typewriter caret -- present only during the type-ahead transition; inherits the word's colour */
   .endcta h2 .cyc-caret{
     display:inline-block;width:.06em;height:.82em;margin-left:.02em;
-    vertical-align:-.06em;background:currentColor;border-radius:1px;
+    vertical-align:-.06em;background:currentColor;border-radius:var(--radius-bar);
     animation:cycBlink 1s steps(1,end) infinite;
   }
   @keyframes cycBlink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
@@ -289,23 +287,23 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .endcta h2 .cyc-caret{display:none;animation:none;}
     .endcta h2 .cyc-word{transition:opacity .6s ease;}
   }
-  .endcta p{color:var(--text-secondary);margin:0 0 30px;}
+  .endcta p{color:var(--text-secondary);margin:0 0 var(--space-page);}
 
-  footer{border-top:1px solid var(--hairline);padding:42px 0;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
-  footer .links{display:flex;gap:22px;flex-wrap:wrap;}
+  footer{border-top:1px solid var(--hairline);padding:42px 0;display:flex;justify-content:space-between;align-items:center;gap:var(--space-edge);flex-wrap:wrap;}
+  footer .links{display:flex;gap:var(--space-section);flex-wrap:wrap;}
   footer a{color:var(--text-secondary);} footer a:hover{color:var(--accent-pink);}
   footer .cp{color:var(--text-tertiary);}
 
   @media(max-width:860px){.heroin{grid-template-columns:1fr;}.herosheep{order:-1;}.cards{grid-template-columns:1fr;}header.hero{padding-bottom:24px;}.sec{padding:52px 0;}}
   @media(max-width:560px){
     .heroin{gap:42px;}
-    .dek{margin-top:32px;}
+    .dek{margin-top:var(--space-page);}
     .hero .cta{justify-content:center;}
-    .cta{margin-top:46px;gap:15px;}
-    .cta .meta{flex-basis:100%;text-align:center;margin-top:2px;}
+    .cta{margin-top:46px;gap:var(--space-edge);}
+    .cta .meta{flex-basis:100%;text-align:center;margin-top:var(--space-line);}
     .hero .cta .meta{margin-left:0;}
-    .trust{flex-direction:column;align-items:center;gap:22px;margin-top:34px;padding-top:34px;padding-bottom:34px;border-bottom:1px solid var(--hairline);}
-    .trust .t{align-items:center;text-align:center;gap:4px;}
+    .trust{flex-direction:column;align-items:center;gap:var(--space-section);margin-top:var(--space-page);padding-top:var(--space-page);padding-bottom:var(--space-page);border-bottom:1px solid var(--hairline);}
+    .trust .t{align-items:center;text-align:center;gap:var(--space-inline);}
     .trust .t span{color:var(--text-secondary);}
   }
 </style>
