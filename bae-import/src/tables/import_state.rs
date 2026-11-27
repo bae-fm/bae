@@ -59,6 +59,7 @@ pub(crate) mod fragments;
 mod import_commit;
 mod layout;
 mod ledger_rows;
+pub mod listed_fragments;
 mod lookup_choice_rows;
 mod lookup_failure_columns;
 mod match_record;
@@ -83,11 +84,10 @@ mod verdict_rows;
 pub(super) use candidate_rows::{CandidateRows, OneCandidate};
 use cards_read::verdict_cards_of_column;
 pub(super) use claim_rows::{
-    claimed_records_of_json, claimed_records_sql, offered_covers_sql, store_claims_of_albums_on,
+    claimed_records_of_json, offered_covers_sql, store_claims_of_albums_on,
     store_claims_of_releases_on,
 };
 pub(crate) use cover_rows::StoredCover;
-pub(super) use cover_rows::{cover_read_columns, read_cover};
 use failure_rows::delete_failure_on;
 pub(crate) use failure_rows::failure_of;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
@@ -104,14 +104,14 @@ pub(crate) use pane_failure_rows::pane_failure_of;
 pub(crate) use pane_rows::draft_of;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub use pane_rows::DbCandidatePaneRows;
+pub(super) use pane_rows::StoredProvenance;
 pub(super) use pane_rows::StoredTrack;
-pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 pub use preparation_rows::PreparationRefusal;
 pub(crate) use preparation_rows::{
     CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     RunVerdictSaved,
 };
-pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
+pub(super) use release_link_rows::StoredReleaseLink;
 use rows::current_state_of;
 pub(super) use rows::stored_verdict_view;
 pub use rows::DbImportCandidateState;
@@ -130,7 +130,6 @@ pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, Ver
 pub(super) use run_rows::store_release_run_on;
 pub(super) use standing_rows::{
     change_identification_on, end_file_work_unless_of_on, move_import_on, RuntimeFactColumns,
-    RUNTIME_FACT_COLUMNS,
 };
 
 use crate::CandidateKey;

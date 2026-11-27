@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::cover_art::PreparedCover;
-use crate::tables::downscaled_copies::{copies_json_sql, copies_of};
+use crate::tables::downscaled_copies::copies_of;
 use crate::CoverSelection;
 use bae_catalogs::remote_image::RemoteImageSet;
 use bae_util::content_type::ContentType;
@@ -85,23 +85,8 @@ pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(
     Ok(())
 }
 
-/// A candidate's cover choice as columns of a read that joins its row as
-/// `cover`, with the copies the catalog serves of a remote one as a JSON
-/// array. A candidate with no choice reads `cover_row` as NULL.
-pub(crate) fn cover_read_columns() -> String {
-    // Only a remote choice has an address for copies to reference.
-    let copies = copies_json_sql(
-        "import_candidate_cover_copy",
-        "copy.content_hash = cover.content_hash AND copy.image_url = cover.url",
-    );
-    format!(
-        "cover.content_hash AS cover_row, cover.kind AS cover_kind, \
-         cover.file_id AS cover_file_id, cover.url AS cover_url, \
-         cover.source AS cover_source, {copies} AS cover_copies"
-    )
-}
-
-/// One candidate's [`cover_read_columns`] as SQLite hands them over.
+/// One candidate's chosen cover as SQLite holds it, with the copies the
+/// catalog serves of a remote one as a JSON array.
 #[derive(Clone, PartialEq)]
 pub(crate) struct StoredCover {
     kind: String,
@@ -122,21 +107,6 @@ impl StoredCover {
     ) -> Self {
         Self { kind, file_id, url, source, copies }
     }
-}
-
-/// The [`cover_read_columns`] of `row`; none for a candidate that chose no
-/// cover.
-pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>> {
-    if row.get::<_, Option<String>>("cover_row")?.is_none() {
-        return Ok(None);
-    }
-    Ok(Some(StoredCover {
-        kind: row.get("cover_kind")?,
-        file_id: row.get("cover_file_id")?,
-        url: row.get("cover_url")?,
-        source: row.get("cover_source")?,
-        copies: row.get("cover_copies")?,
-    }))
 }
 
 impl StoredCover {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::tables::import_list::row_fragments::ReleaseActions;
 use crate::{
     IdentificationStatus, ImportPhase, ImportStep, PrepareStep, TriagePlacement,
     TriageRuntimeFacts, TriageTab,
@@ -70,24 +71,32 @@ impl PlacementRow {
             Some(ImportStep::Running(ImportPhase::Finalizing)) => "'finalizing'",
         };
         let connection = rusqlite::Connection::open_in_memory().unwrap();
-        connection
+        let flags = connection
             .query_row(
                 &format!(
-                    "WITH p (item, tab, import_failed, actionable, draft_valid, lookup, separable) \
-                          AS (VALUES ('candidate', '{tab}', {failed}, {actionable}, {valid}, \
-                                      {lookup}, {separable})), \
-                          st (identification, import_asked, import_step) \
-                          AS (VALUES ({identification}, {asked}, {step})) \
-                     SELECT {columns} FROM p CROSS JOIN st",
+                    "WITH import_list_placement (item, key, tab, import_failed, actionable, \
+                                                draft_valid, lookup, separable) \
+                          AS (VALUES ('candidate', X'6B', '{tab}', {failed}, {actionable}, \
+                                      {valid}, {lookup}, {separable})), \
+                          import_candidate_standing (candidate_key, identification, \
+                                                     import_asked, save_failure_error, \
+                                                     import_step) \
+                          AS (VALUES (X'6B', {identification}, {asked}, NULL, {step})) \
+                     SELECT actions FROM ({releases})",
                     actionable = self.actionable,
                     valid = self.draft_valid,
                     separable = self.separable,
-                    columns = action_columns(),
+                    releases = ReleaseActions::SQL,
                 ),
-                [],
-                |row| read_actions(row, &CandidateAction::ALL),
+                &[(":keys", "[\"6B\"]")][..],
+                |row| row.get::<_, String>(0),
             )
-            .unwrap()
+            .unwrap();
+        let flags: std::collections::HashMap<String, i64> = serde_json::from_str(&flags).unwrap();
+        CandidateAction::ALL
+            .into_iter()
+            .filter(|action| flags[&format!("can_{action:?}")] != 0)
+            .collect()
     }
 }
 

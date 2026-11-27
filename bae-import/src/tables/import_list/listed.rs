@@ -10,24 +10,9 @@ use crate::{
 };
 use bae_catalogs::InternalFailure;
 
-/// The placement columns a release's command basis is read from, over the
-/// alias `p`, in the order [`BasisColumns::read`] reads them.
-macro_rules! basis_columns {
-    () => {
-        "p.tab, p.import_failed, p.actionable"
-    };
-}
-
-/// [`BASIS_COLUMNS`] and then where the release stands on Found, which
-/// [`ListedColumns::read`] reads.
-pub(super) const LISTED_COLUMNS: &str = concat!(
-    basis_columns!(),
-    ", p.pending_state, p.needs_you_reason, p.reason_pressings, ",
-    "p.error_detail"
-);
-
-/// [`BASIS_COLUMNS`] as SQLite holds them: the release's own are `NULL` on a
-/// folder that failed validation.
+/// The placement columns a release's command basis is read from, as SQLite
+/// holds them: the release's own are `NULL` on a folder that failed
+/// validation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct BasisColumns {
     tab: String,
@@ -36,14 +21,6 @@ pub(super) struct BasisColumns {
 }
 
 impl BasisColumns {
-    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        Ok(Self {
-            tab: row.get(first)?,
-            import_failed: row.get(first + 1)?,
-            actionable: row.get(first + 2)?,
-        })
-    }
-
     /// What the commands of the release at `key` are decided from. The
     /// table's checks hold every column a release needs, so one missing is a
     /// row the checks let through, which is refused here as broken.
@@ -66,7 +43,8 @@ impl BasisColumns {
     }
 }
 
-/// [`LISTED_COLUMNS`] and the command columns as SQLite holds them.
+/// Where a release's placement says it stands, with the commands its row
+/// offers, as SQLite holds them.
 #[derive(Clone, PartialEq)]
 pub(super) struct ListedColumns {
     basis: BasisColumns,
@@ -74,44 +52,42 @@ pub(super) struct ListedColumns {
     needs_you_reason: Option<String>,
     reason_pressings: Option<i64>,
     error_detail: Option<String>,
-    /// The commands the release offers, from the columns
-    /// [`super::actions::action_columns`] gives.
+    /// The commands the release offers.
     actions: Vec<crate::CandidateAction>,
 }
 
 impl ListedColumns {
-    /// The columns from `first` on, in [`LISTED_COLUMNS`]' order.
-    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        let state = first + 3;
+    /// The placement's columns with the commands the row offers.
+    pub(super) fn new(
+        placement: super::row_columns::PlacementColumns,
+        actions: Vec<crate::CandidateAction>,
+    ) -> Result<Self, DbError> {
+        let super::row_columns::PlacementColumns {
+            tab,
+            import_failed,
+            actionable,
+            pending_state,
+            needs_you_reason,
+            reason_pressings,
+            error_detail,
+        } = placement;
         Ok(Self {
-            basis: BasisColumns::read(row, first)?,
-            pending_state: row.get(state)?,
-            needs_you_reason: row.get(state + 1)?,
-            reason_pressings: row.get(state + 2)?,
-            error_detail: row.get(state + 3)?,
-            actions: super::actions::read_actions(row, &crate::CandidateAction::ROW)?,
+            basis: BasisColumns { tab, import_failed, actionable },
+            pending_state,
+            needs_you_reason,
+            reason_pressings,
+            error_detail,
+            actions,
         })
     }
 
     /// The columns of a pane's read, which
     /// [`super::fragments::Listed`] names.
-    pub(super) fn of(listed: &super::fragments::Listed) -> Self {
-        use crate::CandidateAction as A;
-        let offered = |action: A| match action {
-            A::Import => listed.can_import,
-            A::CancelImport => listed.can_cancel_import,
-            A::Identify => listed.can_identify,
-            A::CancelIdentification => listed.can_cancel_identification,
-            A::RetryIdentification => listed.can_retry_identification,
-            A::ResetToFileMetadata => listed.can_reset_to_file_metadata,
-            A::ClearMetadata => listed.can_clear_metadata,
-            A::Combine => listed.can_combine,
-            A::Separate => listed.can_separate,
-            A::Skip => listed.can_skip,
-            A::Restore => listed.can_restore,
-            A::RevealFolder => listed.can_reveal_folder,
-        };
-        Self {
+    pub(super) fn of(listed: &super::fragments::Listed) -> Result<Self, DbError> {
+        let actions = listed.actions.as_ref().ok_or_else(|| {
+            DbError::unreadable("the commands of a listed release", None::<String>)
+        })?;
+        Ok(Self {
             basis: BasisColumns {
                 tab: listed.tab.clone(),
                 import_failed: listed.import_failed,
@@ -121,11 +97,8 @@ impl ListedColumns {
             needs_you_reason: listed.needs_you_reason.clone(),
             reason_pressings: listed.reason_pressings,
             error_detail: listed.error_detail.clone(),
-            actions: crate::CandidateAction::ROW
-                .into_iter()
-                .filter(|&action| offered(action))
-                .collect(),
-        }
+            actions: super::actions::offered(&actions.actions)?,
+        })
     }
 
     /// Where the list places the release at `key`. The table's checks hold

@@ -1,97 +1,30 @@
-//! This module decides in SQL which commands a release offers, from its
-//! placement row and what is running for it: one column per command, named
-//! `can_` and the command, `1` when the release offers it. The window's rows,
-//! the pane, the selected rows and the selection's offers all read these
-//! columns, so every surface offers the same commands.
-//!
-//! The columns follow [`CandidateAction::ALL`]. They name the placement as
-//! `p` and the candidate's standing (what is running for it) as `st`, which a
-//! release with nothing running leaves `NULL`.
+//! The commands a release offers, as the `ListedActions` fragment
+//! (`row_fragments`) decides them from its placement row and what is running
+//! for it: one flag per command, named `can_` and the command. The window's
+//! rows, the pane, the selected rows and the selection's offers all read that
+//! fragment, so every surface offers the same commands.
 
 use super::*;
 use crate::CandidateAction;
 
-/// The condition under which a release offers `action`, over the aliases `p`
-/// and `st`.
-///
-/// While an import runs for the release, the release offers only Cancel, not
-/// even Skip. Once the import starts writing the release, it offers nothing,
-/// because the write finishes whatever the person asks. While an identify run
-/// is in progress, the release offers only Cancel and Skip, and Import once
-/// the run reads its pick, until the person asks for the import. Identifying
-/// again after a finished answer would fail the same way, so bae does not
-/// offer it, and the list shows a stored lookup unchanged, so only a release
-/// with no stored lookup offers Identify. Regrouping comes before any
-/// of that: a release that is imported, or has work running for it, offers
-/// neither Separate nor Combine; any other release offers Separate when a
-/// grouping reads it, even one that cannot be worked on as it stands, and
-/// Combine when the person can act on it. Every release offers to reveal its
-/// folders.
-pub(super) fn offers(action: CandidateAction) -> String {
-    use CandidateAction as A;
-    let candidate = "p.item = 'candidate'";
-    let importing = "st.import_step IS NOT NULL";
-    let identifying =
-        "COALESCE(st.identification IN ('queued', 'running', 'finalizing', 'reading_pick'), 0)";
-    let settled = format!("(p.tab = 'done' OR {importing} OR {identifying})");
-    let eligible = format!("{candidate} AND p.actionable AND NOT ({importing})");
-    let found = format!("{eligible} AND p.tab = 'pending'");
-    let expression = match action {
-        A::Import => format!(
-            "{found} AND (({identifying} AND st.identification = 'reading_pick' \
-                           AND NOT st.import_asked) \
-                          OR (NOT {identifying} AND p.draft_valid))"
-        ),
-        A::CancelImport => format!(
-            "{candidate} AND p.actionable \
-             AND st.import_step IN ('queued', 'validating_source_files', \
-                                    'fetching_artist_pictures', 'reading_files', \
-                                    'measuring_loudness')"
-        ),
-        A::Identify => format!(
-            "{found} AND NOT {identifying} AND p.lookup IS NULL \
-             AND COALESCE(st.identification <> 'inapplicable', 1)"
-        ),
-        A::CancelIdentification => format!("{found} AND {identifying}"),
-        A::RetryIdentification => format!(
-            "{found} AND NOT {identifying} \
-             AND (p.lookup = 'failed' OR st.identification = 'not_written')"
-        ),
-        A::ResetToFileMetadata | A::ClearMetadata => format!("{found} AND NOT {identifying}"),
-        A::Combine => format!("{candidate} AND NOT {settled} AND NOT p.separable AND p.actionable"),
-        A::Separate => format!("{candidate} AND NOT {settled} AND p.separable"),
-        A::Skip => format!("{found} AND NOT p.import_failed"),
-        A::Restore => format!("{eligible} AND p.tab = 'skipped'"),
-        A::RevealFolder => candidate.to_string(),
-    };
-    format!("COALESCE(({expression}), 0)")
+/// The SQL reading the flag of `action` from the `ListedActions` document the
+/// column `actions` holds: 1 when the release offers it.
+pub(super) fn flag_sql(actions: &str, action: CandidateAction) -> String {
+    format!("json_extract({actions}, '$.can_{action:?}')")
 }
 
-/// The command columns, [`ACTION_COUNT`] of them in [`CandidateAction::ALL`]'s
-/// order, for a statement that names the placement `p` and the standing `st`.
-pub(super) fn action_columns() -> String {
-    CandidateAction::ALL
-        .iter()
-        .map(|&action| format!("{} AS can_{action:?}", offers(action)))
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-/// The commands among `actions` whose columns, from [`action_columns`], are
-/// set, in the order of `actions`. A caller that reads one row passes
-/// [`CandidateAction::ROW`], because a row's `can_Combine` says only whether
-/// the row can join a selection that combines.
-pub(super) fn read_actions(
-    row: &Row<'_>,
-    actions: &[CandidateAction],
-) -> rusqlite::Result<Vec<CandidateAction>> {
-    let mut offered = Vec::new();
-    for &action in actions {
-        if row.get::<_, bool>(format!("can_{action:?}").as_str())? {
-            offered.push(action);
-        }
-    }
-    Ok(offered)
+/// The commands a row offers, of [`CandidateAction::ROW`], as the
+/// `ListedActions` document `json` flags them.
+pub(super) fn offered(json: &str) -> Result<Vec<CandidateAction>, DbError> {
+    let flags: std::collections::HashMap<String, i64> = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json("a row's commands", json, error))?;
+    CandidateAction::ROW
+        .into_iter()
+        .filter_map(|action| match flags.get(&format!("can_{action:?}")) {
+            Some(flag) => (*flag != 0).then_some(Ok(action)),
+            None => Some(Err(DbError::unreadable("a row's commands", json))),
+        })
+        .collect()
 }
 
 #[cfg(test)]

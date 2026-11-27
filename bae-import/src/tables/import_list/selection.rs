@@ -4,8 +4,9 @@
 //! which a bulk action takes; the keys a Shift run and Select All select; and
 //! which selected rows another view or a fold takes out of the list.
 
-use super::actions::{action_columns, offers};
+use super::actions::flag_sql;
 use super::order::{ordering, Item};
+use super::row_fragments::ReleaseActions;
 use super::*;
 use crate::selection::{SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection};
 use crate::triage::SelectionOffer;
@@ -48,14 +49,15 @@ pub(super) fn selection(
         })
         .collect::<Vec<_>>()
         .join(" UNION ALL ");
+    let flags = CandidateAction::ALL
+        .iter()
+        .map(|&action| format!("{} AS can_{action:?}", flag_sql("held.actions", action)))
+        .collect::<Vec<_>>()
+        .join(", ");
     let rows = sql.query(
         &format!(
             "WITH chosen AS ( \
-                 SELECT p.item, p.key, {actions} \
-                 FROM json_each(?) AS asked \
-                 JOIN import_list_placement AS p \
-                     ON p.key = unhex(asked.value) AND p.item <> 'group' \
-                 LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key), \
+                 SELECT held.item, held.key, {flags} FROM ({releases}) AS held), \
              total AS ( \
                  SELECT COUNT(*) AS n_rows, MIN(item) AS item, MIN(key) AS key, \
                         MIN(can_Combine) AS every_can_combine, {sums} \
@@ -63,9 +65,9 @@ pub(super) fn selection(
              SELECT 0, n_rows, 1, CASE WHEN n_rows = 1 THEN item END, \
                     CASE WHEN n_rows = 1 THEN key END FROM total \
              UNION ALL {offers} ORDER BY 1",
-            actions = action_columns(),
+            releases = ReleaseActions::SQL,
         ),
-        [crate::tables::key_hex_list(keys.iter())],
+        &[(":keys", &crate::tables::key_hex_list(keys.iter()) as &dyn rusqlite::ToSql)][..],
         |row| {
             Ok((
                 row.get::<_, usize>(0)?,
@@ -111,7 +113,9 @@ pub(super) fn selected(
     // Combining acts on every selected row, whatever each offers.
     let offering = match acting {
         Some(CandidateAction::Combine) | None => "1".to_string(),
-        Some(action) => format!("(p.item = 'candidate' AND {})", offers(action)),
+        Some(action) => {
+            format!("(p.item = 'candidate' AND {} = 1)", flag_sql("held.actions", action))
+        }
     };
     let keys = crate::tables::key_hex_list(keys.iter());
     let rows = Items::new(request.clone()).query(
@@ -124,10 +128,11 @@ pub(super) fn selected(
              JOIN import_list_placement AS u ON u.entry = p.unit_entry \
              JOIN scan_candidate AS c \
                  ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
-             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
+             JOIN ({releases}) AS held ON held.key = p.key \
              WHERE {offering} \
              ORDER BY {ordering}",
             shown = request.shown(),
+            releases = ReleaseActions::SQL,
             ordering = ordering(request.view.order, "u", "p"),
         ),
         &[(":keys", &keys)],

@@ -119,6 +119,18 @@ pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<Stored
 }
 
 impl StoredReleaseLink {
+    /// The columns of a stored link, its lists as JSON arrays.
+    pub(crate) fn new(
+        content_hash: String,
+        kind: String,
+        source: Option<String>,
+        release_id: Option<String>,
+        partners: String,
+        albums: String,
+    ) -> Self {
+        Self { content_hash, kind, source, release_id, partners, albums }
+    }
+
     /// The link a pane's read selects, as
     /// [`super::state_fragments::CurrentState`] names it; none for an unlinked
     /// candidate.

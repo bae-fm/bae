@@ -76,32 +76,26 @@ fn a_negative_upload_count_or_size_is_an_unreadable_column() {
     assert!(failure(release).starts_with("bytes_stored -400"));
 }
 
-/// The counts-only read of a release's upload shows what the full read's
-/// counts show, and none when no file is queued.
+/// The progress of a release's upload from its counts shows what the full
+/// read's counts show.
 #[test]
-fn the_progress_read_shows_the_full_reads_counts() {
-    use crate::records::queued_uploads::{release_upload_in_row, release_upload_progress_in_row};
+fn the_progress_of_a_release_shows_the_full_reads_counts() {
+    use crate::records::queued_uploads::{release_upload_in_row, upload_progress};
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     let counts = "SELECT 3 AS queued_count, 2 AS waiting_files, 1 AS sending_files, \
                   4 AS stored_files";
     let full = conn.query_row(counts, [], release_upload_in_row).unwrap().unwrap();
-    let progress = conn.query_row(counts, [], release_upload_progress_in_row).unwrap().unwrap();
+    let progress = upload_progress(2, 1).unwrap();
     assert_eq!(progress, crate::UploadProgress::of_release(&full));
     assert_eq!(progress, crate::UploadProgress { queued: 2, uploading: 1 });
-
-    let none = "SELECT 0 AS queued_count, 0 AS waiting_files, 0 AS sending_files, \
-                4 AS stored_files";
-    assert_eq!(conn.query_row(none, [], release_upload_progress_in_row).unwrap(), None);
 }
 
 /// Every release has a storage row, so when a release's upload read finds no
 /// queued count, the library is broken, and the read fails instead of
-/// reporting that nothing is queued. The import list joins a release's
-/// storage row only when its files are queued, so its progress read shows no
-/// progress when it finds no storage row.
+/// reporting that nothing is queued.
 #[test]
 fn a_release_upload_read_without_a_storage_row_fails() {
-    use crate::records::queued_uploads::{release_upload_in_row, release_upload_progress_in_row};
+    use crate::records::queued_uploads::release_upload_in_row;
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     let missing = "SELECT NULL AS queued_count, NULL AS waiting_files, 0 AS sending_files, \
                    NULL AS stored_files";
@@ -109,5 +103,4 @@ fn a_release_upload_read_without_a_storage_row_fails() {
         conn.query_row(missing, [], release_upload_in_row),
         Err(rusqlite::Error::InvalidColumnType(..))
     ));
-    assert_eq!(conn.query_row(missing, [], release_upload_progress_in_row).unwrap(), None);
 }

@@ -10,70 +10,18 @@ sqlive_compose::fragment!(
         needs_you_reason: Option<String>,
         reason_pressings: Option<i64>,
         error_detail: Option<String>,
-        can_import: bool,
-        can_cancel_import: bool,
-        can_identify: bool,
-        can_cancel_identification: bool,
-        can_retry_identification: bool,
-        can_reset_to_file_metadata: bool,
-        can_clear_metadata: bool,
-        can_combine: bool,
-        can_separate: bool,
-        can_skip: bool,
-        can_restore: bool,
-        can_reveal_folder: bool,
+        actions: String,
         part_count: i64
     },
     r#"
-    WITH statement(tab, import_failed, actionable, pending_state, needs_you_reason, reason_pressings, error_detail, can_import, can_cancel_import, can_identify, can_cancel_identification, can_retry_identification, can_reset_to_file_metadata, can_clear_metadata, can_combine, can_separate, can_skip, can_restore, can_reveal_folder, part_count) AS (
-            SELECT p.tab, p.import_failed, p.actionable, p.pending_state, p.needs_you_reason,
-                p.reason_pressings, p.error_detail, COALESCE((p.item = 'candidate' AND
-                p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab = 'pending' AND
-                ((COALESCE(st.identification IN ('queued', 'running', 'finalizing',
-                'reading_pick'), 0) AND st.identification = 'reading_pick' AND NOT
-                st.import_asked) OR (NOT COALESCE(st.identification IN ('queued', 'running',
-                'finalizing', 'reading_pick'), 0) AND p.draft_valid))), 0) AS can_import,
-                COALESCE((p.item = 'candidate' AND p.actionable AND st.import_step IN ('queued',
-                'validating_source_files', 'fetching_artist_pictures', 'reading_files',
-                'measuring_loudness')), 0) AS can_cancel_import, COALESCE((p.item = 'candidate'
-                AND p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab = 'pending' AND
-                NOT COALESCE(st.identification IN ('queued', 'running', 'finalizing',
-                'reading_pick'), 0) AND p.lookup IS NULL AND COALESCE(st.identification <>
-                'inapplicable', 1)), 0) AS can_identify, COALESCE((p.item = 'candidate' AND
-                p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab = 'pending' AND
-                COALESCE(st.identification IN ('queued', 'running', 'finalizing',
-                'reading_pick'), 0)), 0) AS can_cancel_identification, COALESCE((p.item =
-                'candidate' AND p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab =
-                'pending' AND NOT COALESCE(st.identification IN ('queued', 'running',
-                'finalizing', 'reading_pick'), 0) AND (p.lookup = 'failed' OR st.identification
-                = 'not_written')), 0) AS can_retry_identification, COALESCE((p.item = 'candidate'
-                AND p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab = 'pending' AND
-                NOT COALESCE(st.identification IN ('queued', 'running', 'finalizing',
-                'reading_pick'), 0)), 0) AS can_reset_to_file_metadata, COALESCE((p.item =
-                'candidate' AND p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab =
-                'pending' AND NOT COALESCE(st.identification IN ('queued', 'running',
-                'finalizing', 'reading_pick'), 0)), 0) AS can_clear_metadata, COALESCE((p.item =
-                'candidate' AND NOT (p.tab = 'done' OR st.import_step IS NOT NULL OR
-                COALESCE(st.identification IN ('queued', 'running', 'finalizing',
-                'reading_pick'), 0)) AND NOT p.separable AND p.actionable), 0) AS can_combine,
-                COALESCE((p.item = 'candidate' AND NOT (p.tab = 'done' OR st.import_step IS NOT
-                NULL OR COALESCE(st.identification IN ('queued', 'running', 'finalizing',
-                'reading_pick'), 0)) AND p.separable), 0) AS can_separate, COALESCE((p.item =
-                'candidate' AND p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab =
-                'pending' AND NOT p.import_failed), 0) AS can_skip, COALESCE((p.item =
-                'candidate' AND p.actionable AND NOT (st.import_step IS NOT NULL) AND p.tab =
-                'skipped'), 0) AS can_restore, COALESCE((p.item = 'candidate'), 0) AS
-                can_reveal_folder,(
-            SELECT COUNT(*)
-            FROM @crate::tables::folder_scans::row_fragments::CandidatePartRows(key: :key) AS part
-        ) AS part_count
-        FROM import_list_placement AS p
-        LEFT JOIN @crate::tables::import_state::fragments::Standing(
-            keys: (SELECT :key AS candidate_key)) AS st ON st.standing_key = p.key
-        WHERE p.key = :key AND p.item = 'candidate'
-    )
-    SELECT :key AS listed_key, tab, import_failed, actionable, pending_state, needs_you_reason, reason_pressings, error_detail, can_import, can_cancel_import, can_identify, can_cancel_identification, can_retry_identification, can_reset_to_file_metadata, can_clear_metadata, can_combine, can_separate, can_skip, can_restore, can_reveal_folder, part_count
-    FROM statement
+    SELECT :key AS listed_key, p.tab, p.import_failed, p.actionable, p.pending_state,
+           p.needs_you_reason, p.reason_pressings, p.error_detail,
+           @crate::tables::import_list::row_fragments::ListedActions(parent: p) AS actions,
+           (SELECT COUNT(*)
+            FROM @crate::tables::folder_scans::row_fragments::CandidatePartRows(key: :key) AS part)
+               AS part_count
+    FROM import_list_placement AS p
+    WHERE p.key = :key AND p.item = 'candidate'
 "#);
 
 // Each draft track with the place among the folder's units of the one it

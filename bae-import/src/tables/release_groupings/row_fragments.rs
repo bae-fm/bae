@@ -14,3 +14,12 @@ sqlive_compose::fragment!(
         OR (stored.anchor_folder >= :below_first AND stored.anchor_folder < :below_past)
 "#
 );
+
+// Why each grouping cannot be worked on, if anything holds it.
+sqlive_compose::fragment!(
+    ListedBlock,
+    r#"
+    SELECT block.key AS block_key, block.blocked, block.blocked_subject, block.blocked_holder
+    FROM release_grouping AS block
+"#
+);

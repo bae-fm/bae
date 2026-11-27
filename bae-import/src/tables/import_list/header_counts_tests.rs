@@ -73,8 +73,9 @@ async fn each_header_counts_its_members_in_the_placement() {
 }
 
 /// With no search, a window reads each header's count from the group
-/// counts, by the group's key and, under an entry, the entry too: the
-/// subquery that counts reads the group counts alone and no placement row.
+/// counts, by the group's key, which holds at most one count for each filter
+/// entry: the subquery that counts reads the group counts alone and no
+/// placement row.
 #[tokio::test]
 async fn a_window_counts_its_headers_from_the_group_counts() {
     let lib = grouped().await;
@@ -86,21 +87,19 @@ async fn a_window_counts_its_headers_from_the_group_counts() {
                 .into_iter()
                 .map(|view| {
                     let request = ImportListRequest::of(view.clone());
-                    let plan =
-                        window_query(&request, &ListWindow::top(50), |items, statement, named| {
-                            items.query(
-                                &sql,
-                                &format!("EXPLAIN QUERY PLAN {statement}"),
-                                named,
-                                |row| {
-                                    Ok((
-                                        row.get::<_, i64>(0)?,
-                                        row.get::<_, i64>(1)?,
-                                        row.get::<_, String>(3)?,
-                                    ))
-                                },
-                            )
-                        })?;
+                    let statement = WindowStatement::of(&request, &ListWindow::top(50))?;
+                    let (statement, params) = statement.parts();
+                    let plan = sql.query(
+                        &format!("EXPLAIN QUERY PLAN {statement}"),
+                        params.as_slice(),
+                        |row| {
+                            Ok((
+                                row.get::<_, i64>(0)?,
+                                row.get::<_, i64>(1)?,
+                                row.get::<_, String>(3)?,
+                            ))
+                        },
+                    )?;
                     Ok((view, plan))
                 })
                 .collect::<Result<Vec<_>, DbError>>()
@@ -109,15 +108,14 @@ async fn a_window_counts_its_headers_from_the_group_counts() {
         .unwrap();
     for (view, plan) in plans {
         let counting: Vec<&(i64, i64, String)> =
-            plan.iter().filter(|(_, _, step)| step.starts_with("SEARCH gc ")).collect();
+            plan.iter().filter(|(_, _, step)| step.starts_with("SEARCH counted ")).collect();
         let [(_, subquery, step)] = counting.as_slice() else {
             panic!("{view:?}: one step reads the group counts: {plan:#?}");
         };
-        let by_key = match view.pending_filter {
-            PendingFilter::All => "(watched_folder_path=? AND group_folder=?)",
-            _ => "(watched_folder_path=? AND group_folder=? AND pending_entry=?)",
-        };
-        assert!(step.contains(by_key), "{view:?}: the group counts are read by key: {step}");
+        assert!(
+            step.contains("(watched_folder_path=? AND group_folder=?)"),
+            "{view:?}: the group counts are read by the group's key: {step}"
+        );
         // The steps that read a table; the sum's ORDER BY sorts what the one
         // read finds.
         let reads: Vec<&String> = plan

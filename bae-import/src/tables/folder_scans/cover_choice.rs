@@ -68,45 +68,11 @@ pub(crate) fn cover_refusal(
     }
 }
 
-/// The joins that read the version of the file a cover selection names, for a
-/// statement that names the candidate's scan row as `c` and the selection's
-/// kind and file by the expressions `kind` and `file_id`: one of the folder's
-/// images as the scan read it, or the file the scan read the embedded cover
-/// from with the file-tag snapshot's reading of it.
-pub(crate) fn cover_version_joins(kind: &str, file_id: &str) -> String {
-    format!(
-        "LEFT JOIN scan_candidate_file AS cover_local \
-             ON {kind} = 'local' \
-            AND cover_local.watched_folder_path = c.watched_folder_path \
-            AND cover_local.candidate_path = c.path \
-            AND cover_local.relative_path = {file_id} \
-         LEFT JOIN scan_candidate_tag_snapshot AS cover_snapshot \
-             ON {kind} = 'embedded' \
-            AND cover_snapshot.watched_folder_path = c.watched_folder_path \
-            AND cover_snapshot.candidate_path = c.path \
-         LEFT JOIN scan_candidate_file_tag AS cover_tags \
-             ON cover_tags.watched_folder_path = cover_snapshot.watched_folder_path \
-            AND cover_tags.candidate_path = cover_snapshot.candidate_path \
-            AND cover_tags.relative_path = {file_id} \
-         LEFT JOIN scan_candidate_file AS cover_source \
-             ON cover_source.watched_folder_path = cover_snapshot.watched_folder_path \
-            AND cover_source.candidate_path = cover_snapshot.candidate_path \
-            AND cover_source.relative_path = {file_id}"
-    )
-}
-
-/// The columns [`cover_version_joins`] makes readable, which
-/// [`CoverVersionColumns::read`] reads.
-pub(crate) const COVER_VERSION_COLUMNS: &str = "\
-    cover_local.absolute_path AS cover_local_path, cover_local.size AS cover_local_size, \
-    cover_local.modified_at_ns AS cover_local_modified, \
-    cover_snapshot.embedded_cover_source_relative_path AS cover_embedded_source, \
-    cover_tags.file_size AS cover_embedded_size, \
-    cover_tags.modified_at_ns AS cover_embedded_modified, \
-    cover_source.absolute_path AS cover_embedded_path";
-
-/// The [`COVER_VERSION_COLUMNS`] of one row, as SQLite holds them: each kind
-/// of selection reads its own, and the others are `NULL`.
+/// What the versions of the files a cover selection names are read from, as
+/// SQLite holds them: each kind of selection reads its own, and the others are
+/// `NULL`. A local selection reads one of the folder's images as the scan read
+/// it; an embedded one the file the file-tag snapshot read the artwork from,
+/// with the snapshot's reading of it.
 #[derive(Clone, PartialEq)]
 pub(crate) struct CoverVersionColumns {
     local: (Option<Vec<u8>>, Option<i64>, Option<i64>),
@@ -115,20 +81,15 @@ pub(crate) struct CoverVersionColumns {
 }
 
 impl CoverVersionColumns {
-    pub(crate) fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            local: (
-                row.get("cover_local_path")?,
-                row.get("cover_local_size")?,
-                row.get("cover_local_modified")?,
-            ),
-            embedded_source: row.get("cover_embedded_source")?,
-            embedded: (
-                row.get("cover_embedded_size")?,
-                row.get("cover_embedded_modified")?,
-                row.get("cover_embedded_path")?,
-            ),
-        })
+    /// The versions as read: the chosen folder image's path, size and
+    /// modification time; the file the snapshot read the artwork from; and
+    /// that file's size, modification time and path.
+    pub(crate) fn new(
+        local: (Option<Vec<u8>>, Option<i64>, Option<i64>),
+        embedded_source: Option<String>,
+        embedded: (Option<i64>, Option<i64>, Option<Vec<u8>>),
+    ) -> Self {
+        Self { local, embedded_source, embedded }
     }
 
     /// The choice `selection` names for the candidate at `candidate_path`: a

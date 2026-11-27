@@ -22,6 +22,7 @@ mod file_decisions;
 mod file_reads;
 pub(crate) mod fragments;
 mod invalid;
+pub mod listed_fragments;
 mod progress;
 pub(super) mod read;
 mod reading;
@@ -40,10 +41,8 @@ use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
 pub(crate) use self::cover_choice::cover_choice_of;
-pub(super) use self::cover_choice::{
-    cover_refusal, cover_version_joins, CoverVersionColumns, COVER_VERSION_COLUMNS,
-};
-pub(super) use self::invalid::{invalid_columns_sql, load_invalid_detail, InvalidColumns};
+pub(super) use self::cover_choice::{cover_refusal, CoverVersionColumns};
+pub(super) use self::invalid::{load_invalid_detail, InvalidColumns};
 pub(crate) use self::read::CandidateRow;
 pub(super) use self::read::{load_item_by_key, RowSources};
 /// Named only by a test that commits a reading under a stamp it took.

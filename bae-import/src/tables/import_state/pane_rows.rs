@@ -25,9 +25,7 @@ use crate::tables::draft_rows::{
     assignment_kind_column, assignments_of, decoded, StoredAssignment,
 };
 
-pub(crate) use provenance::{
-    insert_provenance, read_provenance, store_provenance, StoredProvenance, PROVENANCE_COLUMNS,
-};
+pub(crate) use provenance::{insert_provenance, store_provenance, StoredProvenance};
 
 use super::*;
 use crate::{

@@ -22,6 +22,34 @@ impl ReleaseAlbum {
     }
 }
 
+// Each release's catalog records, in the order surfaces list catalogs, as a
+// JSON array for [`crate::records::read::records_of_json`] that is empty for
+// a release no catalog describes; and what they identify the release as:
+// 'pressing' when a catalog's record names its pressing, 'album' when the
+// records name only its album, and NULL when no catalog describes it.
+sqlive_compose::fragment!(
+    ReleaseRecords {
+        records: String,
+        records_kind: Option<String>,
+    },
+    r#"
+    SELECT release.id AS records_release_id,
+        (SELECT json_group_array(json_object(
+                    'catalog', record.catalog, 'key', record.key, 'kind', record.kind,
+                    'album_key', record.album_key)
+                    ORDER BY bae_catalog_rank(record.catalog), record.catalog)
+         FROM release_records AS record
+         WHERE record.release_id = release.id) AS records,
+        CASE WHEN EXISTS (SELECT 1 FROM release_records AS record
+                          WHERE record.release_id = release.id AND record.kind = 'pressing')
+                 THEN 'pressing'
+             WHEN EXISTS (SELECT 1 FROM release_records AS record
+                          WHERE record.release_id = release.id)
+                 THEN 'album' END AS records_kind
+    FROM releases AS release
+"#
+);
+
 sqlive_compose::fragment!(
     AlbumCredits on albums { credits: String },
     r#"

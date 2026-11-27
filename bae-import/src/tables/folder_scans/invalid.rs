@@ -88,6 +88,34 @@ impl InvalidColumns {
         }))
     }
 
+    /// The columns of a folder that failed validation: its folder, whether a
+    /// grouping reads it, why it failed, the album title and stored credits
+    /// its tags give it, and the image it leads with, as its path, size and
+    /// modification time.
+    pub(crate) fn new(
+        folder: PathBuf,
+        separable: bool,
+        reason: (String, Option<String>, Option<i64>),
+        tags: Option<(String, Option<String>)>,
+        cover: Option<(PathBuf, i64, i64)>,
+    ) -> Result<Self, DbError> {
+        let tags = tags
+            .map(|(album_title, credits)| {
+                let artist = crate::tables::stored_credits::line_of(credits.as_deref()).map_err(
+                    |error| {
+                        DbError::unreadable_json(
+                            "a skipped folder's credits",
+                            credits.clone().unwrap_or_default(),
+                            error,
+                        )
+                    },
+                )?;
+                Ok::<_, DbError>(SkippedTags { album_title, artist })
+            })
+            .transpose()?;
+        Ok(Self { folder, separable, reason, tags, cover })
+    }
+
     /// The columns of a row of [`super::fragments::ScanItems`]; a row of
     /// another kind holds no reason, which reads as `None`.
     pub(crate) fn of(scan: &super::fragments::ScanItems) -> Result<Option<Self>, DbError> {

@@ -191,14 +191,8 @@ fn import_step_column(step: ImportStep) -> &'static str {
     }
 }
 
-/// The columns of a standing that say what is running for its candidate, over
-/// the alias `st`, in the order [`RuntimeFactColumns::read`] reads them: what
-/// the list reads of a row's standing, and groups selected rows by.
-pub(crate) const RUNTIME_FACT_COLUMNS: &str =
-    "st.identification, st.import_asked, st.save_failure_error, st.import_step";
-
-/// [`RUNTIME_FACT_COLUMNS`] as SQLite holds them: all `NULL` for a candidate
-/// with no standing.
+/// The columns of a standing that say what is running for its candidate, as
+/// SQLite holds them: all `NULL` for a candidate with no standing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct RuntimeFactColumns {
     identification: Option<String>,
@@ -208,13 +202,13 @@ pub(crate) struct RuntimeFactColumns {
 }
 
 impl RuntimeFactColumns {
-    pub(crate) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        Ok(Self {
-            identification: row.get(first)?,
-            import_asked: row.get(first + 1)?,
-            save_failure_error: row.get(first + 2)?,
-            import_step: row.get(first + 3)?,
-        })
+    pub(crate) fn new(
+        identification: Option<String>,
+        import_asked: Option<bool>,
+        save_failure_error: Option<String>,
+        import_step: Option<String>,
+    ) -> Self {
+        Self { identification, import_asked, save_failure_error, import_step }
     }
 
     /// What these columns say is running for `key`'s candidate.

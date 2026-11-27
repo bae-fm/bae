@@ -149,10 +149,6 @@ pub(super) fn kept_group_albums_on<S: coven::SqlRead>(
 
 /// `release`'s own albums: the one its catalog files it under, and those its
 /// records name.
-#[expect(
-    clippy::read_filter,
-    reason = "kept finding: keeps the release records that name an album"
-)]
 pub(super) fn own_albums(release: &SourceRelease) -> Vec<MetadataRef> {
     release
         .source_group_id
@@ -180,10 +176,6 @@ pub(super) fn joined_albums(release: &SourceRelease, kept: &[GroupAlbum]) -> Vec
             let Some(other) = group_album.other_than(album) else {
                 continue;
             };
-            #[expect(
-                clippy::read_pick,
-                reason = "kept finding: tests whether one of the release's records or an album it already joined reaches the other album's catalog"
-            )]
             let reached = other.catalog == catalog
                 || release.other_records.iter().any(|record| record.catalog() == other.catalog)
                 || joined.iter().any(|named| named.catalog == other.catalog);

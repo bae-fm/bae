@@ -275,21 +275,6 @@ pub fn release_records_json_sql(release: &str) -> String {
     )
 }
 
-/// What the records of the release `release` (an SQL expression naming its
-/// id) identify it as: 'pressing' when a catalog's record names its pressing,
-/// 'album' when the records name only its album, and NULL when no catalog
-/// describes it.
-pub fn release_records_kind_sql(release: &str) -> String {
-    format!(
-        "CASE WHEN EXISTS (SELECT 1 FROM release_records AS rr \
-                           WHERE rr.release_id = {release} AND rr.kind = 'pressing') \
-                  THEN 'pressing' \
-              WHEN EXISTS (SELECT 1 FROM release_records AS rr \
-                           WHERE rr.release_id = {release}) \
-                  THEN 'album' END"
-    )
-}
-
 /// The release's records as [`release_records_json_sql`] read them into
 /// `column`.
 pub fn records_column(
@@ -297,7 +282,25 @@ pub fn records_column(
     column: &str,
 ) -> rusqlite::Result<Vec<bae_catalogs::records::ReleaseRecord>> {
     let records: Vec<StoredRecord> = bae_store::read::json_column(row, column)?;
-    records.into_iter().map(|record| record_of(row, column, record)).collect()
+    records
+        .into_iter()
+        .map(|record| {
+            record_of(record).map_err(|reason| column_conversion_error(row, column, reason))
+        })
+        .collect()
+}
+
+/// The release's records as the document `json` of
+/// [`crate::records::fragments::ReleaseRecords`] holds them.
+pub fn records_of_json(json: &str) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
+    let records: Vec<StoredRecord> = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json("a release's records", json, error))?;
+    records
+        .into_iter()
+        .map(|record| {
+            record_of(record).map_err(|reason| DbError::unreadable("a release's records", reason))
+        })
+        .collect()
 }
 
 /// Every catalog's description of a release, in the order surfaces list
@@ -321,16 +324,17 @@ enum StoredRecord {
     Album { catalog: String, key: String },
 }
 
-/// The record `record` stores, read from `column` of `row`: a catalog name
-/// bae doesn't know fails as a conversion error of that column.
+/// The record `record` stores; a catalog name bae doesn't know is refused.
 fn record_of(
-    row: &Row,
-    column: &str,
     record: StoredRecord,
-) -> rusqlite::Result<bae_catalogs::records::ReleaseRecord> {
-    let identity = |catalog: String, key: String| -> rusqlite::Result<_> {
-        let catalog: bae_catalogs::catalog::Catalog =
-            catalog.parse().map_err(|reason| column_conversion_error(row, column, reason))?;
+) -> Result<
+    bae_catalogs::records::ReleaseRecord,
+    <bae_catalogs::catalog::Catalog as std::str::FromStr>::Err,
+> {
+    let identity = |catalog: String,
+                    key: String|
+     -> Result<_, <bae_catalogs::catalog::Catalog as std::str::FromStr>::Err> {
+        let catalog: bae_catalogs::catalog::Catalog = catalog.parse()?;
         Ok(bae_catalogs::records::MetadataRef::new(catalog, key))
     };
     Ok(match record {

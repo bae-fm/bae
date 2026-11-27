@@ -37,25 +37,11 @@ sqlive_compose::fragment!(
 );
 
 /// The columns of a release's storage row `storage`
-/// ([`ReleaseStorageRows`]) that count its upload, for a read that shows only
-/// how many of a release's files wait and how many are being sent.
-/// [`release_upload_progress_in_row`] and [`release_upload_in_row`] map them.
-macro_rules! release_upload_count_columns {
-    () => {
-        "storage.queued_count, storage.waiting_files, storage.sending_files, \
-         storage.stored_files"
-    };
-}
-
-/// `release_upload_count_columns!` alone.
-pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
-
-/// The columns of a release's storage row `storage` that
-/// [`release_upload_in_row`] maps: its counts
-/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the name of the release file whose
-/// missing original a move of the release waits for.
-pub const RELEASE_UPLOAD_COLUMNS: &str =
-    concat!(release_upload_count_columns!(), ", storage.missing_original_file");
+/// ([`ReleaseStorageRows`]) that [`release_upload_in_row`] maps: how many of
+/// the release's files wait, are being sent and are stored, and the name of
+/// the release file whose missing original a move of the release waits for.
+pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count, storage.waiting_files, \
+     storage.sending_files, storage.stored_files, storage.missing_original_file";
 
 // What holds the upload queue back, as one row: `upload_wait` names the wait
 // ([`UploadQueueHeld::wait`] gives what it names) and `upload_wait_at` is the earliest
@@ -137,7 +123,7 @@ fn named_wait(name: &str, at_ms: Option<i64>) -> Option<UploadQueueWait> {
 }
 
 /// How many of a release's files wait, are being sent and are stored, as
-/// [`RELEASE_UPLOAD_COUNT_COLUMNS`] read them; `None` when none of its files
+/// [`RELEASE_UPLOAD_COLUMNS`] read them; `None` when none of its files
 /// is queued. A count below zero, or past a `u32`, is a column-conversion
 /// error.
 fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32)>> {
@@ -152,16 +138,15 @@ fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32
     )))
 }
 
-/// The release's upload progress as [`RELEASE_UPLOAD_COUNT_COLUMNS`] read
-/// it, from a statement that left-joins `release_storage storage` only when
-/// the release has queued files. `None` when the left join finds no row, so
-/// `queued_count` is NULL, or when none of the release's files waits.
-pub fn release_upload_progress_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadProgress>> {
-    if row.get::<_, Option<i64>>("queued_count")?.is_none() {
-        return Ok(None);
-    }
-    Ok(upload_counts_in_row(row)?
-        .map(|(waiting, sending, _)| UploadProgress { queued: waiting, uploading: sending }))
+/// The upload progress of a release with queued files, `waiting` of which
+/// only wait and `sending` of which are being sent. A count below zero, or
+/// past a `u32`, is refused.
+pub fn upload_progress(waiting: i64, sending: i64) -> Result<UploadProgress, DbError> {
+    let count = |value: i64| {
+        u32::try_from(value)
+            .map_err(|_error| DbError::unreadable("a release's upload count", value))
+    };
+    Ok(UploadProgress { queued: count(waiting)?, uploading: count(sending)? })
 }
 
 /// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when

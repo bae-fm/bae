@@ -95,7 +95,7 @@ impl HeadRows {
         let part_count = u64::try_from(listed.part_count).map_err(|error| {
             DbError::unreadable("the part count of a listed candidate", error.to_string())
         })?;
-        let listed_columns = ListedColumns::of(&listed);
+        let listed_columns = ListedColumns::of(&listed)?;
         let entry = release_groupings::CandidateEntry::of(
             scan.ok_or_else(unlisted)?,
             grouping,

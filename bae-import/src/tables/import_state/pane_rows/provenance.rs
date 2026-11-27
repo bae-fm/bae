@@ -70,13 +70,7 @@ pub(crate) fn insert_provenance(
     Ok(())
 }
 
-/// A candidate's draft provenance as columns of a read that joins its row as
-/// `provenance`. A candidate with none reads `provenance_row` as NULL.
-pub(crate) const PROVENANCE_COLUMNS: &str = "provenance.content_hash AS provenance_row, \
-     provenance.kind AS provenance_kind, provenance.source AS provenance_source, \
-     provenance.release_id AS provenance_release_id";
-
-/// One candidate's [`PROVENANCE_COLUMNS`] as SQLite hands them over.
+/// One candidate's draft provenance as SQLite holds it.
 #[derive(Clone, PartialEq)]
 pub(crate) struct StoredProvenance {
     kind: String,
@@ -84,20 +78,12 @@ pub(crate) struct StoredProvenance {
     release_id: Option<String>,
 }
 
-/// The [`PROVENANCE_COLUMNS`] of `row`; none for a draft that records no
-/// provenance.
-pub(crate) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredProvenance>> {
-    if row.get::<_, Option<String>>("provenance_row")?.is_none() {
-        return Ok(None);
-    }
-    Ok(Some(StoredProvenance {
-        kind: row.get("provenance_kind")?,
-        source: row.get("provenance_source")?,
-        release_id: row.get("provenance_release_id")?,
-    }))
-}
-
 impl StoredProvenance {
+    /// The columns of a stored provenance.
+    pub(crate) fn new(kind: String, source: Option<String>, release_id: Option<String>) -> Self {
+        Self { kind, source, release_id }
+    }
+
     /// The provenance a pane's read selects, as
     /// [`super::super::state_fragments::CurrentState`] names it; none for a
     /// draft that records none.

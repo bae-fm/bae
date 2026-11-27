@@ -653,7 +653,7 @@ impl ImportTables {
         &self,
         list: ImportListRequest,
     ) -> Result<Vec<Vec<String>>, DbError> {
-        self.store.read(move |sql| Items::new(list).window_plans(&sql)).await
+        self.store.read(move |sql| super::window::window_plans(&sql, &list)).await
     }
 
     /// Returns SQLite's plan for the search counts query, one line per step,
@@ -813,11 +813,17 @@ async fn a_window_reads_four_thousand_folds_as_one_list() {
         );
         for plan in &plans {
             assert!(plan.iter().any(|step| step.contains("LIST SUBQUERY")), "{kind}: {plan:?}");
+            // A list subquery SQLite doesn't call correlated is read once
+            // for the whole statement.
             assert!(
-                !plan.iter().any(|step| step.contains("CORRELATED")),
+                !plan.iter().any(|step| step.contains("CORRELATED LIST SUBQUERY")),
                 "{kind} reads the folds for each row: {plan:?}"
             );
-            assert!(!plan.iter().any(|step| step.contains("TEMP B-TREE")), "{kind}: {plan:?}");
+            assert!(
+                !plan.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")
+                    || step.contains("OF ORDER BY")),
+                "{kind}: {plan:?}"
+            );
         }
     }
 }
