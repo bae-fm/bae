@@ -72,6 +72,22 @@ fn a_read_that_names_another_domains_table_is_refused_with_the_domain() {
 }
 
 #[test]
+fn a_write_that_reads_another_domains_table_is_refused_with_the_domain() {
+    let refused = refusals(
+        r##"sqlive_compose::write!(
+    RateEveryBook(stars: i64),
+    r#"INSERT INTO probe_reviews (book_id, stars) SELECT book.id, :stars FROM probe_books AS book"#
+);
+"##,
+    );
+    assert_eq!(
+        refused,
+        ["bae-music/src/people.rs:1: write! RateEveryBook reads probe_books, a table of the domain \
+          \"records\", whose homes don't hold this file; read it through a fragment of that domain"]
+    );
+}
+
+#[test]
 fn a_read_that_spreads_another_domains_fragment_passes() {
     let refused = refusals(
         r##"sqlive_compose::read!(
