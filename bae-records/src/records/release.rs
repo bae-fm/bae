@@ -27,6 +27,15 @@ pub enum AlbumFields {
     Kept,
 }
 
+/// Whether a release's write writes what its pressing is — area, media,
+/// status, packaging and Discogs details — or keeps what the library holds,
+/// as an edit of typed values alone does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum PressingFactsWrite {
+    Written,
+    Kept,
+}
+
 /// Write `release`'s pressing over its row, its labels naming the library
 /// labels `pressing` decides.
 pub(super) fn update_release_pressing_on(
@@ -34,18 +43,29 @@ pub(super) fn update_release_pressing_on(
     release: &DbRelease,
     pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
-    let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
+    update_release_typed_pressing_on(tx, release, pressing)?;
+    let facts = &release.pressing.facts;
+    update_release_fact_columns_on(tx, &release.id, facts)?;
+    super::write::replace_release_media(tx, &release.id, &facts.media, pressing.media_ids)?;
+    super::write::replace_release_discogs_details(
+        tx,
+        &release.id,
+        &facts.discogs_details,
+        pressing.discogs_detail_ids,
+    )?;
+    Ok(())
+}
+
+/// Write what is typed of `release`'s pressing: its year, labels and
+/// barcodes.
+fn update_release_typed_pressing_on(
+    tx: &CovenWrite<'_>,
+    release: &DbRelease,
+    pressing: &super::PressingWrite<'_>,
+) -> Result<(), IdentityWriteError> {
     tx.execute(
-        r#"UPDATE releases SET year = ?,
-            country = ?, region = ?, status = ?, packaging = ? WHERE id = ?"#,
-        params![
-            release.pressing.year,
-            facts.country,
-            facts.region,
-            facts.status,
-            facts.packaging,
-            release.id,
-        ],
+        "UPDATE releases SET year = ? WHERE id = ?",
+        params![release.pressing.year, release.id],
     )?;
     super::label_resolution::write_release_labels_on(
         tx,
@@ -59,17 +79,20 @@ pub(super) fn update_release_pressing_on(
         &release.pressing.barcodes,
         pressing.barcode_ids,
     )?;
-    super::write::replace_release_media(
-        tx,
-        &release.id,
-        &release.pressing.facts.media,
-        pressing.media_ids,
-    )?;
-    super::write::replace_release_discogs_details(
-        tx,
-        &release.id,
-        &release.pressing.facts.discogs_details,
-        pressing.discogs_detail_ids,
+    Ok(())
+}
+
+/// Write the facts of `facts` the release `release_id`'s own row keeps: its
+/// area, status and packaging.
+fn update_release_fact_columns_on(
+    tx: &CovenWrite<'_>,
+    release_id: &str,
+    facts: &bae_types::pressing::PressingFacts,
+) -> Result<(), DbError> {
+    let facts = super::pressing_columns::FactColumns::of(facts);
+    tx.execute(
+        "UPDATE releases SET country = ?, region = ?, status = ?, packaging = ? WHERE id = ?",
+        params![facts.country, facts.region, facts.status, facts.packaging, release_id],
     )?;
     Ok(())
 }
@@ -87,6 +110,7 @@ pub(super) fn write_release_metadata_on(
     tx: &CovenWrite<'_>,
     metadata: &ReleaseMetadataRows,
     album_fields: AlbumFields,
+    pressing_facts: PressingFactsWrite,
     now: &str,
     pressing: &super::PressingWrite<'_>,
     gone: GonePicked,
@@ -117,7 +141,10 @@ pub(super) fn write_release_metadata_on(
         replace_album_artists(tx, &album.id, &album_artists, now)?;
     }
 
-    update_release_pressing_on(tx, release, pressing)?;
+    match pressing_facts {
+        PressingFactsWrite::Written => update_release_pressing_on(tx, release, pressing)?,
+        PressingFactsWrite::Kept => update_release_typed_pressing_on(tx, release, pressing)?,
+    }
 
     for (existing_id, new_track) in track_updates {
         tx.execute(
@@ -240,7 +267,8 @@ impl Records {
     }
 
     /// Write a release's metadata rows in one transaction (see
-    /// `write_release_metadata_on`).
+    /// `write_release_metadata_on`), keeping what its pressing is as the
+    /// library holds it.
     pub async fn update_release_metadata_user_edit(
         &self,
         metadata: ReleaseMetadataRows,
@@ -255,11 +283,62 @@ impl Records {
                     &sql,
                     &metadata,
                     AlbumFields::Written,
+                    PressingFactsWrite::Kept,
                     &now,
                     &pressing_write(&pressing),
                     GonePicked::Refuse,
                 )?;
                 Ok(emptiable.remove_emptied(&sql)?)
+            })
+            .await
+    }
+
+    /// Make `change` to what the release `release_id`'s pressing is, reading
+    /// and writing it in one transaction, so the change lands on the facts
+    /// the library holds then. Only what the change makes different is
+    /// written. `false` when the library holds no such release.
+    pub async fn change_release_pressing_facts(
+        &self,
+        release_id: &str,
+        change: impl FnOnce(&mut bae_types::pressing::PressingFacts) + Send + 'static,
+    ) -> Result<bool, DbError> {
+        let release_id = release_id.to_string();
+        let ids = self.ids.clone();
+        self.store
+            .write(move |sql| {
+                let held = sql
+                    .query(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)?
+                    .pop();
+                let Some(release) = held else {
+                    return Ok::<_, DbError>(false);
+                };
+                let held = release.pressing.facts;
+                let mut facts = held.clone();
+                change(&mut facts);
+                if (facts.area, facts.status, facts.packaging)
+                    != (held.area, held.status, held.packaging)
+                {
+                    update_release_fact_columns_on(&sql, &release_id, &facts)?;
+                }
+                let fresh =
+                    |count: usize| (0..count).map(|_| ids.new_id().to_string()).collect::<Vec<_>>();
+                if facts.media != held.media {
+                    super::write::replace_release_media(
+                        &sql,
+                        &release_id,
+                        &facts.media,
+                        &fresh(facts.media.len()),
+                    )?;
+                }
+                if facts.discogs_details != held.discogs_details {
+                    super::write::replace_release_discogs_details(
+                        &sql,
+                        &release_id,
+                        &facts.discogs_details,
+                        &fresh(facts.discogs_details.len()),
+                    )?;
+                }
+                Ok(true)
             })
             .await
     }

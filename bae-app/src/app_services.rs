@@ -644,7 +644,8 @@ impl AppServices {
     delegate_async!(#[cfg(desktop)] manager, enqueue_release_save => enqueue_release_save(release_id: &str, target_dir: std::path::PathBuf, preset_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, save_track => save_track(track_id: &str, output_path: &std::path::Path, preset_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, save_track_suggested_name => save_track_suggested_name(track_id: &str) -> Result<String, bae_library::LibraryError>);
-    delegate_async!(#[cfg(desktop)] manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(#[cfg(desktop)] manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseMetadataEdit) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(#[cfg(desktop)] manager, change_release_pressing_fact => change_release_pressing_fact(release_id: &str, edit: bae_import::PressingFactEdit) -> Result<(), bae_library::LibraryError>);
     delegate_view!(find_release_track => find_release_track(release_id: &str, track_id: &str) -> Option<bae_views::album_detail::TrackSearchResult>);
     delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);
     delegate_view!(search_top_playable => search_top_playable(query: &bae_views::LibrarySearchQuery) -> Option<bae_views::DbTopPlayable>);

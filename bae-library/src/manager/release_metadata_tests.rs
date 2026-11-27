@@ -42,24 +42,27 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .expect("the release detail is stored");
 
     manager
+        .change_release_pressing_fact(
+            &release.id,
+            bae_import::PressingFactEdit::Area(Some(bae_types::pressing::area("US"))),
+        )
+        .await
+        .unwrap();
+    manager
         .apply_release_metadata_user_edit(
             &release.id,
-            &bae_import::ReleaseUserEdit {
+            &bae_import::ReleaseMetadataEdit {
                 album_title: "Edited Album".to_string(),
                 album_artist_assignments: vec![bae_import::Credited::plain(
                     bae_import::ArtistAssignment::named("Edited Album Artist"),
                 )],
                 album_year: Some(1984),
-                pressing: bae_types::pressing::Pressing {
+                pressing: bae_import::TypedPressing {
                     year: Some(1991),
                     labels: vec![bae_types::pressing::ReleaseLabel::of(
                         Some("Edited Label"),
                         Some("CAT-1"),
                     )],
-                    facts: bae_types::pressing::PressingFacts {
-                        area: Some(bae_types::pressing::area("US")),
-                        ..Default::default()
-                    },
                     barcodes: vec!["123456789".to_string()],
                 },
                 tracks: vec![bae_import::TrackUserEdit {
@@ -98,6 +101,14 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     assert_eq!(stored_after.release.album_id, album.id);
     assert_eq!(stored_after.release.pressing.year, Some(1991));
     assert_eq!(stored_after.release.pressing.barcodes, ["123456789"]);
+    assert_eq!(
+        stored_after.release.pressing.facts,
+        bae_types::pressing::PressingFacts {
+            area: Some(bae_types::pressing::area("US")),
+            ..stored_before.release.pressing.facts
+        },
+        "the edit of typed values keeps what the pressing is"
+    );
     assert_eq!(stored_after.track_groups[0].tracks[0].title, "Edited Track");
     // The track's place is not in the edit: it stays where the import put it.
     assert_eq!(
@@ -123,14 +134,14 @@ async fn release_metadata_edit_preserves_records_and_audio() {
 #[tokio::test]
 async fn a_named_album_artist_already_in_the_library_is_linked() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
-    let edit = bae_import::ReleaseUserEdit {
+    let edit = bae_import::ReleaseMetadataEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
             bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
             bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: None,
-        pressing: bae_types::pressing::Pressing::blank(),
+        pressing: Default::default(),
         tracks: Vec::new(),
     };
     manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
@@ -150,7 +161,7 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
 #[tokio::test]
 async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
-    let edit = bae_import::ReleaseUserEdit {
+    let edit = bae_import::ReleaseMetadataEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
             bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
@@ -158,7 +169,7 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
             bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
         ],
         album_year: None,
-        pressing: bae_types::pressing::Pressing::blank(),
+        pressing: Default::default(),
         tracks: Vec::new(),
     };
 
@@ -174,15 +185,15 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
 
 /// An edit of a two-track release crediting two album artists and, per track,
 /// the artists `track_artists` names, in order.
-fn credited_release_edit(track_artists: [&[&str]; 2]) -> bae_import::ReleaseUserEdit {
-    bae_import::ReleaseUserEdit {
+fn credited_release_edit(track_artists: [&[&str]; 2]) -> bae_import::ReleaseMetadataEdit {
+    bae_import::ReleaseMetadataEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
             bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
             bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: Some(2024),
-        pressing: bae_types::pressing::Pressing::blank(),
+        pressing: Default::default(),
         tracks: track_artists
             .iter()
             .enumerate()

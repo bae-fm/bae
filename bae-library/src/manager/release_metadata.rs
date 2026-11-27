@@ -28,28 +28,46 @@ impl LibraryManager {
         Ok((album_id, release, album, existing_tracks))
     }
 
-    /// Apply a user-supplied metadata edit to an existing release.
+    /// Apply a user-supplied edit of an existing release's typed metadata,
+    /// MCP's `release_metadata_update`. What the pressing is stays as the
+    /// library holds it ([`Self::change_release_pressing_fact`]).
     ///
-    /// Every surface a user edits through reaches the write here — the desktop
-    /// editor and MCP's `release_metadata_update`. The desktop shapes its form
-    /// first ([`bae_import::RawReleaseEdit::shape`]); MCP hands over
-    /// a wire edit built field-for-field. So the edit is normalized and validated
-    /// here rather than at any one caller: a blank album title or an artist-less
-    /// album is rejected, and surrounding whitespace is trimmed, no matter which
-    /// surface it came from.
+    /// MCP hands over a wire edit built field-for-field, so the edit is
+    /// normalized and validated here as the desktop editor's form is when it
+    /// shapes ([`bae_import::RawReleaseEdit::shape`]): a blank album title or
+    /// an artist-less album is rejected, and surrounding whitespace is
+    /// trimmed.
     ///
-    /// Writes only the rows `release_metadata_rows` describes; see it
-    /// for the row-level contract.
+    /// Writes only the rows `release_metadata_rows` describes, without the
+    /// pressing's facts; see it for the row-level contract.
     pub async fn apply_release_metadata_user_edit(
         &self,
         release_id: &str,
-        edit: &bae_import::ReleaseUserEdit,
+        edit: &bae_import::ReleaseMetadataEdit,
     ) -> Result<(), LibraryError> {
-        let edit = edit.clone().normalized();
-        edit.validate()?;
         let (_, release, album, existing_tracks) = self.load_release_for_edit(release_id).await?;
+        let edit = edit.clone().over(release.pressing.facts.clone()).normalized();
+        edit.validate()?;
         let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
         self.records.update_release_metadata_user_edit(metadata).await?;
+        Ok(())
+    }
+
+    /// Make one choice of what a library release's pressing is, such as one
+    /// medium's count or one Discogs detail more or fewer, on the facts the
+    /// library holds as the write runs.
+    pub async fn change_release_pressing_fact(
+        &self,
+        release_id: &str,
+        edit: bae_import::PressingFactEdit,
+    ) -> Result<(), LibraryError> {
+        let held = self
+            .records
+            .change_release_pressing_facts(release_id, move |facts| edit.apply(facts))
+            .await?;
+        if !held {
+            return Err(LibraryError::release_missing(release_id, super::ReleaseWork::Edit));
+        }
         Ok(())
     }
 

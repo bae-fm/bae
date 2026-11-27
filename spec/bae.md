@@ -6925,7 +6925,8 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `output_status` | read the export queue |
 | `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value to a form of its own and save it, records and album with it, into the album its records name or a library album given over them |
 | `release_album_set` | move a release into a library album, which keeps its own title and artists, as the editor's album picker does |
-| `release_metadata_update` | apply a metadata edit: the album fields, the pressing, and each track's title and artists (a track's place is the source's, not edited) |
+| `release_metadata_update` | apply a metadata edit: the album fields, the pressing's year, labels and barcodes, and each track's title and artists (a track's place is the source's, not edited); the pressing's area, media, status, packaging and Discogs details stay as they are, and an edit that names them is refused |
+| `release_pressing_fact_set` | choose a library release's area, status or packaging, add or remove one Discogs detail, or set one medium's count, as `import_candidate_pressing_fact_set` does for a draft; bae reads and writes the release in one write, so the other values stay as the library then holds them |
 | `library_search` | search the library |
 
 ---

@@ -1,6 +1,7 @@
 use super::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+/// The metadata a candidate commits with, as automation reads it.
+#[derive(Debug, Clone, Serialize)]
 pub struct AutomationReleaseUserEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<AutomationCredited>,
@@ -10,15 +11,37 @@ pub struct AutomationReleaseUserEdit {
 }
 
 /// Mirrors `bae_types::pressing::Pressing`.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AutomationPressingEdit {
+    pub year: Option<i32>,
+    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
+    /// Every barcode the pressing is printed with, in order.
+    pub barcodes: Vec<String>,
+    pub facts: bae_types::pressing::PressingFacts,
+}
+
+/// A change of a library release's typed metadata. Mirrors
+/// `bae_import::ReleaseMetadataEdit`; what the pressing is changes one choice
+/// at a time, through `release_pressing_fact_set`.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AutomationReleaseMetadataEdit {
+    pub album_title: String,
+    pub album_artist_assignments: Vec<AutomationCredited>,
+    pub album_year: Option<i32>,
+    pub pressing: AutomationTypedPressing,
+    pub tracks: Vec<AutomationTrackUserEdit>,
+}
+
+/// Mirrors `bae_import::TypedPressing`.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AutomationTypedPressing {
     pub year: Option<i32>,
     #[schemars(schema_with = "labels_schema")]
     pub labels: Vec<bae_types::pressing::ReleaseLabel>,
     /// Every barcode the pressing is printed with, in order.
     pub barcodes: Vec<String>,
-    #[schemars(schema_with = "pressing_facts_schema")]
-    pub facts: bae_types::pressing::PressingFacts,
 }
 
 /// One track's editable fields: its title and artists. Its medium, side and

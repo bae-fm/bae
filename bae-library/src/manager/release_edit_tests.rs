@@ -556,7 +556,15 @@ async fn a_form_s_save_is_refused_once_the_release_changed_under_it() {
     written.album_title = "Written Elsewhere".to_string();
     written.album_artist_assignments =
         vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))];
-    manager.apply_release_metadata_user_edit(&release.id, &written.shape().unwrap()).await.unwrap();
+    let written = written.shape().unwrap();
+    let written = bae_import::ReleaseMetadataEdit {
+        album_title: written.album_title,
+        album_artist_assignments: written.album_artist_assignments,
+        album_year: written.album_year,
+        pressing: Default::default(),
+        tracks: written.tracks,
+    };
+    manager.apply_release_metadata_user_edit(&release.id, &written).await.unwrap();
     assert!(manager
         .save_release_edit(titled(opened_before_write, "Saved Over It"), super::GonePick::Unpick)
         .await

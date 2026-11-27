@@ -2,12 +2,12 @@
 //!
 //! The desktop editor shapes its form through `RawReleaseEdit::shape`, which
 //! rejects a blank album title and an artist-less album. MCP's
-//! `release_metadata_update` builds a `ReleaseUserEdit`
+//! `release_metadata_update` builds a `ReleaseMetadataEdit`
 //! field-for-field and hands it straight to
 //! `LibraryManager::apply_release_metadata_user_edit`. These tests drive that
 //! write path the way those surfaces do, with no editor in front of it.
 
-use bae_import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
+use bae_import::{ArtistAssignment, ReleaseMetadataEdit, TrackArtistAssignments, TrackUserEdit};
 use bae_library::LibraryError;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use time::UtcDateTime;
@@ -64,15 +64,15 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
 
 /// A wire edit built field-for-field, exactly as `bae-automation`'s
 /// `release_user_edit` builds one from an MCP tool call — no shaping, no trimming.
-fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUserEdit {
-    ReleaseUserEdit {
+fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseMetadataEdit {
+    ReleaseMetadataEdit {
         album_title: album_title.to_string(),
         album_artist_assignments: album_artist_seed_names
             .iter()
             .map(|name| bae_import::Credited::plain(ArtistAssignment::named(*name)))
             .collect(),
         album_year: None,
-        pressing: bae_types::pressing::Pressing::blank(),
+        pressing: Default::default(),
         tracks: vec![TrackUserEdit {
             title: "Original Track".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,

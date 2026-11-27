@@ -327,11 +327,11 @@ async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
             .unwrap()
             .expect("Artist A"),
     );
-    let edit = |album_artists: Vec<bae_import::Credited>| bae_import::ReleaseUserEdit {
+    let edit = |album_artists: Vec<bae_import::Credited>| bae_import::ReleaseMetadataEdit {
         album_title: "Test Album".to_string(),
         album_artist_assignments: album_artists,
         album_year: None,
-        pressing: bae_types::pressing::Pressing::blank(),
+        pressing: Default::default(),
         tracks: vec![
             bae_import::TrackUserEdit {
                 title: "Featured".to_string(),
@@ -439,13 +439,13 @@ async fn a_typed_credit_matching_a_credit_name_is_that_artist() {
         .manager()
         .apply_release_metadata_user_edit(
             &library.release.id,
-            &bae_import::ReleaseUserEdit {
+            &bae_import::ReleaseMetadataEdit {
                 album_title: "Test Album".to_string(),
                 album_artist_assignments: vec![bae_import::Credited::plain(
                     bae_import::ArtistAssignment::named("a pseudonym"),
                 )],
                 album_year: None,
-                pressing: bae_types::pressing::Pressing::blank(),
+                pressing: Default::default(),
                 tracks: vec![
                     bae_import::TrackUserEdit {
                         title: "Featured".to_string(),

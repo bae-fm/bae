@@ -478,9 +478,19 @@ impl Automation {
     pub async fn update_release_metadata(
         &self,
         release_id: String,
-        edit: AutomationReleaseUserEdit,
+        edit: AutomationReleaseMetadataEdit,
     ) -> Result<(), AutomationError> {
         self.services.apply_release_metadata_user_edit(&release_id, &edit.into_core()).await?;
+        Ok(())
+    }
+
+    /// Choose one of what a library release's pressing is.
+    pub async fn set_release_pressing_fact(
+        &self,
+        release_id: String,
+        fact: AutomationPressingFactEdit,
+    ) -> Result<(), AutomationError> {
+        self.services.change_release_pressing_fact(&release_id, fact.into_core()).await?;
         Ok(())
     }
 
@@ -608,6 +618,11 @@ impl Automation {
             AutomationTool::ReleaseMetadataUpdate => {
                 let input: ReleaseMetadataUpdateInput = from_value(args)?;
                 self.update_release_metadata(input.release_id, input.edit).await?;
+                to_value(EmptyResponse {})
+            }
+            AutomationTool::ReleasePressingFactSet => {
+                let input: ReleasePressingFactInput = from_value(args)?;
+                self.set_release_pressing_fact(input.release_id, input.fact).await?;
                 to_value(EmptyResponse {})
             }
             AutomationTool::LibrarySearch => {

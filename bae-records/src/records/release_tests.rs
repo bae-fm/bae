@@ -278,6 +278,47 @@ async fn a_discogs_detail_save_replaces_the_list() {
     }
 }
 
+/// A change of one choice of what a release's pressing is lands on what the
+/// library holds, and rewrites only the list it changes.
+#[tokio::test]
+async fn a_pressing_fact_change_rewrites_only_what_it_changes() {
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    seed_artist_album_release(&db).await;
+    let records = crate::test_fixtures::test_records(&db);
+    let media_ids = set_media(&db, vec![count(Medium::Cd, 2)]).await;
+
+    let held = records
+        .change_release_pressing_facts(RELEASE, |facts| {
+            facts.discogs_details.push(DiscogsDetail::Stereo)
+        })
+        .await
+        .unwrap();
+
+    assert!(held);
+    assert_eq!(media_on(&records).await, vec![count(Medium::Cd, 2)]);
+    assert_eq!(row_ids_of(&db, "release_media").await, media_ids, "the media rows stay");
+    assert_eq!(details_on(&records).await, vec![DiscogsDetail::Stereo]);
+    let detail_ids = row_ids_of(&db, "release_discogs_details").await;
+
+    records
+        .change_release_pressing_facts(RELEASE, |facts| facts.media.push(count(Medium::Dvd, 1)))
+        .await
+        .unwrap();
+
+    assert_eq!(media_on(&records).await, vec![count(Medium::Cd, 2), count(Medium::Dvd, 1)]);
+    assert_eq!(row_ids_of(&db, "release_discogs_details").await, detail_ids);
+}
+
+#[tokio::test]
+async fn a_pressing_fact_change_of_a_release_the_library_lacks_says_so() {
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let records = crate::test_fixtures::test_records(&db);
+
+    let held = records.change_release_pressing_facts(RELEASE, |_| ()).await.unwrap();
+
+    assert!(!held);
+}
+
 /// Make `RELEASE`'s barcodes `barcodes` on `db`.
 /// Return the ids it gave the rows.
 async fn set_barcodes(db: &bae_store::Store, barcodes: &[&str]) -> Vec<String> {

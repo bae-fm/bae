@@ -175,6 +175,7 @@ impl Records {
                         &sql,
                         metadata,
                         plan.album_fields,
+                        super::release::PressingFactsWrite::Written,
                         &now,
                         &pressing_write(&pressing),
                         gone_artists,

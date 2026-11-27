@@ -849,7 +849,13 @@ pub struct ReleaseAlbumInput {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReleaseMetadataUpdateInput {
     pub release_id: String,
-    pub edit: AutomationReleaseUserEdit,
+    pub edit: AutomationReleaseMetadataEdit,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ReleasePressingFactInput {
+    pub release_id: String,
+    pub fact: AutomationPressingFactEdit,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

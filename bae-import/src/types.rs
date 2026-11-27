@@ -38,7 +38,10 @@ mod release_link;
 #[cfg(desktop)]
 pub use release_link::ReleaseLink;
 mod release_edit;
-pub use release_edit::{AlbumLine, AlbumPick, DraftAlbum, ReleaseUserEdit, TrackUserEdit};
+pub use release_edit::{
+    AlbumLine, AlbumPick, DraftAlbum, ReleaseMetadataEdit, ReleaseUserEdit, TrackUserEdit,
+    TypedPressing,
+};
 #[cfg(desktop)]
 pub use release_edit::{
     AppliedCatalog, ReleaseEditDraft, ReleaseEditForm, ReleaseEditSeed, ReleaseImage,

@@ -172,10 +172,18 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         edit.album_title = "Renamed Album".to_string();
         edit.tracks[0].title = "Renamed Opening Track".to_string();
         edit.tracks[1].title = "Renamed Second Track".to_string();
+        let edit = edit.shape().expect("the edit shapes");
+        let edit = bae_import::ReleaseMetadataEdit {
+            album_title: edit.album_title,
+            album_artist_assignments: edit.album_artist_assignments,
+            album_year: edit.album_year,
+            pressing: Default::default(),
+            tracks: edit.tracks,
+        };
         fixture
             .library
             .manager()
-            .apply_release_metadata_user_edit(&release_id, &edit.shape().expect("the edit shapes"))
+            .apply_release_metadata_user_edit(&release_id, &edit)
             .await
             .expect("apply the edit");
 

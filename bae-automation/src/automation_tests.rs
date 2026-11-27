@@ -601,11 +601,11 @@ mod release_album {
 mod disagreeing_source_ids {
     use super::*;
     use bae_catalogs::credits::ArtistCredit;
-    use bae_import::{ArtistAssignment, Credited, ReleaseUserEdit, TrackArtistAssignments};
+    use bae_import::{ArtistAssignment, Credited, TrackArtistAssignments};
     use bae_library::test_libraries::{ImportedRelease, TestLibrary};
 
     /// A library release of one track, imported, and the automation over it.
-    async fn imported_release() -> (TestLibrary, ImportedRelease, Automation) {
+    pub(super) async fn imported_release() -> (TestLibrary, ImportedRelease, Automation) {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let (library, imported) = bae_library::test_libraries::imported_release_setup_with(
             &fakes,
@@ -651,23 +651,30 @@ mod disagreeing_source_ids {
         title: &str,
         album_artists: Vec<Credited>,
     ) -> Result<Value, AutomationError> {
-        let edit = ReleaseUserEdit {
+        let edit = AutomationReleaseMetadataEdit {
             album_title: title.to_string(),
-            album_artist_assignments: album_artists,
+            album_artist_assignments: album_artists
+                .into_iter()
+                .map(AutomationCredited::from_core)
+                .collect(),
             album_year: None,
-            pressing: bae_types::pressing::Pressing::blank(),
-            tracks: vec![TrackUserEdit {
+            pressing: AutomationTypedPressing {
+                year: None,
+                labels: Vec::new(),
+                barcodes: Vec::new(),
+            },
+            tracks: vec![AutomationTrackUserEdit::from_core(TrackUserEdit {
                 title: "Track One".to_string(),
                 artist_assignments: TrackArtistAssignments::AlbumArtists,
                 file: None,
-            }],
+            })],
         };
         automation
             .call_tool(
                 AutomationTool::ReleaseMetadataUpdate,
                 serde_json::json!({
                     "release_id": release_id,
-                    "edit": AutomationReleaseUserEdit::from_core(edit),
+                    "edit": edit,
                 }),
             )
             .await
@@ -757,6 +764,78 @@ mod disagreeing_source_ids {
         assert_eq!(artists, first);
         assert_eq!(artists[0].musicbrainz_artist_id.as_deref(), Some(various.musicbrainz));
         assert_eq!(artists[0].discogs_artist_id.as_deref(), Some("1001"));
+    }
+}
+
+/// A library release's pressing changes one choice at a time, and a metadata
+/// edit says nothing of what the pressing is.
+mod library_pressing {
+    use super::disagreeing_source_ids::imported_release;
+    use super::*;
+    use bae_library::test_libraries::TestLibrary;
+    use bae_types::pressing::{DiscogsDetail, MediaCount, Medium, PressingFacts};
+
+    async fn facts(library: &TestLibrary, release_id: &str) -> PressingFacts {
+        library
+            .records()
+            .find_release_by_id(release_id)
+            .await
+            .unwrap()
+            .expect("the imported release")
+            .pressing
+            .facts
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn each_fact_request_changes_one_value_and_a_metadata_edit_keeps_them() {
+        let (library, imported, automation) = imported_release().await;
+        let release_id = imported.release_id.as_str();
+        let before = facts(&library, release_id).await;
+        let stereo = serde_json::to_value(DiscogsDetail::Stereo).unwrap();
+
+        for fact in [
+            serde_json::json!({ "kind": "medium_count", "medium": "dvd", "count": 2 }),
+            serde_json::json!({ "kind": "add_discogs_detail", "detail": stereo }),
+        ] {
+            automation
+                .call_tool(
+                    AutomationTool::ReleasePressingFactSet,
+                    serde_json::json!({ "release_id": release_id, "fact": fact }),
+                )
+                .await
+                .expect("the choice lands");
+        }
+
+        let mut expected = before;
+        expected.media.push(MediaCount { medium: Medium::Dvd, count: 2 });
+        expected.discogs_details.push(DiscogsDetail::Stereo);
+        assert_eq!(facts(&library, release_id).await, expected);
+
+        automation
+            .call_tool(
+                AutomationTool::ReleaseMetadataUpdate,
+                serde_json::json!({
+                    "release_id": release_id,
+                    "edit": {
+                        "album_title": "Edited Title",
+                        "album_artist_assignments": [{
+                            "artist": {
+                                "kind": "credit",
+                                "credit": { "name": "Artist Name" },
+                            },
+                        }],
+                        "pressing": { "year": 1991, "labels": [], "barcodes": [] },
+                        "tracks": [{
+                            "title": "Track One",
+                            "artist_assignments": { "kind": "album_artists" },
+                        }],
+                    },
+                }),
+            )
+            .await
+            .expect("the metadata edit lands");
+
+        assert_eq!(facts(&library, release_id).await, expected);
     }
 }
 

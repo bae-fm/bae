@@ -27,11 +27,12 @@ pub enum AutomationTool {
     ReleaseReidentify,
     ReleaseAlbumSet,
     ReleaseMetadataUpdate,
+    ReleasePressingFactSet,
     LibrarySearch,
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 26] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 27] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -125,7 +126,7 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ImportCandidatePressingFactSet,
             name: "import_candidate_pressing_fact_set",
-            description: "Choose one of what a candidate's pressing is — its area, media, status, packaging or Discogs details — from bae's vocabulary",
+            description: "Choose one of what a candidate's pressing is, from bae's vocabulary: its area, status or packaging, one medium's count, or one Discogs detail to add or remove",
             schema: Some(schema_object::<CandidatePressingFactInput>),
         },
         AutomationToolDescriptor {
@@ -179,8 +180,14 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ReleaseMetadataUpdate,
             name: "release_metadata_update",
-            description: "Apply release metadata edit",
+            description: "Edit a library release's album fields, its pressing's year, labels and barcodes, and its tracks' titles and artists",
             schema: Some(schema_object::<ReleaseMetadataUpdateInput>),
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ReleasePressingFactSet,
+            name: "release_pressing_fact_set",
+            description: "Choose one of what a library release's pressing is, from bae's vocabulary: its area, status or packaging, one medium's count, or one Discogs detail to add or remove",
+            schema: Some(schema_object::<ReleasePressingFactInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::LibrarySearch,

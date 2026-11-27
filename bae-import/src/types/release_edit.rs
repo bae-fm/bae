@@ -79,6 +79,42 @@ impl ReleaseUserEdit {
     }
 }
 
+/// An edit of a library release's typed metadata: the album fields, what is
+/// typed of its pressing, and each track's title and artists. What the
+/// pressing is changes one choice at a time
+/// ([`crate::PressingFactEdit`]), so this edit says nothing of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseMetadataEdit {
+    pub album_title: String,
+    pub album_artist_assignments: Vec<Credited>,
+    pub album_year: Option<i32>,
+    pub pressing: TypedPressing,
+    pub tracks: Vec<TrackUserEdit>,
+}
+
+/// What a person types of a pressing; the default is nothing typed.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TypedPressing {
+    pub year: Option<i32>,
+    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
+    /// Every barcode the pressing is printed with, in order.
+    pub barcodes: Vec<String>,
+}
+
+impl ReleaseMetadataEdit {
+    /// The whole edit of a release whose pressing is `facts`.
+    pub fn over(self, facts: bae_types::pressing::PressingFacts) -> ReleaseUserEdit {
+        let TypedPressing { year, labels, barcodes } = self.pressing;
+        ReleaseUserEdit {
+            album_title: self.album_title,
+            album_artist_assignments: self.album_artist_assignments,
+            album_year: self.album_year,
+            pressing: bae_types::pressing::Pressing { year, labels, barcodes, facts },
+            tracks: self.tracks,
+        }
+    }
+}
+
 /// Per-track user edits. Aligned positionally with the release's existing
 /// tracks — element N edits track N (ordered as
 /// `Records::get_tracks_for_release` returns them).

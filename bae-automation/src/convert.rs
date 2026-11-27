@@ -448,8 +448,13 @@ mirror_struct! {
 mirror_struct! {
     AutomationPressingEdit = bae_types::pressing::Pressing,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     fields: { year, labels, barcodes, facts },
+}
+
+mirror_struct! {
+    AutomationTypedPressing = bae_import::TypedPressing,
+    into_core: pub(crate) fn,
+    fields: { year, labels, barcodes },
 }
 
 impl AutomationReleaseUserEdit {
@@ -466,9 +471,11 @@ impl AutomationReleaseUserEdit {
             tracks: edit.tracks.into_iter().map(AutomationTrackUserEdit::from_core).collect(),
         }
     }
+}
 
-    pub(crate) fn into_core(self) -> bae_import::ReleaseUserEdit {
-        bae_import::ReleaseUserEdit {
+impl AutomationReleaseMetadataEdit {
+    pub(crate) fn into_core(self) -> bae_import::ReleaseMetadataEdit {
+        bae_import::ReleaseMetadataEdit {
             album_title: self.album_title,
             album_artist_assignments: self
                 .album_artist_assignments

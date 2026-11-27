@@ -202,7 +202,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
     manager
         .apply_release_metadata_user_edit(
             release_id,
-            &bae_import::ReleaseUserEdit {
+            &bae_import::ReleaseMetadataEdit {
                 album_title: "Renamed Album".to_string(),
                 album_artist_assignments: vec![bae_import::Credited::plain(
                     bae_import::ArtistAssignment::Picked {
@@ -219,7 +219,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                     },
                 )],
                 album_year: None,
-                pressing: bae_types::pressing::Pressing::blank(),
+                pressing: Default::default(),
                 tracks: vec![bae_import::TrackUserEdit {
                     title: "Track 0".to_string(),
                     artist_assignments: bae_import::TrackArtistAssignments::AlbumArtists,

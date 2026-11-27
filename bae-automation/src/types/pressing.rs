@@ -9,7 +9,8 @@ use bae_types::pressing::{
     Country, DiscogsDetail, MediaCount, Medium, Packaging, Region, ReleaseArea, ReleaseStatus,
 };
 
-/// One choice of what a candidate's pressing is, from bae's vocabulary.
+/// One choice of what a candidate's or a library release's pressing is, from
+/// bae's vocabulary.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationPressingFactEdit {
@@ -49,21 +50,6 @@ pub enum AutomationPressingFactEdit {
 pub struct CandidatePressingFactInput {
     pub candidate_key: String,
     pub fact: AutomationPressingFactEdit,
-}
-
-/// `bae_types::pressing::PressingFacts` as it serializes.
-pub(crate) fn pressing_facts_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
-    schemars::json_schema!({
-        "type": "object",
-        "properties": {
-            "area": area_schema(generator),
-            "media": media_schema(generator),
-            "status": status_schema(generator),
-            "packaging": packaging_schema(generator),
-            "discogs_details": discogs_details_schema(generator),
-        },
-        "required": ["area", "media", "status", "packaging", "discogs_details"],
-    })
 }
 
 /// `Vec<bae_types::pressing::ReleaseLabel>` as it serializes: each label's
@@ -109,34 +95,12 @@ fn medium_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     schemars::json_schema!({ "type": "string", "enum": keys(Medium::ALL, Medium::key) })
 }
 
-/// Each carrier with how many of it.
-fn media_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
-    schemars::json_schema!({
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "medium": medium_schema(generator),
-                "count": { "type": "integer", "minimum": 1 },
-            },
-            "required": ["medium", "count"],
-        },
-    })
-}
-
 fn status_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     nullable_key(keys(ReleaseStatus::ALL, ReleaseStatus::key))
 }
 
 fn packaging_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     nullable_key(keys(Packaging::ALL, Packaging::key))
-}
-
-fn discogs_details_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
-    schemars::json_schema!({
-        "type": "array",
-        "items": discogs_detail_schema(generator),
-    })
 }
 
 /// A Discogs detail's key.
