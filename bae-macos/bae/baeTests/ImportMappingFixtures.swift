@@ -418,6 +418,7 @@ extension MappingFixtures {
                             files: [],
                             untitledTrackCount: 0
                         ),
+                    leftOutAudio: nil,
                     cover: nil,
                     failure: failure,
                     paneFailure: nil,

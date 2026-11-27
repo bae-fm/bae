@@ -305,67 +305,99 @@ async fn candidate_pane(
     f.handle.load_candidate(candidate_key).await.unwrap().expect("the candidate reads back")
 }
 
-/// A release listing another number of tracks than the folder holds is
-/// refused whatever the person picked it from, naming both counts, and
-/// nothing changes: the draft, its cover, the release the folder is linked to
+/// A release listing more tracks than the folder holds is refused whatever
+/// the person picked it from, naming both counts, and nothing changes: the draft, its cover, the release the folder is linked to
 /// and the result it stored stay as the pick before left them.
 #[tokio::test]
-async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() {
+async fn a_release_listing_more_tracks_is_refused_and_changes_nothing() {
     bae_util::test_logs::install();
-    for release_tracks in [10, 14] {
-        let f = ImportFixture::new().await;
-        let fitting = seed_mb_release_with_track_count(&f, "mb-rel-fits", "mb-group-fits", 12);
-        let other = seed_mb_release_with_track_count(
-            &f,
-            &format!("mb-rel-count-{release_tracks}"),
-            &format!("mb-group-count-{release_tracks}"),
-            release_tracks,
-        );
-        let candidate_key = scanned_folder_of(&f, 12).await;
-        pick_release(&f, &candidate_key, &fitting).await.unwrap();
-        let before = candidate_pane(&f, &candidate_key).await;
+    let release_tracks: usize = 14;
+    let f = ImportFixture::new().await;
+    let fitting = seed_mb_release_with_track_count(&f, "mb-rel-fits", "mb-group-fits", 12);
+    let other = seed_mb_release_with_track_count(
+        &f,
+        &format!("mb-rel-count-{release_tracks}"),
+        &format!("mb-group-count-{release_tracks}"),
+        release_tracks,
+    );
+    let candidate_key = scanned_folder_of(&f, 12).await;
+    pick_release(&f, &candidate_key, &fitting).await.unwrap();
+    let before = candidate_pane(&f, &candidate_key).await;
 
-        let error = pick_release(&f, &candidate_key, &other)
-            .await
-            .expect_err("a release of another track count is refused");
+    let error = pick_release(&f, &candidate_key, &other)
+        .await
+        .expect_err("a release listing more tracks is refused");
 
-        assert!(
-            matches!(
-                error,
-                bae_import::ImportError::MetadataTrackCount {
-                    folder_tracks: 12,
-                    release_tracks: listed,
-                } if listed as usize == release_tracks
-            ),
-            "{error:?}"
-        );
-        assert_eq!(
-            error.ui_error(),
-            bae_diagnostics::UiError::Diagnostic {
-                category: bae_diagnostics::UiErrorCategory::MetadataTrackCount {
-                    folder_tracks: 12,
-                    release_tracks: release_tracks as u32,
-                },
-                detail: error.to_string(),
-            }
-        );
-        let after = candidate_pane(&f, &candidate_key).await;
-        assert_eq!(
-            after.draft().unwrap().release_link,
-            Some(bae_import::ReleaseLink::Pressing(pressing_link(&fitting)))
-        );
-        assert_eq!(after.draft().unwrap().release_link, before.draft().unwrap().release_link);
-        assert_eq!(after.draft().unwrap().metadata_draft, before.draft().unwrap().metadata_draft);
-        assert_eq!(
-            after.draft().unwrap().metadata_provenance,
-            before.draft().unwrap().metadata_provenance
-        );
-        assert_eq!(after.draft().unwrap().cover, before.draft().unwrap().cover);
-        assert_eq!(after.resumed_identify_state, before.resumed_identify_state);
-        let tracks = bae_import::mapping_tracks(&after.draft().unwrap().mapping);
-        assert_eq!(tracks.len(), 12);
-        assert!(tracks.iter().all(|track| track.file.is_some()));
-    }
+    assert!(
+        matches!(
+            error,
+            bae_import::ImportError::MetadataTrackCount {
+                folder_tracks: 12,
+                release_tracks: listed,
+            } if listed as usize == release_tracks
+        ),
+        "{error:?}"
+    );
+    assert_eq!(
+        error.ui_error(),
+        bae_diagnostics::UiError::Diagnostic {
+            category: bae_diagnostics::UiErrorCategory::MetadataTrackCount {
+                folder_tracks: 12,
+                release_tracks: release_tracks as u32,
+            },
+            detail: error.to_string(),
+        }
+    );
+    let after = candidate_pane(&f, &candidate_key).await;
+    assert_eq!(
+        after.draft().unwrap().release_link,
+        Some(bae_import::ReleaseLink::Pressing(pressing_link(&fitting)))
+    );
+    assert_eq!(after.draft().unwrap().release_link, before.draft().unwrap().release_link);
+    assert_eq!(after.draft().unwrap().metadata_draft, before.draft().unwrap().metadata_draft);
+    assert_eq!(
+        after.draft().unwrap().metadata_provenance,
+        before.draft().unwrap().metadata_provenance
+    );
+    assert_eq!(after.draft().unwrap().cover, before.draft().unwrap().cover);
+    assert_eq!(after.resumed_identify_state, before.resumed_identify_state);
+    let tracks = bae_import::mapping_tracks(&after.draft().unwrap().mapping);
+    assert_eq!(tracks.len(), 12);
+    assert!(tracks.iter().all(|track| track.file.is_some()));
+}
+
+/// A release listing fewer tracks than the folder holds is applied: the draft
+/// has a track for the audio its tracks are read onto, and the pane names the
+/// files the import leaves out.
+#[tokio::test]
+async fn a_release_listing_fewer_tracks_applies_and_leaves_audio_out() {
+    bae_util::test_logs::install();
+    let f = ImportFixture::new().await;
+    let shorter = seed_mb_release_with_track_count(&f, "mb-rel-shorter", "mb-group-shorter", 10);
+    let candidate_key = scanned_folder_of(&f, 12).await;
+
+    pick_release(&f, &candidate_key, &shorter).await.unwrap();
+
+    let pane = candidate_pane(&f, &candidate_key).await;
+    let draft = pane.draft().unwrap();
+    assert_eq!(
+        draft.release_link,
+        Some(bae_import::ReleaseLink::Pressing(pressing_link(&shorter)))
+    );
+    let titles: Vec<_> =
+        draft.metadata_draft.tracks.iter().map(|track| track.title.as_str()).collect();
+    let listed: Vec<_> = (1..=10).map(|n| format!("Source Track {n}")).collect();
+    assert_eq!(titles, listed.iter().map(String::as_str).collect::<Vec<_>>());
+    assert_eq!(
+        draft.left_out_audio,
+        Some(bae_import::LeftOutAudio {
+            file_count: 2,
+            files: vec!["11 Track.flac".to_string(), "12 Track.flac".to_string()],
+        })
+    );
+    let tracks = bae_import::mapping_tracks(&draft.mapping);
+    assert_eq!(tracks.len(), 10);
+    assert!(tracks.iter().all(|track| track.file.is_some()));
 }
 
 /// A release listing as many tracks as the folder holds is applied: the

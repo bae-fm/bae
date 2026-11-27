@@ -5,11 +5,13 @@
 //! the library's re-identify all lay a release onto audio through
 //! [`SourceRelease::read`]: it chooses which of the release's mediums the
 //! audio is a rip of and, for a Discogs tracklist, how its index and heading
-//! rows lay out, together, and reads the chosen tracks into values. Nothing
-//! else lays a tracklist out.
+//! rows lay out, together, and reads the chosen tracks into values. A
+//! person's pick of a release that covers less than the audio reads through
+//! [`SourceRelease::read_picked`], which also chooses the audio its tracks
+//! are. Nothing else lays a tracklist out.
 
 use crate::catalog::{Catalog, LookupCatalog};
-use crate::medium_coverage::{candidate_sets, Fit, MediumCoverage, MediumShape};
+use crate::medium_coverage::{candidate_sets, lengths_disagree, Fit, MediumCoverage, MediumShape};
 use crate::release_values::ReleaseValues;
 use crate::search::SourceTracks;
 use crate::source_release::SourceRelease;
@@ -90,6 +92,16 @@ pub enum ReadingRefusal {
     Unreadable { catalog: Catalog, detail: String },
 }
 
+/// A release a person picked, read onto the audio.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PickedReading {
+    pub values: ReleaseValues,
+    /// The audio's tracks the pick reads onto, as ascending positions among
+    /// them in play order: `values`' tracks are these, in order. All of them
+    /// for a release that holds the audio, and for one that lists no tracks.
+    pub matched: Vec<usize>,
+}
+
 /// What a reading says the release lists for the audio, by count: as many
 /// tracks as the audio when a set of its mediums fits it, tied with another
 /// or not; as many as the release lists in all when none does; unreadable
@@ -153,14 +165,81 @@ impl SourceRelease {
         if readings.peek().is_none() || readings.all(|other| other == first) {
             return first;
         }
-        Err(ReadingRefusal::Tied {
-            mediums: best
-                .iter()
-                .flat_map(MediumCoverage::medium_numbers)
-                .collect::<BTreeSet<_>>()
-                .into_iter()
-                .collect(),
-        })
+        Err(tied(best.iter()))
+    }
+
+    /// What a person's pick of this release says the audio's tracks are. A
+    /// release whose mediums hold the audio's tracks reads as [`Self::read`]
+    /// does. One that covers less is read onto part of the audio: of the sets
+    /// of its mediums that list fewer tracks than the audio holds, those
+    /// listing the most are laid, in play order, each onto the audio whose
+    /// lengths it matches best, and `Fit` decides between them. Refused as
+    /// [`Self::read`] refuses when every set lists more tracks than the audio
+    /// holds.
+    pub fn read_picked(&self, audio: &ReadAudio) -> Result<PickedReading, ReadingRefusal> {
+        match self.read(audio) {
+            Ok(values) => Ok(PickedReading { values, matched: (0..audio.lengths.len()).collect() }),
+            Err(refusal @ ReadingRefusal::TrackCount { .. }) => {
+                self.read_covering_less(audio).unwrap_or(Err(refusal))
+            }
+            Err(refusal) => Err(refusal),
+        }
+    }
+
+    /// The reading of the mediums that cover the most of the audio while
+    /// listing fewer tracks than it holds; `None` when no set of mediums does.
+    fn read_covering_less(
+        &self,
+        audio: &ReadAudio,
+    ) -> Option<Result<PickedReading, ReadingRefusal>> {
+        let shapes = self.medium_shapes(audio);
+        let measured = audio.lengths.as_slice();
+        for count in (1..measured.len()).rev() {
+            let mut best: Vec<(MediumCoverage, Vec<usize>)> = Vec::new();
+            let mut best_fit: Option<Fit> = None;
+            for set in candidate_sets(&shapes, count) {
+                let Some(stated) = self.laid_out_lengths(&set, &measured[..count]) else {
+                    continue;
+                };
+                let matched = matching_audio(&stated, measured);
+                let chosen: Vec<u64> = matched.iter().map(|&track| measured[track]).collect();
+                // A Discogs layout of this many tracks is chosen again for
+                // the audio they matched.
+                let Some(stated) = self.laid_out_lengths(&set, &chosen) else {
+                    continue;
+                };
+                let fit = Fit::of(&shapes, &set, &audio.origin, &stated, &chosen);
+                match best_fit {
+                    Some(held) if fit > held => {}
+                    Some(held) if fit == held => best.push((set, matched)),
+                    _ => {
+                        best_fit = Some(fit);
+                        best = vec![(set, matched)];
+                    }
+                }
+            }
+            let mut readings = best.iter().map(|(set, matched)| {
+                let part = ReadAudio {
+                    lengths: MeasuredLengths(
+                        matched.iter().map(|&track| measured[track]).collect(),
+                    ),
+                    origin: audio.origin.clone(),
+                    disc_ids: audio.disc_ids.clone(),
+                };
+                self.values_over(set, &part)
+                    .map(|values| PickedReading { values, matched: matched.clone() })
+                    .map_err(unreadable)
+            });
+            let Some(first) = readings.next() else {
+                continue;
+            };
+            let mut readings = readings.peekable();
+            if readings.peek().is_none() || readings.all(|other| other == first) {
+                return Some(first);
+            }
+            return Some(Err(tied(best.iter().map(|(set, _)| set))));
+        }
+        None
     }
 
     /// Each medium as the choice weighs it.
@@ -251,6 +330,59 @@ impl SourceRelease {
             LookupCatalog::Discogs => crate::discogs_mapper::values(self, &every, None),
         }
     }
+}
+
+/// The refusal of sets of mediums that fit alike and read differently,
+/// naming every medium of `sets`.
+fn tied<'a>(sets: impl Iterator<Item = &'a MediumCoverage>) -> ReadingRefusal {
+    ReadingRefusal::Tied {
+        mediums: sets
+            .flat_map(MediumCoverage::medium_numbers)
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect(),
+    }
+}
+
+/// Which of the `measured` audio's tracks each of the tracks stating
+/// `stated` lengths is, where there are fewer of those: ascending positions,
+/// in order, that leave the fewest lengths disagreeing and then the smallest
+/// summed distance, taking the earlier audio where positions fit alike.
+fn matching_audio(stated: &[Option<u64>], measured: &[u64]) -> Vec<usize> {
+    assert!(stated.len() <= measured.len(), "no more tracks than the audio holds");
+    // (disagreeing, summed distance) of one track on one audio track. A track
+    // stating no length fits every one alike.
+    let cost = |track: usize, audio: usize| match stated[track] {
+        Some(length) => (
+            usize::from(lengths_disagree(length, measured[audio])),
+            length.abs_diff(measured[audio]),
+        ),
+        None => (0, 0),
+    };
+    let add = |a: (usize, u64), b: (usize, u64)| (a.0 + b.0, a.1 + b.1);
+    // `best[track][audio]`: the least cost of laying the tracks from `track`
+    // on onto the audio from `audio` on, `None` where too little is left.
+    let mut best = vec![vec![None; measured.len() + 1]; stated.len() + 1];
+    best[stated.len()].fill(Some((0, 0)));
+    for track in (0..stated.len()).rev() {
+        for audio in (0..measured.len()).rev() {
+            let taken = best[track + 1][audio + 1].map(|rest| add(cost(track, audio), rest));
+            let skipped = best[track][audio + 1];
+            best[track][audio] = taken.into_iter().chain(skipped).min();
+        }
+    }
+    let mut audio = 0;
+    (0..stated.len())
+        .map(|track| {
+            while best[track + 1][audio + 1].map(|rest| add(cost(track, audio), rest))
+                != best[track][audio]
+            {
+                audio += 1;
+            }
+            audio += 1;
+            audio - 1
+        })
+        .collect()
 }
 
 /// A catalog reader's failure: always its release's own data.

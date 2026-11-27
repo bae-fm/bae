@@ -380,7 +380,7 @@ impl DraftRows {
             TriageTab::Skipped => CandidatePanePlacement::Skipped { records: linked_records },
             TriageTab::Done => CandidatePanePlacement::Done,
         };
-        let super::mapping_rows::MappingRead { table: mapping, track_length_ms } =
+        let super::mapping_rows::MappingRead { table: mapping, track_length_ms, left_out_audio } =
             mapping.read(album_artists.is_some(), previewed.as_ref())?;
         let metadata_draft = draft.release_edit();
         let pane = CandidateDraftPane {
@@ -396,6 +396,7 @@ impl DraftRows {
             metadata_provenance,
             release_link,
             mapping,
+            left_out_audio,
             cover,
             lookup_choices,
             // The attempt running now is what the pane shows; an earlier
@@ -425,10 +426,8 @@ impl ImportTables {
             .process(|rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
     }
 
-    /// The mapping rows and album artists of the pane's draft read, for a
-    /// test.
-    #[cfg(test)]
-    pub(super) async fn load_pane_mapping_for_test(
+    /// The mapping rows and album artists of the pane's draft read, once.
+    pub(super) async fn load_pane_mapping(
         &self,
         key: &crate::CandidateKey,
     ) -> Result<(super::mapping_rows::MappingRows, Option<crate::ArtistField>), crate::ImportError>

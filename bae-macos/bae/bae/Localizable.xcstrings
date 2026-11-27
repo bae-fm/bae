@@ -180479,6 +180479,702 @@
           }
         }
       }
+    },
+    "Audio left out" : {
+      "comment" : "Import pane: title of the warning under the Import button when the import leaves audio files of the folder out",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio left out"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم استبعاد ملفات صوتية"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропуснато аудио"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vynechaný zvuk"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Udeladt lyd"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgelassene Audiodateien"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ήχος που παραλείπεται"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio omitido"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pois jätettyä ääntä"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio laissé de côté"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קובצי שמע נשארים בחוץ"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izostavljeni zvuk"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kihagyott hanganyag"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio escluso"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "除外される音声"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제외되는 오디오"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utelatt lyd"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weggelaten audio"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pominięte pliki audio"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Áudio deixado de fora"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Áudio deixado de fora"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio omis"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vynechaný zvuk"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utelämnat ljud"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dışarıda bırakılan ses"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропущене аудіо"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未包含的音频"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未納入的音訊"
+          }
+        }
+      }
+    },
+    "No track on this release matches this file, so it stays out of your library. To import it, pick another release." : {
+      "comment" : "Import pane: the warning under the Import button, above the name of the one audio file the import leaves out",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No track on this release matches this file, so it stays out of your library. To import it, pick another release."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يطابق أي مقطع في هذا الإصدار هذا الملف، لذا يبقى خارج مكتبتك. لاستيراده، اختر إصدارًا آخر."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никоя песен от това издание не съответства на този файл, затова той остава извън библиотеката ви. За да го импортирате, изберете друго издание."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomuto souboru neodpovídá žádná skladba tohoto vydání, takže zůstane mimo vaši knihovnu. Chcete-li ho importovat, vyberte jiné vydání."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intet nummer på denne udgivelse passer til denne fil, så den kommer ikke med i dit bibliotek. Vælg en anden udgivelse for at importere den."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Titel dieser Veröffentlichung passt zu dieser Datei, daher kommt sie nicht in deine Mediathek. Wähle eine andere Veröffentlichung, um sie zu importieren."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κανένα κομμάτι αυτής της κυκλοφορίας δεν αντιστοιχεί σε αυτό το αρχείο, οπότε μένει εκτός της βιβλιοθήκης σας. Για να το εισαγάγετε, επιλέξτε άλλη κυκλοφορία."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna pista de esta edición coincide con este archivo, así que queda fuera de tu biblioteca. Para importarlo, elige otra edición."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikään tämän julkaisun kappale ei vastaa tätä tiedostoa, joten se jää pois kirjastostasi. Tuo se valitsemalla toinen julkaisu."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune piste de cette édition ne correspond à ce fichier, il reste donc hors de votre bibliothèque. Pour l’importer, choisissez une autre édition."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אף רצועה במהדורה הזאת לא תואמת לקובץ הזה, ולכן הוא נשאר מחוץ לספרייה שלך. כדי לייבא אותו, יש לבחור מהדורה אחרת."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nijedna pjesma ovog izdanja ne odgovara ovoj datoteci, pa ostaje izvan vaše fonoteke. Da biste je uvezli, odaberite drugo izdanje."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A kiadás egyik száma sem felel meg ennek a fájlnak, ezért kimarad a könyvtárából. Az importálásához válasszon másik kiadást."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna traccia di questa pubblicazione corrisponde a questo file, che quindi resta fuori dalla tua libreria. Per importarlo, scegli un’altra pubblicazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースにはこのファイルに一致するトラックがないため、ライブラリには追加されません。読み込むには、別のリリースを選んでください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스에는 이 파일과 일치하는 트랙이 없으므로 보관함에 추가되지 않습니다. 가져오려면 다른 릴리스를 선택하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen spor på denne utgivelsen passer til denne filen, så den holdes utenfor biblioteket ditt. Velg en annen utgivelse for å importere den."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen enkel nummer van deze uitgave komt overeen met dit bestand, dus het komt niet in je bibliotheek. Kies een andere uitgave om het te importeren."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Żaden utwór tego wydania nie pasuje do tego pliku, więc nie trafi on do Twojej biblioteki. Aby go zaimportować, wybierz inne wydanie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma faixa deste lançamento corresponde a este arquivo, então ele fica fora da sua biblioteca. Para importá-lo, escolha outro lançamento."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma faixa desta edição corresponde a este ficheiro, pelo que fica fora da sua biblioteca. Para o importar, escolha outra edição."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicio piesă din această ediție nu corespunde acestui fișier, așa că rămâne în afara bibliotecii tale. Ca să-l imporți, alege altă ediție."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomuto súboru nezodpovedá žiadna skladba tohto vydania, takže zostane mimo vašej knižnice. Ak ho chcete importovať, vyberte iné vydanie."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inget spår på den här utgåvan matchar den här filen, så den hamnar inte i ditt bibliotek. Välj en annan utgåva för att importera den."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu yayındaki hiçbir parça bu dosyayla eşleşmiyor, bu yüzden dosya kitaplığınızın dışında kalır. İçe aktarmak için başka bir yayın seçin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жодна композиція цього релізу не відповідає цьому файлу, тому він не потрапить до вашої бібліотеки. Щоб імпортувати його, виберіть інший реліз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此版本中没有与该文件匹配的曲目，因此它不会进入你的资料库。要导入它，请选择其他版本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此發行中沒有與該檔案相符的曲目，因此它不會進入你的資料庫。若要匯入，請選擇其他發行。"
+          }
+        }
+      }
+    },
+    "No track on this release matches these files, so they stay out of your library. To import them, pick another release." : {
+      "comment" : "Import pane: the warning under the Import button, above the names of the several audio files the import leaves out",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No track on this release matches these files, so they stay out of your library. To import them, pick another release."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يطابق أي مقطع في هذا الإصدار هذه الملفات، لذا تبقى خارج مكتبتك. لاستيرادها، اختر إصدارًا آخر."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никоя песен от това издание не съответства на тези файлове, затова те остават извън библиотеката ви. За да ги импортирате, изберете друго издание."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Těmto souborům neodpovídá žádná skladba tohoto vydání, takže zůstanou mimo vaši knihovnu. Chcete-li je importovat, vyberte jiné vydání."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intet nummer på denne udgivelse passer til disse filer, så de kommer ikke med i dit bibliotek. Vælg en anden udgivelse for at importere dem."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Titel dieser Veröffentlichung passt zu diesen Dateien, daher kommen sie nicht in deine Mediathek. Wähle eine andere Veröffentlichung, um sie zu importieren."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κανένα κομμάτι αυτής της κυκλοφορίας δεν αντιστοιχεί σε αυτά τα αρχεία, οπότε μένουν εκτός της βιβλιοθήκης σας. Για να τα εισαγάγετε, επιλέξτε άλλη κυκλοφορία."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna pista de esta edición coincide con estos archivos, así que quedan fuera de tu biblioteca. Para importarlos, elige otra edición."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikään tämän julkaisun kappale ei vastaa näitä tiedostoja, joten ne jäävät pois kirjastostasi. Tuo ne valitsemalla toinen julkaisu."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune piste de cette édition ne correspond à ces fichiers, ils restent donc hors de votre bibliothèque. Pour les importer, choisissez une autre édition."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אף רצועה במהדורה הזאת לא תואמת לקבצים האלה, ולכן הם נשארים מחוץ לספרייה שלך. כדי לייבא אותם, יש לבחור מהדורה אחרת."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nijedna pjesma ovog izdanja ne odgovara ovim datotekama, pa ostaju izvan vaše fonoteke. Da biste ih uvezli, odaberite drugo izdanje."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A kiadás egyik száma sem felel meg ezeknek a fájloknak, ezért kimaradnak a könyvtárából. Az importálásukhoz válasszon másik kiadást."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna traccia di questa pubblicazione corrisponde a questi file, che quindi restano fuori dalla tua libreria. Per importarli, scegli un’altra pubblicazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースにはこれらのファイルに一致するトラックがないため、ライブラリには追加されません。読み込むには、別のリリースを選んでください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스에는 이 파일들과 일치하는 트랙이 없으므로 보관함에 추가되지 않습니다. 가져오려면 다른 릴리스를 선택하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen spor på denne utgivelsen passer til disse filene, så de holdes utenfor biblioteket ditt. Velg en annen utgivelse for å importere dem."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen enkel nummer van deze uitgave komt overeen met deze bestanden, dus ze komen niet in je bibliotheek. Kies een andere uitgave om ze te importeren."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Żaden utwór tego wydania nie pasuje do tych plików, więc nie trafią one do Twojej biblioteki. Aby je zaimportować, wybierz inne wydanie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma faixa deste lançamento corresponde a estes arquivos, então eles ficam fora da sua biblioteca. Para importá-los, escolha outro lançamento."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma faixa desta edição corresponde a estes ficheiros, pelo que ficam fora da sua biblioteca. Para os importar, escolha outra edição."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicio piesă din această ediție nu corespunde acestor fișiere, așa că rămân în afara bibliotecii tale. Ca să le imporți, alege altă ediție."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Týmto súborom nezodpovedá žiadna skladba tohto vydania, takže zostanú mimo vašej knižnice. Ak ich chcete importovať, vyberte iné vydanie."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inget spår på den här utgåvan matchar de här filerna, så de hamnar inte i ditt bibliotek. Välj en annan utgåva för att importera dem."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu yayındaki hiçbir parça bu dosyalarla eşleşmiyor, bu yüzden dosyalar kitaplığınızın dışında kalır. İçe aktarmak için başka bir yayın seçin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жодна композиція цього релізу не відповідає цим файлам, тому вони не потраплять до вашої бібліотеки. Щоб імпортувати їх, виберіть інший реліз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此版本中没有与这些文件匹配的曲目，因此它们不会进入你的资料库。要导入它们，请选择其他版本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此發行中沒有與這些檔案相符的曲目，因此它們不會進入你的資料庫。若要匯入，請選擇其他發行。"
+          }
+        }
+      }
+    },
+    "Pick another release…" : {
+      "comment" : "Import pane: the button in the warning about left-out audio, which opens the release search",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick another release…"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختيار إصدار آخر…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Избиране на друго издание…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vybrat jiné vydání…"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vælg en anden udgivelse…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Veröffentlichung wählen…"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επιλογή άλλης κυκλοφορίας…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir otra edición…"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valitse toinen julkaisu…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir une autre édition…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בחירת מהדורה אחרת…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odaberi drugo izdanje…"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Másik kiadás választása…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli un’altra pubblicazione…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のリリースを選ぶ…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 릴리스 선택…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg en annen utgivelse…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere uitgave kiezen…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz inne wydanie…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher outro lançamento…"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher outra edição…"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alege altă ediție…"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vybrať iné vydanie…"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Välj en annan utgåva…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Başka bir yayın seç…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вибрати інший реліз…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择其他版本…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇其他發行…"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

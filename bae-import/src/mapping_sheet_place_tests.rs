@@ -69,6 +69,61 @@ async fn audio_a_draft_leaves_out_has_no_row_and_no_place_in_the_files_list() {
     );
 }
 
+/// The pane names the audio no draft track reads. A CUE track reads the file
+/// it plays from and the file its pregap is in, so a draft of the second
+/// track alone leaves nothing out, and one of the first leaves out the second
+/// file.
+#[tokio::test]
+async fn the_audio_a_draft_leaves_out_keeps_the_file_a_pregap_is_in() {
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "01.flac");
+    write_flac(&tmp, "02.flac");
+    tmp.write(
+        tmp.path().join("album.cue"),
+        concat!(
+            "PERFORMER \"Artist Name\"\n",
+            "TITLE \"Album Title\"\n",
+            "FILE \"01.flac\" WAVE\n",
+            "  TRACK 01 AUDIO\n",
+            "    INDEX 01 00:00:00\n",
+            "  TRACK 02 AUDIO\n",
+            "    INDEX 00 00:00:60\n",
+            "FILE \"02.flac\" WAVE\n",
+            "    INDEX 01 00:00:00\n",
+        ),
+    );
+    let files = scan(tmp.path());
+    let folder = StoredFolder::of(&files).await;
+    for (kept, left_out) in [(1, None), (0, Some("02.flac"))] {
+        let mut draft = blank_candidate_draft(&files);
+        draft.tracks = vec![draft.tracks.swap_remove(kept)];
+        folder.table(&draft).await.unwrap();
+        assert_eq!(
+            folder.tables.load_left_out_audio_for_test(&folder.key).await.unwrap(),
+            left_out.map(|file: &str| crate::LeftOutAudio {
+                file_count: 1,
+                files: vec![file.to_string()],
+            })
+        );
+    }
+}
+
+/// A draft track that plays no audio unit of the folder is a broken draft:
+/// the import's read refuses it instead of counting its file as left out.
+#[tokio::test]
+async fn the_import_s_read_refuses_a_draft_track_with_no_audio_unit() {
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "01.flac");
+    let files = scan(tmp.path());
+    let folder = StoredFolder::of(&files).await;
+    let mut draft = blank_candidate_draft(&files);
+    draft.tracks[0].edit.file =
+        crate::types::AudioFile::Standalone { file_id: "02.flac".to_string() };
+    folder.table(&draft).await.unwrap_err();
+
+    folder.tables.load_import_preparation(&folder.hash, &folder.key).await.unwrap_err();
+}
+
 /// A sheet whose tracks the draft leaves out heads its line of the Files list
 /// on none of the draft's discs, which its menu still offers.
 #[tokio::test]

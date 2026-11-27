@@ -231,7 +231,7 @@ pub(crate) use candidate_detail::ListedRelease;
 #[cfg(desktop)]
 pub use candidate_detail::{
     CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement, CandidateStage,
-    ImportCandidateDetail, PaneFile, PaneFileRole, PaneFiles,
+    ImportCandidateDetail, LeftOutAudio, PaneFile, PaneFileRole, PaneFiles,
 };
 #[cfg(desktop)]
 pub use candidate_key::CandidateKey;

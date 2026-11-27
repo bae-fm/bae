@@ -17,6 +17,8 @@ struct SliceColumns<'a> {
     index: i64,
     /// The slice's track's place among all of the sheet's tracks.
     cue_position: i64,
+    /// The audio file the slice's pregap is in, where it has one of audio.
+    pregap_file_id: Option<&'a str>,
     /// The sample the slice starts at in its audio.
     start: i64,
     /// The sample the slice ends at, or `None` when it plays to the audio's end.
@@ -68,6 +70,9 @@ pub(super) fn insert_units(
                     sheet_id,
                     index: i64::from(*index),
                     cue_position: cue_position as i64,
+                    pregap_file_id: sheet
+                        .pregap_audio_for(cue_track)
+                        .map(|audio| audio.relative_path.as_str()),
                     start: to_i64(
                         crate::cue_sheet::cue_frames_to_samples(cue_track.start_cue_frames, rate),
                         "a slice's start",
@@ -89,8 +94,8 @@ pub(super) fn insert_units(
             "INSERT INTO scan_candidate_unit \
                  (watched_folder_path, candidate_path, position, file_kind, file_id, sheet_id, \
                   slice_index, cue_track_position, duration_ms, start_sample, end_sample, \
-                  disc, number) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  disc, number, pregap_file_id) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 coven::path_bytes(watched_folder_path),
                 candidate_path,
@@ -105,6 +110,7 @@ pub(super) fn insert_units(
                 slice.as_ref().and_then(|slice| slice.end),
                 track.disc,
                 track.number.get(),
+                slice.as_ref().and_then(|slice| slice.pregap_file_id),
             ],
         )?;
     }

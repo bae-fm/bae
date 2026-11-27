@@ -33,8 +33,9 @@ pub enum BridgeErrorCategory {
     /// The album an import files its release under was deleted after the
     /// import was prepared.
     AlbumGone,
-    /// The release read for the candidate lists another number of tracks than
-    /// its folder holds; the line takes both counts.
+    /// The release's tracks cannot be laid on the audio by their number
+    /// (`ImportError::MetadataTrackCount` in bae-import says when); the line
+    /// takes both counts.
     MetadataTrackCount {
         folder_tracks: u32,
         release_tracks: u32,

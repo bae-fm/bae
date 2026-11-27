@@ -168,23 +168,20 @@ pub(crate) struct StoredPreparation {
     pub album_pick: crate::AlbumPick,
 }
 
-/// [`read_preparation`]'s preparation alone.
-pub(crate) async fn stored_preparation(
-    tables: &crate::tables::ImportTables,
-    content_hash: &str,
-) -> Result<Option<CandidatePreparation>, crate::ImportError> {
-    Ok(read_preparation(tables, content_hash).await?.map(|stored| stored.preparation))
-}
-
 /// The candidate `content_hash`'s whole stored state, or `None` for a hash no
 /// scan stored a candidate under. A candidate whose files this device already
 /// imported holds no draft, so reading it fails as an import of those files
 /// does.
-pub(crate) async fn read_preparation(
+pub(crate) async fn stored_preparation(
     tables: &crate::tables::ImportTables,
     content_hash: &str,
-) -> Result<Option<StoredPreparation>, crate::ImportError> {
-    tables.load_candidate_preparation(content_hash).await?.map(stored_of).transpose()
+) -> Result<Option<CandidatePreparation>, crate::ImportError> {
+    Ok(tables
+        .load_candidate_preparation(content_hash)
+        .await?
+        .map(stored_of)
+        .transpose()?
+        .map(|stored| stored.preparation))
 }
 
 /// The state `read` found, refused for a candidate this device imported.

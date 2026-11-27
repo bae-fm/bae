@@ -1674,7 +1674,8 @@ Every role is kept.
 
 **Which of its mediums the folder holds.** The run, a pick, the draft it
 writes, the shared album and a library re-identify all agree on which of a
-release's mediums the folder holds. The mediums
+release's mediums the folder holds; a person's pick also applies a release
+that covers less than the folder (below). The mediums
 it reads are a set whose tracks, laid out against the folder's audio — a
 Discogs index or heading read as one track or as its sub-tracks — number
 exactly as many as the folder's; a medium listing no tracks is in none. For a
@@ -1699,9 +1700,22 @@ the release can't be applied, the error naming every side and disc of those
 sets by its heading, counted across all the release's mediums ("Disc 2 and
 Disc 4", "Side C, Side D, Side G and Side H"), and the person picks another
 release or uses the file metadata. A release no set
-of whose mediums holds the folder's tracks is refused, naming the folder's
+of whose mediums holds the folder's tracks is no match for identification, and
+the shared album and a library re-identify refuse it, naming the folder's
 count and every track the release lists; one whose chosen tracks can't be read
 (a track with no title, an album credited to no one) is no match.
+
+**A pick that covers less.** When the person picks a release no set of whose
+mediums holds the folder's tracks, and a set of them lists fewer tracks than
+the folder holds, bae reads it onto part of the audio. It takes the sets that
+list the most tracks. Each set's tracks go, in play order, onto the audio their
+lengths match: the fewest more than three seconds off, then the smallest total
+difference, and the earlier audio where two fit alike, so tracks stating no
+length take the first audio. The three points above then choose between the
+sets, and tied sets that read different tracks are refused as above. The draft
+has no track for the rest of the audio, which the import leaves out, and the
+pane warns of it (§3.8). A release every set of whose mediums lists more
+tracks than the folder holds is refused, naming both counts.
 
 **Ranking.** Each pressing is scored by what it states against what the folder
 states. For each fact, a pressing agrees, says nothing, or disagrees; one that
@@ -1877,7 +1891,8 @@ picked. The person then:
   fields every offered pressing agrees on fill the draft;
 - **keeps their own draft**, from the folder's tags or typed by hand.
 
-A pick applies its release to the draft at once (§3.6), an unattended one as
+A pick applies its release to the draft at once (§3.6), one that covers less
+than the folder's audio included (§3.4), and an unattended one as
 soon as its draft is read from what its run read. Nothing previews the
 release's tracklist first: the draft the pick writes is what the pane shows. While a person's pick waits
 on the network, the row it was made on names what it waits on: reading the
@@ -2350,7 +2365,11 @@ three places. Only the actions differ:
 - In a Found folder's pane, the row shows how many tracks nobody has named yet,
   where the import goes and *Import* (§3.7), or *Retry import* after an import
   failed. A folder with nothing to import offers no Import. The pane shows
-  the folder's check (§3.5) as a warning.
+  the folder's check (§3.5) as a warning. Where the draft has no track for
+  some of the folder's audio files (§3.6), a warning, *Audio left out*, names
+  each of those files and offers *Pick another release…*, which opens
+  *Search*. A CUE sheet's image that some track still plays from is not left
+  out.
 - In an imported folder's pane and the *Edit release* sheet, the editor offers
   *Cancel* once something changes and offers *Save*. The editor reports the
   current step of a catalog apply and says why it cannot save the form or
@@ -6578,7 +6597,7 @@ All sync (§5), except `admin_operations`.
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |
-| `scan_candidate_unit`, `scan_candidate_sheet_offer` | each candidate's audio units in play order with each unit's length and preview range, and each CUE `FILE` line's offered audio, written with its files |
+| `scan_candidate_unit`, `scan_candidate_sheet_offer` | each candidate's audio units in play order with each unit's length and preview range and the audio file its pregap is in, and each CUE `FILE` line's offered audio, written with its files |
 
 Every folder path and candidate key in these tables, and in A.5 and A.7, is a
 BLOB: a path as coven's bytes for it, a folder below a watched folder as its
@@ -6974,7 +6993,7 @@ detail:
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `AlbumGone` | picks another album or New album: the album the import files under was deleted after the import was prepared, and nothing was written |
-| `MetadataTrackCount` | picks another release: it lists another number of tracks |
+| `MetadataTrackCount` | picks another release: its number of tracks can't be laid on the audio (§3.4) |
 | `TiedMediums` | picks another release or uses the file metadata: several of its discs fit the folder alike, and the line names them |
 | `ReleaseChangedSinceOpened` | cancels to see the release as it is now: it changed after the editor opened it (§3.8) |
 | `GroupingBlocked` | combines again, separates, or waits for a download |

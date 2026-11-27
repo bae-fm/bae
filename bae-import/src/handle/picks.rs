@@ -106,10 +106,12 @@ impl ImportServiceHandle {
     /// **The release lands before the link does.** A stored link is the
     /// promise that opening that candidate needs no network, so the fetch goes
     /// first and a failure stores nothing: the pane keeps whatever it had and
-    /// says the source failed. A release whose tracklist lists another number
-    /// of tracks than the folder holds is refused the same way. Identification writes the same record itself
-    /// when a verdict settles on exactly one match; this is the path for the
-    /// choices only a person can make.
+    /// says the source failed. A release that covers less than the folder's
+    /// audio is read onto the audio it matches, and the draft leaves the rest
+    /// out; one that cannot be read onto the audio is refused as a failed
+    /// fetch is. Identification writes the same record itself when a verdict
+    /// settles on exactly one match; this is the path for the choices only a
+    /// person can make.
     ///
     /// Nothing comes back. The per-candidate query sees the write and
     /// redraws the pane from it, which is the same thing a relaunch does.
@@ -281,16 +283,17 @@ impl ImportServiceHandle {
             .await?;
         let audio = self.read_candidate_audio(&candidate.files).await?;
         let folder_tracks = audio.track_count();
-        // A release that cannot be read onto the folder's audio — it lists
-        // another number of tracks than the folder holds, several sets of its
-        // discs fit alike, or a track it lays on the audio has no title — is
-        // not applied, however a person found it: the pick is refused before
-        // anything else is fetched or written. One that lists no tracks says
-        // nothing either way and is applied.
-        let reading = release.read(&audio);
-        let listed = bae_catalogs::reading::listing(&reading, &audio);
-        let values = match reading {
-            Ok(values) => values,
+        // A release that cannot be read onto the folder's audio — every set
+        // of its discs lists more tracks than the folder holds, several sets
+        // fit alike, or a track it lays on the audio has no title — is not
+        // applied, however a person found it: the pick is refused before
+        // anything else is fetched or written. One that covers less than the
+        // audio is read onto the part it matches. One that lists no tracks
+        // says nothing either way and is applied.
+        // What the pick's row lists is what a run would say it lists.
+        let listed = bae_catalogs::reading::listing(&release.read(&audio), &audio);
+        let reading = match release.read_picked(&audio) {
+            Ok(reading) => reading,
             Err(refusal) => {
                 return Err(crate::ImportError::of_reading_refusal(
                     &self.services.records,
@@ -300,6 +303,8 @@ impl ImportServiceHandle {
                 .await)
             }
         };
+        let units = crate::audio_layout::audio_units(&candidate.files);
+        let units = reading.matched.iter().map(|&track| units[track].clone()).collect();
         // A partner that fails to load fails the pick, leaving the previous
         // one in place.
         let prepared_partners = self
@@ -337,9 +342,9 @@ impl ImportServiceHandle {
         let metadata = self
             .external_candidate_metadata(
                 release,
-                values,
+                reading.values,
                 prepared_partners,
-                crate::audio_layout::audio_units(&candidate.files),
+                units,
                 &current.metadata.draft,
                 bae_identify::row_facts::folder_pressing_year(&text, &records),
                 steps,

@@ -30,8 +30,10 @@ pub enum ImportError {
     #[error(transparent)]
     Catalog(#[from] bae_catalogs::CatalogError),
 
-    /// The release lists another number of tracks than the folder holds, so
-    /// it cannot describe the folder's audio without adding or losing tracks.
+    /// The release's tracks cannot be laid on the audio by their number:
+    /// identification, the shared album and a library re-identify raise this
+    /// for any other number than the audio holds, and a person's pick for a
+    /// folder only for more.
     #[cfg(desktop)]
     #[error("{folder_tracks} tracks in the folder, {release_tracks} on the release")]
     MetadataTrackCount { folder_tracks: u32, release_tracks: u32 },

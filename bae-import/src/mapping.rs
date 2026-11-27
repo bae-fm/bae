@@ -1,16 +1,16 @@
-//! The mapping table: every source unit the folder offers, alongside the track
-//! committing makes of it.
+//! The mapping table: the draft's tracks, each beside the audio it plays, and
+//! the folder's other files.
 //!
-//! The draft holds one track per audio unit, in the folder's order, so row `i`
-//! pairs unit `i` with draft track `i`. Surfaces render this projection without
-//! joining separate lists.
+//! The draft holds one track for each audio unit that lands on one of its
+//! source's discs, in the folder's order. Surfaces render this projection
+//! without joining separate lists.
 
 use crate::folder_scanner::AudioDamage;
 use crate::types::RawTrackEdit;
 use crate::{SheetGroup, TrackTableSide};
 
-/// The mapping table: every source unit the folder offers, alongside the track
-/// committing makes of it.
+/// The mapping table: the draft's tracks, each beside the audio it plays, and
+/// the folder's other files.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MappingTable {
     /// Every image the folder holds, in the scan's authoritative order;
@@ -28,6 +28,24 @@ pub struct MappingTable {
     /// How many track rows nobody has named yet. Committing anyway titles
     /// each after its file.
     pub untitled_track_count: u32,
+}
+
+impl MappingTable {
+    /// The header of the CUE sheet `sheet_id`, over its tracks or among the
+    /// files; `None` where the table shows no such sheet.
+    pub(crate) fn sheet(&self, sheet_id: &str) -> Option<&SheetGroup> {
+        let over_tracks = self.track_sides.iter().flatten().flat_map(|side| &side.runs).filter_map(
+            |run| match run {
+                crate::TrackTableRun::Sheet { sheet, .. } => Some(sheet),
+                crate::TrackTableRun::Track(_) => None,
+            },
+        );
+        let among_files = self.files.iter().flatten().filter_map(|row| match row {
+            MappingFileRow::Sheet(sheet) => Some(sheet),
+            MappingFileRow::File(_) => None,
+        });
+        over_tracks.chain(among_files).find(|sheet| sheet.sheet_id == sheet_id)
+    }
 }
 
 /// One row in the files section of the mapping table.

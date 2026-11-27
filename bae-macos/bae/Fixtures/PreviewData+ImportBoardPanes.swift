@@ -20,11 +20,20 @@ extension PreviewData {
         )
     }
 
-    /// Northbound's draft over four files, with the same import state as its row.
+    /// The two files of Northbound's folder that a picked release has no
+    /// track for.
+    static let northboundLeftOutAudio = BridgeLeftOutAudio(
+        fileCount: 2,
+        files: ["05 Northbound (demo).flac", "06 Margins (live).flac"]
+    )
+
+    /// Northbound's draft over four files, with the same import state as its
+    /// row, leaving `leftOutAudio` out of the import.
     @MainActor
     static func northboundDraftCandidate(
         images: NorthboundImages,
-        live: BridgeCandidateLiveState
+        live: BridgeCandidateLiveState,
+        leftOutAudio: BridgeLeftOutAudio? = nil
     ) -> ImportPaneFixture {
         paneFixture(
             folder: northboundFolder(images: images),
@@ -38,6 +47,7 @@ extension PreviewData {
             edit: northboundEdit(),
             releaseLines: releaseLines(of: northboundEdit(), minutes: 18),
             mapping: northboundMapping(images: images),
+            leftOutAudio: leftOutAudio,
             cover: boardCover(images.cover),
             placement: .pending(
                 folderCheck: nil,

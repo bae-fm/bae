@@ -87,7 +87,14 @@ public enum NoticeDetailsOpening {
 public struct MacNotice: View {
     private enum Heading {
         case line(DisplayError)
-        case titled(String, advice: String?, error: DisplayError?)
+        /// `listed` is what the advice is about, such as file names, one a
+        /// line under it.
+        case titled(
+            String,
+            advice: String?,
+            listed: [String],
+            error: DisplayError?
+        )
     }
 
     private let heading: Heading
@@ -144,7 +151,12 @@ public struct MacNotice: View {
         detailsOpening: NoticeDetailsOpening = .button,
         onDismiss: (() -> Void)? = nil
     ) {
-        self.heading = .titled(title, advice: advice, error: error)
+        self.heading = .titled(
+            title,
+            advice: advice,
+            listed: [],
+            error: error
+        )
         self.tone = tone
         self.look = look
         self.action = action
@@ -164,7 +176,12 @@ public struct MacNotice: View {
         action: ErrorAction?,
         leave: ErrorAction
     ) {
-        self.heading = .titled(title, advice: nil, error: error)
+        self.heading = .titled(
+            title,
+            advice: nil,
+            listed: [],
+            error: error
+        )
         self.tone = .danger
         self.look = .centered
         self.action = action
@@ -303,7 +320,7 @@ public struct MacNotice: View {
                         ? look.secondaryText
                         : Theme.textPrimary
                 )
-        case .titled(let title, let advice, _):
+        case .titled(let title, let advice, let listed, _):
             let shownAdvice = opensFromRow ? nil : advice
             Text(verbatim: title)
                 .themeText(shownAdvice == nil ? .body : .strong)
@@ -311,6 +328,12 @@ public struct MacNotice: View {
                 Text(verbatim: shownAdvice)
                     .themeText(.body)
                     .foregroundStyle(look.secondaryText)
+            }
+            ForEach(Array(listed.enumerated()), id: \.offset) { _, line in
+                Text(verbatim: line)
+                    .themeText(.mono)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
         }
     }
@@ -349,25 +372,6 @@ public struct MacNotice: View {
         }
         .fixedSize()
     }
-
-    /// A click anywhere on the row opens the details, for a notice whose
-    /// details open from its row; the buttons inside it keep their own clicks.
-    /// VoiceOver reads the words as that button (`wordsOpeningDetails`).
-    @ViewBuilder
-    private func rowOpeningDetails(_ content: some View) -> some View {
-        #if canImport(AppKit)
-            if detailsOpening == .row, let details {
-                content
-                    .contentShape(Rectangle())
-                    .onTapGesture { showErrorDetails(details) }
-            }
-            else {
-                content
-            }
-        #else
-            content
-        #endif
-    }
 }
 
 /// The notice's buttons, its centred layout and its details.
@@ -390,6 +394,52 @@ extension MacNotice {
         .accessibilityLabel(Text("Dismiss"))
     }
 
+    /// A click anywhere on the row opens the details, for a notice whose
+    /// details open from its row; the buttons inside it keep their own clicks.
+    /// VoiceOver reads the words as that button (`wordsOpeningDetails`).
+    @ViewBuilder
+    fileprivate func rowOpeningDetails(_ content: some View) -> some View {
+        #if canImport(AppKit)
+            if detailsOpening == .row, let details {
+                content
+                    .contentShape(Rectangle())
+                    .onTapGesture { showErrorDetails(details) }
+            }
+            else {
+                content
+            }
+        #else
+            content
+        #endif
+    }
+}
+
+extension MacNotice {
+    /// A filled notice about the things it names: `title`, `advice` under
+    /// it, then each of `listed` in the mono face on a line cut at its end.
+    public init(
+        title: String,
+        advice: String,
+        listed: [String],
+        tone: StatusTone,
+        action: ErrorAction
+    ) {
+        self.heading = .titled(
+            title,
+            advice: advice,
+            listed: listed,
+            error: nil
+        )
+        self.tone = tone
+        self.look = .filled
+        self.action = action
+        self.secondary = nil
+        self.leave = nil
+        self.buttons = .inline
+        self.detailsOpening = .button
+        self.onDismiss = nil
+    }
+
     /// The centred layout: the glyph and the title in one row, with the
     /// buttons in a row under it: Details, the secondary button, the action.
     private var centered: some View {
@@ -400,7 +450,7 @@ extension MacNotice {
         // Under advice the title is the line to read; a title alone stays
         // grey, like the glyph and buttons beside it.
         let hasAdvice: Bool
-        if case .titled(_, _?, _) = heading {
+        if case .titled(_, _?, _, _) = heading {
             hasAdvice = true
         }
         else {
@@ -434,7 +484,7 @@ extension MacNotice {
                     .foregroundStyle(titleColor)
                     .multilineTextAlignment(.center)
             }
-            if case .titled(_, let advice?, _) = heading {
+            if case .titled(_, let advice?, _, _) = heading {
                 Text(verbatim: advice)
                     .themeText(.body)
                     .foregroundStyle(secondaryColor)
@@ -464,7 +514,7 @@ extension MacNotice {
         let title =
             switch heading {
             case .line(let error): error.line
-            case .titled(let title, _, _): title
+            case .titled(let title, _, _, _): title
             }
         return title.hasSuffix(".") ? String(title.dropLast()) : title
     }
@@ -583,9 +633,9 @@ extension MacNotice {
     private var details: ErrorDetails? {
         switch heading {
         case .line(let error): ErrorDetails(error: error)
-        case .titled(let title, let advice, let error?):
+        case .titled(let title, let advice, _, let error?):
             ErrorDetails(title: title, advice: advice, error: error)
-        case .titled(_, _, nil): nil
+        case .titled(_, _, _, nil): nil
         }
     }
 }

@@ -170,12 +170,16 @@ impl ImportService {
         // The album pick is read with the preparation. No pick can be stored
         // while this import claims the candidate, so the commit deletes the
         // one read here.
+        // So is the audio the draft leaves out, as the pane's read selects it.
+        let (read, left_out_audio) = self
+            .tables
+            .load_import_preparation(&expected_content_hash, &candidate_key)
+            .await?
+            .ok_or_else(|| crate::ImportError::Internal {
+                detail: format!("{candidate_key} has no stored import preparation"),
+            })?;
         let crate::preparations::StoredPreparation { preparation, album_pick, .. } =
-            crate::preparations::read_preparation(&self.tables, &expected_content_hash)
-                .await?
-                .ok_or_else(|| crate::ImportError::Internal {
-                    detail: format!("{candidate_key} has no stored import preparation"),
-                })?;
+            crate::preparations::stored_of(read)?;
         if !preparation.file_edits.is_at_revision(expected_edit_revision)
             || preparation.metadata_revision != expectation.candidate.metadata_revision
         {
@@ -257,12 +261,6 @@ impl ImportService {
         let artist_images = self.fetch_discogs_artist_images(new_artists).await?;
 
         // Audio the draft has no track for is not the release's.
-        let left_out_audio: Vec<String> = crate::audio_layout::left_out_audio(
-            &categorized,
-            preparation.metadata.draft.tracks.iter().map(|track| &track.edit.file),
-        )
-        .into_iter()
-        .collect();
         let release_files: Vec<_> = categorized
             .files
             .iter()

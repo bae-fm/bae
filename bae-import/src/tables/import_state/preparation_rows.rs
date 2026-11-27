@@ -134,6 +134,26 @@ sqlive_compose::read!(
 );
 
 sqlive_compose::read!(
+    LeftOutAudioOf(key: crate::CandidateKey),
+    r#"
+    SELECT unread.*
+    FROM @crate::tables::import_list::fragments::LeftOutAudio(key: :key) AS unread
+"#
+);
+
+// The first draft track that plays no audio unit of the folder, if any.
+sqlive_compose::read!(
+    DraftTrackWithoutUnit(key: crate::CandidateKey),
+    r#"
+    SELECT played.*
+    FROM @crate::tables::import_list::fragments::DraftUnits(key: :key) AS played
+    WHERE played.draft_unit_position IS NULL
+    ORDER BY played.draft_track_id
+    LIMIT 1
+"#
+);
+
+sqlive_compose::read!(
     PreparationWithCardsOf(content_hash: String),
     r#"
     SELECT preparation.*, cards.*
@@ -420,6 +440,38 @@ impl ImportTables {
     ) -> Result<Option<CandidatePreparationRead>, DbError> {
         let content_hash = content_hash.to_string();
         self.store.read(move |sql| load_preparation_on(&sql, &content_hash)).await
+    }
+
+    /// [`Self::load_candidate_preparation`] with the paths of the audio files
+    /// an import of the draft of the candidate at `key` leaves out, read in
+    /// the same snapshot. Refuses a draft with a track that plays no audio
+    /// unit of the folder, whose audio would count as left out.
+    pub(crate) async fn load_import_preparation(
+        &self,
+        content_hash: &str,
+        key: &crate::CandidateKey,
+    ) -> Result<Option<(CandidatePreparationRead, Vec<String>)>, DbError> {
+        let content_hash = content_hash.to_string();
+        let key = key.clone();
+        self.store
+            .read(move |sql| {
+                let Some(preparation) = load_preparation_on(&sql, &content_hash)? else {
+                    return Ok(None);
+                };
+                let unplayed = DraftTrackWithoutUnitParams { key: key.clone() };
+                if let Some(track) = statement_optional(&sql, &unplayed)? {
+                    return Err(DbError::unreadable(
+                        "the audio unit a draft track plays",
+                        &track.played.draft_track_id,
+                    ));
+                }
+                let left_out = statement_rows(&sql, &LeftOutAudioOfParams { key: key.clone() })?
+                    .into_iter()
+                    .map(|row| row.unread.relative_path)
+                    .collect();
+                Ok(Some((preparation, left_out)))
+            })
+            .await
     }
 
     /// [`Self::load_candidate_preparation`] with the cards of the verdict it

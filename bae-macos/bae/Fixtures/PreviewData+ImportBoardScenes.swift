@@ -34,6 +34,9 @@ extension PreviewData {
         /// Northbound on its draft, or on its running import when the list
         /// has it importing.
         case northbound
+        /// Northbound on the draft of a picked release that has no track for
+        /// two of the folder's audio files.
+        case northboundAudioLeftOut
         /// Low Tide Hours, a release the library already holds.
         case lowTideHours
         /// Field Recordings and its CUE sheets.
@@ -89,6 +92,12 @@ extension PreviewData {
             fixture = northboundDraftCandidate(
                 images: gallery,
                 live: northbound.live.paneFixtureState
+            )
+        case .northboundAudioLeftOut:
+            fixture = northboundDraftCandidate(
+                images: try northboundImages(cover: images.northbound),
+                live: northbound.live.paneFixtureState,
+                leftOutAudio: northboundLeftOutAudio
             )
         case .lowTideHours:
             fixture = lowTideHoursCandidate(cover: images.lookup.lowTideHours)

@@ -432,7 +432,8 @@ CREATE TABLE IF NOT EXISTS scan_sheet_audio_file (
 -- or one slice of a file whose start and end a bound CUE sheet marks. The
 -- write that stores the file rows also writes these rows, because the files
 -- decide the layout. `cue_track_position` names the `scan_cue_track` of a
--- slice; `start_sample` and `end_sample` are the slice's preview range in its
+-- slice, and `pregap_file_id` the audio file its pregap is in, where it has
+-- one of audio; `start_sample` and `end_sample` are the slice's preview range in its
 -- container (`end_sample` is NULL for the last slice of a container, and
 -- both for a whole file). `disc` and `number` are the folder's own: the disc
 -- its sheet or folder gives it, and its number on that disc.
@@ -450,12 +451,14 @@ CREATE TABLE IF NOT EXISTS scan_candidate_unit (
     end_sample          INTEGER CHECK (end_sample IS NULL OR end_sample >= 0),
     disc                INTEGER CHECK (disc IS NULL OR disc >= 0),
     number              INTEGER NOT NULL CHECK (number >= 1),
+    pregap_file_id      TEXT,
     PRIMARY KEY (watched_folder_path, candidate_path, position),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
     CHECK (
         (file_kind = 'standalone' AND sheet_id IS NULL AND slice_index IS NULL
-            AND cue_track_position IS NULL AND start_sample IS NULL AND end_sample IS NULL)
+            AND cue_track_position IS NULL AND start_sample IS NULL AND end_sample IS NULL
+            AND pregap_file_id IS NULL)
         OR (file_kind = 'sheet_slice' AND sheet_id IS NOT NULL AND slice_index IS NOT NULL
             AND cue_track_position IS NOT NULL AND start_sample IS NOT NULL)
     )

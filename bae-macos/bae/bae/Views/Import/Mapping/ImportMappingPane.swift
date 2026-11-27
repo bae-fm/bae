@@ -157,6 +157,7 @@ struct ImportMappingPane: View {
         return ImportCommitControls(
             untitledTrackCount: Int(draft.mapping.untitledTrackCount),
             folderCheck: candidate.folderCheck,
+            leftOutAudio: draft.leftOutAudio,
             importStatus: candidate.importStatus,
             importDestination: $importDestination,
             actions: commitActions,

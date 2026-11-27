@@ -24,7 +24,7 @@ fn artist(id: &str, name: &str, discogs: Option<&str>, musicbrainz: Option<&str>
 /// and its first track's own artists, each with its standing.
 async fn fields_of(db: &bae_store::Store) -> (Option<ArtistField>, Option<ArtistField>) {
     let (mapping, album) = ImportTables::new(db.clone())
-        .load_pane_mapping_for_test(&crate::tables::import_state::tests::pane_candidate_key())
+        .load_pane_mapping(&crate::tables::import_state::tests::pane_candidate_key())
         .await
         .unwrap();
     let table = mapping.read(album.is_some(), None).unwrap().table;

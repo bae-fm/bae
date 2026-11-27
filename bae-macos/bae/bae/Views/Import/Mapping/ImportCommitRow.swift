@@ -9,6 +9,9 @@ struct ImportCommitControls {
     /// release that lists no tracks; shown beside Import, which stays
     /// available.
     let folderCheck: BridgeFolderCheck?
+    /// The audio the import leaves out, which a warning beside Import names;
+    /// `nil` where it takes all the folder's audio.
+    let leftOutAudio: BridgeLeftOutAudio?
     /// What the last import left: a failure, which Import retries, or
     /// nothing.
     let importStatus: BridgeCandidateImportStatus?

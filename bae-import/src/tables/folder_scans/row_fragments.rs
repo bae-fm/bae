@@ -78,7 +78,8 @@ sqlive_compose::fragment!(
     CandidateUnits(key: crate::CandidateKey),
     r#"
     SELECT unit.position, unit.file_kind, unit.file_id, unit.sheet_id, unit.slice_index,
-        unit.cue_track_position, unit.duration_ms, unit.start_sample, unit.end_sample
+        unit.cue_track_position, unit.duration_ms, unit.start_sample, unit.end_sample,
+        unit.pregap_file_id
     FROM scan_candidate_unit AS unit
     WHERE unit.watched_folder_path = (
         SELECT candidate.watched_folder_path

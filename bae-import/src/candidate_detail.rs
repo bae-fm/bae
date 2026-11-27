@@ -58,6 +58,14 @@ pub enum PaneFileRole {
     Other,
 }
 
+/// The folder's audio files no draft track reads, in the folder's order.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct LeftOutAudio {
+    pub file_count: u32,
+    /// The files, by path.
+    pub files: Vec<String>,
+}
+
 /// Where the list places one release, as its row in the list's placement
 /// (`import_list_placement`) holds it: what its commands are decided from,
 /// and where it stands among Found's states.
@@ -218,6 +226,9 @@ pub struct CandidateDraftPane {
     /// What the candidate is linked to in the catalogs, which Unlink clears.
     pub release_link: Option<ReleaseLink>,
     pub mapping: MappingTable,
+    /// The audio an import of the draft leaves out, which the pane warns of;
+    /// `None` where it takes all the folder's audio.
+    pub left_out_audio: Option<LeftOutAudio>,
     pub cover: Option<CoverChoice>,
     /// What this candidate's identification asks about: the signals its runs
     /// leave out and the catalog numbers they look up. A control that changes

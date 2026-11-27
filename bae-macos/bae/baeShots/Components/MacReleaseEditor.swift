@@ -28,6 +28,12 @@ extension ShotScene {
             )
         ),
         editorScene(
+            "mac.component.release-editor.import-audio-left-out",
+            actionRow: .importing(
+                commitControls(leftOutAudio: PreviewData.northboundLeftOutAudio)
+            )
+        ),
+        editorScene(
             "mac.component.release-editor.retry-import",
             actionRow: .importing(
                 commitControls(

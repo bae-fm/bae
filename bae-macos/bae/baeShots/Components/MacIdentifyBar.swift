@@ -49,11 +49,13 @@ extension ShotScene {
 
     static func commitControls(
         folderCheck: BridgeFolderCheck? = nil,
+        leftOutAudio: BridgeLeftOutAudio? = nil,
         importStatus: BridgeCandidateImportStatus? = nil
     ) -> ImportCommitControls {
         ImportCommitControls(
             untitledTrackCount: 0,
             folderCheck: folderCheck,
+            leftOutAudio: leftOutAudio,
             importStatus: importStatus,
             importDestination: .constant(.cloud),
             actions: ImportCommitActions(

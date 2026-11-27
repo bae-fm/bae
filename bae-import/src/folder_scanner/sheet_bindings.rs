@@ -493,6 +493,18 @@ impl<'a> BoundTrackSheet<'a> {
             .expect("a bound sheet resolved every playable track's audio")
     }
 
+    /// The audio one of the sheet's tracks has its pregap in; `None` where
+    /// the sheet gives the track no pregap of audio.
+    pub fn pregap_audio_for(&self, track: &crate::cue_sheet::CueTrack) -> Option<&'a ScannedFile> {
+        let pregap = track.audio_pregap()?;
+        let (_, audio) = self
+            .audio_files
+            .iter()
+            .find(|(file_reference, _)| *file_reference == pregap.file_reference)
+            .expect("a bound sheet resolved every file its tracks name");
+        Some(*audio)
+    }
+
     /// Whether this sheet carves the release's tracks out of its container.
     ///
     /// One rule, stated once, so "bound but ignored" and "assigned but unbound"

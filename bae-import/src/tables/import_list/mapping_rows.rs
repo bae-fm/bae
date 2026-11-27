@@ -5,8 +5,8 @@
 //! `FILE` lines can be bound to), and the draft stores each track's place. The
 //! statement joins each draft track to its audio unit and returns a row per
 //! draft track, the rows grouped into sides and runs, each sheet's header, the
-//! files that offer no audio unit, the gallery of images, and the count of rows
-//! nobody has named. The code here only turns that document into the
+//! files that offer no audio unit, the audio no draft track reads, the gallery
+//! of images, and the count of rows nobody has named. The code here only turns that document into the
 //! mapping table's types and refuses a draft whose tracks are not units of
 //! the folder in its order.
 
@@ -33,9 +33,6 @@ struct RowJson {
     /// The track's own artists, each with how it stands to the library, as
     /// the standing clauses wrote them; `None` when it has none of its own.
     artists: Option<super::ArtistFieldJson>,
-    /// The place among the folder's units of the one the track plays; `None`
-    /// when the folder has no such unit.
-    unit_position: Option<u32>,
     /// The track's number on its side.
     number: u32,
     /// The length the track's source lists. The statement sets it only when
@@ -51,6 +48,8 @@ struct RowJson {
 /// it measures, and what part of the file it is.
 #[derive(serde::Deserialize)]
 struct UnitJson {
+    /// The unit's place among the folder's units.
+    position: u32,
     audio: Option<AudioJson>,
     length_ms: u64,
     source: UnitSourceJson,
@@ -188,6 +187,8 @@ struct Document {
     /// The files that offer no audio unit, and the CUE sheets that carve no
     /// track of the draft; `None` when there are none.
     files: Option<Vec<CarriedJson>>,
+    /// `None` when the draft's tracks read all the folder's audio.
+    left_out: Option<crate::LeftOutAudio>,
     untitled: u32,
     tracks: u32,
     /// How long the draft's tracks play together, in milliseconds.
@@ -200,6 +201,7 @@ pub(super) struct MappingRead {
     pub(super) table: MappingTable,
     /// The sum of the tracks' lengths, in milliseconds.
     pub(super) track_length_ms: u64,
+    pub(super) left_out_audio: Option<crate::LeftOutAudio>,
 }
 
 impl MappingRows {
@@ -223,29 +225,13 @@ impl MappingRows {
         let internal = |detail: String| ImportError::Internal { detail };
         let document: Document = serde_json::from_str(&self.document)
             .map_err(|error| internal(format!("the mapping statement's document: {error}")))?;
-        let units = document
-            .sides
-            .iter()
-            .flatten()
-            .flat_map(|side| &side.runs)
-            .flat_map(|run| &run.rows)
-            .map(|row| row.unit_position);
-        let mut previous = None;
-        for unit in units {
-            if unit.is_none() || unit <= previous {
-                return Err(internal(format!(
-                    "the draft's tracks are not the folder's audio units in order: one plays \
-                     unit {unit:?} after {previous:?}"
-                )));
-            }
-            previous = unit;
-        }
+        let mut previous_unit = None;
         let track_sides = document
             .sides
             .map(|sides| {
                 sides
                     .into_iter()
-                    .map(|side| track_side(side, has_album_artists, previewed))
+                    .map(|side| track_side(side, has_album_artists, previewed, &mut previous_unit))
                     .collect()
             })
             .transpose()?;
@@ -273,16 +259,22 @@ impl MappingRows {
             track_count: document.tracks,
             untitled_track_count: document.untitled,
         };
-        Ok(MappingRead { table, track_length_ms: document.length_ms })
+        Ok(MappingRead {
+            table,
+            track_length_ms: document.length_ms,
+            left_out_audio: document.left_out,
+        })
     }
 }
 
 /// One side of the track table, its runs of loose tracks and of the tracks
-/// a sheet carves, each row at its place on the side.
+/// a sheet carves, each row at its place on the side. `previous_unit` is the
+/// unit the row before this side's first plays.
 fn track_side(
     side: SideJson,
     has_album_artists: bool,
     previewed: Option<&bae_track_audio::PreviewTarget>,
+    previous_unit: &mut Option<u32>,
 ) -> Result<TrackTableSide, ImportError> {
     let unplaced =
         |reason: String| ImportError::Internal { detail: format!("a track side: {reason}") };
@@ -293,7 +285,13 @@ fn track_side(
             let position =
                 bae_records::records::track_position_of(&side.kind, side.ordinal, row.number)
                     .map_err(unplaced)?;
-            rows.push(table_row(row, position.text(), has_album_artists, previewed)?);
+            rows.push(table_row(
+                row,
+                position.text(),
+                has_album_artists,
+                previewed,
+                previous_unit,
+            )?);
         }
         match run.sheet {
             Some(sheet) => runs.push(TrackTableRun::Sheet { sheet: sheet_group(sheet)?, rows }),
@@ -431,6 +429,7 @@ fn table_row(
     position: String,
     has_album_artists: bool,
     previewed: Option<&bae_track_audio::PreviewTarget>,
+    previous_unit: &mut Option<u32>,
 ) -> Result<TrackTableRow, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
     let track = row.track.track()?;
@@ -440,6 +439,14 @@ fn table_row(
             track.edit.id, track.edit.file
         ))
     })?;
+    if Some(unit.position) <= *previous_unit {
+        return Err(internal(format!(
+            "the draft's tracks are not the folder's audio units in order: one plays unit {} \
+             after {previous_unit:?}",
+            unit.position
+        )));
+    }
+    *previous_unit = Some(unit.position);
     let audio = unit.audio.ok_or_else(|| internal("an audio unit names no file".to_owned()))?;
     let (source, audition) = match unit.source {
         UnitSourceJson::Standalone => (
@@ -470,12 +477,23 @@ fn table_row(
 
 #[cfg(test)]
 impl crate::tables::ImportTables {
-    /// The mapping table of the release the scan stores at `key`.
-    pub(crate) async fn load_mapping_table_for_test(
+    /// The audio the pane of the candidate at `key` says an import leaves out.
+    pub(crate) async fn load_left_out_audio_for_test(
+        &self,
+        key: &crate::CandidateKey,
+    ) -> Result<Option<crate::LeftOutAudio>, ImportError> {
+        let (mapping, album_artists) = self.load_pane_mapping(key).await?;
+        mapping.read(album_artists.is_some(), None).map(|read| read.left_out_audio)
+    }
+}
+
+impl crate::tables::ImportTables {
+    /// The mapping table the pane of the candidate at `key` shows.
+    pub(crate) async fn load_mapping_table(
         &self,
         key: &crate::CandidateKey,
     ) -> Result<MappingTable, ImportError> {
-        let (mapping, album_artists) = self.load_pane_mapping_for_test(key).await?;
+        let (mapping, album_artists) = self.load_pane_mapping(key).await?;
         mapping.read(album_artists.is_some(), None).map(|read| read.table)
     }
 }

@@ -337,3 +337,84 @@ fn a_collapsed_suite_reads_its_own_disc() {
         SourceTracks::Listed { count: u32::try_from(read.len()).expect("ten fits") }
     );
 }
+
+fn picked_titles(reading: &PickedReading) -> Vec<&str> {
+    reading.values.tracks.iter().map(|track| track.title.as_str()).collect()
+}
+
+/// A person's pick of a release listing fewer tracks than the audio holds
+/// reads its tracks, in play order, onto the audio their lengths match, in
+/// either catalog's shape. The run's reading of it still refuses it.
+#[test]
+fn a_picked_release_that_covers_less_reads_onto_the_audio_it_matches() {
+    let audio =
+        audio(vec![201_000, 95_000, 202_000, 203_000, 420_000], AudioOrigin::default(), &[]);
+    for catalog in [LookupCatalog::MusicBrainz, LookupCatalog::Discogs] {
+        let release =
+            release(catalog, vec![medium(Some(Medium::Cd), stated(&CD1[..3], "", "Song"))]);
+        assert_eq!(release.read(&audio), Err(ReadingRefusal::TrackCount { folder: 5, release: 3 }));
+        let picked = release.read_picked(&audio).expect("the pick reads");
+        assert_eq!(picked_titles(&picked), ["Song 1", "Song 2", "Song 3"]);
+        assert_eq!(picked.matched, [0, 2, 3]);
+    }
+}
+
+/// Tracks stating no length say nothing about which audio is theirs, so they
+/// take the first.
+#[test]
+fn picked_tracks_that_state_no_length_take_the_first_audio() {
+    let release = release(
+        LookupCatalog::MusicBrainz,
+        vec![medium(Some(Medium::Cd), run("", "Song", 2, None))],
+    );
+    let picked = release
+        .read_picked(&audio(vec![200_000; 4], AudioOrigin::default(), &[]))
+        .expect("the pick reads");
+    assert_eq!(picked.matched, [0, 1]);
+}
+
+/// Where no set of a picked release's mediums holds the audio's tracks, the
+/// mediums that cover the most of it are read, never fewer whose lengths fit
+/// better.
+#[test]
+fn a_picked_release_reads_the_discs_that_cover_the_most_audio() {
+    let release = release(
+        LookupCatalog::MusicBrainz,
+        vec![
+            medium(Some(Medium::Cd), stated(&CD2, "", "CD Two")),
+            medium(Some(Medium::Cd), stated(&CD1, "", "CD One")),
+        ],
+    );
+    let rip: Vec<u64> = CD2.iter().chain(&[500_000; 5]).copied().collect();
+    let picked =
+        release.read_picked(&audio(rip, AudioOrigin::default(), &[])).expect("the pick reads");
+    assert_eq!(picked.values.tracks.len(), 12);
+    assert_eq!(picked_titles(&picked)[0], "CD One 1");
+}
+
+/// A picked release whose every medium lists more tracks than the audio holds
+/// covers nothing less than it, and is refused with both counts.
+#[test]
+fn a_picked_release_listing_more_than_the_audio_is_refused() {
+    let release = release(
+        LookupCatalog::MusicBrainz,
+        vec![medium(Some(Medium::Cd), run("", "Song", 3, None))],
+    );
+    assert_eq!(
+        release.read_picked(&audio(vec![200_000; 2], AudioOrigin::default(), &[])),
+        Err(ReadingRefusal::TrackCount { folder: 2, release: 3 })
+    );
+}
+
+/// A picked release that holds the audio's tracks reads as a run reads it.
+#[test]
+fn a_picked_release_that_holds_the_audio_reads_all_of_it() {
+    let release = release(
+        LookupCatalog::MusicBrainz,
+        vec![medium(Some(Medium::Cd), run("", "Song", 2, None))],
+    );
+    let audio = audio(vec![200_000; 2], AudioOrigin::default(), &[]);
+    let picked = release.read_picked(&audio).expect("the pick reads");
+    assert_eq!(Ok(picked.values), release.read(&audio));
+    assert_eq!(picked.matched, [0, 1]);
+}

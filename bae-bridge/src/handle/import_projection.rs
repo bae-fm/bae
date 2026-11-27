@@ -786,6 +786,7 @@ impl crate::types::BridgeCandidateDraftPane {
             metadata_provenance,
             release_link,
             mapping,
+            left_out_audio,
             cover,
             // Changed through `edit_candidate_lookup_choices`; nothing on the
             // pane reads it back.
@@ -807,6 +808,10 @@ impl crate::types::BridgeCandidateDraftPane {
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             release_link: release_link.map(crate::types::BridgeReleaseLink::from_core),
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
+            left_out_audio: left_out_audio.map(|left_out| crate::types::BridgeLeftOutAudio {
+                file_count: left_out.file_count,
+                files: left_out.files,
+            }),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             failure: failure
                 .map(|failure| crate::types::BridgeError::from_core(failure.reason.ui_error())),

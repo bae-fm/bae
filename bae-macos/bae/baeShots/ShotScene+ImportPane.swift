@@ -7,7 +7,7 @@ import SwiftUI
 extension ShotScene {
     /// The import pane's boards, each the main window on Import as a board
     /// draws it: Found with nothing opened, or with Northbound on its draft
-    /// or its running import, a release the library already holds, a folder
+    /// its running import or a pick that leaves audio out, a release the library already holds, a folder
     /// with nothing read, or CUE sheets; Imported, uploading; Skipped; and
     /// Find online on a folder no catalog has, on Search with a typed search
     /// out, or on Automatic in a library with no Discogs key. The
@@ -32,6 +32,19 @@ extension ShotScene {
         ) {
             try importPaneStage(
                 .found(northbound: .identified, opening: .northbound),
+                size: CGSize(width: 1_400, height: 1_100)
+            )
+        },
+        ShotScene(
+            id: "mac.import.folder.audio-left-out",
+            size: CGSize(width: 1_400, height: 1_100),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            try importPaneStage(
+                .found(
+                    northbound: .identified,
+                    opening: .northboundAudioLeftOut
+                ),
                 size: CGSize(width: 1_400, height: 1_100)
             )
         },

@@ -76,6 +76,66 @@ sqlive_compose::fragment!(
     FROM statement
 "#);
 
+// Each draft track with the place among the folder's units of the one it
+// plays: the unit of the same kind, file, sheet and slice. The place is NULL
+// where the folder has no such unit, which the reads refuse.
+sqlive_compose::fragment!(
+    DraftUnits(key: crate::CandidateKey) {
+        draft_track_id: String,
+        draft_unit_position: Option<i64>
+    },
+    r#"
+    WITH matched(draft_track_id, draft_unit_position) AS (
+    SELECT t.track_id, u.position
+    FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS t
+    LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS u ON
+        u.file_kind IS t.file_kind AND u.file_id IS t.file_id AND u.sheet_id IS t.sheet_id
+        AND u.slice_index IS t.slice_index
+    WHERE t.content_hash =(
+        SELECT scan.content_hash
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        LIMIT 1
+    )
+    )
+    SELECT draft_track_id, draft_unit_position
+    FROM matched
+"#);
+
+// The folder's audio files that no draft track reads, which an import of the
+// draft leaves out: of the files the folder's units read, those that no unit a
+// draft track plays reads. A unit reads the file it plays from, and a CUE
+// track also the file its pregap is in. The pane names these files and the
+// import writes none of them.
+sqlive_compose::fragment!(
+    LeftOutAudio(key: crate::CandidateKey) {
+        relative_path: String,
+        position: i64
+    },
+    r#"
+    WITH unit_reads(position, file_id) AS (
+    SELECT whole.position, whole.file_id
+    FROM @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS whole
+    UNION ALL
+    SELECT gap.position, gap.pregap_file_id
+    FROM @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS gap
+    WHERE gap.pregap_file_id IS NOT NULL
+    ), folder_files(relative_path, position) AS (
+    SELECT file.relative_path, file.position
+    FROM @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key) AS file
+    )
+    SELECT relative_path, position
+    FROM folder_files
+    WHERE relative_path IN (
+        SELECT file_id
+        FROM unit_reads
+    ) AND relative_path NOT IN (
+        SELECT taken.file_id
+        FROM unit_reads AS taken
+        JOIN @crate::tables::import_list::fragments::DraftUnits(key: :key) AS played ON
+            played.draft_unit_position = taken.position
+    )
+"#);
+
 sqlive_compose::fragment!(
     Mapping(key: crate::CandidateKey) {
         mapping_key: crate::CandidateKey,
@@ -140,9 +200,10 @@ sqlive_compose::fragment!(
                 t.stated_length_ms END AS listed_ms
             FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS t
             JOIN place AS p ON p.id = t.track_id AND p.release_id = t.content_hash
+                LEFT JOIN @crate::tables::import_list::fragments::DraftUnits(key: :key) AS matched
+                ON matched.draft_track_id = t.track_id
                 LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS u ON
-                u.file_kind IS t.file_kind AND u.file_id IS t.file_id AND u.sheet_id IS
-                t.sheet_id AND u.slice_index IS t.slice_index
+                u.position = matched.draft_unit_position
             LEFT JOIN audio_json AS a ON a.relative_path = u.file_id
                 LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateCueTracks(key: :key) AS ct ON
                 ct.sheet_relative_path = u.sheet_id AND ct.position = u.cue_track_position
@@ -256,13 +317,13 @@ sqlive_compose::fragment!(
                 SELECT json
                 FROM sheets
                 WHERE relative_path = n.sheet_id
-                )), 'rows', json_group_array(json_object('track', json(track_json), 'unit_position',
-                    unit_position, 'artists', json((
+                )), 'rows', json_group_array(json_object('track', json(track_json), 'artists', json((
                 SELECT field
                 FROM artist_field
                 WHERE part = 1 AND track_id = n.track_id
             )), 'number', number, 'listed_ms', listed_ms, 'unit', CASE WHEN file_kind IS NOT
-                NULL THEN json_object('audio', json(audio), 'length_ms', unit_ms, 'source', CASE
+                NULL THEN json_object('position', unit_position, 'audio', json(audio),
+                'length_ms', unit_ms, 'source', CASE
                 file_kind WHEN 'sheet_slice' THEN json_object('kind', file_kind, 'start_ms',
                 cue_start_ms, 'start', start_sample, 'end', end_sample) ELSE json_object('kind',
                 file_kind) END) END) ORDER BY position)) AS json
@@ -294,6 +355,9 @@ sqlive_compose::fragment!(
                     offered
                     WHERE offered.file_id = listed.file_id
             )
+            ), left_out(relative_path, position) AS (
+            SELECT unread.relative_path, unread.position
+            FROM @crate::tables::import_list::fragments::LeftOutAudio(key: :key) AS unread
             ) SELECT json_object('images', json(NULLIF((
             SELECT json_group_array(json_object('file_id', relative_path, 'name', file_name,
                 'path', hex(absolute_path), 'size', size, 'modified_at_ns', modified_at_ns)
@@ -314,7 +378,11 @@ sqlive_compose::fragment!(
                 SELECT file_id
                 FROM unplayed_files
             )
-            ), '[]')), 'untitled',(
+            ), '[]')), 'left_out', json((
+            SELECT CASE WHEN COUNT(*) > 0 THEN json_object('file_count', COUNT(*), 'files',
+                json_group_array(relative_path ORDER BY position)) END
+            FROM left_out
+            )), 'untitled',(
             SELECT COUNT(*) FILTER (WHERE bae_trim(title) = '')
             FROM rows
             ), 'tracks',(

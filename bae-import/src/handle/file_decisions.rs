@@ -130,12 +130,12 @@ impl ImportServiceHandle {
         };
         // The menu fires even when the place it shows is picked again; writing
         // would clear the verdict of a folder whose shape did not change.
+        self.editable_candidate(&candidate_key).await?;
         let restated = match place.side() {
-            Some(side) => self.draft_shows_sheet_on(&files, &sheet_file_id, side).await?,
+            Some(side) => self.pane_shows_sheet_on(&candidate_key, &sheet_file_id, side).await?,
             None => selected.place == place,
         };
         if restated {
-            self.editable_candidate(&candidate_key).await?;
             debug!("{sheet_file_id} is already on {place:?}; nothing to write");
             return Ok(());
         }
@@ -172,30 +172,20 @@ impl ImportServiceHandle {
     }
 
     /// Whether the place pop-up of the CUE sheet `sheet_id` names `side` in
-    /// the draft of the folder holding `files`: the side of the sheet's first
-    /// track there. A source's discs can put a sheet's tracks on another side
-    /// than the files' decisions name, and a sheet whose tracks the draft
-    /// leaves out is on none of its sides.
-    async fn draft_shows_sheet_on(
+    /// the pane of the candidate at `candidate_key`. A source's discs can put
+    /// a sheet's tracks on another side than the files' decisions name, and a
+    /// sheet whose tracks the draft leaves out is on none of its sides.
+    async fn pane_shows_sheet_on(
         &self,
-        files: &crate::folder_scanner::CategorizedFiles,
+        candidate_key: &crate::CandidateKey,
         sheet_id: &str,
         side: bae_types::mediums::MediumSide,
     ) -> Result<bool, crate::ImportError> {
-        let content_hash = files.content_hash();
-        let preparation =
-            crate::preparations::stored_preparation(&self.services.tables, &content_hash)
-                .await?
-                .ok_or_else(|| crate::ImportError::Internal {
-                    detail: format!("the files {content_hash} have no stored import preparation"),
-                })?;
-        let draft = &preparation.metadata.draft;
-        Ok(draft.first_sheet_track(sheet_id).is_some_and(|track| {
-            let medium = &draft.mediums[track.place.medium_index()];
-            u32::from(track.place.medium.get()) == side.medium
-                && (u32::from(track.place.side.get()) == side.side
-                    || !medium.carrier.is_some_and(bae_types::pressing::Medium::is_sided))
-        }))
+        let table = self.services.tables.load_mapping_table(candidate_key).await?;
+        let sheet = table.sheet(sheet_id).ok_or_else(|| crate::ImportError::Internal {
+            detail: format!("the pane of {candidate_key} shows no sheet {sheet_id}"),
+        })?;
+        Ok(sheet.assigned.as_ref().is_some_and(|choice| choice.side == side))
     }
 
     /// Add one file decision to the candidate's stored ones, apply it to every

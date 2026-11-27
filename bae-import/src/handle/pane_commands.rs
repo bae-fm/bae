@@ -22,9 +22,9 @@ impl ImportServiceHandle {
 
     /// Link the candidate to the release `link` names and read its draft from
     /// it, each fetch it waits on told to `steps`. A catalog release that
-    /// fails to load, or that lists another number of tracks than the folder
-    /// holds, is told on that release's own row, so its failure comes back as
-    /// the error.
+    /// fails to load, or whose every set of discs lists more tracks than the
+    /// folder holds, is told on that release's own row, so its failure comes
+    /// back as the error.
     pub async fn pane_select_release(
         &self,
         candidate_key: crate::CandidateKey,

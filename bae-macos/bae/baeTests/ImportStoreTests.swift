@@ -116,6 +116,7 @@ private func detail(
                     files: [],
                     untitledTrackCount: 0
                 ),
+                leftOutAudio: nil,
                 cover: cover,
                 failure: nil,
                 paneFailure: nil,

@@ -145,7 +145,7 @@ impl StoredFolder {
     /// the scan stored.
     async fn table(&self, draft: &CandidateDraft) -> Result<MappingTable, ImportError> {
         self.tables.replace_draft_for_test(&self.hash, draft).await;
-        self.tables.load_mapping_table_for_test(&self.key).await
+        self.tables.load_mapping_table(&self.key).await
     }
 }
 

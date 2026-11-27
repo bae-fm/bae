@@ -288,6 +288,13 @@ private struct ReleaseEditorCardView: View {
                     tone: .warning
                 )
             }
+            if let leftOut = commit?.leftOutAudio {
+                LeftOutAudioNotice(
+                    leftOut: leftOut,
+                    pickAnother: commands.search
+                )
+                .disabled(!editable)
+            }
         case .saving(let row):
             SaveRowNotices(row: row)
         }
@@ -315,6 +322,36 @@ private struct ReleaseEditorCardView: View {
         }
         .padding(.top, ThemeSpace.related + ThemeSpace.hairline)
         .overlay(alignment: .top) { MacHairline() }
+    }
+}
+
+/// The warning that the import leaves audio files out, naming each, with the
+/// way to pick another release.
+private struct LeftOutAudioNotice: View {
+    let leftOut: BridgeLeftOutAudio
+    /// Show the typed search.
+    let pickAnother: () -> Void
+
+    var body: some View {
+        MacNotice(
+            title: String(localized: "Audio left out"),
+            advice: advice,
+            listed: leftOut.files,
+            tone: .warning,
+            action: ErrorAction("Pick another release…", perform: pickAnother)
+        )
+    }
+
+    private var advice: String {
+        leftOut.fileCount == 1
+            ? String(
+                localized:
+                    "No track on this release matches this file, so it stays out of your library. To import it, pick another release."
+            )
+            : String(
+                localized:
+                    "No track on this release matches these files, so they stay out of your library. To import them, pick another release."
+            )
     }
 }
 

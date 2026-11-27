@@ -196,8 +196,7 @@ pub(crate) fn decline(
         (TracklistFit::Fits, false) => None,
         // A lead whose read tracklist numbers other than the folder's, or
         // lists tracks that cannot be read, is no match, so nothing was found: a run leaves out every row
-        // [`rules_out`] names, and a person's pick of one is refused before
-        // anything is stored.
+        // [`rules_out`] names.
         (TracklistFit::Disagrees { .. } | TracklistFit::Unreadable, false) => {
             Some(Declined::NothingFound)
         }

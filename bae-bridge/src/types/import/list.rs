@@ -296,6 +296,14 @@ pub enum BridgeCandidateStage {
     },
 }
 
+/// The folder's audio files no draft track reads, in the folder's order.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeLeftOutAudio {
+    pub file_count: u32,
+    /// The files, by path.
+    pub files: Vec<String>,
+}
+
 /// A candidate's draft and what goes with it, as its pane draws them.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateDraftPane {
@@ -324,6 +332,9 @@ pub struct BridgeCandidateDraftPane {
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: BridgeMappingTable,
+    /// The audio an import of the draft leaves out, which the pane warns of;
+    /// `None` where it takes all the folder's audio.
+    pub left_out_audio: Option<BridgeLeftOutAudio>,
     /// The cover this candidate commits with.
     pub cover: Option<BridgeCoverChoice>,
     /// Why the last import of this candidate failed.
