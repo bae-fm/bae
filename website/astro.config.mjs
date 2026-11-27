@@ -56,6 +56,9 @@ export default defineConfig({
 			favicon: '/app-icon.png',
 			locales: localeConfig,
 			defaultLocale: 'root',
+			components: {
+				SiteTitle: './src/components/SiteTitle.astro',
+			},
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/bae-fm/bae' }
 			],

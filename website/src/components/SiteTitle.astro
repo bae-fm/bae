@@ -1,0 +1,20 @@
+---
+// The docs' top bar draws the logo in a line, as the home page's does, in
+// place of Starlight's text title.
+import Logo from './Logo.astro';
+
+const { siteTitleHref } = Astro.locals.starlightRoute;
+---
+
+<a href={siteTitleHref} class="site-title">
+  <Logo kind="inline" size={40} />
+</a>
+
+<style>
+  .site-title {
+    display: flex;
+    align-items: center;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+</style>

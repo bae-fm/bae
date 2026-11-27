@@ -1,6 +1,6 @@
 /* ---- Logo ---- */
 
-/* The logo's float and glow, which Logo (35-logo.js) draws with. */
+/* The logo's float and glow, which Logo (35-logo.js) and the website's logo draw with. */
 @keyframes bae-sheep-rise { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4%; } }
 @keyframes bae-tilt { 0%, 100% { rotate: -2deg; } 50% { rotate: 2deg; } }
 @keyframes bae-word-rise { 0%, 100% { translate: 0 0; } 50% { translate: 0 -15%; } }

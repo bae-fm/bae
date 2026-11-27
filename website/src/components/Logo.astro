@@ -1,0 +1,52 @@
+---
+// The design system's Logo (design/system/components/src/35-logo.js), in the
+// forms the site shows, laid out as that component lays them out: `inline`,
+// the sheep before the word, which follows the page's direction; `pair`, the
+// sheep over the word, which `bob` floats and `glow` lights; `sheep`, the
+// sheep alone. `size` is the sheep's width. The float and the glow are the
+// design system's own styles.
+import '../../../design/system/components/src/35-logo.css';
+import sheepUrl from '../../../design/system/assets/Logos/bae-sheep.svg?url';
+import wordSvg from '../../../design/system/assets/Logos/bae-word.svg?raw';
+
+interface Props {
+  kind: 'inline' | 'pair' | 'sheep';
+  size: number;
+  bob?: boolean;
+  glow?: boolean;
+}
+
+const { kind, size, bob = false, glow = false } = Astro.props;
+
+// The word's drawing is 1556 by 736; it takes the text colour around it.
+const WORD_ASPECT = 1556 / 736;
+const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString('base64')}") center / contain no-repeat`;
+const wordWidth = Math.round(size * (kind === 'inline' ? 0.8 : 0.52));
+const wordStyle = `width:${wordWidth}px;height:${Math.round(wordWidth / WORD_ASPECT)}px;background:currentColor;-webkit-mask:${wordMask};mask:${wordMask}`;
+const sheepStyle = 'display:block;height:auto;object-fit:contain';
+---
+{kind === 'sheep' && (
+  <img src={sheepUrl} alt="bae" width={size} style={sheepStyle} decoding="async" />
+)}
+{kind === 'inline' && (
+  <div style={`display:flex;align-items:center;gap:${Math.round(size * 0.12)}px`}>
+    <img src={sheepUrl} alt="" width={size} style={sheepStyle} decoding="async" />
+    <div role="img" aria-label="bae" style={wordStyle}></div>
+  </div>
+)}
+{kind === 'pair' && (
+  <div style={`display:flex;flex-direction:column;align-items:center;gap:${Math.round(size * 0.06)}px`}>
+    {glow ? (
+      <div style="position:relative;isolation:isolate">
+        <div class="bae-logo-glow"></div>
+        <div class="bae-logo-pool"></div>
+        <img src={sheepUrl} alt="" width={size} class:list={[{ 'bae-sheep-bob': bob }]} style={sheepStyle} decoding="async" />
+      </div>
+    ) : (
+      <img src={sheepUrl} alt="" width={size} class:list={[{ 'bae-sheep-bob': bob }]} style={sheepStyle} decoding="async" />
+    )}
+    <div class:list={[{ 'bae-word-lift': glow, 'bae-word-bob': bob }]}>
+      <div role="img" aria-label="bae" style={wordStyle}></div>
+    </div>
+  </div>
+)}

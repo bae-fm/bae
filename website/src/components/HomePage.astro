@@ -1,6 +1,6 @@
 ---
 import '../generated/tokens.css';
-import wordSvg from '../../../design/system/assets/Logos/bae-word.svg?raw';
+import Logo from './Logo.astro';
 import { getLatest } from '../lib/releases';
 import { LOCALES, landing, localeInfo, localizePath } from '../lib/site-locales.mjs';
 
@@ -26,10 +26,6 @@ if (!macFullUrl) {
   console.warn('index: no macOS full build resolved; landing CTAs fall back to the install page');
 }
 const macUrl = macFullUrl ?? href('/guide/installation');
-
-// The design system's wordmark, drawn as a mask in the text colour as its
-// Logo component draws it.
-const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString('base64')}") center / contain no-repeat`;
 ---
 <!DOCTYPE html>
 <html lang={localeMeta.lang} dir={localeMeta.dir} class="no-js">
@@ -85,9 +81,7 @@ const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString
   nav{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--backdrop);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .3s;}
   nav.scrolled{border-bottom:1px solid var(--hairline);}
   .navin{display:flex;align-items:center;gap:26px;height:66px;}
-  .brand{display:flex;align-items:center;gap:var(--space-related);flex:none;}
-  .brand img{width:30px;height:30px;}
-  .brand .word{height:24px;aspect-ratio:1556/736;background:currentColor;}
+  .brand{flex:none;}
   .navlinks{margin-inline-start:auto;display:flex;gap:var(--space-group);align-items:center;min-width:0;}
   .navlinks a{font-size:14.5px;color:var(--text-secondary);font-weight:500;white-space:nowrap;}
   .navlinks a:hover{color:var(--text-primary);}
@@ -138,7 +132,6 @@ const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString
     .wrap{padding:0 16px;}
     .navlinks{gap:var(--space-related);}
     .navlinks a{font-size:13.5px;}
-    .brand .word{height:23px;}
     .navlinks .btn.pink{padding:var(--space-field-inset) 15px;max-width:38vw;}
     .menubtn{width:42px;height:42px;}
     .navpanel{width:calc(100vw - 32px);right:-8px;}
@@ -339,8 +332,6 @@ const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString
   .endcta p{font-size:17px;color:var(--text-secondary);margin:0 0 30px;}
 
   footer{border-top:1px solid var(--hairline);padding:42px 0;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
-  footer .fb{font-family:var(--font-web-display);font-weight:800;font-size:20px;letter-spacing:-.02em;display:flex;align-items:center;gap:var(--space-related);}
-  footer .fb img{width:26px;height:26px;}
   footer .links{display:flex;gap:22px;flex-wrap:wrap;}
   footer a{font-size:14px;color:var(--text-secondary);font-weight:500;} footer a:hover{color:var(--accent-pink);}
   footer .cp{font-family:var(--font-web-mono);font-size:11px;color:var(--text-tertiary);}
@@ -366,7 +357,7 @@ const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString
 </head>
 <body>
 <nav id="nav"><div class="wrap navin">
-  <span class="brand"><img src="/app-icon.png" alt="" width="30" height="30" decoding="async" /><span class="word" role="img" aria-label="bae" style={`-webkit-mask:${wordMask};mask:${wordMask}`}></span></span>
+  <span class="brand"><Logo kind="inline" size={40} /></span>
   <div class="navlinks">
     <div class="desktoplinks">
       <a href={href('/guide/installation')}>{text.navDocs}</a>
@@ -582,7 +573,7 @@ const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString
 </div></section>
 
 <footer><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;width:100%;">
-  <span class="fb"><img src="/app-icon.png" alt="" width="26" height="26" loading="lazy" decoding="async" />bae</span>
+  <Logo kind="inline" size={40} />
   <div class="links"><a href={href('/guide/installation')}>{text.navDocs}</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
   <span class="cp">{text.footerStatus}</span>
 </div></footer>
