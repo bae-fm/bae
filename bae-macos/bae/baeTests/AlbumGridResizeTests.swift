@@ -96,8 +96,8 @@ struct AlbumGridResizeTests {
         }
 
         /// The position of the album the scenes center on: the one opened,
-        /// and the first card of the row at the top of the scenes that scroll
-        /// to 6000.
+        /// and the first card of the row at the top of the scenes with none
+        /// open.
         static let centeredPosition = 100
         /// The window holds five columns; with the panel beside it, three.
         static let wideColumns = 5
@@ -189,14 +189,18 @@ struct AlbumGridResizeTests {
     @Test(
         "a column change keeps the slot on top",
         arguments: [
-            Scene(preloaded: false, open: nil, scrolledTo: 6000),
-            Scene(preloaded: true, open: nil, scrolledTo: 6000),
-            // The detail under the row holding album 100, the row just under
-            // the top.
+            // Album 100's row has more than half of itself in view, and the
+            // row above less, wherever the lazy grid places them: it places
+            // a row it jumps to within the grid's 32 point spacing of where
+            // the rows above would put it.
+            Scene(preloaded: false, open: nil, scrolledTo: 5900),
+            Scene(preloaded: true, open: nil, scrolledTo: 5900),
+            // The detail under the row holding album 100, which has less than
+            // half of itself in view, so the detail is the slot on top.
             Scene(
                 preloaded: false,
                 open: OpenDetail(albumId: "grid-100"),
-                scrolledTo: 6000
+                scrolledTo: 6050
             ),
             // The same detail partly scrolled past, so it is the slot on top.
             Scene(
@@ -249,35 +253,56 @@ struct AlbumGridResizeTests {
             list: list
         )
         let before = place()
-        let content = try #require(scrollView.documentView).frame.height
-        let rowPitch =
-            content
-            / (Double(HostedAlbumGrid.albums.count) / Double(Stage.wideColumns))
-            .rounded(.up)
+        // The slot on top is the open detail, or else album 100's card, and
+        // a column change lines it up with the top of the visible area.
+        let slotTop = {
+            try detailOpen
+                ? #require(stage.detailTop)
+                : Self.centeredCardTop(in: hosted.window)
+        }
 
         try await move(true)
         let narrowed = place()
-        if scene.open == nil {
+        #expect(try abs(slotTop()) < 1)
+        if !detailOpen {
             // Fewer columns put the slot on top further down the content.
             #expect(narrowed > before)
         }
 
         try await move(false)
         let back = place()
-        // Back at five columns the slot on top is the one that was: the grid
-        // moved by less than half a row, to line that slot up with the top.
-        #expect(abs(back - before) <= rowPitch / 2)
+        // Back at five columns the slot on top is the one that was.
+        #expect(try abs(slotTop()) < 1)
 
         // Going back and forth again returns to the same places.
         try await move(true)
         #expect(abs(place() - narrowed) < 1)
         try await move(false)
         #expect(abs(place() - back) < 1)
+    }
 
-        if (scene.open?.scrolledPast ?? 0) > 0 {
-            // The detail was the slot on top, and stays there.
-            #expect(abs(narrowed) < 1)
-            #expect(abs(back) < 1)
-        }
+    /// How far the card of the album the scenes center on sits below the top
+    /// of the grid's visible area.
+    private static func centeredCardTop(in window: NSWindow) throws -> Double {
+        let tree = try AccessibilityTree.read(of: window, subject: "the grid")
+        let visible = try #require(
+            tree.nodes.first {
+                $0.role == NSAccessibility.Role.scrollArea.rawValue
+            }
+        )
+        let title = "Album Title \(Stage.centeredPosition)"
+        let words = try #require(
+            tree.nodes.first {
+                if case .text(title) = $0.value {
+                    true
+                }
+                else {
+                    false
+                }
+            }
+        )
+        // The title's parent is the card.
+        let card = tree.nodes[try #require(words.parent)]
+        return card.frame.minY - visible.frame.minY
     }
 }
