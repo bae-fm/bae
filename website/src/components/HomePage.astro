@@ -96,6 +96,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .iconbtn:hover,.navpopup[open] > .iconbtn{background:var(--hover);}
   .iconbtn:focus-visible,.btn:focus-visible{outline:2px solid var(--accent-pink);outline-offset:3px;}
   .languagebtn{display:flex;align-items:center;gap:var(--space-inline);max-width:170px;}
+  .languagebtn .globe{width:19px;height:19px;flex:none;}
   .languagebtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .menubtn{display:none;}
   .navpanel,.langpanel{position:absolute;top:calc(100% + var(--space-group));right:0;width:min(320px,calc(100vw - 56px));padding:var(--space-group);border:1px solid var(--hairline);border-radius:var(--radius-panel);background:var(--elevated);backdrop-filter:blur(18px);box-shadow:0 24px 70px var(--shadow);}
@@ -178,12 +179,16 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .diagram{display:flex;align-items:stretch;gap:0;margin-top:var(--space-related);}
   .dnode{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:var(--space-field-inset);background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:var(--space-section) var(--space-edge);}
   .dnode.dhub{flex:1.18;background:var(--elevated);border-color:var(--accent-mint);}
+  .dico{width:54px;height:54px;border-radius:var(--radius-panel);display:grid;place-items:center;}
+  .dico.big{width:64px;height:64px;}
   .dsub{text-transform:uppercase;color:var(--text-tertiary);}
   .dprov{color:var(--text-secondary);max-width:30ch;}
   .dwire{flex:0 0 auto;align-self:center;position:relative;display:grid;place-items:center;min-width:108px;min-height:50px;padding:0 var(--space-compact);}
   .dwire::before{content:"";position:absolute;left:var(--space-inline);right:var(--space-inline);top:50%;height:2px;transform:translateY(-50%);background:repeating-linear-gradient(90deg,color-mix(in srgb, var(--accent-mint) calc(var(--opacity-tint-strong) * 100%), transparent) 0 6px,transparent 6px 13px);animation:wireflow .9s linear infinite;}
   /* The label sits on the page's colour, so the wire stops at its edges. */
   .dlabel{position:relative;z-index:1;display:inline-flex;border-radius:var(--radius-chip);background:var(--background);}
+  .dlabel .chip{display:inline-flex;align-items:center;gap:var(--space-inline);}
+  .dlabel svg{width:12px;height:12px;flex:none;}
   @keyframes wireflow{to{background-position:13px 0;}}
   html[dir="rtl"] .dwire::before{animation-name:wireflowrtl;}
   @keyframes wireflowrtl{to{background-position:-13px 0;}}
@@ -203,6 +208,8 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .stack{margin-top:var(--space-related);display:flex;flex-direction:column;align-items:stretch;}
   .platerow{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-group);}
   .plate{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-panel);padding:var(--space-section) var(--space-group);}
+  .plate svg{width:25px;height:25px;color:var(--text-primary);}
+  .plate{gap:var(--space-field-inset);}
   .legs{display:grid;grid-template-columns:repeat(4,1fr);height:var(--space-section);}
   .legs i{justify-self:center;width:2px;height:100%;background:linear-gradient(180deg,transparent,color-mix(in srgb, var(--accent-orchid) calc(var(--opacity-tint-strong) * 100%), transparent));}
   .core{border-radius:var(--radius-panel);border:1px solid var(--accent-orchid);background:var(--elevated);padding:var(--space-section);display:flex;align-items:center;justify-content:space-between;gap:var(--space-edge);flex-wrap:wrap;}
@@ -326,6 +333,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     <a class="btn pink web-label" href="#get">{text.navDownload}</a>
     <details class="navpopup desktoplang" data-nav-popup>
       <summary class="btn languagebtn web-label" aria-label={text.languageLabel}>
+        <svg class="globe" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
         <span>{currentLocaleLabel}</span>
         <Symbol name="expand_more" size="medium" />
       </summary>
@@ -401,16 +409,19 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   </div>
   <div class="diagram r d1">
     <div class="dnode">
+      <div class="dico" style="background:color-mix(in srgb, var(--accent-orchid) calc(var(--opacity-tint) * 100%), transparent);color:var(--accent-orchid)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
       <div class="dname web-subheading">{text.desktop}</div>
       <div class="dsub web-eyebrow">{text.holdsKeys}</div>
     </div>
-    <div class="dwire"><span class="dlabel"><Chip>{text.encrypted}</Chip></span></div>
+    <div class="dwire"><span class="dlabel"><Chip><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{text.encrypted}</Chip></span></div>
     <div class="dnode dhub">
+      <div class="dico big" style="background:color-mix(in srgb, var(--accent-sky) calc(var(--opacity-tint) * 100%), transparent);color:var(--accent-sky)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18.5h10.8a4.2 4.2 0 0 0 .2-8.4 5.8 5.8 0 0 0-11 1.8A3.4 3.4 0 0 0 6.5 18.5"/></svg></div>
       <div class="dname web-subheading">{text.cloudStorage}</div>
       <div class="dprov web-detail">Google&nbsp;Drive · Dropbox · iCloud · OneDrive · S3</div>
     </div>
-    <div class="dwire"><span class="dlabel"><Chip>{text.encrypted}</Chip></span></div>
+    <div class="dwire"><span class="dlabel"><Chip><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{text.encrypted}</Chip></span></div>
     <div class="dnode">
+      <div class="dico" style="background:color-mix(in srgb, var(--accent-pink) calc(var(--opacity-tint) * 100%), transparent);color:var(--accent-pink-fill)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
       <div class="dname web-subheading">{text.phone}</div>
       <div class="dsub web-eyebrow">{text.holdsKeys}</div>
     </div>
@@ -468,10 +479,10 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   </div>
   <div class="stack r d1">
     <div class="platerow">
-      <div class="plate"><b class="web-subheading">iOS</b></div>
-      <div class="plate"><b class="web-subheading">macOS</b></div>
-      <div class="plate"><b class="web-subheading">Windows</b></div>
-      <div class="plate"><b class="web-subheading">Android</b></div>
+      <div class="plate"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 1.43c0 1.13-.46 2.21-1.2 3-.79.85-2.04 1.5-3.07 1.42-.13-1.1.46-2.27 1.16-3.01.78-.85 2.13-1.48 3.11-1.41zM20.9 17.1c-.03.07-.46 1.56-1.51 3.09-.94 1.33-1.92 2.65-3.42 2.68-1.47.03-1.95-.86-3.63-.86s-2.21.83-3.6.89c-1.45.05-2.55-1.43-3.5-2.76-1.94-2.79-3.42-7.88-1.43-11.32.99-1.71 2.75-2.79 4.66-2.82 1.42-.03 2.77.96 3.64.96.87 0 2.5-1.18 4.22-1.01.72.03 2.74.29 4.04 2.19-.1.07-2.41 1.41-2.39 4.2.03 3.34 2.93 4.45 2.95 4.46z"/></svg><b class="web-subheading">iOS</b></div>
+      <div class="plate"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 1.43c0 1.13-.46 2.21-1.2 3-.79.85-2.04 1.5-3.07 1.42-.13-1.1.46-2.27 1.16-3.01.78-.85 2.13-1.48 3.11-1.41zM20.9 17.1c-.03.07-.46 1.56-1.51 3.09-.94 1.33-1.92 2.65-3.42 2.68-1.47.03-1.95-.86-3.63-.86s-2.21.83-3.6.89c-1.45.05-2.55-1.43-3.5-2.76-1.94-2.79-3.42-7.88-1.43-11.32.99-1.71 2.75-2.79 4.66-2.82 1.42-.03 2.77.96 3.64.96.87 0 2.5-1.18 4.22-1.01.72.03 2.74.29 4.04 2.19-.1.07-2.41 1.41-2.39 4.2.03 3.34 2.93 4.45 2.95 4.46z"/></svg><b class="web-subheading">macOS</b></div>
+      <div class="plate"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3.5" width="7.8" height="7.8" rx=".6"/><rect x="13.2" y="3.5" width="7.8" height="7.8" rx=".6"/><rect x="3" y="12.7" width="7.8" height="7.8" rx=".6"/><rect x="13.2" y="12.7" width="7.8" height="7.8" rx=".6"/></svg><b class="web-subheading">Windows</b></div>
+      <div class="plate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11a7 7 0 0 1 14 0"/><path d="M5 11v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/><line x1="7.5" y1="4" x2="9" y2="6.3"/><line x1="16.5" y1="4" x2="15" y2="6.3"/><circle cx="9.3" cy="9" r=".7" fill="currentColor" stroke="none"/><circle cx="14.7" cy="9" r=".7" fill="currentColor" stroke="none"/></svg><b class="web-subheading">Android</b></div>
     </div>
     <div class="legs"><i></i><i></i><i></i><i></i></div>
     <div class="core">

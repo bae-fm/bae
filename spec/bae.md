@@ -6375,8 +6375,10 @@ its glow, as Welcome does. Every sheep on the site is the design system's
 drawing, and the favicons are its small sheep, drawn for 16 and 32 pixels.
 The home page and the docs draw their buttons, notices, chips, status
 glyphs and cards as the design system draws them, and their icons are the
-design system's Material Symbols, the set Android draws, shown only where
-an icon is the control. The home page's pre-1.0 banner is the site's own
+design system's Material Symbols, the set Android draws, where an icon is
+the control. The home page also keeps drawings of its own: the device and
+cloud icons and the lock marks of the sync diagram, each platform's logo on
+its plate, and the globe on the language button. The home page's pre-1.0 banner is the site's own
 piece, drawn in the design system's warning color: a striped top edge, a
 "!" mark, a glowing dot before "Pre-1.0", and the heading and text.
 
