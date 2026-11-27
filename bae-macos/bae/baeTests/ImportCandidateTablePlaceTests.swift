@@ -395,6 +395,57 @@ extension ImportCandidateTablePlaceTests {
     }
 }
 
+extension ImportCandidateTablePlaceTests {
+    // MARK: No animation
+
+    /// A row that changes height, and each row it moves, is drawn at its
+    /// final place and size by the time the table has the new heights.
+    @MainActor
+    @Test("a row changing height animates no row")
+    func aHeightChangeAnimatesNoRow() async throws {
+        let source = MutableImportList(
+            items: (0..<80).map(Self.candidateItem)
+        )
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = try await Self.loadedSlot(source, store, uiStore)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore,
+            size: Self.size
+        ) { table in
+            try await Self.untilRowsDrawn(table, slot)
+
+            var items = (0..<80).map(Self.candidateItem)
+            items[2] = Self.headerItem(2)
+            await source.replaceItems(items)
+            try await Wait.untilLaidOut(table) {
+                table.rect(ofRow: 2).height
+                    == ImportCandidateTableLayout.headerRowHeight
+            }
+
+            Self.expectRowsAtTheirPlaces(table)
+        }
+    }
+
+    /// A row view the table is animating is not yet at the row's rectangle,
+    /// or its layer runs an animation.
+    @MainActor
+    private static func expectRowsAtTheirPlaces(_ table: NSTableView) {
+        var checked = 0
+        table.enumerateAvailableRowViews { rowView, row in
+            checked += 1
+            #expect(rowView.frame == table.rect(ofRow: row), "row \(row)")
+            #expect(
+                rowView.layer?.animationKeys() ?? [] == [],
+                "row \(row)"
+            )
+        }
+        #expect(checked > 3)
+    }
+}
+
 // MARK: - Fixtures
 
 extension ImportCandidateTablePlaceTests {

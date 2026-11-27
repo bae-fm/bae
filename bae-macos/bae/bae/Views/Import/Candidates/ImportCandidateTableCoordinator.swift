@@ -192,11 +192,16 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
             reloadRows()
             return
         }
-        if previous.count != rows.count {
-            tableView.noteNumberOfRowsChanged()
+        // AppKit animates a table's row changes unless the animation context
+        // they run in lasts no time.
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0
+            if previous.count != rows.count {
+                tableView.noteNumberOfRowsChanged()
+            }
+            redrawChangedRows(in: tableView)
+            noteHeights(in: tableView)
         }
-        redrawChangedRows(in: tableView)
-        noteHeights(in: tableView)
         pinnedStrip.forget()
     }
 

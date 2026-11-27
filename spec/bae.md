@@ -1166,7 +1166,9 @@ rows (*No matches* when the filter narrows it to none).
 
 On macOS the Import screen keeps the list available while the selected
 candidate is open. A list row grows to fit all three lines when it shows a
-title, artist and status.
+title, artist and status. The Mac list's rows appear, change and leave with no
+animation: it draws a row that arrives, changes height or goes at its final
+place and size at once.
 
 While imports wait or run on a Mac, whoever started them, the list's filter
 row shows *Importing…*. Clicking it opens a popover that counts them and
