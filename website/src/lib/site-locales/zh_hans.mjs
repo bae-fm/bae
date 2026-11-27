@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: '跨你的设备',
   noteCloud: '你的云',
   noteCloudSub: '无服务器',
-  syncEyebrow: '加密同步',
   syncTitle: ['只属于你，位于', '每台设备'],
   syncText:
     '你的设备通过你选择的云存储同步。无需运行服务器。所有内容离开设备前都会加密。只有你能读取。',

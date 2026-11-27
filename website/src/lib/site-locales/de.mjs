@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: 'auf deinen Geräten',
   noteCloud: 'Deine Cloud',
   noteCloudSub: 'kein Server',
-  syncEyebrow: 'Verschlüsselter Sync',
   syncTitle: ['Nur deine, auf', 'jedem Gerät'],
   syncText:
     'Deine Geräte synchronisieren über den Cloud-Speicher, den du wählst. Kein Serverbetrieb. Alles wird verschlüsselt, bevor es dein Gerät verlässt. Nur du kannst es lesen.',

@@ -34,7 +34,6 @@ export default {
   noteSyncedSub: "cihazların arasında",
   noteCloud: "Bulutun",
   noteCloudSub: "sunucu yok",
-  syncEyebrow: "Şifreli eşzamanlama",
   syncTitle: [
     "Müziğin",
     "her yerde"

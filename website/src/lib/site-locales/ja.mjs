@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: 'あなたのデバイス間で',
   noteCloud: 'あなたのクラウド',
   noteCloudSub: 'サーバーなし',
-  syncEyebrow: '暗号化同期',
   syncTitle: ['あなただけのものを', 'すべてのデバイスで'],
   syncText:
     'デバイスは、あなたが選ぶクラウドストレージを通じて同期します。実行するサーバーはありません。すべてはデバイスを出る前に暗号化され、読めるのはあなただけです。',

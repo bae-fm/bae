@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: 'sur vos appareils',
   noteCloud: 'Votre cloud',
   noteCloudSub: 'sans serveur',
-  syncEyebrow: 'Synchronisation chiffrée',
   syncTitle: ['À vous seule, sur', 'chaque appareil'],
   syncText:
     "Vos appareils se synchronisent via le stockage cloud que vous choisissez. Aucun serveur à exécuter. Tout est chiffré avant de quitter votre appareil. Vous seul pouvez le lire.",

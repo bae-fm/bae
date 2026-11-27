@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: 'među vašim uređajima',
   noteCloud: 'Vaš oblak',
   noteCloudSub: 'bez poslužitelja',
-  syncEyebrow: 'Šifrirana sinkronizacija',
   syncTitle: ['Samo vaša, na', 'svakom uređaju'],
   syncText:
     'Vaši se uređaji sinkroniziraju kroz pohranu u oblaku koju odaberete. Nema poslužitelja za pokretanje. Sve se šifrira prije nego što napusti uređaj. Samo vi to možete čitati.',

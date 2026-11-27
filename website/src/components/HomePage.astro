@@ -193,9 +193,6 @@ const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], [
   @keyframes wireflow{to{background-position:13px 0;}}
   html[dir="rtl"] .dwire::before{animation-name:wireflowrtl;}
   @keyframes wireflowrtl{to{background-position:-13px 0;}}
-  .dfoot{text-align:center;margin-top:var(--space-section);}
-  .dfoot a{color:var(--text-tertiary);}
-  .dfoot a:hover{color:var(--accent-mint);}
   @media (prefers-reduced-motion: reduce){.dwire::before{animation:none;}}
   @media(max-width:860px){
     .diagram{flex-direction:column;align-items:stretch;}
@@ -392,8 +389,7 @@ const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], [
 
 <section class="sec" id="how"><div class="wrap">
   <div class="center r">
-    <div class="eyebrow web-eyebrow">{text.syncEyebrow}</div>
-    <h2 class="sech web-title">{text.syncTitle[0]} <span style="white-space:nowrap;">{text.syncTitle[1]}</span></h2>
+    <h2 class="sech web-title">{text.syncTitle[0]}<br /><span style="white-space:nowrap;">{text.syncTitle[1]}</span></h2>
     <p>{text.syncText}</p>
   </div>
   <div class="diagram r d1">
@@ -406,7 +402,7 @@ const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], [
     <div class="dnode dhub">
       <div class="dico big" style="background:color-mix(in srgb, var(--accent-sky) calc(var(--opacity-tint) * 100%), transparent);color:var(--accent-sky)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18.5h10.8a4.2 4.2 0 0 0 .2-8.4 5.8 5.8 0 0 0-11 1.8A3.4 3.4 0 0 0 6.5 18.5"/></svg></div>
       <div class="dname web-subheading">{text.cloudStorage}</div>
-      <div class="dprov web-detail">Google&nbsp;Drive · Dropbox · iCloud · OneDrive · S3</div>
+      <div class="dprov web-detail">Dropbox · iCloud · OneDrive · S3</div>
     </div>
     <div class="dwire"><span class="dlabel"><Chip><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{text.encrypted}</Chip></span></div>
     <div class="dnode">
@@ -415,7 +411,6 @@ const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], [
       <div class="dsub web-eyebrow">{text.holdsKeys}</div>
     </div>
   </div>
-  <p class="dfoot r d2"><a class="web-link" href={href('/reference/encryption')}>{text.encryptionLink}</a></p>
 </div></section>
 
 <section class="sec" id="features"><div class="wrap">

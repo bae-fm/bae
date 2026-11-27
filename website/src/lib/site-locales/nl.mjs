@@ -34,7 +34,6 @@ export default {
   noteSyncedSub: "tussen je apparaten",
   noteCloud: "Je cloud",
   noteCloudSub: "geen server",
-  syncEyebrow: "Versleutelde synchronisatie",
   syncTitle: [
     "Je muziek",
     "overal"

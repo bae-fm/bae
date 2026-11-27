@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: 'napříč vašimi zařízeními',
   noteCloud: 'Váš cloud',
   noteCloudSub: 'bez serveru',
-  syncEyebrow: 'Šifrovaná synchronizace',
   syncTitle: ['Jen vaše, na', 'každém zařízení'],
   syncText:
     'Vaše zařízení se synchronizují přes cloudové úložiště, které si vyberete. Žádný server k provozu. Vše je zašifrováno před opuštěním zařízení. Číst to můžete jen vy.',

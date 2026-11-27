@@ -34,7 +34,6 @@ export default {
   noteSyncedSub: "giữa các thiết bị",
   noteCloud: "Cloud của bạn",
   noteCloudSub: "không máy chủ",
-  syncEyebrow: "Đồng bộ mã hóa",
   syncTitle: [
     "Nhạc của bạn",
     "ở mọi nơi"

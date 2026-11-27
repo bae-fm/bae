@@ -34,7 +34,6 @@ export default {
   noteSyncedSub: "તમારા ઉપકરણો વચ્ચે",
   noteCloud: "તમારો cloud",
   noteCloudSub: "server નથી",
-  syncEyebrow: "એન્ક્રિપ્ટેડ sync",
   syncTitle: [
     "તમારું સંગીત",
     "બધે"

@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: 'entre tus dispositivos',
   noteCloud: 'Tu nube',
   noteCloudSub: 'sin servidor',
-  syncEyebrow: 'Sincronización cifrada',
   syncTitle: ['Solo tuya, en', 'cada dispositivo'],
   syncText:
     'Tus dispositivos se sincronizan mediante el almacenamiento en la nube que eliges. Sin servidor que ejecutar. Todo se cifra antes de salir del dispositivo. Solo tú puedes leerlo.',

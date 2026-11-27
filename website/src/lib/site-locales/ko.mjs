@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: '기기 사이에서',
   noteCloud: '내 클라우드',
   noteCloudSub: '서버 없음',
-  syncEyebrow: '암호화된 동기화',
   syncTitle: ['나만의 라이브러리를', '모든 기기에서'],
   syncText:
     '내 기기는 내가 선택한 클라우드 저장소를 통해 동기화됩니다. 실행할 서버가 없습니다. 모든 것은 기기를 떠나기 전에 암호화됩니다. 읽을 수 있는 사람은 나뿐입니다.',

@@ -34,7 +34,6 @@ export default {
   noteSyncedSub: "跨你的裝置",
   noteCloud: "你的雲",
   noteCloudSub: "無伺服器",
-  syncEyebrow: "加密同步",
   syncTitle: [
     "只屬於你，位於",
     "每台裝置"

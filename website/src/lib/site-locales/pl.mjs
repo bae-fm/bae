@@ -24,7 +24,6 @@ export default {
   noteSyncedSub: 'między twoimi urządzeniami',
   noteCloud: 'Twoja chmura',
   noteCloudSub: 'bez serwera',
-  syncEyebrow: 'Szyfrowana synchronizacja',
   syncTitle: ['Tylko twoja, na', 'każdym urządzeniu'],
   syncText:
     'Twoje urządzenia synchronizują się przez wybraną chmurę. Bez serwera do uruchamiania. Wszystko jest szyfrowane przed opuszczeniem urządzenia. Tylko ty możesz to odczytać.',

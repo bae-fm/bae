@@ -18,8 +18,7 @@ export default {
   noteSyncedSub: 'across your devices',
   noteCloud: 'Your cloud',
   noteCloudSub: 'Dropbox, iCloud, OneDrive',
-  syncEyebrow: 'Encrypted sync',
-  syncTitle: ['Yours alone, on', 'every device'],
+  syncTitle: ['Yours alone,', 'on every device'],
   syncText:
     'Your devices sync through cloud storage you choose. No server to run. Everything is encrypted before it leaves your device. Only you can read it.',
   desktop: 'Your desktop',
@@ -27,7 +26,6 @@ export default {
   holdsKeys: 'holds the keys',
   encrypted: 'encrypted',
   cloudStorage: 'Your cloud storage',
-  encryptionLink: 'See how the encryption works →',
   libraryEyebrow: 'Library',
   libraryTitle: ['Your whole collection,', 'release-accurate'],
   libraryText: 'Bring the albums you own into one library, then take them anywhere.',
