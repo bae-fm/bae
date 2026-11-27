@@ -29,9 +29,9 @@ pub enum AlbumFields {
 /// Whether a release's write writes what its pressing is — area, media,
 /// status, packaging and Discogs details — or keeps what the library holds,
 /// as an edit of typed values alone does.
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum PressingFactsWrite {
-    #[cfg(desktop)]
     Written,
     Kept,
 }
@@ -59,6 +59,7 @@ pub(super) fn update_release_pressing_on(
 
 /// Write what is typed of `release`'s pressing: its year, labels and
 /// barcodes.
+#[cfg(desktop)]
 fn update_release_typed_pressing_on(
     tx: &CovenWrite<'_>,
     release: &DbRelease,
@@ -107,6 +108,7 @@ fn update_release_fact_columns_on(
 /// Deliberately untouched: the stored catalog release (what the source said,
 /// independent of a user edit) and the release's records and where the draft
 /// was read (a record is orthogonal to editable metadata).
+#[cfg(desktop)]
 pub(super) fn write_release_metadata_on(
     tx: &CovenWrite<'_>,
     metadata: &ReleaseMetadataRows,
@@ -143,7 +145,6 @@ pub(super) fn write_release_metadata_on(
     }
 
     match pressing_facts {
-        #[cfg(desktop)]
         PressingFactsWrite::Written => update_release_pressing_on(tx, release, pressing)?,
         PressingFactsWrite::Kept => update_release_typed_pressing_on(tx, release, pressing)?,
     }

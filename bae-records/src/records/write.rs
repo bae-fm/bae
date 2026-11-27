@@ -816,6 +816,7 @@ pub fn replace_album_artists(
     Ok(())
 }
 
+#[cfg(desktop)]
 /// Make each track of `track_ids` credit exactly its `artists`. Callers pass
 /// the affected track ids explicitly because `artists` may not cover every
 /// track (a track legitimately has no per-track artists when it inherits from

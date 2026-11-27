@@ -150,6 +150,7 @@ impl ResolvedArtists {
         credits.iter().zip(&self.ids).map(|(credit, id)| (credit.id.clone(), id.clone())).collect()
     }
 
+    #[cfg(desktop)]
     /// The write's album and track links, which name `credits` by the ids
     /// they came in with, each linking the artist its credit resolved to.
     /// A link to an unpicked credit prints what it printed when picked.
@@ -176,6 +177,7 @@ impl ResolvedArtists {
         )
     }
 
+    #[cfg(desktop)]
     /// `links`, each one that names an unpicked credit printing what it
     /// printed when picked: its credit name, else the name the credit's row
     /// in `credits` holds. `parts` gives a link's credit id and credit name.
