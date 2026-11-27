@@ -191,9 +191,7 @@ fn download_queue_counts_on(
     Ok(DownloadQueueCounts {
         pins: download_batch_on(sql, &DownloadLine::PINS)?,
         moving_to_this_device: download_batch_on(sql, &DownloadLine::MOVING_TO_THIS_DEVICE)?,
-        queue: bae_transfers::tables::release_queue_counts_on::<bae_transfers::DownloadRequest>(
-            sql,
-        )?,
+        queue: <bae_transfers::DownloadRequest as bae_transfers::QueuedPayload>::counts_on(sql)?,
     })
 }
 

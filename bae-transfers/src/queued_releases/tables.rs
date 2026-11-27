@@ -243,7 +243,7 @@ pub(crate) fn release_queue_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
     let rows = P::rows_on(sql)?;
-    let counts = release_queue_counts_on::<P>(sql)?;
+    let counts = P::counts_on(sql)?;
     let paused = counts.paused();
     Ok(ReleaseQueueSnapshot { rows, total: counts.total, paused })
 }
@@ -252,13 +252,6 @@ pub(crate) fn release_queue_on<P: QueuedPayload>(
 /// tells.
 pub(crate) fn network_usable_on(sql: &SqlReadContext<'_>) -> Result<Option<bool>, DbError> {
     Ok(sql.query_row("SELECT (SELECT usable FROM coven_network)", [], |row| row.get(0))?)
-}
-
-/// How many entries the queue holds in each phase, and what holds it back.
-pub fn release_queue_counts_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
-) -> Result<ReleaseQueueCounts, DbError> {
-    P::counts_on(sql)
 }
 
 /// `release_id`'s entries in the download and export queues.

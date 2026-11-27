@@ -491,10 +491,7 @@ async fn the_counts_say_whether_any_entry_or_failure_is_held() {
     let counts = |db: &Store| {
         let db = db.clone();
         async move {
-            let counts = db
-                .read(|sql| tables::release_queue_counts_on::<DownloadRequest>(&sql))
-                .await
-                .unwrap();
+            let counts = db.read(|sql| DownloadRequest::counts_on(&sql)).await.unwrap();
             (counts.has_entries, counts.has_failures)
         }
     };
