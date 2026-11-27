@@ -92,6 +92,12 @@ struct MacReleaseFields: View {
             }
             .disabled(off)
         }
+        // The section, like the identity block over it, is one group to
+        // VoiceOver, which orders what a group holds by where each thing
+        // sits. In one list with the cover, which stands beside several
+        // lines, and the card's notices, a row's controls can read out of
+        // order.
+        .accessibilityElement(children: .contain)
     }
 
     /// One row per label, name beside number, each with its remove button

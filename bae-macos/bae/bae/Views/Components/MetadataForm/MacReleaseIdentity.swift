@@ -28,6 +28,8 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             identity
         }
+        // The block is one group to VoiceOver (`MacReleaseFields` says why).
+        .accessibilityElement(children: .contain)
     }
 
     private var identity: some View {
