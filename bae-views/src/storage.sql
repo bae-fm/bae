@@ -2,9 +2,9 @@
 -- credits, its media, its files' count and size, whether they are stored and
 -- whether this device keeps them all pinned, how many of its files wait in
 -- this device's upload queue, and when it was added, sorted by them and
--- filtered by whether they are stored. `release_listing` holds those values, kept by the triggers
--- below, with an index for each sort, alone and after `stored` for the Remote
--- and Local filters.
+-- filtered by whether they are stored. `release_listing` holds those values,
+-- kept by the triggers below, with an index for each way of each sort, alone
+-- and after `stored` for the Local and Uploaded filters.
 
 -- Each release, with what the Storage Manager sorts and filters it by:
 -- `album_title_sort_key` and the credit key copied from its album's `album_listing`
@@ -41,40 +41,96 @@ CREATE TABLE IF NOT EXISTS release_listing (
         WHEN download_queued = 1 THEN 2
         WHEN stored = 0 THEN 3
         WHEN file_count > 0 AND pinned_count = file_count THEN 4
-        ELSE 5 END) VIRTUAL
+        ELSE 5 END) VIRTUAL NOT NULL,
+    -- Each way of each of the Storage Manager's sorts that no column above
+    -- sorts ascending: a column that does, never NULL, which a window of the
+    -- list sorted that way reads from. A release with no credit sorts before
+    -- every credit by artist, and one stating no medium after every medium
+    -- either way. A descending text column holds its text in the `descending`
+    -- collation; the title's bytes and the credits' are written as hex
+    -- digits, which sort as they do.
+    sort_title_back TEXT COLLATE descending
+        GENERATED ALWAYS AS (hex(album_title_sort_key)) VIRTUAL NOT NULL,
+    sort_artist TEXT GENERATED ALWAYS AS (
+        COALESCE(hex(credit_sort_key) || '!' || credit_artist_ids, '')) VIRTUAL NOT NULL,
+    sort_artist_back TEXT COLLATE descending GENERATED ALWAYS AS (
+        COALESCE(hex(credit_sort_key) || '!' || credit_artist_ids, '')) VIRTUAL NOT NULL,
+    sort_media TEXT
+        GENERATED ALWAYS AS (media_empty || COALESCE(media_key, '')) VIRTUAL NOT NULL,
+    sort_media_back TEXT COLLATE descending
+        GENERATED ALWAYS AS (COALESCE(media_key, '')) VIRTUAL NOT NULL,
+    sort_files_back INTEGER GENERATED ALWAYS AS (-file_count) VIRTUAL NOT NULL,
+    sort_size_back INTEGER GENERATED ALWAYS AS (-total_size) VIRTUAL NOT NULL,
+    sort_storage_back INTEGER GENERATED ALWAYS AS (-storage_order) VIRTUAL NOT NULL,
+    sort_added_back TEXT COLLATE descending
+        GENERATED ALWAYS AS (created_at) VIRTUAL NOT NULL
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_album ON release_listing (album_id);
 
-CREATE INDEX IF NOT EXISTS idx_release_listing_title ON release_listing (album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_title_desc ON release_listing (album_title_sort_key DESC, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_credits ON release_listing (credit_sort_key, credit_artist_ids, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_credits_desc ON release_listing (credit_sort_key DESC, credit_artist_ids DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_media ON release_listing (media_empty, media_key, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_media_desc ON release_listing (media_empty, media_key DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_files ON release_listing (file_count, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_files_desc ON release_listing (file_count DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_size ON release_listing (total_size, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_size_desc ON release_listing (total_size DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_storage ON release_listing (storage_order, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_storage_desc ON release_listing (storage_order DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_added ON release_listing (created_at, album_title_sort_key, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_added_desc ON release_listing (created_at DESC, album_title_sort_key, release_id);
+-- The index each sort's window reads from, which leads with the sort's column
+-- and goes on with the sort's ties: album title, date added and release id.
+-- The second set leads with `stored` for the Local and Uploaded filters. The
+-- album title's and date added's indexes name that column twice, as their
+-- windows' orders do: SQLite reads an order from an index only when the index
+-- names each of its terms in turn.
+CREATE INDEX IF NOT EXISTS idx_release_listing_title
+    ON release_listing (album_title_sort_key, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_title_back
+    ON release_listing (sort_title_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_artist
+    ON release_listing (sort_artist, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_artist_back
+    ON release_listing (sort_artist_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_media
+    ON release_listing (sort_media, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_media_back
+    ON release_listing (sort_media_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_files
+    ON release_listing (file_count, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_files_back
+    ON release_listing (sort_files_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_size
+    ON release_listing (total_size, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_size_back
+    ON release_listing (sort_size_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_storage
+    ON release_listing (storage_order, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_storage_back
+    ON release_listing (sort_storage_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_added
+    ON release_listing (created_at, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_added_back
+    ON release_listing (sort_added_back, album_title_sort_key, created_at, release_id);
 
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title ON release_listing (stored, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title_desc ON release_listing (stored, album_title_sort_key DESC, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_credits ON release_listing (stored, credit_sort_key, credit_artist_ids, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_credits_desc ON release_listing (stored, credit_sort_key DESC, credit_artist_ids DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media ON release_listing (stored, media_empty, media_key, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media_desc ON release_listing (stored, media_empty, media_key DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files ON release_listing (stored, file_count, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files_desc ON release_listing (stored, file_count DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size ON release_listing (stored, total_size, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_desc ON release_listing (stored, total_size DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage ON release_listing (stored, storage_order, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_desc ON release_listing (stored, storage_order DESC, album_title_sort_key, created_at, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added ON release_listing (stored, created_at, album_title_sort_key, release_id);
-CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added_desc ON release_listing (stored, created_at DESC, album_title_sort_key, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title
+    ON release_listing (stored, album_title_sort_key, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title_back
+    ON release_listing (stored, sort_title_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_artist
+    ON release_listing (stored, sort_artist, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_artist_back
+    ON release_listing (stored, sort_artist_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media
+    ON release_listing (stored, sort_media, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_media_back
+    ON release_listing (stored, sort_media_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files
+    ON release_listing (stored, file_count, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files_back
+    ON release_listing (stored, sort_files_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size
+    ON release_listing (stored, total_size, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_back
+    ON release_listing (stored, sort_size_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage
+    ON release_listing (stored, storage_order, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_back
+    ON release_listing (stored, sort_storage_back, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added
+    ON release_listing (stored, created_at, album_title_sort_key, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added_back
+    ON release_listing (stored, sort_added_back, album_title_sort_key, created_at, release_id);
 
 -- Each release's media as the Storage Manager sorts by them: `media_empty`, 1
 -- for a release stating no medium, and `media_key`, every stated medium with

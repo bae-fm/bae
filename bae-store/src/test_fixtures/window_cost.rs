@@ -4,7 +4,7 @@
 //! offset, then that range). The fixture also times how many rows come before a key at
 //! the middle and the end. Each time is the median of several runs.
 
-use crate::list_windows::{key_at, read_range, Keyed, ListOrder, OrderKey, Seek};
+use crate::list_windows::OrderKey;
 use crate::{DbError, ListWindow, SortDirection, Store};
 use coven::SqlReadContext;
 use std::time::{Duration, Instant};
@@ -73,56 +73,11 @@ pub fn report_cost(metric: &str, value: f64, unit: &str) {
     eprintln!("COST metric={metric} value={value:.4} unit={unit}");
 }
 
-/// Reads a list's rows under a seek, at most a limit, each with its key:
-/// what a list's live query reads its window with.
-pub type Rows<R> =
-    fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64) -> Result<Vec<Keyed<R>>, DbError>;
-
-/// Counts the rows before a key: what a list's live position reads.
-pub type Count = fn(&SqlReadContext<'_>, &ListOrder, &OrderKey) -> Result<u64, DbError>;
-
-/// Read one window at each measured position of a list of `n` rows in
-/// `order`: by scrolling to it, by jumping to it, and, in the middle and at
-/// the end, the position of its first row.
-pub async fn measure<R: Send + 'static>(
-    db: &Store,
-    list: &str,
-    name: &str,
-    n: u64,
-    order: ListOrder,
-    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64) -> Result<Vec<Keyed<R>>, DbError>
-        + Clone
-        + Send
-        + Sync
-        + 'static,
-    count: impl Fn(&SqlReadContext<'_>, &ListOrder, &OrderKey) -> Result<u64, DbError>
-        + Clone
-        + Send
-        + Sync
-        + 'static,
-) {
-    let order = std::sync::Arc::new(order);
-    let key_of_row = {
-        let (order, rows) = (order.clone(), rows.clone());
-        move |sql: &SqlReadContext<'_>, position| {
-            key_at(&order, position, &mut |seek, limit| rows(sql, &order, seek, limit))
-        }
-    };
-    let window_rows = {
-        let (order, rows) = (order.clone(), rows.clone());
-        move |sql: &SqlReadContext<'_>, window: &ListWindow| {
-            let read =
-                read_range(&order, window, &mut |seek, limit| rows(sql, &order, seek, limit))?;
-            Ok(read.rows.len())
-        }
-    };
-    let rows_before = move |sql: &SqlReadContext<'_>, key: &OrderKey| count(sql, &order, key);
-    measure_reads(db, list, name, n, key_of_row, window_rows, rows_before).await;
-}
-
-/// [`measure`] for a list given by its reads: `key_at` the key of the row at
-/// a position, `window` how many rows a window holds, and `count` how many
-/// come before a key.
+/// Read one window at each measured position of a list of `n` rows: by
+/// scrolling to it, by jumping to it, and, in the middle and at the end, the
+/// position of its first row. The list is given by its reads: `key_at` the
+/// key of the row at a position, `window` how many rows a window holds, and
+/// `count` how many come before a key.
 pub async fn measure_reads(
     db: &Store,
     list: &str,

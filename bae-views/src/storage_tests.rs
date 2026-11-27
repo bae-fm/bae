@@ -2,7 +2,7 @@
 //! change, its search, and every storage sort and the download queue read
 //! from an index.
 
-use crate::tests::{assert_seeks_search, both_ways, key_at, library};
+use crate::tests::{both_ways, library};
 use crate::*;
 use bae_records::test_fixtures::aggregate_ordering::aggregate_db;
 use bae_records::test_fixtures::album_listing::listed_db;
@@ -107,157 +107,168 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
     );
 }
 
-/// Sorting by storage reads a window from an index of the listing in either
-/// direction, under every filter: SQLite never sorts the list itself.
+const FIELDS: [StorageSortField; 7] = [
+    StorageSortField::AlbumTitle,
+    StorageSortField::ArtistNames,
+    StorageSortField::Media,
+    StorageSortField::FileCount,
+    StorageSortField::TotalSize,
+    StorageSortField::Storage,
+    StorageSortField::DateAdded,
+];
+
+/// The plan of the compiled `statement`, whose parameters stay unbound.
+async fn compiled_plan(db: &Store, statement: &'static str) -> Vec<crate::tests::PlanStep> {
+    db.read(move |sql| {
+        let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+        crate::tests::plan_steps(&sql, statement, unbound)
+    })
+    .await
+    .unwrap()
+}
+
+/// Whatever the list sorts by, whole or filtered, its window searches the
+/// index of that sort and reads it in order: the statement sorts nothing.
 #[tokio::test]
-async fn the_storage_sort_reads_a_window_from_an_index() {
-    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
-    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
-        for direction in [SortDirection::Ascending, SortDirection::Descending] {
-            let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
-            let order = crate::storage::storage_order(&sort);
-            let steps = crate::tests::plan(
-                &db,
-                crate::storage::storage_window_query(
-                    &order,
-                    filter,
-                    crate::storage::StorageRows::Listed,
-                    &order.everything(),
-                ),
-                order.everything(),
-                Vec::new(),
-            )
-            .await;
-            assert!(
-                steps.iter().any(|step| step.detail.contains("USING INDEX idx_release_listing_")
-                    && step.detail.contains("storage")),
-                "{filter:?} {direction:?}: {steps:?}"
-            );
-            assert!(
-                !steps
-                    .iter()
-                    .any(|step| step.own && step.detail.contains("TEMP B-TREE FOR ORDER BY")),
-                "{filter:?} {direction:?}: {steps:?}"
-            );
+async fn every_storage_sort_seeks_its_window_through_its_index() {
+    use crate::storage::{kept_window_reads::*, window_reads::*};
+    let (db, _tmp) = library().await;
+    let windows = [
+        (AllWindowTitle::SQL, "title"),
+        (AllWindowTitleBack::SQL, "title_back"),
+        (AllWindowArtist::SQL, "artist"),
+        (AllWindowArtistBack::SQL, "artist_back"),
+        (AllWindowMedia::SQL, "media"),
+        (AllWindowMediaBack::SQL, "media_back"),
+        (AllWindowFiles::SQL, "files"),
+        (AllWindowFilesBack::SQL, "files_back"),
+        (AllWindowSize::SQL, "size"),
+        (AllWindowSizeBack::SQL, "size_back"),
+        (AllWindowStorage::SQL, "storage"),
+        (AllWindowStorageBack::SQL, "storage_back"),
+        (AllWindowAdded::SQL, "added"),
+        (AllWindowAddedBack::SQL, "added_back"),
+        (KeptWindowTitle::SQL, "stored_title"),
+        (KeptWindowTitleBack::SQL, "stored_title_back"),
+        (KeptWindowArtist::SQL, "stored_artist"),
+        (KeptWindowArtistBack::SQL, "stored_artist_back"),
+        (KeptWindowMedia::SQL, "stored_media"),
+        (KeptWindowMediaBack::SQL, "stored_media_back"),
+        (KeptWindowFiles::SQL, "stored_files"),
+        (KeptWindowFilesBack::SQL, "stored_files_back"),
+        (KeptWindowSize::SQL, "stored_size"),
+        (KeptWindowSizeBack::SQL, "stored_size_back"),
+        (KeptWindowStorage::SQL, "stored_storage"),
+        (KeptWindowStorageBack::SQL, "stored_storage_back"),
+        (KeptWindowAdded::SQL, "stored_added"),
+        (KeptWindowAddedBack::SQL, "stored_added_back"),
+    ];
+    for (statement, name) in windows {
+        let steps = compiled_plan(&db, statement).await;
+        if name == "title" {
+            for step in &steps {
+                eprintln!("PLAN {step:?}");
+            }
         }
+        let own: Vec<&str> =
+            steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
+        let first = own.first().expect("the statement has a plan");
+        let index = format!("INDEX idx_release_listing_{name} (");
+        assert!(first.starts_with("SEARCH entry USING ") && first.contains(&index), "{steps:?}");
+        assert!(!own.iter().any(|step| step.starts_with("USE TEMP B-TREE")), "{name}: {steps:?}");
     }
 }
 
+/// A searched window, count of rows before a key and jump never scan the
+/// listing: they reach it by the albums the search finds.
 #[tokio::test]
-async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
+async fn a_searched_storage_read_never_scans_the_listing() {
+    use crate::storage::found_reads::*;
     let (db, _tmp) = library().await;
-    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
-        for field in [
-            StorageSortField::AlbumTitle,
-            StorageSortField::ArtistNames,
-            StorageSortField::Media,
-            StorageSortField::FileCount,
-            StorageSortField::TotalSize,
-            StorageSortField::Storage,
-            StorageSortField::DateAdded,
-        ] {
-            for (field, direction) in both_ways(field) {
-                let order =
-                    crate::storage::storage_order(&StorageSortCriterion { field, direction });
-                // Under Remote no release is listed, so the middle row of
-                // every release stands in for one.
-                let key = key_at(
-                    &db,
-                    &order,
-                    |sql, order, seek, limit| {
-                        crate::storage::storage_rows_on(
-                            sql,
-                            order,
-                            StorageFilter::All,
-                            None,
-                            seek,
-                            limit,
-                        )
-                    },
-                    150,
-                )
-                .await;
-                assert_seeks_search(
-                    &db,
-                    &format!("storage {filter:?} {field:?} {direction:?}"),
-                    &order,
-                    key,
-                    |seek| {
-                        crate::storage::storage_window_query(
-                            &order,
-                            filter,
-                            crate::storage::StorageRows::Listed,
-                            seek,
-                        )
-                    },
-                    Vec::new(),
-                )
-                .await;
-            }
-        }
+    for statement in [FoundWindow::SQL, FoundBefore::SQL, FoundKeyAt::SQL, FoundTotals::SQL] {
+        let steps = compiled_plan(&db, statement).await;
+        assert!(
+            !steps.iter().any(|step| ["entry", "sorted", "counted", "kept"].iter().any(|alias| {
+                step.detail == format!("SCAN {alias}")
+                    || step.detail.starts_with(&format!("SCAN {alias} "))
+            })),
+            "{steps:?}"
+        );
     }
 }
 
-/// The search pattern of `text`, as a statement binds it.
-fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
-    vec![(":search", rusqlite::types::Value::Text(bae_util::search_text::search_pattern(text)))]
+/// The ids of every row the list under `sort`, `filter` and `search` shows,
+/// in order, read as one window from its top.
+async fn listed(
+    views: &LibraryViews,
+    sort: &StorageSortCriterion,
+    filter: StorageFilter,
+    search: &str,
+) -> Vec<String> {
+    let mut window = views.subscribe_storage_window(sort, filter, search, ListWindow::top(1_000));
+    ids_of(&window.next_inline().await.expect("the query stays open").result.unwrap())
 }
 
-/// A searching Storage Manager list never scans the listing whole under
-/// any sort and filter: each seek of a searched window reaches the listing
-/// through its indexes, by the albums the search finds, and sorts only those.
+/// For each sort, the statement compiled for it and the searched list's,
+/// which takes the sort as a parameter, show the releases in one order, and
+/// the rows before a key, the jump, a window from a key, a range and the
+/// positions agree with it, whole, filtered and searched.
 #[tokio::test]
-async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index() {
+async fn every_storage_read_agrees_on_each_sort_s_order() {
     let (db, _tmp) = library().await;
-    let search = search_param("album 1");
-    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
-        for field in [
-            StorageSortField::AlbumTitle,
-            StorageSortField::ArtistNames,
-            StorageSortField::Media,
-            StorageSortField::FileCount,
-            StorageSortField::TotalSize,
-            StorageSortField::Storage,
-            StorageSortField::DateAdded,
-        ] {
-            for (field, direction) in both_ways(field) {
-                let order =
-                    crate::storage::storage_order(&StorageSortCriterion { field, direction });
-                let key = key_at(
-                    &db,
-                    &order,
-                    |sql, order, seek, limit| {
-                        crate::storage::storage_rows_on(
-                            sql,
-                            order,
-                            StorageFilter::All,
-                            None,
-                            seek,
-                            limit,
-                        )
-                    },
-                    150,
-                )
-                .await;
-                for seek in order.seeks_beside(&key) {
-                    let statement = crate::storage::storage_window_query(
-                        &order,
-                        filter,
-                        crate::storage::StorageRows::Searched,
-                        &seek,
-                    );
-                    let steps =
-                        crate::tests::plan(&db, statement, seek.clone(), search.clone()).await;
-                    assert!(
-                        !steps.iter().any(|step| crate::tests::LIST_ALIASES.iter().any(|alias| {
-                            step.detail.starts_with(&format!("SCAN {alias} "))
-                                || step.detail == format!("SCAN {alias}")
-                        })),
-                        "searched storage {filter:?} {field:?} {direction:?} {seek:?}: {steps:?}"
-                    );
-                }
+    let views = LibraryViews::new(db.clone());
+    for field in FIELDS {
+        for (field, direction) in both_ways(field) {
+            let sort = StorageSortCriterion { field, direction };
+            let all = listed(&views, &sort, StorageFilter::All, "").await;
+            assert_eq!(all.len(), 300, "{field:?} {direction:?}");
+            // Every release of the library is local, and every title holds
+            // "album".
+            for (filter, search) in [(StorageFilter::Local, ""), (StorageFilter::All, "album")] {
+                let what = format!("{field:?} {direction:?} {filter:?} {search:?}");
+                assert_eq!(listed(&views, &sort, filter, search).await, all, "{what}");
+            }
+            for (filter, search) in [
+                (StorageFilter::All, ""),
+                (StorageFilter::Local, ""),
+                (StorageFilter::All, "album"),
+            ] {
+                let what = format!("{field:?} {direction:?} {filter:?} {search:?}");
+                let key = views
+                    .storage_key_at(&sort, filter, search, 150)
+                    .await
+                    .unwrap()
+                    .expect("the list holds rows");
+                let mut position =
+                    views.subscribe_storage_position(&sort, filter, search, key.clone());
+                assert_eq!(position.next_inline().await.unwrap().result.unwrap(), 150, "{what}");
+                let mut window =
+                    views.subscribe_storage_window(&sort, filter, search, window_of_five_from(key));
+                let read = window.next_inline().await.unwrap().result.unwrap();
+                assert_eq!(ids_of(&read), all[150..155], "{what}");
+                let between = views
+                    .storage_ids_between(&sort, filter, search, &all[40], &all[20])
+                    .await
+                    .unwrap();
+                assert_eq!(between, all[20..=40], "{what}");
+                let last = views.storage_key_at(&sort, filter, search, 10_000).await.unwrap();
+                assert_eq!(
+                    last,
+                    views.storage_key_at(&sort, filter, search, 299).await.unwrap(),
+                    "{what}"
+                );
             }
         }
+    }
+    let sort = StorageSortCriterion {
+        field: StorageSortField::AlbumTitle,
+        direction: SortDirection::Ascending,
+    };
+    for (filter, search) in
+        [(StorageFilter::Remote, ""), (StorageFilter::All, "nothing holds this")]
+    {
+        assert!(listed(&views, &sort, filter, search).await.is_empty());
+        assert_eq!(views.storage_key_at(&sort, filter, search, 0).await.unwrap(), None);
     }
 }
 
@@ -276,48 +287,29 @@ async fn a_searched_count_and_list_find_the_same_releases() {
         })
         .await
         .unwrap();
-    let order = crate::storage::storage_order(&StorageSortCriterion {
+    let views = LibraryViews::new(db.clone());
+    let sort = StorageSortCriterion {
         field: StorageSortField::AlbumTitle,
         direction: SortDirection::Ascending,
-    });
+    };
     for text in ["album 1", "artist 0", "printed", "1", "nothing holds this"] {
         for filter in [StorageFilter::All, StorageFilter::Local] {
-            let order = order.clone();
-            let (counted, listed) = db
-                .read(move |sql| {
-                    let pattern = bae_util::search_text::search_pattern(text);
-                    let counted = crate::storage::storage_counts_on(&sql, filter, Some(&pattern))?;
-                    let statement = crate::storage::storage_window_query(
-                        &order,
-                        filter,
-                        crate::storage::StorageRows::Searched,
-                        &order.everything(),
-                    );
-                    let listed = order.everything().bound(u64::MAX, |params| {
-                        let mut params = params.to_vec();
-                        params.push((":search", &pattern));
-                        sql.query(&statement, params.as_slice(), |row| {
-                            Ok((
-                                row.get::<_, String>("release_id")?,
-                                row.get::<_, i64>("total_size")?,
-                            ))
-                        })
-                    })?;
-                    Ok((counted, listed))
-                })
-                .await
-                .unwrap();
-            assert_eq!(counted.0 as usize, listed.len(), "{text:?} {filter:?}: count");
+            let mut count = views.subscribe_storage_count(filter, text);
+            let counted = count.next_inline().await.expect("the query stays open").unwrap();
+            let mut window =
+                views.subscribe_storage_window(&sort, filter, text, ListWindow::top(1_000));
+            let read = window.next_inline().await.expect("the query stays open").result.unwrap();
+            assert_eq!(counted.rows as usize, read.rows.len(), "{text:?} {filter:?}: count");
             assert_eq!(
-                counted.1 as i64,
-                listed.iter().map(|(_, size)| size).sum::<i64>(),
+                counted.total_size,
+                read.rows.iter().map(|(row, _)| row.release.total_size).sum::<u64>(),
                 "{text:?} {filter:?}: size"
             );
             assert_eq!(
-                listed.is_empty(),
+                read.rows.is_empty(),
                 text == "nothing holds this",
                 "{text:?} {filter:?} finds {}",
-                listed.len()
+                read.rows.len()
             );
         }
     }

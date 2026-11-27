@@ -68,3 +68,28 @@ pub(crate) fn album_matches_sql(album_id: &str, pattern: &str) -> String {
         credits = albums_credits_find_sql(pattern),
     )
 }
+
+// The albums [`album_matches_sql`] finds for the pattern, for the compiled
+// statements, none for no pattern. An album two parts find is listed twice, so
+// the list is only read through `IN`.
+sqlive_compose::fragment!(
+    AlbumsFound(pattern: Option<String>) { album_id: Option<String> },
+    r#"
+    SELECT titled.album_id FROM album_search AS titled WHERE titled.title GLOB :pattern
+    UNION ALL
+    SELECT credit.album_id
+    FROM artist_search AS matched_artist
+    JOIN @bae_records::records::browse_fragments::ShownArtist AS shown
+      ON shown.shown_artist_id = matched_artist.artist_id
+    JOIN @bae_records::records::spread_fragments::AlbumArtistRow AS credit
+      ON credit.artist_id = shown.artist_id
+    WHERE matched_artist.name GLOB :pattern
+    UNION ALL
+    SELECT credit.album_id
+    FROM artist_credit_search AS matched_credit
+    JOIN @bae_records::records::spread_fragments::AlbumArtistRow AS credit
+      ON credit.artist_id = matched_credit.artist_id
+     AND credit.credit_key = matched_credit.name_key
+    WHERE matched_credit.name GLOB :pattern
+"#
+);

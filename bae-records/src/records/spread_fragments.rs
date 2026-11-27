@@ -11,6 +11,14 @@ sqlive_compose::fragment!(
 );
 
 sqlive_compose::fragment!(
+    AlbumArtistRow,
+    r#"
+    SELECT credit.album_id, credit.artist_id, credit.credit_key
+    FROM album_artists AS credit
+"#
+);
+
+sqlive_compose::fragment!(
     ArtistCreditName,
     r#"
     SELECT credit.artist_id, credit.name_key, credit.name

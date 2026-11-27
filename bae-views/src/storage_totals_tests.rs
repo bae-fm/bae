@@ -5,7 +5,7 @@
 use super::*;
 use crate::sync_activity::tests::{queue_upload, run_on_library_with_storage};
 use bae_records::test_fixtures::storage_listing::{
-    insert_file, plan, write_library, RELEASE_EARLY, RELEASE_LATE,
+    insert_file, write_library, RELEASE_EARLY, RELEASE_LATE,
 };
 
 /// The count and size the list shows under All, Local and Remote, in that
@@ -24,7 +24,10 @@ async fn checked_totals(store: &Store, after: &'static str) -> Totals {
             let mut read = Vec::new();
             let mut counted = Vec::new();
             for (filter, kept) in FILTERS.into_iter().zip(["1", "stored = 0", "stored = 1"]) {
-                read.push(crate::storage::storage_counts_on(&sql, filter, None)?);
+                read.push(crate::storage::storage_counts_on(
+                    &sql,
+                    &crate::storage::StorageScope::new(filter, ""),
+                )?);
                 counted.push(sql.query_row(
                     &format!(
                         "SELECT COUNT(*), COALESCE(SUM(total_size), 0) FROM release_storage \
@@ -121,15 +124,21 @@ fn the_stored_totals_match_a_count_of_the_storage_rows_after_each_write() {
 #[tokio::test]
 async fn the_totals_read_the_stored_totals_alone() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let plan = |statement: &'static str| {
+        let db = db.clone();
+        async move {
+            db.read(move |sql| {
+                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+                let steps = crate::tests::plan_steps(&sql, statement, unbound)?;
+                Ok(steps.into_iter().map(|step| step.detail).collect::<Vec<_>>())
+            })
+            .await
+            .unwrap()
+        }
+    };
+    assert_eq!(plan(AllStorageTotals::SQL).await, vec!["SCAN held".to_string()]);
     assert_eq!(
-        plan(&db, storage_totals_query(None)).await,
-        vec!["SCAN storage_totals".to_string()]
+        plan(KeptStorageTotals::SQL).await,
+        vec!["SEARCH held USING INTEGER PRIMARY KEY (rowid=?)".to_string()]
     );
-    for stored in [0, 1] {
-        assert_eq!(
-            plan(&db, storage_totals_query(Some(stored))).await,
-            vec!["SEARCH storage_totals USING INTEGER PRIMARY KEY (rowid=?)".to_string()],
-            "stored = {stored}"
-        );
-    }
 }

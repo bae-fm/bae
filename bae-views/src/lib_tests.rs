@@ -7,8 +7,7 @@
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
-use bae_store::list_windows::OrderKey;
-use bae_store::list_windows::{Keyed, ListOrder, Seek};
+use bae_store::list_windows::Seek;
 use bae_store::test_fixtures::temp_db;
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
@@ -225,23 +224,6 @@ pub(super) fn sorts_at_any_level(steps: &[PlanStep]) -> bool {
     steps.iter().any(sorts_for_order_by)
 }
 
-/// Hold every seek beside the row at `key` of `order`'s rows to an index:
-/// `statement` builds the seek's statement. No seek scans a list's table or
-/// sorts the list's rows, wholly or in part.
-pub(super) async fn assert_seeks_search(
-    db: &Store,
-    what: &str,
-    order: &ListOrder,
-    key: OrderKey,
-    statement: impl Fn(&Seek) -> String,
-    extra: Vec<(&'static str, rusqlite::types::Value)>,
-) {
-    for seek in order.seeks_beside(&key) {
-        let steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
-        assert!(!scans_or_sorts(&steps), "{what} {seek:?}: {steps:?}");
-    }
-}
-
 /// A library of 300 albums, each with an artist, a release, files and a
 /// work, every release queued to download and every track in the lane.
 pub(super) async fn library() -> (Store, bae_util::test_files::TestFolder) {
@@ -269,21 +251,6 @@ pub(super) async fn place_of(
 
 pub(super) fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
     [(field, SortDirection::Ascending), (field, SortDirection::Descending)]
-}
-
-/// The key of row `at` of `order`, read by `rows`.
-pub(super) async fn key_at<R: Send + 'static>(
-    db: &Store,
-    order: &ListOrder,
-    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64) -> Result<Vec<Keyed<R>>, DbError>
-        + Send
-        + 'static,
-    at: u64,
-) -> OrderKey {
-    let order = order.clone();
-    db.read(move |sql| Ok(rows(&sql, &order, &order.at_offset(at), 1)?.pop().unwrap().1))
-        .await
-        .unwrap()
 }
 
 #[tokio::test]
@@ -590,25 +557,35 @@ mod window_cost {
         }
     }
 
+    /// Time the reads of the Storage Manager list under `sort`, `filter` and
+    /// `search`, which holds `n` releases.
+    async fn measure_storage_list(
+        db: &Store,
+        list: &str,
+        name: &str,
+        n: u64,
+        sort: &StorageSortCriterion,
+        filter: StorageFilter,
+        search: &str,
+    ) {
+        let order = crate::storage::StorageList::new(sort, filter, search);
+        let (jumped, windowed, counted) = (order.clone(), order.clone(), order);
+        measure_reads(
+            db,
+            list,
+            name,
+            n,
+            move |sql, position| crate::storage::storage_key_at_on(sql, &jumped, position),
+            move |sql, window| {
+                Ok(crate::storage::storage_window_on(sql, &windowed, window)?.rows.len())
+            },
+            move |sql, key| crate::storage::storage_rows_before_on(sql, &counted, key),
+        )
+        .await;
+    }
+
     async fn measure_storage(db: &Store, n: u64) {
-        for (filter, rows) in [
-            (
-                StorageFilter::All,
-                (|sql, order, seek, limit| {
-                    crate::storage::storage_rows_on(
-                        sql,
-                        order,
-                        StorageFilter::All,
-                        None,
-                        seek,
-                        limit,
-                    )
-                }) as Rows<_>,
-            ),
-            (StorageFilter::Local, |sql, order, seek, limit| {
-                crate::storage::storage_rows_on(sql, order, StorageFilter::Local, None, seek, limit)
-            }),
-        ] {
+        for filter in [StorageFilter::All, StorageFilter::Local] {
             for field in [
                 StorageSortField::AlbumTitle,
                 StorageSortField::ArtistNames,
@@ -619,39 +596,29 @@ mod window_cost {
                 StorageSortField::DateAdded,
             ] {
                 for (field, direction) in both_ways(field) {
-                    let order =
-                        crate::storage::storage_order(&StorageSortCriterion { field, direction });
+                    let sort = StorageSortCriterion { field, direction };
                     let name = format!("{filter:?}_{field:?}_{direction:?}");
-                    let count = move |sql: &SqlReadContext<'_>, order: &_, key: &_| {
-                        crate::storage::storage_rows_before_on(sql, filter, None, order, key)
-                    };
-                    measure(db, "storage", &name, n, order, rows, count).await;
+                    measure_storage_list(db, "storage", &name, n, &sort, filter, "").await;
                 }
             }
         }
     }
 
     /// What a search narrowing the Storage Manager list costs: counting what it
-    /// finds, which every read of it does first, and then each window, read as
-    /// the search's counts decide. `album` is in every title; `album 123` is in
-    /// about one title in a thousand.
+    /// finds, and each read of the narrowed list. `album` is in every title;
+    /// `album 123` is in about one title in a thousand.
     async fn measure_storage_search(db: &Store, n: u64) {
         for (name, text) in [("broad", "album"), ("rare", "album 123")] {
-            let pattern = bae_util::search_text::search_pattern(text);
-            let counted = pattern.clone();
+            let scope = crate::storage::StorageScope::new(StorageFilter::All, text);
+            let counted = scope.clone();
             let timing = median(db, move |sql| {
-                let (count, _) =
-                    crate::storage::storage_counts_on(sql, StorageFilter::All, Some(&counted))?;
+                let (count, _) = crate::storage::storage_counts_on(sql, &counted)?;
                 Ok(count as usize)
             })
             .await;
             report("storage_search", name, "count", "all", 0, n, timing);
-            let counted = pattern.clone();
             let found = db
-                .read(move |sql| {
-                    Ok(crate::storage::storage_counts_on(&sql, StorageFilter::All, Some(&counted))?
-                        .0)
-                })
+                .read(move |sql| Ok(crate::storage::storage_counts_on(&sql, &scope)?.0))
                 .await
                 .unwrap();
             for (field, direction) in [
@@ -660,39 +627,10 @@ mod window_cost {
                 (StorageSortField::DateAdded, SortDirection::Descending),
                 (StorageSortField::Storage, SortDirection::Ascending),
             ] {
-                let order =
-                    crate::storage::storage_order(&StorageSortCriterion { field, direction });
-                let window_pattern = pattern.clone();
-                measure(
-                    db,
-                    "storage_search",
-                    &format!("{name}_{field:?}_{direction:?}"),
-                    found,
-                    order,
-                    move |sql, order, seek, limit| {
-                        crate::storage::storage_rows_on(
-                            sql,
-                            order,
-                            StorageFilter::All,
-                            Some(window_pattern.as_str()),
-                            seek,
-                            limit,
-                        )
-                    },
-                    {
-                        let pattern = pattern.clone();
-                        move |sql: &SqlReadContext<'_>, order: &_, key: &_| {
-                            crate::storage::storage_rows_before_on(
-                                sql,
-                                StorageFilter::All,
-                                Some(pattern.as_str()),
-                                order,
-                                key,
-                            )
-                        }
-                    },
-                )
-                .await;
+                let sort = StorageSortCriterion { field, direction };
+                let name = format!("{name}_{field:?}_{direction:?}");
+                let filter = StorageFilter::All;
+                measure_storage_list(db, "storage_search", &name, found, &sort, filter, text).await;
             }
         }
     }

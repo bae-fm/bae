@@ -81,15 +81,6 @@ fn track_own_credits_sql(track_alias: &str) -> String {
     credits_json_sql("track_artists", "track_id", &format!("{track_alias}.id"), "track_credits")
 }
 
-/// The album's releases in album order (see [`album_primary_release_sql`]).
-pub(crate) fn album_release_ids_json_sql() -> &'static str {
-    "COALESCE(( \
-        SELECT json_group_array(album_release.id ORDER BY album_release.album_order, album_release.id) \
-        FROM releases album_release \
-        WHERE album_release.album_id = a.id \
-    ), '[]')"
-}
-
 /// The album `a`'s primary release: its lowest-ordered release, ties broken
 /// by release id, so every device that holds the same rows names the same
 /// one.
@@ -97,24 +88,6 @@ pub fn album_primary_release_sql() -> &'static str {
     "(SELECT album_release.id FROM releases album_release \
       WHERE album_release.album_id = a.id \
       ORDER BY album_release.album_order, album_release.id LIMIT 1)"
-}
-
-/// Shared column list for album-summary queries over album `a`. Emits
-/// `album_credits` (the credit list as JSON), `release_ids_json`
-/// (releases in album order), `primary_release_id` and the version of that
-/// release's cover, `primary_cover_version`.
-pub fn album_summary_columns() -> String {
-    format!(
-        "a.id, a.title, a.year, a.is_compilation, \
-            {primary} AS primary_release_id, \
-            {cover} AS primary_cover_version, \
-            {album_credits} AS album_credits, \
-            {release_ids} AS release_ids_json",
-        primary = album_primary_release_sql(),
-        cover = super::files::cover_version_sql(album_primary_release_sql()),
-        album_credits = album_credits_json_sql(),
-        release_ids = album_release_ids_json_sql()
-    )
 }
 
 /// Owned SQL columns; JSON decoding runs after the read connection is released.
@@ -131,19 +104,6 @@ pub struct AlbumSummaryRow {
 }
 
 impl AlbumSummaryRow {
-    pub fn read(row: &Row) -> rusqlite::Result<Self> {
-        Ok(Self {
-            id: row.get("id")?,
-            title: row.get("title")?,
-            year: row.get("year")?,
-            is_compilation: row.get("is_compilation")?,
-            album_credits: row.get("album_credits")?,
-            release_ids_json: row.get("release_ids_json")?,
-            primary_release_id: row.get("primary_release_id")?,
-            primary_cover_version: row.get("primary_cover_version")?,
-        })
-    }
-
     pub fn process(self) -> Result<DbAlbumSummary, DbError> {
         let credits = self.credits()?;
         self.process_with(&credits)

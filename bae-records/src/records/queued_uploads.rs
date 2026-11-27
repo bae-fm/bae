@@ -163,7 +163,7 @@ impl crate::release_storage::ReleaseStorage {
     /// What of the release waits in this device's upload queue; `None` when
     /// none of its files waits. A count below zero, or past a `u32`, is
     /// refused.
-    pub(crate) fn upload(&self) -> Result<Option<DbReleaseUpload>, DbError> {
+    pub fn upload(&self) -> Result<Option<DbReleaseUpload>, DbError> {
         if self.queued_count == 0 {
             return Ok(None);
         }

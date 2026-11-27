@@ -61,17 +61,34 @@ sqlive_compose::fragment!(
 
 impl ReleaseStorage {
     /// Whether this device keeps every file of the release pinned and whole.
-    pub(crate) fn pinned(&self) -> bool {
+    pub fn pinned(&self) -> bool {
         self.pinned
     }
 
     /// Whether the release is in storage.
-    pub(crate) fn stored(&self) -> Result<bool, bae_store::DbError> {
+    pub fn stored(&self) -> Result<bool, bae_store::DbError> {
         match self.stored {
             0 => Ok(false),
             1 => Ok(true),
             other => Err(bae_store::DbError::unreadable("a release's stored flag", other)),
         }
+    }
+
+    /// How many files the release has.
+    pub fn file_count(&self) -> i64 {
+        self.file_count
+    }
+
+    /// The size of every one of the release's files.
+    pub fn total_size(&self) -> Result<u64, bae_store::DbError> {
+        u64::try_from(self.total_size)
+            .map_err(|_error| bae_store::DbError::unreadable("a release's size", self.total_size))
+    }
+
+    /// The name of the file whose changed original made a move of the release
+    /// fail; `None` when no move failed.
+    pub fn failed_move_file(&self) -> Option<&str> {
+        self.failed_move_file.as_deref()
     }
 
     /// The text that says which other device alone holds the release's audio.

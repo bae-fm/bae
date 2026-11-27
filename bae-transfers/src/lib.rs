@@ -13,9 +13,7 @@ mod release_queue;
 mod release_transfers;
 pub mod storage_moves;
 
-pub use download_entry::{
-    download_entry_column, download_entry_sql, DownloadEntry, DownloadKind, DownloadStep,
-};
+pub use download_entry::{DownloadEntry, DownloadKind, DownloadStep};
 pub use download_snapshot::{
     DownloadPhase, DownloadProgress, DownloadProgressError, DownloadRate, DownloadRequest,
     DownloadRow, DownloadSnapshot, DownloadTransfer, DownloadTransferProgress,

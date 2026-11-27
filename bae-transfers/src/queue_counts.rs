@@ -42,6 +42,61 @@ sqlive_compose::fragment!(
 "#
 );
 
+// What the download queue is doing: whether it holds an entry waiting or
+// running, whether the person paused it, the release it runs, and whether
+// coven says the device has a usable network.
+sqlive_compose::fragment!(
+    DownloadQueueWork {
+        download_working: bool,
+        download_paused: bool,
+        download_network: Option<bool>,
+    },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM download_queue AS held
+                   WHERE held.state IN ('queued', 'active')) AS download_working,
+           pause.paused AS download_paused,
+           (SELECT running.release_id FROM download_queue AS running
+            WHERE running.state = 'active') AS download_active,
+           network.network_usable AS download_network
+    FROM @crate::queue_counts::QueuePause AS pause
+    JOIN @crate::queue_counts::NetworkUsable AS network ON 1
+    WHERE pause.queue = 'download'
+"#
+);
+
+impl DownloadQueueWork {
+    /// While the queue holds work: what holds it back, and the release it
+    /// runs.
+    pub fn into_run(self) -> Option<(Option<QueueWait>, Option<String>)> {
+        self.download_working.then(|| {
+            (QueueWait::of(self.download_paused, self.download_network), self.download_active)
+        })
+    }
+}
+
+// What the export and save queue is doing, as [`DownloadQueueWork`] reads the
+// download queue; it needs no network.
+sqlive_compose::fragment!(
+    OutputQueueWork { output_working: bool, output_paused: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM output_queue AS held
+                   WHERE held.state IN ('queued', 'active')) AS output_working,
+           pause.paused AS output_paused,
+           (SELECT running.release_id FROM output_queue AS running
+            WHERE running.state = 'active') AS output_active
+    FROM @crate::queue_counts::QueuePause AS pause
+    WHERE pause.queue = 'output'
+"#
+);
+
+impl OutputQueueWork {
+    /// While the queue holds work: what holds it back, and the release it
+    /// runs.
+    pub fn into_run(self) -> Option<(Option<QueueWait>, Option<String>)> {
+        self.output_working.then(|| (QueueWait::of(self.output_paused, None), self.output_active))
+    }
+}
+
 // The download queue's counts, its pause, and the network.
 sqlive_compose::fragment!(
     StoredDownloadCounts,

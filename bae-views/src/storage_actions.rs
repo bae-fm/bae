@@ -1,13 +1,10 @@
 //! What a release's storage offers its person, decided in SQL from where its
-//! files are: the columns every read of a release's storage state carries, and
-//! what a selection of releases allows as one statement over them.
+//! files are: a fragment every read of a release's storage state spreads.
 
 use bae_types::release_storage::ReleaseStorageAction;
-use rusqlite::Row;
 
 /// The storage actions a release, or every release of a selection, offers,
-/// and whether Cancel is the only action, as `storage_action_columns` or
-/// `selection_action_columns` reads them.
+/// and whether Cancel is the only action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbStorageActionFlags {
     pub upload: bool,
@@ -35,20 +32,19 @@ impl DbStorageActionFlags {
         .collect()
     }
 
-    /// The flags the action columns gave `row`.
-    pub fn of_row(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            upload: row.get("can_upload")?,
-            pin: row.get("can_pin")?,
-            unpin: row.get("can_unpin")?,
-            move_to_this_device: row.get("can_move_to_this_device")?,
-            cancel_only: row.get("cancel_only")?,
-        })
+    /// No action: what a selection of no releases allows.
+    pub(crate) fn none() -> Self {
+        Self {
+            upload: false,
+            pin: false,
+            unpin: false,
+            move_to_this_device: false,
+            cancel_only: false,
+        }
     }
 }
 
-/// The storage actions a release offers and whether it is mid-transition, as
-/// `storage_action_columns` reads them.
+/// The storage actions a release offers and whether it is mid-transition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbStorageActions {
     pub offered: DbStorageActionFlags,
@@ -57,65 +53,15 @@ pub struct DbStorageActions {
     pub transitioning: bool,
 }
 
-impl DbStorageActions {
-    /// The actions `storage_action_columns` gave `row`.
-    pub fn of_row(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            offered: DbStorageActionFlags::of_row(row)?,
-            transitioning: row.get("transitioning")?,
-        })
-    }
-}
-
-/// Whether a release's files wait to upload or a transfer of them runs, for
-/// the release `release` (an SQL expression naming its id) whose
-/// storage row is `storage`: files wait in the upload queue, or its
-/// download queue entry runs, or is a move to this device waiting. Starting
-/// another storage action then would conflict with it.
-fn transitioning_sql(release: &str) -> String {
-    format!(
-        "(COALESCE(storage.queued_count > 0, 0) \
-          OR EXISTS (SELECT 1 FROM download_queue q WHERE q.release_id = {release} \
-                     AND (q.state = 'active' \
-                          OR (q.kind = 'move_to_this_device' AND q.state = 'queued'))))"
-    )
-}
-
-/// The columns of the storage actions the release `release` (an SQL
-/// expression naming its id) offers, beside its storage row
-/// `storage`: one `can_<action>` for each, and `transitioning`.
-///
-/// A release mid-transition offers none. A release not in storage offers
-/// `Upload` while storage is connected, and a release in storage offers `Pin`
-/// or `Unpin` by whether this device keeps every file, and `MoveToThisDevice`.
-/// Nothing here asks what coven would refuse: coven refuses a move of a file
-/// another device holds, or a pin or a move to this device with no storage,
-/// and the app shows coven's reason.
-pub(crate) fn storage_action_columns(release: &str) -> String {
-    let offered = format!("NOT {transitioning}", transitioning = transitioning_sql(release));
-    // coven queues a move with no storage connected rather than refusing it,
-    // so the offer of Upload waits for storage itself.
-    let connected = "(SELECT storage = 'connected' FROM coven_sync_status)";
-    let stored = "COALESCE(storage.stored = 1, 0)";
-    let pinned = "COALESCE(storage.pinned, 0)";
-    format!(
-        "({offered} AND {connected} AND NOT {stored}) AS can_upload, \
-         ({offered} AND {stored} AND NOT {pinned}) AS can_pin, \
-         ({offered} AND {stored} AND {pinned}) AS can_unpin, \
-         ({offered} AND {stored}) AS can_move_to_this_device, \
-         {transitioning} AS transitioning, \
-         ({transitioning} OR COALESCE(storage.failed_move_file IS NOT NULL, 0)) AS cancel_only",
-        transitioning = transitioning_sql(release),
-    )
-}
-
 // The storage actions each release offers and whether it is mid-transition,
-// by `actions_release_id`, as `storage_action_columns` states them: a release
-// mid-transition (files waiting in the upload queue, or its download entry
-// running or a move to this device waiting) offers none. A release not in
-// storage offers Upload while storage is connected, and a release in storage
-// offers Pin or Unpin by whether this device keeps every file, and Move to This
-// Device.
+// by `actions_release_id`: a release mid-transition (files waiting in the
+// upload queue, or its download entry running or a move to this device
+// waiting) offers none. A release not in storage offers Upload while storage
+// is connected, and a release in storage offers Pin or Unpin by whether this
+// device keeps every file, and Move to This Device. Nothing here asks what coven would refuse: coven refuses a move of a
+// file another device holds, or a pin or a move to this device with no storage,
+// and the app shows coven's reason. coven queues a move with no storage
+// connected rather than refusing it, so the offer of Upload waits for storage.
 sqlive_compose::fragment!(
     ReleaseStorageActions {
         can_upload: bool,
@@ -163,15 +109,4 @@ impl ReleaseStorageActions {
             transitioning: self.transitioning,
         }
     }
-}
-
-/// The columns over rows carrying `storage_action_columns`: each action
-/// every row offers (the least of its flags, none for no rows) and whether
-/// Cancel is the only action one of the rows offers.
-pub(crate) fn selection_action_columns() -> &'static str {
-    "COALESCE(MIN(can_upload), 0) AS can_upload, \
-     COALESCE(MIN(can_pin), 0) AS can_pin, \
-     COALESCE(MIN(can_unpin), 0) AS can_unpin, \
-     COALESCE(MIN(can_move_to_this_device), 0) AS can_move_to_this_device, \
-      COALESCE(MAX(cancel_only), 0) AS cancel_only"
 }

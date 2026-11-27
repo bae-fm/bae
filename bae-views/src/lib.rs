@@ -79,16 +79,14 @@ use release::{build_album_release_details_on, ReleaseDetailRows};
 
 use album_search::*;
 use bae_records::credits::LibraryCredit;
-use bae_records::records::files::{artist_image_version_sql, cover_version_sql};
+use bae_records::records::files::artist_image_version_sql;
 use bae_records::records::name_sort::sort_key_sql;
-use bae_records::records::pressing_columns::{read_media, release_media_sql};
 use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::*;
 use bae_store::list_windows::{key_at, Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::*;
 use bae_store::*;
-use bae_transfers::download_entry_sql;
 use bae_util::search_text::search_pattern;
 use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};

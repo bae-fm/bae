@@ -90,6 +90,23 @@ sqlive_compose::fragment!(
         '[]') AS credits
 "#);
 
+// Each release's media.
+sqlive_compose::fragment!(
+    MediaOfRelease,
+    r#"
+    SELECT release.id AS media_release_id,
+           @crate::records::pressing_columns::ReleaseMedia(parent: release) AS media
+    FROM releases AS release
+"#
+);
+
+impl MediaOfRelease {
+    /// The release's carriers and their counts.
+    pub fn counts(&self) -> Result<Vec<bae_types::pressing::MediaCount>, DbError> {
+        self.media.counts()
+    }
+}
+
 // The ids of the album's releases in album order (the primary release first),
 // as a JSON array.
 sqlive_compose::fragment!(
@@ -120,6 +137,16 @@ sqlive_compose::fragment!(
 );
 
 impl AlbumSummary {
+    /// The album the summary is of.
+    pub fn album_id(&self) -> &str {
+        &self.summary_album_id
+    }
+
+    /// The album's title.
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
     /// The summary as the row [`AlbumSummaryRow::process`] decodes. The
     /// library lists an album only while it holds a release, and the credits'
     /// own SQL yields a value for every album, so a missing one of either is
