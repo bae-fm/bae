@@ -165,11 +165,6 @@ async fn every_storage_sort_seeks_its_window_through_its_index() {
     ];
     for (statement, name) in windows {
         let steps = compiled_plan(&db, statement).await;
-        if name == "title" {
-            for step in &steps {
-                eprintln!("PLAN {step:?}");
-            }
-        }
         let own: Vec<&str> =
             steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
         let first = own.first().expect("the statement has a plan");
