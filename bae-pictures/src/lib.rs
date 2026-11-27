@@ -8,6 +8,8 @@ mod copy;
 mod ffi;
 mod flights;
 mod gate;
+#[cfg(libvips)]
+mod orientation;
 mod origin;
 #[cfg(libvips)]
 mod source;
