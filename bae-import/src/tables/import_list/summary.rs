@@ -6,104 +6,240 @@
 //! a surface makes of a list on its own: the view that reveals a candidate,
 //! where the list shows it, and which candidate bae identifies first.
 
-use super::order;
+use super::list_items::{order_name, ListBinding};
 use super::*;
 use crate::list::{ImportListCount, ImportListReveal, ImportQueueSummary, NarrowedCount};
-use crate::RelativeFolder;
 use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
 
-/// Every tab's count: the releases and folders that failed validation it
-/// lists, which is every placement row but a group's header.
-pub(super) const TAB_COUNTS: &str =
-    "SELECT COALESCE(SUM(count) FILTER (WHERE tab = 'pending'), 0), \
-            COALESCE(SUM(count) FILTER (WHERE tab = 'done'), 0), \
-            COALESCE(SUM(count) FILTER (WHERE tab = 'skipped'), 0) \
-     FROM import_list_count WHERE item <> 'group'";
+// Every tab's count: the releases and folders that failed validation it
+// lists, which is every placement row but a group's header.
+sqlive_compose::fragment!(
+    TabCounts { pending: i64, done: i64, skipped: i64 },
+    r#"
+    SELECT COALESCE(SUM(count) FILTER (WHERE tab = 'pending'), 0) AS pending,
+        COALESCE(SUM(count) FILTER (WHERE tab = 'done'), 0) AS done,
+        COALESCE(SUM(count) FILTER (WHERE tab = 'skipped'), 0) AS skipped
+    FROM import_list_count
+    WHERE item <> 'group'
+"#
+);
 
-/// The statement summing the counts kept beside the placement that `test`,
-/// over the count row aliased `c`, keeps: how many placement rows those
-/// counts hold.
-fn counted(test: &str) -> String {
-    format!("SELECT COALESCE(SUM(c.count), 0) FROM import_list_count AS c WHERE {test}")
+impl TabCounts {
+    fn counts(&self) -> Result<TriageTabCounts, DbError> {
+        Ok(TriageTabCounts {
+            pending: to_u32(self.pending, "the pending tab's count")?,
+            done: to_u32(self.done, "the done tab's count")?,
+            skipped: to_u32(self.skipped, "the skipped tab's count")?,
+        })
+    }
 }
 
-/// Every tab's count: what the tab bar shows, whatever a list is narrowed by.
-#[cfg(any(test, feature = "test-utils"))]
-pub(super) fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
-    tab_counts(sql.query_row(TAB_COUNTS, [], |row| {
-        Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?))
-    })?)
-}
+// Whether bae watches any folder, and whether Found has any group: a group's
+// header is a placement row of its own, which the counts count.
+sqlive_compose::read!(
+    Summary { has_watched_folders: bool, has_groups: bool },
+    r#"
+    SELECT EXISTS (
+               SELECT 1 FROM @crate::tables::watched_folders::fragments::WatchedFolderRows
+                   AS watched) AS has_watched_folders,
+           EXISTS (
+               SELECT 1 FROM import_list_count
+               WHERE tab = 'pending' AND item = 'group') AS has_groups
+"#
+);
 
-/// The tab counts [`TAB_COUNTS`] selects, in its columns' order.
-fn tab_counts((pending, done, skipped): (i64, i64, i64)) -> Result<TriageTabCounts, DbError> {
-    Ok(TriageTabCounts {
-        pending: to_u32(pending, "the pending tab's count")?,
-        done: to_u32(done, "the done tab's count")?,
-        skipped: to_u32(skipped, "the skipped tab's count")?,
-    })
-}
+// Every entry of Found's filter, in the order of `entries`, a JSON array of
+// them, with how many of Found's releases each holds: `all` holds every one
+// and the others each hold those in their states. The person cannot choose an
+// entry that holds no releases.
+sqlive_compose::read!(
+    FilterEntries(entries: String, all: String) {
+        entry: Option<String>, count: i64, selectable: bool
+    },
+    r#"
+    WITH named(position, entry) AS (
+        SELECT listed.key, listed.value FROM json_each(:entries) AS listed
+    ), held(entry, count) AS (
+        SELECT pending_entry, count FROM import_list_count
+        WHERE pending_entry IS NOT NULL
+    ), counted(position, entry, count) AS (
+        SELECT named.position, named.entry,
+            CASE WHEN named.entry = :all
+                THEN (SELECT COALESCE(SUM(every.count), 0) FROM held AS every)
+                ELSE COALESCE(held.count, 0) END
+        FROM named
+        LEFT JOIN held ON held.entry = named.entry
+    )
+    SELECT counted.entry, counted.count, counted.count > 0 AS selectable
+    FROM counted
+    ORDER BY counted.position
+"#
+);
 
-/// Whether Found has any group: a group's header is a placement row of its
-/// own, which the counts count.
-const HAS_GROUPS: &str =
-    "SELECT EXISTS (SELECT 1 FROM import_list_count WHERE tab = 'pending' AND item = 'group')";
+// The groups `folded` names, each a JSON array of its watched folder's path
+// and its folder in hex, as the placement holds them.
+sqlive_compose::fragment!(
+    NamedGroups(folded: String) {
+        named_root: Option<Vec<u8>>, named_folder: Option<Vec<u8>>
+    },
+    r#"
+    SELECT unhex(json_extract(named.value, '$[0]')) AS named_root,
+        unhex(json_extract(named.value, '$[1]')) AS named_folder
+    FROM json_each(:folded) AS named
+"#
+);
 
-fn has_groups_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
-    Ok(sql.query_row(HAS_GROUPS, [], |row| row.get(0))?)
-}
+// How many items a list that searches for nothing holds, and, while Found's
+// filter entry narrows it, how many releases that entry keeps, from the
+// counts kept beside the placement alone: the releases the entry keeps, less
+// those under the groups the list folds shut, plus the header of each group
+// holding a kept release. The group counts hold each group's members in each
+// entry, so they give the folded members and, under an entry, the groups
+// holding one of its releases; with no entry, every group's header counts.
+// `entries` is a JSON array of the entries the list keeps, every one of them
+// while no entry narrows it, which the group counts are searched by. Only
+// Found has groups.
+sqlive_compose::read!(
+    KeptCount(
+        tab: String, filter: Option<String>, entries: String, folds_only: bool, folded: String
+    ) { rows: i64, shown: Option<i64> },
+    r#"
+    WITH releases(kept) AS MATERIALIZED (
+        SELECT COALESCE(SUM(c.count), 0) FROM import_list_count AS c
+        WHERE c.tab = :tab AND c.item <> 'group'
+          AND (:filter IS NULL OR c.pending_entry = :filter)
+    )
+    SELECT tabs.*,
+        releases.kept
+        - (SELECT COALESCE(SUM(g.count), 0) FROM import_list_group_count AS g
+           WHERE :tab = 'pending'
+             AND g.pending_entry IN (SELECT kept.value FROM json_each(:entries) AS kept)
+             AND ((g.watched_folder_path, g.group_folder) IN (
+                      SELECT named.named_root, named.named_folder
+                      FROM @crate::tables::import_list::summary::NamedGroups(folded: :folded)
+                          AS named)) = :folds_only)
+        + (SELECT COALESCE(SUM(c.count), 0) FROM import_list_count AS c
+           WHERE :filter IS NULL AND :tab = 'pending' AND c.tab = 'pending'
+             AND c.item = 'group')
+        + (SELECT count(*) FROM import_list_group_count AS g
+           WHERE :tab = 'pending' AND g.pending_entry = :filter) AS rows,
+        iif(:filter IS NULL, NULL, releases.kept) AS shown
+    FROM releases
+    CROSS JOIN @crate::tables::import_list::summary::TabCounts AS tabs
+"#
+);
+
+// The entries of the search index whose shown text matches the pattern of
+// `filter_text`, every tab's, as the index finds them: what a search's counts
+// read instead of testing every row of the tab.
+sqlive_compose::fragment!(
+    SearchFound(filter_text: String) { found_entry: i64 },
+    r#"
+    SELECT s.rowid AS found_entry
+    FROM import_list_search AS s
+    WHERE s.title GLOB bae_search_pattern(:filter_text)
+       OR s.artists GLOB bae_search_pattern(:filter_text)
+"#
+);
+
+// How many releases a searching list's filters keep, folded groups' members
+// included (`shown`), and how many items it holds (`rows`), both over the
+// rows its search finds, which are read once: the kept releases outside the
+// groups it folds shut, and the headers of the groups holding a kept release.
+sqlive_compose::read!(
+    SearchCount(
+        tab: String, filter: Option<String>, filter_text: String, folds_only: bool,
+        folded: String
+    ) { rows: i64, shown: i64 },
+    r#"
+    WITH kept AS MATERIALIZED (
+        SELECT m.watched_folder_path, m.group_folder,
+            COALESCE(@crate::tables::import_list::row_fragments::Folded(
+                folds_only: :folds_only, folded: :folded, parent: m), 0) AS folded
+        FROM @crate::tables::import_list::summary::SearchFound(filter_text: :filter_text) AS f
+        CROSS JOIN import_list_placement AS m ON m.entry = f.found_entry
+        WHERE +m.tab = :tab AND m.item <> 'group'
+          AND (:filter IS NULL OR m.pending_entry = :filter)
+    )
+    SELECT tabs.*,
+        (SELECT count(*) FROM kept WHERE NOT kept.folded)
+        + (SELECT count(*)
+           FROM (SELECT DISTINCT kept.watched_folder_path, kept.group_folder FROM kept
+                 WHERE kept.group_folder IS NOT NULL) AS g
+           CROSS JOIN import_list_placement AS h
+               ON h.watched_folder_path = g.watched_folder_path
+              AND h.item = 'group' AND h.key = g.group_folder) AS rows,
+        (SELECT count(*) FROM kept) AS shown
+    FROM @crate::tables::import_list::summary::TabCounts AS tabs
+"#
+);
 
 /// Every entry of Found's filter, in the menu's order, with how many of
-/// Found's releases it holds: `all` holds every one and the others each hold
-/// those in their states. The person cannot choose an entry that holds no
-/// releases.
-pub(super) fn filter_entries_sql() -> String {
-    let entries = PendingFilter::ENTRIES
-        .iter()
-        .enumerate()
-        .filter(|(_, filter)| **filter != PendingFilter::All)
-        .map(|(position, filter)| format!("({position}, '{}')", pending_filter_column(*filter)))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let all = pending_filter_column(PendingFilter::All);
-    format!(
-        "WITH entries (position, entry) AS (VALUES {entries}), \
-         held (entry, count) AS ( \
-             SELECT pending_entry, count FROM import_list_count \
-             WHERE pending_entry IS NOT NULL), \
-         counted (position, entry, count) AS ( \
-             SELECT 0, '{all}', COALESCE(SUM(count), 0) FROM held \
-             UNION ALL \
-             SELECT e.position, e.entry, COALESCE(h.count, 0) FROM entries AS e \
-             LEFT JOIN held AS h ON h.entry = e.entry) \
-         SELECT entry, count, count > 0 FROM counted ORDER BY position"
-    )
+/// Found's releases it holds.
+pub(super) fn filter_entries(
+    sql: &impl coven::SqlRead,
+) -> Result<Vec<PendingFilterEntry>, DbError> {
+    statement_rows(sql, &filter_entries_params())?
+        .into_iter()
+        .map(|row| {
+            let entry = row
+                .entry
+                .ok_or_else(|| DbError::unreadable("an entry of Found's filter", None::<String>))?;
+            Ok(PendingFilterEntry {
+                filter: pending_filter_of(&entry)?,
+                count: to_u32(row.count, "a filter entry's count")?,
+                selectable: row.selectable,
+            })
+        })
+        .collect()
 }
 
-/// How many of Found's releases each filter entry holds, in the menu's
-/// order.
-pub(super) fn filter_entries(sql: &SqlReadContext<'_>) -> Result<Vec<PendingFilterEntry>, DbError> {
-    sql.query(&filter_entries_sql(), [], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, bool>(2)?))
-    })?
-    .into_iter()
-    .map(|(entry, count, selectable)| {
-        Ok(PendingFilterEntry {
-            filter: pending_filter_of(&entry)?,
-            count: to_u32(count, "a filter entry's count")?,
-            selectable,
-        })
-    })
-    .collect()
+pub(super) fn filter_entries_params() -> FilterEntriesParams {
+    FilterEntriesParams {
+        entries: entry_list(&PendingFilter::ENTRIES),
+        all: pending_filter_column(PendingFilter::All).to_string(),
+    }
+}
+
+/// `filters` as the JSON array of entries a statement binds.
+fn entry_list(filters: &[PendingFilter]) -> String {
+    let entries: Vec<&str> = filters.iter().copied().map(pending_filter_column).collect();
+    serde_json::to_string(&entries).expect("a list of text serializes")
 }
 
 /// The summary a surface shows beside the list's rows: whether bae watches
 /// any folder, and whether Found has any group.
-pub(super) fn summary(sql: &SqlReadContext<'_>) -> Result<ImportQueueSummary, DbError> {
+pub(super) fn summary(sql: &impl coven::SqlRead) -> Result<ImportQueueSummary, DbError> {
+    let row = statement_row(sql, &SummaryParams {})?;
     Ok(ImportQueueSummary {
-        has_watched_folders: super::watched_folders::any_watched_on(sql)?,
-        has_groups: has_groups_on(sql)?,
+        has_watched_folders: row.has_watched_folders,
+        has_groups: row.has_groups,
     })
+}
+
+/// The statement counting a list: the read of its search's rows while it
+/// searches, else of the kept counts, with what it binds.
+pub(super) enum CountStatement {
+    Kept(KeptCountParams),
+    Search(SearchCountParams),
+}
+
+impl CountStatement {
+    pub(super) fn of(request: &ImportListRequest) -> Self {
+        let ListBinding { tab, filter, filter_text, folds_only, folded } = ListBinding::of(request);
+        match filter_text {
+            Some(filter_text) => {
+                Self::Search(SearchCountParams { tab, filter, filter_text, folds_only, folded })
+            }
+            None => {
+                let entries = match request.entry() {
+                    Some(entry) => entry_list(&[entry]),
+                    None => entry_list(&PendingFilter::ENTRIES),
+                };
+                Self::Kept(KeptCountParams { tab, filter, entries, folds_only, folded })
+            }
+        }
+    }
 }
 
 /// How many items the list `request` shows holds, how many of its tab's
@@ -111,22 +247,20 @@ pub(super) fn summary(sql: &SqlReadContext<'_>) -> Result<ImportQueueSummary, Db
 /// tab counts beside the list's own counts, so a narrowed list's total is the
 /// tab bar's count of its tab.
 pub(super) fn count(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     request: &ImportListRequest,
 ) -> Result<ImportListCount, DbError> {
-    let items = Items::new(request.clone());
-    let (tabs, rows, shown) = items
-        .query(sql, &count_statement(request), &[], |row| {
-            Ok((
-                (row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?),
-                row.get::<_, i64>(3)?,
-                row.get::<_, Option<i64>>(4)?,
-            ))
-        })?
-        .into_iter()
-        .next()
-        .expect("a count answers one row");
-    let tabs = tab_counts(tabs)?;
+    let (tabs, rows, shown) = match CountStatement::of(request) {
+        CountStatement::Kept(params) => {
+            let row = statement_row(sql, &params)?;
+            (row.tabs, row.rows, row.shown)
+        }
+        CountStatement::Search(params) => {
+            let row = statement_row(sql, &params)?;
+            (row.tabs, row.rows, Some(row.shown))
+        }
+    };
+    let tabs = tabs.counts()?;
     let narrowed = match shown {
         Some(shown) => Some(NarrowedCount {
             shown: to_u32(shown, "a list's narrowed count")?,
@@ -137,132 +271,43 @@ pub(super) fn count(
     Ok(ImportListCount { rows: to_u64(rows, "a list's item count")?, narrowed, tabs })
 }
 
-/// The statement [`count`] reads: every tab's count, then how many items the
-/// list `request` shows holds and how many of its tab's entries its
-/// narrowing keeps.
-fn count_statement(request: &ImportListRequest) -> String {
-    format!(
-        "SELECT tabs.*, listed.items, listed.shown FROM ({TAB_COUNTS}) AS tabs, ({listed}) AS listed",
-        listed = listed(request),
+// Where the candidate at `opened` shows once revealed: its tab, its group,
+// and how many items sit before it among its tab's, in the list's order with
+// the filters cleared and its group opened.
+sqlive_compose::read!(
+    Revealed(
+        list_order: String, tab: Option<String>, filter: Option<String>,
+        filter_text: Option<String>, folds_only: bool, folded: String,
+        opened: Option<crate::CandidateKey>
+    ) { group_folder: Option<crate::RelativeFolder>, position: i64 },
+    r#"
+    WITH listed(release_key, release_position) AS (
+        SELECT shown.release_key, shown.release_position
+        FROM @crate::tables::import_list::list_items::ShownReleases(
+            list_order: :list_order, tab: :tab, filter: :filter, filter_text: :filter_text,
+            folds_only: :folds_only, folded: :folded, opened: :opened) AS shown
     )
-}
+    SELECT revealed.tab, revealed.watched_folder_path, revealed.group_folder,
+        listed.release_position AS position
+    FROM import_list_placement AS revealed
+    JOIN listed ON listed.release_key = revealed.key
+    WHERE revealed.key = :opened AND revealed.item = 'candidate'
+"#
+);
 
-/// The statement counting how many releases a searching list's filters keep
-/// (`shown`), and how many items it holds (`items`), both over the rows its
-/// search finds, which are read once: the kept releases outside the groups it
-/// folds shut, and the headers among its items of the groups holding a kept
-/// release.
-pub(super) fn search_counts(request: &ImportListRequest) -> String {
-    format!(
-        "WITH kept AS MATERIALIZED ( \
-             SELECT m.watched_folder_path, m.group_folder, m.folded FROM {found} AS f \
-             CROSS JOIN {matching} AS m ON m.entry = f.entry) \
-         SELECT (SELECT count(*) FROM kept) AS shown, \
-                (SELECT count(*) FROM kept WHERE NOT folded) \
-                + (SELECT count(*) \
-                   FROM (SELECT DISTINCT watched_folder_path, group_folder FROM kept \
-                         WHERE group_folder IS NOT NULL) AS g \
-                   CROSS JOIN {items} AS h \
-                       ON h.watched_folder_path = g.watched_folder_path \
-                      AND h.item = 'group' AND h.key = g.group_folder) AS items",
-        found = request.found(),
-        matching = request.matching(),
-        items = request.items(),
-    )
-}
-
-/// The statement counting how many items a list that searches for nothing
-/// holds, from the counts kept beside the placement alone: the releases its
-/// filter entry keeps, less those under the groups it folds shut, plus the
-/// header of each group holding a kept release. The group counts
-/// (`import_list_group_count`) hold each group's members in each entry, so
-/// they give the folded members and, under an entry, the groups holding one
-/// of its releases; with no entry, every group's header counts.
-fn kept_items(request: &ImportListRequest) -> String {
-    let pending = request.view.tab == TriageTab::Pending;
-    let kept = match request.entry_sql("c") {
-        Some(entry) => counted(&entry),
-        None => counted(&format!(
-            "c.tab = {tab} AND c.item <> 'group'",
-            tab = tab_literal(request.view.tab)
-        )),
-    };
-    let folded = match pending {
-        true => format!(
-            "SELECT COALESCE(SUM(g.count), 0) FROM import_list_group_count AS g \
-             WHERE {folds} AND {entry}",
-            folds = request.folds_sql("g.watched_folder_path", "g.group_folder"),
-            entry = request.entry_sql("g").unwrap_or_else(|| "1".to_string()),
-        ),
-        false => "SELECT 0".to_string(),
-    };
-    let headers = match (pending, request.entry_sql("g")) {
-        (false, _) => "SELECT 0".to_string(),
-        (true, None) => counted("c.tab = 'pending' AND c.item = 'group'"),
-        (true, Some(entry)) => {
-            format!("SELECT COUNT(*) FROM import_list_group_count AS g WHERE {entry}")
-        }
-    };
-    format!("SELECT ({kept}) - ({folded}) + ({headers})")
-}
-
-/// The statement counting how many items the list shows (`items`) — its
-/// releases its filters keep outside the groups it folds shut, and the header
-/// of each group holding one — and how many releases its filters keep while
-/// they narrow it (`shown`), NULL while they don't. Without a search these
-/// are the kept counts; a search counts the rows it finds.
-fn listed(request: &ImportListRequest) -> String {
-    if request.filters_text() {
-        return search_counts(request);
+/// The statement revealing the candidate at `key` from the list `request`
+/// shows, whose tab is the candidate's own and whose filters are cleared.
+pub(super) fn reveal_params(request: &ImportListRequest, key: &CandidateKey) -> RevealedParams {
+    let ListBinding { folds_only, folded, .. } = ListBinding::of(request);
+    RevealedParams {
+        list_order: order_name(request.view.order),
+        tab: None,
+        filter: None,
+        filter_text: None,
+        folds_only,
+        folded,
+        opened: Some(key.clone()),
     }
-    let items = kept_items(request);
-    // Without a search, only Found's filter entry narrows the list.
-    let shown = match request.entry_sql("c") {
-        Some(entry) => counted(&entry),
-        None => "SELECT NULL".to_string(),
-    };
-    format!("SELECT ({items}) AS items, ({shown}) AS shown")
-}
-
-/// The CTE a reveal starts from: the candidate's placement row, by its key.
-const REVEALED: &str = "revealed AS ( \
-     SELECT * FROM import_list_placement WHERE key = :key AND item = 'candidate')";
-
-/// The group a reveal opens, whatever the list's folds say: the candidate's.
-const REVEALED_GROUP: &str = "SELECT watched_folder_path, group_folder FROM revealed \
-     WHERE group_folder IS NOT NULL";
-
-/// The request that reveals a candidate on `tab` from the list `request`
-/// shows: the filters cleared, the order and the folds kept.
-fn revealing(request: &ImportListRequest, tab: TriageTab) -> ImportListRequest {
-    ImportListRequest {
-        view: crate::ImportListView {
-            tab,
-            search: None,
-            pending_filter: PendingFilter::All,
-            order: request.view.order,
-        },
-        folds: request.folds.clone(),
-    }
-}
-
-/// The statement revealing the candidate at `:key` from the list `request`
-/// shows, in one read: it finds the candidate's placement row by its key,
-/// and an arm for each tab counts, when the row is on that tab, the items
-/// before it in the tab's order with the filters cleared and the candidate's
-/// group opened, off the order's index. It selects the
-/// tab, the group and the position.
-pub(super) fn reveal_statement(request: &ImportListRequest) -> String {
-    let (ctes, arms): (Vec<String>, Vec<String>) =
-        [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped]
-            .into_iter()
-            .map(|tab| Items::revealing(revealing(request, tab), REVEALED_GROUP).reveal_arm())
-            .unzip();
-    format!(
-        "WITH {REVEALED}, {ctes} {arms}",
-        ctes = ctes.join(", "),
-        arms = arms.join(" UNION ALL ")
-    )
 }
 
 /// What revealing the candidate at `key` from the list `request` shows: the
@@ -270,31 +315,27 @@ pub(super) fn reveal_statement(request: &ImportListRequest) -> String {
 /// group opened and the list's order and other folds kept, and where it sits
 /// there. `None` for a candidate no tab lists.
 pub(super) fn reveal(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     request: &ImportListRequest,
     key: &CandidateKey,
 ) -> Result<Option<ImportListReveal>, DbError> {
-    // Every tab's arm binds the same values: no search, no filter entry, and
-    // the request's folds.
-    let items = Items::revealing(revealing(request, TriageTab::Pending), REVEALED_GROUP);
-    let Some((tab, root, group_folder, position)) = items
-        .query(sql, &reveal_statement(request), &[(":key", key)], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                path_column::get(row, 1)?,
-                row.get::<_, Option<RelativeFolder>>(2)?,
-                row.get::<_, i64>(3)?,
-            ))
-        })?
-        .into_iter()
-        .next()
-    else {
+    let Some(row) = statement_optional(sql, &reveal_params(request, key))? else {
         return Ok(None);
     };
-    let mut revealed = revealing(request, tab_of(&tab)?);
-    if let Some(folder) = group_folder {
-        let group =
-            crate::FolderReleaseDecisionKey { watched_folder_path: root, relative_folder: folder };
+    let mut revealed = ImportListRequest {
+        view: crate::ImportListView {
+            tab: tab_of(&row.tab)?,
+            search: None,
+            pending_filter: PendingFilter::All,
+            order: request.view.order,
+        },
+        folds: request.folds.clone(),
+    };
+    if let Some(folder) = row.group_folder {
+        let group = crate::FolderReleaseDecisionKey {
+            watched_folder_path: path_column::decode(row.watched_folder_path)?,
+            relative_folder: folder,
+        };
         match &mut revealed.folds {
             ImportListFolds::Only(folded) => {
                 folded.remove(&group);
@@ -306,47 +347,113 @@ pub(super) fn reveal(
     }
     Ok(Some(ImportListReveal {
         request: revealed,
-        position: to_u64(position, "a revealed candidate's position")?,
+        position: to_u64(row.position, "a revealed candidate's position")?,
     }))
 }
+
+// The first candidate being identified, Found's first, in the order each
+// read names, every tab's rows unfiltered and no group folded.
+sqlive_compose::read!(
+    NewestFirstIdentifying { key: crate::CandidateKey },
+    r#"
+    SELECT p.key
+    FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
+    JOIN import_list_placement AS p ON p.key = st.standing_candidate AND p.item = 'candidate'
+    JOIN import_list_placement AS u ON u.entry = p.unit_entry
+    WHERE st.identification IN ('queued', 'running', 'finalizing', 'reading_pick')
+    ORDER BY CASE p.tab WHEN 'pending' THEN 0 WHEN 'done' THEN 1 ELSE 2 END,
+        u.sort_queued, u.sort_queue, u.sort_undated, u.sort_newest, u.root_position,
+        u.watched_folder_path, u.path_text, u.entry, p.sort_member, p.sort_undated,
+        p.sort_newest, p.path_text, p.key, p.entry
+    LIMIT 1
+"#
+);
+
+sqlive_compose::read!(
+    OldestFirstIdentifying { key: crate::CandidateKey },
+    r#"
+    SELECT p.key
+    FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
+    JOIN import_list_placement AS p ON p.key = st.standing_candidate AND p.item = 'candidate'
+    JOIN import_list_placement AS u ON u.entry = p.unit_entry
+    WHERE st.identification IN ('queued', 'running', 'finalizing', 'reading_pick')
+    ORDER BY CASE p.tab WHEN 'pending' THEN 0 WHEN 'done' THEN 1 ELSE 2 END,
+        u.sort_queued, u.sort_queue, u.sort_undated, u.sort_oldest, u.root_position,
+        u.watched_folder_path, u.path_text, u.entry, p.sort_member, p.sort_undated,
+        p.sort_oldest, p.path_text, p.key, p.entry
+    LIMIT 1
+"#
+);
+
+sqlive_compose::read!(
+    PathAscendingIdentifying { key: crate::CandidateKey },
+    r#"
+    SELECT p.key
+    FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
+    JOIN import_list_placement AS p ON p.key = st.standing_candidate AND p.item = 'candidate'
+    JOIN import_list_placement AS u ON u.entry = p.unit_entry
+    WHERE st.identification IN ('queued', 'running', 'finalizing', 'reading_pick')
+    ORDER BY CASE p.tab WHEN 'pending' THEN 0 WHEN 'done' THEN 1 ELSE 2 END,
+        u.sort_queued, u.sort_queue, u.root_position, u.watched_folder_path,
+        u.path_text, u.entry, p.sort_member, p.path_text, p.key, p.entry
+    LIMIT 1
+"#
+);
+
+sqlive_compose::read!(
+    PathDescendingIdentifying { key: crate::CandidateKey },
+    r#"
+    SELECT p.key
+    FROM @crate::tables::import_state::listed_fragments::ListedStanding AS st
+    JOIN import_list_placement AS p ON p.key = st.standing_candidate AND p.item = 'candidate'
+    JOIN import_list_placement AS u ON u.entry = p.unit_entry
+    WHERE st.identification IN ('queued', 'running', 'finalizing', 'reading_pick')
+    ORDER BY CASE p.tab WHEN 'pending' THEN 0 WHEN 'done' THEN 1 ELSE 2 END,
+        u.sort_queued_back DESC, u.sort_queue_back DESC, u.root_position DESC,
+        u.watched_folder_path DESC, u.path_text DESC, u.entry DESC,
+        p.sort_header DESC, p.path_text DESC, p.key DESC, p.entry DESC
+    LIMIT 1
+"#
+);
 
 /// The first candidate being identified in the order `order` runs, every
 /// tab's rows unfiltered, Found's first: `None` for none.
 pub(super) fn first_identifying(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     order: crate::ImportListOrder,
 ) -> Result<Option<CandidateKey>, DbError> {
-    Ok(sql
-        .query_row(
-            &format!(
-                "SELECT p.key FROM import_candidate_standing AS st \
-                 JOIN import_list_placement AS p \
-                     ON p.key = st.candidate_key AND p.item = 'candidate' \
-                 JOIN import_list_placement AS u ON u.entry = p.unit_entry \
-                 WHERE st.identification IN ('queued', 'running', 'finalizing', 'reading_pick') \
-                 ORDER BY CASE p.tab WHEN 'pending' THEN 0 WHEN 'done' THEN 1 ELSE 2 END, \
-                          {ordering} \
-                 LIMIT 1",
-                ordering = order::ordering(order, "u", "p"),
-            ),
-            [],
-            |row| row.get::<_, CandidateKey>(0),
-        )
-        .optional()?)
+    use crate::ImportListOrder as Order;
+    let key = match order {
+        Order::NewestFirst => {
+            statement_optional(sql, &NewestFirstIdentifyingParams {})?.map(|row| row.key)
+        }
+        Order::OldestFirst => {
+            statement_optional(sql, &OldestFirstIdentifyingParams {})?.map(|row| row.key)
+        }
+        Order::PathAscending => {
+            statement_optional(sql, &PathAscendingIdentifyingParams {})?.map(|row| row.key)
+        }
+        Order::PathDescending => {
+            statement_optional(sql, &PathDescendingIdentifyingParams {})?.map(|row| row.key)
+        }
+    };
+    Ok(key)
 }
 
 impl ImportTables {
     /// How many entries each tab holds now.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_tab_counts(&self) -> Result<TriageTabCounts, DbError> {
-        self.store.read(move |sql| tab_counts_on(&sql)).await
+        let request = ImportListRequest::of(Default::default());
+        self.store.read(move |sql| Ok(count(&sql, &request)?.tabs)).await
     }
 
     /// How many entries each tab holds, live, for a test that waits on a
     /// scan: a screen reads them in its list's count.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_tab_counts(&self) -> coven::LiveQuery<TriageTabCounts, bae_store::DbError> {
-        self.store.subscribe(move |sql| tab_counts_on(&sql))
+        let request = ImportListRequest::of(Default::default());
+        self.store.subscribe(move |sql| Ok(count(&sql, &request)?.tabs))
     }
 
     /// What revealing the candidate at `candidate_key` from the list
@@ -369,7 +476,7 @@ impl ImportTables {
         candidate_key: &crate::CandidateKey,
     ) -> Result<Option<u64>, DbError> {
         let candidate_key = candidate_key.clone();
-        self.store.read(move |sql| Items::new(request).position_of(&sql, &candidate_key)).await
+        self.store.read(move |sql| selection::position_of(&sql, &request, &candidate_key)).await
     }
 
     /// The first candidate in the order `order`, every tab's rows unfiltered,

@@ -490,3 +490,59 @@ async fn combine_counts_the_selection_while_every_row_can_join() {
     lib.run(lib.identifying("A", "running")).await;
     assert_eq!(offer(&lib, &list, &selected, CandidateAction::Combine).await, combine(0, false));
 }
+
+/// Each read a surface makes of a list on its own, in every order, is one
+/// statement.
+#[tokio::test]
+async fn each_of_a_lists_actions_is_one_statement() {
+    let lib = Library::new().await;
+    lib.run(lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("Loose")).await;
+    let tables = lib.tables();
+    let (first, last) = (lib.key("Box/1"), lib.key("Loose"));
+    let keys = vec![first.clone(), last.clone()];
+    for order in [
+        ImportListOrder::NewestFirst,
+        ImportListOrder::OldestFirst,
+        ImportListOrder::PathAscending,
+        ImportListOrder::PathDescending,
+    ] {
+        let list = ImportListRequest::of(ImportListView { order, ..ImportListView::default() });
+        let folded = list.clone().folding(lib.group_key("Box"));
+        let searching = ImportListRequest::of(ImportListView {
+            search: crate::SearchText::of("loose"),
+            ..list.view.clone()
+        });
+        let log = lib.db.record_statements_for_test().await.unwrap();
+        let one = |what: &str| assert_eq!(log.take().len(), 1, "{order:?}: {what}");
+
+        let key = tables.import_key_at(list.clone(), 1).await.unwrap().expect("the list has items");
+        one("a jump");
+        assert_eq!(tables.import_rows_before_for_test(list.clone(), key).await.unwrap(), 1);
+        one("a position");
+        assert_eq!(tables.import_list_keys(list.clone()).await.unwrap().len(), 3);
+        one("Select All");
+        tables.import_list_keys_between(list.clone(), first.clone(), last.clone()).await.unwrap();
+        one("a Shift-click");
+        tables.load_import_list_selected(list.clone(), keys.clone(), None).await.unwrap();
+        one("the selected rows");
+        tables.import_list_view_change(list.clone(), folded, keys.clone()).await.unwrap();
+        one("a fold");
+        tables.import_list_view_change(list.clone(), searching, keys.clone()).await.unwrap();
+        one("a search");
+        tables.reveal_import_candidate(list.clone(), &first).await.unwrap().expect("listed");
+        one("a reveal");
+        tables.import_candidate_position(list.clone(), &first).await.unwrap().expect("listed");
+        one("a candidate's position");
+        tables.first_identifying_import_candidate(order).await.unwrap();
+        one("the first identifying candidate");
+        tables.subscribe_import_count(list.clone()).next_inline().await.unwrap().unwrap();
+        one("the count");
+        tables.subscribe_import_summary().next_inline().await.unwrap().unwrap();
+        one("the summary");
+        tables.subscribe_import_filter_entries().next_inline().await.unwrap().unwrap();
+        one("the filter entries");
+        let mut selection = tables.subscribe_import_selection();
+        selection.next_inline().await.expect("the query stays open").result.unwrap();
+        one("the selection");
+    }
+}

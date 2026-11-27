@@ -5,13 +5,14 @@
 //! changes any table they come from. The surface keeps the list's view and
 //! the groups it folds, and each read takes them as its request
 //! (`ImportListRequest`), so no table stores them. A surface runs a live
-//! query (`read`) for each window (a range of the list's order, `order`,
-//! whose rows `window` reads by key), for the count and summary (`summary`),
-//! and for what the selected rows hold and offer (`selection`); the surface
-//! keeps the selection itself. A search reads the rows its index
-//! (`import_list_search`) finds. SQLite places, filters, sorts and counts every
-//! row; no Rust code does. The pane reads one candidate (`pane`) from the same
-//! placement.
+//! query (`read`) for each window (a range of the list's order, whose rows
+//! `window` reads by key), for the count and summary (`summary`), and for
+//! what the selected rows hold and offer (`selection`); the surface keeps the
+//! selection itself. `list_items` gives the list's items in its order to the
+//! jump, the position and the actions on the list. A search reads the rows
+//! its index (`import_list_search`) finds. SQLite places, filters, sorts and
+//! counts every row; no Rust code does. Each read is one compiled statement.
+//! The pane reads one candidate (`pane`) from the same placement.
 //!
 //! Its schema is the SQL files beside this one, a file per family of rules:
 //! the placement and the rules it is kept by (`placement`), Found's groups
@@ -35,24 +36,22 @@ mod follows_groupings;
 mod follows_library;
 mod follows_scans;
 mod groups;
-mod judged;
+pub mod list_items;
 mod listed;
 mod mapping_rows;
-mod order;
 mod pane;
 pub(crate) mod pane_files;
 mod placement;
 mod read;
 mod search;
 mod selection;
-mod summary;
+pub mod summary;
 mod window;
 
 use super::*;
 use crate::list::{ImportListFolds, ImportListRequest};
 use crate::{PendingFilter, TriageTab};
-use judged::Fragments;
-use order::Items;
+use bae_store::{statement_optional, statement_row, statement_rows};
 
 pub use folder_images::{
     FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot,
@@ -96,12 +95,6 @@ fn tab_column(tab: TriageTab) -> &'static str {
         TriageTab::Done => "done",
         TriageTab::Skipped => "skipped",
     }
-}
-
-/// The tab as the placement's `tab` column holds it, as an SQL literal: each
-/// statement names its tab, so SQLite picks a tab's partial indexes by it.
-fn tab_literal(tab: TriageTab) -> String {
-    format!("'{}'", tab_column(tab))
 }
 
 fn tab_of(column: &str) -> Result<TriageTab, DbError> {

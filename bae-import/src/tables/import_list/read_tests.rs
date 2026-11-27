@@ -182,11 +182,10 @@ async fn settled<T: Clone + PartialEq + Send + 'static, Request>(
 }
 
 /// A scan item reruns the window that holds it and the count, and every
-/// other window of the list too: the statements that read the items
-/// (`import_list_item`, whose rows show a group's header while any member
-/// matches) read the placement through a correlated subquery, so coven
-/// cannot bound a window's rerun at its last row, and only the rows the
-/// window delivers tell a rerun apart.
+/// other window of the list too: a window keeps a group's header while any
+/// member matches (`Kept`), which reads the placement through a correlated
+/// subquery, so coven cannot bound a window's rerun at its last row, and
+/// only the rows the window delivers tell a rerun apart.
 /// The test checks that coven reruns both windows for a scan item; a write
 /// the list does not read
 /// (`import_list_withholds_a_commit_that_changes_nothing_it_reads`) reruns

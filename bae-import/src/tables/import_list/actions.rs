@@ -7,12 +7,6 @@
 use super::*;
 use crate::CandidateAction;
 
-/// The SQL reading the flag of `action` from the `ListedActions` document the
-/// column `actions` holds: 1 when the release offers it.
-pub(super) fn flag_sql(actions: &str, action: CandidateAction) -> String {
-    format!("json_extract({actions}, '$.can_{action:?}')")
-}
-
 /// The commands a row offers, of [`CandidateAction::ROW`], as the
 /// `ListedActions` document `json` flags them.
 pub(super) fn offered(json: &str) -> Result<Vec<CandidateAction>, DbError> {

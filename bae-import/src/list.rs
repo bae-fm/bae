@@ -129,12 +129,6 @@ impl ImportListRequest {
         view.into()
     }
 
-    /// Whether the text filter narrows the tab, which only a read of every
-    /// row's text can count.
-    pub(crate) fn filters_text(&self) -> bool {
-        self.view.search.is_some()
-    }
-
     /// Found's filter entry while it narrows the list: `None` on another tab,
     /// or while the entry keeps every row.
     pub(crate) fn entry(&self) -> Option<PendingFilter> {
@@ -143,11 +137,6 @@ impl ImportListRequest {
             | (TriageTab::Pending, PendingFilter::All) => None,
             (TriageTab::Pending, entry) => Some(entry),
         }
-    }
-
-    /// Whether the text filter or Found's filter entry narrows the tab.
-    pub(crate) fn narrows(&self) -> bool {
-        self.filters_text() || self.entry().is_some()
     }
 }
 

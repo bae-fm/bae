@@ -4,6 +4,8 @@
 
 use super::*;
 use crate::list::ImportListRead;
+use crate::tables::import_list::summary;
+use crate::tables::import_list::tests::plan_of;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
 use crate::ImportListView;
@@ -635,16 +637,7 @@ impl ImportTables {
         list: ImportListRequest,
         key: crate::CandidateKey,
     ) -> Result<Vec<String>, DbError> {
-        self.store
-            .read(move |sql| {
-                Items::new(list.clone()).query(
-                    &sql,
-                    &format!("EXPLAIN QUERY PLAN {}", summary::reveal_statement(&list)),
-                    &[(":key", &key)],
-                    |row| row.get::<_, String>(3),
-                )
-            })
-            .await
+        self.store.read(move |sql| plan_of(&sql, &summary::reveal_params(&list, &key))).await
     }
 
     /// The plans `list`'s windows are read by, from its top and by each seek
@@ -663,13 +656,9 @@ impl ImportTables {
         list: ImportListRequest,
     ) -> Result<Vec<String>, DbError> {
         self.store
-            .read(move |sql| {
-                Items::new(list.clone()).query(
-                    &sql,
-                    &format!("EXPLAIN QUERY PLAN {}", summary::search_counts(&list)),
-                    &[],
-                    |row| row.get::<_, String>(3),
-                )
+            .read(move |sql| match summary::CountStatement::of(&list) {
+                summary::CountStatement::Search(statement) => plan_of(&sql, &statement),
+                summary::CountStatement::Kept(_) => panic!("the list searches"),
             })
             .await
     }
@@ -719,12 +708,11 @@ async fn every_order_reads_its_windows_off_its_index() {
     }
 }
 
-/// A reveal reads the candidate's placement row by its key first, then
-/// counts the items before it off its tab's order indexes, with no temporary
-/// B-tree: one read whose cost is the index ranges before the candidate,
+/// A reveal numbers its tab's items off the order indexes, with no temporary
+/// B-tree, and reads the candidate's placement row by its key: one read
 /// however its list is folded.
 #[tokio::test]
-async fn a_reveal_reads_the_candidate_by_key_then_its_tabs_order_index() {
+async fn a_reveal_reads_its_order_off_the_index_and_the_candidate_by_key() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("Loose")).await;
@@ -732,22 +720,22 @@ async fn a_reveal_reads_the_candidate_by_key_then_its_tabs_order_index() {
         let list =
             ImportListRequest::of(ordered(TriageTab::Pending, order)).folding(lib.group_key("Box"));
         let plan = tables.import_reveal_plan(list, lib.key("Box/1")).await.unwrap();
-        let first = plan
-            .iter()
-            .position(|step| step.starts_with("SEARCH") || step.starts_with("SCAN"))
-            .expect("the reveal reads a table");
         assert!(
-            plan[first].contains("import_list_placement_by_key (key=?)"),
-            "{order:?} reads the candidate by its key first: {plan:?}"
+            plan.iter().any(|step| step.starts_with("SEARCH revealed")
+                && step.contains("import_list_placement_by_key (key=?)")),
+            "{order:?} reads the candidate by its key: {plan:?}"
         );
-        // A seek that holds the terms a group's rows hold alike equal may
-        // take any order's index whose first terms are those.
-        assert!(
-            plan.iter().any(|step| step.starts_with("SEARCH")
-                && step.contains("USING INDEX import_list_")
-                && step.contains("unit_")),
-            "{order:?} counts the items before it off an order index: {plan:?}"
-        );
+        for index in [
+            "import_list_newest_first ",
+            "import_list_oldest_first ",
+            "import_list_path_ascending ",
+            "import_list_path_descending ",
+        ] {
+            assert!(
+                plan.iter().any(|step| step.starts_with("SEARCH u") && step.contains(index)),
+                "{order:?} reads each order's items off its index: {plan:?}"
+            );
+        }
         assert!(!plan.iter().any(|step| step.contains("TEMP B-TREE")), "{order:?} sorts: {plan:?}");
     }
 }

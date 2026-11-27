@@ -747,3 +747,15 @@ pub(crate) async fn scan_finished(
     tables.finish_folder_scan(std::path::Path::new(root), generation, None).await.unwrap();
     candidate
 }
+
+/// SQLite's plan for the compiled statement `statement`, one line per step.
+pub(crate) fn plan_of<S: sqlive_compose::Statement>(
+    sql: &impl coven::SqlRead,
+    statement: &S,
+) -> Result<Vec<String>, bae_store::DbError> {
+    Ok(sql.query(
+        &format!("EXPLAIN QUERY PLAN {}", S::SQL),
+        statement.params().as_slice(),
+        |row| row.get::<_, String>(3),
+    )?)
+}

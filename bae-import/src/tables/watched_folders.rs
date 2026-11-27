@@ -124,11 +124,6 @@ sqlive_compose::read!(
                     WHERE stored.path = :path) AS watched"
 );
 
-sqlive_compose::read!(
-    AnyWatched { watched: bool },
-    "SELECT EXISTS (SELECT 1 FROM watched_import_folders) AS watched"
-);
-
 // The watched folders inside a folder, not the folder itself, in their order:
 // those whose key is in the range of paths below it, from `first` to `past`.
 sqlive_compose::read!(
@@ -184,11 +179,6 @@ pub(super) fn watched_folders_on(
 fn is_watched_on(sql: &impl coven::SqlRead, folder: &Path) -> Result<bool, DbError> {
     let request = IsWatchedParams { path: coven::path_bytes(folder) };
     Ok(statement_row(sql, &request)?.watched)
-}
-
-/// Whether bae watches any folder.
-pub(super) fn any_watched_on(sql: &impl coven::SqlRead) -> Result<bool, DbError> {
-    Ok(statement_row(sql, &AnyWatchedParams {})?.watched)
 }
 
 /// A watched folder other than `folder` that overlaps it: the watched folder

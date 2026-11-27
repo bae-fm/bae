@@ -17,7 +17,7 @@
 //! Each member of a group reads its group's header beside its own row, and
 //! whether the list shows no member of the group after it.
 
-use super::order::{Item, Items};
+use super::list_items::{key_of, key_values, keyed_params, Item, ListBinding};
 use super::row_columns::{self, PlacementColumns, ReleaseColumns, ShownColumns};
 use super::window_reads::*;
 use super::*;
@@ -136,96 +136,60 @@ impl WindowStatement {
     /// A window from the list's top binds a key whose first value sorts
     /// before every row's, which the read's comparisons take every row past.
     pub(super) fn of(request: &ImportListRequest, window: &ListWindow) -> Result<Self, DbError> {
-        let items = Items::new(request.clone());
-        let mut key = items.window_key(window.from.as_ref())?.into_iter();
-        let mut next = || key.next().expect("a window's key has a value for each of its terms");
-        let tab = tab_column(request.view.tab).to_string();
-        let filter = request.entry().map(|filter| pending_filter_column(filter).to_string());
-        let filter_text = request.view.search.as_ref().map(|text| text.as_str().to_string());
-        let folds_only = matches!(request.folds, crate::list::ImportListFolds::Only(_));
-        let folded = request.folded_json();
+        let ListBinding { tab, filter, filter_text, folds_only, folded } = ListBinding::of(request);
         let limit = bae_store::list_windows::sql_bound(window.limit);
+        let from = window.from.as_ref();
+        macro_rules! bound {
+            ($params:ident, $key:expr, [$($column:ident)*]) => {
+                keyed_params!(
+                    $params {
+                        tab: tab,
+                        filter: filter,
+                        filter_text: filter_text,
+                        folds_only: folds_only,
+                        folded: folded,
+                        limit: limit,
+                    },
+                    $key,
+                    [$($column)*]
+                )
+            };
+        }
         Ok(match request.view.order {
-            ImportListOrder::NewestFirst => Self::NewestFirst(NewestFirstWindowParams {
-                tab,
-                filter,
-                filter_text,
-                folds_only,
-                folded,
-                limit,
-                order_key_0: next(),
-                order_key_1: next(),
-                order_key_2: next(),
-                order_key_3: next(),
-                order_key_4: next(),
-                order_key_5: next(),
-                order_key_6: next(),
-                order_key_7: next(),
-                order_key_8: next(),
-                order_key_9: next(),
-                order_key_10: next(),
-                order_key_11: next(),
-                order_key_12: next(),
-                order_key_13: next(),
-            }),
-            ImportListOrder::OldestFirst => Self::OldestFirst(OldestFirstWindowParams {
-                tab,
-                filter,
-                filter_text,
-                folds_only,
-                folded,
-                limit,
-                order_key_0: next(),
-                order_key_1: next(),
-                order_key_2: next(),
-                order_key_3: next(),
-                order_key_4: next(),
-                order_key_5: next(),
-                order_key_6: next(),
-                order_key_7: next(),
-                order_key_8: next(),
-                order_key_9: next(),
-                order_key_10: next(),
-                order_key_11: next(),
-                order_key_12: next(),
-                order_key_13: next(),
-            }),
-            ImportListOrder::PathAscending => Self::PathAscending(PathAscendingWindowParams {
-                tab,
-                filter,
-                filter_text,
-                folds_only,
-                folded,
-                limit,
-                order_key_0: next(),
-                order_key_1: next(),
-                order_key_2: next(),
-                order_key_3: next(),
-                order_key_4: next(),
-                order_key_5: next(),
-                order_key_6: next(),
-                order_key_7: next(),
-                order_key_8: next(),
-                order_key_9: next(),
-            }),
-            ImportListOrder::PathDescending => Self::PathDescending(PathDescendingWindowParams {
-                tab,
-                filter,
-                filter_text,
-                folds_only,
-                folded,
-                limit,
-                order_key_0: next(),
-                order_key_1: next(),
-                order_key_2: next(),
-                order_key_3: next(),
-                order_key_4: next(),
-                order_key_5: next(),
-                order_key_6: next(),
-                order_key_7: next(),
-                order_key_8: next(),
-                order_key_9: next(),
-            }),
+            ImportListOrder::NewestFirst => Self::NewestFirst(bound!(
+                NewestFirstWindowParams,
+                window_key(from, BELOW_EVERY_FLAG)?,
+                [
+                    order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                    order_key_10 order_key_11 order_key_12 order_key_13
+                ]
+            )),
+            ImportListOrder::OldestFirst => Self::OldestFirst(bound!(
+                OldestFirstWindowParams,
+                window_key(from, BELOW_EVERY_FLAG)?,
+                [
+                    order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                    order_key_10 order_key_11 order_key_12 order_key_13
+                ]
+            )),
+            ImportListOrder::PathAscending => Self::PathAscending(bound!(
+                PathAscendingWindowParams,
+                window_key(from, BELOW_EVERY_FLAG)?,
+                [
+                    order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                ]
+            )),
+            ImportListOrder::PathDescending => Self::PathDescending(bound!(
+                PathDescendingWindowParams,
+                window_key(from, ABOVE_EVERY_FLAG)?,
+                [
+                    order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                ]
+            )),
         })
     }
 
@@ -242,94 +206,61 @@ impl WindowStatement {
 
     /// The items the statement reads, each with its key.
     fn read(&self, sql: &impl coven::SqlRead) -> Result<Vec<(StoredItem, OrderKey)>, DbError> {
+        macro_rules! items {
+            ($params:ident, [$($column:ident)*]) => {
+                statement_rows(sql, $params)?
+                    .into_iter()
+                    .map(|row| {
+                        let key = key_of!(row, $($column)*);
+                        Ok((stored_item!(row)?, key))
+                    })
+                    .collect::<Result<Vec<_>, DbError>>()?
+            };
+        }
         Ok(match self {
-            Self::NewestFirst(params) => bae_store::statement_rows(sql, params)?
-                .into_iter()
-                .map(|row| {
-                    let key = OrderKey::new(vec![
-                        row.order_key_0.into_key_value(),
-                        row.order_key_1.into_key_value(),
-                        row.order_key_2.into_key_value(),
-                        row.order_key_3.into_key_value(),
-                        row.order_key_4.into_key_value(),
-                        row.order_key_5.into_key_value(),
-                        row.order_key_6.into_key_value(),
-                        row.order_key_7.into_key_value(),
-                        row.order_key_8.into_key_value(),
-                        row.order_key_9.into_key_value(),
-                        row.order_key_10.into_key_value(),
-                        row.order_key_11.into_key_value(),
-                        row.order_key_12.into_key_value(),
-                        row.order_key_13.into_key_value(),
-                    ]);
-                    let item = stored_item!(row);
-                    Ok((item?, key))
-                })
-                .collect::<Result<_, DbError>>()?,
-            Self::OldestFirst(params) => bae_store::statement_rows(sql, params)?
-                .into_iter()
-                .map(|row| {
-                    let key = OrderKey::new(vec![
-                        row.order_key_0.into_key_value(),
-                        row.order_key_1.into_key_value(),
-                        row.order_key_2.into_key_value(),
-                        row.order_key_3.into_key_value(),
-                        row.order_key_4.into_key_value(),
-                        row.order_key_5.into_key_value(),
-                        row.order_key_6.into_key_value(),
-                        row.order_key_7.into_key_value(),
-                        row.order_key_8.into_key_value(),
-                        row.order_key_9.into_key_value(),
-                        row.order_key_10.into_key_value(),
-                        row.order_key_11.into_key_value(),
-                        row.order_key_12.into_key_value(),
-                        row.order_key_13.into_key_value(),
-                    ]);
-                    let item = stored_item!(row);
-                    Ok((item?, key))
-                })
-                .collect::<Result<_, DbError>>()?,
-            Self::PathAscending(params) => bae_store::statement_rows(sql, params)?
-                .into_iter()
-                .map(|row| {
-                    let key = OrderKey::new(vec![
-                        row.order_key_0.into_key_value(),
-                        row.order_key_1.into_key_value(),
-                        row.order_key_2.into_key_value(),
-                        row.order_key_3.into_key_value(),
-                        row.order_key_4.into_key_value(),
-                        row.order_key_5.into_key_value(),
-                        row.order_key_6.into_key_value(),
-                        row.order_key_7.into_key_value(),
-                        row.order_key_8.into_key_value(),
-                        row.order_key_9.into_key_value(),
-                    ]);
-                    let item = stored_item!(row);
-                    Ok((item?, key))
-                })
-                .collect::<Result<_, DbError>>()?,
-            Self::PathDescending(params) => bae_store::statement_rows(sql, params)?
-                .into_iter()
-                .map(|row| {
-                    let key = OrderKey::new(vec![
-                        row.order_key_0.into_key_value(),
-                        row.order_key_1.into_key_value(),
-                        row.order_key_2.into_key_value(),
-                        row.order_key_3.into_key_value(),
-                        row.order_key_4.into_key_value(),
-                        row.order_key_5.into_key_value(),
-                        row.order_key_6.into_key_value(),
-                        row.order_key_7.into_key_value(),
-                        row.order_key_8.into_key_value(),
-                        row.order_key_9.into_key_value(),
-                    ]);
-                    let item = stored_item!(row);
-                    Ok((item?, key))
-                })
-                .collect::<Result<_, DbError>>()?,
+            Self::NewestFirst(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_10 order_key_11 order_key_12 order_key_13
+            ]),
+            Self::OldestFirst(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_10 order_key_11 order_key_12 order_key_13
+            ]),
+            Self::PathAscending(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+            ]),
+            Self::PathDescending(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+            ]),
         })
     }
 }
+
+/// The values a window's read binds for its order's terms: those of the key
+/// `from`, or, from the list's top, `before_every_row` for the first term and
+/// NULL for the rest, which every row's key sorts after.
+fn window_key<const N: usize>(
+    from: Option<&OrderKey>,
+    before_every_row: i64,
+) -> Result<[SortValue; N], DbError> {
+    if let Some(key) = from {
+        return key_values(key);
+    }
+    let mut values = std::array::from_fn(|_term| SortValue::Null);
+    if let Some(first) = values.first_mut() {
+        *first = SortValue::Integer(before_every_row);
+    }
+    Ok(values)
+}
+
+/// A value before the 0 or 1 an order's first term is, in an ascending
+/// order, and one past it, in a descending one.
+const BELOW_EVERY_FLAG: i64 = -1;
+const ABOVE_EVERY_FLAG: i64 = 2;
 
 /// The plans SQLite reads the windows of the list `request` shows by, one
 /// line per step: from the list's top, then from its first item. What a test
@@ -355,35 +286,6 @@ pub(super) fn window_plans(
             })?)
         })
         .collect()
-}
-
-/// A key column of a window's row as the value a key holds.
-trait IntoKeyValue {
-    fn into_key_value(self) -> SortValue;
-}
-
-impl IntoKeyValue for i64 {
-    fn into_key_value(self) -> SortValue {
-        SortValue::Integer(self)
-    }
-}
-
-impl IntoKeyValue for String {
-    fn into_key_value(self) -> SortValue {
-        SortValue::Text(self)
-    }
-}
-
-impl IntoKeyValue for Vec<u8> {
-    fn into_key_value(self) -> SortValue {
-        SortValue::Blob(self)
-    }
-}
-
-impl<T: IntoKeyValue> IntoKeyValue for Option<T> {
-    fn into_key_value(self) -> SortValue {
-        self.map_or(SortValue::Null, IntoKeyValue::into_key_value)
-    }
 }
 
 /// A column every release's row holds.

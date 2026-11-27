@@ -266,16 +266,3 @@ sqlive_compose::fragment!(
                                           ELSE @parent.group_folder END
 "#
 );
-
-// The commands of the releases at `keys`, a JSON array of their keys in hex,
-// whose SQL the selection's statements hold, so they offer the commands the
-// rows offer.
-sqlive_compose::read!(
-    ReleaseActions(keys: String),
-    r#"
-    SELECT p.item, p.key,
-           @crate::tables::import_list::row_fragments::ListedActions(parent: p) AS actions
-    FROM json_each(:keys) AS asked
-    JOIN import_list_placement AS p ON p.key = unhex(asked.value) AND p.item <> 'group'
-"#
-);

@@ -1,9 +1,10 @@
 use super::*;
-use crate::tables::import_list::row_fragments::ReleaseActions;
+use crate::tables::import_list::selection::{selection_params, Selection};
 use crate::{
     IdentificationStatus, ImportPhase, ImportStep, PrepareStep, TriagePlacement,
     TriageRuntimeFacts, TriageTab,
 };
+use sqlive_compose::Statement as _;
 
 /// The columns of one release's `import_list_placement` row that its command
 /// columns read. `lookup` is the stored `lookup` column: `"answered"`,
@@ -71,31 +72,36 @@ impl PlacementRow {
             Some(ImportStep::Running(ImportPhase::Finalizing)) => "'finalizing'",
         };
         let connection = rusqlite::Connection::open_in_memory().unwrap();
-        let flags = connection
-            .query_row(
-                &format!(
-                    "WITH import_list_placement (item, key, tab, import_failed, actionable, \
-                                                draft_valid, lookup, separable) \
-                          AS (VALUES ('candidate', X'6B', '{tab}', {failed}, {actionable}, \
-                                      {valid}, {lookup}, {separable})), \
-                          import_candidate_standing (candidate_key, identification, \
-                                                     import_asked, save_failure_error, \
-                                                     import_step) \
-                          AS (VALUES (X'6B', {identification}, {asked}, NULL, {step})) \
-                     SELECT actions FROM ({releases})",
-                    actionable = self.actionable,
-                    valid = self.draft_valid,
-                    separable = self.separable,
-                    releases = ReleaseActions::SQL,
-                ),
-                &[(":keys", "[\"6B\"]")][..],
-                |row| row.get::<_, String>(0),
-            )
+        let mut statement = connection
+            .prepare(&format!(
+                "WITH import_list_placement (item, key, tab, import_failed, actionable, \
+                                            draft_valid, lookup, separable) \
+                      AS (VALUES ('candidate', X'6B', '{tab}', {failed}, {actionable}, \
+                                  {valid}, {lookup}, {separable})), \
+                      import_candidate_standing (candidate_key, identification, \
+                                                 import_asked, save_failure_error, \
+                                                 import_step) \
+                      AS (VALUES (X'6B', {identification}, {asked}, NULL, {step})) \
+                 SELECT command, offering FROM ({selection}) \
+                 WHERE command IS NOT NULL",
+                actionable = self.actionable,
+                valid = self.draft_valid,
+                separable = self.separable,
+                selection = Selection::SQL,
+            ))
             .unwrap();
-        let flags: std::collections::HashMap<String, i64> = serde_json::from_str(&flags).unwrap();
-        CandidateAction::ALL
-            .into_iter()
-            .filter(|action| flags[&format!("can_{action:?}")] != 0)
+        // Two keys naming the release select it twice, so the selection
+        // offers Combine too, counting no row unless the release can join one.
+        let key = crate::CandidateKey::from(b"k".to_vec());
+        let params = selection_params(&[key.clone(), key]);
+        statement
+            .query_map(params.params().as_slice(), |row| {
+                Ok((row.get::<_, usize>("command")?, row.get::<_, i64>("offering")?))
+            })
+            .unwrap()
+            .map(Result::unwrap)
+            .filter(|(_, offering)| *offering > 0)
+            .map(|(command, _)| CandidateAction::ALL[command])
             .collect()
     }
 }

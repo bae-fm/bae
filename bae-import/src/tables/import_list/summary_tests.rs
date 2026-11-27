@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::list::ImportListRead;
+use crate::tables::import_list::tests::plan_of;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
 use crate::ImportListView;
@@ -633,42 +634,33 @@ async fn the_list_count_carries_the_tab_counts() {
 async fn the_counts_are_read_from_the_kept_counts() {
     let lib = Library::new().await;
     let found = ImportListRequest::of(view(TriageTab::Pending));
-    let counting = |view: ImportListView| {
-        let request = ImportListRequest::of(view);
-        (super::count_statement(&request), request)
-    };
+    let counting = |request: ImportListRequest| super::CountStatement::of(&request);
     let folding_every_group = |view: ImportListView| {
-        let request =
-            ImportListRequest { view, folds: ImportListFolds::AllBut(Default::default()) };
-        (super::count_statement(&request), request)
+        counting(ImportListRequest { view, folds: ImportListFolds::AllBut(Default::default()) })
     };
     let needs_you = under(TriageTab::Pending, PendingFilter::NeedsYou);
-    let statements = [
-        ("the tab counts", (super::TAB_COUNTS.to_string(), found.clone())),
-        ("the filter entries", (super::filter_entries_sql(), found.clone())),
-        ("whether Found has groups", (super::HAS_GROUPS.to_string(), found.clone())),
-        ("Imported's count", counting(view(TriageTab::Done))),
-        ("Skipped's count", counting(view(TriageTab::Skipped))),
-        ("Found's count", counting(view(TriageTab::Pending))),
+    let counts = [
+        ("Imported's count", counting(ImportListRequest::of(view(TriageTab::Done)))),
+        ("Skipped's count", counting(ImportListRequest::of(view(TriageTab::Skipped)))),
+        ("Found's count", counting(found)),
         ("Found's count folding every group", folding_every_group(view(TriageTab::Pending))),
-        ("Needs You's count", counting(needs_you.clone())),
+        ("Needs You's count", counting(ImportListRequest::of(needs_you.clone()))),
         ("Needs You's count folding every group", folding_every_group(needs_you)),
     ];
     let plans = lib
         .db
         .read(move |sql| {
-            statements
-                .into_iter()
-                .map(|(what, (statement, request))| {
-                    let plan = Items::new(request).query(
-                        &sql,
-                        &format!("EXPLAIN QUERY PLAN {statement}"),
-                        &[],
-                        |row| row.get::<_, String>(3),
-                    )?;
-                    Ok((what, plan))
-                })
-                .collect::<Result<Vec<_>, bae_store::DbError>>()
+            let mut plans = vec![
+                ("the filter entries", plan_of(&sql, &super::filter_entries_params())?),
+                ("whether Found has groups", plan_of(&sql, &super::SummaryParams {})?),
+            ];
+            for (what, statement) in counts {
+                let super::CountStatement::Kept(statement) = statement else {
+                    panic!("{what} searches for nothing");
+                };
+                plans.push((what, plan_of(&sql, &statement)?));
+            }
+            Ok::<_, bae_store::DbError>(plans)
         })
         .await
         .unwrap();
@@ -680,14 +672,14 @@ async fn the_counts_are_read_from_the_kept_counts() {
             && step.split_whitespace().nth(1).is_some_and(|table| tables.contains(&table))
     };
     let placement = ["import_list_placement", "p", "h", "m"];
-    for (what, plan) in &plans[..3] {
+    for (what, plan) in &plans[..2] {
         assert!(
             plan.iter().any(|step| reads(step, &["import_list_count"]))
                 && !plan.iter().any(|step| reads(step, &placement)),
             "{what} read the kept counts alone: {plan:?}"
         );
     }
-    for (what, plan) in &plans[3..] {
+    for (what, plan) in &plans[2..] {
         assert!(
             plan.iter().any(|step| reads(step, &["c"]))
                 && !plan.iter().any(|step| reads(step, &placement)),
@@ -695,18 +687,18 @@ async fn the_counts_are_read_from_the_kept_counts() {
              {plan:?}"
         );
     }
-    for (what, plan) in &plans[5..] {
+    for (what, plan) in &plans[4..] {
         assert!(
             plan.iter().any(|step| reads(step, &["g"])),
             "{what} reads the folded groups' members from the group counts: {plan:?}"
         );
     }
-    for (what, plan) in &plans[7..] {
+    for (what, plan) in &plans[6..] {
         assert_eq!(
             plan.iter().filter(|step| reads(step, &["c"])).count(),
             2,
-            "{what} reads the entry's count from the kept counts, as the releases it keeps \
-             and the releases it shows: {plan:?}"
+            "{what} reads the entry's releases and the groups' headers from the kept counts: \
+             {plan:?}"
         );
         assert!(
             plan.iter()

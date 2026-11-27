@@ -7,6 +7,7 @@
 //! count and the windows whose ranges hold those rows, and nothing else.
 //! Beside them, the reads a surface makes once: the key at a position.
 
+use super::list_items::{KeyAtStatement, PositionStatement};
 use super::*;
 use crate::list::{ImportListCount, ImportQueueSummary, ImportWindow};
 use bae_store::list_windows::OrderKey;
@@ -14,11 +15,11 @@ use bae_store::ListWindow;
 
 /// How many items sit before the one at `key` in the list `request` shows.
 fn position_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     request: &ImportListRequest,
     key: &OrderKey,
 ) -> Result<u64, DbError> {
-    Items::new(request.clone()).rows_before(sql, key)
+    PositionStatement::of(request, key)?.read(sql)
 }
 
 impl ImportTables {
@@ -106,7 +107,7 @@ impl ImportTables {
         request: ImportListRequest,
         position: u64,
     ) -> Result<Option<OrderKey>, DbError> {
-        self.store.read(move |sql| Items::new(request).key_at(&sql, position)).await
+        self.store.read(move |sql| KeyAtStatement::of(&request, position).read(&sql)).await
     }
 
     /// How many items of the list `request` shows sit before the one at
