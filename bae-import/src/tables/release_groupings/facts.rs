@@ -12,19 +12,18 @@ pub(crate) enum GroupingFacts {
 }
 
 // The grouping `key`, and beside it, for an anchored one, the watched folder
-// covering its anchor: the one whose path the anchor is, or starts with up to
-// a path separator. Watched folders never overlap, so at most one covers it.
+// covering its anchor: watched folders never overlap, so at most one does.
+// `bae_folder_relative` refuses NULL, so `CASE` calls it only for an anchor.
 sqlive_compose::read!(
-    GroupingWithWatched(key: crate::CandidateKey, separator: Vec<u8>),
+    GroupingWithWatched(key: crate::CandidateKey),
     r#"
     SELECT stored.*, watched.*
     FROM @crate::tables::release_groupings::fragments::Groupings(
         keys: (SELECT :key AS grouping_key)) AS stored
     LEFT JOIN @crate::tables::watched_folders::fragments::WatchedFolderRows AS watched
-        ON substr(stored.anchor_folder, 1, length(watched.watched_path)) = watched.watched_path
-        AND (length(stored.anchor_folder) = length(watched.watched_path)
-            OR substr(stored.anchor_folder, length(watched.watched_path) + 1, 1) = :separator
-            OR substr(watched.watched_path, -1) = :separator)
+        ON CASE WHEN stored.anchor_folder IS NOT NULL
+            THEN bae_folder_relative(watched.watched_path, stored.anchor_folder)
+        END IS NOT NULL
 "#
 );
 
@@ -63,10 +62,7 @@ impl ImportTables {
         &self,
         key: &CandidateKey,
     ) -> Result<Option<GroupingFacts>, DbError> {
-        let request = GroupingWithWatchedParams {
-            key: key.clone(),
-            separator: vec![std::path::MAIN_SEPARATOR as u8],
-        };
+        let request = GroupingWithWatchedParams { key: key.clone() };
         self.store
             .read(move |sql| bae_store::statement_optional(&sql, &request))
             .await?
