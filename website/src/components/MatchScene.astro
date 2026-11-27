@@ -1,0 +1,254 @@
+---
+// The scene on the "Releases, not folders" card: bae reads three folders one
+// at a time, steps through what it compares, and picks each folder's release.
+// The artists, albums and labels are made up.
+interface Props {
+  text: {
+    readingTags: string;
+    tracks: string;
+    matchingBarcode: string;
+    matchingCatalog: string;
+    comparingLengths: string;
+    matched: string;
+  };
+}
+
+const { text } = Astro.props;
+
+const folders = [
+  'Mara Quill - Low Tide Hours (2014 Vinyl) [FLAC 24-96]/',
+  'The Slow Orchards - Paper Lanterns [FLAC]/',
+  'Juno Vale - Glass Weather (2013 Remaster) [16B-44.1kHz]/',
+];
+
+const albums = [
+  {
+    title: 'Low Tide Hours',
+    artist: 'Mara Quill',
+    art: 'a1',
+    steps: [
+      [text.readingTags, `9 ${text.tracks}`],
+      [text.matchingBarcode, '5012345678900'],
+      [text.comparingLengths, '42:18'],
+    ],
+    releases: [['CD', '1992', 0], ['LP', '2014', 1]],
+  },
+  {
+    title: 'Paper Lanterns',
+    artist: 'The Slow Orchards',
+    art: 'a2',
+    steps: [
+      [text.readingTags, `11 ${text.tracks}`],
+      [text.matchingCatalog, 'OL-204'],
+      [text.comparingLengths, '38:51'],
+    ],
+    releases: [['LP', '1971', 1], ['CD', '1989', 0]],
+  },
+  {
+    title: 'Glass Weather',
+    artist: 'Juno Vale',
+    art: 'a3',
+    steps: [
+      [text.readingTags, `10 ${text.tracks}`],
+      [text.matchingBarcode, '0724384260521'],
+      [text.comparingLengths, '47:05'],
+    ],
+    releases: [['CD', '2003', 0], ['CD', '2013', 1]],
+  },
+];
+
+const folderPath = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z';
+---
+<div class="match-scene" data-match-scene>
+  <div class="ms-stack">
+    {folders.map((name, i) => (
+      <div class="ms-folder" data-l={String(i)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d={folderPath} /></svg>
+        <span class="web-mono">{name}</span>
+      </div>
+    ))}
+  </div>
+  <div class="ms-status"></div>
+  <div class="ms-ident">
+    <div class="ms-skel" aria-hidden="true">
+      <div class="ms-head"><i class="ms-art ms-sk"></i><div class="ms-ht"><i class="ms-sk" style="width:160px;height:12px"></i><i class="ms-sk" style="width:104px;height:10px"></i></div></div>
+      <div class="ms-pr"><i class="ms-sk" style="width:26px;height:10px"></i><i class="ms-sk" style="width:36px;height:10px"></i><i class="ms-sk" style="flex:1;margin-right:32px;height:8px"></i></div>
+      <div class="ms-pr"><i class="ms-sk" style="width:26px;height:10px"></i><i class="ms-sk" style="width:36px;height:10px"></i><i class="ms-sk" style="flex:1;margin-right:48px;height:8px"></i></div>
+    </div>
+  </div>
+  <script type="application/json" data-match-albums set:html={JSON.stringify({ albums, matched: text.matched })} />
+</div>
+
+<style is:global>
+  .match-scene{height:342px;box-sizing:border-box;margin:-8px 0 var(--space-section);border-radius:var(--radius-card);background:var(--well);overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 36px;}
+  .match-scene .a1{background:linear-gradient(135deg,#5b6cf0,#c46ad6);}
+  .match-scene .a2{background:linear-gradient(135deg,#f08a5b,#d6467a);}
+  .match-scene .a3{background:linear-gradient(135deg,#3fb6a8,#2d6ec9);}
+  .ms-stack{position:relative;width:min(360px,100%);height:44px;flex:none;}
+  .ms-folder{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--hairline);color:var(--text-tertiary);overflow:hidden;min-width:0;transition:color .3s,transform .5s cubic-bezier(.2,.8,.25,1),opacity .5s;}
+  .ms-folder span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;}
+  .ms-folder svg{flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;}
+  .ms-folder[data-l="0"]{transform:none;opacity:1;z-index:3;}
+  .ms-folder[data-l="1"]{transform:translateY(-8px) scale(.94);opacity:.55;z-index:2;}
+  .ms-folder[data-l="2"]{transform:translateY(-16px) scale(.88);opacity:.25;z-index:1;}
+  .ms-folder[data-l="gone"]{transform:translateY(36px) scale(.96);opacity:0;z-index:4;}
+  .ms-folder.ms-active{color:var(--text-primary);}
+  .ms-status{position:relative;flex:none;width:min(360px,100%);height:16px;margin-top:-10px;}
+  .ms-line{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--text-primary);opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;}
+  .ms-line.ms-in{opacity:1;transform:none;}
+  .ms-line.ms-out{opacity:0;transform:translateY(-6px);}
+  .ms-line .ms-sp{flex:none;width:12px;height:12px;box-sizing:border-box;margin-right:2px;border-radius:50%;border:1.5px solid var(--hairline);border-top-color:var(--accent);animation:ms-spin .7s linear infinite;}
+  .ms-line.ms-ok .ms-sp{border:none;animation:none;color:var(--accent);display:flex;align-items:center;justify-content:center;}
+  .ms-line.ms-ok .ms-sp::before{content:"\2713";font-size:11px;}
+  .ms-line .ms-v{font-family:var(--font-web-mono);font-size:11px;color:var(--text-tertiary);}
+  .ms-ident{position:relative;flex:1;width:min(290px,100%);}
+  .ms-skel,.ms-card{position:absolute;inset:0;display:flex;flex-direction:column;}
+  .ms-skel{opacity:0;transition:opacity .35s;}
+  .match-scene.ms-scanning .ms-skel{opacity:1;}
+  .match-scene.ms-has-card .ms-skel{opacity:0;}
+  .ms-card{opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s;}
+  .ms-card.ms-in{opacity:1;transform:none;}
+  .ms-card.ms-out{opacity:0;transform:translateY(28px);transition:opacity .5s,transform .5s ease-in;}
+  .ms-head{display:flex;align-items:center;gap:14px;font-size:17px;margin-bottom:8px;}
+  .ms-art{width:64px;height:64px;border-radius:8px;flex:none;}
+  .ms-ht{display:flex;flex-direction:column;gap:1px;min-width:0;}
+  .ms-skel .ms-ht{gap:8px;}
+  .ms-ht b{font-weight:600;}
+  .ms-ht span{font-size:14px;color:var(--text-secondary);}
+  .ms-pr{display:flex;align-items:center;gap:12px;height:36px;box-sizing:border-box;padding:0 12px;border-radius:9px;font-size:14px;color:var(--text-secondary);transition:background .35s,color .35s;}
+  .ms-pr .ms-fmt{font-weight:600;width:26px;}
+  .ms-pr .ms-bar{flex:1;height:8px;border-radius:4px;background:var(--hairline);}
+  .ms-pr .ms-tick{flex:none;margin-left:auto;color:var(--accent);opacity:0;transition:opacity .3s;}
+  .ms-pr.ms-on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--text-primary);}
+  .ms-pr.ms-on .ms-bar{background:color-mix(in srgb,var(--text-primary) 22%,transparent);}
+  .ms-pr.ms-on .ms-tick{opacity:1;}
+  .ms-sk{display:block;border-radius:4px;background:var(--hairline);animation:ms-pulse 1.4s ease-in-out infinite;}
+  .ms-art.ms-sk{border-radius:8px;}
+  .ms-stack,.ms-ident{transition:opacity .6s;}
+  .match-scene.ms-hide .ms-stack{opacity:0;}
+  .match-scene.ms-snap,.match-scene.ms-snap *{transition:none !important;}
+  @keyframes ms-spin{to{transform:rotate(360deg);}}
+  @keyframes ms-pulse{50%{opacity:.45;}}
+</style>
+
+<script>
+  type Album = {
+    title: string;
+    artist: string;
+    art: string;
+    steps: [string, string][];
+    releases: [string, string, number][];
+  };
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  function el(tag: string, cls: string, html = '') {
+    const node = document.createElement(tag);
+    node.className = cls;
+    node.innerHTML = html;
+    return node;
+  }
+
+  function escape(value: string) {
+    const node = document.createElement('span');
+    node.textContent = value;
+    return node.innerHTML;
+  }
+
+  function lineHtml(label: string, value: string) {
+    return `<i class="ms-sp"></i><span>${escape(label)}</span><span class="ms-v">${escape(value)}</span>`;
+  }
+
+  function cardFor(album: Album) {
+    let html = `<div class="ms-head"><i class="ms-art ${album.art}"></i><div class="ms-ht"><b>${escape(album.title)}</b><span>${escape(album.artist)}</span></div></div>`;
+    album.releases.forEach(([format, year, chosen], i) => {
+      html += `<div class="ms-pr" data-chosen="${chosen}"><span class="ms-fmt">${format}</span><span>${year}</span><span class="ms-bar" style="margin-right:${i ? 40 : 28}px"></span><span class="ms-tick">✓</span></div>`;
+    });
+    return el('div', 'ms-card', html);
+  }
+
+  function run(root: HTMLElement) {
+    const data = JSON.parse(root.querySelector('[data-match-albums]')!.textContent!) as { albums: Album[]; matched: string };
+    const { albums, matched } = data;
+    const folders = Array.from(root.querySelectorAll<HTMLElement>('.ms-folder'));
+    const status = root.querySelector<HTMLElement>('.ms-status')!;
+    const ident = root.querySelector<HTMLElement>('.ms-ident')!;
+
+    const layer = (done: number) =>
+      folders.forEach((f, i) => f.setAttribute('data-l', i < done ? 'gone' : String(i - done)));
+
+    function setLine(html: string, ok = false) {
+      status.querySelectorAll('.ms-line').forEach((old) => {
+        old.classList.remove('ms-in');
+        old.classList.add('ms-out');
+        setTimeout(() => old.remove(), 300);
+      });
+      const line = el('div', ok ? 'ms-line ms-ok' : 'ms-line', html);
+      status.appendChild(line);
+      void line.offsetHeight;
+      line.classList.add('ms-in');
+    }
+
+    const chosenOf = (album: Album) => album.releases.find((r) => r[2])!;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const album = albums[0];
+      const card = cardFor(album);
+      card.classList.add('ms-in');
+      card.querySelector('.ms-pr[data-chosen="1"]')!.classList.add('ms-on');
+      ident.appendChild(card);
+      root.classList.add('ms-has-card');
+      folders[0].classList.add('ms-active');
+      const chosen = chosenOf(album);
+      setLine(lineHtml(matched, `${chosen[0]} ${chosen[1]}`), true);
+      return;
+    }
+
+    (async () => {
+      for (;;) {
+        await wait(700);
+        for (let i = 0; i < albums.length; i++) {
+          const album = albums[i];
+          folders[i].classList.add('ms-active');
+          root.classList.add('ms-scanning');
+          setLine(lineHtml(...album.steps[0]));
+          await wait(900);
+          status.querySelector('.ms-line.ms-in')?.classList.add('ms-ok');
+          const card = cardFor(album);
+          ident.appendChild(card);
+          await wait(60);
+          card.classList.add('ms-in');
+          root.classList.add('ms-has-card');
+          await wait(900);
+          for (const step of album.steps.slice(1)) {
+            setLine(lineHtml(...step));
+            await wait(850);
+          }
+          card.querySelector('.ms-pr[data-chosen="1"]')!.classList.add('ms-on');
+          root.classList.remove('ms-scanning');
+          const chosen = chosenOf(album);
+          setLine(lineHtml(matched, `${chosen[0]} ${chosen[1]}`), true);
+          await wait(1100);
+          layer(i + 1);
+          folders[i].classList.remove('ms-active');
+          setLine('');
+          card.classList.add('ms-out');
+          root.classList.remove('ms-has-card');
+          await wait(700);
+          card.remove();
+        }
+        await wait(500);
+        root.classList.add('ms-hide');
+        await wait(700);
+        root.classList.add('ms-snap');
+        layer(0);
+        void root.offsetHeight;
+        root.classList.remove('ms-snap');
+        root.classList.remove('ms-hide');
+        await wait(600);
+      }
+    })();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-match-scene]').forEach(run);
+</script>

@@ -36,6 +36,14 @@ export default {
     ['Playback details', 'Albums keep their playback details: vinyl and cassette recordings pause on side breaks. CUE sheets enable playing pregaps from CDs.', ['CD pregaps', 'Vinyl side breaks']],
     ['You control it', 'Your music stays yours. Your files stay where you put them. You control your library.', ['Your files', 'No lock-in']],
   ],
+  matchScene: {
+    readingTags: 'Reading tags',
+    tracks: 'tracks',
+    matchingBarcode: 'Matching barcode',
+    matchingCatalog: 'Matching catalog number',
+    comparingLengths: 'Comparing track lengths',
+    matched: 'Matched',
+  },
   engineEyebrow: 'Native',
   engineTitle: ['Native apps on', 'every platform'],
   engineText:

@@ -6423,8 +6423,13 @@ The home page and the docs draw their buttons, notices, chips, status
 glyphs and cards as the design system draws them, and their icons are the
 design system's Material Symbols, the set Android draws, where an icon is
 the control. The home page also keeps drawings of its own: the device and
-cloud icons and the lock marks of the sync diagram, each platform's logo on
-its plate, and the globe on the language button. The home page's pre-1.0 banner is the site's own
+cloud icons of the sync diagram, each platform's logo on its plate, and the
+globe on the language button. The first card of the library section shows bae
+matching folders to releases. Three folders with made-up names take turns at
+the top of a stack. While bae reads the top folder, a line under it names each
+step (reading tags, matching a barcode or catalog number, comparing track
+lengths), the album and its releases appear, and bae picks the release the
+folder holds. The home page's pre-1.0 banner is the site's own
 piece, drawn in the design system's warning color: a striped top edge, a
 "!" mark, a glowing dot before "Pre-1.0", and the heading and text.
 

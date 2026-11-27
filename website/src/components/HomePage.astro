@@ -2,6 +2,7 @@
 import '../generated/tokens.css';
 import Chip from './Chip.astro';
 import Logo from './Logo.astro';
+import MatchScene from './MatchScene.astro';
 import Symbol from './Symbol.astro';
 import StatusGlyph from './StatusGlyph.astro';
 import sheepUrl from '../../../design/system/assets/Logos/bae-sheep.svg?url';
@@ -411,6 +412,7 @@ const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], [
   </div>
   <div class="cards">
     <div class="fcard r">
+      <MatchScene text={text.matchScene ?? landing.en.matchScene} />
       <h3 class="web-heading">{text.cards[0][0]}</h3>
       <p class="web-body">{text.cards[0][1]}</p>
     </div>
