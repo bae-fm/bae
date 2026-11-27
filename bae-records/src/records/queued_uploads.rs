@@ -36,32 +36,26 @@ sqlive_compose::fragment!(
 "#
 );
 
-// The releases [`ReleaseSending`] lists, whose SQL a statement built as text
-// holds.
-sqlive_compose::read!(
-    ReleasesSending,
-    r#"
-    SELECT sending.*
-    FROM @crate::records::queued_uploads::ReleaseSending AS sending
-"#
-);
+/// The columns of a release's storage row `storage`
+/// ([`ReleaseStorageRows`]) that count its upload, for a read that shows only
+/// how many of a release's files wait and how many are being sent.
+/// [`release_upload_progress_in_row`] and [`release_upload_in_row`] map them.
+macro_rules! release_upload_count_columns {
+    () => {
+        "storage.queued_count, storage.waiting_files, storage.sending_files, \
+         storage.stored_files"
+    };
+}
 
-/// The counts of a release's upload as the import list's window reads them,
-/// beside `release_storage storage` joined to [`ReleasesSending`] as
-/// `sending`: how many of its files are queued, how many of those only wait
-/// and how many are being sent, and how many are stored.
-/// [`release_upload_progress_in_row`] maps them.
-pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = "storage.queued_count AS queued_count, \
-     storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
-     COALESCE(sending.files, 0) AS sending_files, \
-     storage.file_count - storage.queued_count AS stored_files";
+/// `release_upload_count_columns!` alone.
+pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 
-/// The columns of a release's storage row `storage` ([`ReleaseStorageRows`])
-/// that [`release_upload_in_row`] maps: the counts of its upload, and the
-/// name of the release file whose missing original a move of the release
-/// waits for.
-pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count, storage.waiting_files, \
-     storage.sending_files, storage.stored_files, storage.missing_original_file";
+/// The columns of a release's storage row `storage` that
+/// [`release_upload_in_row`] maps: its counts
+/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the name of the release file whose
+/// missing original a move of the release waits for.
+pub const RELEASE_UPLOAD_COLUMNS: &str =
+    concat!(release_upload_count_columns!(), ", storage.missing_original_file");
 
 // What holds the upload queue back, as one row: `upload_wait` names the wait
 // ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the earliest

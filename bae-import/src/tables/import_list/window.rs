@@ -38,11 +38,12 @@ use crate::RelativeFolder;
 use crate::{CandidateKey, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
 use bae_catalogs::records::ReleaseRecord;
 use bae_records::records::queued_uploads::{
-    release_upload_progress_in_row, ReleasesSending, RELEASE_UPLOAD_COUNT_COLUMNS,
+    release_upload_progress_in_row, RELEASE_UPLOAD_COUNT_COLUMNS,
 };
 use bae_records::records::read::{
     records_column, release_records_json_sql, release_records_kind_sql,
 };
+use bae_records::release_storage::ReleaseStorageRows;
 use bae_records::UploadProgress;
 use bae_store::{list_windows::WindowRead, ListWindow};
 use bae_types::credits::CreditLine;
@@ -356,14 +357,13 @@ fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) 
              ON provenance.content_hash = s.content_hash \
          LEFT JOIN import_candidate_release_link AS link ON link.content_hash = s.content_hash \
          LEFT JOIN import_candidate_cover AS cover ON cover.content_hash = s.content_hash \
-         LEFT JOIN release_storage AS storage \
+         LEFT JOIN ({storage}) AS storage \
              ON storage.release_id = origin.release_id AND storage.queued_count > 0 \
-         LEFT JOIN ({releases_sending}) AS sending ON sending.release_id = storage.release_id \
          {covers} \
          {invalid_join} \
          ORDER BY w.n",
         cover = cover_read_columns(),
-        releases_sending = ReleasesSending::SQL,
+        storage = ReleaseStorageRows::SQL,
         library_cover = bae_records::records::files::cover_version_sql("origin.release_id"),
         library_records = release_records_json_sql("origin.release_id"),
         library_records_kind = release_records_kind_sql("origin.release_id"),
