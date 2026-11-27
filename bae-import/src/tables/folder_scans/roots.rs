@@ -7,22 +7,34 @@ use super::*;
 sqlive_compose::write!(
     NextScanGeneration,
     r#"
-    INSERT INTO folder_scan_generation_sequence (singleton, last_generation)
-    VALUES (1, 1)
-    ON CONFLICT (singleton) DO UPDATE SET last_generation = last_generation + 1
+    UPDATE folder_scan_generation_sequence SET last_generation = last_generation + 1
+    WHERE singleton = 1
     RETURNING last_generation
 "#
 );
 
-/// The next scan generation. An upsert, so a missing seed row is created
-/// rather than failing the scan.
+/// The next scan generation, from the counter's one row, which the schema
+/// seeds. A library without the row fails the write.
 pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, DbError> {
     Ok(sql.returning_one(&NextScanGenerationParams {})?.last_generation)
 }
 
-// What a test of a missing counter row deletes.
 #[cfg(test)]
-sqlive_compose::write!(ForgetGenerationCounter, r#"DELETE FROM folder_scan_generation_sequence"#);
+sqlive_compose::write!(DeleteGenerationCounter, r#"DELETE FROM folder_scan_generation_sequence"#);
+
+#[cfg(test)]
+impl ImportTables {
+    /// Plant damage for a test: the library loses the generation counter's
+    /// one row, which no write deletes.
+    pub(crate) async fn delete_generation_counter_for_test(&self) -> Result<(), DbError> {
+        self.store
+            .call(|sql| {
+                sql.run(&DeleteGenerationCounterParams {})?;
+                Ok(())
+            })
+            .await
+    }
+}
 
 // A root's row as a new scan generation opens it, with no outcome yet.
 sqlive_compose::write!(

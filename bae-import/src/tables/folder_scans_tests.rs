@@ -272,24 +272,25 @@ async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded
     assert!(tables.load_folder_scan_snapshots().await.is_err());
 }
 
-/// A scan generation is allocated even when the counter table holds no row.
+/// A scan takes its generation from the counter's one row. In a library that
+/// lost the row, beginning a scan fails, and fails again: the failure doesn't
+/// create the row, which would hand out generations roots already store.
 #[tokio::test]
-async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
+async fn a_scan_fails_in_a_library_without_the_generation_counter_row() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
-    db.call(|sql| {
-        sql.run(&super::roots::ForgetGenerationCounterParams {})?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    tables.delete_generation_counter_for_test().await.unwrap();
 
-    let first = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
-    let second = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
-    assert_eq!(first, 1);
-    assert_eq!(second, 2);
+    for _ in 0..2 {
+        let error = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap_err();
+        let DbError::Unreadable { what, stored } = &error else {
+            panic!("a missing counter row is unreadable: {error:?}");
+        };
+        assert!(what.contains("NextScanGeneration"), "{what}");
+        assert_eq!(stored, "0");
+    }
 }
 
 /// A rescan reports each candidate tentative before valid, and the list hides
