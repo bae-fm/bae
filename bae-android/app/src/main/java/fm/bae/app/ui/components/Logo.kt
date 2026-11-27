@@ -41,9 +41,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
- * Every proportion is a fraction of the sheep's width, as the logo guideline
- * (`the-sheep-logo-and-its-forms.md`, which `design/system/README.md` lists)
- * gives them.
+ * Every proportion is a fraction of the sheep's width, as the design system's
+ * Logo component (`design/system/components/Logo`) gives them.
  */
 private object Proportion {
     const val SHEEP_HEIGHT = 545f / 584f

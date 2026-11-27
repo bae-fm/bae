@@ -38,8 +38,6 @@ screen against them. Each line names one rule file there.
   agree.
 - `component-previews-hold-their-content-still.md`: a preview's named rows.
 - `icons-and-status-glyphs.md`: Material Symbols, SF Symbols, the status ring.
-- `the-sheep-logo-and-its-forms.md`: the sheep, the drawn word and where each
-  form goes.
 - `no-restyling-a-component-from-outside.md`, `no-music-note-imagery.md` and
   `no-real-artist-album-song-names-in-artifacts.md`.
 - In `rules/screen-content/`: `icons-only-where-they-help.md`, `no-emoji.md` and
