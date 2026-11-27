@@ -21,7 +21,6 @@ export default {
     ['非公開', '鍵はあなたのデバイスが保持します'],
     ['どこでも', 'あなたのクラウドで同期します'],
   ],
-  sheepAlt: 'ヘッドホンをつけた bae の羊',
   noteSynced: '同期済み',
   noteSyncedSub: 'あなたのデバイス間で',
   noteCloud: 'あなたのクラウド',

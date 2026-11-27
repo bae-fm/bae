@@ -31,7 +31,6 @@ export default {
       "透過你的雲同步"
     ]
   ],
-  sheepAlt: "戴著耳機的 bae 羊",
   noteSynced: "已同步",
   noteSyncedSub: "跨你的裝置",
   noteCloud: "你的雲",

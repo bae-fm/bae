@@ -21,7 +21,6 @@ export default {
     ['Privada', 'tus dispositivos guardan las claves'],
     ['En todas partes', 'sincronizada mediante tu nube'],
   ],
-  sheepAlt: 'la oveja de bae con auriculares',
   noteSynced: 'Sincronizada',
   noteSyncedSub: 'entre tus dispositivos',
   noteCloud: 'Tu nube',

@@ -21,7 +21,6 @@ export default {
     ['비공개', '키는 내 기기에 보관됩니다'],
     ['어디서나', '내 클라우드로 동기화됩니다'],
   ],
-  sheepAlt: '헤드폰을 쓴 bae 양',
   noteSynced: '동기화됨',
   noteSyncedSub: '기기 사이에서',
   noteCloud: '내 클라우드',

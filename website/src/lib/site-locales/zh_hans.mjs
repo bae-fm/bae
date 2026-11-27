@@ -21,7 +21,6 @@ export default {
     ['私有', '你的设备保存密钥'],
     ['随处可用', '通过你的云同步'],
   ],
-  sheepAlt: '戴着耳机的 bae 羊',
   noteSynced: '已同步',
   noteSyncedSub: '跨你的设备',
   noteCloud: '你的云',

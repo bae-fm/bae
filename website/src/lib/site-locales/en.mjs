@@ -21,7 +21,6 @@ export default {
     ['Private', 'your devices hold the keys'],
     ['Everywhere', 'synced through your cloud'],
   ],
-  sheepAlt: 'bae the sheep, wearing headphones',
   noteSynced: 'Synced',
   noteSyncedSub: 'across your devices',
   noteCloud: 'Your cloud',

@@ -21,7 +21,6 @@ export default {
     ['Privatna', 'vaši uređaji čuvaju ključeve'],
     ['Svugdje', 'sinkronizirana kroz vaš oblak'],
   ],
-  sheepAlt: 'bae ovca sa slušalicama',
   noteSynced: 'Sinkronizirano',
   noteSyncedSub: 'među vašim uređajima',
   noteCloud: 'Vaš oblak',

@@ -21,7 +21,6 @@ export default {
     ['Privée', 'vos appareils gardent les clés'],
     ['Partout', 'synchronisée via votre cloud'],
   ],
-  sheepAlt: 'le mouton bae avec un casque',
   noteSynced: 'Synchronisée',
   noteSyncedSub: 'sur vos appareils',
   noteCloud: 'Votre cloud',

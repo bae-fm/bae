@@ -1,6 +1,7 @@
 ---
 import '../generated/tokens.css';
 import Logo from './Logo.astro';
+import sheepUrl from '../../../design/system/assets/Logos/bae-sheep.svg?url';
 import { getLatest } from '../lib/releases';
 import { LOCALES, landing, localeInfo, localizePath } from '../lib/site-locales.mjs';
 
@@ -34,8 +35,9 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content={text.metaDescription} />
 <title>{text.title}</title>
-<link rel="icon" type="image/png" href="/app-icon.png" />
-<link rel="preload" as="image" href="/sheep.png" fetchpriority="high" />
+<link rel="icon" type="image/svg+xml" sizes="16x16" href="/favicon-16.svg" />
+<link rel="icon" type="image/svg+xml" sizes="32x32" href="/favicon-32.svg" />
+<link rel="preload" as="image" href={sheepUrl} fetchpriority="high" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -59,9 +61,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
   .js.is-loading .r,
   .js.is-ready .r:not(.is-in):not(.is-shown){opacity:0;transform:translateY(22px) scale(.99);will-change:opacity,transform;}
-  .js.is-loading .herosheep img,
   .js.is-loading .note,
-  .js.is-loading .endcta .ring img,
   .js.is-loading .dwire::before,
   .js.is-loading .core::before{animation-play-state:paused;}
   .r.is-in{animation:pop .85s cubic-bezier(.2,.8,.25,1) both;}
@@ -74,7 +74,6 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .r.is-shown{opacity:1;transform:none;will-change:auto;}
     .r.is-in{animation:none;}
   }
-  @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-16px) rotate(2deg);}}
   @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
 
   /* nav */
@@ -162,9 +161,6 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .hero .cta .meta{margin-left:8px;}
 
   .herosheep{position:relative;display:grid;place-items:center;}
-  .sheepglow{position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb, var(--accent-pink) calc(var(--opacity-tint-strong) * 100%), transparent),color-mix(in srgb, var(--accent-orchid) calc(var(--opacity-tint) * 100%), transparent) 50%,transparent 72%);}
-  .herosheep img{width:min(100%,400px);height:auto;position:relative;animation:bob 6s ease-in-out infinite;filter:drop-shadow(0 24px 50px var(--shadow));}
-  @media (prefers-reduced-motion: reduce){.herosheep img{animation:none;}}
   .note{position:absolute;background:var(--elevated);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-field-inset) 14px;font-size:12.5px;font-weight:600;box-shadow:0 12px 30px var(--shadow);animation:floaty 5s ease-in-out infinite;}
   .note .s{display:block;font-family:var(--font-web-mono);font-size:10.5px;color:var(--text-tertiary);font-weight:400;margin-top:var(--space-line);}
   .note.one{top:8%;left:-6%;} .note.two{bottom:12%;right:-4%;animation-delay:1.2s;}
@@ -270,8 +266,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
   /* end */
   .endcta{text-align:center;padding:96px 0;}
-  .endcta .ring{width:128px;height:128px;margin:0 auto 26px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,color-mix(in srgb, var(--accent-pink) calc(var(--opacity-tint-strong) * 100%), transparent),transparent 70%);}
-  .endcta .ring img{width:118px;height:118px;object-fit:contain;animation:bob 6s ease-in-out infinite;}
+  .endcta .sheep{display:flex;justify-content:center;margin-bottom:26px;}
   .endcta h2{font-family:var(--font-web-display);font-weight:800;font-size:clamp(36px,5.2vw,68px);letter-spacing:-.03em;line-height:1;margin:0 0 16px;}
   .endcta h2 .pink{color:var(--accent-pink);} .endcta h2 .violet{color:var(--accent-orchid);}
   /* end-CTA cycling final word ("home" / "everywhere") -- all scoped under .endcta */
@@ -427,8 +422,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
       </div>
     </div>
     <div class="herosheep r d2">
-      <div class="sheepglow"></div>
-      <img src="/sheep.png" alt={text.sheepAlt} width="1024" height="1024" decoding="async" fetchpriority="high" />
+      <Logo kind="pair" size={320} bob glow />
       <div class="note one"><span class="dot" style="background:var(--success)"></span>{text.noteSynced}<span class="s">{text.noteSyncedSub}</span></div>
       <div class="note two">{text.noteCloud}<span class="s">{text.noteCloudSub}</span></div>
     </div>
@@ -564,7 +558,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 </div></section>
 
 <section class="endcta" id="get"><div class="wrap">
-  <div class="ring r"><img src="/sheep.png" alt="" width="1024" height="1024" loading="lazy" decoding="async" /></div>
+  <div class="sheep r"><Logo kind="sheep" size={120} /></div>
   <h2 class="r d1" aria-label={text.endAria} data-cycle-words={JSON.stringify(text.cycleWords)}>{text.endPrefix} <span class="cyc" aria-hidden="true"><span class="cyc-word cyc-pink">{text.cycleWords[0]}</span><span class="cyc-dot">.</span></span><span class="cyc-fallback">{text.endFallback}</span></h2>
   <p class="r d2">{text.endText}</p>
   <div class="cta r d3" style="justify-content:center;">

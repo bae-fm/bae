@@ -31,7 +31,6 @@ export default {
       "kendi bulutunla eşzamanlanır"
     ]
   ],
-  sheepAlt: "kulaklık takan bae koyunu",
   noteSynced: "Eşzamanlama",
   noteSyncedSub: "cihazların arasında",
   noteCloud: "Bulutun",

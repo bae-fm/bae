@@ -31,7 +31,6 @@ export default {
       "gesynchroniseerd via je cloud"
     ]
   ],
-  sheepAlt: "bae het schaap met koptelefoon",
   noteSynced: "Synchronisatie",
   noteSyncedSub: "tussen je apparaten",
   noteCloud: "Je cloud",

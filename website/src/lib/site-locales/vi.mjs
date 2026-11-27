@@ -31,7 +31,6 @@ export default {
       "đồng bộ qua cloud của bạn"
     ]
   ],
-  sheepAlt: "cừu bae đeo tai nghe",
   noteSynced: "Đồng bộ",
   noteSyncedSub: "giữa các thiết bị",
   noteCloud: "Cloud của bạn",

@@ -31,7 +31,6 @@ export default {
       "আপনার ক্লাউড দিয়ে সিঙ্ক"
     ]
   ],
-  sheepAlt: "আপনার সঙ্গীত",
   noteSynced: "সিঙ্ক",
   noteSyncedSub: "আপনার ডিভাইসগুলোর মধ্যে",
   noteCloud: "আপনার ক্লাউড",

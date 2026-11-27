@@ -21,7 +21,6 @@ export default {
     ['Soukromá', 'vaše zařízení drží klíče'],
     ['Všude', 'synchronizovaná přes váš cloud'],
   ],
-  sheepAlt: 'ovce bae se sluchátky',
   noteSynced: 'Synchronizováno',
   noteSyncedSub: 'napříč vašimi zařízeními',
   noteCloud: 'Váš cloud',

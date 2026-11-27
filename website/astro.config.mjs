@@ -53,7 +53,14 @@ export default defineConfig({
 		starlight({
 			title: 'bae',
 			description: 'Music library manager with serverless, encrypted, multi-device sync',
-			favicon: '/app-icon.png',
+			// The design system's small sheep, drawn for 16 and 32 pixels.
+			favicon: '/favicon-32.svg',
+			head: [
+				{
+					tag: 'link',
+					attrs: { rel: 'icon', type: 'image/svg+xml', sizes: '16x16', href: '/favicon-16.svg' },
+				},
+			],
 			locales: localeConfig,
 			defaultLocale: 'root',
 			components: {

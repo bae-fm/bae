@@ -31,7 +31,6 @@ export default {
       "आपके क्लाउड से सिंक"
     ]
   ],
-  sheepAlt: "आपका संगीत",
   noteSynced: "सिंक",
   noteSyncedSub: "डिवाइसों के बीच",
   noteCloud: "आपका क्लाउड",

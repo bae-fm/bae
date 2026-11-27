@@ -6368,7 +6368,9 @@ sizes, line heights, widths, section paddings and letter spacing, stays in the
 page. The top bar of the home page and the docs, and the home page's
 footer, draw the logo as the design system's Logo component does in a line:
 the sheep, then the word "bae" at 0.8 of the sheep's width, in the text
-color.
+color. The home page's hero draws the sheep over the word, floating in
+its glow, as Welcome does. Every sheep on the site is the design system's
+drawing, and the favicons are its small sheep, drawn for 16 and 32 pixels.
 
 ---
 

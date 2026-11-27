@@ -31,7 +31,6 @@ export default {
       "sincronizzata tramite il tuo cloud"
     ]
   ],
-  sheepAlt: "la pecora bae con le cuffie",
   noteSynced: "Sincronizzazione",
   noteSyncedSub: "tra i tuoi dispositivi",
   noteCloud: "Il tuo cloud",

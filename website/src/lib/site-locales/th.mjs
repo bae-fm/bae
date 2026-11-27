@@ -31,7 +31,6 @@ export default {
       "sync ผ่าน cloud ของคุณ"
     ]
   ],
-  sheepAlt: "เพลงของคุณ",
   noteSynced: "ซิงค์",
   noteSyncedSub: "ระหว่างอุปกรณ์ของคุณ",
   noteCloud: "cloud ของคุณ",
