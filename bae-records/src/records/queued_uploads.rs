@@ -205,14 +205,8 @@ pub fn release_upload_on(
 // paused uploads. One row per upload in flight is read.
 sqlive_compose::read!(
     SendingUploads {
-        struct SendingFile {
-            file: coven::FileId,
-            release_id: Option<String>,
-            file_size: Option<u64>
-        }
-        struct SendingRelease { release_id: String, bytes_stored: u64, bytes_total: u64 }
-        files: json<Vec<SendingFile>>,
-        releases: json<Vec<SendingRelease>>,
+        files: json<Vec<crate::models::DbSendingFile>>,
+        releases: json<Vec<crate::models::DbSendingRelease>>,
         paused: bool
     },
     r#"
@@ -239,27 +233,7 @@ sqlive_compose::read!(
 /// What this process is sending now, as [`SendingUploads`] reads it.
 fn sending_uploads_on(sql: &impl coven::SqlRead) -> Result<DbSendingUploads, DbError> {
     let row = statement_row(sql, &SendingUploadsParams {})?;
-    Ok(DbSendingUploads {
-        files: row
-            .files
-            .into_iter()
-            .map(|file| DbSendingFile {
-                file: file.file,
-                release_id: file.release_id,
-                file_size: file.file_size,
-            })
-            .collect(),
-        releases: row
-            .releases
-            .into_iter()
-            .map(|release| DbSendingRelease {
-                release_id: release.release_id,
-                bytes_stored: release.bytes_stored,
-                bytes_total: release.bytes_total,
-            })
-            .collect(),
-        paused: row.paused,
-    })
+    Ok(DbSendingUploads { files: row.files, releases: row.releases, paused: row.paused })
 }
 
 impl Records {

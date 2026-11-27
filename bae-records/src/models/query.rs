@@ -168,7 +168,7 @@ pub struct DbReleaseEditSourceFile {
 
 /// One file this process is sending now: when it is one of a release's
 /// files, its release and size.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct DbSendingFile {
     pub file: coven::FileId,
     pub release_id: Option<String>,
@@ -177,7 +177,7 @@ pub struct DbSendingFile {
 
 /// A release with files this process is sending now: of its whole size, the
 /// bytes of its files stored.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct DbSendingRelease {
     pub release_id: String,
     pub bytes_stored: u64,
