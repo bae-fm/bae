@@ -1,0 +1,6 @@
+---
+// The notice on a page that has no translation in the reader's language:
+// the design system's warning notice.
+import Notice from './Notice.astro';
+---
+<Notice tone="warning" title={Astro.locals.t('i18n.untranslatedContent')} />

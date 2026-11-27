@@ -126,7 +126,7 @@
 	color: var(--text-secondary);
 }
 .sidebar-content a:hover {
-	background-color: var(--surface);
+	background-color: var(--hover);
 	color: var(--text-primary);
 }
 
@@ -178,7 +178,7 @@
 	background: transparent;
 }
 
-/* ---- Tables: separated borders, panel radius, header on elevated ---- */
+/* ---- Tables: separated borders, card radius, header on elevated ---- */
 /* Starlight renders the table as display:block with no outer frame; rebuild
    the framed, rounded card from the mock. */
 .sl-markdown-content table:not(:where(.not-content *)) {
@@ -187,7 +187,7 @@
 	border-collapse: separate;
 	border-spacing: 0;
 	border: 1px solid var(--hairline);
-	border-radius: var(--radius-panel);
+	border-radius: var(--radius-card);
 	overflow: hidden;
 	font: var(--type-web-body-weight) var(--type-web-body-size) / var(--type-web-body-line-height) var(--font-web-body);
 }
@@ -221,49 +221,72 @@
 	border-bottom: 0;
 }
 
-/* ---- Asides / callouts: gradient card, colored left border, panel radius ---- */
-/* Starlight's default aside is a flat tinted block; restyle as the gradient
-   card from the mock. The left border and title color come from
-   --sl-color-asides-border / --sl-color-asides-text-accent, which each
-   variant sets below; background-color:transparent clears Starlight's flat
-   tint so only the gradient shows. */
+/* ---- Asides: the design system's notices ---- */
+/* Each aside is a notice: the tone's notice fill, the ring with its mark at
+   the top left, 1.19 times the text and level with the first line, the
+   title in the label's weight over the text in secondary text. Note is
+   info, tip success, caution warning and danger danger. Starlight's own
+   icon in the title gives way to the ring. */
 .sl-markdown-content .starlight-aside:not(:where(.not-content *)) {
-	background-image: linear-gradient(180deg, var(--surface), var(--well));
-	border: 1px solid var(--hairline);
-	border-inline-start: 3px solid var(--sl-color-asides-border);
-	border-radius: var(--radius-panel);
-	padding: 18px 20px;
-	color: var(--text-secondary);
+	--notice-ring-size: round(1.19em, 0.5px);
+	position: relative;
+	border: 0;
+	border-radius: var(--radius-control);
+	padding: var(--space-group);
+	padding-inline-start: calc(var(--space-group) + var(--notice-ring-size) + var(--space-related));
+	background: var(--notice-fill);
+	color: var(--on-notice);
+	font: var(--type-web-body-weight) var(--type-web-body-size) / var(--type-web-body-line-height) var(--font-web-body);
+	--text-secondary: color-mix(in srgb, var(--on-notice) 72%, transparent);
+	--sl-color-asides-text-accent: var(--on-notice);
+}
+.sl-markdown-content .starlight-aside:not(:where(.not-content *))::before {
+	content: '';
+	position: absolute;
+	inset-inline-start: var(--space-group);
+	top: calc(var(--space-group) + (var(--type-web-body-line-height) - var(--notice-ring-size)) / 2);
+	width: var(--notice-ring-size);
+	height: var(--notice-ring-size);
+	background: var(--notice-ring-colour);
+	-webkit-mask: var(--notice-ring) center / contain no-repeat;
+	mask: var(--notice-ring) center / contain no-repeat;
+}
+.starlight-aside__title {
+	font-weight: var(--type-web-label-weight);
+	color: var(--on-notice);
+}
+.starlight-aside__title > svg {
+	display: none;
 }
 .starlight-aside__content {
 	color: var(--text-secondary);
 }
 .starlight-aside__content strong,
 .starlight-aside__content b {
-	color: var(--text-primary);
+	color: var(--on-notice);
 }
-
-/* The four aside variants: tip is mint, note orchid, caution pink and
-   danger the pink fill. */
 .sl-markdown-content .starlight-aside--note {
-	--sl-color-asides-border: var(--accent-orchid);
-	--sl-color-asides-text-accent: var(--accent-orchid);
-	background-color: transparent;
+	--notice-fill: var(--neutral-tint);
+	--notice-ring: url('../../../design/system/assets/Symbols/ring-info.svg');
+	--notice-ring-colour: var(--accent);
+}
+[data-theme='light'] .sl-markdown-content .starlight-aside--note {
+	--notice-fill: var(--accent-tint);
 }
 .sl-markdown-content .starlight-aside--tip {
-	--sl-color-asides-border: var(--accent-mint);
-	--sl-color-asides-text-accent: var(--accent-mint);
-	background-color: transparent;
+	--notice-fill: var(--success-notice);
+	--notice-ring: url('../../../design/system/assets/Symbols/ring-success.svg');
+	--notice-ring-colour: var(--success-icon);
 }
 .sl-markdown-content .starlight-aside--caution {
-	--sl-color-asides-border: var(--accent-pink);
-	--sl-color-asides-text-accent: var(--accent-pink);
-	background-color: transparent;
+	--notice-fill: var(--warning-notice);
+	--notice-ring: url('../../../design/system/assets/Symbols/ring-alert.svg');
+	--notice-ring-colour: var(--warning-icon);
 }
 .sl-markdown-content .starlight-aside--danger {
-	--sl-color-asides-border: var(--accent-pink-fill);
-	--sl-color-asides-text-accent: var(--accent-pink-fill);
-	background-color: transparent;
+	--notice-fill: var(--danger-notice);
+	--notice-ring: url('../../../design/system/assets/Symbols/ring-alert.svg');
+	--notice-ring-colour: var(--danger-icon);
 }
 
 /* ---- Right "On this page" table of contents ---- */
@@ -292,23 +315,6 @@ starlight-toc nav a[aria-current='true']:hover {
 	border-inline-start-color: var(--accent-orchid);
 }
 
-/* ---- Custom scrollbar thumb in elevated ---- */
-* {
-	scrollbar-color: var(--elevated) transparent;
-}
-::-webkit-scrollbar {
-	width: 10px;
-	height: 10px;
-}
-::-webkit-scrollbar-track {
-	background: transparent;
-}
-::-webkit-scrollbar-thumb {
-	background: var(--elevated);
-	border-radius: 999px;
-	border: 2px solid var(--background);
-}
-
 /* ---- Selection: pink, with the ink drawn on the pink fill ---- */
 ::selection {
 	background: var(--accent-pink);
@@ -333,4 +339,178 @@ starlight-toc nav a[aria-current='true']:hover {
 .pagination-links .link-title {
 	font: var(--type-web-subheading-weight) var(--type-web-subheading-size) / var(--type-web-subheading-line-height) var(--font-web-display);
 	letter-spacing: var(--type-web-subheading-letter-spacing);
+}
+
+/* ---- Icons: the design system's symbols, only where the icon is the control ---- */
+/* Starlight draws its own icons as inline SVG. Where an icon is the control,
+   such as a select's caret or the search button on a narrow window, the SVG
+   draws the design system's symbol as a mask in its text colour in place of
+   its own paths. Where an icon only decorates words, it goes. */
+select ~ .caret,
+#starlight__on-this-page--mobile .caret,
+.sl-anchor-icon > svg,
+button[data-open-modal] > svg {
+	background: currentColor;
+	-webkit-mask: var(--symbol) center / contain no-repeat;
+	mask: var(--symbol) center / contain no-repeat;
+}
+select ~ .caret > *,
+#starlight__on-this-page--mobile .caret > *,
+.sl-anchor-icon > svg > *,
+button[data-open-modal] > svg > * {
+	display: none;
+}
+
+/* The theme and language selects: no leading icon, Android's expand_more
+   for the caret. */
+starlight-theme-select label,
+starlight-lang-select label {
+	--sl-label-icon-size: 0px;
+	--sl-caret-size: var(--icon-android-medium);
+}
+starlight-theme-select .label-icon,
+starlight-lang-select .label-icon {
+	display: none;
+}
+select ~ .caret {
+	--symbol: url('../../../design/system/assets/Symbols/expand_more.svg');
+	width: var(--icon-android-medium);
+	height: var(--icon-android-medium);
+}
+
+/* The mobile contents list's disclosure: chevron_right, which turns down
+   when the list opens, as Starlight turns its caret. */
+#starlight__on-this-page--mobile .caret {
+	--symbol: url('../../../design/system/assets/Symbols/chevron_right.svg');
+	width: var(--icon-android-small);
+	height: var(--icon-android-small);
+}
+
+/* A heading's link to itself: Material's link symbol. */
+.sl-markdown-content {
+	--sl-anchor-icon-size: var(--icon-android-medium);
+	--sl-anchor-icon-gap: var(--space-inline);
+}
+.sl-anchor-icon > svg {
+	--symbol: url('../../../design/system/assets/Symbols/link.svg');
+}
+
+/* The search button: on a narrow window an icon button with the search
+   symbol; on a wide one an outlined field, as Android's, whose words name
+   it, so the symbol goes, and whose shortcut is a neutral chip. */
+button[data-open-modal] > svg {
+	--symbol: url('../../../design/system/assets/Symbols/search.svg');
+	width: var(--icon-android-large);
+	height: var(--icon-android-large);
+}
+@media (min-width: 50rem) {
+	button[data-open-modal] {
+		gap: var(--space-related);
+		border: 0;
+		border-radius: var(--radius-android-extra-small);
+		box-shadow: inset 0 0 0 1px var(--text-secondary);
+		padding-inline: var(--space-edge) var(--space-related);
+		background-color: transparent;
+		color: var(--text-secondary);
+		font: var(--type-web-body-weight) var(--type-web-body-size) / var(--type-web-body-line-height) var(--font-web-body);
+	}
+	button[data-open-modal]:hover {
+		background-color: var(--hover);
+		color: var(--text-primary);
+	}
+	button[data-open-modal] > svg {
+		display: none;
+	}
+	button[data-open-modal] > kbd {
+		gap: var(--space-line);
+		padding: var(--space-line) var(--space-compact);
+		border-radius: var(--radius-chip);
+		background-color: var(--neutral-tint);
+		color: var(--text-secondary);
+		font: var(--type-web-chip-weight) var(--type-web-chip-size) / var(--type-web-chip-line-height) var(--font-web-mono);
+		letter-spacing: var(--type-web-chip-letter-spacing);
+	}
+	button[data-open-modal] kbd kbd {
+		font: inherit;
+	}
+}
+
+/* The search dialog: a panel, its results cards, the clear button
+   Android's close symbol, and no page icon beside each result. */
+site-search dialog {
+	background-color: var(--elevated);
+	border: 1px solid var(--hairline);
+	box-shadow: none;
+}
+@media (min-width: 50rem) {
+	site-search dialog {
+		border-radius: var(--radius-panel);
+	}
+}
+#starlight__search {
+	--pagefind-ui-font: var(--font-web-body);
+	--pagefind-ui-border-radius: var(--radius-android-extra-small);
+	--pagefind-ui-background: var(--elevated);
+	--sl-search-corners: var(--radius-card);
+}
+#starlight__search .pagefind-ui__search-clear::before {
+	-webkit-mask: url('../../../design/system/assets/Symbols/close.svg') center / var(--icon-android-large) no-repeat;
+	mask: url('../../../design/system/assets/Symbols/close.svg') center / var(--icon-android-large) no-repeat;
+	background-color: var(--text-secondary);
+}
+#starlight__search .pagefind-ui__result-inner > .pagefind-ui__result-title {
+	padding-inline-start: var(--space-edge);
+}
+#starlight__search .pagefind-ui__result-inner > .pagefind-ui__result-title::before {
+	display: none;
+}
+#starlight__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)),
+#starlight__search .pagefind-ui__result-nested {
+	background-color: var(--surface);
+}
+#starlight__search .pagefind-ui__result-link {
+	font-weight: var(--type-web-label-weight);
+}
+#starlight__search .pagefind-ui__result-excerpt {
+	font: var(--type-web-body-weight) var(--type-web-body-size) / var(--type-web-body-line-height) var(--font-web-body);
+}
+
+/* ---- Download buttons: the design system's buttons, as on the home page ---- */
+/* 40px tall and fully round, the edition a reader most likely wants in the
+   accent's deep fill under white words, the other outlined beside it, each
+   with a state layer under the pointer. A platform that has not shipped
+   draws as Android draws a disabled button. */
+.sl-markdown-content .sl-button {
+	display: inline-flex;
+	align-items: center;
+	margin-block: var(--space-inline);
+	margin-inline-end: var(--space-related);
+	padding: var(--space-field-inset) var(--space-section);
+	border-radius: 999px;
+	box-shadow: inset 0 0 0 1px var(--text-secondary);
+	background: transparent;
+	color: var(--text-primary);
+	font: var(--type-web-label-weight) var(--type-web-label-size) / var(--type-web-label-line-height) var(--font-web-body);
+	text-decoration: none;
+}
+.sl-markdown-content a.sl-button:hover {
+	background: var(--hover);
+}
+.sl-markdown-content .sl-button.primary {
+	box-shadow: none;
+	background: var(--accent-pink-selection);
+	color: var(--on-fill);
+}
+.sl-markdown-content a.sl-button.primary:hover {
+	background: linear-gradient(var(--hover), var(--hover)), var(--accent-pink-selection);
+}
+.sl-markdown-content .sl-button.download-unavailable {
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent);
+	background: transparent;
+	color: color-mix(in srgb, var(--text-primary) 38%, transparent);
+	cursor: default;
+}
+.sl-markdown-content .sl-button.primary.download-unavailable {
+	box-shadow: none;
+	background: color-mix(in srgb, var(--text-primary) 12%, transparent);
 }

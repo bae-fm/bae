@@ -1,0 +1,51 @@
+---
+// The links to the previous and next page, as the design system draws a
+// card: a flat surface with a hairline, the direction in the detail style
+// over the page's title. No arrow: the words say which way each goes.
+const { dir, pagination } = Astro.locals.starlightRoute;
+const { prev, next } = pagination;
+---
+<div class="pagination-links print:hidden" dir={dir}>
+  {prev && (
+    <a href={prev.href} rel="prev">
+      <span class="web-detail">{Astro.locals.t('page.previousLink')}</span>
+      <span class="link-title">{prev.label}</span>
+    </a>
+  )}
+  {next && (
+    <a href={next.href} rel="next">
+      <span class="web-detail">{Astro.locals.t('page.nextLink')}</span>
+      <span class="link-title">{next.label}</span>
+    </a>
+  )}
+</div>
+
+<style>
+  .pagination-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    gap: var(--space-edge);
+  }
+  a {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-inline);
+    padding: var(--space-edge);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    color: var(--text-secondary);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+  [rel='next'] {
+    align-items: flex-end;
+    text-align: end;
+  }
+  a:hover {
+    background: linear-gradient(var(--hover), var(--hover)), var(--surface);
+  }
+  .link-title {
+    color: var(--text-primary);
+  }
+</style>

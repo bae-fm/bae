@@ -63,8 +63,14 @@ export default defineConfig({
 			],
 			locales: localeConfig,
 			defaultLocale: 'root',
+			// Each override draws a piece of Starlight as the design system
+			// draws it.
 			components: {
 				SiteTitle: './src/components/SiteTitle.astro',
+				SocialIcons: './src/components/SocialIcons.astro',
+				MobileMenuToggle: './src/components/MobileMenuToggle.astro',
+				Pagination: './src/components/Pagination.astro',
+				FallbackContentNotice: './src/components/FallbackContentNotice.astro',
 			},
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/bae-fm/bae' }

@@ -1,0 +1,91 @@
+---
+// The docs' menu button on narrow windows, as the design system's Android
+// icon button: the menu or close symbol in the text colour on no fill, a
+// state layer under the pointer. The script is Starlight's own.
+import Symbol from './Symbol.astro';
+---
+<starlight-menu-button class="print:hidden">
+  <button
+    aria-expanded="false"
+    aria-label={Astro.locals.t('menuButton.accessibleLabel')}
+    aria-controls="starlight__sidebar"
+    class="sl-flex md:sl-hidden"
+  >
+    <Symbol name="menu" size="large" class="open-menu" />
+    <Symbol name="close" size="large" class="close-menu" />
+  </button>
+</starlight-menu-button>
+
+<script>
+  class StarlightMenuButton extends HTMLElement {
+    btn = this.querySelector('button')!;
+
+    constructor() {
+      super();
+      // Toggle `aria-expanded` state when a user clicks the button.
+      this.btn.addEventListener('click', () => this.toggleExpanded());
+
+      // Close the menu when a user presses the escape key.
+      const parentNav = this.closest('nav');
+      if (parentNav) {
+        parentNav.addEventListener('keyup', (e) => this.closeOnEscape(e));
+      }
+    }
+
+    setExpanded(expanded: boolean) {
+      this.setAttribute('aria-expanded', String(expanded));
+      document.body.toggleAttribute('data-mobile-menu-expanded', expanded);
+    }
+
+    toggleExpanded() {
+      this.setExpanded(this.getAttribute('aria-expanded') !== 'true');
+    }
+
+    closeOnEscape(e: KeyboardEvent) {
+      if (e.code === 'Escape') {
+        this.setExpanded(false);
+        this.btn.focus();
+      }
+    }
+  }
+
+  customElements.define('starlight-menu-button', StarlightMenuButton);
+</script>
+
+<style>
+  button {
+    position: fixed;
+    top: calc((var(--sl-nav-height) - var(--size-android-hit-target)) / 2);
+    inset-inline-end: var(--sl-nav-pad-x);
+    z-index: var(--sl-z-index-navbar);
+    align-items: center;
+    justify-content: center;
+    width: var(--size-android-hit-target);
+    height: var(--size-android-hit-target);
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  button:hover,
+  [aria-expanded='true'] button {
+    background: var(--hover);
+  }
+  [aria-expanded='true'] button :global(.open-menu),
+  :not([aria-expanded='true']) button :global(.close-menu) {
+    display: none;
+  }
+</style>
+
+<style is:global>
+  [data-mobile-menu-expanded] {
+    overflow: hidden;
+  }
+  @media (min-width: 50rem) {
+    [data-mobile-menu-expanded] {
+      overflow: auto;
+    }
+  }
+</style>

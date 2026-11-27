@@ -1,0 +1,20 @@
+---
+// The docs' links to bae elsewhere, as words in the link style: the design
+// system shows an icon only where the icon is the control.
+import config from 'virtual:starlight/user-config';
+
+const links = config.social || [];
+---
+{links.map(({ label, href }) => (
+  <a class="social web-link" {href} rel="me">{label}</a>
+))}
+
+<style>
+  .social {
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+  .social:hover {
+    color: var(--text-primary);
+  }
+</style>
