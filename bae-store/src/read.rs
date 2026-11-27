@@ -52,28 +52,3 @@ pub fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<UtcDateTime> 
         )
     })
 }
-
-/// Read a named integer column that holds a count, a size or a position,
-/// which the schema keeps non-negative, as the unsigned type `T` it is
-/// counted in, surfacing a negative one, or one past `T`, as a
-/// column-conversion error.
-pub fn count_column<T>(row: &Row, column: &str) -> rusqlite::Result<T>
-where
-    T: TryFrom<i64, Error = std::num::TryFromIntError>,
-{
-    let raw: i64 = row.get(column)?;
-    T::try_from(raw).map_err(|error| {
-        column_conversion_error(row, column, format!("{column} {raw} is not a count: {error}"))
-    })
-}
-
-/// [`count_column`] for a nullable column.
-pub fn optional_count_column<T>(row: &Row, column: &str) -> rusqlite::Result<Option<T>>
-where
-    T: TryFrom<i64, Error = std::num::TryFromIntError>,
-{
-    match row.get::<_, Option<i64>>(column)? {
-        None => Ok(None),
-        Some(_) => count_column(row, column).map(Some),
-    }
-}

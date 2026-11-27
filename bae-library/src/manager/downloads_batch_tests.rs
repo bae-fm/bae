@@ -217,17 +217,18 @@ async fn pins_and_moves_to_this_device_are_counted_apart() {
 /// The release's whole size, as its storage row holds it.
 async fn release_size(manager: &LibraryManager, release: &str) -> u64 {
     let release = release.to_string();
-    manager
+    let size: i64 = manager
         .store
         .read(move |sql| {
             Ok(sql.query_row(
                 "SELECT total_size FROM release_storage WHERE release_id = ?1",
                 [release],
-                |row| bae_store::read::count_column(row, "total_size"),
+                |row| row.get(0),
             )?)
         })
         .await
-        .unwrap()
+        .unwrap();
+    u64::try_from(size).expect("a release's size is never negative")
 }
 
 /// The Pinning line's bar is the share of its batch's bytes pinned: none
