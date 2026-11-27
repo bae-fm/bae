@@ -20,6 +20,7 @@ pub(crate) enum OneCandidate<'a> {
     Hash(&'a str),
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 impl OneCandidate<'_> {
     /// The clause keeping this candidate's rows by `column`, and what it
     /// binds.
@@ -45,16 +46,19 @@ impl OneCandidate<'_> {
     }
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// A [`CandidateRows`]' clause, and the parameter it binds.
 pub(crate) struct CandidateFilter {
     pub(crate) clause: String,
     binds: CandidateBinds,
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 enum CandidateBinds {
     One(String),
 }
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 impl CandidateFilter {
     /// What the clause binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
