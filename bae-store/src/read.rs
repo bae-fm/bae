@@ -77,13 +77,3 @@ where
         Some(_) => count_column(row, column).map(Some),
     }
 }
-
-/// Read a named text column back into the type whose `FromStr` it was written
-/// from, surfacing a word no variant answers to as a column-conversion error.
-pub fn parsed_column<T>(row: &Row, column: &str) -> rusqlite::Result<T>
-where
-    T: std::str::FromStr<Err = String>,
-{
-    let raw: String = row.get(column)?;
-    raw.parse::<T>().map_err(|e| column_conversion_error(row, column, e))
-}
