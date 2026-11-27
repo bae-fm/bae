@@ -451,21 +451,8 @@ async fn every_position(
         assert_eq!(chain(tables, list, page).await, everything, "{order:?}, pages of {page}");
     }
     let last = everything.len() as u64 - 1;
-    for offset in (0..last).step_by(11).chain([last]) {
-        let key = tables.import_key_at(list.clone(), offset).await.unwrap().unwrap();
-        let window = tables.read_import_window(list.clone(), from(&key, 10)).await.unwrap();
-        let wanted: Vec<_> = everything.iter().skip(offset as usize).take(10).cloned().collect();
-        let held: Vec<_> = window.rows.into_iter().map(|(item, _key)| item).collect();
-        assert_eq!(held, wanted, "{order:?}, a window from the key at {offset}");
-        let position = tables
-            .subscribe_import_position(list.clone(), key)
-            .next_inline()
-            .await
-            .expect("the query stays open")
-            .result
-            .unwrap();
-        assert_eq!(position, offset, "{order:?}, the position of the key at {offset}");
-    }
+    let offsets = (0..last).step_by(11).chain([last]);
+    assert_jumps_read(tables, list, &everything, offsets).await;
     everything
 }
 
@@ -487,23 +474,34 @@ async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {
     let everything = whole(&tables, &list).await;
     assert!(everything.len() > 100, "the filter keeps enough rows to scroll through");
     assert_eq!(chain(&tables, &list, 10).await, everything);
-    for offset in [0, 10, 55, 100, everything.len() as u64 - 1] {
+    let offsets = [0, 10, 55, 100, everything.len() as u64 - 1];
+    assert_jumps_read(&tables, &list, &everything, offsets).await;
+}
+
+/// Check that the key at each of `offsets` in `list`, which holds
+/// `everything`, starts a window at that position's item and has that
+/// position.
+async fn assert_jumps_read(
+    tables: &crate::tables::ImportTables,
+    list: &ImportListRequest,
+    everything: &[crate::list::ImportListItem],
+    offsets: impl IntoIterator<Item = u64>,
+) {
+    let order = list.view.order;
+    for offset in offsets {
         let key = tables.import_key_at(list.clone(), offset).await.unwrap().unwrap();
         let window = tables.read_import_window(list.clone(), from(&key, 10)).await.unwrap();
         let wanted: Vec<_> = everything.iter().skip(offset as usize).take(10).cloned().collect();
         let held: Vec<_> = window.rows.into_iter().map(|(item, _key)| item).collect();
-        assert_eq!(held, wanted, "a window from the key at {offset}");
-        assert_eq!(
-            tables
-                .subscribe_import_position(list.clone(), key)
-                .next_inline()
-                .await
-                .expect("the query stays open")
-                .result
-                .unwrap(),
-            offset,
-            "the position of the key at {offset}"
-        );
+        assert_eq!(held, wanted, "{order:?}, a window from the key at {offset}");
+        let position = tables
+            .subscribe_import_position(list.clone(), key)
+            .next_inline()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap();
+        assert_eq!(position, offset, "{order:?}, the position of the key at {offset}");
     }
 }
 
