@@ -133,16 +133,26 @@ mod tests;
 #[path = "records/covers_tests.rs"]
 mod covers_tests;
 
+#[cfg(any(test, feature = "test-utils", desktop))]
+pub mod file_writes;
+pub mod image_writes;
 pub mod pressing_columns;
 pub mod query;
 pub mod read;
 mod scrub_points_column;
+#[cfg(any(test, feature = "test-utils", desktop))]
+pub mod work_writes;
 pub mod write;
 
 use bae_store::query::*;
 use bae_store::read::*;
+#[cfg(any(test, feature = "test-utils", desktop))]
+use file_writes::*;
+use image_writes::*;
 use query::*;
 use read::*;
+#[cfg(any(test, feature = "test-utils", desktop))]
+use work_writes::*;
 use write::*;
 
 /// The library's records and release storage over the store.

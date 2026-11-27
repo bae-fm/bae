@@ -34,6 +34,7 @@
 
 use super::catalog_match::*;
 use super::*;
+use bae_store::WriteStatements as _;
 use bae_types::pressing::ReleaseLabel;
 use bae_util::timestamp::StoredTimestamp as _;
 
@@ -274,6 +275,34 @@ impl Decided {
     }
 }
 
+sqlive_compose::write!(
+    InsertLabel(
+        id: &'p str,
+        name: &'p str,
+        name_key: String,
+        musicbrainz_label_id: Option<&'p str>,
+        discogs_label_id: Option<&'p str>,
+        created_at: &'p str,
+    ),
+    r#"
+    INSERT INTO labels (id, name, name_key, musicbrainz_label_id, discogs_label_id, created_at)
+    VALUES (:id, :name, :name_key, :musicbrainz_label_id, :discogs_label_id, :created_at)
+"#
+);
+
+sqlive_compose::write!(
+    SetLabelIds(
+        id: &'p str,
+        musicbrainz_label_id: Option<&'p str>,
+        discogs_label_id: Option<&'p str>,
+    ),
+    r#"
+    UPDATE labels
+    SET musicbrainz_label_id = :musicbrainz_label_id, discogs_label_id = :discogs_label_id
+    WHERE id = :id
+"#
+);
+
 /// Make the release `release_id`'s labels `labels`, in order, each naming the
 /// library label the rule in the module doc decides, inserting the new labels,
 /// filling in the linked ones and merging the labels one id names first.
@@ -298,25 +327,21 @@ pub fn write_release_labels_on(
     identify_new_rows(&mut decided.inserts, rows.iter_mut().filter_map(|(id, _)| id.as_mut()));
     let key = |name: &str| bae_types::text_match::label_name_key(name);
     for label in &decided.inserts {
-        tx.execute(
-            "INSERT INTO labels \
-                 (id, name, name_key, musicbrainz_label_id, discogs_label_id, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                label.id,
-                label.name,
-                key(&label.name),
-                label.musicbrainz_label_id,
-                label.discogs_label_id,
-                write.now
-            ],
-        )?;
+        tx.run(&InsertLabelParams {
+            id: &label.id,
+            name: &label.name,
+            name_key: key(&label.name),
+            musicbrainz_label_id: label.musicbrainz_label_id.as_deref(),
+            discogs_label_id: label.discogs_label_id.as_deref(),
+            created_at: write.now,
+        })?;
     }
     for label in &decided.fills {
-        tx.execute(
-            "UPDATE labels SET musicbrainz_label_id = ?, discogs_label_id = ? WHERE id = ?",
-            params![label.musicbrainz_label_id, label.discogs_label_id, label.id],
-        )?;
+        tx.run(&SetLabelIdsParams {
+            id: &label.id,
+            musicbrainz_label_id: label.musicbrainz_label_id.as_deref(),
+            discogs_label_id: label.discogs_label_id.as_deref(),
+        })?;
     }
     for merge in &decided.merges {
         super::identity_merges::merge_label_on(

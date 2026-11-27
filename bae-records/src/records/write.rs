@@ -1,37 +1,67 @@
 use super::*;
+use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
-use rusqlite::params_from_iter;
-use rusqlite::types::Value;
-#[cfg(any(test, feature = "test-utils", desktop))]
-use rusqlite::Params;
 
-/// The `album_order` that puts a release last among those of the album whose
-/// id `album_id` names (a SQL expression; a bound parameter or a column).
-pub(super) fn next_album_order_sql(album_id: &str) -> String {
-    format!("(SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = {album_id})")
-}
+// The `album_order` that puts a release last among those of the album `album`.
+sqlive_compose::fragment!(
+    NextAlbumOrder(album: String) { next: i64 },
+    r#"
+    SELECT COALESCE(MAX(r.album_order) + 1, 0) AS next
+    FROM releases AS r
+    WHERE r.album_id = :album
+"#
+);
+
+sqlive_compose::write!(
+    InsertArtist(
+        id: &'p str,
+        name: &'p str,
+        name_key: String,
+        sort_name: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        created_at: String,
+    ),
+    r#"
+    INSERT INTO artists (
+        id, name, name_key, sort_name, discogs_artist_id,
+        musicbrainz_artist_id, created_at
+    ) VALUES (
+        :id, :name, :name_key, :sort_name, :discogs_artist_id,
+        :musicbrainz_artist_id, :created_at
+    )
+"#
+);
 
 pub(super) fn insert_artist_row(conn: &CovenWrite<'_>, artist: &DbArtist) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO artists (
-            id, name, name_key, sort_name, discogs_artist_id,
-            musicbrainz_artist_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            artist.id,
-            artist.name,
-            bae_types::text_match::artist_name_key(&artist.name),
-            artist.sort_name,
-            artist.discogs_artist_id,
-            artist.musicbrainz_artist_id,
-            artist.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    conn.run(&InsertArtistParams {
+        id: &artist.id,
+        name: &artist.name,
+        name_key: bae_types::text_match::artist_name_key(&artist.name),
+        sort_name: artist.sort_name.as_deref(),
+        discogs_artist_id: artist.discogs_artist_id.as_deref(),
+        musicbrainz_artist_id: artist.musicbrainz_artist_id.as_deref(),
+        created_at: artist.created_at.to_rfc3339(),
+    })?;
+    Ok(())
 }
+
+// Give the artist `id` each of these that it has none of.
+sqlive_compose::write!(
+    FillArtistIds(
+        id: &'p str,
+        discogs_artist_id: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        sort_name: Option<&'p str>,
+    ),
+    r#"
+    UPDATE artists SET
+        discogs_artist_id = COALESCE(discogs_artist_id, :discogs_artist_id),
+        musicbrainz_artist_id = COALESCE(musicbrainz_artist_id, :musicbrainz_artist_id),
+        sort_name = COALESCE(sort_name, :sort_name)
+    WHERE id = :id
+"#
+);
 
 pub(super) fn update_artist_external_ids_row(
     conn: &CovenWrite<'_>,
@@ -40,65 +70,74 @@ pub(super) fn update_artist_external_ids_row(
     musicbrainz_artist_id: Option<&str>,
     sort_name: Option<&str>,
 ) -> Result<usize, DbError> {
-    conn.execute(
-        r#"
-        UPDATE artists SET
-            discogs_artist_id = COALESCE(discogs_artist_id, ?),
-            musicbrainz_artist_id = COALESCE(musicbrainz_artist_id, ?),
-            sort_name = COALESCE(sort_name, ?)
-        WHERE id = ?
-        "#,
-        params![discogs_artist_id, musicbrainz_artist_id, sort_name, id,],
-    )
-    .map_err(DbError::from)
+    Ok(conn.run(&FillArtistIdsParams {
+        id,
+        discogs_artist_id,
+        musicbrainz_artist_id,
+        sort_name,
+    })?)
 }
 
 // Callers: a records change that files a release under a new album, the test
 // writes, and the debug build's seeded albums.
 #[cfg(any(test, feature = "test-utils", desktop))]
+sqlive_compose::write!(
+    InsertAlbum(
+        id: &'p str,
+        title: &'p str,
+        year: Option<i32>,
+        is_compilation: bool,
+        created_at: String,
+    ),
+    r#"
+    INSERT INTO albums (id, title, year, is_compilation, created_at)
+    VALUES (:id, :title, :year, :is_compilation, :created_at)
+"#
+);
+
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO albums (
-            id, title, year, is_compilation, created_at
-        ) VALUES (?, ?, ?, ?, ?)
-        "#,
-        params![
-            album.id,
-            album.title,
-            album.year,
-            album.is_compilation,
-            album.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    conn.run(&InsertAlbumParams {
+        id: &album.id,
+        title: &album.title,
+        year: album.year,
+        is_compilation: album.is_compilation,
+        created_at: album.created_at.to_rfc3339(),
+    })?;
+    Ok(())
 }
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    UpsertAlbum(
+        id: &'p str,
+        title: &'p str,
+        year: Option<i32>,
+        is_compilation: bool,
+        created_at: String,
+    ),
+    r#"
+    INSERT INTO albums (id, title, year, is_compilation, created_at)
+    VALUES (:id, :title, :year, :is_compilation, :created_at)
+    ON CONFLICT (id) DO UPDATE SET
+        title = excluded.title,
+        year = excluded.year,
+        is_compilation = excluded.is_compilation
+"#
+);
 
 /// Write `album` whether or not its row is here: a group's album (whose id is
 /// the group's) can be here already, written by another import of the group.
 #[cfg(desktop)]
 pub fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO albums (
-            id, title, year, is_compilation, created_at
-        ) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT (id) DO UPDATE SET
-            title = excluded.title,
-            year = excluded.year,
-            is_compilation = excluded.is_compilation
-        "#,
-        params![
-            album.id,
-            album.title,
-            album.year,
-            album.is_compilation,
-            album.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    conn.run(&UpsertAlbumParams {
+        id: &album.id,
+        title: &album.title,
+        year: album.year,
+        is_compilation: album.is_compilation,
+        created_at: album.created_at.to_rfc3339(),
+    })?;
+    Ok(())
 }
 
 #[cfg(any(test, feature = "test-utils", all(debug_assertions, desktop)))]
@@ -106,17 +145,40 @@ pub(super) fn insert_album_artist_row(
     conn: &CovenWrite<'_>,
     aa: &DbAlbumArtist,
 ) -> Result<(), DbError> {
-    let created_at = aa.created_at.to_rfc3339();
-    let credit_key = settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), &created_at)?;
-    let credit = Credit {
-        id: &aa.id,
-        artist_id: &aa.artist_id,
-        position: aa.position,
-        credit_key,
-        join_phrase: aa.join_phrase.as_deref(),
-    };
-    insert_credit_row(conn, "album_artists", "album_id", &aa.album_id, &credit, &created_at)
+    insert_album_credit(conn, aa, &aa.created_at.to_rfc3339())
 }
+
+sqlive_compose::write!(
+    InsertRelease(
+        id: &'p str,
+        album_id: String,
+        release_name: Option<&'p str>,
+        year: Option<i32>,
+        country: Option<&'static str>,
+        region: Option<&'static str>,
+        status: Option<&'static str>,
+        packaging: Option<&'static str>,
+        source_folder_name: Option<&'p str>,
+        album_loudness_lufs: Option<f64>,
+        album_peak_linear: Option<f64>,
+        created_at: String,
+    ),
+    r#"
+    INSERT INTO releases (
+        id, album_id, release_name, year,
+        country, region, status, packaging,
+        source_folder_name,
+        album_loudness_lufs, album_peak_linear,
+        created_at, album_order
+    ) VALUES (
+        :id, :album_id, :release_name, :year,
+        :country, :region, :status, :packaging,
+        :source_folder_name,
+        :album_loudness_lufs, :album_peak_linear,
+        :created_at, @crate::records::write::NextAlbumOrder(album: :album_id)
+    )
+"#
+);
 
 /// The release is ordered after its album's others, so an album's first
 /// release stays its primary one. Its labels name the library labels
@@ -127,35 +189,20 @@ pub fn insert_release_row(
     pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
-    conn.execute(
-        &format!(
-            r#"
-        INSERT INTO releases (
-            id, album_id, release_name, year,
-            country, region, status, packaging,
-            source_folder_name,
-            album_loudness_lufs, album_peak_linear,
-            created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, {next_album_order})
-        "#,
-            next_album_order = next_album_order_sql("?")
-        ),
-        params![
-            release.id,
-            release.album_id,
-            release.release_name,
-            release.pressing.typed.year,
-            facts.country,
-            facts.region,
-            facts.status,
-            facts.packaging,
-            release.source_folder_name,
-            release.album_loudness_lufs,
-            release.album_peak_linear,
-            release.created_at.to_rfc3339(),
-            release.album_id,
-        ],
-    )?;
+    conn.run(&InsertReleaseParams {
+        id: &release.id,
+        album_id: release.album_id.clone(),
+        release_name: release.release_name.as_deref(),
+        year: release.pressing.typed.year,
+        country: facts.country,
+        region: facts.region,
+        status: facts.status,
+        packaging: facts.packaging,
+        source_folder_name: release.source_folder_name.as_deref(),
+        album_loudness_lufs: release.album_loudness_lufs,
+        album_peak_linear: release.album_peak_linear,
+        created_at: release.created_at.to_rfc3339(),
+    })?;
     super::label_resolution::write_release_labels_on(
         conn,
         &release.id,
@@ -178,6 +225,25 @@ pub fn insert_release_row(
     Ok(())
 }
 
+sqlive_compose::write!(
+    ClearReleaseLabels(release_id: &'p str),
+    "DELETE FROM release_labels WHERE release_id = :release_id"
+);
+
+sqlive_compose::write!(
+    InsertReleaseLabel(
+        id: &'p str,
+        release_id: &'p str,
+        position: i64,
+        label_id: Option<&'p str>,
+        catalog_number: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO release_labels (id, release_id, position, label_id, catalog_number)
+    VALUES (:id, :release_id, :position, :label_id, :catalog_number)
+"#
+);
+
 /// Make the release `release_id`'s label rows exactly `rows`, each the id of
 /// the library label it names and the catalog number it gives, in order, each
 /// row under its id of `row_ids`.
@@ -187,12 +253,35 @@ pub(super) fn replace_release_label_rows(
     rows: &[(Option<String>, Option<&str>)],
     row_ids: &[String],
 ) -> Result<(), DbError> {
-    let rows = rows.iter().map(|(label_id, catalog_number)| {
-        [Value::from(label_id.clone()), Value::from(catalog_number.map(str::to_string))]
-    });
-    let columns = ["label_id", "catalog_number"];
-    replace_release_list(conn, "release_labels", columns, release_id, rows, row_ids)
+    replace_release_list(
+        conn,
+        &ClearReleaseLabelsParams { release_id },
+        rows,
+        row_ids,
+        |(label_id, catalog_number), id, position| {
+            conn.run(&InsertReleaseLabelParams {
+                id,
+                release_id,
+                position,
+                label_id: label_id.as_deref(),
+                catalog_number: *catalog_number,
+            })
+        },
+    )
 }
+
+sqlive_compose::write!(
+    ClearReleaseBarcodes(release_id: &'p str),
+    "DELETE FROM release_barcodes WHERE release_id = :release_id"
+);
+
+sqlive_compose::write!(
+    InsertReleaseBarcode(id: &'p str, release_id: &'p str, position: i64, barcode: &'p str),
+    r#"
+    INSERT INTO release_barcodes (id, release_id, position, barcode)
+    VALUES (:id, :release_id, :position, :barcode)
+"#
+);
 
 /// Make the release `release_id`'s barcodes exactly `barcodes`, in order,
 /// each row under its id of `row_ids`.
@@ -202,9 +291,35 @@ pub(super) fn replace_release_barcodes(
     barcodes: &[String],
     row_ids: &[String],
 ) -> Result<(), DbError> {
-    let rows = barcodes.iter().map(|barcode| [Value::from(barcode.clone())]);
-    replace_release_list(conn, "release_barcodes", ["barcode"], release_id, rows, row_ids)
+    replace_release_list(
+        conn,
+        &ClearReleaseBarcodesParams { release_id },
+        barcodes,
+        row_ids,
+        |barcode, id, position| {
+            conn.run(&InsertReleaseBarcodeParams { id, release_id, position, barcode })
+        },
+    )
 }
+
+sqlive_compose::write!(
+    ClearReleaseMedia(release_id: &'p str),
+    "DELETE FROM release_media WHERE release_id = :release_id"
+);
+
+sqlive_compose::write!(
+    InsertReleaseMediaCount(
+        id: &'p str,
+        release_id: &'p str,
+        position: i64,
+        medium: &'static str,
+        count: i64,
+    ),
+    r#"
+    INSERT INTO release_media (id, release_id, position, medium, count)
+    VALUES (:id, :release_id, :position, :medium, :count)
+"#
+);
 
 /// Make the release `release_id`'s media exactly `media`, in order, each row
 /// under its id of `row_ids`.
@@ -214,11 +329,40 @@ pub(super) fn replace_release_media(
     media: &[bae_types::pressing::MediaCount],
     row_ids: &[String],
 ) -> Result<(), DbError> {
-    let rows = media.iter().map(|counted| {
-        [Value::from(counted.medium.key().to_string()), Value::from(i64::from(counted.count))]
-    });
-    replace_release_list(conn, "release_media", ["medium", "count"], release_id, rows, row_ids)
+    replace_release_list(
+        conn,
+        &ClearReleaseMediaParams { release_id },
+        media,
+        row_ids,
+        |counted, id, position| {
+            conn.run(&InsertReleaseMediaCountParams {
+                id,
+                release_id,
+                position,
+                medium: counted.medium.key(),
+                count: i64::from(counted.count),
+            })
+        },
+    )
 }
+
+sqlive_compose::write!(
+    ClearReleaseDiscogsDetails(release_id: &'p str),
+    "DELETE FROM release_discogs_details WHERE release_id = :release_id"
+);
+
+sqlive_compose::write!(
+    InsertReleaseDiscogsDetail(
+        id: &'p str,
+        release_id: &'p str,
+        position: i64,
+        detail: &'static str,
+    ),
+    r#"
+    INSERT INTO release_discogs_details (id, release_id, position, detail)
+    VALUES (:id, :release_id, :position, :detail)
+"#
+);
 
 /// Make the release `release_id`'s Discogs details exactly `details`, in
 /// order, each row under its id of `row_ids`.
@@ -228,528 +372,168 @@ pub(super) fn replace_release_discogs_details(
     details: &[bae_types::pressing::DiscogsDetail],
     row_ids: &[String],
 ) -> Result<(), DbError> {
-    let rows = details.iter().map(|detail| [Value::from(detail.key().to_string())]);
-    replace_release_list(conn, "release_discogs_details", ["detail"], release_id, rows, row_ids)
+    replace_release_list(
+        conn,
+        &ClearReleaseDiscogsDetailsParams { release_id },
+        details,
+        row_ids,
+        |detail, id, position| {
+            conn.run(&InsertReleaseDiscogsDetailParams {
+                id,
+                release_id,
+                position,
+                detail: detail.key(),
+            })
+        },
+    )
 }
 
-/// Make `table`'s rows of the release `release_id` one for each of `rows`,
-/// which give each row's values of `columns`: in order, numbered from zero,
-/// each under its id of `row_ids`.
-fn replace_release_list<const N: usize>(
+/// Replace one of the release's lists: run `clear`, which deletes the rows
+/// the release has in it, then `insert` once for each of `rows`, in order,
+/// with its id of `row_ids` and its position, numbered from zero.
+fn replace_release_list<R>(
     conn: &CovenWrite<'_>,
-    table: &'static str,
-    columns: [&'static str; N],
-    release_id: &str,
-    rows: impl ExactSizeIterator<Item = [Value; N]>,
+    clear: &impl sqlive_compose::Write,
+    rows: &[R],
     row_ids: &[String],
+    insert: impl Fn(&R, &str, i64) -> rusqlite::Result<usize>,
 ) -> Result<(), DbError> {
-    assert_eq!(rows.len(), row_ids.len(), "a write holds an id for each {table} row it makes");
-    conn.execute(&format!("DELETE FROM {table} WHERE release_id = ?"), params![release_id])?;
-    let insert = format!(
-        "INSERT INTO {table} (id, release_id, position, {}) VALUES (?, ?, ?{})",
-        columns.join(", "),
-        ", ?".repeat(N),
-    );
-    for (position, (values, id)) in rows.zip(row_ids).enumerate() {
-        let place = [
-            Value::from(id.clone()),
-            Value::from(release_id.to_string()),
-            Value::from(position as i64),
-        ];
-        conn.execute(&insert, params_from_iter(place.into_iter().chain(values)))?;
+    assert_eq!(rows.len(), row_ids.len(), "a write holds an id for each row of a release's list");
+    conn.run(clear)?;
+    for (position, (row, id)) in rows.iter().zip(row_ids).enumerate() {
+        insert(row, id, position as i64)?;
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    InsertReleaseMedium(
+        id: &'p str,
+        release_id: &'p str,
+        position: std::num::NonZeroU16,
+        medium: Option<&'static str>,
+        side_count: std::num::NonZeroU8,
+        created_at: String,
+    ),
+    r#"
+    INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at)
+    VALUES (:id, :release_id, :position, :medium, :side_count, :created_at)
+"#
+);
 
 pub fn insert_release_medium_row(
     conn: &CovenWrite<'_>,
     medium: &DbReleaseMedium,
 ) -> Result<(), DbError> {
-    conn.execute(
-        "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
-         VALUES (?, ?, ?, ?, ?, ?)",
-        params![
-            medium.id,
-            medium.release_id,
-            medium.position,
-            medium.medium.carrier.map(bae_types::pressing::Medium::key),
-            medium.medium.sides,
-            medium.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-pub fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO tracks (
-            id, release_id, title, medium_id, side, track_number, duration_ms,
-            stated_length_ms, created_at, position
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
-            (SELECT COALESCE(MAX(position) + 1, 0) FROM tracks WHERE release_id = ?))
-        "#,
-        params![
-            track.id,
-            track.release_id,
-            track.title,
-            track.medium_id,
-            track.side,
-            track.track_number,
-            track.duration_ms,
-            track.stated_length_ms,
-            track.created_at.to_rfc3339(),
-            track.release_id,
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-pub fn insert_track_artist_row(conn: &CovenWrite<'_>, ta: &DbTrackArtist) -> Result<(), DbError> {
-    let created_at = ta.created_at.to_rfc3339();
-    let credit_key = settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), &created_at)?;
-    let credit = Credit {
-        id: &ta.id,
-        artist_id: &ta.artist_id,
-        position: ta.position,
-        credit_key,
-        join_phrase: ta.join_phrase.as_deref(),
-    };
-    insert_credit_row(conn, "track_artists", "track_id", &ta.track_id, &credit, &created_at)
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT OR IGNORE INTO works (
-            id, title, disambiguation, work_type, musicbrainz_work_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            work.id,
-            work.title,
-            work.disambiguation,
-            work.work_type,
-            work.musicbrainz_work_id,
-            work.created_at.to_rfc3339()
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Result<(), DbError> {
-    let created_at = link.created_at.to_rfc3339();
-    let credit_key = settle_credit_name(conn, &link.artist_id, link.credit.as_ref(), &created_at)?;
-    let columns = link.role.columns();
-    conn.execute(
-        r#"
-        INSERT OR IGNORE INTO work_artists (
-            id, work_id, artist_id, position, source, role, role_words, qualifiers, credit_key,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            link.id(),
-            link.work_id,
-            link.artist_id,
-            link.position,
-            link.source.as_str(),
-            columns.role,
-            columns.role_words,
-            columns.qualifiers,
-            credit_key,
-            created_at
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_work_part_row(conn: &CovenWrite<'_>, part: &DbWorkPart) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT OR IGNORE INTO work_parts (
-            id, parent_work_id, child_work_id, position, source, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            part.id(),
-            part.parent_work_id,
-            part.child_work_id,
-            part.position,
-            part.source.as_str(),
-            part.created_at.to_rfc3339()
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_track_work_row(conn: &CovenWrite<'_>, link: &DbTrackWork) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO track_works (id, track_id, work_id, position, source, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            link.id,
-            link.track_id,
-            link.work_id,
-            link.position,
-            link.source.as_str(),
-            link.created_at.to_rfc3339()
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_release_artist_role_row(
-    conn: &CovenWrite<'_>,
-    role: &DbReleaseArtistRole,
-) -> Result<(), DbError> {
-    let created_at = role.created_at.to_rfc3339();
-    let credit_key = settle_credit_name(conn, &role.artist_id, role.credit.as_ref(), &created_at)?;
-    let columns = role.role.columns();
-    insert_artist_role_row(
-        conn,
-        "release_artist_roles",
-        "release_id",
-        params![
-            role.id,
-            role.release_id,
-            role.artist_id,
-            role.position,
-            role.source.as_str(),
-            columns.role,
-            columns.role_words,
-            columns.qualifiers,
-            credit_key,
-            created_at
-        ],
-    )
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_track_artist_role_row(
-    conn: &CovenWrite<'_>,
-    role: &DbTrackArtistRole,
-) -> Result<(), DbError> {
-    let created_at = role.created_at.to_rfc3339();
-    let credit_key = settle_credit_name(conn, &role.artist_id, role.credit.as_ref(), &created_at)?;
-    let columns = role.role.columns();
-    insert_artist_role_row(
-        conn,
-        "track_artist_roles",
-        "track_id",
-        params![
-            role.id,
-            role.track_id,
-            role.artist_id,
-            role.position,
-            role.source.as_str(),
-            columns.role,
-            columns.role_words,
-            columns.qualifiers,
-            credit_key,
-            created_at
-        ],
-    )
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub(super) fn insert_artist_role_row(
-    conn: &CovenWrite<'_>,
-    table: &'static str,
-    target_column: &'static str,
-    values: impl Params,
-) -> Result<(), DbError> {
-    let sql = format!(
-        r#"
-        INSERT INTO {table} (
-            id, {target_column}, artist_id, position, source, role, role_words, qualifiers,
-            credit_key, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#
-    );
-    conn.execute(&sql, values).map(|_| ()).map_err(DbError::from)
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-const INSERT_RELEASE_FILE_SQL: &str = r#"
-    INSERT INTO release_files (
-        id, release_id, original_filename, content_type, file, role, document_kind,
-        source_audio_layout, source_audio_content_type, source_audio_container,
-        source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample,
-        source_audio_bitrate_kbps, source_audio_channels,
-        created_at
-    ) VALUES (
-        :id, :release_id, :original_filename, :content_type, :file, :role, :document_kind,
-        :source_audio_layout, :source_audio_content_type, :source_audio_container,
-        :source_audio_duration_ms, :source_audio_sample_rate_hz, :source_audio_bits_per_sample,
-        :source_audio_bitrate_kbps, :source_audio_channels,
-        :created_at
-    )
-"#;
-
-/// Insert a release file row referencing `coven_file`, the coven file the
-/// write staged for it.
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_release_file_row(
-    conn: &CovenWrite<'_>,
-    file: &NewReleaseFile,
-    coven_file: coven::FileId,
-) -> Result<(), IdentityWriteError> {
-    let source_audio_layout =
-        file.source_audio.as_ref().and_then(|audio| audio.layout).map(|layout| match layout {
-            crate::source_audio::SourceAudioLayout::File => "file",
-            crate::source_audio::SourceAudioLayout::Cue => "cue",
-        });
-    let source_audio_content_type =
-        file.source_audio.as_ref().map(|audio| audio.content_type.as_str());
-    let source_audio_container = file.source_audio.as_ref().map(|audio| audio.container.as_str());
-    let source_audio_duration_ms = file.source_audio.as_ref().map(|audio| audio.duration_ms);
-    let source_audio_sample_rate_hz =
-        file.source_audio.as_ref().map(|audio| audio.format.sample_rate_hz);
-    let source_audio_bits_per_sample =
-        file.source_audio.as_ref().and_then(|audio| audio.format.bits_per_sample);
-    let source_audio_bitrate_kbps =
-        file.source_audio.as_ref().and_then(|audio| audio.format.bitrate_kbps);
-    let source_audio_channels = file.source_audio.as_ref().map(|audio| audio.format.channels);
-    let created_at = file.created_at.to_rfc3339();
-    conn.execute(
-        INSERT_RELEASE_FILE_SQL,
-        rusqlite::named_params! {
-            ":id": file.id,
-            ":release_id": file.release_id,
-            ":original_filename": file.original_filename,
-            ":content_type": file.content_type.as_str(),
-            ":file": coven_file,
-            ":role": file.role.as_str(),
-            ":document_kind": file.role.document_kind().map(crate::DocumentKind::as_str),
-            ":source_audio_layout": source_audio_layout,
-            ":source_audio_content_type": source_audio_content_type,
-            ":source_audio_container": source_audio_container,
-            ":source_audio_duration_ms": source_audio_duration_ms,
-            ":source_audio_sample_rate_hz": source_audio_sample_rate_hz,
-            ":source_audio_bits_per_sample": source_audio_bits_per_sample,
-            ":source_audio_bitrate_kbps": source_audio_bitrate_kbps,
-            ":source_audio_channels": source_audio_channels,
-            ":created_at": created_at,
-        },
-    )?;
+    conn.run(&InsertReleaseMediumParams {
+        id: &medium.id,
+        release_id: &medium.release_id,
+        position: medium.position,
+        medium: medium.medium.carrier.map(bae_types::pressing::Medium::key),
+        side_count: medium.medium.sides,
+        created_at: medium.created_at.to_rfc3339(),
+    })?;
     Ok(())
 }
 
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetReleaseMedium(id: &'p str, medium: Option<&'static str>, side_count: std::num::NonZeroU8),
+    "UPDATE release_mediums SET medium = :medium, side_count = :side_count WHERE id = :id"
+);
+
+/// Write what `medium` is over the medium row `id`.
+#[cfg(desktop)]
+pub(super) fn update_release_medium_row(
+    conn: &CovenWrite<'_>,
+    id: &str,
+    medium: &bae_types::mediums::ReleaseMedium,
+) -> Result<(), DbError> {
+    conn.run(&SetReleaseMediumParams {
+        id,
+        medium: medium.carrier.map(bae_types::pressing::Medium::key),
+        side_count: medium.sides,
+    })?;
+    Ok(())
+}
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    DeleteReleaseMedium(id: &'p str),
+    "DELETE FROM release_mediums WHERE id = :id"
+);
+
+#[cfg(desktop)]
+pub(super) fn delete_release_medium_row(conn: &CovenWrite<'_>, id: &str) -> Result<(), DbError> {
+    conn.run(&DeleteReleaseMediumParams { id })?;
+    Ok(())
+}
+
+// The track goes after the release's others.
+sqlive_compose::write!(
+    InsertTrack(
+        id: &'p str,
+        release_id: &'p str,
+        title: &'p str,
+        medium_id: &'p str,
+        side: std::num::NonZeroU8,
+        track_number: std::num::NonZeroU32,
+        duration_ms: u64,
+        stated_length_ms: Option<u64>,
+        created_at: String,
+    ),
+    r#"
+    INSERT INTO tracks (
+        id, release_id, title, medium_id, side, track_number, duration_ms,
+        stated_length_ms, created_at, position
+    ) VALUES (
+        :id, :release_id, :title, :medium_id, :side, :track_number, :duration_ms,
+        :stated_length_ms, :created_at,
+        (SELECT COALESCE(MAX(position) + 1, 0) FROM tracks WHERE release_id = :release_id)
+    )
+"#
+);
+
+pub fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), DbError> {
+    conn.run(&InsertTrackParams {
+        id: &track.id,
+        release_id: &track.release_id,
+        title: &track.title,
+        medium_id: &track.medium_id,
+        side: track.side,
+        track_number: track.track_number,
+        duration_ms: track.duration_ms,
+        stated_length_ms: track.stated_length_ms,
+        created_at: track.created_at.to_rfc3339(),
+    })?;
+    Ok(())
+}
+
+pub fn insert_track_artist_row(conn: &CovenWrite<'_>, ta: &DbTrackArtist) -> Result<(), DbError> {
+    insert_track_credit(conn, ta, &ta.created_at.to_rfc3339())
+}
+
 #[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_audio_format_row(conn: &CovenWrite<'_>, af: &DbAudioFormat) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO audio_formats (
-            id, track_id, content_type, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, track_loudness_lufs, track_peak_linear, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            af.id,
-            af.track_id,
-            af.content_type.as_str(),
-            optional_sqlite_count(af.pregap_samples, "pregap_samples")?,
-            optional_sqlite_count(af.generated_pregap_samples, "generated_pregap_samples")?,
-            af.sample_rate.get(),
-            af.bits_per_sample.map(std::num::NonZeroU32::get),
-            af.channels.get(),
-            af.track_loudness_lufs,
-            af.track_peak_linear,
-            af.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
+sqlive_compose::write!(
+    ClearReleaseRecords(release_id: &'p str),
+    "DELETE FROM release_records WHERE release_id = :release_id"
+);
 
 #[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_audio_segment_row(
-    conn: &CovenWrite<'_>,
-    segment: &DbAudioSegment,
-) -> Result<(), DbError> {
-    conn.execute(
-        r#"
-        INSERT INTO audio_format_segments (
-            id, audio_format_id, segment_index, role, file_id, start_sample, end_sample, start_byte, end_byte, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            segment.id,
-            segment.audio_format_id,
-            segment.segment_index,
-            segment.role.as_str(),
-            segment.file_id,
-            to_i64(segment.start_sample, "start_sample")?,
-            optional_sqlite_count(segment.end_sample, "end_sample")?,
-            optional_sqlite_count(segment.start_byte, "start_byte")?,
-            optional_sqlite_count(segment.end_byte, "end_byte")?,
-            segment.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-#[cfg(any(test, feature = "test-utils", desktop))]
-pub fn insert_scrub_points_row(
-    conn: &CovenWrite<'_>,
-    points: &DbScrubPoints,
-) -> Result<(), DbError> {
-    conn.execute(
-        "INSERT INTO audio_segment_scrub_points (audio_format_segment_id, points) VALUES (?, ?)",
-        params![points.audio_segment_id, super::scrub_points_column::encode(&points.points),],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// Record that the CUE sheet `sheet_file_id`, one of a release's files,
-/// carves the track `track_id` out of an image, from under the sheet's
-/// `FILE` line `file_reference`.
-pub fn insert_carved_track_row(
-    conn: &CovenWrite<'_>,
-    track_id: &str,
-    sheet_file_id: &str,
-    file_reference: &str,
-) -> Result<(), DbError> {
-    conn.execute(
-        "INSERT INTO carved_tracks (track_id, sheet_file_id, file_reference) VALUES (?, ?, ?)",
-        params![track_id, sheet_file_id, file_reference],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// [`to_i64`] of a value that may be absent.
-#[cfg(any(test, feature = "test-utils", desktop))]
-fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, DbError> {
-    value.map(|value| to_i64(value, what)).transpose()
-}
-
-/// Write an artist image's row, pointing it at `file`, the coven file its
-/// write staged.
-pub fn upsert_artist_image_row(
-    conn: &CovenWrite<'_>,
-    image: &DbArtistImage,
-    file: &coven::FileId,
-) -> Result<(), DbError> {
-    conn.execute(
-        "INSERT INTO artist_images (id, file, content_type) VALUES (?, ?, ?) \
-         ON CONFLICT(id) DO UPDATE SET \
-             file = excluded.file, \
-             content_type = excluded.content_type",
-        params![image.artist_id, file, image.content_type.as_str()],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// The coven files a cover's write staged, which its row references.
-#[derive(Debug, Clone)]
-pub struct StagedCover {
-    pub browse: coven::FileId,
-    pub large: coven::FileId,
-    /// The kept original; `None` when the cover is made from a file of the
-    /// release.
-    pub original: Option<coven::FileId>,
-}
-
-/// Stage a cover's copies, and its original when it keeps one, as coven
-/// files for the cloud, each in its own namespace.
-pub fn stage_cover(w: &mut coven::WriteBatch<'_>, cover: &NewCover) -> StagedCover {
-    let browse = w.put_file(
-        crate::synced::COVER_BROWSE_NAMESPACE,
-        cover.copies.browse.clone(),
-        coven::Place::Cloud,
-    );
-    let large = w.put_file(
-        crate::synced::COVER_LARGE_NAMESPACE,
-        cover.copies.large.clone(),
-        coven::Place::Cloud,
-    );
-    let original = match &cover.picture {
-        NewCoverPicture::ReleaseFile { .. } | NewCoverPicture::Embedded { .. } => None,
-        NewCoverPicture::Original { bytes } => Some(w.put_file(
-            crate::synced::COVER_ORIGINALS_NAMESPACE,
-            bytes.clone(),
-            coven::Place::Cloud,
-        )),
-    };
-    StagedCover { browse, large, original }
-}
-
-/// Write a cover's row, pointing it at the files its write staged.
-pub fn upsert_cover_row(
-    conn: &CovenWrite<'_>,
-    cover: &NewCover,
-    staged: &StagedCover,
-) -> Result<(), DbError> {
-    let (source_file, embedded_file) = match &cover.picture {
-        NewCoverPicture::ReleaseFile { file_id } => (Some(file_id.as_str()), None),
-        NewCoverPicture::Embedded { file_id } => (None, Some(file_id.as_str())),
-        NewCoverPicture::Original { .. } => (None, None),
-    };
-    conn.execute(
-        "INSERT INTO covers \
-             (id, source_file, embedded_file, original_file, browse_file, large_file, content_type) \
-         VALUES (?, ?, ?, ?, ?, ?, ?) \
-         ON CONFLICT(id) DO UPDATE SET \
-             source_file = excluded.source_file, \
-             embedded_file = excluded.embedded_file, \
-             original_file = excluded.original_file, \
-             browse_file = excluded.browse_file, \
-             large_file = excluded.large_file, \
-             content_type = excluded.content_type",
-        params![
-            cover.release_id,
-            source_file,
-            embedded_file,
-            staged.original,
-            staged.browse,
-            staged.large,
-            cover.copies.content_type.as_str()
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-/// Stage a release image's preview as a coven file for the cloud.
-pub fn stage_preview(w: &mut coven::WriteBatch<'_>, preview: &NewReleasePreview) -> coven::FileId {
-    w.put_file(
-        crate::synced::RELEASE_PREVIEWS_NAMESPACE,
-        preview.bytes.clone(),
-        coven::Place::Cloud,
-    )
-}
-
-/// Write a release file's preview row, pointing it at `file`, the coven file
-/// its write staged.
-pub fn insert_preview_row(
-    conn: &CovenWrite<'_>,
-    preview: &NewReleasePreview,
-    file: &coven::FileId,
-) -> Result<(), DbError> {
-    conn.execute(
-        "INSERT INTO release_file_previews (id, file, content_type) VALUES (?, ?, ?)",
-        params![preview.release_file_id, file, preview.content_type.as_str()],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
+sqlive_compose::write!(
+    InsertReleaseRecord(
+        id: String,
+        release_id: &'p str,
+        catalog: &'static str,
+        kind: &'static str,
+        key: &'p str,
+        album_key: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO release_records (id, release_id, catalog, kind, key, album_key)
+    VALUES (:id, :release_id, :catalog, :kind, :key, :album_key)
+"#
+);
 
 /// Write `records` as `release_id`'s records, replacing any it had, and set the
 /// catalog its draft was read from. Shared by an import's commit, a records
@@ -761,7 +545,7 @@ pub fn write_release_records(
     release_id: &str,
     records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<(), DbError> {
-    conn.execute("DELETE FROM release_records WHERE release_id = ?", params![release_id])?;
+    conn.run(&ClearReleaseRecordsParams { release_id })?;
     for record in records {
         let (kind, album_key) = match record {
             bae_catalogs::records::ReleaseRecord::Pressing { album_key, .. } => {
@@ -769,24 +553,22 @@ pub fn write_release_records(
             }
             bae_catalogs::records::ReleaseRecord::Album { .. } => ("album", None),
         };
-        conn.execute(
-            r#"
-            INSERT INTO release_records (
-                id, release_id, catalog, kind, key, album_key
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            "#,
-            params![
-                crate::identity::release_record_id(release_id, record.catalog()),
-                release_id,
-                record.catalog().as_str(),
-                kind,
-                record.key(),
-                album_key,
-            ],
-        )?;
+        conn.run(&InsertReleaseRecordParams {
+            id: crate::identity::release_record_id(release_id, record.catalog()),
+            release_id,
+            catalog: record.catalog().as_str(),
+            kind,
+            key: record.key(),
+            album_key,
+        })?;
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    ClearAlbumArtists(album_id: &'p str),
+    "DELETE FROM album_artists WHERE album_id = :album_id"
+);
 
 /// Make `album_id`'s credit list exactly `artists`. An artist of another
 /// album is a bug of the caller's, which panics in the store's work.
@@ -802,19 +584,18 @@ pub fn replace_album_artists(
             stray.album_id
         );
     }
-    conn.execute("DELETE FROM album_artists WHERE album_id = ?", params![album_id])?;
+    conn.run(&ClearAlbumArtistsParams { album_id })?;
     for aa in artists {
-        let credit = Credit {
-            id: &aa.id,
-            artist_id: &aa.artist_id,
-            position: aa.position,
-            credit_key: settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), now)?,
-            join_phrase: aa.join_phrase.as_deref(),
-        };
-        insert_credit_row(conn, "album_artists", "album_id", album_id, &credit, now)?;
+        insert_album_credit(conn, aa, now)?;
     }
     Ok(())
 }
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    ClearTrackArtists(track_id: &'p str),
+    "DELETE FROM track_artists WHERE track_id = :track_id"
+);
 
 #[cfg(desktop)]
 /// Make each track of `track_ids` credit exactly its `artists`. Callers pass
@@ -835,55 +616,84 @@ pub(super) fn replace_track_artists(
         );
     }
     for track_id in track_ids {
-        conn.execute("DELETE FROM track_artists WHERE track_id = ?", params![track_id])?;
+        conn.run(&ClearTrackArtistsParams { track_id })?;
         for ta in artists.iter().filter(|ta| ta.track_id == *track_id) {
-            let credit = Credit {
-                id: &ta.id,
-                artist_id: &ta.artist_id,
-                position: ta.position,
-                credit_key: settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), now)?,
-                join_phrase: ta.join_phrase.as_deref(),
-            };
-            insert_credit_row(conn, "track_artists", "track_id", track_id, &credit, now)?;
+            insert_track_credit(conn, ta, now)?;
         }
     }
     Ok(())
 }
 
-/// One place of an `album_artists` / `track_artists` list.
-struct Credit<'a> {
-    id: &'a str,
-    artist_id: &'a str,
-    position: u32,
-    credit_key: Option<String>,
-    join_phrase: Option<&'a str>,
-}
+sqlive_compose::write!(
+    InsertAlbumArtist(
+        id: &'p str,
+        album_id: &'p str,
+        artist_id: &'p str,
+        position: u32,
+        credit_key: Option<String>,
+        join_phrase: Option<&'p str>,
+        created_at: &'p str,
+    ),
+    r#"
+    INSERT INTO album_artists
+        (id, album_id, artist_id, position, credit_key, join_phrase, created_at)
+    VALUES (:id, :album_id, :artist_id, :position, :credit_key, :join_phrase, :created_at)
+"#
+);
 
-/// Insert `credit` as a place of `owner_id`'s list in `table`.
-fn insert_credit_row(
+/// Insert `credit` as a place of its album's credit list, made at `created_at`.
+fn insert_album_credit(
     conn: &CovenWrite<'_>,
-    table: &'static str,
-    owner_column: &'static str,
-    owner_id: &str,
-    credit: &Credit<'_>,
+    credit: &DbAlbumArtist,
     created_at: &str,
 ) -> Result<(), DbError> {
-    conn.execute(
-        &format!(
-            "INSERT INTO {table} \
-                 (id, {owner_column}, artist_id, position, credit_key, join_phrase, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
-        ),
-        params![
-            credit.id,
-            owner_id,
-            credit.artist_id,
-            credit.position,
-            credit.credit_key,
-            credit.join_phrase,
-            created_at
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    let credit_key =
+        settle_credit_name(conn, &credit.artist_id, credit.credit.as_ref(), created_at)?;
+    conn.run(&InsertAlbumArtistParams {
+        id: &credit.id,
+        album_id: &credit.album_id,
+        artist_id: &credit.artist_id,
+        position: credit.position,
+        credit_key,
+        join_phrase: credit.join_phrase.as_deref(),
+        created_at,
+    })?;
+    Ok(())
+}
+
+sqlive_compose::write!(
+    InsertTrackArtist(
+        id: &'p str,
+        track_id: &'p str,
+        artist_id: &'p str,
+        position: u32,
+        credit_key: Option<String>,
+        join_phrase: Option<&'p str>,
+        created_at: &'p str,
+    ),
+    r#"
+    INSERT INTO track_artists
+        (id, track_id, artist_id, position, credit_key, join_phrase, created_at)
+    VALUES (:id, :track_id, :artist_id, :position, :credit_key, :join_phrase, :created_at)
+"#
+);
+
+/// Insert `credit` as a place of its track's credit list, made at `created_at`.
+fn insert_track_credit(
+    conn: &CovenWrite<'_>,
+    credit: &DbTrackArtist,
+    created_at: &str,
+) -> Result<(), DbError> {
+    let credit_key =
+        settle_credit_name(conn, &credit.artist_id, credit.credit.as_ref(), created_at)?;
+    conn.run(&InsertTrackArtistParams {
+        id: &credit.id,
+        track_id: &credit.track_id,
+        artist_id: &credit.artist_id,
+        position: credit.position,
+        credit_key,
+        join_phrase: credit.join_phrase.as_deref(),
+        created_at,
+    })?;
+    Ok(())
 }

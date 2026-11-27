@@ -1,4 +1,5 @@
 use super::*;
+use bae_store::WriteStatements as _;
 
 /// Why making a release its album's primary was refused.
 #[derive(Debug, thiserror::Error)]
@@ -21,6 +22,20 @@ impl bae_util::task_failure::ReportedBug for PrimaryReleaseError {
         }
     }
 }
+
+sqlive_compose::write!(
+    DeleteAlbumReleases(album_id: &'p str),
+    "DELETE FROM releases WHERE album_id = :album_id"
+);
+
+sqlive_compose::write!(
+    MakePrimaryRelease(album_id: &'p str, release_id: &'p str),
+    r#"
+    UPDATE releases
+    SET album_order = (SELECT MIN(album_order) - 1 FROM releases WHERE album_id = :album_id)
+    WHERE id = :release_id AND album_id = :album_id
+"#
+);
 
 impl Records {
     #[cfg(any(test, feature = "test-utils"))]
@@ -111,7 +126,7 @@ impl Records {
                 for release in &releases {
                     release.apply_on(&sql)?;
                 }
-                sql.execute("DELETE FROM releases WHERE album_id = ?", params![album_id])?;
+                sql.run(&DeleteAlbumReleasesParams { album_id: &album_id })?;
                 Ok(emptiable.remove_emptied(&sql)?)
             })
             .await
@@ -143,12 +158,8 @@ impl Records {
                 if current.as_deref() == Some(release.as_str()) {
                     return Ok(true);
                 }
-                let moved = sql.execute(
-                    "UPDATE releases SET album_order = \
-                     (SELECT MIN(album_order) - 1 FROM releases WHERE album_id = ?1) \
-                 WHERE id = ?2 AND album_id = ?1",
-                    params![album, release],
-                )?;
+                let moved =
+                    sql.run(&MakePrimaryReleaseParams { album_id: &album, release_id: &release })?;
                 Ok(moved == 1)
             })
             .await?;

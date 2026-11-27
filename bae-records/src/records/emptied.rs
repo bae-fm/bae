@@ -8,6 +8,7 @@
 //! out and writing it again.
 
 use super::*;
+use bae_store::WriteStatements as _;
 
 /// The ids of the albums, works and artists a write may leave empty.
 pub(super) struct Emptiable {
@@ -24,6 +25,41 @@ const PERFORMED_WORKS: &str = "WITH RECURSIVE performed(id) AS ( \
         UNION \
         SELECT p.parent_work_id FROM work_parts p JOIN performed ON p.child_work_id = performed.id \
     ) SELECT id FROM performed";
+
+sqlive_compose::write!(
+    DeleteEmptiedAlbum(album: &'p str),
+    r#"
+    DELETE FROM albums WHERE id = :album
+    AND NOT EXISTS (SELECT 1 FROM releases WHERE album_id = :album)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteUnperformedWork(work: &'p str),
+    r#"
+    DELETE FROM works WHERE id = :work AND NOT EXISTS (
+        WITH RECURSIVE parts(id) AS (
+            SELECT :work
+            UNION
+            SELECT p.child_work_id FROM work_parts p JOIN parts ON p.parent_work_id = parts.id)
+        SELECT 1 FROM track_works tw WHERE tw.work_id IN (SELECT id FROM parts))
+"#
+);
+
+// An artist a merge names stays: its credits resolve through the merge.
+sqlive_compose::write!(
+    DeleteUncreditedArtist(artist: &'p str),
+    r#"
+    DELETE FROM artists WHERE id = :artist
+    AND NOT EXISTS (SELECT 1 FROM album_artists WHERE artist_id = :artist)
+    AND NOT EXISTS (SELECT 1 FROM track_artists WHERE artist_id = :artist)
+    AND NOT EXISTS (SELECT 1 FROM work_artists WHERE artist_id = :artist)
+    AND NOT EXISTS (SELECT 1 FROM release_artist_roles WHERE artist_id = :artist)
+    AND NOT EXISTS (SELECT 1 FROM track_artist_roles WHERE artist_id = :artist)
+    AND NOT EXISTS (
+        SELECT 1 FROM artist_merges WHERE id = :artist OR into_artist_id = :artist)
+"#
+);
 
 impl Emptiable {
     /// What removing or rewriting the rows of `release_ids` may empty: their
@@ -83,34 +119,13 @@ impl Emptiable {
     /// with its other names and picture.
     pub(super) fn remove_emptied(&self, conn: &CovenWrite<'_>) -> Result<(), DbError> {
         for album in &self.albums {
-            conn.execute(
-                "DELETE FROM albums WHERE id = ?1 \
-                 AND NOT EXISTS (SELECT 1 FROM releases WHERE album_id = ?1)",
-                params![album],
-            )?;
+            conn.run(&DeleteEmptiedAlbumParams { album })?;
         }
         for work in &self.works {
-            conn.execute(
-                "DELETE FROM works WHERE id = ?1 AND NOT EXISTS ( \
-                     WITH RECURSIVE parts(id) AS ( \
-                         SELECT ?1 \
-                         UNION SELECT p.child_work_id FROM work_parts p JOIN parts ON p.parent_work_id = parts.id \
-                     ) SELECT 1 FROM track_works tw WHERE tw.work_id IN (SELECT id FROM parts))",
-                params![work],
-            )?;
+            conn.run(&DeleteUnperformedWorkParams { work })?;
         }
-        // An artist a merge names stays: its credits resolve through the merge.
         for artist in &self.artists {
-            conn.execute(
-                "DELETE FROM artists WHERE id = ?1 \
-                 AND NOT EXISTS (SELECT 1 FROM album_artists WHERE artist_id = ?1) \
-                 AND NOT EXISTS (SELECT 1 FROM track_artists WHERE artist_id = ?1) \
-                 AND NOT EXISTS (SELECT 1 FROM work_artists WHERE artist_id = ?1) \
-                 AND NOT EXISTS (SELECT 1 FROM release_artist_roles WHERE artist_id = ?1) \
-                 AND NOT EXISTS (SELECT 1 FROM track_artist_roles WHERE artist_id = ?1) \
-                 AND NOT EXISTS (SELECT 1 FROM artist_merges WHERE id = ?1 OR into_artist_id = ?1)",
-                params![artist],
-            )?;
+            conn.run(&DeleteUncreditedArtistParams { artist })?;
         }
         Ok(())
     }

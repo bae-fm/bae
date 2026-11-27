@@ -3,6 +3,8 @@
 
 use super::fragments::library_status_of_columns;
 use super::*;
+#[cfg(desktop)]
+use bae_store::WriteStatements as _;
 use bae_store::{statement_optional, statement_rows};
 
 impl Records {
@@ -112,6 +114,23 @@ pub(super) fn album_held_on(tx: &CovenWrite<'_>, album_id: &str) -> Result<bool,
     )?)
 }
 
+// Order the release `release_id` last among those of the album `album_id`.
+#[cfg(desktop)]
+sqlive_compose::write!(
+    OrderReleaseLast(release_id: &'p str, album_id: String),
+    r#"
+    UPDATE releases
+    SET album_order = @crate::records::write::NextAlbumOrder(album: :album_id)
+    WHERE id = :release_id
+"#
+);
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetReleaseAlbum(release_id: &'p str, album_id: &'p str),
+    "UPDATE releases SET album_id = :album_id WHERE id = :release_id"
+);
+
 /// Write `change`:
 ///
 /// 1. Write the destination album when `new_album` is `Some` and the library
@@ -185,18 +204,9 @@ pub(super) fn set_records_on(
     // 3. Update release: album and where its draft was read. A release
     //    joining another album goes after that album's others.
     if target_album_id != current_album_id {
-        tx.execute(
-            &format!(
-                "UPDATE releases SET album_order = {} WHERE id = ?2",
-                next_album_order_sql("?1")
-            ),
-            params![target_album_id, release_id],
-        )?;
+        tx.run(&OrderReleaseLastParams { release_id, album_id: target_album_id.clone() })?;
     }
-    tx.execute(
-        "UPDATE releases SET album_id = ? WHERE id = ?",
-        params![target_album_id, release_id],
-    )?;
+    tx.run(&SetReleaseAlbumParams { release_id, album_id: target_album_id })?;
 
     Ok(())
 }

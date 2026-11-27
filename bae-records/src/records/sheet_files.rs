@@ -10,7 +10,7 @@
 use super::*;
 use bae_store::statement_row;
 #[cfg(desktop)]
-use sqlive_compose::Statement as _;
+use bae_store::WriteStatements as _;
 
 /// The audio file the person picked for one `FILE` line of a CUE sheet in a
 /// release editor: the sheet's file id, the line's text and the audio file's
@@ -297,6 +297,45 @@ sqlive_compose::write!(
 "#
 );
 
+#[cfg(desktop)]
+sqlive_compose::write!(
+    DeleteTrackAudio(track_id: &'p str),
+    "DELETE FROM audio_formats WHERE track_id = :track_id"
+);
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetTrackLength(id: &'p str, release_id: &'p str, duration_ms: i64),
+    r#"
+    UPDATE tracks SET duration_ms = :duration_ms
+    WHERE id = :id AND release_id = :release_id
+"#
+);
+
+// `tracks` is a JSON array of track ids.
+#[cfg(desktop)]
+sqlive_compose::write!(
+    DeleteDroppedTracks(release_id: &'p str, tracks: String),
+    r#"
+    DELETE FROM tracks
+    WHERE release_id = :release_id AND id IN (SELECT value FROM json_each(:tracks))
+"#
+);
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetAlbumLoudness(
+        release_id: &'p str,
+        album_loudness_lufs: Option<f64>,
+        album_peak_linear: Option<f64>,
+    ),
+    r#"
+    UPDATE releases
+    SET album_loudness_lufs = :album_loudness_lufs, album_peak_linear = :album_peak_linear
+    WHERE id = :release_id
+"#
+);
+
 /// Write `rebound` over the release `release_id`: each file's layout as the
 /// edits lay it out, then each moved track's length and audio rows in place
 /// of the ones it had, so no row of the file it played from is left, the
@@ -309,22 +348,21 @@ pub(super) fn write_rebound_audio_on(
     release_id: &str,
     rebound: &ReboundAudio,
 ) -> Result<(), DbError> {
-    let layouts =
-        LayOutSheetFilesParams { release: release_id.to_string(), edits: rebound.edits.json()? };
-    tx.execute(LayOutSheetFiles::SQL, layouts.params().as_slice())?;
+    tx.run(&LayOutSheetFilesParams {
+        release: release_id.to_string(),
+        edits: rebound.edits.json()?,
+    })?;
     for (track_id, length_ms) in &rebound.track_lengths {
-        tx.execute("DELETE FROM audio_formats WHERE track_id = ?", params![track_id])?;
-        tx.execute(
-            "UPDATE tracks SET duration_ms = ? WHERE id = ? AND release_id = ?",
-            params![to_i64(*length_ms, "duration_ms")?, track_id, release_id],
-        )?;
+        tx.run(&DeleteTrackAudioParams { track_id })?;
+        tx.run(&SetTrackLengthParams {
+            id: track_id,
+            release_id,
+            duration_ms: to_i64(*length_ms, "duration_ms")?,
+        })?;
     }
     let dropped = serde_json::to_string(&rebound.dropped)
         .map_err(|error| DbError::encode("the tracks a release editor save deletes", error))?;
-    tx.execute(
-        "DELETE FROM tracks WHERE release_id = ? AND id IN (SELECT value FROM json_each(?))",
-        params![release_id, dropped],
-    )?;
+    tx.run(&DeleteDroppedTracksParams { release_id, tracks: dropped })?;
     for added in &rebound.added {
         insert_track_row(tx, &added.track)?;
     }
@@ -337,10 +375,11 @@ pub(super) fn write_rebound_audio_on(
     for points in &rebound.scrub_points {
         insert_scrub_points_row(tx, points)?;
     }
-    tx.execute(
-        "UPDATE releases SET album_loudness_lufs = ?, album_peak_linear = ? WHERE id = ?",
-        params![rebound.album_loudness_lufs, rebound.album_peak_linear, release_id],
-    )?;
+    tx.run(&SetAlbumLoudnessParams {
+        release_id,
+        album_loudness_lufs: rebound.album_loudness_lufs,
+        album_peak_linear: rebound.album_peak_linear,
+    })?;
     Ok(())
 }
 

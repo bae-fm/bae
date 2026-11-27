@@ -6,8 +6,8 @@
 //! with their own triggers on `name_sort`, in the write that changes it.
 
 use bae_store::DbError;
+use bae_store::WriteStatements as _;
 use bae_util::name_key::{InvalidLanguage, NameKeys, DATA_VERSION};
-use rusqlite::params;
 
 /// A language bae cannot order the device's names in.
 #[derive(Debug, thiserror::Error)]
@@ -47,6 +47,17 @@ pub fn sort_key_sql(name: &str) -> String {
     format!("bae_name_key({name}, ({language}))", language = NameSortLanguages::SQL)
 }
 
+sqlive_compose::write!(
+    SetNameSort(language: &'p str, data_version: u32),
+    "UPDATE name_sort SET language = :language, data_version = :data_version"
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+sqlive_compose::write!(
+    AgeNameKeys(data_version: u32),
+    "UPDATE name_sort SET data_version = :data_version"
+);
+
 impl super::Records {
     /// Order this device's names in the language `tag`: the lists that keep
     /// name keys write every key again in it, in one write that commits whole
@@ -80,10 +91,7 @@ impl super::Records {
                 if stored == language && version == DATA_VERSION {
                     return Ok(());
                 }
-                sql.execute(
-                    "UPDATE name_sort SET language = ?1, data_version = ?2",
-                    params![language, DATA_VERSION],
-                )?;
+                sql.run(&SetNameSortParams { language: &language, data_version: DATA_VERSION })?;
                 Ok(())
             })
             .await
@@ -95,7 +103,7 @@ impl super::Records {
     pub async fn age_name_keys_for_test(&self) -> Result<(), DbError> {
         self.store
             .call_bulk(|sql| {
-                sql.execute("UPDATE name_sort SET data_version = ?1", params![DATA_VERSION + 1])?;
+                sql.run(&AgeNameKeysParams { data_version: DATA_VERSION + 1 })?;
                 Ok(())
             })
             .await

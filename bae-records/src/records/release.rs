@@ -1,4 +1,5 @@
 use super::*;
+use bae_store::WriteStatements as _;
 
 /// A release's metadata as an edit leaves it: album fields, release pressing
 /// fields, the track rows named by `track_updates` (existing track ID → edited
@@ -36,6 +37,12 @@ pub(super) enum PressingFactsWrite {
     Kept,
 }
 
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetReleaseYear(release_id: &'p str, year: Option<i32>),
+    "UPDATE releases SET year = :year WHERE id = :release_id"
+);
+
 /// Write `release`'s pressing over its row, its labels naming the library
 /// labels `pressing` decides.
 #[cfg(desktop)]
@@ -65,10 +72,7 @@ fn update_release_typed_pressing_on(
     release: &DbRelease,
     pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
-    tx.execute(
-        "UPDATE releases SET year = ? WHERE id = ?",
-        params![release.pressing.typed.year, release.id],
-    )?;
+    tx.run(&SetReleaseYearParams { release_id: &release.id, year: release.pressing.typed.year })?;
     super::label_resolution::write_release_labels_on(
         tx,
         &release.id,
@@ -84,6 +88,21 @@ fn update_release_typed_pressing_on(
     Ok(())
 }
 
+sqlive_compose::write!(
+    SetReleaseFactColumns(
+        release_id: &'p str,
+        country: Option<&'static str>,
+        region: Option<&'static str>,
+        status: Option<&'static str>,
+        packaging: Option<&'static str>,
+    ),
+    r#"
+    UPDATE releases
+    SET country = :country, region = :region, status = :status, packaging = :packaging
+    WHERE id = :release_id
+"#
+);
+
 /// Write the facts of `facts` the release `release_id`'s own row keeps: its
 /// area, status and packaging.
 fn update_release_fact_columns_on(
@@ -92,12 +111,42 @@ fn update_release_fact_columns_on(
     facts: &bae_types::pressing::PressingFacts,
 ) -> Result<(), DbError> {
     let facts = super::pressing_columns::FactColumns::of(facts);
-    tx.execute(
-        "UPDATE releases SET country = ?, region = ?, status = ?, packaging = ? WHERE id = ?",
-        params![facts.country, facts.region, facts.status, facts.packaging, release_id],
-    )?;
+    tx.run(&SetReleaseFactColumnsParams {
+        release_id,
+        country: facts.country,
+        region: facts.region,
+        status: facts.status,
+        packaging: facts.packaging,
+    })?;
     Ok(())
 }
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetAlbumFields(id: &'p str, title: &'p str, year: Option<i32>, is_compilation: bool),
+    r#"
+    UPDATE albums SET title = :title, year = :year, is_compilation = :is_compilation
+    WHERE id = :id
+"#
+);
+
+/// Write `album`'s title, year and compilation flag over its row.
+#[cfg(desktop)]
+pub(super) fn update_album_fields_on(tx: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
+    tx.run(&SetAlbumFieldsParams {
+        id: &album.id,
+        title: &album.title,
+        year: album.year,
+        is_compilation: album.is_compilation,
+    })?;
+    Ok(())
+}
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetTrackTitle(id: &'p str, title: &'p str),
+    "UPDATE tracks SET title = :title WHERE id = :id"
+);
 
 /// Write `metadata`: the release's pressing fields, each named track's title
 /// and those tracks' artist links, and — unless `album_fields` keeps the
@@ -137,10 +186,7 @@ pub(super) fn write_release_metadata_on(
         resolved.relinked_credit_links(credits, album_artists, track_artists);
 
     if album_fields == AlbumFields::Written {
-        tx.execute(
-            r#"UPDATE albums SET title = ?, year = ?, is_compilation = ? WHERE id = ?"#,
-            params![album.title, album.year, album.is_compilation, album.id,],
-        )?;
+        update_album_fields_on(tx, album)?;
         replace_album_artists(tx, &album.id, &album_artists, now)?;
     }
 
@@ -150,10 +196,7 @@ pub(super) fn write_release_metadata_on(
     }
 
     for (existing_id, new_track) in track_updates {
-        tx.execute(
-            r#"UPDATE tracks SET title = ? WHERE id = ?"#,
-            params![new_track.title, existing_id],
-        )?;
+        tx.run(&SetTrackTitleParams { id: existing_id, title: &new_track.title })?;
     }
 
     let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
@@ -161,6 +204,11 @@ pub(super) fn write_release_metadata_on(
 
     Ok(())
 }
+
+sqlive_compose::write!(
+    DeleteRelease(release_id: &'p str),
+    "DELETE FROM releases WHERE id = :release_id"
+);
 
 impl Records {
     #[cfg(any(test, feature = "test-utils"))]
@@ -436,7 +484,7 @@ impl Records {
             .write(move |sql| {
                 let emptiable = Emptiable::of_releases(&sql, &[plan.release_id()])?;
                 plan.apply_on(&sql)?;
-                sql.execute("DELETE FROM releases WHERE id = ?", params![plan.release_id()])?;
+                sql.run(&DeleteReleaseParams { release_id: plan.release_id() })?;
                 Ok(emptiable.remove_emptied(&sql)?)
             })
             .await

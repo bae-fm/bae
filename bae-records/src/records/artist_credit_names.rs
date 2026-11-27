@@ -9,6 +9,7 @@
 
 use super::*;
 use crate::credits::{ArtistCreditName, CreditName};
+use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
 
 /// Why an artist's other printed name could not be added or renamed.
@@ -53,6 +54,15 @@ pub(super) fn settle_credit_name(
     settle_credit_name_beside(conn, artist_id, &own, credit, now)
 }
 
+sqlive_compose::write!(
+    KeepCreditName(artist_id: &'p str, name_key: &'p str, name: &'p str, created_at: &'p str),
+    r#"
+    INSERT INTO artist_credits (artist_id, name_key, name, created_at)
+    VALUES (:artist_id, :name_key, :name, :created_at)
+    ON CONFLICT (artist_id, name_key) DO NOTHING
+"#
+);
+
 /// [`settle_credit_name`] for an artist whose own name's key is `own`.
 fn settle_credit_name_beside(
     conn: &CovenWrite<'_>,
@@ -64,11 +74,12 @@ fn settle_credit_name_beside(
     if own == credit.key {
         return Ok(None);
     }
-    conn.execute(
-        "INSERT INTO artist_credits (artist_id, name_key, name, created_at) VALUES (?, ?, ?, ?) \
-         ON CONFLICT (artist_id, name_key) DO NOTHING",
-        params![artist_id, credit.key, credit.name, now],
-    )?;
+    conn.run(&KeepCreditNameParams {
+        artist_id,
+        name_key: &credit.key,
+        name: &credit.name,
+        created_at: now,
+    })?;
     Ok(Some(credit.key.clone()))
 }
 
@@ -82,6 +93,31 @@ fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<Option<Stri
         .optional()?)
 }
 
+sqlive_compose::write!(
+    RelinkAlbumArtistsCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
+    "UPDATE album_artists SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
+);
+
+sqlive_compose::write!(
+    RelinkTrackArtistsCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
+    "UPDATE track_artists SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
+);
+
+sqlive_compose::write!(
+    RelinkReleaseArtistRolesCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
+    "UPDATE release_artist_roles SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
+);
+
+sqlive_compose::write!(
+    RelinkTrackArtistRolesCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
+    "UPDATE track_artist_roles SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
+);
+
+sqlive_compose::write!(
+    RelinkWorkArtistsCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
+    "UPDATE work_artists SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
+);
+
 /// Point every link naming `artist_id`'s credit name `from` at `to` (`None`:
 /// the artist's own name).
 fn relink_credit_name(
@@ -90,18 +126,11 @@ fn relink_credit_name(
     from: &str,
     to: Option<&str>,
 ) -> Result<(), DbError> {
-    for table in [
-        "album_artists",
-        "track_artists",
-        "release_artist_roles",
-        "track_artist_roles",
-        "work_artists",
-    ] {
-        conn.execute(
-            &format!("UPDATE {table} SET credit_key = ? WHERE artist_id = ? AND credit_key = ?"),
-            params![to, artist_id, from],
-        )?;
-    }
+    conn.run(&RelinkAlbumArtistsCreditNameParams { artist_id, from, to })?;
+    conn.run(&RelinkTrackArtistsCreditNameParams { artist_id, from, to })?;
+    conn.run(&RelinkReleaseArtistRolesCreditNameParams { artist_id, from, to })?;
+    conn.run(&RelinkTrackArtistRolesCreditNameParams { artist_id, from, to })?;
+    conn.run(&RelinkWorkArtistsCreditNameParams { artist_id, from, to })?;
     Ok(())
 }
 
@@ -210,6 +239,16 @@ sqlive_compose::read!(
 "#
 );
 
+sqlive_compose::write!(
+    SpellCreditName(artist_id: &'p str, name_key: &'p str, name: &'p str),
+    "UPDATE artist_credits SET name = :name WHERE artist_id = :artist_id AND name_key = :name_key"
+);
+
+sqlive_compose::write!(
+    DeleteCreditName(artist_id: &'p str, name_key: &'p str),
+    "DELETE FROM artist_credits WHERE artist_id = :artist_id AND name_key = :name_key"
+);
+
 impl Records {
     /// Give `artist_id` the other printed name `name`. A name that folds to
     /// the artist's own, or to one it already goes by, adds nothing: the
@@ -260,18 +299,16 @@ impl Records {
                 };
                 let renamed = CreditName::of(&name);
                 if renamed.key == key {
-                    sql.execute(
-                        "UPDATE artist_credits SET name = ? WHERE artist_id = ? AND name_key = ?",
-                        params![renamed.name, artist, key],
-                    )?;
+                    sql.run(&SpellCreditNameParams {
+                        artist_id: &artist,
+                        name_key: &key,
+                        name: &renamed.name,
+                    })?;
                     return Ok(true);
                 }
                 let to = settle_credit_name_beside(&sql, &artist, &own, &renamed, &now)?;
                 relink_credit_name(&sql, &artist, &key, to.as_deref())?;
-                sql.execute(
-                    "DELETE FROM artist_credits WHERE artist_id = ? AND name_key = ?",
-                    params![artist, key],
-                )?;
+                sql.run(&DeleteCreditNameParams { artist_id: &artist, name_key: &key })?;
                 Ok(true)
             })
             .await?;
@@ -292,10 +329,7 @@ impl Records {
         self.store
             .call_sql(move |sql| {
                 relink_credit_name(&sql, &artist_id, &key, None)?;
-                sql.execute(
-                    "DELETE FROM artist_credits WHERE artist_id = ? AND name_key = ?",
-                    params![artist_id, key],
-                )?;
+                sql.run(&DeleteCreditNameParams { artist_id: &artist_id, name_key: &key })?;
                 Ok(())
             })
             .await

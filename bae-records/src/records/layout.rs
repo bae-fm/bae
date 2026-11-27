@@ -12,6 +12,8 @@
 use super::read::rows_of;
 use super::*;
 use bae_store::statement_row;
+#[cfg(desktop)]
+use bae_store::WriteStatements as _;
 use bae_types::mediums::{ReleaseMedium, TrackPlace};
 
 /// One track of a [`ReleaseLayout`].
@@ -277,6 +279,36 @@ fn laid_track(row: TrackJson) -> Result<LaidTrack, DbError> {
     Ok(LaidTrack { track_id, place, stated_length_ms })
 }
 
+#[cfg(desktop)]
+sqlive_compose::write!(
+    MoveTracksPastEnd(release_id: &'p str),
+    r#"
+    WITH past_end(value) AS MATERIALIZED (
+        SELECT MAX(position) + 1 FROM tracks WHERE release_id = :release_id)
+    UPDATE tracks SET position = position + (SELECT value FROM past_end)
+    WHERE release_id = :release_id
+"#
+);
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    PlaceTrack(
+        id: &'p str,
+        release_id: &'p str,
+        medium_id: &'p str,
+        side: std::num::NonZeroU8,
+        track_number: std::num::NonZeroU32,
+        stated_length_ms: Option<u64>,
+        position: i64,
+    ),
+    r#"
+    UPDATE tracks
+    SET medium_id = :medium_id, side = :side, track_number = :track_number,
+        stated_length_ms = :stated_length_ms, position = :position
+    WHERE id = :id AND release_id = :release_id
+"#
+);
+
 /// Write `layout` over the release `release_id`: each medium at its
 /// position, a position the release held keeping its row, and each track's
 /// medium, side, number, listed length and playing position. A medium the
@@ -297,23 +329,22 @@ pub(super) fn write_layout_on(
     let mut medium_ids = Vec::with_capacity(layout.mediums.len());
     for (index, medium) in layout.mediums.iter().enumerate() {
         let position = u16::try_from(index + 1).expect("a release holds fewer than 65536 mediums");
-        let carrier = medium.carrier.map(bae_types::pressing::Medium::key);
         let id = match held.iter().find(|(held, _)| *held == position) {
             Some((_, id)) => {
-                tx.execute(
-                    "UPDATE release_mediums SET medium = ?, side_count = ? WHERE id = ?",
-                    params![carrier, medium.sides, id],
-                )?;
+                update_release_medium_row(tx, id, medium)?;
                 id.clone()
             }
             None => {
                 let id = ids.new_id().to_string();
-                tx.execute(
-                    "INSERT INTO release_mediums \
-                         (id, release_id, position, medium, side_count, created_at) \
-                     VALUES (?, ?, ?, ?, ?, ?)",
-                    params![id, release_id, position, carrier, medium.sides, now],
-                )?;
+                tx.run(&super::write::InsertReleaseMediumParams {
+                    id: &id,
+                    release_id,
+                    position: std::num::NonZeroU16::new(position)
+                        .expect("a medium's position starts at one"),
+                    medium: medium.carrier.map(bae_types::pressing::Medium::key),
+                    side_count: medium.sides,
+                    created_at: now.to_string(),
+                })?;
                 id
             }
         };
@@ -321,31 +352,21 @@ pub(super) fn write_layout_on(
     }
     // Playing positions are unique in a release, so every track first moves
     // past the end, and then each takes its place.
-    tx.execute(
-        "WITH past_end(value) AS MATERIALIZED ( \
-             SELECT MAX(position) + 1 FROM tracks WHERE release_id = ?1) \
-         UPDATE tracks SET position = position + (SELECT value FROM past_end) WHERE release_id = ?1",
-        [release_id],
-    )?;
+    tx.run(&MoveTracksPastEndParams { release_id })?;
     for (position, track) in layout.tracks.iter().enumerate() {
-        tx.execute(
-            "UPDATE tracks SET medium_id = ?, side = ?, track_number = ?, \
-                 stated_length_ms = ?, position = ? \
-             WHERE id = ? AND release_id = ?",
-            params![
-                medium_ids[track.place.medium_index()],
-                track.place.side,
-                track.place.number,
-                track.stated_length_ms,
-                position,
-                track.track_id,
-                release_id
-            ],
-        )?;
+        tx.run(&PlaceTrackParams {
+            id: &track.track_id,
+            release_id,
+            medium_id: &medium_ids[track.place.medium_index()],
+            side: track.place.side,
+            track_number: track.place.number,
+            stated_length_ms: track.stated_length_ms,
+            position: position as i64,
+        })?;
     }
     for (_, stale) in held.iter().filter(|(position, _)| usize::from(*position) > medium_ids.len())
     {
-        tx.execute("DELETE FROM release_mediums WHERE id = ?", params![stale])?;
+        delete_release_medium_row(tx, stale)?;
     }
     Ok(())
 }

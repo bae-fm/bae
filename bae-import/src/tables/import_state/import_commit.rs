@@ -5,14 +5,21 @@
 
 use super::*;
 use bae_records::records::artist_resolution::{relink, relink_album_artists, relink_track_artists};
+use bae_records::records::file_writes::{
+    insert_audio_format_row, insert_audio_segment_row, insert_carved_track_row,
+    insert_release_file_row, insert_scrub_points_row,
+};
+use bae_records::records::image_writes::{
+    insert_preview_row, stage_cover, stage_preview, upsert_artist_image_row, upsert_cover_row,
+};
 use bae_records::records::label_resolution::pressing_write;
+use bae_records::records::work_writes::{
+    insert_release_artist_role_row, insert_track_artist_role_row, insert_track_work_row,
+    insert_work_artist_row, insert_work_part_row, insert_work_row,
+};
 use bae_records::records::write::{
-    insert_audio_format_row, insert_audio_segment_row, insert_carved_track_row, insert_preview_row,
-    insert_release_artist_role_row, insert_release_file_row, insert_release_medium_row,
-    insert_release_row, insert_scrub_points_row, insert_track_artist_role_row,
-    insert_track_artist_row, insert_track_row, insert_track_work_row, insert_work_artist_row,
-    insert_work_part_row, insert_work_row, replace_album_artists, stage_cover, stage_preview,
-    upsert_album_row, upsert_artist_image_row, upsert_cover_row, write_release_records,
+    insert_release_medium_row, insert_release_row, insert_track_artist_row, insert_track_row,
+    replace_album_artists, upsert_album_row, write_release_records,
 };
 use bae_records::GonePicked;
 use bae_util::timestamp::StoredTimestamp as _;

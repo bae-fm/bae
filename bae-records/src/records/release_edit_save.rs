@@ -4,6 +4,7 @@
 
 use super::release::AlbumFields;
 use super::*;
+use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
 
 /// What a save writes over the release's rows.
@@ -262,6 +263,43 @@ impl Records {
     }
 }
 
+#[cfg(desktop)]
+sqlive_compose::write!(
+    SetTrackRow(
+        id: &'p str,
+        release_id: &'p str,
+        title: &'p str,
+        medium_id: &'p str,
+        side: std::num::NonZeroU8,
+        track_number: std::num::NonZeroU32,
+        stated_length_ms: Option<u64>,
+    ),
+    r#"
+    UPDATE tracks
+    SET title = :title, medium_id = :medium_id, side = :side,
+        track_number = :track_number, stated_length_ms = :stated_length_ms
+    WHERE id = :id AND release_id = :release_id
+"#
+);
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    ClearTrackArtistRoles(track_id: &'p str),
+    "DELETE FROM track_artist_roles WHERE track_id = :track_id"
+);
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    ClearTrackWorks(track_id: &'p str),
+    "DELETE FROM track_works WHERE track_id = :track_id"
+);
+
+#[cfg(desktop)]
+sqlive_compose::write!(
+    ClearReleaseArtistRoles(release_id: &'p str),
+    "DELETE FROM release_artist_roles WHERE release_id = :release_id"
+);
+
 /// Write `rows` over the release they name: its album's fields and credits,
 /// its pressing, its mediums and each track's place, title, listed length and
 /// credits, and its roles and works, every one the rows hold and no other, a
@@ -294,10 +332,7 @@ fn write_applied_rows_on(
 
     let album = &rows.album;
     if album_fields == AlbumFields::Written {
-        tx.execute(
-            "UPDATE albums SET title = ?, year = ?, is_compilation = ? WHERE id = ?",
-            params![album.title, album.year, album.is_compilation, album.id],
-        )?;
+        super::release::update_album_fields_on(tx, album)?;
         replace_album_artists(tx, &album.id, &album_artists, now)?;
     }
     super::release::update_release_pressing_on(tx, &rows.release, pressing)?;
@@ -316,29 +351,13 @@ fn write_applied_rows_on(
         .collect();
     let mut kept: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
     for medium in &rows.mediums {
-        let carrier = medium.medium.carrier.map(bae_types::pressing::Medium::key);
         let id = match held.get(&medium.position.get()) {
             Some(id) => {
-                tx.execute(
-                    "UPDATE release_mediums SET medium = ?, side_count = ? WHERE id = ?",
-                    params![carrier, medium.medium.sides, id],
-                )?;
+                update_release_medium_row(tx, id, &medium.medium)?;
                 id.clone()
             }
             None => {
-                tx.execute(
-                    "INSERT INTO release_mediums \
-                         (id, release_id, position, medium, side_count, created_at) \
-                     VALUES (?, ?, ?, ?, ?, ?)",
-                    params![
-                        medium.id,
-                        medium.release_id,
-                        medium.position,
-                        carrier,
-                        medium.medium.sides,
-                        medium.created_at.to_rfc3339(),
-                    ],
-                )?;
+                insert_release_medium_row(tx, medium)?;
                 medium.id.clone()
             }
         };
@@ -348,24 +367,19 @@ fn write_applied_rows_on(
     // opened on it, so it holds every track these rows name.
     for track in &rows.tracks {
         let medium_id = kept.get(track.medium_id.as_str()).unwrap_or(&track.medium_id);
-        tx.execute(
-            "UPDATE tracks SET title = ?, medium_id = ?, side = ?, track_number = ?, \
-                 stated_length_ms = ? \
-             WHERE id = ? AND release_id = ?",
-            params![
-                track.title,
-                medium_id,
-                track.side,
-                track.track_number,
-                track.stated_length_ms,
-                track.id,
-                release_id
-            ],
-        )?;
+        tx.run(&SetTrackRowParams {
+            id: &track.id,
+            release_id,
+            title: &track.title,
+            medium_id,
+            side: track.side,
+            track_number: track.track_number,
+            stated_length_ms: track.stated_length_ms,
+        })?;
     }
     for stale in held.values() {
         if !kept.values().any(|id| id == stale) {
-            tx.execute("DELETE FROM release_mediums WHERE id = ?", params![stale])?;
+            delete_release_medium_row(tx, stale)?;
         }
     }
 
@@ -375,10 +389,10 @@ fn write_applied_rows_on(
     // What the previous source credited goes whole; the applied one's rows
     // take its place.
     for track_id in &track_ids {
-        tx.execute("DELETE FROM track_artist_roles WHERE track_id = ?", params![track_id])?;
-        tx.execute("DELETE FROM track_works WHERE track_id = ?", params![track_id])?;
+        tx.run(&ClearTrackArtistRolesParams { track_id })?;
+        tx.run(&ClearTrackWorksParams { track_id })?;
     }
-    tx.execute("DELETE FROM release_artist_roles WHERE release_id = ?", params![release_id])?;
+    tx.run(&ClearReleaseArtistRolesParams { release_id })?;
     for work in &rows.work_graph.works {
         insert_work_row(tx, work)?;
     }
