@@ -162,14 +162,21 @@ impl Records {
 
     /// Save `release_id`'s metadata as a person's edit of it does: the
     /// album, the release, its tracks and their credits as they stand, with
-    /// what `edit` changes of them.
+    /// what `edit` changes of them. The save keeps what the pressing is, so
+    /// an `edit` that changes it panics:
+    /// [`Records::change_release_pressing_facts`] changes that.
     pub async fn save_release_metadata_for_test(
         &self,
         release_id: &str,
         edit: impl FnOnce(&mut ReleaseMetadataRows),
     ) -> Result<(), IdentityWriteError> {
         let mut rows = self.release_metadata_for_test(release_id).await?;
+        let facts = rows.release.pressing.facts.clone();
         edit(&mut rows);
+        assert_eq!(
+            rows.release.pressing.facts, facts,
+            "a metadata save keeps what the pressing is: change_release_pressing_facts changes it"
+        );
         self.update_release_metadata_user_edit(rows).await
     }
 

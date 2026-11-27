@@ -705,8 +705,8 @@ fn carriers(medium: bae_types::pressing::Medium, count: u32) -> bae_types::press
     bae_types::pressing::MediaCount { medium, count }
 }
 
-/// A release's media arriving, changing and leaving, the last two by a
-/// person's metadata edit, set its listing row's media, in order, without
+/// A release's media arriving, changing and leaving, the last two by a change
+/// of what its pressing is, set its listing row's media, in order, without
 /// refreshing the rest of the row.
 #[tokio::test]
 async fn a_release_s_media_rows_set_its_listing_s_media() {
@@ -730,24 +730,23 @@ async fn a_release_s_media_rows_set_its_listing_s_media() {
         );
 
         refreshes.clear(&db).await;
-        records
-            .save_release_metadata_for_test(RELEASE_LATE, |rows| {
-                rows.release.pressing.facts.media =
-                    vec![carriers(Medium::Vinyl, 3), carriers(Medium::Cd, 1)];
+        let changed = records
+            .change_release_pressing_facts(RELEASE_LATE, |facts| {
+                facts.media = vec![carriers(Medium::Vinyl, 3), carriers(Medium::Cd, 1)];
             })
             .await
             .unwrap();
+        assert!(changed, "the library holds the release");
         assert_eq!(
             listed_media(&db, RELEASE_LATE).await,
             (false, Some("vinyl:00003,cd:00001".to_string()))
         );
 
-        records
-            .save_release_metadata_for_test(RELEASE_LATE, |rows| {
-                rows.release.pressing.facts.media = Vec::new();
-            })
+        let changed = records
+            .change_release_pressing_facts(RELEASE_LATE, |facts| facts.media = Vec::new())
             .await
             .unwrap();
+        assert!(changed, "the library holds the release");
         assert_eq!(listed_media(&db, RELEASE_LATE).await, (true, None));
         assert_eq!(refreshes.of(&db, RELEASE_LATE).await, 0, "{first:?} first");
     }
@@ -766,13 +765,13 @@ fn a_media_edit_from_another_device_sorts_its_release() {
             .release(ALBUM_A, release)
             .write(&test_records(devices.a()))
             .await;
-        test_records(devices.a())
-            .save_release_metadata_for_test(release, |rows| {
-                rows.release.pressing.facts.media =
-                    vec![carriers(Medium::Vinyl, 2), carriers(Medium::Cd, 1)];
+        let changed = test_records(devices.a())
+            .change_release_pressing_facts(release, |facts| {
+                facts.media = vec![carriers(Medium::Vinyl, 2), carriers(Medium::Cd, 1)];
             })
             .await
             .unwrap();
+        assert!(changed, "the library holds the release");
         devices.converge("SELECT id, position, medium, count FROM release_media ORDER BY id").await;
 
         let key: Option<String> = devices
