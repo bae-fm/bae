@@ -169,20 +169,19 @@
   }
   // The folder's audio as the scan read it (spec §3.6: codec, sample rate, bit depth or bitrate, channels), the identity's line under the year.
   function audioLine(audio) { return audio ? h('div', { key: 'audio', className: 'bae-m-tertiary bae-m-idraft-audio' }, audio) : null; }
-  // What Discogs says about the pressing that no other field holds: each detail with its remove button, then the menu that adds one more: named Details and showing — while there are none, named Add detail and showing + Add in the accent after.
+  // What Discogs says about the pressing that no other field holds: each detail with its remove button, then the menu that adds one more, named Add detail: after a detail it shows + Add in the accent, and with none, alone beside the row's name, + Add detail.
   // ⊗, which removes one entry of a list, named for the entry (`what`), as xmark.circle.fill in the editor. `off`: dimmed and disabled.
   function removeEntry(what, off) { return h(MacIconButton, { icon: 'removefill', size: 'medium', small: true, faint: true, label: 'Remove ' + what, off: off }); }
-  // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added, and says Add. `off`: dimmed and disabled.
-  function addEntry(label, menu, off) {
-    return h('button', { type: 'button', disabled: off || null, 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: 'bae-plainbtn bae-accent bae-m-idraft-add' }, h(Glyph, { set: 'mac', name: 'add', size: 'small' }), menu ? 'Add' : label);
+  // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added. `inline`: it follows entries on their line, and says Add; on its own it says what it adds. `off`: dimmed and disabled.
+  function addEntry(label, menu, inline, off) {
+    return h('button', { type: 'button', disabled: off || null, 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: 'bae-plainbtn bae-accent bae-m-idraft-add' }, h(Glyph, { set: 'mac', name: 'add', size: 'small' }), inline ? 'Add' : label);
   }
   function discogsDetails(details, off) {
     return h('span', { className: 'bae-m-idraft-details' },
       details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d, off)); }),
-      details.length ? addEntry('Add detail', true, off)
-        : h('button', { type: 'button', disabled: off || null, className: 'bae-plainbtn bae-m-tertiary', 'aria-haspopup': 'menu', 'aria-label': 'Details' }, '—'));
+      addEntry('Add detail', true, details.length > 0, off));
   }
-  // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty. `off`: every field, stepper and button is disabled, as while a save reads a file.
+  // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups; a field or a single choice shows — while empty. `off`: every field, stepper and button is disabled, as while a save reads a file.
   function MacReleaseFields(props) {
     // A fact chosen from a menu shows its value as plain text, or the form's dash.
     var off = !!props.off;
@@ -190,15 +189,15 @@
     var field = function (label, value) { return h(MacInlineField, { label: label, value: value, placeholder: '—', fit: true }); };
     // A list kept one row per entry (labels, barcodes): its name on the first row only, each entry with ⊗, then Add on its own line under the last row; with none, Add alone beside the name.
     var rows = function (name, entries, draw, noun) {
-      var addLine = addEntry('Add ' + name.toLowerCase(), false, off);
+      var addLine = addEntry('Add ' + name.toLowerCase(), false, false, off);
       if (!entries.length) return [[name, addLine]];
       return entries.map(function (e, i) { return [i === 0 ? name : '', h('span', { className: 'bae-m-idraft-fields' }, draw(e), removeEntry(noun(e), off))]; }).concat([['', addLine]]);
     };
-    // `media`: each carrier with how many of it there are, as "2×CD", comma-separated; a carrier alone is one. Each is its name, ×count, a MacStepper and ⊗, on one line, then Add, a menu of the carriers not yet listed.
+    // `media`: each carrier with how many of it there are, as "2×CD", comma-separated; a carrier alone is one. Each is its name, ×count, a MacStepper and ⊗, on one line, then Add, a menu of the carriers not yet listed; with no carrier it says Add medium.
     var media = list(props.media).map(function (m) { var p = m.split('×'); return p.length > 1 ? { count: p[0], carrier: p[1] } : { count: '1', carrier: p[0] }; });
     var mediaLine = h('span', { className: 'bae-m-idraft-entry bae-m-idraft-media' },
       media.map(function (m) { return h('span', { key: m.carrier, className: 'bae-m-idraft-entry' }, h('span', null, m.carrier), h('span', { className: 'bae-muted bae-num' }, '×' + m.count), h(MacStepper, { label: 'Number of ' + m.carrier, off: off }), removeEntry(m.carrier, off)); }),
-      addEntry('Add medium', true, off));
+      addEntry('Add medium', true, media.length > 0, off));
     // `countryOpen`: the countries the Country menu lists, drawn open under its face, with the dash for none first.
     var country = props.countryOpen
       ? h('span', { className: 'bae-m-idraft-pop' }, face('Country', props.country), h('div', { className: 'bae-m-idraft-popmenu' }, h(MacMenu, null, h(MacMenuItem, null, '—'), list(props.countryOpen).map(function (c) { return h(MacMenuItem, { key: c, checked: c === props.country, highlighted: c === props.country }, c); }))))

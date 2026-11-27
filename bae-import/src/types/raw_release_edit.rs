@@ -353,6 +353,18 @@ impl RawPressingEdit {
         }))
     }
 
+    /// Whether the pressing names no medium, so the control that adds one
+    /// stands alone.
+    pub fn media_is_empty(&self) -> bool {
+        self.facts.media.is_empty()
+    }
+
+    /// Whether the pressing holds no Discogs detail, so the control that adds
+    /// one stands alone.
+    pub fn discogs_details_are_empty(&self) -> bool {
+        self.facts.discogs_details.is_empty()
+    }
+
     /// The choices the pressing's Add menus offer.
     pub fn offers(&self) -> PressingOffers {
         PressingOffers {

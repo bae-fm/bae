@@ -551,8 +551,13 @@ pub enum BridgePressingFactEdit {
     Packaging {
         packaging: Option<BridgePackaging>,
     },
-    DiscogsDetails {
-        discogs_details: Vec<BridgeDiscogsDetail>,
+    /// Add one Discogs detail; one the pressing holds stays where it is.
+    AddDiscogsDetail {
+        detail: BridgeDiscogsDetail,
+    },
+    /// Remove one Discogs detail.
+    RemoveDiscogsDetail {
+        detail: BridgeDiscogsDetail,
     },
 }
 
@@ -571,32 +576,35 @@ impl BridgePressingFactEdit {
             Self::Packaging { packaging } => {
                 PressingFactEdit::Packaging(packaging.map(BridgePackaging::into_core))
             }
-            Self::DiscogsDetails { discogs_details } => PressingFactEdit::DiscogsDetails(
-                discogs_details.into_iter().map(BridgeDiscogsDetail::into_core).collect(),
-            ),
+            Self::AddDiscogsDetail { detail } => {
+                PressingFactEdit::AddDiscogsDetail(detail.into_core())
+            }
+            Self::RemoveDiscogsDetail { detail } => {
+                PressingFactEdit::RemoveDiscogsDetail(detail.into_core())
+            }
         }
     }
 
-    /// This choice, applied to the facts a form holds — what a form bound to
-    /// a value rather than a candidate does with it.
-    pub(crate) fn applied_to(self, facts: BridgePressingFacts) -> BridgePressingFacts {
-        let mut facts = facts.into_core();
-        self.into_core().apply(&mut facts);
-        BridgePressingFacts::from_core(facts)
+    /// This choice, applied to the pressing a form holds — what a form bound
+    /// to a value rather than a candidate does with it.
+    pub(crate) fn applied_to(self, pressing: BridgeRawPressingEdit) -> BridgeRawPressingEdit {
+        let mut pressing = pressing.into_core();
+        self.into_core().apply(&mut pressing.facts);
+        BridgeRawPressingEdit::from_core(pressing)
     }
 }
 
-/// `facts` with `edit` applied, the way the draft applies it: a medium with a
-/// count of zero is left out, a detail is kept once. A form bound to a value
-/// rather than to a draft in core, as a preview's is, applies each choice
-/// through this.
+/// `pressing` with `edit` applied to its facts, the way the draft applies it:
+/// a medium with a count of zero is left out, a detail is kept once, and the
+/// flags of its empty lists follow. A form bound to a value rather than to a
+/// draft in core, as a preview's is, applies each choice through this.
 #[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_apply_pressing_fact(
-    facts: BridgePressingFacts,
+    pressing: BridgeRawPressingEdit,
     edit: BridgePressingFactEdit,
-) -> BridgePressingFacts {
-    edit.applied_to(facts)
+) -> BridgeRawPressingEdit {
+    edit.applied_to(pressing)
 }
 
 /// Raw edit-metadata form values, exactly as the editor shows them — text
@@ -767,6 +775,10 @@ pub struct BridgeRawPressingEdit {
     pub labels: Vec<BridgeLabelRow>,
     pub barcodes: Vec<BridgeBarcodeRow>,
     pub facts: BridgePressingFacts,
+    /// `facts` names no medium.
+    pub media_is_empty: bool,
+    /// `facts` holds no Discogs detail.
+    pub discogs_details_are_empty: bool,
 }
 
 /// What a row of a list the editor draws carries: the list's heading on the

@@ -1,7 +1,8 @@
 //! A pressing's facts as the columns every table that stores them keeps them
 //! in: `country` or `region`, `media` (a JSON array of carriers and counts, or
 //! a library release's `release_media` rows read as one), `status`,
-//! `packaging`, and `discogs_details` (a JSON array of keys) — and its
+//! `packaging`, and `discogs_details` (a JSON array of keys, or a library
+//! release's `release_discogs_details` rows read as one) — and its
 //! `labels`, a list of label rows read as a JSON array of each label's name
 //! and catalog number.
 //!
@@ -128,6 +129,16 @@ pub fn release_media_sql(release_id: &str) -> String {
         "(SELECT json_group_array(json_object('medium', m.medium, 'count', m.count) \
                 ORDER BY m.position) \
           FROM release_media m WHERE m.release_id = {release_id})"
+    )
+}
+
+/// The SQL of the library release `release_id`'s Discogs details as one
+/// `discogs_details` column: its `release_discogs_details` rows in order, as
+/// a JSON array of keys.
+pub(super) fn release_discogs_details_sql(release_id: &str) -> String {
+    format!(
+        "(SELECT json_group_array(d.detail ORDER BY d.position) \
+          FROM release_discogs_details d WHERE d.release_id = {release_id})"
     )
 }
 

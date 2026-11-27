@@ -76,3 +76,23 @@ extension BridgePressing {
         )
     }
 }
+
+extension BridgeRawPressingEdit {
+    /// A fixture's pressing form, its empty-list flags following `facts` as
+    /// core sets them.
+    init(
+        year: String,
+        labels: [BridgeLabelRow],
+        barcodes: [BridgeBarcodeRow],
+        facts: BridgePressingFacts
+    ) {
+        self.init(
+            year: year,
+            labels: labels,
+            barcodes: barcodes,
+            facts: facts,
+            mediaIsEmpty: facts.media.isEmpty,
+            discogsDetailsAreEmpty: facts.discogsDetails.isEmpty
+        )
+    }
+}

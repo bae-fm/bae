@@ -96,6 +96,8 @@ mirror_struct! {
 /// from them.
 impl BridgeRawPressingEdit {
     pub(crate) fn from_core(pressing: bae_import::RawPressingEdit) -> Self {
+        let media_is_empty = pressing.media_is_empty();
+        let discogs_details_are_empty = pressing.discogs_details_are_empty();
         Self {
             labels: pressing.label_rows().into_iter().map(BridgeLabelRow::from_core).collect(),
             barcodes: pressing
@@ -105,6 +107,8 @@ impl BridgeRawPressingEdit {
                 .collect(),
             year: pressing.year,
             facts: BridgePressingFacts::from_core(pressing.facts),
+            media_is_empty,
+            discogs_details_are_empty,
         }
     }
 

@@ -159,6 +159,7 @@ extension ShotScene {
         )
         pressing.barcodes = [.alone("0 41234 56789 2")]
         pressing.facts.discogsDetails = [.reissue, .remastered]
+        pressing.discogsDetailsAreEmpty = false
         release.values.pressing = pressing
         let artist = "Odile Fen"
         release.values.tracks[1].artistAssignments = .explicit(

@@ -396,8 +396,8 @@ actor PreviewReleaseLibrary {
             },
             setPressingFact: { fact in
                 await session.change {
-                    $0.values.pressing.facts = bridgeApplyPressingFact(
-                        facts: $0.values.pressing.facts,
+                    $0.values.pressing = bridgeApplyPressingFact(
+                        pressing: $0.values.pressing,
                         edit: fact
                     )
                 }

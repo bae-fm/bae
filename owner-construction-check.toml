@@ -1092,6 +1092,7 @@ tables = [
     "release_labels",
     "release_barcodes",
     "release_media",
+    "release_discogs_details",
     "covers",
     "release_files",
     "release_file_previews",

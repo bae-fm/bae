@@ -71,6 +71,7 @@ pub fn release_details_on<X>(
 ) -> Result<Vec<(DbReleaseDetailRows, X)>, DbError> {
     let statement = format!(
         "SELECT rel.*, {labels} AS labels, {barcodes} AS barcodes, {media} AS media, \
+                {discogs_details} AS discogs_details, \
                 {total_duration} AS total_duration_ms, \
                 {track_groups} AS track_groups, \
                 {credits} AS credits, \
@@ -98,6 +99,7 @@ pub fn release_details_on<X>(
         labels = super::pressing_columns::release_labels_sql("rel.id"),
         barcodes = super::pressing_columns::release_barcodes_sql("rel.id"),
         media = super::pressing_columns::release_media_sql("rel.id"),
+        discogs_details = super::pressing_columns::release_discogs_details_sql("rel.id"),
         total_duration = total_duration_sql("rel.id"),
         track_groups = track_groups_json_sql("rel.id", my_stars),
         credits = release_credits_json_sql("rel.id"),

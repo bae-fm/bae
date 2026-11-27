@@ -37,15 +37,13 @@ pub(super) fn update_release_pressing_on(
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     tx.execute(
         r#"UPDATE releases SET year = ?,
-            country = ?, region = ?, status = ?, packaging = ?,
-            discogs_details = ? WHERE id = ?"#,
+            country = ?, region = ?, status = ?, packaging = ? WHERE id = ?"#,
         params![
             release.pressing.year,
             facts.country,
             facts.region,
             facts.status,
             facts.packaging,
-            facts.discogs_details,
             release.id,
         ],
     )?;
@@ -66,6 +64,12 @@ pub(super) fn update_release_pressing_on(
         &release.id,
         &release.pressing.facts.media,
         pressing.media_ids,
+    )?;
+    super::write::replace_release_discogs_details(
+        tx,
+        &release.id,
+        &release.pressing.facts.discogs_details,
+        pressing.discogs_detail_ids,
     )?;
     Ok(())
 }

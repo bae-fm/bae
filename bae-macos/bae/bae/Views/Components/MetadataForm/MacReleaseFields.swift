@@ -43,6 +43,7 @@ struct MacReleaseFields: View {
                     rowLabel(localizedCoreString("core.release.media"))
                     MediaCountsEditor(
                         media: values.pressing.facts.media,
+                        isEmpty: values.pressing.mediaIsEmpty,
                         offered: pressingOffers.media,
                         write: writer.setPressingFact,
                         off: off
@@ -82,6 +83,7 @@ struct MacReleaseFields: View {
                     rowLabel(String(localized: "Details"))
                     DiscogsDetailsEditor(
                         details: values.pressing.facts.discogsDetails,
+                        isEmpty: values.pressing.discogsDetailsAreEmpty,
                         offered: pressingOffers.discogsDetails,
                         write: writer.setPressingFact
                     )

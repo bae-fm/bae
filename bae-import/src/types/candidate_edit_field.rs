@@ -38,7 +38,12 @@ pub enum PressingFactEdit {
     MediumCount(bae_types::pressing::MediaCount),
     Status(Option<bae_types::pressing::ReleaseStatus>),
     Packaging(Option<bae_types::pressing::Packaging>),
-    DiscogsDetails(Vec<bae_types::pressing::DiscogsDetail>),
+    /// Add one Discogs detail after the others; one the pressing holds stays
+    /// where it is.
+    AddDiscogsDetail(bae_types::pressing::DiscogsDetail),
+    /// Remove one Discogs detail; removing one the pressing lacks changes
+    /// nothing.
+    RemoveDiscogsDetail(bae_types::pressing::DiscogsDetail),
 }
 
 /// One edit of the metadata form's album-level fields: text typed into a
@@ -93,14 +98,13 @@ impl PressingFactEdit {
             }
             Self::Status(status) => facts.status = status,
             Self::Packaging(packaging) => facts.packaging = packaging,
-            Self::DiscogsDetails(details) => {
-                let mut kept = Vec::new();
-                for detail in details {
-                    if !kept.contains(&detail) {
-                        kept.push(detail);
-                    }
+            Self::AddDiscogsDetail(detail) => {
+                if !facts.discogs_details.contains(&detail) {
+                    facts.discogs_details.push(detail);
                 }
-                facts.discogs_details = kept;
+            }
+            Self::RemoveDiscogsDetail(detail) => {
+                facts.discogs_details.retain(|held| *held != detail)
             }
         }
     }

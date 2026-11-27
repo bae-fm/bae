@@ -255,13 +255,10 @@ CREATE TABLE IF NOT EXISTS releases (
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
     region             TEXT CHECK (region IS NULL OR region <> ''),
     -- Its labels are its `release_labels` rows, its barcodes its
-    -- `release_barcodes` rows, its media its `release_media` rows.
+    -- `release_barcodes` rows, its media its `release_media` rows, its
+    -- Discogs details its `release_discogs_details` rows.
     status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
     packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
-    -- What Discogs says about the pressing that no column holds: a JSON array
-    -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
-    discogs_details    TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
     -- The name of the folder the release was imported from, as
     -- `coven::path_text` shows it: the folder an export recreates. One name,
     -- never empty (a path of no names is no folder), `/` included.
@@ -435,6 +432,20 @@ CREATE TABLE IF NOT EXISTS release_media (
     medium TEXT NOT NULL CHECK (medium <> ''),
     count INTEGER NOT NULL CHECK (count >= 1),
     UNIQUE (release_id, position),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
+
+-- What Discogs says about a pressing that nothing else here holds, each
+-- detail once, in order. A save replaces the release's whole list.
+CREATE TABLE IF NOT EXISTS release_discogs_details (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    -- Counted from zero.
+    position INTEGER NOT NULL CHECK (position >= 0),
+    -- A `crate::pressing::DiscogsDetail` key.
+    detail TEXT NOT NULL CHECK (detail <> ''),
+    UNIQUE (release_id, position),
+    UNIQUE (release_id, detail),
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 

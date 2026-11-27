@@ -7,7 +7,7 @@
 
 use crate::test_fixtures::*;
 use bae_store::test_fixtures::*;
-use bae_types::pressing::{MediaCount, Medium};
+use bae_types::pressing::{DiscogsDetail, MediaCount, Medium};
 
 const RELEASE: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
 const KEPT_TRACK: &str = "4f3c4c52-4d1b-4bd5-9b45-6a6f2f3c1a10";
@@ -241,6 +241,41 @@ async fn check_media_edit_reaches(devices: &bae_store::test_devices::TwoStores) 
         media_on(&crate::test_fixtures::test_records(devices.b())).await,
         vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]
     );
+}
+
+/// `RELEASE`'s Discogs details as `db` reads the release.
+async fn details_on(db: &crate::Records) -> Vec<DiscogsDetail> {
+    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.facts.discogs_details
+}
+
+/// A save of a release's Discogs details makes them exactly the list it
+/// gives, in its order, one row a detail.
+#[tokio::test]
+async fn a_discogs_detail_save_replaces_the_list() {
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    seed_artist_album_release(&db).await;
+    let records = crate::test_fixtures::test_records(&db);
+
+    for details in [
+        vec![DiscogsDetail::Reissue],
+        vec![DiscogsDetail::Stereo, DiscogsDetail::Reissue, DiscogsDetail::Mono],
+        vec![DiscogsDetail::Mono, DiscogsDetail::Stereo],
+        vec![],
+    ] {
+        let ids = row_ids(details.len());
+        let (given, written) = (ids.clone(), details.clone());
+        db.call(move |conn| {
+            crate::records::write::replace_release_discogs_details(conn, RELEASE, &written, &given)
+        })
+        .await
+        .unwrap();
+        assert_eq!(details_on(&records).await, details);
+        assert_eq!(
+            row_ids_of(&db, "release_discogs_details").await,
+            ids,
+            "each place is a row of its own"
+        );
+    }
 }
 
 /// Make `RELEASE`'s barcodes `barcodes` on `db`.

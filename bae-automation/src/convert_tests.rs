@@ -213,6 +213,35 @@ mod pressing_fact_input {
         assert_eq!(held, facts(&[(Medium::Cd, 1), (Medium::Dvd, 3)]));
     }
 
+    #[test]
+    fn detail_requests_add_and_remove_one_detail() {
+        use bae_types::pressing::DiscogsDetail;
+        let mut held =
+            PressingFacts { discogs_details: vec![DiscogsDetail::Reissue], ..Default::default() };
+        for (kind, detail) in [
+            ("add_discogs_detail", DiscogsDetail::Stereo),
+            ("remove_discogs_detail", DiscogsDetail::Reissue),
+        ] {
+            let detail = serde_json::to_value(detail).unwrap();
+            request(serde_json::json!({ "kind": kind, "detail": detail }))
+                .unwrap()
+                .fact
+                .into_core()
+                .apply(&mut held);
+        }
+        assert_eq!(held.discogs_details, vec![DiscogsDetail::Stereo]);
+    }
+
+    /// No request replaces the whole detail list.
+    #[test]
+    fn a_whole_detail_list_is_refused() {
+        let refused = request(serde_json::json!({
+            "kind": "discogs_details",
+            "discogs_details": [],
+        }));
+        assert!(refused.is_err());
+    }
+
     /// No request replaces the whole media list.
     #[test]
     fn a_whole_media_list_is_refused() {

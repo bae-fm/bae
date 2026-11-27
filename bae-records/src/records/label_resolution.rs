@@ -51,6 +51,8 @@ pub struct PressingWrite<'a> {
     pub(super) barcode_ids: &'a [String],
     /// The ids of the release's media rows, one for each carrier.
     pub(super) media_ids: &'a [String],
+    /// The ids of the release's Discogs detail rows, one for each detail.
+    pub(super) discogs_detail_ids: &'a [String],
     /// `created_at` for a new label.
     now: &'a str,
 }
@@ -63,6 +65,7 @@ pub fn pressing_write(parts: &PressingParts) -> PressingWrite<'_> {
         label_row_ids: &parts.label_row_ids,
         barcode_ids: &parts.barcode_ids,
         media_ids: &parts.media_ids,
+        discogs_detail_ids: &parts.discogs_detail_ids,
         now: &parts.now,
     }
 }
@@ -75,12 +78,14 @@ pub struct PressingParts {
     label_row_ids: Vec<String>,
     barcode_ids: Vec<String>,
     media_ids: Vec<String>,
+    discogs_detail_ids: Vec<String>,
     now: String,
 }
 
 impl PressingParts {
     /// The parts of a write of `pressing` at `now`: an id from `ids` for each
-    /// label that may be new and each row of its labels, barcodes and media.
+    /// label that may be new and each row of its labels, barcodes, media and
+    /// Discogs details.
     pub fn new(
         ids: &dyn coven::IdSource,
         now: time::UtcDateTime,
@@ -92,6 +97,7 @@ impl PressingParts {
             label_row_ids: mint(pressing.labels.len()),
             barcode_ids: mint(pressing.barcodes.len()),
             media_ids: mint(pressing.facts.media.len()),
+            discogs_detail_ids: mint(pressing.facts.discogs_details.len()),
             now: now.to_rfc3339(),
         }
     }

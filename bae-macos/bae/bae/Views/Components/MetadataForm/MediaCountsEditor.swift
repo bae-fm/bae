@@ -5,6 +5,9 @@ import SwiftUI
 /// and stepped, a control removing it, and a menu adding one more carrier.
 struct MediaCountsEditor: View {
     let media: [BridgeMediaCount]
+    /// The pressing names no medium, as core says, so the control that adds
+    /// one stands alone.
+    let isEmpty: Bool
     /// The media the pressing does not hold yet, as core offers them.
     let offered: [BridgeMedium]
     let write: @MainActor (BridgePressingFactEdit) async -> Void
@@ -33,7 +36,11 @@ struct MediaCountsEditor: View {
                     }
                 }
             ) {
-                AddEntryLabel(words: String(localized: "Add"))
+                AddEntryLabel(
+                    words: isEmpty
+                        ? String(localized: "Add medium")
+                        : String(localized: "Add")
+                )
             }
             .fixedSize()
             .accessibilityLabel(String(localized: "Add medium"))

@@ -146,16 +146,22 @@ source states, in order, each product once, and the editor shows one row per
 barcode, each removable, as it does labels. *Add label* and *Add barcode*
 each add an empty entry. Before the person adds a label or barcode, the
 editor shows the corresponding button without an empty entry. For media
-and details, *Add* opens a menu of what the person can add. A release's
+and details, the button opens a menu of what the person can add. It reads
+*Add* after the entries, and *Add medium* or *Add detail* while there are
+none. A release's
 media list names each carrier and how many of it there are (two CDs, one
 vinyl record). Its labels are a list of library labels (§2.3), each with the
 catalog number it gives the pressing; a place may state a catalog number
-alone. Its labels, its barcodes and its media are each kept one row per place
+alone. Its Discogs details (Appendix H) are a list naming each detail once.
+Its labels, its barcodes, its media and its details are each kept one row per
+place
 in the list, and a save of the release writes each list as the editor then
 holds it. The editor and the automation tools change the media one carrier at
 a time: a change sets how many of one carrier the pressing holds, zero removes
 the carrier, a carrier the list lacks joins its end, and the other counts stay
-as they are. A saved
+as they are. They change the details one at a time too: a change adds one
+detail at the end of the list or removes one, and the other details stay as
+they are. A saved
 CUE sheet's `CATALOG` line states the barcode when every one names the same
 product, and none otherwise.
 
@@ -790,7 +796,8 @@ key that spells the fact.
 | artist image | the artist |
 
 Every other row gets a fresh id, a place in a list (an album's or track's
-credits, a release's labels, barcodes, media and mediums) included: a UUIDv7,
+credits, a release's labels, barcodes, media, Discogs details and mediums)
+included: a UUIDv7,
 whose first 48 bits are when it was made by the device's clock, so one write's
 new rows sit together in the store's indexes. Anyone who can read the row can
 read when it was made, as its `created_at` already says.
@@ -818,7 +825,8 @@ so one fact is one row.
   (§3.7); where the two records name two library albums, the one the draft
   was read from decides.
 - **A list saved whole.** A save of an album's or a track's credits, or of a
-  release's labels, barcodes, media or mediums, replaces the list: the rows it
+  release's labels, barcodes, media, Discogs details or mediums, replaces the
+  list: the rows it
   held go and the rows it names are written, numbered from the start of the
   list, so positions have no gaps.
 - **A credit name removed.** Removing an artist's other name unlinks every
@@ -6404,10 +6412,10 @@ table, which stays empty there (§4.7).
 
 A list is stored as rows, one per item, when its items have an identity of
 their own, when a query filters, sorts, joins, counts or indexes them, or when
-they are edited one at a time: a release's labels, barcodes and media are
-rows, and so are a failed verdict's lookup failures. A list that is only ever set whole
-and read whole is one JSON value in one column: a release's Discogs details,
-a draft's media, a queued save's preset. coven merges a synced row cell by
+they are edited one at a time: a release's labels, barcodes, media and Discogs
+details are rows, and so are a failed verdict's lookup failures. A list that is
+only ever stored whole and read whole is one JSON value in one column: a
+draft's media and Discogs details, a queued save's preset. coven merges a synced row cell by
 cell, so a synced JSON list is one cell, set whole by its editor.
 
 bae gives coven the collation `natural_order`, which coven registers on every
@@ -6440,10 +6448,11 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order, with the role it holds (a key of bae's list, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1; never empty), album loudness and peak |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, country or region, status, packaging, source folder name (its text, escaped as a file's name is, §3.1; never empty), album loudness and peak |
 | `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
 | `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
+| `release_discogs_details` | a release's Discogs details: each at its position in the list, each detail once (§2.1) |
 | `covers` | release's cover, keyed by the release: the picture it is made from, exactly one of: one of the release's image files (`source_file`), the audio file whose tags hold the art (`embedded_file`), or a coven file of its own holding a catalog image (`original_file`); its browse copy and large copy, each a coven file it references (`browse_file`, `large_file`), with an index by each file; and the type of both copies |
 | `release_file_previews` | preview of an image file of a release, keyed by the release file: the coven file it references (`file`), with an index by it, and its type; deleting the file deletes it |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1; none of its `/`-separated names empty), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
@@ -6718,6 +6727,7 @@ transfer queues (A.9), so they never sync.
 | `release_labels` | shared key | store | | |
 | `release_barcodes` | shared key | store | | |
 | `release_media` | shared key | store | | |
+| `release_discogs_details` | independent | store | | |
 | `tracks` | independent | store | | |
 | `track_artists` | shared key | store | | |
 | `works` | shared key | store | | |
@@ -6899,7 +6909,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_candidate_labels_set` | set its labels and catalog numbers |
 | `import_candidate_barcodes_set` | set its barcodes |
 | `import_candidate_album_set` | pick the library album it joins, or leave it to its records |
-| `import_candidate_pressing_fact_set` | choose its area, status, packaging or Discogs details, or set one medium's count: zero removes the medium, a medium the draft lacks is added after the others, and the other counts stay |
+| `import_candidate_pressing_fact_set` | choose its area, status or packaging, add or remove one Discogs detail, or set one medium's count: zero removes the medium, a medium the draft lacks is added after the others, and the other counts stay |
 | `import_candidate_cover_set` | choose its cover |
 | `import_start` | import a candidate as stored, or once the pick its run is reading is stored |
 | `release_detail_get` | read a library release |

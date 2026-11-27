@@ -33,9 +33,15 @@ pub enum AutomationPressingFactEdit {
         #[schemars(schema_with = "packaging_schema")]
         packaging: Option<Packaging>,
     },
-    DiscogsDetails {
-        #[schemars(schema_with = "discogs_details_schema")]
-        discogs_details: Vec<DiscogsDetail>,
+    /// Add one Discogs detail; one the pressing holds stays where it is.
+    AddDiscogsDetail {
+        #[schemars(schema_with = "discogs_detail_schema")]
+        detail: DiscogsDetail,
+    },
+    /// Remove one Discogs detail.
+    RemoveDiscogsDetail {
+        #[schemars(schema_with = "discogs_detail_schema")]
+        detail: DiscogsDetail,
     },
 }
 
@@ -126,10 +132,18 @@ fn packaging_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     nullable_key(keys(Packaging::ALL, Packaging::key))
 }
 
-fn discogs_details_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+fn discogs_details_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     schemars::json_schema!({
         "type": "array",
-        "items": { "type": "string", "enum": keys(DiscogsDetail::ALL, DiscogsDetail::key) },
+        "items": discogs_detail_schema(generator),
+    })
+}
+
+/// A Discogs detail's key.
+fn discogs_detail_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({
+        "type": "string",
+        "enum": keys(DiscogsDetail::ALL, DiscogsDetail::key),
     })
 }
 
@@ -178,9 +192,8 @@ impl AutomationPressingFactEdit {
             }
             Self::Status { status } => PressingFactEdit::Status(status),
             Self::Packaging { packaging } => PressingFactEdit::Packaging(packaging),
-            Self::DiscogsDetails { discogs_details } => {
-                PressingFactEdit::DiscogsDetails(discogs_details)
-            }
+            Self::AddDiscogsDetail { detail } => PressingFactEdit::AddDiscogsDetail(detail),
+            Self::RemoveDiscogsDetail { detail } => PressingFactEdit::RemoveDiscogsDetail(detail),
         }
     }
 }

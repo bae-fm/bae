@@ -130,11 +130,11 @@ pub fn insert_release_row(
             r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            country, region, status, packaging, discogs_details,
+            country, region, status, packaging,
             source_folder_name,
             album_loudness_lufs, album_peak_linear,
             created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, {next_album_order})
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, {next_album_order})
         "#,
             next_album_order = next_album_order_sql("?")
         ),
@@ -147,7 +147,6 @@ pub fn insert_release_row(
             facts.region,
             facts.status,
             facts.packaging,
-            facts.discogs_details,
             release.source_folder_name,
             release.album_loudness_lufs,
             release.album_peak_linear,
@@ -163,6 +162,12 @@ pub fn insert_release_row(
     )?;
     replace_release_barcodes(conn, &release.id, &release.pressing.barcodes, pressing.barcode_ids)?;
     replace_release_media(conn, &release.id, &release.pressing.facts.media, pressing.media_ids)?;
+    replace_release_discogs_details(
+        conn,
+        &release.id,
+        &release.pressing.facts.discogs_details,
+        pressing.discogs_detail_ids,
+    )?;
     Ok(())
 }
 
@@ -201,6 +206,26 @@ pub(super) fn replace_release_media(
             "INSERT INTO release_media (id, release_id, position, medium, count) \
              VALUES (?, ?, ?, ?, ?)",
             params![id, release_id, position as i64, count.medium.key(), i64::from(count.count)],
+        )?;
+    }
+    Ok(())
+}
+
+/// Make the release `release_id`'s Discogs details exactly `details`, in
+/// order, each row under its id of `row_ids`.
+pub(super) fn replace_release_discogs_details(
+    conn: &CovenWrite<'_>,
+    release_id: &str,
+    details: &[bae_types::pressing::DiscogsDetail],
+    row_ids: &[String],
+) -> Result<(), DbError> {
+    assert_eq!(details.len(), row_ids.len(), "a write holds an id for each detail it makes");
+    conn.execute("DELETE FROM release_discogs_details WHERE release_id = ?", params![release_id])?;
+    for (position, (detail, id)) in details.iter().zip(row_ids).enumerate() {
+        conn.execute(
+            "INSERT INTO release_discogs_details (id, release_id, position, detail) \
+             VALUES (?, ?, ?, ?)",
+            params![id, release_id, position as i64, detail.key()],
         )?;
     }
     Ok(())

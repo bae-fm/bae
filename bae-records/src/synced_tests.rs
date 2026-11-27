@@ -19,6 +19,7 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
             "release_mediums",
             "release_media",
             "release_barcodes",
+            "release_discogs_details",
             "labels",
             "label_merges",
             "release_labels",

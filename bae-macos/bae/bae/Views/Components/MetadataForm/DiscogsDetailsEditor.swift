@@ -5,6 +5,9 @@ import SwiftUI
 /// detail removable on its own, and a menu adding one more.
 struct DiscogsDetailsEditor: View {
     let details: [BridgeDiscogsDetail]
+    /// The pressing holds no detail, as core says, so the control that adds
+    /// one stands alone.
+    let isEmpty: Bool
     /// The details the pressing does not hold yet, as core offers them.
     let offered: [BridgeDiscogsDetail]
     let write: @MainActor (BridgePressingFactEdit) async -> Void
@@ -20,7 +23,7 @@ struct DiscogsDetailsEditor: View {
                     Text(name)
                         .themeText(.body)
                     MacIconButton.remove(name) {
-                        commit(details.filter { $0 != detail })
+                        commit(.removeDiscogsDetail(detail: detail))
                     }
                 }
             }
@@ -31,27 +34,24 @@ struct DiscogsDetailsEditor: View {
                         MacMenuItem(
                             verbatim: bridgeDiscogsDetailLabel(detail: detail)
                                 .text
-                        ) { commit(details + [detail]) }
+                        ) { commit(.addDiscogsDetail(detail: detail)) }
                     }
                 }
             ) {
-                if details.isEmpty {
-                    FactMenuLabel(text: nil)
-                }
-                else {
-                    AddEntryLabel(words: String(localized: "Add"))
-                }
+                AddEntryLabel(
+                    words: isEmpty
+                        ? String(localized: "Add detail")
+                        : String(localized: "Add")
+                )
             }
             .fixedSize()
-            .accessibilityLabel(
-                details.isEmpty
-                    ? String(localized: "Details")
-                    : String(localized: "Add detail")
-            )
+            .accessibilityLabel(String(localized: "Add detail"))
         }
     }
 
-    private func commit(_ details: [BridgeDiscogsDetail]) {
-        Task { await write(.discogsDetails(discogsDetails: details)) }
+    /// Sends the one detail added or removed, for core to apply to the
+    /// details it holds.
+    private func commit(_ edit: BridgePressingFactEdit) {
+        Task { await write(edit) }
     }
 }
