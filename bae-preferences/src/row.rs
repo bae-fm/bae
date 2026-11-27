@@ -149,13 +149,15 @@ sqlive_compose::read!(
 "#
 );
 
-// What the settings screens show: this device's preferences beside the
-// storage coven's views record.
+// What the settings screens show: this device's preferences, the preset the
+// last save used, and the storage coven's views record.
 sqlive_compose::read!(
     SettingsRead,
     r#"
-    SELECT preferences.*, recorded.*
+    SELECT preferences.*, last_saved.*, recorded.*
     FROM @crate::row::PreferenceRows AS preferences
+    JOIN @crate::row::SavePresetsAmong(wanted: (
+        SELECT held.last_save_preset AS id FROM preferences AS held)) AS last_saved ON 1
     JOIN @crate::row::RecordedStorage AS recorded ON 1
 "#
 );
@@ -210,16 +212,13 @@ fn config_on(
     store_id: coven::StoreId,
     library_path: PathBuf,
 ) -> Result<Config, DbError> {
-    let SettingsReadRow { preferences, recorded } = statement_row(sql, &SettingsReadParams {})?;
+    let SettingsReadRow { preferences, last_saved, recorded } =
+        statement_row(sql, &SettingsReadParams {})?;
     let storage_access =
         coven::MemberAccess::from_columns(recorded.account, recorded.access_key_id)
             .map_err(|error| DbError::unreadable("this person's access to storage", error))?;
     let prefs = preferences_of(preferences)?;
-    let last_save_preset = prefs
-        .save_presets
-        .iter()
-        .find(|preset| preset.id == prefs.last_save_preset)
-        .cloned()
+    let last_save_preset = one_save_preset(last_saved)?
         .ok_or_else(|| invalid("last_save_preset", &prefs.last_save_preset))?;
     Ok(Config {
         store_id,
