@@ -186,11 +186,17 @@ fn a_stored_name_that_names_no_file_is_refused() {
     assert!(error.to_string().contains("CHECK constraint failed"), "{error}");
 }
 
+/// Plant a size of -5 on each stored file's record: a size no write stores,
+/// as coven records each file's length.
+fn plant_negative_file_sizes(conn: &Connection) {
+    conn.execute("UPDATE coven_files SET size = -5", []).expect("the damage is planted");
+}
+
 #[test]
 fn a_negative_file_size_is_an_unreadable_column() {
     let conn = seeded_conn();
     insert_file(&conn, "sized", None, None).unwrap();
-    conn.execute("UPDATE coven_files SET size = -5", []).unwrap();
+    plant_negative_file_sizes(&conn);
     let error = read_file(&conn, "sized").unwrap_err();
     assert!(matches!(error, rusqlite::Error::IntegralValueOutOfRange(_, -5)), "{error:?}");
 }
