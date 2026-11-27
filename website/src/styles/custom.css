@@ -1,5 +1,5 @@
 /* bae docs theme - Direction D (Cozy x Studio)
-   Matches the marketing homepage: Bricolage display, Hanken body, JetBrains
+   Matches the marketing homepage: Mona Sans display, Hanken body, JetBrains
    Mono code, on a night-violet surface with violet/pink/mint accents.
    Global palette and fonts go through Starlight's own custom properties;
    raw selectors only appear where a variable cannot express the intent
@@ -7,7 +7,7 @@
    gradient asides, TOC border). */
 
 /* Fonts. Loaded before the variable block so the families resolve. */
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Mona+Sans:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
 	/* Direction D tokens, reused below so the values live in one place. */
@@ -26,7 +26,7 @@
 	--bae-mint: #86e0c8;
 	--bae-line: rgba(253, 245, 239, 0.12);
 
-	--bae-font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+	--bae-font-display: 'Mona Sans', system-ui, sans-serif;
 
 	/* Display faces. --sl-font drives body copy and every UI element; the
 	   heading face is applied with a raw rule further down. */
@@ -81,7 +81,7 @@
 	--sl-color-text-accent: var(--sl-color-accent);
 }
 
-/* ---- Headings: Bricolage display face over the Hanken body ---- */
+/* ---- Headings: Mona Sans display face over the Hanken body ---- */
 /* Scoped to article content and the page title so the display face never
    leaks onto UI chrome headings (the site title, sidebar groups, the TOC
    "On this page" heading), which the mock keeps in Hanken or mono. */
