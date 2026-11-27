@@ -12,7 +12,6 @@ extension PreviewData {
     static func triageRow(
         for candidate: Candidate,
         placement: BridgeTriagePlacement,
-        metadataSummary: BridgeAlbumLine? = nil,
         cover: BridgeCoverImageSource? = nil,
         importStatus: BridgeTriageImportStatus? = nil,
         metadataProvenance: BridgeMetadataProvenance? = nil,
@@ -26,7 +25,6 @@ extension PreviewData {
             actionable: true,
             placement: placement,
             live: live,
-            metadataSummary: metadataSummary,
             cover: cover,
             importStatus: importStatus,
             metadataProvenance: metadataProvenance,
@@ -152,7 +150,6 @@ extension PreviewData {
     static let triageRowUnidentified = triageRow(
         for: importTabUnidentifiedCandidate,
         placement: .pending,
-        metadataSummary: nil,
         cover: .local(file: previewArtFile("Front.png"))
     )
 
@@ -160,13 +157,14 @@ extension PreviewData {
     static let triageRowPrefilledFromTags = triageRow(
         for: importTabTaggedCandidate,
         placement: .pending,
-        metadataSummary: BridgeAlbumLine.titleAndArtists(
-            title: "Album Title Twelve",
-            artistLine: .named("Artist Name")
-        ),
         cover: .local(file: previewArtFile("Front.png")),
         metadataProvenance: .fileMetadata,
-        reading: .prefilled
+        reading: .prefilled(
+            album: BridgeAlbumLine.titleAndArtists(
+                title: "Album Title Twelve",
+                artistLine: .named("Artist Name")
+            )
+        )
     )
 
     /// Both catalogs a pick paired; the draft was read from MusicBrainz.
@@ -185,10 +183,6 @@ extension PreviewData {
     static let triageRowIdentifiedOnline = triageRow(
         for: importTabIdentifiedCandidate,
         placement: .pending,
-        metadataSummary: BridgeAlbumLine.titleAndArtists(
-            title: "Album Title Thirteen",
-            artistLine: .named("Artist Name")
-        ),
         cover: .local(file: previewArtFile("Front.png")),
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(
@@ -196,17 +190,19 @@ extension PreviewData {
                 key: "rel-paired"
             )
         ),
-        reading: .identified(records: identifiedFromBothCatalogs)
+        reading: .identified(
+            album: BridgeAlbumLine.titleAndArtists(
+                title: "Album Title Thirteen",
+                artistLine: .named("Artist Name")
+            ),
+            records: identifiedFromBothCatalogs
+        )
     )
 
     /// Identified, and still asked which of several pressings it is.
     static let triageRowIdentifiedSeveralMatches = triageRow(
         for: importTabIdentifiedSeveralMatchesCandidate,
         placement: .pending,
-        metadataSummary: BridgeAlbumLine.titleAndArtists(
-            title: "Album Title Fourteen",
-            artistLine: .named("Artist Name")
-        ),
         cover: .local(file: previewArtFile("Front.png")),
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(
@@ -214,14 +210,19 @@ extension PreviewData {
                 key: "rel-several"
             )
         ),
-        reading: .identified(records: identifiedFromBothCatalogs)
+        reading: .identified(
+            album: BridgeAlbumLine.titleAndArtists(
+                title: "Album Title Fourteen",
+                artistLine: .named("Artist Name")
+            ),
+            records: identifiedFromBothCatalogs
+        )
     )
 
     @MainActor
     static let triageRowIdentified = triageRow(
         for: importTabCandidate,
         placement: .pending,
-        metadataSummary: nil,
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(
                 catalog: releaseDetailBridge.source,
@@ -234,7 +235,6 @@ extension PreviewData {
     static let triageRowPickAPressing = triageRow(
         for: importTabSeveralMatchesCandidate,
         placement: .pending,
-        metadataSummary: nil,
         importStatus: nil,
         live: triageLive(identifiedDraftCommands)
     )
@@ -243,14 +243,12 @@ extension PreviewData {
     static let triageRowSeveralMatchesFromSignals = triageRow(
         for: importTabDisagreementCandidate,
         placement: .pending,
-        metadataSummary: nil,
         live: triageLive(identifiedDraftCommands)
     )
 
     static let triageRowNoTracklist = triageRow(
         for: importTabNoTracklistCandidate,
         placement: .pending,
-        metadataSummary: nil,
         live: triageLive(identifiedDraftCommands)
     )
 
@@ -258,7 +256,6 @@ extension PreviewData {
     static let triageRowAlreadyInLibrary = triageRow(
         for: importTabAlreadyInLibraryCandidate,
         placement: .pending,
-        metadataSummary: nil,
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(
                 catalog: releaseDetailBridge.source,
@@ -271,7 +268,6 @@ extension PreviewData {
     static let triageRowNoMatch = triageRow(
         for: importTabNoMatchCandidate,
         placement: .pending,
-        metadataSummary: nil,
         live: triageLive(
             identifiedDraftCommands,
             badge: BridgeRowBadge(
@@ -284,7 +280,6 @@ extension PreviewData {
     static let triageRowIdentifying = triageRow(
         for: importTabIdentifyingCandidate,
         placement: .pending,
-        metadataSummary: nil,
         live: triageLive(
             [.skip],
             identifying: .running
@@ -299,7 +294,6 @@ extension PreviewData {
     static let triageRowImporting = triageRow(
         for: importTabImportingCandidate,
         placement: .pending,
-        metadataSummary: nil,
         live: triageLive(
             [],
             status: .line(
@@ -311,7 +305,6 @@ extension PreviewData {
     static let triageRowSkipped = triageRow(
         for: folderCandidates[1],
         placement: .skipped,
-        metadataSummary: nil,
         live: triageLive([.restore])
     )
 
@@ -320,10 +313,6 @@ extension PreviewData {
     static let triageRowDoneImported = triageRow(
         for: importTabDoneCandidate,
         placement: .done,
-        metadataSummary: BridgeAlbumLine.titleAndArtists(
-            title: "Album Title Sixteen",
-            artistLine: .named("Artist Name")
-        ),
         cover: .local(file: previewArtFile("Front.png")),
         importStatus: .complete(
             release: BridgeImportedRelease(
@@ -337,7 +326,13 @@ extension PreviewData {
                 key: "rel-paired"
             )
         ),
-        reading: .identified(records: identifiedFromBothCatalogs),
+        reading: .identified(
+            album: BridgeAlbumLine.titleAndArtists(
+                title: "Album Title Sixteen",
+                artistLine: .named("Artist Name")
+            ),
+            records: identifiedFromBothCatalogs
+        ),
         live: triageLive([.revealFolder])
     )
 
@@ -345,10 +340,6 @@ extension PreviewData {
     static let triageRowDoneFromTags = triageRow(
         for: folderCandidates[0],
         placement: .done,
-        metadataSummary: BridgeAlbumLine.titleAndArtists(
-            title: "Album Title",
-            artistLine: .named("Artist Name")
-        ),
         importStatus: .complete(
             release: BridgeImportedRelease(
                 releaseId: "preview-release-tags",
@@ -356,14 +347,18 @@ extension PreviewData {
             )
         ),
         metadataProvenance: .fileMetadata,
-        reading: .prefilled,
+        reading: .prefilled(
+            album: BridgeAlbumLine.titleAndArtists(
+                title: "Album Title",
+                artistLine: .named("Artist Name")
+            )
+        ),
         live: triageLive([.revealFolder])
     )
 
     static let triageRowFailed = triageRow(
         for: importTabFailedCandidate,
         placement: .failed,
-        metadataSummary: nil,
         importStatus: .error(
             // As the import's decode check words a truncated track.
             error: .Diagnostic(
@@ -383,7 +378,6 @@ extension PreviewData {
         triageRow(
             for: importTabGroupedReadyCandidate,
             placement: .pending,
-            metadataSummary: nil,
             metadataProvenance: .externalRelease(
                 record: BridgeLookupRef(
                     catalog: releaseDetailBridge.source,
@@ -395,7 +389,6 @@ extension PreviewData {
         triageRow(
             for: importTabGroupedCandidates[1],
             placement: .pending,
-            metadataSummary: nil,
             live: triageLive(unidentifiedDraftCommands)
         ),
     ]
@@ -523,7 +516,8 @@ extension PreviewData {
     ) -> BridgeCandidatePanePlacement {
         let records: [BridgeReleaseRecord]? =
             switch row.reading {
-            case .identified(let records), .identifiedAlbum(let records):
+            case .identified(_, let records),
+                .identifiedAlbum(_, let records):
                 records
             case .prefilled, .unidentified: nil
             }

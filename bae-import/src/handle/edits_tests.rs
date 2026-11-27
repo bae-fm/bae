@@ -255,7 +255,7 @@ async fn edits_under(view: ImportListView) {
         let rows = candidate_rows(&snapshot);
         let shows_title = rows.iter().any(|(_, row)| {
             matches!(
-                &row.metadata_summary,
+                row.reading.album(),
                 Some(
                     crate::AlbumLine::TitleAlone { title }
                         | crate::AlbumLine::TitleAndArtists { title, .. }

@@ -309,7 +309,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
     );
     assert!(
         matches!(
-            &row("Identified Folder").metadata_summary,
+            row("Identified Folder").reading.album(),
             Some(
                 bae_import::AlbumLine::TitleAlone { title }
                     | bae_import::AlbumLine::TitleAndArtists { title, .. }

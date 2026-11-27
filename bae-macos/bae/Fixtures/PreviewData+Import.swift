@@ -155,7 +155,6 @@ extension PreviewData {
                     .clearMetadata, .skip,
                 ] + (separable ? [.separate] : []) + [.revealFolder]
             ),
-            metadataSummary: nil,
             cover: nil,
             importStatus: nil,
             metadataProvenance: nil,

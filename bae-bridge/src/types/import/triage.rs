@@ -634,13 +634,13 @@ pub enum BridgeTriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
     Unidentified,
     /// A draft of a candidate linked to no release.
-    Prefilled,
+    Prefilled { album: BridgeAlbumLine },
     /// A draft of a candidate linked to a catalog pressing, with every
     /// catalog that describes that pressing.
-    Identified { records: Vec<crate::types::BridgeReleaseRecord> },
+    Identified { album: BridgeAlbumLine, records: Vec<crate::types::BridgeReleaseRecord> },
     /// A draft of a candidate linked to an album, its pressing unknown, with
     /// every catalog's record of the album.
-    IdentifiedAlbum { records: Vec<crate::types::BridgeReleaseRecord> },
+    IdentifiedAlbum { album: BridgeAlbumLine, records: Vec<crate::types::BridgeReleaseRecord> },
 }
 
 mirror_enum! {
@@ -649,9 +649,12 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Unidentified,
-        Prefilled,
-        Identified { records: (each crate::types::BridgeReleaseRecord) },
-        IdentifiedAlbum { records: (each crate::types::BridgeReleaseRecord) },
+        Prefilled { album: (BridgeAlbumLine) },
+        Identified { album: (BridgeAlbumLine), records: (each crate::types::BridgeReleaseRecord) },
+        IdentifiedAlbum {
+            album: (BridgeAlbumLine),
+            records: (each crate::types::BridgeReleaseRecord),
+        },
     },
 }
 
@@ -671,7 +674,6 @@ pub struct BridgeTriageRow {
     /// offers and the state it is in with it. The list delivers the row again
     /// when it changes.
     pub live: BridgeTriageListLiveState,
-    pub metadata_summary: Option<BridgeAlbumLine>,
     /// The cover the row draws, even when its draft is otherwise blank.
     pub cover: Option<BridgeCoverImageSource>,
     pub import_status: Option<BridgeTriageImportStatus>,

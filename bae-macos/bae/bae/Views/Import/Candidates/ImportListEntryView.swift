@@ -115,12 +115,8 @@ extension BridgeImportListItem {
         case .groupHeader:
             nil
         case .candidate(_, let row, _):
-            switch row.reading {
-            case .unidentified:
-                row.folderName
-            case .prefilled, .identified, .identifiedAlbum:
-                ImportReleaseSummary(row: row)?.title
-            }
+            row.reading.album.map { ImportReleaseSummary(album: $0).title }
+                ?? row.folderName
         case .invalid(_, let invalid):
             invalid.tags?.albumTitle ?? invalid.sourceFolderName
         }

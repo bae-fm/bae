@@ -314,7 +314,7 @@ async fn a_linked_row_names_the_records_its_whole_release_does() {
             panic!("{} links to a pressing", display_path(&row));
         };
         let whole = tables.source_release(&link.record).await.unwrap().unwrap();
-        let crate::triage::TriageReading::Identified { records } = &row.reading else {
+        let crate::triage::TriageReading::Identified { records, .. } = &row.reading else {
             panic!("{} reads as identified, got {:?}", display_path(&row), row.reading);
         };
         assert_eq!(

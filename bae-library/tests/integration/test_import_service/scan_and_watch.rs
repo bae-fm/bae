@@ -615,7 +615,7 @@ async fn a_done_row_follows_its_folder_and_its_release() {
     let found = wait_for_candidates(&f, "the row reading its tags", |projection| {
         candidate_rows(projection)
             .iter()
-            .any(|row| row.candidate_key == album_key && row.metadata_summary.is_some())
+            .any(|row| row.candidate_key == album_key && row.reading.album().is_some())
     })
     .await;
     let found = candidate_rows(&found)
@@ -634,7 +634,6 @@ async fn a_done_row_follows_its_folder_and_its_release() {
         done.import_status,
         Some(bae_import::TriageImportStatus::Complete { release: release.clone() })
     );
-    assert_eq!(done.metadata_summary, found.metadata_summary);
     assert_eq!(done.reading, found.reading);
     assert_eq!(done.cover, found.cover);
     assert_eq!(done.folder_name, found.folder_name);

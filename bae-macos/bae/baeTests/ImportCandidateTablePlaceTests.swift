@@ -538,7 +538,6 @@ extension ImportCandidateTablePlaceTests {
                 actionable: true,
                 placement: .skipped,
                 live: PreviewData.triageLive([]),
-                metadataSummary: nil,
                 cover: nil,
                 importStatus: nil,
                 metadataProvenance: nil,

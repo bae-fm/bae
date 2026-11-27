@@ -405,15 +405,17 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
 
 /// Chooses what the row of a release this device imported shows from what
 /// the library release's records identify: a pressing or an album with those
-/// records, or a prefilled row when they identify neither.
+/// records, or a prefilled row when they identify neither. Each shows
+/// `album`, the library album's title and credits.
 fn library_reading(
+    album: crate::AlbumLine,
     kind: Option<&str>,
     records: Vec<ReleaseRecord>,
 ) -> Result<TriageReading, DbError> {
     match kind {
-        None => Ok(TriageReading::Prefilled),
-        Some("pressing") => Ok(TriageReading::Identified { records }),
-        Some("album") => Ok(TriageReading::IdentifiedAlbum { records }),
+        None => Ok(TriageReading::Prefilled { album }),
+        Some("pressing") => Ok(TriageReading::Identified { album, records }),
+        Some("album") => Ok(TriageReading::IdentifiedAlbum { album, records }),
         Some(other) => Err(DbError::unreadable("what a library release's records identify", other)),
     }
 }
@@ -452,13 +454,23 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
     let (blocked, subject, holder) = block;
     let block = block_of(blocked, subject, holder)?;
     let import_status = import_status_of(shown.imported(), block.as_ref(), failure.as_ref());
+    let album = summary.map(|(title, credits)| crate::AlbumLine::of(title, credits));
     let shown = match shown {
         // A release this device imported reads the library release: its
         // cover, the catalogs its records name, and its upload.
         ShownColumns::Imported { release, cover, records, records_kind, upload } => ShownRows {
             metadata_provenance: None,
             release_link: None,
-            reading: library_reading(records_kind.as_deref(), records)?,
+            reading: library_reading(
+                album.ok_or_else(|| {
+                    DbError::unreadable(
+                        format!("the album of {key}, which this device imported"),
+                        None::<String>,
+                    )
+                })?,
+                records_kind.as_deref(),
+                records,
+            )?,
             cover: bae_records::cover_ref(&release.release_id, cover)
                 .map(|image| crate::CoverImageSource::Library { image }),
             upload,
@@ -478,7 +490,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
                 .transpose()?;
             ShownRows {
                 metadata_provenance: provenance.map(|stored| stored.provenance()).transpose()?,
-                reading: TriageReading::of(summary.is_some(), release_link.as_ref(), records),
+                reading: TriageReading::of(album, release_link.as_ref(), records),
                 release_link,
                 cover,
                 upload: None,
@@ -500,7 +512,6 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         actionable: basis.actionable,
         placement: basis.placement,
         reading: shown.reading,
-        metadata_summary: summary.map(|(title, credits)| crate::AlbumLine::of(title, credits)),
         cover: shown.cover,
         import_status,
         metadata_provenance: shown.metadata_provenance,

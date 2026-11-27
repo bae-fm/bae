@@ -21,14 +21,12 @@ struct DoneRowTests {
         var found = done
         found.placement = .pending
         found.importStatus = nil
-        #expect(
-            ImportReleaseSummary(row: done)?.title
-                == ImportReleaseSummary(row: found)?.title
+        let drawn = done.reading.album.map(ImportReleaseSummary.init(album:))
+        let drawnFound = found.reading.album.map(
+            ImportReleaseSummary.init(album:)
         )
-        #expect(
-            ImportReleaseSummary(row: done)?.artist
-                == ImportReleaseSummary(row: found)?.artist
-        )
+        #expect(drawn?.title == drawnFound?.title)
+        #expect(drawn?.artist == drawnFound?.artist)
     }
 
     @Test("a Done row names the release imported from it")

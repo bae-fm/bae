@@ -46,11 +46,9 @@ struct ImportReleaseSummary {
         sourceAudio = candidate.files.sourceAudio
     }
 
-    /// The row's applied draft; `nil` for an `unidentified` row, which has
-    /// none.
-    init?(row: BridgeTriageRow) {
-        guard let summary = row.metadataSummary else { return nil }
-        if let albumTitle = summary.title {
+    /// The album a list row's reading names.
+    init(album: BridgeAlbumLine) {
+        if let albumTitle = album.title {
             titleIsPlaceholder = false
             title = albumTitle
         }
@@ -58,7 +56,7 @@ struct ImportReleaseSummary {
             titleIsPlaceholder = true
             title = Self.placeholderTitle
         }
-        artist = summary.artistLine?.text
+        artist = album.artistLine?.text
         editionLine = ""
         copyLine = ""
         sourceAudio = nil

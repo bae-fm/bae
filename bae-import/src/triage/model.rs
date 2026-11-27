@@ -67,39 +67,52 @@ impl IdentificationStatus {
 /// What a row's text column says about its release: nothing yet, a draft, a
 /// draft of a candidate linked to a catalog pressing, or one linked to an
 /// album whose pressing is unknown; or, for a release this device imported,
-/// what the library release's catalog records describe.
+/// what the library release's catalog records describe. Every reading past
+/// `Unidentified` names the album title and credits the row shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
     Unidentified,
     /// A draft of a candidate linked to no release, or an imported release
     /// no catalog record describes.
-    Prefilled,
+    Prefilled { album: crate::AlbumLine },
     /// A draft of a candidate linked to a catalog pressing, or an imported
     /// release a catalog's record of its pressing describes, with every
     /// catalog that describes it.
-    Identified { records: Vec<bae_catalogs::records::ReleaseRecord> },
+    Identified { album: crate::AlbumLine, records: Vec<bae_catalogs::records::ReleaseRecord> },
     /// A draft of a candidate linked to an album, or an imported release only
     /// catalogs' records of its album describe, with every catalog's record
     /// of the album: the row says its pressing is unknown.
-    IdentifiedAlbum { records: Vec<bae_catalogs::records::ReleaseRecord> },
+    IdentifiedAlbum { album: crate::AlbumLine, records: Vec<bae_catalogs::records::ReleaseRecord> },
 }
 
 impl TriageReading {
-    /// How a row reads from its draft, its release link, and the catalog
-    /// records what it is linked to is described in.
+    /// How a row reads from the album line its draft shows, if it shows one,
+    /// its release link, and the catalog records what it is linked to is
+    /// described in.
     pub fn of(
-        has_summary: bool,
+        album: Option<crate::AlbumLine>,
         link: Option<&ReleaseLink>,
         records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Self {
-        if !has_summary {
+        let Some(album) = album else {
             return Self::Unidentified;
-        }
+        };
         match link {
-            Some(ReleaseLink::Pressing(_)) => Self::Identified { records },
-            Some(ReleaseLink::Album(_)) => Self::IdentifiedAlbum { records },
-            None => Self::Prefilled,
+            Some(ReleaseLink::Pressing(_)) => Self::Identified { album, records },
+            Some(ReleaseLink::Album(_)) => Self::IdentifiedAlbum { album, records },
+            None => Self::Prefilled { album },
+        }
+    }
+
+    /// The album title and credits the row shows, for a test.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn album(&self) -> Option<&crate::AlbumLine> {
+        match self {
+            Self::Unidentified => None,
+            Self::Prefilled { album }
+            | Self::Identified { album, .. }
+            | Self::IdentifiedAlbum { album, .. } => Some(album),
         }
     }
 }
@@ -116,8 +129,6 @@ pub struct TriageRow {
     pub watched_folder_path: std::path::PathBuf,
     pub actionable: bool,
     pub placement: TriagePlacement,
-    /// The album title and credits, when the row shows them.
-    pub metadata_summary: Option<crate::AlbumLine>,
     /// The cover the row draws: the candidate's chosen one, or for a release
     /// this device imported, the library release's.
     pub cover: Option<crate::CoverImageSource>,

@@ -78,23 +78,19 @@ struct MacImportRow: View {
     @ViewBuilder
     private var meta: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            switch row.reading {
-            case .unidentified:
+            if let album = row.reading.album {
+                releaseSummary(ImportReleaseSummary(album: album))
+            }
+            else {
                 folderLine
-            case .prefilled, .identified, .identifiedAlbum:
-                releaseSummary
             }
             stateLine
         }
     }
 
-    /// The saved draft's summary, which every reading but `unidentified` has.
-    @ViewBuilder
-    private var releaseSummary: some View {
-        if let summary = ImportReleaseSummary(row: row) {
-            MacImportReleaseSummary(summary: summary, style: .sidebar) {
-                RecordArrow(readFromRecord: row.reading.readFromRecord)
-            }
+    private func releaseSummary(_ summary: ImportReleaseSummary) -> some View {
+        MacImportReleaseSummary(summary: summary, style: .sidebar) {
+            RecordArrow(readFromRecord: row.reading.readFromRecord)
         }
     }
 

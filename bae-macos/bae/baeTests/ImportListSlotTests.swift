@@ -105,7 +105,6 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             actionable: true,
             placement: .skipped,
             live: PreviewData.triageLive([]),
-            metadataSummary: nil,
             cover: nil,
             importStatus: nil,
             metadataProvenance: nil,

@@ -25,7 +25,7 @@ enum ImportCandidateTableLayout {
 
     static func height(for row: BridgeTriageRow) -> CGFloat {
         height(
-            hasArtistLine: row.metadataSummary?.artistLine != nil,
+            hasArtistLine: row.reading.album?.artistLine != nil,
             hasStateLine: row.live.status?.line != nil
         )
     }

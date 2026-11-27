@@ -109,7 +109,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
 
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
-    let crate::triage::TriageReading::Identified { records } = &row.reading else {
+    let crate::triage::TriageReading::Identified { records, .. } = &row.reading else {
         panic!("a picked row reads as identified, got {:?}", row.reading);
     };
     assert_eq!(

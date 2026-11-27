@@ -29,9 +29,10 @@ struct TriageRowIdentifiedTests {
     @MainActor
     @Test("a row filled from tags summarizes its draft")
     func prefilledRowSummarizesItsDraft() throws {
-        let summary = try #require(
-            ImportReleaseSummary(row: PreviewData.triageRowPrefilledFromTags)
+        let album = try #require(
+            PreviewData.triageRowPrefilledFromTags.reading.album
         )
+        let summary = ImportReleaseSummary(album: album)
         #expect(summary.title == "Album Title Twelve")
         #expect(summary.artist == "Artist Name")
     }
@@ -41,9 +42,10 @@ struct TriageRowIdentifiedTests {
     @MainActor
     @Test("a row read from a record summarizes its draft alone")
     func aRowReadFromARecordSummarizesItsDraft() throws {
-        let summary = try #require(
-            ImportReleaseSummary(row: PreviewData.triageRowReadFromRecord)
+        let album = try #require(
+            PreviewData.triageRowReadFromRecord.reading.album
         )
+        let summary = ImportReleaseSummary(album: album)
         #expect(summary.title == "Album Title Fifteen")
         #expect(summary.artist == "Artist Name")
     }

@@ -40,10 +40,12 @@ struct ImportListSameViewValueTests {
             let focused = window.firstResponder
 
             var edited = selected
-            let artistLine = try #require(selected.metadataSummary?.artistLine)
-            edited.metadataSummary = .titleAndArtists(
-                title: "Typed Title",
-                artistLine: artistLine
+            let artistLine = try #require(selected.reading.album?.artistLine)
+            edited.reading = .prefilled(
+                album: .titleAndArtists(
+                    title: "Typed Title",
+                    artistLine: artistLine
+                )
             )
             await source.replaceItems([
                 PreviewData.candidateItem(edited), other,

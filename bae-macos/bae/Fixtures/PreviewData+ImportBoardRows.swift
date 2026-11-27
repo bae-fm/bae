@@ -28,7 +28,6 @@ extension PreviewData {
         triageRow(
             for: boardCandidate(folder),
             placement: placement,
-            metadataSummary: summary,
             cover: cover,
             importStatus: importStatus,
             metadataProvenance: record.map {
@@ -36,8 +35,11 @@ extension PreviewData {
                     record: BridgeLookupRef(catalog: .musicBrainz, key: $0)
                 )
             } ?? (summary == nil ? nil : .fileMetadata),
-            reading: record.map { .identified(records: boardRecords($0)) }
-                ?? (summary == nil ? .unidentified : .prefilled),
+            reading: summary.map { album in
+                record.map {
+                    .identified(album: album, records: boardRecords($0))
+                } ?? .prefilled(album: album)
+            } ?? .unidentified,
             live: live
         )
     }

@@ -42,7 +42,7 @@ private func bridgeFolder(
 func identifiedRow(
     _ path: String,
     title: String,
-    metadataSummary: BridgeAlbumLine? = nil,
+    album: BridgeAlbumLine? = nil,
     cover: BridgeCoverImageSource? = nil
 ) -> BridgeTriageRow {
     BridgeTriageRow(
@@ -52,20 +52,22 @@ func identifiedRow(
         actionable: true,
         placement: .pending,
         live: PreviewData.triageLive([]),
-        metadataSummary: metadataSummary,
         cover: cover,
         importStatus: nil,
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(catalog: .musicBrainz, key: "rel-\(path)")
         ),
-        reading: metadataSummary == nil
-            ? .unidentified
-            : .identified(records: [
-                BridgeReleaseRecord(
-                    catalog: .musicBrainz,
-                    url: "https://musicbrainz.org/release/rel-\(path)"
-                )
-            ])
+        reading: album.map {
+            .identified(
+                album: $0,
+                records: [
+                    BridgeReleaseRecord(
+                        catalog: .musicBrainz,
+                        url: "https://musicbrainz.org/release/rel-\(path)"
+                    )
+                ]
+            )
+        } ?? .unidentified
     )
 }
 
@@ -315,7 +317,7 @@ struct ImportStoreSidebarCoverTests {
             let row = identifiedRow(
                 path,
                 title: "Subject",
-                metadataSummary: BridgeAlbumLine.titleAlone(
+                album: BridgeAlbumLine.titleAlone(
                     title: "Applied Draft"
                 ),
                 cover: choice.image

@@ -23,7 +23,6 @@ extension PreviewData {
         triageRow(
             for: glyphCandidate(folder),
             placement: .pending,
-            metadataSummary: glyphSummary,
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: readFromRecord
                 ? .externalRelease(
@@ -34,8 +33,11 @@ extension PreviewData {
                 )
                 : nil,
             reading: readFromRecord
-                ? .identified(records: identifiedFromBothCatalogs)
-                : .prefilled,
+                ? .identified(
+                    album: glyphSummary,
+                    records: identifiedFromBothCatalogs
+                )
+                : .prefilled(album: glyphSummary),
         )
     }
 

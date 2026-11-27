@@ -90,7 +90,6 @@ extension ImportListPinnedHeaderTests {
                 actionable: true,
                 placement: .pending,
                 live: PreviewData.triageLive([]),
-                metadataSummary: nil,
                 cover: nil,
                 importStatus: nil,
                 metadataProvenance: nil,

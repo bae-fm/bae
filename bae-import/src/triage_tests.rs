@@ -38,16 +38,21 @@ fn described_in() -> Vec<bae_catalogs::records::ReleaseRecord> {
     ]
 }
 
+/// The album title a row's draft shows.
+fn album_line() -> crate::AlbumLine {
+    crate::AlbumLine::TitleAlone { title: "Album Title".to_string() }
+}
+
 #[test]
 fn a_row_with_no_draft_is_its_folder_and_nothing_else() {
-    assert_eq!(TriageReading::of(false, None, Vec::new()), TriageReading::Unidentified);
+    assert_eq!(TriageReading::of(None, None, Vec::new()), TriageReading::Unidentified);
 }
 
 #[test]
 fn a_draft_of_an_unlinked_candidate_names_no_source() {
     assert_eq!(
-        TriageReading::of(true, None, Vec::new()),
-        TriageReading::Prefilled,
+        TriageReading::of(Some(album_line()), None, Vec::new()),
+        TriageReading::Prefilled { album: album_line() },
         "a draft with no release link is a draft, wherever it was read from"
     );
 }
@@ -64,8 +69,8 @@ fn a_link_reads_as_identified_in_the_records_it_is_handed() {
         partners: Vec::new(),
     });
     assert_eq!(
-        TriageReading::of(true, Some(&pick), described_in()),
-        TriageReading::Identified { records: described_in() }
+        TriageReading::of(Some(album_line()), Some(&pick), described_in()),
+        TriageReading::Identified { album: album_line(), records: described_in() }
     );
 }
 
@@ -79,7 +84,7 @@ fn an_album_link_reads_as_its_album() {
     .expect("one album");
     let records = album.records();
     assert_eq!(
-        TriageReading::of(true, Some(&ReleaseLink::Album(album)), records.clone()),
-        TriageReading::IdentifiedAlbum { records }
+        TriageReading::of(Some(album_line()), Some(&ReleaseLink::Album(album)), records.clone()),
+        TriageReading::IdentifiedAlbum { album: album_line(), records }
     );
 }

@@ -92,7 +92,6 @@ struct ImportListEntryCellTests {
             actionable: true,
             placement: .skipped,
             live: PreviewData.triageLive([], identifying: identifying),
-            metadataSummary: nil,
             cover: nil,
             importStatus: nil,
             metadataProvenance: nil,

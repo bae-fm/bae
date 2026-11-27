@@ -527,8 +527,8 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         "the row is linked to the release the pick settled it on"
     );
     assert_eq!(
-        row.metadata_summary,
-        Some(crate::AlbumLine::TitleAndArtists {
+        row.reading.album(),
+        Some(&crate::AlbumLine::TitleAndArtists {
             title: "Picked Album Title".to_owned(),
             artist_line: bae_types::credits::CreditLine::of_name("Picked Artist Name"),
         })
@@ -662,7 +662,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .expect("picking a paired pressing succeeds");
 
     let reading = queue_row(&fixture, &key).await.reading;
-    let crate::triage::TriageReading::Identified { records } = reading else {
+    let crate::triage::TriageReading::Identified { records, .. } = reading else {
         panic!("a picked row reads as identified, got {reading:?}");
     };
     assert_eq!(

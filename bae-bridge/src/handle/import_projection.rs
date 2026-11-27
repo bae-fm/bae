@@ -246,7 +246,6 @@ impl crate::types::BridgeTriageRow {
             watched_folder_path,
             actionable,
             placement,
-            metadata_summary,
             cover,
             import_status,
             metadata_provenance,
@@ -261,7 +260,6 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             live: crate::types::BridgeTriageListLiveState::from_core(live),
-            metadata_summary: metadata_summary.map(crate::types::BridgeAlbumLine::from_core),
             cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             metadata_provenance: metadata_provenance

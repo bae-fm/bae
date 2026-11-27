@@ -36,6 +36,17 @@ struct RecordArrow: View {
 }
 
 extension BridgeTriageReading {
+    /// The album title and credits the row shows; `nil` for an
+    /// `unidentified` row, which shows its folder.
+    var album: BridgeAlbumLine? {
+        switch self {
+        case .unidentified: nil
+        case .prefilled(let album), .identified(let album, _),
+            .identifiedAlbum(let album, _):
+            album
+        }
+    }
+
     /// Whether the candidate is linked to a catalog's pressing or album.
     var readFromRecord: Bool {
         switch self {

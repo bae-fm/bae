@@ -58,7 +58,7 @@ async fn a_state_at_another_edit_revision_is_not_the_row_s_answer() {
     let (row, live) = row_at(&read, "Release");
     assert_eq!(row.placement, TriagePlacement::Pending);
     assert_eq!(row.release_link, None);
-    assert_eq!(row.metadata_summary, None);
+    assert_eq!(row.reading.album(), None);
     assert_eq!(live.standing, Some(crate::PendingStanding::NotLookedUp));
     assert!(!offers_import(live), "a draft for other files is not this row's");
 }
