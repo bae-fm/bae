@@ -16,6 +16,7 @@ struct LightboxLoadingTests {
         let size = NSSize(width: 640, height: 480)
         try await SnapshotTestSupport.withHostedWindow(
             MacLightbox<LightboxItem>.loadingPreview()
+                .environment(BugReports.recording())
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
