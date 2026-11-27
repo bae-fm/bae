@@ -193,7 +193,7 @@ sqlive_compose::write!(
         SELECT track.track_id AS track_id,
                row_number() OVER (ORDER BY given.key) - 1 AS k
         FROM json_each(:tracks) AS given
-        JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+        JOIN @bae_records::records::spread_fragments::TrackRow AS track
             ON track.track_id = given.value) AS added
 "#
 );
@@ -210,7 +210,7 @@ sqlive_compose::write!(
                row_number() OVER (
                    ORDER BY track.release_id, track.position, track.track_id) - 1 AS k
         FROM json_each(:tracks) AS picked
-        JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+        JOIN @bae_records::records::spread_fragments::TrackRow AS track
             ON track.track_id = picked.value) AS added
 "#
 );

@@ -44,20 +44,11 @@ sqlive_compose::fragment!(
 "#
 );
 
-// Each track with its release and its stored position, which order a
-// release's tracks.
-sqlive_compose::fragment!(
-    TrackPosition,
-    r#"
-    SELECT track.id AS track_id, track.release_id, track.position
-    FROM tracks AS track
-"#
-);
-
 sqlive_compose::fragment!(
     TrackRow,
     r#"
-    SELECT track.id AS track_id, track.release_id, track.title, track.duration_ms
+    SELECT track.id AS track_id, track.release_id, track.position, track.title,
+           track.duration_ms
     FROM tracks AS track
 "#
 );

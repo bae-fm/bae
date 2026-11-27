@@ -143,7 +143,7 @@ sqlive_compose::write!(
         sourced: (
             SELECT track.track_id,
                    row_number() OVER (ORDER BY track.position, track.track_id)
-            FROM @bae_records::records::spread_fragments::TrackPosition AS track
+            FROM @bae_records::records::spread_fragments::TrackRow AS track
             WHERE track.release_id = :release)) AS lane
     ORDER BY lane.played
 "#
@@ -167,7 +167,7 @@ sqlive_compose::write!(
             SELECT track.track_id,
                    row_number() OVER (ORDER BY given.key, track.position, track.track_id)
             FROM json_each(:releases) AS given
-            JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+            JOIN @bae_records::records::spread_fragments::TrackRow AS track
                 ON track.release_id = given.value)) AS lane
     ORDER BY lane.played
 "#
@@ -190,7 +190,7 @@ sqlive_compose::write!(
         sourced: (
             SELECT track.track_id, row_number() OVER (ORDER BY given.key)
             FROM json_each(:tracks) AS given
-            JOIN @bae_records::records::spread_fragments::TrackPosition AS track
+            JOIN @bae_records::records::spread_fragments::TrackRow AS track
                 ON track.track_id = given.value)) AS lane
     ORDER BY lane.played
 "#
@@ -213,7 +213,7 @@ sqlive_compose::write!(
             SELECT track.track_id,
                    row_number() OVER (
                        ORDER BY track.release_id, track.position, track.track_id)
-            FROM @bae_records::records::spread_fragments::TrackPosition AS track)) AS lane
+            FROM @bae_records::records::spread_fragments::TrackRow AS track)) AS lane
     ORDER BY lane.played
 "#
 );
