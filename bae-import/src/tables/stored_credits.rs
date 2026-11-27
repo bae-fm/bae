@@ -10,15 +10,6 @@ pub(crate) fn line_json(line: &CreditLine) -> Result<String, DbError> {
         .map_err(|error| DbError::encode("a credit line", error))
 }
 
-/// The line a column of stored credits holds, `None` for NULL.
-pub(crate) fn line_column(
-    row: &rusqlite::Row<'_>,
-    column: &str,
-) -> rusqlite::Result<Option<CreditLine>> {
-    line_of(row.get::<_, Option<String>>(column)?.as_deref())
-        .map_err(|error| bae_store::read::column_conversion_error(row, column, error))
-}
-
 /// The credit line in stored credits text, or `None` when there is no text.
 pub(crate) fn line_of(json: Option<&str>) -> Result<Option<CreditLine>, serde_json::Error> {
     json.map(line_text).transpose()

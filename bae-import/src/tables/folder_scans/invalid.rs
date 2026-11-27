@@ -10,45 +10,7 @@ use crate::triage::InvalidRow;
 use crate::CandidateKey;
 use crate::{InvalidCandidateDetail, MappingFile, MappingImage, MappingRole};
 
-/// What a read of a window's rows adds to a row of `scan_candidate`, joined
-/// as `candidate`, to show it as a folder that failed validation: the columns
-/// to select, and the joins they read through. The scan stored why the folder
-/// failed and the image it leads with in the row; the cover join reads the
-/// version of that image the scan read, the first file by that name among
-/// the folder's images.
-pub(crate) fn invalid_columns_sql(candidate: &str) -> (String, String) {
-    (
-        format!(
-            "{candidate}.folder AS invalid_folder, \
-             {candidate}.grouping_key IS NOT NULL AS invalid_separable, \
-             {candidate}.invalid_reason AS invalid_reason, \
-             {candidate}.invalid_shared_name AS invalid_shared_name, \
-             {candidate}.invalid_damaged_audio AS invalid_damaged_audio, \
-             invalid_tags.album_title AS invalid_album_title, \
-             invalid_tags.credits AS invalid_credits, \
-             invalid_cover.absolute_path AS invalid_cover_path, \
-             invalid_cover.size AS invalid_cover_size, \
-             invalid_cover.modified_at_ns AS invalid_cover_modified"
-        ),
-        format!(
-            "LEFT JOIN scan_skipped_tags AS invalid_tags \
-                 ON invalid_tags.watched_folder_path = {candidate}.watched_folder_path \
-                AND invalid_tags.candidate_path = {candidate}.path \
-             LEFT JOIN scan_skipped_file AS invalid_cover \
-                 ON {candidate}.kind = 'invalid' \
-                AND invalid_cover.watched_folder_path = {candidate}.watched_folder_path \
-                AND invalid_cover.candidate_path = {candidate}.path \
-                AND invalid_cover.position = ( \
-                    SELECT MIN(image.position) FROM scan_skipped_file AS image \
-                    WHERE image.watched_folder_path = {candidate}.watched_folder_path \
-                      AND image.candidate_path = {candidate}.path \
-                      AND image.role = 'artwork' \
-                      AND image.relative_path = {candidate}.blank_cover_file)"
-        ),
-    )
-}
-
-/// A folder that failed validation, as [`invalid_columns_sql`] selects it.
+/// A folder that failed validation, as its scan row stores it.
 #[derive(Clone, PartialEq)]
 pub(crate) struct InvalidColumns {
     folder: PathBuf,
@@ -59,35 +21,6 @@ pub(crate) struct InvalidColumns {
 }
 
 impl InvalidColumns {
-    /// The columns of a row of another kind hold no reason, which reads as
-    /// `None`.
-    pub(crate) fn read(row: &rusqlite::Row<'_>) -> Result<Option<Self>, rusqlite::Error> {
-        let Some(reason) = row.get::<_, Option<String>>("invalid_reason")? else {
-            return Ok(None);
-        };
-        let cover = match path_column::get_optional(row, "invalid_cover_path")? {
-            Some(path) => {
-                Some((path, row.get("invalid_cover_size")?, row.get("invalid_cover_modified")?))
-            }
-            None => None,
-        };
-        Ok(Some(Self {
-            folder: path_column::get(row, "invalid_folder")?,
-            separable: row.get("invalid_separable")?,
-            reason: (reason, row.get("invalid_shared_name")?, row.get("invalid_damaged_audio")?),
-            tags: row
-                .get::<_, Option<String>>("invalid_album_title")?
-                .map(|album_title| {
-                    Ok::<_, rusqlite::Error>(SkippedTags {
-                        album_title,
-                        artist: crate::tables::stored_credits::line_column(row, "invalid_credits")?,
-                    })
-                })
-                .transpose()?,
-            cover,
-        }))
-    }
-
     /// The columns of a folder that failed validation: its folder, whether a
     /// grouping reads it, why it failed, the album title and stored credits
     /// its tags give it, and the image it leads with, as its path, size and
@@ -143,26 +76,15 @@ impl InvalidColumns {
         let tags = scan
             .invalid_album_title
             .clone()
-            .map(|album_title| {
-                let artist =
-                    crate::tables::stored_credits::line_of(scan.invalid_credits.as_deref())
-                        .map_err(|error| {
-                            DbError::unreadable_json(
-                                "a skipped folder's credits",
-                                scan.invalid_credits.clone().unwrap_or_default(),
-                                error,
-                            )
-                        })?;
-                Ok::<_, DbError>(SkippedTags { album_title, artist })
-            })
-            .transpose()?;
-        Ok(Some(Self {
-            folder: path_column::decode(scan.invalid_folder.clone())?,
-            separable: scan.invalid_separable,
-            reason: (reason, scan.invalid_shared_name.clone(), scan.invalid_damaged_audio),
+            .map(|album_title| (album_title, scan.invalid_credits.clone()));
+        Self::new(
+            path_column::decode(scan.invalid_folder.clone())?,
+            scan.invalid_separable,
+            (reason, scan.invalid_shared_name.clone(), scan.invalid_damaged_audio),
             tags,
             cover,
-        }))
+        )
+        .map(Some)
     }
 
     /// What the folder's tags call it, when they name an album.
@@ -213,6 +135,16 @@ impl InvalidColumns {
     }
 }
 
+// The scan row of the folder that failed validation stored at `key`.
+sqlive_compose::read!(
+    InvalidScan(key: CandidateKey),
+    r#"
+    SELECT listed.*
+    FROM @crate::tables::folder_scans::listed_fragments::ListedScan AS listed
+    WHERE listed.listed_key = :key AND listed.listed_invalid_reason IS NOT NULL
+"#
+);
+
 /// The folder that failed validation stored at `key`, as its row shows it;
 /// `None` when no folder that failed validation is stored there. Watched
 /// roots never overlap and keys are absolute paths, so at most one root
@@ -221,33 +153,42 @@ pub(crate) fn load_invalid_row(
     sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<Option<InvalidRow>, DbError> {
-    let (columns, joins) = invalid_columns_sql("c");
-    let read = sql
-        .query_row(
-            &format!(
-                "SELECT c.watched_folder_path, c.path, c.name, {columns} \
-                 FROM scan_candidate AS c {joins} \
-                 WHERE c.path = ? AND c.kind = 'invalid'"
-            ),
-            [key],
-            |row| {
-                Ok((
-                    path_column::get(row, "watched_folder_path")?,
-                    row.get::<_, CandidateKey>("path")?,
-                    row.get::<_, String>("name")?,
-                    InvalidColumns::read(row)?,
-                ))
-            },
-        )
-        .optional()?;
-    let Some((root, key, name, columns)) = read else {
+    let request = InvalidScanParams { key: key.clone() };
+    let Some(row) = bae_store::statement_optional(sql, &request)? else {
         return Ok(None);
     };
-    // The schema holds a reason on every row of an invalid folder.
-    let columns = columns.ok_or_else(|| {
+    let scan = row.listed;
+    // The statement keeps the rows that store a reason.
+    let reason = scan.listed_invalid_reason.ok_or_else(|| {
         DbError::unreadable(format!("the reason folder {key} failed validation"), None::<String>)
     })?;
-    columns.row(key, name, root).map(Some)
+    let tags = scan
+        .listed_invalid_tags
+        .map(|json| {
+            serde_json::from_str::<(String, Option<String>)>(&json)
+                .map_err(|error| DbError::unreadable_json("a skipped folder's tags", json, error))
+        })
+        .transpose()?;
+    let cover = scan
+        .listed_invalid_cover
+        .map(|json| {
+            let (path, size, modified) = serde_json::from_str::<(String, i64, i64)>(&json)
+                .map_err(|error| {
+                    DbError::unreadable_json("a skipped folder's image", json, error)
+                })?;
+            let bytes =
+                hex::decode(&path).map_err(|_error| DbError::unreadable("a stored path", path))?;
+            Ok::<_, DbError>((path_column::decode(bytes)?, size, modified))
+        })
+        .transpose()?;
+    let columns = InvalidColumns::new(
+        path_column::decode(scan.listed_folder)?,
+        scan.listed_grouping_key.is_some(),
+        (reason, scan.listed_shared_name, scan.listed_damaged_audio),
+        tags,
+        cover,
+    )?;
+    columns.row(key.clone(), scan.listed_name, path_column::decode(scan.listed_root)?).map(Some)
 }
 
 // The files but the images of the folder that failed validation stored at
