@@ -1,16 +1,15 @@
 import BaeKit
-import Synchronization
 
 /// A bug reporter a test reads: it keeps the operation of each bug reported
 /// to it, in the order they came, from whatever thread found it.
 final class RecordingBugReporter: BridgeBugReporter {
-    private let reported = Mutex<[String]>([])
+    private let reported = Recorded<[String]>([])
 
     /// The operation of each bug reported so far.
-    var operations: [String] { reported.withLock { $0 } }
+    var operations: [String] { reported.value }
 
     func report(operation: String, detail _: String) {
-        reported.withLock { $0.append(operation) }
+        reported.change { $0.append(operation) }
     }
 }
 
