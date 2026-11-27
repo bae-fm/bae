@@ -30,19 +30,12 @@ impl ArtworkAnalysis {
 }
 
 /// An image the platform could not read at all, as opposed to one it read and
-/// found nothing printed on. The pass over the candidate's artwork stops at
-/// it and says so.
+/// found nothing printed on. The pass over the candidate's artwork leaves it
+/// out.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArtworkUnreadable {
     /// Why the image could not be read.
     pub detail: String,
-}
-
-impl coven::task::CarriesBug for ArtworkUnreadable {
-    /// An unreadable image is the image's fault, not a bug.
-    fn bug(&self) -> Option<&coven::task::Bug> {
-        None
-    }
 }
 
 /// Called on blocking threads, several images at once.

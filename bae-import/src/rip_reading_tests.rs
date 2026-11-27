@@ -3,24 +3,33 @@
 
 use super::*;
 use crate::cue_sheet::{CdRipper, CueIndex, CueTrack, CueTrackMode};
+use crate::left_out::reporting_inputs;
 use crate::tests::fixture;
 use bae_util::test_files::TestFolder;
 
 /// The text of each document read from the file at its path.
-fn on_disk(lease: &FileLease) -> impl Fn(&RipDocument<'_>) -> Result<String, ImportError> + '_ {
-    |document| read_document(document.path, lease.place_blocking())
+fn on_disk(lease: &FileLease) -> impl Fn(&RipDocument<'_>) -> Result<String, LeftOut> + '_ {
+    |document| {
+        read_document_text(document.path, lease.place_blocking())
+            .map(|read| read.text)
+            .map_err(|error| LeftOut::io(&error))
+    }
 }
 
-/// `artifacts` read from the files at its documents' paths.
-fn read_on_disk(artifacts: RipArtifacts<'_>) -> Result<RipReading, ImportError> {
+/// `artifacts` read from the files at its documents' paths, leaving out
+/// through `inputs` what does not read.
+fn read_leaving_out(artifacts: RipArtifacts<'_>, inputs: &FolderInputs) -> RipReading {
     let lease = bae_util::test_files::lease();
     let text_of = on_disk(&lease);
-    read(artifacts, &text_of)
+    read(artifacts, &text_of, inputs)
 }
 
-/// `artifacts` read, every document readable.
+/// `artifacts` read, every input readable.
 fn read_ok(artifacts: RipArtifacts<'_>) -> RipReading {
-    read_on_disk(artifacts).expect("the artifacts read")
+    let (inputs, bugs) = reporting_inputs();
+    let reading = read_leaving_out(artifacts, &inputs);
+    assert_eq!(bugs.reports(), Vec::new());
+    reading
 }
 
 fn track(number: u32, start_cue_frames: u64) -> CueTrack {
@@ -320,13 +329,16 @@ fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
     )
     .unwrap();
 
-    let disc_id = read_rip_artifacts(&categorized, &bae_util::test_files::lease())
-        .unwrap()
-        .disc_id
-        .computed()
-        .try_into()
-        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
-        .expect("the log carves one disc");
+    let disc_id = read_rip_artifacts(
+        &categorized,
+        &bae_util::test_files::lease(),
+        &crate::left_out::reporting_inputs().0,
+    )
+    .disc_id
+    .computed()
+    .try_into()
+    .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
+    .expect("the log carves one disc");
     assert_eq!(disc_id.source_file.as_deref(), Some("Album.log"));
 }
 
@@ -349,13 +361,16 @@ fn test_compute_discid_routes_cue_ape() {
     .unwrap();
     let audio_path = folder.join("Test Album.ape");
     let opens_before = bae_audio::test_reads::probes(&audio_path);
-    let computed = read_rip_artifacts(&categorized, &bae_util::test_files::lease())
-        .unwrap()
-        .disc_id
-        .computed()
-        .try_into()
-        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
-        .expect("CUE+APE pair must compute one disc ID");
+    let computed = read_rip_artifacts(
+        &categorized,
+        &bae_util::test_files::lease(),
+        &crate::left_out::reporting_inputs().0,
+    )
+    .disc_id
+    .computed()
+    .try_into()
+    .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
+    .expect("CUE+APE pair must compute one disc ID");
     assert_eq!(
         bae_audio::test_reads::probes(&audio_path),
         opens_before,
@@ -369,10 +384,10 @@ fn test_compute_discid_routes_cue_ape() {
     );
 }
 
-/// A log that cannot be read is evidence nobody has seen, not a log that
-/// states no disc: the reading fails, as one that cannot be hashed does not.
+/// A log that cannot be read is left out and reported without its path. One
+/// whose bytes read but state nothing is no error.
 #[test]
-fn a_rip_log_that_cannot_be_read_fails_the_reading() {
+fn a_rip_log_that_cannot_be_read_is_left_out() {
     let tmp = TestFolder::new();
     let missing = tmp.path().join("Album.log");
     let artifacts = |path| RipArtifacts {
@@ -381,16 +396,18 @@ fn a_rip_log_that_cannot_be_read_fails_the_reading() {
         audio: Vec::new(),
     };
 
-    let error = read_on_disk(artifacts(&missing)).expect_err("a log that is not there is not read");
-    assert!(
-        matches!(error, ImportError::DocumentRead { ref file, .. } if file.ends_with("Album.log")),
-        "{error:?}"
-    );
+    let (inputs, bugs) = reporting_inputs();
+    let reading = read_leaving_out(artifacts(&missing), &inputs);
+    assert_eq!(reading.disc_id, DiscIdReading::Absent);
+    assert_eq!(reading.origin.source, None);
+    let reports = bugs.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert_eq!(reports[0].0, "identify: rip log");
+    assert!(reports[0].1.starts_with("reading it failed: NotFound"), "{reports:?}");
+    assert!(!reports[0].1.contains("Album"), "{reports:?}");
 
     tmp.write(&missing, "not a rip log at all\n");
-    let reading =
-        read_on_disk(artifacts(&missing)).expect("bytes that read but state nothing do not fail");
-    assert_eq!(reading.disc_id, DiscIdReading::Absent);
+    assert_eq!(read_ok(artifacts(&missing)).disc_id, DiscIdReading::Absent);
 }
 
 /// A rip log whose table of contents can't be read states no disc and proves
@@ -405,21 +422,37 @@ fn a_rip_log_whose_table_of_contents_cannot_be_read_gives_no_disc() {
 
     let sheet = sheet(None);
     let format = lossless(44_100, 16, 2);
-    let reading = read_ok(RipArtifacts {
-        documents: vec![RipDocument {
-            path: &path,
-            file: Some("Album.log"),
-            kind: DocumentKind::RipLog,
-        }],
-        sheets: vec![RipSheet {
-            sheet: &sheet,
-            audio: vec![SheetAudioDuration { file_reference: "Album.flac", duration_ms: 120_000 }],
-            path: &path.with_file_name("Album.cue"),
-            file: Some("Album.cue"),
-        }],
-        audio: vec![&format],
-    });
+    let (inputs, bugs) = reporting_inputs();
+    let reading = read_leaving_out(
+        RipArtifacts {
+            documents: vec![RipDocument {
+                path: &path,
+                file: Some("Album.log"),
+                kind: DocumentKind::RipLog,
+            }],
+            sheets: vec![RipSheet {
+                sheet: &sheet,
+                audio: vec![SheetAudioDuration {
+                    file_reference: "Album.flac",
+                    duration_ms: 120_000,
+                }],
+                path: &path.with_file_name("Album.cue"),
+                file: Some("Album.cue"),
+            }],
+            audio: vec![&format],
+        },
+        &inputs,
+    );
 
+    assert_eq!(
+        bugs.reports(),
+        vec![(
+            "identify: rip log Disc ID".to_string(),
+            "a table of contents row does not read".to_string()
+        )],
+        "the report quotes no row of the log"
+    );
+    assert!(inputs.left_out(&path));
     assert_eq!(reading.origin.source, None);
     let DiscIdReading::Computed(discs) = reading.disc_id else {
         panic!("the sheet hashes to a disc ID");
@@ -430,29 +463,101 @@ fn a_rip_log_whose_table_of_contents_cannot_be_read_gives_no_disc() {
     );
 }
 
-/// A sheet naming an audio file nobody measured cannot be laid out as a disc;
-/// that is an error to show, not a folder without a disc ID.
+/// A sheet naming an audio file nobody measured cannot be laid out as a disc:
+/// its disc is left out, and every other sheet's is hashed.
 #[test]
-fn a_sheet_that_cannot_be_laid_out_as_a_disc_fails_the_reading() {
+fn a_sheet_that_cannot_be_laid_out_as_a_disc_gives_no_disc() {
     let sheet = sheet(None);
     let format = lossless(44_100, 16, 2);
-    let lease = bae_util::test_files::lease();
-    let error = read(
+    let (inputs, bugs) = reporting_inputs();
+    let reading = read_leaving_out(
         RipArtifacts {
             documents: Vec::new(),
-            sheets: vec![RipSheet {
-                sheet: &sheet,
-                audio: Vec::new(),
-                path: Path::new("/folder/Album.cue"),
-                file: Some("Album.cue"),
-            }],
+            sheets: vec![
+                RipSheet {
+                    sheet: &sheet,
+                    audio: Vec::new(),
+                    path: Path::new("/folder/Disc 1/Album.cue"),
+                    file: Some("Disc 1/Album.cue"),
+                },
+                RipSheet {
+                    sheet: &sheet,
+                    audio: vec![SheetAudioDuration {
+                        file_reference: "Album.flac",
+                        duration_ms: 120_000,
+                    }],
+                    path: Path::new("/folder/Disc 2/Album.cue"),
+                    file: Some("Disc 2/Album.cue"),
+                },
+            ],
             audio: vec![&format],
         },
-        &on_disk(&lease),
+        &inputs,
+    );
+
+    let DiscIdReading::Computed(discs) = reading.disc_id else {
+        panic!("the other sheet hashes to a disc ID");
+    };
+    assert_eq!(
+        discs.iter().map(|disc| disc.source_file.as_deref()).collect::<Vec<_>>(),
+        vec![Some("Disc 2/Album.cue")]
+    );
+    assert_eq!(
+        bugs.reports(),
+        vec![(
+            "identify: CUE sheet Disc ID".to_string(),
+            "a file the sheet names has no measured length".to_string()
+        )]
+    );
+}
+
+/// Pinned disc ID for the `cue-alac.cue` + `cue-alac.m4a` fixture pair.
+/// Captured from the first successful run of `cue_alac_disc_id_is_stable`.
+/// Three tracks at 0s/3s/6s with a 9s total duration yield this disc ID
+/// deterministically; a drift means something upstream of the `discid` crate
+/// changed.
+const EXPECTED_CUE_ALAC_DISC_ID: &str = "RGsIqQtOzlx_LdxgsE0wIvFi8h4-";
+
+/// The MusicBrainz disc ID for a CUE+ALAC pair is deterministic for a fixed
+/// set of track offsets and lead-out. This test pins the computed value — if
+/// the math or the underlying `discid` crate changes, we want to know.
+///
+/// Expected value was captured from the first successful run of this test on
+/// the shared fixture (`cue-alac.cue` with tracks at 0s/3s/6s, 9s total
+/// duration reported by FFmpeg).
+#[test]
+fn cue_alac_disc_id_is_stable() {
+    let temp_root = TestFolder::new();
+    let album_dir = temp_root.path().join("album");
+    temp_root.create_folder(&album_dir);
+
+    let fix = crate::test_fixtures::alac_dir();
+    temp_root.copy_fixture(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a"));
+    temp_root.copy_fixture(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue"));
+
+    let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        &album_dir,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
     )
-    .expect_err("a sheet over audio with no measured length fails the reading");
+    .expect("scan album dir");
+    let track_count = categorized.track_count();
+    let disc_id =
+        read_rip_artifacts(&categorized, &bae_util::test_files::lease(), &reporting_inputs().0)
+            .disc_id
+            .computed();
+
+    assert_eq!(track_count, 3, "three tracks in the CUE sheet");
+    let [computed]: [bae_identify::signals::ComputedDiscId; 1] =
+        disc_id.try_into().expect("CUE+ALAC pair must produce one disc ID");
+    assert_eq!(computed.disc_id.len(), 28, "MusicBrainz disc IDs are 28-char base64 strings");
+    assert_eq!(
+        computed.disc_id, EXPECTED_CUE_ALAC_DISC_ID,
+        "disc ID drifted — CUE parsing, probe duration, or disc ID math changed",
+    );
     assert!(
-        matches!(error, ImportError::DiscIdCalculation { ref file, .. } if file.ends_with("Album.cue")),
-        "{error:?}"
+        computed.source_file.as_deref().is_some_and(|file| file.ends_with(".cue")),
+        "the sheet it was carved from rides with it, got {:?}",
+        computed.source_file
     );
 }

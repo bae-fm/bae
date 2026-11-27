@@ -19,10 +19,8 @@ pub enum ArtworkScan {
     Done {
         total: u32,
     },
-    /// Reading stopped at a failure; `read` images had been read before it.
+    /// The extraction that would have read the images failed whole.
     Failed {
         failure: InternalFailure,
-        read: u32,
-        total: u32,
     },
 }

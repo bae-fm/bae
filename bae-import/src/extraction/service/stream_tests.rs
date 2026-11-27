@@ -225,41 +225,35 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn an_image_read_that_panics_fails_the_text_and_barcode_signals() {
+async fn an_image_read_that_panics_leaves_the_image_out() {
     let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(Arc::new(PanicAnalyzer));
+    let source = folder_source(folder);
+    let ExtractionSource::Candidate { candidate } = &source else {
+        unreachable!("a folder source is a candidate");
+    };
+    let key = candidate.files.content_hash();
+    let mut run =
+        handle.start(IdentifyRunId::for_test(1), crate::CandidateKey::test("cand-1"), source);
 
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(PanicAnalyzer);
-    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
-
-    let signals = collect_signals(&mut rx, 2).await;
-    assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));
-
-    match &signals[1].text {
-        TextSignal::Failed { failure, .. } => {
-            assert!(
-                failure.detail.contains("read an image's text panicked"),
-                "a panicked image read names what panicked, got {failure:?}",
-            );
-        }
-        other => panic!("a panicked image read fails the text signal, got {other:?}"),
-    }
-    match &signals[1].barcode {
-        BarcodeSignal::Failed { failure, .. } => {
-            assert!(
-                failure.detail.contains("read an image's text panicked"),
-                "a panicked image read names what panicked, got {failure:?}",
-            );
-        }
-        other => panic!("a panicked image read fails the barcode signal, got {other:?}"),
-    }
+    let snapshots = collect_snapshots(&mut rx, 2).await;
+    run_ended(&mut run).await;
+    let (signals, artwork) = &snapshots[1];
+    assert_eq!(*artwork, ArtworkScan::Done { total: 1 });
+    assert!(matches!(signals.text, TextSignal::Settled { .. }), "got {:?}", signals.text);
+    assert_eq!(signals.barcode, BarcodeSignal::Settled { codes: Vec::new() });
+    assert!(
+        handle.inner.settled.get_cloned(&key).is_none(),
+        "the reading that left an image out was kept"
+    );
 }
 
-/// An image the platform can't read is not an image with nothing on it: the
-/// scan fails with the reason, and the reading is not kept as settled for the
-/// next run to reuse.
+/// An image the platform can't read is left out, and the reading is not kept
+/// as settled, so the next run reads the image again.
 #[tokio::test(flavor = "multi_thread")]
-async fn an_unreadable_image_fails_the_scan_and_is_not_kept_as_settled() {
+async fn an_unreadable_image_is_left_out_and_the_reading_is_not_kept_as_settled() {
     struct Unreadable;
     impl ArtworkAnalyzer for Unreadable {
         fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
@@ -281,13 +275,11 @@ async fn an_unreadable_image_fails_the_scan_and_is_not_kept_as_settled() {
 
     let snapshots = collect_snapshots(&mut rx, 2).await;
     run_ended(&mut run).await;
-    match &snapshots[1].1 {
-        ArtworkScan::Failed { failure, read: 0, total: 1 } => {
-            assert!(failure.detail.contains("truncated JPEG"), "got {failure:?}");
-        }
-        other => panic!("an unreadable image fails the artwork scan, got {other:?}"),
-    }
-    assert!(handle.inner.settled.get_cloned(&key).is_none(), "the failed reading was kept");
+    assert_eq!(snapshots[1].1, ArtworkScan::Done { total: 1 });
+    assert!(
+        handle.inner.settled.get_cloned(&key).is_none(),
+        "the reading that left an image out was kept"
+    );
 }
 
 /// A run cancelled mid-OCR never reaches its `Settled` snapshot.
@@ -607,11 +599,10 @@ async fn passes_running_at_once_share_the_bound() {
     assert_eq!(analyzer.most_at_once.load(Ordering::SeqCst), IMAGES_IN_FLIGHT);
 }
 
-/// An image whose read dies fails the pass with what the images before it
-/// read; the images after it that had already finished add nothing, and
-/// nothing follows the failed snapshot.
+/// An image whose read dies is left out: the images before and after it add
+/// what was read off them.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_failed_read_fails_the_pass_with_the_images_before_it() {
+async fn a_failed_read_leaves_its_image_out_of_the_pass() {
     let tmp = TestFolder::new();
     let images = image_names(IMAGES_IN_FLIGHT);
     let folder = folder_with(&tmp, &images);
@@ -624,37 +615,21 @@ async fn a_failed_read_fails_the_pass_with_the_images_before_it() {
     ];
     let analyzer = Arc::new(OrderedAnalyzer::new(finish_order).panicking_on("p2.jpg"));
 
-    // The fast pass, p1's snapshot, then the failed one.
-    let snapshots = pass_snapshots(folder, analyzer, 3).await;
+    // The fast pass, a snapshot after each image but the last, then the
+    // settled one.
+    let snapshots = pass_snapshots(folder, analyzer, images.len() + 1).await;
 
-    let (after_p1, _) = &snapshots[1];
-    let (failed, artwork) = &snapshots[2];
-    let ArtworkScan::Failed { failure, read, total } = artwork else {
-        panic!("the pass fails at p2, got {artwork:?}");
-    };
-    assert_eq!((*read, *total), (1, images.len() as u32));
+    let (settled, artwork) = &snapshots[images.len()];
+    assert_eq!(*artwork, ArtworkScan::Done { total: images.len() as u32 });
+    let read: Vec<&str> = settled
+        .text_pool
+        .iter()
+        .filter_map(|line| line.text.strip_prefix("Line read off "))
+        .collect();
+    assert_eq!(read, vec!["p1.jpg", "p3.jpg", "p4.jpg"]);
     assert!(
-        failure.detail.contains("read an image's text panicked")
-            && failure.detail.contains("p2.jpg"),
-        "the failure names what panicked and its image, got {failure:?}"
-    );
-    assert_eq!(
-        failed.text,
-        TextSignal::Failed {
-            failure: failure.clone(),
-            catalogs: after_p1.text.catalogs().to_vec(),
-            free_text: after_p1.text.free_text().to_vec(),
-        }
-    );
-    assert_eq!(
-        failed.barcode,
-        BarcodeSignal::Failed { failure: failure.clone(), codes: Vec::new() },
-        "p3's barcode was read after the failure, so it is not a sighting"
-    );
-    assert_eq!(failed.text_pool, after_p1.text_pool);
-    assert!(
-        after_p1.text_pool.iter().any(|line| line.text == "Line read off p1.jpg"),
-        "p1's reading is in, got {:?}",
-        after_p1.text_pool
+        matches!(&settled.barcode, BarcodeSignal::Settled { codes } if codes.len() == 1),
+        "p3's barcode is a sighting, got {:?}",
+        settled.barcode
     );
 }

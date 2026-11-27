@@ -471,6 +471,8 @@ task_types = [
     "bae_import::extraction::service::ExtractionInputs",
     "bae_import::extraction::service::ExtractionRelease",
     "bae_import::extraction::service::Artwork",
+    # The reads of one pass's or one reading's inputs: what they left out.
+    "bae_import::left_out::FolderInputs",
     "bae_import::identify_service::Driver",
     "bae_import::assemble::ArtistRows",
     "bae_import::import_cancel::RegisteredImport",

@@ -754,7 +754,7 @@ fn parsed(
     match read {
         Ok(read) => Ok(Ok(read)),
         Err(TagReadFailure::Unparseable(reason)) => Ok(Err(reason)),
-        Err(TagReadFailure::Fault(detail)) => Err(FolderScanError::Other(detail)),
+        Err(TagReadFailure::Fault { detail, .. }) => Err(FolderScanError::Other(detail)),
     }
 }
 

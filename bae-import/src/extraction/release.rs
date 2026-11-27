@@ -3,7 +3,8 @@
 //! artwork paths for the OCR pass. Reading the rip artifacts themselves lives
 //! in `import::discid`.
 
-use crate::library_documents::{LibraryDocumentError, LibraryDocuments};
+use crate::left_out::{FolderInputs, InputRead, LeftOut};
+use crate::library_documents::LibraryDocuments;
 use bae_diagnostics::Diagnostics;
 use bae_records::{Records, ReleaseWithFiles};
 use bae_store::DbError;
@@ -23,28 +24,33 @@ pub struct ReleaseIdentity {
 pub enum ReleaseIdentityError {
     #[error(transparent)]
     Database(#[from] DbError),
-    /// One of the release's rip files could not be read.
-    #[error(transparent)]
-    Document(#[from] LibraryDocumentError),
-    /// A rip file of the release could not be read.
-    #[error(transparent)]
-    Unreadable(#[from] crate::ImportError),
     /// Reading the rip files panicked, reported as the bug it is.
     #[error(transparent)]
     Panicked(#[from] TaskFailed),
 }
 
-/// Why a library release's artwork could not be listed or read for the OCR
-/// pass.
+/// Why coven could not give one of the images the OCR pass reads of a
+/// library release.
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseArtworkError {
-    #[error(transparent)]
-    Database(#[from] DbError),
     #[error("bae could not read the release's cover: {0}")]
     CoverRead(coven::FileReadError),
     /// coven could not read one of the release's image files.
     #[error("bae could not read the release's image {name}: {error}")]
     ImageRead { name: String, error: DbError },
+}
+
+impl From<ReleaseArtworkError> for LeftOut {
+    fn from(error: ReleaseArtworkError) -> Self {
+        let logged = error.to_string();
+        let category = match &error {
+            ReleaseArtworkError::CoverRead(error) => bae_diagnostics::file_read_category(error),
+            ReleaseArtworkError::ImageRead { error, .. } => {
+                bae_diagnostics::database_category(error)
+            }
+        };
+        Self::library(logged, category)
+    }
 }
 
 impl ReleaseIdentity {
@@ -71,10 +77,10 @@ impl ReleaseIdentity {
 /// coven reads each file the reading opens (`rip_reading::opens_library_file`)
 /// from wherever it has it: the original on this device, its cache or
 /// storage. A file coven can't read, such as an original that moved or
-/// changed since its import, or a file only on another device, fails the
-/// reading, and so does a text document over the limit bae reads whole.
-/// Audio is read by the facts its import stored, so none of its bytes are
-/// read.
+/// changed since its import, or a file only on another device, is left out,
+/// and so is a text document over the limit bae reads whole: the release is
+/// read as though it held no such file. Audio is read by the facts its import
+/// stored, so none of its bytes are read.
 pub async fn resolve_release_identity(
     tables: &crate::tables::ImportTables,
     records: &Records,
@@ -94,9 +100,16 @@ pub async fn resolve_release_identity(
         .iter()
         .filter(|file| crate::rip_reading::opens_library_file(&file.role))
         .collect();
-    let documents = LibraryDocuments::read(records, &lease, &read).await?;
+    let inputs = FolderInputs::new(diagnostics.clone());
+    let documents = LibraryDocuments::read_to_identify(records, &lease, &read, &inputs).await;
     drop(lease);
-    let library_files: Vec<_> = release.files.iter().cloned().map(library_file).collect();
+    let library_files: Vec<_> = release
+        .files
+        .iter()
+        .filter(|file| !inputs.left_out(std::path::Path::new(&file.original_filename)))
+        .cloned()
+        .map(library_file)
+        .collect();
     let (rip, formats) = diagnostics
         .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
@@ -109,12 +122,12 @@ pub async fn resolve_release_identity(
                 .filter_map(|file| file.source_audio.as_ref())
                 .map(|audio| audio.format.clone())
                 .collect();
-            Ok::<_, crate::ImportError>((
-                crate::rip_reading::read_library_rip_artifacts(&categorized, &documents)?,
+            (
+                crate::rip_reading::read_library_rip_artifacts(&categorized, &documents, &inputs),
                 formats,
-            ))
+            )
         })
-        .await??;
+        .await?;
     let audio =
         bae_identify::signals::AudioFacts::of(tracks.len() as u32, track_lengths_ms, &formats);
 
@@ -156,15 +169,24 @@ pub(crate) enum LibraryImageFile {
 
 /// The artwork the re-identify OCR pass reads of `release`: its cover, plus
 /// every image file of it, each named by where coven has it. The pass reads
-/// each one's bytes as it reaches it ([`read_library_image`]).
+/// each one's bytes as it reaches it ([`read_library_image`]). A cover coven
+/// can't name is left out through `inputs`.
 pub(crate) async fn resolve_release_artwork(
     store: &bae_store::Store,
     release: &ReleaseWithFiles,
-) -> Result<Vec<(PathBuf, LibraryImageFile)>, ReleaseArtworkError> {
+    inputs: &FolderInputs,
+) -> Vec<(PathBuf, LibraryImageFile)> {
     let mut images = Vec::new();
+    let cover = PathBuf::from("cover");
     match release.cover_file {
-        Some(file) => images
-            .push((PathBuf::from("cover"), LibraryImageFile::Cover(store.file_ref(file).await?))),
+        Some(file) => match store.file_ref(file).await {
+            Ok(file) => images.push((cover, LibraryImageFile::Cover(file))),
+            Err(error) => {
+                let category = bae_diagnostics::database_category(&error);
+                let why = LeftOut::library(error.to_string(), category);
+                inputs.leave_out(InputRead::Cover, &cover, why);
+            }
+        },
         None => debug!("artwork OCR: the release has no cover; skipping it"),
     }
     // In-folder artwork (cover.jpg and the like).
@@ -174,7 +196,7 @@ pub(crate) async fn resolve_release_artwork(
             LibraryImageFile::ReleaseFile { file: file.file, name: file.original_filename.clone() },
         ));
     }
-    Ok(images)
+    images
 }
 
 /// The bytes of `image`, which coven reads from wherever it has them, in one

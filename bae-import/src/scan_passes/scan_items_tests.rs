@@ -389,10 +389,10 @@ impl crate::file_tag_reader::FileTagReader for FaultingTagReader {
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         let read = self.counted.read(path, place)?;
         if path == self.faulting && self.fault.load(Ordering::SeqCst) {
-            return Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
-                "failed to read tags from {}: the share went away",
-                path.display()
-            )));
+            return Err(crate::file_tag_reader::TagReadFailure::Fault {
+                detail: format!("failed to read tags from {}: the share went away", path.display()),
+                kind: std::io::ErrorKind::Other,
+            });
         }
         Ok(read)
     }

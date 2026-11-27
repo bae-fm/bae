@@ -438,9 +438,10 @@ recorded, not from their names: its audio, by the facts its import stored, its
 track sheets (parsed again from the file), its rip logs and its AccurateRip
 reports. It reads each sheet, log, report and image from wherever this device
 can get it: the original on this device, the device's cache or storage. When
-none of those can give a file, such as an original that moved or changed, the
-reading of the release's Disc ID or artwork that needs it fails with the
-reason.
+none of those can give a file, such as an original that moved or changed,
+re-identifying leaves that file out and reads the others (§3.3). A reading of
+the release's Disc ID leaves it out the same way, and a save of a track
+sheet's binding fails with the reason.
 
 The files of a release include everything in its folder, not only the audio:
 the CUE sheet, the rip log, scans of the booklet. The one exception is audio
@@ -1419,17 +1420,27 @@ of:
   title. A file whose tags don't parse states none of these, and the other
   files' tags still count.
 
-A file that can't be read at all, such as a rip log, a text file or an audio
-file's tags on a drive that fails, is not a file that states nothing: the
-run fails with the read's error, and identifying again reads it anew. So does a
-CUE sheet that can't be laid out as a disc, such as one naming an audio file
-with no measured length. A rip log whose table of contents can't be read, with
-a track row whose cells don't read or track numbers that don't run 1, 2, 3 in
-order, doesn't fail the run: bae logs the error with the file and the row and
-takes no Disc ID from the log, since the Disc ID of only the rows that read
-would name another disc. Identification then goes on exactly as it does for a
-folder without that log, by every other way bae has. A rip log with no table of
-contents at all states no disc, and is passed over.
+**An input bae can't read.** One input of a folder, or of a library release,
+that bae can't read never stops identification: bae leaves it out and
+identifies the release from every other input, as it would a folder without
+it. The inputs are each rip log, AccurateRip report, text file, image and
+audio file's tags, the Disc ID of a CUE sheet, and, for a library release,
+each file bae reads and its cover. bae leaves an input out when it can't read
+it, such as a file on a drive that fails or a rip log over the size bae reads
+whole; when reading it panics; and when it describes no disc bae can hash: a
+rip log whose table of contents has a track row whose cells don't read, or
+track numbers that don't run 1, 2, 3 in order, or a CUE sheet that bae can't
+lay out as a disc, such as one naming an audio file with no measured length.
+bae never uses part of an input it leaves out, since the Disc ID of only the
+rows that read would name another disc: such a rip log gives no Disc ID and
+proves no rip, and such a CUE sheet gives no Disc ID, while its tracks still
+lay out the folder. An audio file whose tags bae can't read states none, and
+its name places and titles its track. bae logs each input it leaves out with
+its path and the error, and reports it to the crash reporter (§11.2). bae
+doesn't keep a folder's reading that left an input out for later runs, so the
+next run reads that input again. A rip log with no table of contents at all
+states no disc, which is no error. A failed lookup at a catalog is no input of
+the folder: the run shows it and offers Retry.
 
 Identification reads the audio's tags from the files on every run, so the
 scan's stored reading keeps none of the ISRCs, labels, copyright lines or
@@ -1448,10 +1459,9 @@ artist, album artist, album, publisher and copyright frames marked Latin-1.
 Tag text declared UTF-8 or UTF-16 is taken as it is.
 
 Reading the artwork means reading text off images, which bae does on macOS
-only. An image the system can't decode or read is not an image with nothing
-printed on it: the candidate's artwork scan fails with the image's path (a
-library release's image, its name in the release) and the reason, its barcode
-and text signals show that failure, and the next run reads the image again.
+only. An image the system can't decode or read is an input bae can't read: bae
+leaves it out, the artwork scan goes on with the other images, and the next
+run reads the image again.
 The reader of the image takes the image file's bytes, which bae reads from the
 person's folder for a candidate and through coven for a library release, with
 no copy of the file kept.
@@ -6477,6 +6487,12 @@ and bae-cast connects each device and hands playback the channel or sink.
   on whatever thread it happens, and bae reports each panic once, with its
   backtrace, the operation it interrupted, or "work outside every catch", and
   the file, line and column where it began.
+  Identification also reports each input it leaves out (§3.3) this way,
+  naming the step, such as reading a rip log's Disc ID. The event gives the
+  reason with no path, file name or tag text, since the names of the person's
+  music stay on the device, while bae's log line there has the path and the
+  whole error. bae reports a panic while reading an input once, as it does
+  every panic.
 - **A panic ends what its work served.** The operation that asked for the work
   fails with "Something went wrong", never left waiting, and the failure is not
   reported again. A later call that waits on a service a panic ended fails the

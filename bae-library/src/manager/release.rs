@@ -76,19 +76,6 @@ impl LibraryManager {
         .await
         .map_err(|error| match error {
             ReleaseIdentityError::Database(error) => LibraryError::Database(error),
-            ReleaseIdentityError::Document(bae_import::LibraryDocumentError::Coven {
-                name,
-                error,
-            }) => match error {
-                bae_store::DbError::FileRead(error) => {
-                    LibraryError::file_read(format!("read the release's file {name}"), *error)
-                }
-                error => LibraryError::Database(error),
-            },
-            ReleaseIdentityError::Document(refused) => {
-                LibraryError::from(bae_import::ImportError::from(refused))
-            }
-            ReleaseIdentityError::Unreadable(error) => LibraryError::from(error),
             ReleaseIdentityError::Panicked(failed) => LibraryError::from(failed),
         })?
         .read_audio()

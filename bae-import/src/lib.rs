@@ -66,6 +66,8 @@ pub(crate) mod import_cancel;
 #[cfg(desktop)]
 mod import_failure;
 #[cfg(desktop)]
+pub(crate) mod left_out;
+#[cfg(desktop)]
 mod library_audio;
 #[cfg(desktop)]
 mod library_documents;

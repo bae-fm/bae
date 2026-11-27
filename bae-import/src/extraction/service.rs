@@ -15,6 +15,7 @@ use super::analyzer::ArtworkAnalyzer;
 use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork, resolve_release_identity};
+use crate::left_out::FolderInputs;
 use crate::IdentifyRunId;
 use crate::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use bae_catalogs::{AudioOrigin, InternalFailure};
@@ -292,8 +293,15 @@ async fn extract(
                 return;
             }
             let lease = bae_store::lease_one(&inner.files).await;
+            let inputs = Arc::new(FolderInputs::new(inner.diagnostics.clone()));
+            let pass_inputs = inputs.clone();
             let fast = match run_fast_pass_blocking(&inner.diagnostics, move || {
-                gather_non_ocr_sources(&candidate.source_folders(), &candidate.files, &lease)
+                gather_non_ocr_sources(
+                    &candidate.source_folders(),
+                    &candidate.files,
+                    &lease,
+                    &pass_inputs,
+                )
             })
             .await
             {
@@ -337,6 +345,7 @@ async fn extract(
                         track_titles: fast.track_titles,
                     },
                     artwork,
+                    inputs,
                 },
             )
             .await;
@@ -397,26 +406,16 @@ async fn extract(
             // a listing error means the release's artwork cannot be read, so
             // the extraction aborts.
             let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
+            let inputs = Arc::new(FolderInputs::new(inner.diagnostics.clone()));
             let artwork = if let Some(analyzer) = analyzer {
-                match resolve_release_artwork(&inner.store, &release).await {
-                    Ok(images) => Artwork::read(
-                        analyzer,
-                        images
-                            .into_iter()
-                            .map(|(name, file)| ArtworkImage::Library { name, file })
-                            .collect(),
-                    ),
-                    Err(e) => {
-                        error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
-                        emit_aborted_signals(
-                            inner,
-                            extraction,
-                            disc_id,
-                            InternalFailure { detail: e.to_string() },
-                        );
-                        return;
-                    }
-                }
+                let images = resolve_release_artwork(&inner.store, &release, &inputs).await;
+                Artwork::read(
+                    analyzer,
+                    images
+                        .into_iter()
+                        .map(|(name, file)| ArtworkImage::Library { name, file })
+                        .collect(),
+                )
             } else {
                 Artwork::Absent
             };
@@ -436,6 +435,7 @@ async fn extract(
                         track_titles: Vec::new(),
                     },
                     artwork,
+                    inputs,
                 },
             )
             .await;
@@ -443,7 +443,8 @@ async fn extract(
     }
 }
 
-/// The fast pass, or why it panicked or the folder's files do not read.
+/// The fast pass, or why it panicked or the folder's audio facts do not
+/// read.
 async fn run_fast_pass_blocking<F>(
     diagnostics: &bae_diagnostics::Diagnostics,
     task: F,
@@ -456,7 +457,7 @@ where
         .await
         .map_err(|failed| failed.to_string())?;
     pass.map_err(|error| {
-        error!("signals: the folder cannot be read: {error}; aborting extraction");
+        error!("signals: the folder's audio cannot be read: {error}; aborting extraction");
         error.to_string()
     })
 }
@@ -478,6 +479,10 @@ struct Gathered {
 struct ExtractionInputs {
     gathered: Gathered,
     artwork: Artwork,
+    /// The reads of the inputs, which what was gathered came from and the
+    /// artwork is read through. A reading that left one out is not kept, so
+    /// the next run reads that input again.
+    inputs: Arc<FolderInputs>,
 }
 
 /// What the pass does with the candidate's artwork.
@@ -533,7 +538,7 @@ fn emit_aborted_signals(
                 text_pool: Vec::new(),
             },
             audio: AudioFacts::default(),
-            artwork: ArtworkScan::Failed { failure, read: 0, total: 0 },
+            artwork: ArtworkScan::Failed { failure },
         },
     );
 }

@@ -130,13 +130,14 @@ pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
 pub(crate) fn read_audio(
     files: &CategorizedFiles,
     lease: &coven::FileLease,
+    inputs: &crate::left_out::FolderInputs,
 ) -> Result<bae_catalogs::reading::ReadAudio, ImportError> {
     let durations = crate::probe::source_durations(files)?;
     let lengths = bae_catalogs::reading::MeasuredLengths::new(audio_durations(files, &durations)?)
         .ok_or_else(|| ImportError::Internal {
             detail: "a candidate with no audio has nothing to read a release against".to_string(),
         })?;
-    Ok(crate::rip_reading::read_rip_artifacts(files, lease)?.read_audio(lengths))
+    Ok(crate::rip_reading::read_rip_artifacts(files, lease, inputs).read_audio(lengths))
 }
 
 /// The candidate's effective audio rows in mapping order, reduced to the

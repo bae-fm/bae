@@ -574,7 +574,7 @@ fn a_read_tells_tags_that_do_not_parse_from_a_file_that_cannot_be_read() {
 
     assert!(matches!(garbage_read, Err(TagReadFailure::Unparseable(_))), "{garbage_read:?}");
     assert!(
-        matches!(&missing_read, Err(TagReadFailure::Fault(detail)) if detail.contains("02.flac")),
+        matches!(&missing_read, Err(TagReadFailure::Fault { detail, .. }) if detail.contains("02.flac")),
         "{missing_read:?}"
     );
 }

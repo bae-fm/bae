@@ -292,10 +292,21 @@ impl Diagnostics {
     /// operation names what broke; `error` is written out in full, causes and
     /// all.
     pub fn report_bug(&self, operation: &str, error: &dyn fmt::Display) {
-        let detail = error.to_string();
-        tracing::error!(operation, "bug: {detail}");
+        self.report_bug_logged_as(operation, error, error);
+    }
+
+    /// [`Self::report_bug`] for an error whose text can't all leave the
+    /// device: the log says `logged`, and the crash reporter is told
+    /// `reported`.
+    pub fn report_bug_logged_as(
+        &self,
+        operation: &str,
+        logged: &dyn fmt::Display,
+        reported: &dyn fmt::Display,
+    ) {
+        tracing::error!(operation, "bug: {logged}");
         if let Some(bugs) = &self.bugs {
-            bugs.report(operation, &detail);
+            bugs.report(operation, &reported.to_string());
         }
     }
 

@@ -112,10 +112,11 @@ impl ImportServiceHandle {
     ) -> Result<bae_catalogs::reading::ReadAudio, crate::ImportError> {
         let lease = bae_store::lease_one(&self.services.files).await;
         let files = files.clone();
+        let inputs = crate::left_out::FolderInputs::new(self.services.diagnostics.clone());
         self.services
             .diagnostics
             .blocking("read a candidate's audio", move || {
-                crate::audio_layout::read_audio(&files, &lease)
+                crate::audio_layout::read_audio(&files, &lease, &inputs)
             })
             .await?
     }

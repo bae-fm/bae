@@ -640,9 +640,10 @@ impl CountingFileTagReader {
             reads: std::sync::atomic::AtomicUsize::new(0),
             fail_on_read: Some((
                 fail_on_read,
-                crate::file_tag_reader::TagReadFailure::Fault(format!(
-                    "fixture tag read {fail_on_read} failed"
-                )),
+                crate::file_tag_reader::TagReadFailure::Fault {
+                    detail: format!("fixture tag read {fail_on_read} failed"),
+                    kind: std::io::ErrorKind::Other,
+                },
             )),
             first_read: None,
             embedded_cover: None,

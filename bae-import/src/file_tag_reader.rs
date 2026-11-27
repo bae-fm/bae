@@ -37,9 +37,9 @@ pub(crate) enum TagReadFailure {
     /// of the same bytes finds again.
     Unparseable(String),
     /// The file could not be read: a fault of reading it then, such as a
-    /// share that went away, which says nothing of the file. The text names
-    /// the file.
-    Fault(String),
+    /// share that went away, which says nothing of the file. `detail` names
+    /// the file, and `kind` is the I/O error's.
+    Fault { detail: String, kind: std::io::ErrorKind },
 }
 
 pub(crate) struct LoftyFileTagReader;
@@ -54,8 +54,9 @@ impl FileTagReader for LoftyFileTagReader {
     )]
     fn read(&self, path: &Path, place: LeasePlace) -> Result<FileTagRead, TagReadFailure> {
         let file_type = FileType::from_path(path);
-        let mut file = place.open(path).map_err(|error| {
-            TagReadFailure::Fault(format!("failed to open {}: {error}", path.display()))
+        let mut file = place.open(path).map_err(|error| TagReadFailure::Fault {
+            detail: format!("failed to open {}: {error}", path.display()),
+            kind: error.kind(),
         })?;
         let mut reader = BufReader::new(&mut *file);
         let parsed = parse(&mut reader, path, file_type)?;
@@ -183,10 +184,10 @@ fn parse_failure(path: &Path, error: &lofty::error::FileParseError) -> TagReadFa
     while let Some(error) = cause {
         if let Some(io) = error.downcast_ref::<std::io::Error>() {
             if io.kind() != std::io::ErrorKind::UnexpectedEof {
-                return TagReadFailure::Fault(format!(
-                    "failed to read tags from {}: {chain}",
-                    path.display()
-                ));
+                return TagReadFailure::Fault {
+                    detail: format!("failed to read tags from {}: {chain}", path.display()),
+                    kind: io.kind(),
+                };
             }
         }
         cause = error.source();
@@ -294,8 +295,9 @@ fn legacy_id3v1_text(
     reader: &mut BufReader<&mut File>,
     path: &Path,
 ) -> Result<LegacyTagText, TagReadFailure> {
-    let fault = |action: &str, error: std::io::Error| {
-        TagReadFailure::Fault(format!("failed to {action} {}: {error}", path.display()))
+    let fault = |action: &str, error: std::io::Error| TagReadFailure::Fault {
+        detail: format!("failed to {action} {}: {error}", path.display()),
+        kind: error.kind(),
     };
     reader.seek(SeekFrom::End(-128)).map_err(|error| match error.kind() {
         std::io::ErrorKind::InvalidInput => TagReadFailure::Unparseable(

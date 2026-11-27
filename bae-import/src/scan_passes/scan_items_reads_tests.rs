@@ -404,10 +404,10 @@ impl crate::file_tag_reader::FileTagReader for VanishedShareTagReader {
         path: &Path,
         _place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
-        Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
-            "failed to read tags from {}: the share went away",
-            path.display()
-        )))
+        Err(crate::file_tag_reader::TagReadFailure::Fault {
+            detail: format!("failed to read tags from {}: the share went away", path.display()),
+            kind: std::io::ErrorKind::Other,
+        })
     }
 }
 

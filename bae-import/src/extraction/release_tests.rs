@@ -1,4 +1,5 @@
 use super::*;
+use crate::left_out::FolderInputs;
 use bae_store::Store;
 use bae_util::test_files::TestFolder;
 use std::sync::Arc;
@@ -124,30 +125,44 @@ async fn identity_of(
     db: &Store,
     release_id: &str,
 ) -> Result<ReleaseIdentity, ReleaseIdentityError> {
+    identity_reporting_to(db, release_id, bae_diagnostics::Diagnostics::noop()).await
+}
+
+/// [`identity_of`], reporting what it leaves out to `diagnostics`.
+async fn identity_reporting_to(
+    db: &Store,
+    release_id: &str,
+    diagnostics: bae_diagnostics::Diagnostics,
+) -> Result<ReleaseIdentity, ReleaseIdentityError> {
     let records = bae_records::test_fixtures::test_records(db);
     resolve_release_identity(
         &crate::tables::ImportTables::new(db.clone()),
         &records,
         db.test_sources().files(),
-        &bae_diagnostics::Diagnostics::noop(),
+        &diagnostics,
         release_id,
         &release_with_files(&records, release_id).await,
     )
     .await
 }
 
-/// The coven failure a reading of a rip file failed with.
-fn file_read_failure(
-    result: Result<ReleaseIdentity, ReleaseIdentityError>,
-) -> coven::FileReadError {
-    match result {
-        Err(ReleaseIdentityError::Document(crate::LibraryDocumentError::Coven {
-            error: bae_store::DbError::FileRead(error),
-            ..
-        })) => *error,
-        Err(error) => panic!("the reading failed otherwise: {error}"),
-        Ok(_) => panic!("the reading succeeded"),
-    }
+/// Re-identify's reading of the release `release_id` in `db`, whose rip log
+/// is left out: the reading succeeds with no Disc ID and no proof, and the
+/// crash reporter hears of the log without its name.
+async fn assert_reads_without_its_rip_log(db: &Store, release_id: &str) {
+    let bugs = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+
+    let identity = identity_reporting_to(db, release_id, diagnostics)
+        .await
+        .expect("the reading goes on without the log");
+
+    assert_eq!(identity.rip.origin.source, None);
+    assert_eq!(identity.rip.disc_id, crate::rip_reading::DiscIdReading::Absent);
+    let reports = bugs.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert_eq!(reports[0].0, "identify: library release file");
+    assert!(!reports[0].1.contains("test_album"), "{reports:?}");
 }
 
 /// An image of the release whose original is gone fails its read with coven's
@@ -169,9 +184,12 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
     records.insert_file_for_test(&file, &original).await.unwrap();
     temp.remove(&original);
 
-    let images = resolve_release_artwork(&db, &release_with_files(&records, &release_id).await)
-        .await
-        .unwrap();
+    let images = resolve_release_artwork(
+        &db,
+        &release_with_files(&records, &release_id).await,
+        &FolderInputs::new(bae_diagnostics::Diagnostics::noop()),
+    )
+    .await;
     let (_, image) = &images[0];
     let result = read_library_image(&db, &records, db.test_sources().files(), image).await;
 
@@ -214,9 +232,12 @@ async fn the_artwork_listing_names_each_image_and_coven_reads_its_bytes() {
         .await
         .unwrap();
 
-    let images = resolve_release_artwork(&db, &release_with_files(&records, &release_id).await)
-        .await
-        .unwrap();
+    let images = resolve_release_artwork(
+        &db,
+        &release_with_files(&records, &release_id).await,
+        &FolderInputs::new(bae_diagnostics::Diagnostics::noop()),
+    )
+    .await;
 
     assert_eq!(images.len(), 1, "one image and no cover: {images:?}");
     assert_eq!(images[0].0, std::path::Path::new("Scans/back.jpg"));
@@ -280,10 +301,10 @@ async fn test_resolve_release_identity_local() {
     );
 }
 
-/// A rip log whose original changed since its import fails the reading with
-/// coven's reason, rather than reading the changed bytes.
+/// A rip log whose original changed since its import is left out, rather than
+/// its changed bytes read.
 #[tokio::test]
-async fn a_changed_rip_log_original_fails_the_reading() {
+async fn a_changed_rip_log_original_is_left_out_of_the_reading() {
     let temp = TestFolder::new();
     let (db, release_id) = library_with_release(&temp).await;
     let records = bae_records::test_fixtures::test_records(&db);
@@ -292,18 +313,12 @@ async fn a_changed_rip_log_original_fails_the_reading() {
     insert_two_tracks(&records, &release_id).await;
     temp.write(&log, "a log someone rewrote");
 
-    let failure = file_read_failure(identity_of(&db, &release_id).await);
-
-    assert!(
-        matches!(failure, coven::FileReadError::UserFileChanged { .. }),
-        "coven reports the original changed: {failure}"
-    );
+    assert_reads_without_its_rip_log(&db, &release_id).await;
 }
 
-/// A rip log whose original is gone fails the reading with coven's reason,
-/// rather than being skipped.
+/// A rip log whose original is gone is left out of the reading.
 #[tokio::test]
-async fn a_missing_rip_log_original_fails_the_reading() {
+async fn a_missing_rip_log_original_is_left_out_of_the_reading() {
     let temp = TestFolder::new();
     let (db, release_id) = library_with_release(&temp).await;
     let records = bae_records::test_fixtures::test_records(&db);
@@ -312,12 +327,7 @@ async fn a_missing_rip_log_original_fails_the_reading() {
     insert_two_tracks(&records, &release_id).await;
     temp.remove(&log);
 
-    let failure = file_read_failure(identity_of(&db, &release_id).await);
-
-    assert!(
-        matches!(failure, coven::FileReadError::UserFileMissing { .. }),
-        "coven reports the original missing: {failure}"
-    );
+    assert_reads_without_its_rip_log(&db, &release_id).await;
 }
 
 /// A release another device imported and stored in the cloud has no
@@ -385,10 +395,11 @@ async fn folder_and_library_disc_ids_with_decisions(
     let disc_ids = |reading: crate::rip_reading::RipReading| {
         reading.disc_id.computed().into_iter().map(|disc| disc.disc_id).collect::<Vec<_>>()
     };
-    let scanned = disc_ids(
-        crate::rip_reading::read_rip_artifacts(&categorized, &bae_util::test_files::lease())
-            .unwrap(),
-    );
+    let scanned = disc_ids(crate::rip_reading::read_rip_artifacts(
+        &categorized,
+        &bae_util::test_files::lease(),
+        &FolderInputs::new(bae_diagnostics::Diagnostics::noop()),
+    ));
 
     let library = TestFolder::new();
     let (db, release_id) = library_with_release(&library).await;

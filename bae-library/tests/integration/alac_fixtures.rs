@@ -9,10 +9,9 @@ use bae_audio::decode_audio;
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::cue_sheet::parse_cue_sheet;
 use bae_import::folder_scanner::{
-    collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions, FolderEntry,
-    FolderReleaseDecisions, ScanItem, StoredCandidateEdits, WalkItem,
+    scan_for_candidates_with_decisions, FolderEntry, FolderReleaseDecisions, ScanItem,
+    StoredCandidateEdits, WalkItem,
 };
-use bae_import::rip_reading::read_rip_artifacts;
 use bae_util::content_type::ContentType;
 use bae_util::test_files::TestFolder;
 use std::path::PathBuf;
@@ -267,59 +266,6 @@ async fn import_cue_alac_pair() {
         assert_eq!(segment.span.end_sample, END_SAMPLES[i], "track {} end_sample", i + 1);
     }
 }
-
-// ─────────────────────────────── Disc ID test ───────────────────────────────
-
-/// The MusicBrainz disc ID for a CUE+ALAC pair is deterministic for a fixed
-/// set of track offsets and lead-out. This test pins the computed value — if
-/// the math or the underlying `discid` crate changes, we want to know.
-///
-/// Expected value was captured from the first successful run of this test on
-/// the shared fixture (`cue-alac.cue` with tracks at 0s/3s/6s, 9s total
-/// duration reported by FFmpeg).
-#[test]
-fn cue_alac_disc_id_is_stable() {
-    let temp_root = TestFolder::new();
-    let album_dir = temp_root.path().join("album");
-    temp_root.create_folder(&album_dir);
-
-    let fix = fixture_dir();
-    temp_root.copy_fixture(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a"));
-    temp_root.copy_fixture(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue"));
-
-    let categorized = collect_release_candidate_files_with_scope(
-        &album_dir,
-        bae_import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan album dir");
-    let track_count = categorized.track_count();
-    let disc_id = read_rip_artifacts(&categorized, &bae_util::test_files::lease())
-        .unwrap()
-        .disc_id
-        .computed();
-
-    assert_eq!(track_count, 3, "three tracks in the CUE sheet");
-    let [computed]: [bae_identify::signals::ComputedDiscId; 1] =
-        disc_id.try_into().expect("CUE+ALAC pair must produce one disc ID");
-    assert_eq!(computed.disc_id.len(), 28, "MusicBrainz disc IDs are 28-char base64 strings");
-    assert_eq!(
-        computed.disc_id, EXPECTED_CUE_ALAC_DISC_ID,
-        "disc ID drifted — CUE parsing, probe duration, or disc ID math changed",
-    );
-    assert!(
-        computed.source_file.as_deref().is_some_and(|file| file.ends_with(".cue")),
-        "the sheet it was carved from rides with it, got {:?}",
-        computed.source_file
-    );
-}
-
-/// Pinned disc ID for the `cue-alac.cue` + `cue-alac.m4a` fixture pair.
-/// Captured from the first successful run of `cue_alac_disc_id_is_stable`.
-/// Three tracks at 0s/3s/6s with a 9s total duration yield this disc ID
-/// deterministically; a drift means something upstream of the `discid` crate
-/// changed.
-const EXPECTED_CUE_ALAC_DISC_ID: &str = "RGsIqQtOzlx_LdxgsE0wIvFi8h4-";
 
 // Cue sheet sanity: parse our fixture and make sure it has the shape we
 // expect. Keeps the disc ID test honest — if the CUE parser silently

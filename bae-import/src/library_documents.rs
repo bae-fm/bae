@@ -4,6 +4,7 @@
 //! document's bytes, so nothing is copied to a folder first.
 
 use crate::cue_sheet::{parse_cue_content, CueSheet, CueSheetError};
+use crate::left_out::{FolderInputs, InputRead, LeftOut};
 use bae_records::{DbFile, Records};
 use bae_store::DbError;
 use bae_util::text_encoding::{check_document_size, decode_text, DecodedText};
@@ -33,6 +34,35 @@ impl From<LibraryDocumentError> for crate::ImportError {
     }
 }
 
+impl From<LibraryDocumentError> for LeftOut {
+    fn from(error: LibraryDocumentError) -> Self {
+        let logged = error.to_string();
+        match error {
+            LibraryDocumentError::Coven { error, .. } => {
+                Self::library(logged, bae_diagnostics::database_category(&error))
+            }
+            LibraryDocumentError::Refused { error, .. } => {
+                Self::of_io(logged, error.kind(), error.raw_os_error())
+            }
+        }
+    }
+}
+
+/// The whole of `file`, read through coven in one place of `lease`.
+async fn read_whole(
+    records: &Records,
+    lease: &coven::FileLease,
+    file: &DbFile,
+) -> Result<Vec<u8>, LibraryDocumentError> {
+    let name = &file.original_filename;
+    let coven = |error: DbError| LibraryDocumentError::Coven { name: name.clone(), error };
+    let stream = records.open_release_file(file.file, lease).await.map_err(coven)?;
+    let size = stream.plaintext_size();
+    check_document_size(name, size)
+        .map_err(|error| LibraryDocumentError::Refused { name: name.clone(), error })?;
+    stream.read_at(0, size).await.map_err(|error| coven(error.into()))
+}
+
 /// The bytes of some of a library release's files, by the path each file's
 /// scanned file has: its name in the release.
 pub(crate) struct LibraryDocuments {
@@ -50,16 +80,31 @@ impl LibraryDocuments {
     ) -> Result<Self, LibraryDocumentError> {
         let mut by_path = HashMap::new();
         for file in files.iter().copied() {
-            let name = &file.original_filename;
-            let coven = |error: DbError| LibraryDocumentError::Coven { name: name.clone(), error };
-            let stream = records.open_release_file(file.file, lease).await.map_err(coven)?;
-            let size = stream.plaintext_size();
-            check_document_size(name, size)
-                .map_err(|error| LibraryDocumentError::Refused { name: name.clone(), error })?;
-            let bytes = stream.read_at(0, size).await.map_err(|error| coven(error.into()))?;
-            by_path.insert(PathBuf::from(name), bytes);
+            let bytes = read_whole(records, lease, file).await?;
+            by_path.insert(PathBuf::from(&file.original_filename), bytes);
         }
         Ok(Self { by_path })
+    }
+
+    /// [`Self::read`] for identification, which leaves out through `inputs`
+    /// each file it can't read and holds the others.
+    pub(crate) async fn read_to_identify(
+        records: &Records,
+        lease: &coven::FileLease,
+        files: &[&DbFile],
+        inputs: &FolderInputs,
+    ) -> Self {
+        let mut by_path = HashMap::new();
+        for file in files.iter().copied() {
+            let path = PathBuf::from(&file.original_filename);
+            match read_whole(records, lease, file).await {
+                Ok(bytes) => {
+                    by_path.insert(path, bytes);
+                }
+                Err(error) => inputs.leave_out(InputRead::LibraryFile, &path, error.into()),
+            }
+        }
+        Self { by_path }
     }
 
     fn bytes(&self, path: &Path) -> &[u8] {

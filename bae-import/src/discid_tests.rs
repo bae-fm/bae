@@ -6,20 +6,19 @@ use std::path::{Path, PathBuf};
 
 /// The disc ID one log file hashes to, decoded the way the extraction pass
 /// decodes it.
-fn discid_from_log_file(path: &Path) -> Result<String, std::io::Error> {
-    discid_from_log_text(
-        &bae_util::text_encoding::read_text_file(
-            &path.display().to_string(),
-            bae_util::test_files::open_in(bae_util::test_files::place(), path)?,
-        )?
-        .text,
-    )?
-    .ok_or_else(|| std::io::Error::other("the log holds no table of contents"))
+fn discid_from_log_file(path: &Path) -> Result<Option<String>, DiscIdError> {
+    let text = bae_util::text_encoding::read_text_file(
+        &path.display().to_string(),
+        bae_util::test_files::open_in(bae_util::test_files::place(), path)
+            .expect("the log should open"),
+    )
+    .expect("the log should read")
+    .text;
+    discid_from_log_text(&text)
 }
 
-fn assert_invalid_data(result: Result<String, std::io::Error>) {
-    let error = result.expect_err("out-of-range sector should return an error");
-    assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+fn assert_past_sector_range<T: std::fmt::Debug>(result: Result<T, DiscIdError>) {
+    assert!(matches!(result, Err(DiscIdError::PastSectorRange)), "{result:?}");
 }
 
 fn write_log_with_toc(folder: &TestFolder, end_sector: i32) -> PathBuf {
@@ -37,12 +36,17 @@ fn write_log_with_toc(folder: &TestFolder, end_sector: i32) -> PathBuf {
 
 #[test]
 fn discid_rejects_track_start_sector_that_overflows_pregap_offset() {
-    assert_invalid_data(discid_from_raw_offsets("LOG", &[i32::MAX], 100, "from test lead-out"));
+    assert_past_sector_range(discid_from_raw_offsets(
+        "LOG",
+        &[i32::MAX],
+        100,
+        "from test lead-out",
+    ));
 }
 
 #[test]
 fn discid_rejects_leadout_sector_that_overflows_pregap_offset() {
-    assert_invalid_data(discid_from_raw_offsets("LOG", &[0], i32::MAX, "from test lead-out"));
+    assert_past_sector_range(discid_from_raw_offsets("LOG", &[0], i32::MAX, "from test lead-out"));
 }
 
 #[test]
@@ -50,7 +54,7 @@ fn discid_from_log_rejects_end_sector_that_overflows_leadout_derivation() {
     let folder = TestFolder::new();
     let log_file = write_log_with_toc(&folder, i32::MAX);
 
-    assert_invalid_data(discid_from_log_file(&log_file));
+    assert_past_sector_range(discid_from_log_file(&log_file));
 }
 
 #[test]
@@ -78,7 +82,8 @@ fn test_extract_leadout_from_log() {
 #[test]
 fn test_discid_from_log_text() {
     let discid = discid_from_log_file(&fixture("logs/test_album.log"))
-        .expect("disc ID should compute from the LOG fixture");
+        .expect("disc ID should compute from the LOG fixture")
+        .expect("the LOG fixture holds a table of contents");
     assert_eq!(discid.len(), 28, "DiscID should be 28 characters");
     assert!(
         discid.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
@@ -332,11 +337,12 @@ fn a_file_without_a_measured_length_is_an_error() {
         "Album Title",
         vec![audio_cue_track(1, "01.flac"), audio_cue_track(2, "02.flac")],
     );
-    assert_invalid_data(calculate_mb_discid_from_cue(
+    let result = calculate_mb_discid_from_cue(
         &sheet,
         &[SheetAudioDuration { file_reference: "01.flac", duration_ms: 3 * 60 * 1000 }],
         "half measured",
-    ));
+    );
+    assert!(matches!(result, Err(DiscIdError::NoMeasuredLength { .. })), "{result:?}");
 }
 
 #[test]
@@ -474,8 +480,7 @@ fn extract_log_toc_sectors_fails_on_a_damaged_row_or_a_gap_in_track_numbers() {
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100  199",
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2  1:00.00  1:00.00  100  199\n3 | 2:00.00 | 1:00.00 | 200 | 299",
     ] {
-        let error = extract_log_toc_sectors(&toc(damaged)).expect_err(damaged);
-        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData, "{damaged}");
+        extract_log_toc_sectors(&toc(damaged)).expect_err(damaged);
     }
     // Track numbers that skip, repeat or start late.
     for numbered in [
@@ -484,6 +489,6 @@ fn extract_log_toc_sectors_fails_on_a_damaged_row_or_a_gap_in_track_numbers() {
         "2 | 0:00.00 | 1:00.00 | 0 | 99",
     ] {
         let error = extract_log_toc_sectors(&toc(numbered)).expect_err(numbered);
-        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData, "{numbered}");
+        assert!(matches!(error, DiscIdError::TrackOutOfPlace { .. }), "{numbered}: {error}");
     }
 }

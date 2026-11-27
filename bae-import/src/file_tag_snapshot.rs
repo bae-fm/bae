@@ -2,6 +2,7 @@
 
 use super::file_tag_reader::{FileTagRead, FileTagReader, TagReadFailure};
 use super::folder_scanner::ScannedFile;
+use super::left_out::{FolderInputs, InputRead, LeftOut};
 use super::track_numbers::TrackNumbers;
 use super::ImportError;
 use bae_catalogs::StoreMarker;
@@ -204,7 +205,46 @@ pub(crate) enum StoredCover {
 pub(crate) fn observe_audio_files(
     audio_files: &[ScannedFile],
 ) -> Result<Vec<FileObservation>, ImportError> {
-    audio_files.iter().map(observe_file).collect()
+    Ok(audio_files.iter().map(observe_file).collect::<Result<_, _>>()?)
+}
+
+/// Why a read of one file's tags failed at the file itself.
+#[derive(Debug)]
+pub(crate) enum TagFileError {
+    /// The file could not be looked at.
+    Stat(crate::folder_scanner::FolderScanError),
+    /// It is not the file the scan read.
+    Changed(String),
+    /// Reading it failed, for an I/O error of `kind`. `detail` names the file.
+    Fault { detail: String, kind: std::io::ErrorKind },
+}
+
+impl std::fmt::Display for TagFileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Stat(error) => error.fmt(f),
+            Self::Changed(detail) | Self::Fault { detail, .. } => f.write_str(detail),
+        }
+    }
+}
+
+impl From<TagFileError> for ImportError {
+    fn from(error: TagFileError) -> Self {
+        Self::FileTags { detail: error.to_string() }
+    }
+}
+
+impl From<TagFileError> for LeftOut {
+    fn from(error: TagFileError) -> Self {
+        let logged = error.to_string();
+        match error {
+            TagFileError::Stat(crate::folder_scanner::FolderScanError::Io { source, .. }) => {
+                Self::of_io(logged, source.kind(), source.raw_os_error())
+            }
+            TagFileError::Stat(_) | TagFileError::Changed(_) => Self::changed(logged),
+            TagFileError::Fault { kind, .. } => Self::of_io(logged, kind, None),
+        }
+    }
 }
 
 /// `file`'s tags as `reader` reads them, or why they do not parse, with the
@@ -215,7 +255,7 @@ pub(crate) fn read_observed(
     file: &ScannedFile,
     reader: &dyn FileTagReader,
     place: LeasePlace,
-) -> Result<(FileObservation, Result<FileTagRead, String>), ImportError> {
+) -> Result<(FileObservation, Result<FileTagRead, String>), TagFileError> {
     let before = observe_file(file)?;
     let read = reader.read(&file.version.path, place);
     let after = observe_file(file)?;
@@ -225,7 +265,7 @@ pub(crate) fn read_observed(
     match read {
         Ok(read) => Ok((before, Ok(read))),
         Err(TagReadFailure::Unparseable(reason)) => Ok((before, Err(reason))),
-        Err(TagReadFailure::Fault(detail)) => Err(ImportError::FileTags { detail }),
+        Err(TagReadFailure::Fault { detail, kind }) => Err(TagFileError::Fault { detail, kind }),
     }
 }
 
@@ -237,22 +277,36 @@ pub(crate) struct DeliveredFileTags {
 }
 
 /// The tags of each of `audio_files` as `reader` reads them now, in their
-/// order. `reader` opens each file in a place of `lease`, one after the
+/// order, for identification. A file whose read fails at the file itself is
+/// left out through `inputs`: it states nothing, as one whose tags do not
+/// parse does. `reader` opens each file in a place of `lease`, one after the
 /// other. Call it on the blocking pool, never in an async task.
 pub(crate) fn read_delivered_file_tags(
     audio_files: &[ScannedFile],
     reader: &dyn FileTagReader,
     lease: &FileLease,
-) -> Result<Vec<DeliveredFileTags>, ImportError> {
+    inputs: &FolderInputs,
+) -> Vec<DeliveredFileTags> {
     audio_files
         .iter()
         .map(|file| {
-            let (observation, read) = read_observed(file, reader, lease.place_blocking())?;
-            let (tags, delivery) = match read {
-                Ok(read) => (TagReading::Stated(read.tags), read.delivery),
-                Err(reason) => (TagReading::Unparseable(reason), DeliveryTags::default()),
+            let read = inputs.read(InputRead::AudioTags, &file.version.path, || {
+                Ok(read_observed(file, reader, lease.place_blocking())?)
+            });
+            let (observation, tags, delivery) = match read {
+                Some((observation, Ok(read))) => {
+                    (observation, TagReading::Stated(read.tags), read.delivery)
+                }
+                Some((observation, Err(reason))) => {
+                    (observation, TagReading::Unparseable(reason), DeliveryTags::default())
+                }
+                None => (
+                    FileObservation::scanned(file),
+                    TagReading::Unparseable("the file could not be read".to_string()),
+                    DeliveryTags::default(),
+                ),
             };
-            Ok(DeliveredFileTags { fact: FileTagFact { observation, tags }, delivery })
+            DeliveredFileTags { fact: FileTagFact { observation, tags }, delivery }
         })
         .collect()
 }
@@ -289,22 +343,19 @@ pub(crate) fn extract_file_tag_snapshot(
 
 /// `file` as it stands now, refused when its size is no longer the scanned
 /// one.
-fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
-    let observation = FileObservation::of(file)
-        .map_err(|error| ImportError::FileTags { detail: error.to_string() })?;
+fn observe_file(file: &ScannedFile) -> Result<FileObservation, TagFileError> {
+    let observation = FileObservation::of(file).map_err(TagFileError::Stat)?;
     if observation.size != file.version.size {
         return Err(changed_file_error(file));
     }
     Ok(observation)
 }
 
-fn changed_file_error(file: &ScannedFile) -> ImportError {
-    ImportError::FileTags {
-        detail: format!(
-            "{} changed after its import candidate was scanned; rescan before reading file tags",
-            file.version.path.display()
-        ),
-    }
+fn changed_file_error(file: &ScannedFile) -> TagFileError {
+    TagFileError::Changed(format!(
+        "{} changed after its import candidate was scanned; rescan before reading file tags",
+        file.version.path.display()
+    ))
 }
 
 #[cfg(test)]

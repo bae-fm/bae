@@ -5,6 +5,19 @@ use bae_util::test_files::read_fixture;
 use bae_util::test_files::TestFolder;
 use std::path::{Path, PathBuf};
 
+/// The fast pass over `categorized`, which reports to nobody.
+fn gather(
+    folders: &[PathBuf],
+    categorized: &crate::folder_scanner::CategorizedFiles,
+) -> Result<FastPass, crate::ImportError> {
+    gather_non_ocr_sources(
+        folders,
+        categorized,
+        &bae_util::test_files::lease(),
+        &crate::left_out::FolderInputs::new(bae_diagnostics::Diagnostics::noop()),
+    )
+}
+
 #[test]
 fn enumerate_filename_inputs_skips_all_audio_and_cue() {
     use crate::folder_scanner::{CandidateFile, FileRole, ScannedFile};
@@ -88,11 +101,13 @@ fn test_categorized_yields_discid_and_track_count() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    let disc_id =
-        crate::rip_reading::read_rip_artifacts(&categorized, &bae_util::test_files::lease())
-            .unwrap()
-            .disc_id
-            .computed();
+    let disc_id = crate::rip_reading::read_rip_artifacts(
+        &categorized,
+        &bae_util::test_files::lease(),
+        &crate::left_out::FolderInputs::new(bae_diagnostics::Diagnostics::noop()),
+    )
+    .disc_id
+    .computed();
     let track_count = categorized.track_count();
 
     assert_eq!(disc_id.len(), 1, "LOG fixture should produce a Disc ID");
@@ -124,8 +139,7 @@ fn non_utf8_cue_is_decoded_not_dropped() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
-        .expect("scanned fixture audio has complete timing");
+    let pass = gather(&[folder], &files).expect("scanned fixture audio has complete timing");
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 
     assert!(texts.contains(&"Artist Alpha"), "non-UTF-8 CUE dropped entirely; got {texts:?}",);
@@ -155,8 +169,7 @@ fn a_folder_whose_name_is_not_utf8_gives_its_name_and_bracketed_catalog() {
     .expect("candidate scan");
     let folder = tmp.path().join(std::ffi::OsStr::from_bytes(b"Caf\xE9 [LABELA071]"));
 
-    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
-        .expect("scanned fixture audio has complete timing");
+    let pass = gather(&[folder], &files).expect("scanned fixture audio has complete timing");
 
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
     assert!(texts.contains(&r"Caf\xE9 [LABELA071]"), "the folder's name is dropped: {texts:?}");
@@ -196,8 +209,7 @@ fn the_audio_s_tags_feed_the_text_and_carry_their_isrcs() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
-        .expect("the fixture audio times");
+    let pass = gather(&[folder], &files).expect("the fixture audio times");
 
     let tagged: Vec<&str> = pass
         .lines
@@ -227,9 +239,7 @@ fn origin_of(comments: &[(&str, &str)], extra: &[(&str, &[u8])]) -> bae_catalogs
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
-        .expect("the fixture audio times")
-        .origin
+    gather(&[folder], &files).expect("the fixture audio times").origin
 }
 
 const DELIVERED: &[(&str, &str)] = &[
@@ -258,6 +268,33 @@ fn a_label_s_delivery_set_on_every_track_proves_a_download() {
         )
         .source,
         Some(AudioSource::Download(DownloadProof::DeliverySet))
+    );
+}
+
+/// A rip log that can't be read says no disc was read, as in a folder without
+/// it, so the tags' delivery set proves a download.
+#[test]
+fn a_rip_log_left_out_does_not_outweigh_the_tags() {
+    let tmp = TestFolder::new();
+    let folder = tmp.path().join("Album Title");
+    tmp.create_folder(&folder);
+    for name in ["01.flac", "02.flac"] {
+        tagged_flac(&tmp, &folder.join(name), DELIVERED);
+    }
+    tmp.write(folder.join("rip.log"), b"not a log");
+    let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        &folder,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("candidate scan");
+    tmp.remove(folder.join("rip.log"));
+
+    let pass = gather(&[folder], &files).expect("the pass goes on without the log");
+
+    assert_eq!(
+        pass.origin.source,
+        Some(bae_catalogs::AudioSource::Download(bae_catalogs::DownloadProof::DeliverySet))
     );
 }
 
@@ -326,8 +363,7 @@ fn each_track_is_titled_by_its_tag_or_its_file_name() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
-        .expect("the fixture audio times");
+    let pass = gather(&[folder], &files).expect("the fixture audio times");
 
     assert_eq!(pass.track_titles, vec!["Song One", "Song Two"]);
 }
@@ -351,9 +387,7 @@ fn unnumbered_files_give_no_titles() {
             &crate::folder_scanner::StoredCandidateEdits::none(),
         )
         .expect("candidate scan");
-        gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
-            .expect("the fixture audio times")
-            .track_titles
+        gather(&[folder], &files).expect("the fixture audio times").track_titles
     };
     assert!(titles_of(&[("Song A.flac", &[]), ("Song B.flac", &[])]).is_empty());
     assert!(titles_of(&[
@@ -382,10 +416,10 @@ fn fixture_flac() -> Vec<u8> {
     read_fixture(flac_dir().join("01 Test Track 1.flac"))
 }
 
-/// A text file that cannot be read fails the pass: its lines would be clues
-/// the pass never saw.
+/// A text file that cannot be read is left out: the pass reads the others and
+/// says it did not read every input.
 #[test]
-fn a_text_file_that_cannot_be_read_fails_the_pass() {
+fn a_text_file_that_cannot_be_read_is_left_out_of_the_pass() {
     let tmp = TestFolder::new();
     let dir = tmp.path();
     for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
@@ -399,15 +433,18 @@ fn a_text_file_that_cannot_be_read_fails_the_pass() {
     )
     .unwrap();
     let folders = [dir.to_path_buf()];
-    gather_non_ocr_sources(&folders, &categorized, &bae_util::test_files::lease())
-        .expect("the notes read while they are there");
+    let whole = gather(&folders, &categorized).expect("the pass reads");
 
     tmp.remove(dir.join("notes.txt"));
-    let error = gather_non_ocr_sources(&folders, &categorized, &bae_util::test_files::lease())
-        .err()
-        .expect("a text file that left the folder fails the pass");
-    assert!(
-        matches!(error, crate::ImportError::DocumentRead { ref file, .. } if file.ends_with("notes.txt")),
-        "{error:?}"
-    );
+    let (inputs, bugs) = crate::left_out::reporting_inputs();
+    let pass =
+        gather_non_ocr_sources(&folders, &categorized, &bae_util::test_files::lease(), &inputs)
+            .expect("the pass goes on without the text file");
+
+    assert!(!inputs.all_read());
+    assert!(pass.lines.iter().all(|line| !line.text.contains("LBL-1001")));
+    assert_eq!(pass.track_titles, whole.track_titles);
+    let operations: Vec<String> =
+        bugs.reports().into_iter().map(|(operation, _)| operation).collect();
+    assert_eq!(operations, vec!["identify: text file".to_string()]);
 }

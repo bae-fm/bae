@@ -10,8 +10,37 @@ use tracing::{debug, trace, warn};
 
 const CD_PREGAP_SECTORS: i32 = 150;
 
-fn invalid_discid_data(message: impl Into<String>) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::InvalidData, message.into())
+/// Why a disc a log or sheet describes can't be hashed to its Disc ID.
+#[derive(Debug, thiserror::Error)]
+pub enum DiscIdError {
+    #[error("LOG TOC row does not read: {row}")]
+    RowDoesNotRead { row: String },
+    #[error("LOG TOC lists track {found} where track {expected} belongs: {row}")]
+    TrackOutOfPlace { found: u32, expected: usize, row: String },
+    #[error("CUE has no playable audio tracks")]
+    NoPlayableTracks,
+    #[error("CUE FILE {file_reference:?} has no measured length")]
+    NoMeasuredLength { file_reference: String },
+    #[error("a track or the lead-out is past the sector range")]
+    PastSectorRange,
+    #[error("Failed to calculate DiscID: {0}")]
+    Hash(String),
+}
+
+impl DiscIdError {
+    /// The reason with no row of a log and no file name.
+    pub(crate) fn reported(&self) -> String {
+        match self {
+            Self::RowDoesNotRead { .. } => "a table of contents row does not read".to_string(),
+            Self::TrackOutOfPlace { found, expected, .. } => {
+                format!("the table of contents lists track {found} where track {expected} belongs")
+            }
+            Self::NoMeasuredLength { .. } => {
+                "a file the sheet names has no measured length".to_string()
+            }
+            Self::NoPlayableTracks | Self::PastSectorRange | Self::Hash(_) => self.to_string(),
+        }
+    }
 }
 
 /// Whether a line is a track row of a TOC table: its first cell, before a
@@ -55,7 +84,7 @@ fn parse_log_toc_row(line: &str) -> Option<(u32, i32, i32)> {
 /// as valid as the right one. `None` when the log holds no track row, which is
 /// a log that states no disc.
 /// Row format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
-fn extract_log_toc_sectors(log_content: &str) -> Result<Option<Vec<(i32, i32)>>, std::io::Error> {
+fn extract_log_toc_sectors(log_content: &str) -> Result<Option<Vec<(i32, i32)>>, DiscIdError> {
     trace!("Parsing LOG file TOC");
     let table = log_content
         .lines()
@@ -65,13 +94,15 @@ fn extract_log_toc_sectors(log_content: &str) -> Result<Option<Vec<(i32, i32)>>,
     let mut track_sectors = Vec::new();
     for line in table.filter(|line| is_log_toc_row(line)) {
         let Some((track_number, start_sector, end_sector)) = parse_log_toc_row(line) else {
-            return Err(invalid_discid_data(format!("LOG TOC row does not read: {line}")));
+            return Err(DiscIdError::RowDoesNotRead { row: line.to_string() });
         };
         let expected = track_sectors.len() + 1;
         if usize::try_from(track_number) != Ok(expected) {
-            return Err(invalid_discid_data(format!(
-                "LOG TOC lists track {track_number} where track {expected} belongs: {line}"
-            )));
+            return Err(DiscIdError::TrackOutOfPlace {
+                found: track_number,
+                expected,
+                row: line.to_string(),
+            });
         }
         track_sectors.push((start_sector, end_sector));
         trace!("  Track {} sectors: start={}, end={}", track_number, start_sector, end_sector);
@@ -93,18 +124,13 @@ fn discid_from_raw_offsets(
     raw_track_sectors: &[i32],
     raw_leadout_sector: i32,
     leadout_source: &str,
-) -> Result<String, std::io::Error> {
+) -> Result<String, DiscIdError> {
     let track_offsets: Vec<i32> = raw_track_sectors
         .iter()
-        .map(|sector| {
-            sector.checked_add(CD_PREGAP_SECTORS).ok_or_else(|| {
-                invalid_discid_data("track start sector out of range for DiscID calculation")
-            })
-        })
+        .map(|sector| sector.checked_add(CD_PREGAP_SECTORS).ok_or(DiscIdError::PastSectorRange))
         .collect::<Result<_, _>>()?;
-    let lead_out_sectors = raw_leadout_sector.checked_add(CD_PREGAP_SECTORS).ok_or_else(|| {
-        invalid_discid_data("lead-out sector out of range for DiscID calculation")
-    })?;
+    let lead_out_sectors =
+        raw_leadout_sector.checked_add(CD_PREGAP_SECTORS).ok_or(DiscIdError::PastSectorRange)?;
     debug!("{method_label} raw track start sectors before adding 150: {:?}", raw_track_sectors);
     debug!("{method_label} raw lead-out sector {leadout_source}: {raw_leadout_sector}");
     debug!(
@@ -121,8 +147,8 @@ fn discid_from_raw_offsets(
         offsets
     );
 
-    let mb_discid_str = hash::musicbrainz_discid(&offsets)
-        .map_err(|e| invalid_discid_data(format!("Failed to calculate DiscID: {e}")))?;
+    let mb_discid_str =
+        hash::musicbrainz_discid(&offsets).map_err(|e| DiscIdError::Hash(e.to_string()))?;
     debug!("MusicBrainz DiscID calculated: {}", mb_discid_str);
     Ok(mb_discid_str)
 }
@@ -131,16 +157,14 @@ fn discid_from_raw_offsets(
 /// since the sector offsets are in the log and neither the CUE nor the audio
 /// is needed. `None` for a log that holds no table of contents, which states
 /// no disc; a table that is there and cannot be hashed is an error.
-pub(crate) fn discid_from_log_text(log_content: &str) -> Result<Option<String>, std::io::Error> {
+pub(crate) fn discid_from_log_text(log_content: &str) -> Result<Option<String>, DiscIdError> {
     trace!("LOG file decoded, length: {} chars", log_content.len());
     let Some(toc_sectors) = extract_log_toc_sectors(log_content)? else {
         return Ok(None);
     };
     let raw_track_sectors: Vec<i32> = toc_sectors.iter().map(|(start, _)| *start).collect();
     let last_end_sector = toc_sectors.last().expect("LOG TOC parser returned at least one row").1;
-    let raw_leadout_sector = last_end_sector
-        .checked_add(1)
-        .ok_or_else(|| invalid_discid_data("lead-out sector out of range in LOG TOC"))?;
+    let raw_leadout_sector = last_end_sector.checked_add(1).ok_or(DiscIdError::PastSectorRange)?;
     debug!("Found {} track(s) in LOG file", raw_track_sectors.len());
     discid_from_raw_offsets("LOG", &raw_track_sectors, raw_leadout_sector, "from LOG lead-out")
         .map(Some)
@@ -174,30 +198,26 @@ pub(crate) fn calculate_mb_discid_from_cue(
     sheet: &CueSheet,
     audio: &[SheetAudioDuration<'_>],
     method_label: &str,
-) -> Result<String, std::io::Error> {
+) -> Result<String, DiscIdError> {
     if sheet.playable_tracks().next().is_none() {
-        return Err(invalid_discid_data("CUE has no playable audio tracks"));
+        return Err(DiscIdError::NoPlayableTracks);
     }
     // Where each file begins on the disc.
     let mut file_start: HashMap<&str, u64> = HashMap::new();
     let mut laid = 0u64;
     for file_reference in sheet.audio_file_references() {
-        let duration = audio
-            .iter()
-            .find(|duration| duration.file_reference == file_reference)
-            .ok_or_else(|| {
-                invalid_discid_data(format!("CUE FILE {file_reference:?} has no measured length"))
-            })?;
+        let duration =
+            audio.iter().find(|duration| duration.file_reference == file_reference).ok_or_else(
+                || DiscIdError::NoMeasuredLength { file_reference: file_reference.to_string() },
+            )?;
         file_start.insert(file_reference, laid);
         laid += sectors_of(duration.duration_ms);
     }
-    let sector = |frames: u64| {
-        i32::try_from(frames).map_err(|error| {
-            invalid_discid_data(format!(
-                "CUE lays the disc out past the sector range ({frames} frames): {error}"
-            ))
-        })
-    };
+    #[expect(
+        clippy::map_err_ignore,
+        reason = "a conversion out of range says only that it is past the range"
+    )]
+    let sector = |frames: u64| i32::try_from(frames).map_err(|_| DiscIdError::PastSectorRange);
     let mut generated = 0u64;
     let mut raw_track_sectors = Vec::with_capacity(sheet.playable_track_count());
     for track in sheet.playable_tracks() {

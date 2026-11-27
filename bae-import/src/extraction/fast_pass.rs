@@ -3,6 +3,7 @@
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
 use crate::folder_scanner::{CategorizedFiles, FileRole};
+use crate::left_out::{FolderInputs, InputRead, LeftOut};
 use crate::rip_reading::read_rip_artifacts;
 use bae_catalogs::{AudioOrigin, AudioSource, DownloadProof};
 use bae_identify::signals::{AudioFacts, DiscIdSignal, SourcedValue};
@@ -95,14 +96,16 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
         .collect()
 }
 
-/// Read every non-OCR source. Blocking. A file that cannot be read aborts,
-/// as invalid audio timing does: a pass that skipped it would state its
-/// clues without the evidence that file held. Bytes that read but state
-/// nothing (tags that do not parse, text with no names) add nothing.
+/// Read every non-OCR source. Blocking. A file that cannot be read is left
+/// out through `inputs`, and the pass goes on with the others. Bytes that
+/// read but state nothing (tags that do not parse, text with no names) add
+/// nothing. Fails only where the scan's stored audio facts give no track
+/// lengths.
 pub(super) fn gather_non_ocr_sources(
     folders: &[PathBuf],
     categorized: &CategorizedFiles,
     lease: &FileLease,
+    inputs: &FolderInputs,
 ) -> Result<FastPass, crate::ImportError> {
     let mut pass = FastPass::empty();
 
@@ -130,7 +133,7 @@ pub(super) fn gather_non_ocr_sources(
     // Rip evidence, disc ID, CUE barcodes and the audio facts all come off
     // one scan.
     pass.audio = crate::probe::audio_facts(categorized)?;
-    let rip = read_rip_artifacts(categorized, lease)?;
+    let rip = read_rip_artifacts(categorized, lease, inputs);
     pass.origin = rip.origin;
     pass.disc_id = rip.disc_id.into_signal();
     pass.cue_barcodes = cue_barcodes(categorized);
@@ -160,7 +163,8 @@ pub(super) fn gather_non_ocr_sources(
         &audio_files,
         &crate::file_tag_reader::LoftyFileTagReader,
         lease,
-    )?;
+        inputs,
+    );
     // Each file's ISRCs, as `isrc::code` reads its tag, in the files'
     // order; a value that reads as no code adds nothing.
     pass.isrcs = files
@@ -172,7 +176,7 @@ pub(super) fn gather_non_ocr_sources(
     // A file a ripper made reading a disc outweighs a tag, which can
     // be copied.
     if pass.origin.source.is_none() {
-        pass.origin.source = download_proof(&files, categorized).map(AudioSource::Download);
+        pass.origin.source = download_proof(&files, categorized, inputs).map(AudioSource::Download);
     }
     let mut seen = HashSet::new();
     for file in &files {
@@ -195,7 +199,11 @@ pub(super) fn gather_non_ocr_sources(
 
     // Text files feed the pool one line at a time.
     for path in text_file_paths(categorized) {
-        let text = read_capped_text(&path, lease.place_blocking())?;
+        let Some(text) = inputs.read(InputRead::TextFile, &path, || {
+            read_capped_text(&path, lease.place_blocking()).map_err(|error| LeftOut::io(&error))
+        }) else {
+            continue;
+        };
         for line in text.lines() {
             let trimmed = line.trim();
             if !trimmed.is_empty() {
@@ -311,40 +319,36 @@ fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     clippy::disallowed_methods,
     reason = "file system: reads the person's folder before coven records its files"
 )]
-fn read_capped_text(path: &Path, place: LeasePlace) -> Result<String, crate::ImportError> {
+fn read_capped_text(path: &Path, place: LeasePlace) -> std::io::Result<String> {
     use std::io::Read;
 
-    let unread =
-        |error| crate::ImportError::DocumentRead { file: path.display().to_string(), error };
-    let file = place.open(path).map_err(unread)?;
+    let file = place.open(path)?;
     let mut buf = Vec::new();
-    (&*file).take(MAX_TEXT_FILE_BYTES).read_to_end(&mut buf).map_err(unread)?;
+    (&*file).take(MAX_TEXT_FILE_BYTES).read_to_end(&mut buf)?;
     Ok(bae_util::text_encoding::decode_text(&buf).text)
 }
 
 /// What proves the audio a download, from its tags: a store's own marker on a
 /// track, or on every track what a label delivers with a download — an ISRC,
 /// a phonographic copyright line and the label — where no rip document or
-/// track sheet says a disc was read.
+/// track sheet says a disc was read. A rip document `inputs` left out says
+/// nothing.
 fn download_proof(
     files: &[crate::file_tag_snapshot::DeliveredFileTags],
     categorized: &CategorizedFiles,
+    inputs: &FolderInputs,
 ) -> Option<DownloadProof> {
     if let Some((marker, file)) = files.iter().find_map(|file| {
         file.delivery.store.map(|marker| (marker, file.fact.observation.relative_path.clone()))
     }) {
         return Some(DownloadProof::Store { marker, file });
     }
-    let read_off_a_disc = categorized.files.iter().any(|entry| {
-        matches!(
-            entry.role,
-            FileRole::TrackSheet { .. }
-                | FileRole::Document {
-                    kind: DocumentKind::CueSheet
-                        | DocumentKind::RipLog
-                        | DocumentKind::AccurateRipReport
-                }
-        )
+    let read_off_a_disc = categorized.files.iter().any(|entry| match entry.role {
+        FileRole::TrackSheet { .. } | FileRole::Document { kind: DocumentKind::CueSheet } => true,
+        FileRole::Document { kind: DocumentKind::RipLog | DocumentKind::AccurateRipReport } => {
+            !inputs.left_out(&entry.file.version.path)
+        }
+        _ => false,
     });
     let delivered = !files.is_empty()
         && files.iter().all(|file| {

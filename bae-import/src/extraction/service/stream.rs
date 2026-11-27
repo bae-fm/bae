@@ -7,11 +7,11 @@ use super::{
     emit_signals, Artwork, ArtworkPass, ExtractionInputs, ExtractionServiceInner, Gathered,
     RunningExtraction, SignalsSnapshot,
 };
-use crate::extraction::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
+use crate::extraction::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::extraction::candidate_text::{Source, SourcedLine};
 use crate::extraction::fast_pass::ArtworkImage;
 use crate::extraction::release::read_library_image;
-use bae_catalogs::InternalFailure;
+use crate::left_out::{FolderInputs, InputRead, LeftOut};
 use bae_identify::signals::{
     ArtworkScan, BarcodeSignal, PaneSignals, Signals, SourcedValue, TextSignal,
 };
@@ -29,15 +29,14 @@ const READ_IMAGE: &str = "read an image's text";
 /// waiting for runs to its end, and its panic goes to the crash reporter.
 struct ImageRead<'a> {
     image: &'a ArtworkImage,
-    task: CompletingTask<Result<ArtworkAnalysis, ArtworkUnreadable>>,
+    task: CompletingTask<Result<ArtworkAnalysis, LeftOut>>,
 }
 
 impl<'a> ImageRead<'a> {
     /// Take the image's bytes and hand them to the analyzer on the blocking
     /// pool. A library image's bytes come from coven here, in one place of
     /// the open-files budget; a folder's image opens in its own place on the
-    /// pool. An image that can't be read is as unreadable as one the
-    /// analyzer can't decode.
+    /// pool.
     async fn start(
         inner: &ExtractionServiceInner,
         analyzer: &Arc<dyn ArtworkAnalyzer>,
@@ -45,17 +44,21 @@ impl<'a> ImageRead<'a> {
         permit: OwnedSemaphorePermit,
     ) -> Self {
         let analyzer = analyzer.clone();
-        let unreadable = |detail: String| ArtworkUnreadable { detail };
+        let analyze = move |bytes: Vec<u8>| {
+            analyzer
+                .analyze(&bytes)
+                .map_err(|unreadable| LeftOut::unreadable_image(unreadable.detail))
+        };
         let task = match image {
             ArtworkImage::Library { file, .. } => {
                 let bytes = read_library_image(&inner.store, &inner.records, &inner.files, file)
                     .await
-                    .map_err(|error| unreadable(error.to_string()));
+                    .map_err(LeftOut::from);
                 coven::task::blocking_completing(
                     READ_IMAGE,
                     inner.diagnostics.bug_sink(),
                     move || {
-                        let analysis = bytes.and_then(|bytes| analyzer.analyze(&bytes));
+                        let analysis = bytes.and_then(analyze);
                         drop(permit);
                         analysis
                     },
@@ -69,10 +72,8 @@ impl<'a> ImageRead<'a> {
                     inner.diagnostics.bug_sink(),
                     move || {
                         let analysis = read_image_file(&path, &lease)
-                            .map_err(|error| {
-                                unreadable(format!("the image couldn't be read: {error}"))
-                            })
-                            .and_then(|bytes| analyzer.analyze(&bytes));
+                            .map_err(|error| LeftOut::io(&error))
+                            .and_then(analyze);
                         drop(permit);
                         analysis
                     },
@@ -82,20 +83,25 @@ impl<'a> ImageRead<'a> {
         ImageRead { image, task }
     }
 
-    /// What the analyzer read off the image, why it could not read it, or why
-    /// it panicked, reported to `diagnostics`.
+    /// What the analyzer read off the image, or `None` where it could not be
+    /// read or its read panicked, which leaves the image out through
+    /// `inputs`.
     async fn finish(
         self,
+        inputs: &FolderInputs,
         diagnostics: &bae_diagnostics::Diagnostics,
-    ) -> Result<ArtworkAnalysis, InternalFailure> {
+    ) -> Option<ArtworkAnalysis> {
         match self.task.await {
-            Ok(Ok(analysis)) => Ok(analysis),
-            Ok(Err(unreadable)) => Err(InternalFailure {
-                detail: format!("{:?}: {}", self.image.name(), unreadable.detail),
-            }),
-            Err(failed) => Err(InternalFailure {
-                detail: format!("{:?}: {}", self.image.name(), diagnostics.bug(failed)),
-            }),
+            Ok(Ok(analysis)) => Some(analysis),
+            Ok(Err(why)) => {
+                inputs.leave_out(InputRead::ArtworkImage, self.image.name(), why);
+                None
+            }
+            Err(failed) => {
+                let failed = diagnostics.bug(failed);
+                inputs.leave_out_unfinished(InputRead::ArtworkImage, self.image.name(), &failed);
+                None
+            }
         }
     }
 }
@@ -127,15 +133,16 @@ async fn abandon(reads: VecDeque<ImageRead<'_>>, diagnostics: &bae_diagnostics::
 
 /// Stream snapshots over the artwork pass — one before the first image and
 /// one after each image but the last — then send the settled one, kept first
-/// under `settled_key` so a run started by anything that heard it reuses it.
+/// under `settled_key`, where every input was read, so a run started by
+/// anything that heard it reuses it.
 pub(super) async fn stream_extraction(
     inner: &Arc<ExtractionServiceInner>,
     extraction: &RunningExtraction,
     token: &CancellationToken,
     settled_key: Option<String>,
-    inputs: ExtractionInputs,
+    extraction_inputs: ExtractionInputs,
 ) {
-    let ExtractionInputs { mut gathered, artwork } = inputs;
+    let ExtractionInputs { mut gathered, artwork, inputs: reads } = extraction_inputs;
     let finished = match &artwork {
         Artwork::Absent => ArtworkScan::Absent,
         Artwork::Read(pass) => ArtworkScan::Done { total: pass.images.len() as u32 },
@@ -219,43 +226,31 @@ pub(super) async fn stream_extraction(
             let image = read.image;
             let path = image.name();
             let file_id: Option<String> = image.file_id().map(str::to_string);
-            let analysis = read.finish(&inner.diagnostics).await;
+            let analysis = read.finish(&reads, &inner.diagnostics).await;
             if token.is_cancelled() {
                 abandon(in_flight, &inner.diagnostics).await;
                 return;
             }
-            let analysis = match analysis {
-                Ok(analysis) => analysis,
-                Err(failure) => {
-                    emit_failed_ocr_signals(
-                        inner,
-                        extraction,
-                        gathered,
-                        ArtworkScan::Failed { failure: failure.clone(), read: index as u32, total },
-                        failure,
-                    );
-                    abandon(in_flight, &inner.diagnostics).await;
-                    return;
+            // An image left out adds nothing, and the pass goes on.
+            if let Some(analysis) = analysis {
+                // One sighting per image a code was read off.
+                for code in analysis.codes() {
+                    let seen_here = gathered
+                        .barcodes
+                        .iter()
+                        .any(|b| b.value == code.as_str() && b.origin_path == file_id);
+                    if !seen_here {
+                        gathered.barcodes.push(SourcedValue {
+                            value: code.into_string(),
+                            origin_path: file_id.clone(),
+                        });
+                    }
                 }
-            };
-
-            // One sighting per image a code was read off.
-            for code in analysis.codes() {
-                let seen_here = gathered
-                    .barcodes
-                    .iter()
-                    .any(|b| b.value == code.as_str() && b.origin_path == file_id);
-                if !seen_here {
-                    gathered.barcodes.push(SourcedValue {
-                        value: code.into_string(),
-                        origin_path: file_id.clone(),
-                    });
+                for text in analysis.text_lines {
+                    gathered
+                        .pool
+                        .push(SourcedLine::new(Source::Artwork { path: path.to_path_buf() }, text));
                 }
-            }
-            for text in analysis.text_lines {
-                gathered
-                    .pool
-                    .push(SourcedLine::new(Source::Artwork { path: path.to_path_buf() }, text));
             }
             index += 1;
 
@@ -284,6 +279,7 @@ pub(super) async fn stream_extraction(
         return;
     }
 
+    let settled_key = settled_key.filter(|_| reads.all_read());
     let classification = gathered.pool.classify();
     let barcode = if has_artwork || !gathered.barcodes.is_empty() {
         BarcodeSignal::Settled { codes: gathered.barcodes }
@@ -312,40 +308,6 @@ pub(super) async fn stream_extraction(
         inner.settled.put(key, settled.clone());
     }
     emit_signals(inner, extraction, settled);
-}
-
-fn emit_failed_ocr_signals(
-    inner: &ExtractionServiceInner,
-    extraction: &RunningExtraction,
-    mut gathered: Gathered,
-    artwork: ArtworkScan,
-    failure: InternalFailure,
-) {
-    let classification = gathered.pool.classify();
-    let barcode = BarcodeSignal::Failed { failure: failure.clone(), codes: gathered.barcodes };
-    emit_signals(
-        inner,
-        extraction,
-        SignalsSnapshot {
-            signals: Signals {
-                pane: PaneSignals {
-                    origin: gathered.origin,
-                    disc_id: gathered.disc_id,
-                    barcode,
-                    text: TextSignal::Failed {
-                        failure,
-                        catalogs: classification.catalogs,
-                        free_text: classification.free_text,
-                    },
-                    isrcs: gathered.isrcs,
-                    track_titles: gathered.track_titles,
-                },
-                text_pool: gathered.pool.text_lines(),
-            },
-            audio: gathered.audio,
-            artwork,
-        },
-    );
 }
 
 /// What has been read so far while the artwork pass is still going.
