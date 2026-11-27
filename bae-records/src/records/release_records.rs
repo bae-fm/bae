@@ -43,8 +43,8 @@ impl Records {
 
     /// The album a save files the release `release_id` under once its
     /// records are `records`, and the album it is in now, as
-    /// [`records_target_album_sql`] names them; `None` when the library holds
-    /// no such release.
+    /// [`FiledByRecords`](super::fragments::FiledByRecords) names them;
+    /// `None` when the library holds no such release.
     pub async fn records_target_album(
         &self,
         release_id: &str,
@@ -251,29 +251,43 @@ sqlive_compose::read!(
 
 /// The album a save files the release `release_id` under once its records
 /// are `records`, and the album it is in now, as
-/// [`records_target_album_sql`] names them; `None` when the library holds no
-/// such release.
+/// [`FiledByRecords`](super::fragments::FiledByRecords) names them; `None`
+/// when the library holds no such release.
 pub fn records_target_album_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
     records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<Option<RecordsTargetAlbum>, DbError> {
-    Ok(sql
-        .query_row(
-            &records_target_album_sql(RECORDS_OF_JSON, ":release"),
-            rusqlite::named_params! { ":records": records_json(records), ":release": release_id },
-            |row| {
-                Ok(RecordsTargetAlbum {
-                    current_album_id: row.get("current_album_id")?,
-                    target_album_id: row.get("target_album_id")?,
-                })
-            },
-        )
-        .optional()?)
+    let filed = statement_optional(
+        sql,
+        &RecordsTargetAlbumOfJsonParams {
+            release: release_id.to_string(),
+            records: records_json(records),
+        },
+    )?;
+    Ok(filed.map(|row| RecordsTargetAlbum {
+        current_album_id: row.filed.current_album_id,
+        target_album_id: row.filed.target_album_id,
+    }))
 }
 
+// [`FiledByRecords`](super::fragments::FiledByRecords) over the records of
+// the JSON array `records` ([`records_json`]).
+sqlive_compose::read!(
+    RecordsTargetAlbumOfJson(release: String, records: String),
+    r#"
+    SELECT filed.*
+    FROM @crate::records::fragments::FiledByRecords(
+        release: :release,
+        records: (SELECT record.key, record.value ->> 0, record.value ->> 1,
+                         record.value ->> 2, record.value ->> 3
+                  FROM json_each(:records) AS record)
+    ) AS filed
+"#
+);
+
 /// The album a release is in and the album its new records file it under,
-/// as [`records_target_album_sql`] names them.
+/// as [`FiledByRecords`](super::fragments::FiledByRecords) names them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecordsTargetAlbum {
     pub current_album_id: String,
@@ -283,12 +297,8 @@ pub struct RecordsTargetAlbum {
     pub target_album_id: Option<String>,
 }
 
-/// The records a JSON array of `:records` holds, as `(position, catalog,
-/// kind, key, album_key)`.
-pub const RECORDS_OF_JSON: &str = "SELECT key, value ->> 0, value ->> 1, value ->> 2, value ->> 3 \
-     FROM json_each(:records)";
-
-/// `records` as the JSON array [`RECORDS_OF_JSON`] reads.
+/// `records` as a JSON array of `[catalog, kind, key, album_key]`, in their
+/// order, which the reads over a request's records bind.
 pub fn records_json(records: &[bae_catalogs::records::ReleaseRecord]) -> String {
     use bae_catalogs::records::ReleaseRecord;
     serde_json::Value::from(
@@ -310,128 +320,6 @@ pub fn records_json(records: &[bae_catalogs::records::ReleaseRecord]) -> String 
             .collect::<Vec<_>>(),
     )
     .to_string()
-}
-
-/// The statement that finds the album a save files a release under once its
-/// records are the ones `records` selects (as [`album_records_name_sql`]
-/// reads them), for the release whose id the SQL expression `release` gives.
-/// The statement returns one row, holding the album the release is in now
-/// (`current_album_id`) and the library album the save files it under
-/// (`target_album_id`), NULL for a new album; no row when the library holds
-/// no such release. In order:
-///
-/// 1. No records: a new album holding only the release.
-/// 2. The album the records name ([`album_records_name_sql`], leaving out the
-///    release's own records), even when the current album would also fit.
-/// 3. With the release alone in its album, the album of the group the
-///    records name ([`crate::identity::album_id_for_records`]), new when the
-///    library does not hold it; the current album when they name no group or
-///    the current album is the group's.
-/// 4. The current album when none of its other releases names another album
-///    than the records do on a catalog both name.
-/// 5. Else the group's album, new when the library does not hold it, or a new
-///    album when the records name no group.
-pub fn records_target_album_sql(records: &str, release: &str) -> String {
-    format!(
-        "WITH target_records (position, catalog, kind, key, album_key) AS ({records}), \
-         target_album_refs AS ( \
-             SELECT position, catalog, \
-                    CASE WHEN kind = 'album' THEN key ELSE album_key END AS album_key \
-             FROM target_records WHERE kind = 'album' OR album_key IS NOT NULL), \
-         current AS (SELECT album_id FROM releases WHERE id = {release}), \
-         group_album AS ( \
-             SELECT bae_album_id(catalog, album_key) AS id FROM target_album_refs \
-             WHERE catalog IN ('musicbrainz', 'discogs') \
-             ORDER BY CASE catalog WHEN 'musicbrainz' THEN 0 ELSE 1 END, position LIMIT 1), \
-         held_group_album AS ( \
-             SELECT a.id FROM group_album JOIN albums a ON a.id = group_album.id), \
-         named_album AS ({named}), \
-         beside AS ( \
-             SELECT EXISTS (SELECT 1 FROM releases r JOIN current ON r.album_id = current.album_id \
-                            WHERE r.id <> {release}) AS holds_others, \
-                    EXISTS (SELECT 1 FROM releases r JOIN current ON r.album_id = current.album_id \
-                            JOIN release_records rr ON rr.release_id = r.id \
-                            JOIN target_album_refs new ON rr.catalog = new.catalog \
-                            WHERE r.id <> {release} \
-                              AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
-                                  <> new.album_key) AS disagrees) \
-         SELECT current.album_id AS current_album_id, \
-                CASE \
-                    WHEN NOT EXISTS (SELECT 1 FROM target_records) THEN NULL \
-                    WHEN EXISTS (SELECT 1 FROM named_album) THEN (SELECT id FROM named_album) \
-                    WHEN NOT beside.holds_others THEN \
-                        CASE WHEN NOT EXISTS (SELECT 1 FROM group_album) \
-                                  OR (SELECT id FROM group_album) = current.album_id \
-                             THEN current.album_id \
-                             ELSE (SELECT id FROM held_group_album) END \
-                    WHEN NOT beside.disagrees THEN current.album_id \
-                    ELSE (SELECT id FROM held_group_album) \
-                END AS target_album_id \
-         FROM current CROSS JOIN beside",
-        named = album_records_name_sql(
-            "SELECT position, catalog, kind, key, album_key FROM target_records",
-            &format!("json_array({release})"),
-        ),
-    )
-}
-
-/// The statement that finds the library album to file a release under, from
-/// the records that `records` selects. It returns one row holding the album's
-/// id, or no row for none.
-/// `records` selects each record as `(position, catalog, kind, key,
-/// album_key)`: `kind` 'pressing' or 'album', `key` the pressing's or the
-/// album's, and `album_key` the album a pressing record files it under, NULL
-/// for none. `excluding` is an SQL expression for a JSON array of the
-/// releases whose records the statement ignores.
-///
-/// The statement reads the applied record first, which is the record at the
-/// lowest `position`, then each other record in order. The first record that
-/// names an album the library holds decides. A record names an album through
-/// a copy of its pressing, which is a pressing record that names the same
-/// release (on `idx_release_records_catalog_key`), or else through its album,
-/// which is a record that names the same release group or master (on
-/// `idx_release_records_catalog_album`). Library albums are the curator's:
-/// two albums the records name stay two, and the applied record's wins over a
-/// partner's. Where one record names several albums, the statement picks the
-/// record's own group album ([`crate::identity::album_id`]) if the library
-/// holds it, and otherwise the oldest album (ties by id), so the answer is one
-/// album.
-pub fn album_records_name_sql(records: &str, excluding: &str) -> String {
-    format!(
-        "WITH named_records (position, catalog, kind, key, album_key) AS ({records}), \
-         refs AS ( \
-             SELECT position, \
-                    CASE WHEN kind = 'pressing' THEN catalog END AS pressing_catalog, \
-                    CASE WHEN kind = 'pressing' THEN key END AS pressing_key, \
-                    CASE WHEN kind = 'album' OR album_key IS NOT NULL THEN catalog END \
-                        AS album_catalog, \
-                    CASE WHEN kind = 'album' THEN key ELSE album_key END AS album_key \
-             FROM named_records), \
-         owned AS ( \
-             SELECT *, \
-                    CASE WHEN album_catalog IN ('musicbrainz', 'discogs') \
-                         THEN bae_album_id(album_catalog, album_key) END AS own \
-             FROM refs) \
-         SELECT a.id FROM ( \
-             SELECT o.position, o.own, r.album_id, 0 AS match_rank FROM owned AS o \
-             JOIN release_records rr \
-                 ON rr.catalog = o.pressing_catalog AND rr.kind = 'pressing' \
-                AND rr.key = o.pressing_key \
-             JOIN releases r ON r.id = rr.release_id \
-             WHERE rr.release_id NOT IN (SELECT value FROM json_each({excluding})) \
-             UNION ALL \
-             SELECT o.position, o.own, r.album_id, 1 AS match_rank FROM owned AS o \
-             JOIN release_records rr \
-                 ON rr.catalog = o.album_catalog \
-                AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
-                    = o.album_key \
-             JOIN releases r ON r.id = rr.release_id \
-             WHERE rr.release_id NOT IN (SELECT value FROM json_each({excluding})) \
-         ) AS named \
-         JOIN albums a ON a.id = named.album_id \
-         ORDER BY named.position, named.match_rank, a.id IS named.own DESC, a.created_at, a.id \
-         LIMIT 1"
-    )
 }
 
 /// One statement answers every check: the caller passes the checks as one

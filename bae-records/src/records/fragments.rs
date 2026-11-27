@@ -140,6 +140,23 @@ pub fn library_status_of_columns(
     Ok(library_status_from(release_id, albums))
 }
 
+// The library album the records of `records` file a release under, one row
+// with its id or no row for none, leaving out the records of the releases
+// `excluding`. Each record is a `(position, catalog, kind, key, album_key)`:
+// `kind` 'pressing' or 'album', `key` the pressing's or the album's, and
+// `album_key` the album a pressing record files it under, NULL for none.
+//
+// The applied record, which is the record at the lowest `position`, comes
+// first, then each other record in order, and the first record that names an
+// album the library holds decides. A record names an album through a copy of
+// its pressing, which is a pressing record that names the same release (on
+// `idx_release_records_catalog_key`), or else through its album, which is a
+// record that names the same release group or master (on
+// `idx_release_records_catalog_album`). Library albums are the curator's: two
+// albums the records name stay two, and the applied record's wins over a
+// partner's. Where one record names several albums, the record's own group
+// album ([`crate::identity::album_id`]) wins if the library holds it, and
+// otherwise the oldest album (ties by id), so the answer is one album.
 sqlive_compose::fragment!(
     AlbumRecordsName with records(
         position INTEGER, catalog TEXT, kind TEXT, key TEXT, album_key TEXT
@@ -190,6 +207,73 @@ sqlive_compose::fragment!(
     WHERE lowest.album_id = @parent.id
     ORDER BY lowest.album_order, lowest.id
     LIMIT 1
+"#
+);
+
+// The album the release `release` is in (`current_album_id`) and the library
+// album a save files it under once its records are `records`
+// (`target_album_id`, NULL for a new album), each record as
+// [`AlbumRecordsName`] reads it; no row when the library holds no such
+// release. In order:
+//
+// 1. No records: a new album holding only the release.
+// 2. The album the records name ([`AlbumRecordsName`], leaving out the
+//    release's own records), even when the current album would also fit.
+// 3. With the release alone in its album, the album of the group the records
+//    name ([`crate::identity::album_id_for_records`]), new when the library
+//    does not hold it; the current album when they name no group or the
+//    current album is the group's.
+// 4. The current album when none of its other releases names another album
+//    than the records do on a catalog both name.
+// 5. Else the group's album, new when the library does not hold it, or a new
+//    album when the records name no group.
+sqlive_compose::fragment!(
+    FiledByRecords(release: String) with records(
+        position INTEGER, catalog TEXT, kind TEXT, key TEXT, album_key TEXT
+    ) { current_album_id: String, target_album_id: Option<String> },
+    r#"
+    WITH album_refs AS (
+        SELECT position, catalog,
+               CASE WHEN kind = 'album' THEN key ELSE album_key END AS album_key
+        FROM records WHERE kind = 'album' OR album_key IS NOT NULL),
+    current AS (
+        SELECT moving.album_id FROM releases AS moving WHERE moving.id = :release),
+    group_album AS (
+        SELECT bae_album_id(catalog, album_key) AS id FROM album_refs
+        WHERE catalog IN ('musicbrainz', 'discogs')
+        ORDER BY CASE catalog WHEN 'musicbrainz' THEN 0 ELSE 1 END, position LIMIT 1),
+    held_group_album AS (
+        SELECT held.id FROM group_album JOIN albums AS held ON held.id = group_album.id),
+    named_album AS (
+        SELECT named.*
+        FROM @crate::records::fragments::AlbumRecordsName(
+            records: (SELECT position, catalog, kind, key, album_key FROM records),
+            excluding: (SELECT :release)) AS named),
+    beside AS (
+        SELECT EXISTS (SELECT 1 FROM releases AS other
+                       JOIN current ON other.album_id = current.album_id
+                       WHERE other.id <> :release) AS holds_others,
+               EXISTS (SELECT 1 FROM releases AS other
+                       JOIN current ON other.album_id = current.album_id
+                       JOIN release_records AS held ON held.release_id = other.id
+                       JOIN album_refs AS new ON held.catalog = new.catalog
+                       WHERE other.id <> :release
+                         AND (CASE WHEN held.kind = 'album' THEN held.key
+                                   ELSE held.album_key END) <> new.album_key) AS disagrees)
+    SELECT current.album_id AS current_album_id,
+           CASE
+               WHEN NOT EXISTS (SELECT 1 FROM records) THEN NULL
+               WHEN EXISTS (SELECT 1 FROM named_album)
+                   THEN (SELECT album_id FROM named_album)
+               WHEN NOT beside.holds_others THEN
+                   CASE WHEN NOT EXISTS (SELECT 1 FROM group_album)
+                             OR (SELECT id FROM group_album) = current.album_id
+                        THEN current.album_id
+                        ELSE (SELECT id FROM held_group_album) END
+               WHEN NOT beside.disagrees THEN current.album_id
+               ELSE (SELECT id FROM held_group_album)
+           END AS target_album_id
+    FROM current CROSS JOIN beside
 "#
 );
 

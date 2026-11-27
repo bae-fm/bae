@@ -17,21 +17,15 @@ pub(crate) struct DraftAlbumRow {
 }
 
 impl DraftAlbumRow {
-    /// The row a statement returns as its four columns, in that order. The
-    /// album's three columns are all present or all NULL.
-    pub(crate) fn of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
-        let library = match (row.get(1)?, row.get(2)?, row.get(3)?) {
-            (Some(album_id), Some(title), Some(credits)) => Some((album_id, title, credits)),
-            (None, None, None) => None,
-            _ => {
-                return Err(rusqlite::Error::FromSqlConversionFailure(
-                    1,
-                    rusqlite::types::Type::Null,
-                    "a library album's id, title and credits are not all present".into(),
-                ))
-            }
-        };
-        Ok(Self { kind: row.get(0)?, library })
+    /// The row a statement returns: its choice, and the library album the
+    /// choice names.
+    pub(crate) fn of_choice(
+        kind: String,
+        album: Option<bae_records::records::fragments::LibraryAlbum>,
+    ) -> Result<Self, DbError> {
+        let library =
+            album.map(bae_records::records::fragments::LibraryAlbum::into_parts).transpose()?;
+        Ok(Self { kind, library })
     }
 
     /// The row a pane's read selects, which
@@ -39,11 +33,7 @@ impl DraftAlbumRow {
     pub(crate) fn of(
         album: crate::tables::import_state::fragments::CandidateAlbum,
     ) -> Result<Self, DbError> {
-        let library = album
-            .album
-            .map(bae_records::records::fragments::LibraryAlbum::into_parts)
-            .transpose()?;
-        Ok(Self { kind: album.candidate_album_kind, library })
+        Self::of_choice(album.candidate_album_kind, album.album)
     }
 
     /// The album the row names. `owner` names whose draft it is, for the

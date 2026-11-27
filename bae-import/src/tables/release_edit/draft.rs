@@ -15,6 +15,7 @@ use crate::tables::draft_rows::{
 };
 use crate::{AlbumPick, DraftAlbum, RawTrackEdit, TrackArtistAssignments};
 use bae_records::records::layout::LayoutParams;
+use bae_store::statement_row;
 
 /// The form's tracks as a subquery over the parameter `:form_tracks`: the
 /// library track each row edits, its title, and whether it takes the album's
@@ -137,49 +138,71 @@ impl FormParams {
     }
 }
 
-/// The album a save of the form files its release under, which one
-/// statement reads: the library album the person picked while the library
-/// holds it, or the new album they picked; else, once an applied catalog
-/// linked the release to its records, the album they name (a new one where
-/// they name none the library holds); else, with the release's own records
-/// or none, the album the release is in.
+// The album a save of the form files its release under: the library album
+// the person picked while the library holds it, or the new album they picked;
+// else, once an applied catalog linked the release to its records, the album
+// they name (a new one where they name none the library holds); else, with
+// the release's own records or none, the album the release is in. `kind` says
+// which of those names it, and `album` is the library album it names.
+sqlive_compose::read!(
+    FiledDraftAlbum(
+        release: String, pick_kind: String, pick_album: Option<String>, linked: bool,
+        records: String
+    ) { kind: String },
+    r#"
+    WITH picked AS (
+        SELECT titled.*
+        FROM @bae_records::records::fragments::AlbumTitle AS titled
+        WHERE :pick_kind = 'album' AND titled.album_id = :pick_album),
+    pick (kind, album_id) AS (
+        SELECT 'new', NULL WHERE :pick_kind = 'new'
+        UNION ALL
+        SELECT 'album', album_id FROM picked),
+    filed AS (
+        SELECT target.*
+        FROM @bae_records::records::fragments::FiledByRecords(
+            release: :release,
+            records: (SELECT record.key, record.value ->> 0, record.value ->> 1,
+                             record.value ->> 2, record.value ->> 3
+                      FROM json_each(:records) AS record)) AS target),
+    kept AS (
+        SELECT held.*
+        FROM @bae_records::records::fragments::ReleaseAlbum AS held
+        WHERE held.release_id = :release),
+    choice (kind, album_id) AS (
+        SELECT kind, album_id FROM pick
+        UNION ALL
+        SELECT CASE WHEN target_album_id IS NULL THEN 'none' ELSE 'named' END, target_album_id
+        FROM filed
+        WHERE NOT EXISTS (SELECT 1 FROM pick) AND :linked
+        UNION ALL
+        SELECT 'named', album_id FROM kept
+        WHERE NOT EXISTS (SELECT 1 FROM pick) AND NOT :linked)
+    SELECT choice.kind AS kind, album.*
+    FROM choice
+    LEFT JOIN @bae_records::records::fragments::LibraryAlbum AS album
+           ON album.album_id = choice.album_id
+"#
+);
+
+/// The album a save of the form files its release under
+/// ([`FiledDraftAlbum`]).
 fn release_edit_album_on(
     sql: &impl coven::SqlRead,
     form: &FormParams,
 ) -> Result<DraftAlbum, DbError> {
-    use bae_records::records::release_records::{records_target_album_sql, RECORDS_OF_JSON};
-    let target = records_target_album_sql(RECORDS_OF_JSON, ":release");
-    let row = sql.query_row(
-        &format!(
-            "WITH pick (kind, album_id) AS ( \
-                 SELECT 'new', NULL WHERE :pick_kind = 'new' \
-                 UNION ALL \
-                 SELECT 'album', picked.id FROM albums AS picked \
-                 WHERE :pick_kind = 'album' AND picked.id = :pick_album), \
-             choice (kind, album_id) AS ( \
-                 SELECT kind, album_id FROM pick \
-                 UNION ALL \
-                 SELECT CASE WHEN target.target_album_id IS NULL THEN 'none' ELSE 'named' END, \
-                        target.target_album_id \
-                 FROM ({target}) AS target \
-                 WHERE NOT EXISTS (SELECT 1 FROM pick) AND :linked \
-                 UNION ALL \
-                 SELECT 'named', r.album_id FROM releases AS r \
-                 WHERE r.id = :release AND NOT EXISTS (SELECT 1 FROM pick) AND NOT :linked) \
-             SELECT choice.kind, a.id, a.title, CASE WHEN a.id IS NOT NULL THEN {credits} END \
-             FROM choice LEFT JOIN albums AS a ON a.id = choice.album_id",
-            credits = bae_records::records::query::album_credits_json_sql(),
-        ),
-        named_params! {
-            ":pick_kind": form.pick_kind,
-            ":pick_album": form.pick_album,
-            ":linked": form.linked,
-            ":release": form.release,
-            ":records": form.records,
+    let row = statement_row(
+        sql,
+        &FiledDraftAlbumParams {
+            release: form.release.clone(),
+            pick_kind: form.pick_kind.to_string(),
+            pick_album: form.pick_album.clone(),
+            linked: form.linked,
+            records: form.records.clone(),
         },
-        DraftAlbumRow::of_row,
     )?;
-    row.album(&format!("the editor of release {}", form.release))
+    DraftAlbumRow::of_choice(row.kind, row.album)?
+        .album(&format!("the editor of release {}", form.release))
 }
 
 /// The rows bae reads a form's draft from: the form, its album artists with
