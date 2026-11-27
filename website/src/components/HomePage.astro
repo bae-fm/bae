@@ -1,5 +1,6 @@
 ---
 import '../generated/tokens.css';
+import wordSvg from '../../../design/system/assets/Logos/bae-word.svg?raw';
 import { getLatest } from '../lib/releases';
 import { LOCALES, landing, localeInfo, localizePath } from '../lib/site-locales.mjs';
 
@@ -25,6 +26,10 @@ if (!macFullUrl) {
   console.warn('index: no macOS full build resolved; landing CTAs fall back to the install page');
 }
 const macUrl = macFullUrl ?? href('/guide/installation');
+
+// The design system's wordmark, drawn as a mask in the text colour as its
+// Logo component draws it.
+const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString('base64')}") center / contain no-repeat`;
 ---
 <!DOCTYPE html>
 <html lang={localeMeta.lang} dir={localeMeta.dir} class="no-js">
@@ -80,8 +85,9 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   nav{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--backdrop);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .3s;}
   nav.scrolled{border-bottom:1px solid var(--hairline);}
   .navin{display:flex;align-items:center;gap:26px;height:66px;}
-  .brand{font-family:var(--font-web-display);font-weight:800;font-size:24px;letter-spacing:-.02em;display:flex;align-items:center;gap:var(--space-related);flex:none;}
+  .brand{display:flex;align-items:center;gap:var(--space-related);flex:none;}
   .brand img{width:30px;height:30px;}
+  .brand .word{height:24px;aspect-ratio:1556/736;background:currentColor;}
   .navlinks{margin-inline-start:auto;display:flex;gap:var(--space-group);align-items:center;min-width:0;}
   .navlinks a{font-size:14.5px;color:var(--text-secondary);font-weight:500;white-space:nowrap;}
   .navlinks a:hover{color:var(--text-primary);}
@@ -132,7 +138,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .wrap{padding:0 16px;}
     .navlinks{gap:var(--space-related);}
     .navlinks a{font-size:13.5px;}
-    .brand{font-size:23px;}
+    .brand .word{height:23px;}
     .navlinks .btn.pink{padding:var(--space-field-inset) 15px;max-width:38vw;}
     .menubtn{width:42px;height:42px;}
     .navpanel{width:calc(100vw - 32px);right:-8px;}
@@ -360,7 +366,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 </head>
 <body>
 <nav id="nav"><div class="wrap navin">
-  <span class="brand"><img src="/app-icon.png" alt="" width="30" height="30" decoding="async" />bae</span>
+  <span class="brand"><img src="/app-icon.png" alt="" width="30" height="30" decoding="async" /><span class="word" role="img" aria-label="bae" style={`-webkit-mask:${wordMask};mask:${wordMask}`}></span></span>
   <div class="navlinks">
     <div class="desktoplinks">
       <a href={href('/guide/installation')}>{text.navDocs}</a>

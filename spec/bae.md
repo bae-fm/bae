@@ -6365,7 +6365,8 @@ draw in the same tokens' dark or light values. Display text is in Mona Sans,
 body text in Hanken Grotesk and code in JetBrains Mono. Corners and gaps take
 the radius and spacing tokens of their role. The page's own layout, its type
 sizes, line heights, widths, section paddings and letter spacing, stays in the
-page.
+page. The top bar draws the logo's wordmark, "bae" in Fredoka SemiBold, in
+the text color.
 
 ---
 
