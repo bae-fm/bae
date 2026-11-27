@@ -126,7 +126,8 @@ impl ImportTables {
                     },
                 )
             })
-            .await?;
+            .await?
+            .layout;
         Ok(crate::LibraryDraft {
             album_title: String::new(),
             album_artist_assignments: Vec::new(),

@@ -308,7 +308,7 @@ impl Records {
             |_| Ok(Ok(())),
             |_| Ok(None),
             None,
-            |_| Ok(()),
+            |_, _| Ok(()),
             |_| Ok(()),
         )
         .await

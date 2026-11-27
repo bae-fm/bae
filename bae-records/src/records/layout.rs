@@ -10,7 +10,7 @@
 //! them, never disagree, and an import draft moves a sheet the same way.
 
 use super::*;
-use bae_store::statement_rows;
+use bae_store::statement_row;
 use bae_types::mediums::{ReleaseMedium, TrackPlace};
 
 /// One track of a [`ReleaseLayout`].
@@ -63,45 +63,18 @@ pub struct DraftLayout {
     pub moves: String,
 }
 
-// The mediums a release editor's layout starts from, in order.
+// The layout a release editor's form gives its release's tracks: the JSON
+// array `mediums` of the mediums it starts from, in order, the JSON array
+// `tracks` of the tracks it lays out on them, in playing order, and the JSON
+// array `honored` of the sides picked for CUE sheets that it gave the sheets,
+// those on which a sheet's first laid track sits.
 sqlive_compose::read!(
-    writer LaidMediums(release: String, applied: bool, mediums: String),
-    r#"
-    SELECT base.*
-    FROM @crate::records::layout_fragments::BaseMediums(
-        release: :release, applied: :applied, mediums: :mediums) AS base
-    ORDER BY base.position
-"#
-);
-
-// The tracks a release editor's layout lays out, in playing order.
-sqlive_compose::read!(
-    writer LaidReleaseTracks(
-        release: String,
-        applied: bool,
-        mediums: String,
-        places: String,
-        moves: String,
-        edits: String,
-    ),
-    r#"
-    SELECT laid.*
-    FROM @crate::records::layout_fragments::ReleaseLaidPlaces(
-        release: :release, applied: :applied, mediums: :mediums, places: :places,
-        moves: :moves, edits: :edits) AS laid
-    ORDER BY laid.position
-"#
-);
-
-// The sides picked for CUE sheets that a release editor's layout gave the
-// sheets: those on which a sheet's first laid track sits.
-sqlive_compose::read!(
-    writer HonoredSheetPicks(
+    writer LaidReleaseLayout(
         release: String, applied: bool, mediums: String, places: String, moves: String,
         edits: String
-    ) { sheet_file_id: String, medium: i64, side: i64 },
+    ) { laid_mediums: String, laid_tracks: String, honored: String },
     r#"
-    WITH laid AS (
+    WITH laid AS MATERIALIZED (
         SELECT place.*
         FROM @crate::records::layout_fragments::ReleaseLaidPlaces(
             release: :release, applied: :applied, mediums: :mediums, places: :places,
@@ -115,90 +88,82 @@ sqlive_compose::read!(
         SELECT picked.value ->> 'sheet_file_id' AS sheet_file_id,
                picked.value ->> 'medium' AS medium, picked.value ->> 'side' AS side
         FROM json_each(:moves) AS picked)
-    SELECT picks.sheet_file_id AS sheet_file_id, picks.medium AS medium, picks.side AS side
-    FROM picks
-    JOIN firsts ON firsts.sheet_file_id = picks.sheet_file_id AND firsts.n = 1
-    WHERE firsts.medium = picks.medium AND firsts.side = picks.side
+    SELECT (SELECT json_group_array(json_object('carrier', base.carrier, 'sides', base.sides)
+                       ORDER BY base.position)
+            FROM @crate::records::layout_fragments::BaseMediums(
+                release: :release, applied: :applied, mediums: :mediums) AS base)
+               AS laid_mediums,
+           (SELECT json_group_array(json_object(
+                       'track_id', laid.track_id, 'medium', laid.medium, 'side', laid.side,
+                       'number', laid.number, 'stated_length_ms', laid.stated_length_ms)
+                       ORDER BY laid.position)
+            FROM laid) AS laid_tracks,
+           (SELECT json_group_array(json_object(
+                       'sheet_file_id', picks.sheet_file_id, 'medium', picks.medium,
+                       'side', picks.side))
+            FROM picks
+            JOIN firsts ON firsts.sheet_file_id = picks.sheet_file_id AND firsts.n = 1
+            WHERE firsts.medium = picks.medium AND firsts.side = picks.side) AS honored
 "#
 );
 
-// An import draft's mediums, in order.
+// The layout an import draft's sheet moves give its tracks, as
+// [`LaidReleaseLayout`] gives its mediums and tracks.
 sqlive_compose::read!(
-    writer DraftLayoutMediums(mediums: String),
-    r#"
-    SELECT given.*
-    FROM @crate::records::layout_fragments::GivenMediums(mediums: :mediums) AS given
-    ORDER BY given.position
-"#
-);
-
-// The tracks of an import draft's layout, in playing order.
-sqlive_compose::read!(
-    writer LaidDraftTracks(mediums: String, places: String, carving: String, moves: String),
+    writer LaidDraftLayout(mediums: String, places: String, carving: String, moves: String) {
+        laid_mediums: String,
+        laid_tracks: String
+    },
     r#"
     WITH given_mediums AS (
         SELECT given.*
-        FROM @crate::records::layout_fragments::GivenMediums(mediums: :mediums) AS given)
-    SELECT laid.*
-    FROM @crate::records::layout_fragments::LaidPlaces(
-        base_mediums: (SELECT given_mediums.position, given_mediums.carrier, given_mediums.sides
-                       FROM given_mediums),
-        base_places: (SELECT placed.value ->> 'track_id', placed.value ->> 'medium',
-                             placed.value ->> 'side', placed.value ->> 'number',
-                             placed.value ->> 'stated_length_ms', placed.value ->> 'position'
-                      FROM json_each(:places) AS placed),
-        picks: (SELECT picked.value ->> 'sheet_file_id', picked.value ->> 'medium',
-                       picked.value ->> 'side'
-                FROM json_each(:moves) AS picked),
-        carving: (SELECT cut.value ->> 'sheet_file_id', cut.value ->> 'track_id'
-                  FROM json_each(:carving) AS cut),
-        dropped: (SELECT NULL WHERE 0),
-        added: (SELECT NULL, NULL, NULL WHERE 0)) AS laid
-    ORDER BY laid.position
+        FROM @crate::records::layout_fragments::GivenMediums(mediums: :mediums) AS given),
+    laid AS (
+        SELECT place.*
+        FROM @crate::records::layout_fragments::LaidPlaces(
+            base_mediums: (SELECT given_mediums.position, given_mediums.carrier,
+                                  given_mediums.sides
+                           FROM given_mediums),
+            base_places: (SELECT placed.value ->> 'track_id', placed.value ->> 'medium',
+                                 placed.value ->> 'side', placed.value ->> 'number',
+                                 placed.value ->> 'stated_length_ms',
+                                 placed.value ->> 'position'
+                          FROM json_each(:places) AS placed),
+            picks: (SELECT picked.value ->> 'sheet_file_id', picked.value ->> 'medium',
+                           picked.value ->> 'side'
+                    FROM json_each(:moves) AS picked),
+            carving: (SELECT cut.value ->> 'sheet_file_id', cut.value ->> 'track_id'
+                      FROM json_each(:carving) AS cut),
+            dropped: (SELECT NULL WHERE 0),
+            added: (SELECT NULL, NULL, NULL WHERE 0)) AS place)
+    SELECT (SELECT json_group_array(
+                       json_object('carrier', given_mediums.carrier,
+                                   'sides', given_mediums.sides)
+                       ORDER BY given_mediums.position)
+            FROM given_mediums) AS laid_mediums,
+           (SELECT json_group_array(json_object(
+                       'track_id', laid.track_id, 'medium', laid.medium, 'side', laid.side,
+                       'number', laid.number, 'stated_length_ms', laid.stated_length_ms)
+                       ORDER BY laid.position)
+            FROM laid) AS laid_tracks
 "#
 );
 
-/// The sides picked for CUE sheets that the layout gave the sheets: each a
-/// sheet's file id with the side.
-pub fn honored_picks_on(
-    sql: &impl bae_store::WriterRead,
-    layout: &LibraryLayout,
-) -> Result<Vec<(String, bae_types::mediums::MediumSide)>, DbError> {
-    let params = HonoredSheetPicksParams {
-        release: layout.release_id.clone(),
-        applied: layout.applied,
-        mediums: layout.mediums.clone(),
-        places: layout.places.clone(),
-        moves: layout.moves.clone(),
-        edits: layout.edits.clone(),
-    };
-    statement_rows(sql, &params)?
-        .into_iter()
-        .map(|row| {
-            let side = bae_types::mediums::MediumSide {
-                medium: fits(row.medium, "a picked medium")?,
-                side: fits(row.side, "a picked side")?,
-            };
-            Ok((row.sheet_file_id, side))
-        })
-        .collect()
+/// The layout a release editor's form gives its release's tracks, with the
+/// sides picked for CUE sheets that it gave the sheets: each a sheet's file
+/// id with the side.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LaidRelease {
+    pub layout: ReleaseLayout,
+    pub honored: Vec<(String, bae_types::mediums::MediumSide)>,
 }
 
-/// The layout a release editor's form gives its release's tracks.
+/// The layout `layout` asks for, as the library holds the release now.
 pub fn laid_out_on(
     sql: &impl bae_store::WriterRead,
     layout: &LibraryLayout,
-) -> Result<ReleaseLayout, DbError> {
-    let mediums = LaidMediumsParams {
-        release: layout.release_id.clone(),
-        applied: layout.applied,
-        mediums: layout.mediums.clone(),
-    };
-    let mediums = statement_rows(sql, &mediums)?
-        .into_iter()
-        .map(|row| medium_of(row.base.carrier, row.base.sides))
-        .collect::<Result<_, _>>()?;
-    let tracks = LaidReleaseTracksParams {
+) -> Result<LaidRelease, DbError> {
+    let statement = LaidReleaseLayoutParams {
         release: layout.release_id.clone(),
         applied: layout.applied,
         mediums: layout.mediums.clone(),
@@ -206,11 +171,18 @@ pub fn laid_out_on(
         moves: layout.moves.clone(),
         edits: layout.edits.clone(),
     };
-    let tracks = statement_rows(sql, &tracks)?
+    let row = statement_row(sql, &statement)?;
+    let honored = rows_of::<HonoredJson>(&row.honored, "the sides a layout gave its sheets")?
         .into_iter()
-        .map(|row| laid_track(row.laid.into_laid()))
-        .collect::<Result<_, _>>()?;
-    Ok(ReleaseLayout { mediums, tracks })
+        .map(|pick| {
+            let side = bae_types::mediums::MediumSide {
+                medium: fits(pick.medium, "a picked medium")?,
+                side: fits(pick.side, "a picked side")?,
+            };
+            Ok((pick.sheet_file_id, side))
+        })
+        .collect::<Result<_, DbError>>()?;
+    Ok(LaidRelease { layout: layout_of(&row.laid_mediums, &row.laid_tracks)?, honored })
 }
 
 /// The layout an import draft's sheet moves give its tracks.
@@ -218,20 +190,56 @@ pub fn draft_laid_out_on(
     sql: &impl bae_store::WriterRead,
     layout: &DraftLayout,
 ) -> Result<ReleaseLayout, DbError> {
-    let mediums = DraftLayoutMediumsParams { mediums: layout.mediums.clone() };
-    let mediums = statement_rows(sql, &mediums)?
-        .into_iter()
-        .map(|row| medium_of(row.given.carrier, row.given.sides))
-        .collect::<Result<_, _>>()?;
-    let tracks = LaidDraftTracksParams {
+    let statement = LaidDraftLayoutParams {
         mediums: layout.mediums.clone(),
         places: layout.places.clone(),
         carving: layout.carving.clone(),
         moves: layout.moves.clone(),
     };
-    let tracks = statement_rows(sql, &tracks)?
+    let row = statement_row(sql, &statement)?;
+    layout_of(&row.laid_mediums, &row.laid_tracks)
+}
+
+/// One medium as a layout read writes it.
+#[derive(serde::Deserialize)]
+struct MediumJson {
+    carrier: Option<String>,
+    sides: Option<i64>,
+}
+
+/// One laid track as a layout read writes it.
+#[derive(serde::Deserialize)]
+struct TrackJson {
+    track_id: String,
+    medium: i64,
+    side: i64,
+    number: i64,
+    stated_length_ms: Option<i64>,
+}
+
+/// One honored side as [`LaidReleaseLayout`] writes it.
+#[derive(serde::Deserialize)]
+struct HonoredJson {
+    sheet_file_id: String,
+    medium: i64,
+    side: i64,
+}
+
+/// The rows the JSON array `json`, which holds `what`, has.
+fn rows_of<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
+    serde_json::from_str(json).map_err(|error| DbError::unreadable_json(what, json, error))
+}
+
+/// The layout whose mediums and tracks a layout read wrote as the JSON arrays
+/// `mediums` and `tracks`.
+fn layout_of(mediums: &str, tracks: &str) -> Result<ReleaseLayout, DbError> {
+    let mediums = rows_of::<MediumJson>(mediums, "a layout's mediums")?
         .into_iter()
-        .map(|row| laid_track(row.laid))
+        .map(|medium| medium_of(medium.carrier, medium.sides))
+        .collect::<Result<_, _>>()?;
+    let tracks = rows_of::<TrackJson>(tracks, "a layout's tracks")?
+        .into_iter()
+        .map(laid_track)
         .collect::<Result<_, _>>()?;
     Ok(ReleaseLayout { mediums, tracks })
 }
@@ -257,8 +265,8 @@ fn medium_of(carrier: Option<String>, sides: Option<i64>) -> Result<ReleaseMediu
 }
 
 /// The track of one row of a layout's tracks.
-fn laid_track(row: super::layout_fragments::LaidPlaces) -> Result<LaidTrack, DbError> {
-    let (track_id, medium, side, number, stated_length_ms) = row.into_place();
+fn laid_track(row: TrackJson) -> Result<LaidTrack, DbError> {
+    let TrackJson { track_id, medium, side, number, stated_length_ms } = row;
     let unreadable = || DbError::unreadable("a laid track's place", &track_id);
     let place = TrackPlace {
         medium: std::num::NonZeroU16::new(fits(medium, "a laid track's medium")?)

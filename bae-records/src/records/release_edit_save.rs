@@ -116,8 +116,9 @@ impl Records {
     /// its records where its change says (see `set_records_on`), then write
     /// its rows, then the audio of the tracks `rebound` moves to other
     /// files and the tracks it deletes and adds, then the layout of the
-    /// tracks `layout` read before that, when it read one, then what `sheet_decisions` writes of the person's choices about CUE
-    /// sheets.
+    /// tracks `layout` read before that, when it read one, then what
+    /// `sheet_decisions` writes of the person's choices about CUE sheets,
+    /// given the picked sides that layout gave its sheets.
     /// `gone` says what the save does with a picked artist or
     /// album the library no longer holds. Last it reads what `saved` reads
     /// of the release as this save wrote it, and returns that.
@@ -135,11 +136,14 @@ impl Records {
             + 'static,
         layout: impl for<'ctx> FnOnce(
                 &CovenWrite<'ctx>,
-            ) -> Result<Option<super::layout::ReleaseLayout>, DbError>
+            ) -> Result<Option<super::layout::LaidRelease>, DbError>
             + Send
             + 'static,
         rebound: Option<super::sheet_files::ReboundAudio>,
-        sheet_decisions: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<(), DbError>
+        sheet_decisions: impl for<'ctx> FnOnce(
+                &CovenWrite<'ctx>,
+                &[(String, bae_types::mediums::MediumSide)],
+            ) -> Result<(), DbError>
             + Send
             + 'static,
         saved: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Saved, DbError> + Send + 'static,
@@ -193,7 +197,10 @@ impl Records {
                 .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
                 // The layout is read before the rebound audio deletes and adds
                 // tracks, since it reads the tracks the release holds now.
-                let mut layout = layout(&sql)?;
+                let (mut layout, honored) = match layout(&sql)? {
+                    Some(laid) => (Some(laid.layout), laid.honored),
+                    None => (None, Vec::new()),
+                };
                 if let Some(rebound) = &rebound {
                     super::sheet_files::write_rebound_audio_on(&sql, plan.release_id(), rebound)?;
                     for track in layout.iter_mut().flat_map(|layout| &mut layout.tracks) {
@@ -207,7 +214,7 @@ impl Records {
                 if let Some(layout) = layout {
                     super::layout::write_layout_on(&sql, plan.release_id(), &layout, &*ids, &now)?;
                 }
-                sheet_decisions(&sql)?;
+                sheet_decisions(&sql, &honored)?;
                 emptiable.remove_emptied(&sql)?;
                 Ok(saved(&sql)?)
             })

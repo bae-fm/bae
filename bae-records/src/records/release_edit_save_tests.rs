@@ -65,7 +65,7 @@ async fn a_save_is_refused_once_the_release_changed_after_the_editor_opened() {
                 check,
                 |_| Ok(None),
                 None,
-                |_| Ok(()),
+                |_, _| Ok(()),
                 |_| Ok(()),
             )
             .await
@@ -119,7 +119,7 @@ async fn save_crediting_a_gone_artist(
             |_| Ok(Ok(())),
             |_| Ok(None),
             None,
-            |_| Ok(()),
+            |_, _| Ok(()),
             |_| Ok(()),
         )
         .await

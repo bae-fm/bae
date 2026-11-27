@@ -355,7 +355,8 @@ async fn an_added_track_stays_on_the_disc_of_the_sheet() {
     )
     .await;
     let edits = edits(&[("two", "first.flac"), ("two", "second.flac")], &[]).json().unwrap();
-    let layout = db.read(move |sql| laid_out_on(&sql, &stored_layout(&edits))).await.unwrap();
+    let layout =
+        db.read(move |sql| Ok(laid_out_on(&sql, &stored_layout(&edits))?.layout)).await.unwrap();
     let places: Vec<(String, u16)> = layout
         .tracks
         .iter()
@@ -566,7 +567,7 @@ async fn the_layout_writes_positions_after_a_save_leaves_gaps() {
     .await;
     db.call_sql(|sql| {
         let edits = SheetEdits { ignored: ids(&["sheet"]), ..SheetEdits::default() };
-        let layout = laid_out_on(&sql, &stored_layout(&edits.json()?))?;
+        let layout = laid_out_on(&sql, &stored_layout(&edits.json()?))?.layout;
         let (format, segment) = audio_rows(&loose("image", 1, "image"));
         write_rebound_audio_on(
             &sql,
@@ -600,7 +601,8 @@ async fn the_layout_writes_positions_after_a_save_leaves_gaps() {
     })
     .await
     .unwrap();
-    let stored = db.read(|sql| laid_out_on(&sql, &stored_layout(NO_SHEET_EDITS))).await.unwrap();
+    let stored =
+        db.read(|sql| Ok(laid_out_on(&sql, &stored_layout(NO_SHEET_EDITS))?.layout)).await.unwrap();
     assert_eq!(
         stored.tracks.into_iter().map(|track| track.track_id).collect::<Vec<_>>(),
         ids(&["before", "image", "after"]),

@@ -206,13 +206,16 @@ impl LibraryManager {
                 .transpose()
         };
         let bindings = rebound.as_ref().map_or_else(Vec::new, |audio| audio.bindings.clone());
-        let sheet_decisions = move |sql: &coven::CovenWrite<'_>| {
-            bae_import::tables::store_release_edit_sheet_decisions_on(
-                sql,
-                &decisions_form,
-                &bindings,
-            )
-        };
+        let sheet_decisions =
+            move |sql: &coven::CovenWrite<'_>,
+                  honored: &[(String, bae_types::mediums::MediumSide)]| {
+                bae_import::tables::store_release_edit_sheet_decisions_on(
+                    sql,
+                    &decisions_form,
+                    &bindings,
+                    honored,
+                )
+            };
         let saved = move |sql: &coven::CovenWrite<'_>| {
             bae_import::tables::release_edit_form_on(sql, &saved_id)
         };

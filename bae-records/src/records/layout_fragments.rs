@@ -137,14 +137,6 @@ sqlive_compose::fragment!(
 "#
 );
 
-impl LaidPlaces {
-    /// The track's id, its medium, side and number there, and the length its
-    /// source lists for it.
-    pub(super) fn into_place(self) -> (String, i64, i64, i64, Option<i64>) {
-        (self.track_id, self.medium, self.side, self.number, self.stated_length_ms)
-    }
-}
-
 // A release editor's layout of the release's tracks ([`LaidPlaces`]): on
 // [`BaseMediums`], from the places an applied catalog gives them (the JSON
 // array `places`, each a `{track_id, medium, side, number, stated_length_ms,
@@ -200,10 +192,3 @@ sqlive_compose::fragment!(
                 FROM replacing)) AS laid
 "#
 );
-
-impl ReleaseLaidPlaces {
-    /// The laid place the row is.
-    pub(super) fn into_laid(self) -> LaidPlaces {
-        self.laid
-    }
-}

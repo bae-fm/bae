@@ -99,7 +99,8 @@ async fn laid(db: &Store, picks: &[(&str, u32, u32)]) -> (Vec<(String, u16, u8, 
             .collect::<Vec<_>>(),
     )
     .unwrap();
-    let layout = db.read(move |sql| laid_out_on(&sql, &moved(moves.clone()))).await.unwrap();
+    let layout =
+        db.read(move |sql| Ok(laid_out_on(&sql, &moved(moves.clone()))?.layout)).await.unwrap();
     let places = layout
         .tracks
         .iter()
@@ -254,6 +255,9 @@ async fn a_pick_is_honored_when_the_move_empties_an_earlier_disc() {
         "sheet_file_id": uuid("sheet-b"), "medium": 3, "side": 1,
     })])
     .unwrap();
-    let honored = db.read(move |sql| honored_picks_on(&sql, &moved(moves.clone()))).await.unwrap();
+    let counter = db.track_work_for_test().await.unwrap();
+    let honored =
+        db.read(move |sql| Ok(laid_out_on(&sql, &moved(moves.clone()))?.honored)).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1, "a layout and its honored sides");
     assert_eq!(honored, [(uuid("sheet-b"), bae_types::mediums::MediumSide { medium: 3, side: 1 })]);
 }
