@@ -482,17 +482,8 @@ async fn the_editor_reads_which_file_holds_a_track_s_body_and_where_it_starts() 
         .await
         .unwrap();
 
-    let tracks = db
-        .read(|sql| {
-            crate::records::release_edit_tracks_on(
-                &sql,
-                "?1",
-                crate::records::MediumsSource::Release,
-                [RELEASE],
-            )
-        })
-        .await
-        .unwrap();
+    let tracks =
+        db.read(|sql| crate::records::release_edit_tracks_on(&sql, RELEASE)).await.unwrap();
 
     let track = tracks.iter().find(|track| track.track.id == TRACK_A).expect("track A");
     assert_eq!(track.main_segment_count, 1);

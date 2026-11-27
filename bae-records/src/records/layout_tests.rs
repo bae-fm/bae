@@ -74,6 +74,18 @@ fn plain(sides: &[u8]) -> Vec<(Option<bae_types::pressing::Medium>, u8)> {
     sides.iter().map(|sides| (None, *sides)).collect()
 }
 
+/// The release's own layout with the sheets `moves` moved.
+fn moved(moves: String) -> LibraryLayout {
+    LibraryLayout {
+        release_id: RELEASE_A.to_owned(),
+        applied: false,
+        mediums: "[]".to_owned(),
+        places: "[]".to_owned(),
+        moves,
+        edits: "{}".to_owned(),
+    }
+}
+
 /// The tracks as the layout places them for the sides picked, each a sheet
 /// with a medium and a side: each track with its medium, side and number, in
 /// playing order, and how many mediums remain.
@@ -87,23 +99,7 @@ async fn laid(db: &Store, picks: &[(&str, u32, u32)]) -> (Vec<(String, u16, u8, 
             .collect::<Vec<_>>(),
     )
     .unwrap();
-    let layout = db
-        .read(move |sql| {
-            laid_out_on(
-                &sql,
-                &LayoutParams {
-                    release_id: Some(RELEASE_A),
-                    applied: false,
-                    mediums: "[]",
-                    places: "[]",
-                    carving: "[]",
-                    moves: &moves,
-                    edits: "{}",
-                },
-            )
-        })
-        .await
-        .unwrap();
+    let layout = db.read(move |sql| laid_out_on(&sql, &moved(moves.clone()))).await.unwrap();
     let places = layout
         .tracks
         .iter()
@@ -206,40 +202,33 @@ async fn a_sheet_moves_onto_the_side_picked() {
 /// numbered as its disc.
 #[tokio::test]
 async fn a_sheet_can_go_on_each_side_of_a_record_and_on_each_disc() {
-    use bae_types::mediums::{MediumSide, TrackSide};
+    use bae_types::mediums::TrackSide;
     use bae_types::pressing::Medium;
-    let (db, _folder) = release(
-        &[(Some(Medium::Vinyl), 2), (None, 1), (Some(Medium::Vinyl), 2)],
-        &[("a", 1, 1, 1)],
-        &[],
-    )
-    .await;
-    let choices = db
+    let sided = |letter: &str| TrackSide::Sided { side_letter: letter.to_string() };
+    let (db, _folder) =
+        release(&[(Some(Medium::Vinyl), 2), (None, 1), (Some(Medium::Vinyl), 2)], &[], &[]).await;
+    // A release with no track on it keeps a heading for every side a sheet
+    // can go on.
+    let rows = db
         .read(|sql| {
-            Ok(sql.query(
-                &format!("SELECT * FROM {}", super::sheet_side_choices_sql(&base_mediums_source())),
-                rusqlite::named_params! {
-                    ":release": RELEASE_A, ":applied": false, ":mediums": "[]",
-                },
-                |row| {
-                    let kind: String = row.get(2)?;
-                    Ok(DbSheetSideChoice::of_columns(row.get(0)?, row.get(1)?, &kind, row.get(3)?)
-                        .unwrap())
-                },
-            )?)
+            crate::records::draft_release_edit_tracks_on(
+                &sql,
+                &moved("[]".to_owned()),
+                &Default::default(),
+            )
         })
         .await
         .unwrap();
-    let sided = |letter: &str| TrackSide::Sided { side_letter: letter.to_string() };
+    let headings: Vec<_> = rows
+        .into_iter()
+        .map(|row| match row {
+            DbReleaseEditRow::EmptySide(side) => side,
+            other => panic!("a release with no track has only headings: {other:?}"),
+        })
+        .collect();
     assert_eq!(
-        choices.iter().map(|choice| (choice.side, choice.heading.clone())).collect::<Vec<_>>(),
-        [
-            (MediumSide { medium: 1, side: 1 }, sided("A")),
-            (MediumSide { medium: 1, side: 2 }, sided("B")),
-            (MediumSide::first_of(2), TrackSide::Disc { disc: 2 }),
-            (MediumSide { medium: 3, side: 1 }, sided("C")),
-            (MediumSide { medium: 3, side: 2 }, sided("D")),
-        ]
+        headings,
+        [sided("A"), sided("B"), TrackSide::Disc { disc: 2 }, sided("C"), sided("D")]
     );
 }
 
@@ -271,22 +260,6 @@ async fn a_pick_is_honored_when_the_move_empties_an_earlier_disc() {
         "sheet_file_id": uuid("sheet-b"), "medium": 3, "side": 1,
     })])
     .unwrap();
-    let honored = db
-        .read(move |sql| {
-            honored_picks_on(
-                &sql,
-                &LayoutParams {
-                    release_id: Some(RELEASE_A),
-                    applied: false,
-                    mediums: "[]",
-                    places: "[]",
-                    carving: "[]",
-                    moves: &moves,
-                    edits: "{}",
-                },
-            )
-        })
-        .await
-        .unwrap();
+    let honored = db.read(move |sql| honored_picks_on(&sql, &moved(moves.clone()))).await.unwrap();
     assert_eq!(honored, [(uuid("sheet-b"), bae_types::mediums::MediumSide { medium: 3, side: 1 })]);
 }

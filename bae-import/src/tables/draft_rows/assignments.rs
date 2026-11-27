@@ -1,7 +1,7 @@
 //! A draft's artist assignments as a candidate's tables and a release
 //! editor's form both read them: the kind of a track's artists, and the
-//! statement that reads assignments back with their picked artists as the
-//! library holds them.
+//! assignments a read gives back with their picked artists as the library
+//! holds them.
 
 use crate::{ArtistAssignment, Credited, TrackArtistAssignments};
 use bae_catalogs::credits::ArtistCredit;
@@ -24,7 +24,7 @@ pub(crate) fn decoded<T: serde::de::DeserializeOwned>(
         .map_err(|error| DbError::unreadable_json(format!("a draft's stored {what}"), json, error))
 }
 
-/// The credits a JSON array of [`assignments_json_sql`] holds, in order.
+/// The credits a JSON array of [`StoredAssignment`]s holds, in order.
 pub(crate) fn assignments_of(json: &str, what: &str) -> Result<Vec<Credited>, DbError> {
     decoded::<Vec<StoredAssignment>>(json, what)?
         .into_iter()
@@ -33,8 +33,7 @@ pub(crate) fn assignments_of(json: &str, what: &str) -> Result<Vec<Credited>, Db
 }
 
 /// One stored assignment row, with the picked artist's fields as the
-/// library holds them and its credit name, if it names one still there, as
-/// [`ASSIGNMENT_JSON`] holds it.
+/// library holds them and its credit name, if it names one still there.
 #[derive(serde::Deserialize)]
 pub(crate) struct StoredAssignment {
     kind: String,
@@ -47,43 +46,6 @@ pub(crate) struct StoredAssignment {
     credit_name: Option<String>,
     credited_as: Option<String>,
     join_phrase: Option<String>,
-}
-
-/// One assignment row, aliased `assignment`, as a JSON object that
-/// [`StoredAssignment`] reads, with its picked artist's fields as the library
-/// holds them, in a statement that makes the joins of [`assignment_joins_sql`].
-pub(crate) const ASSIGNMENT_JSON: &str = "json_object( \
-     'kind', assignment.assignment_kind, 'artist_id', assignment.artist_id, \
-     'name', CASE assignment.assignment_kind WHEN 'picked' THEN picked.name \
-         WHEN 'credit' THEN assignment.name END, \
-     'sort_name', CASE assignment.assignment_kind WHEN 'picked' THEN picked.sort_name \
-         WHEN 'credit' THEN assignment.sort_name END, \
-     'musicbrainz_artist_id', CASE assignment.assignment_kind \
-         WHEN 'picked' THEN picked.musicbrainz_artist_id \
-         WHEN 'credit' THEN assignment.musicbrainz_artist_id END, \
-     'discogs_artist_id', CASE assignment.assignment_kind \
-         WHEN 'picked' THEN picked.discogs_artist_id \
-         WHEN 'credit' THEN assignment.discogs_artist_id END, \
-     'credit_key', picked_credit.name_key, 'credit_name', picked_credit.name, \
-     'credited_as', assignment.credited_as, 'join_phrase', assignment.join_phrase)";
-
-/// The joins [`ASSIGNMENT_JSON`] reads: the row `assignment`'s picked artist
-/// as `picked`, and that artist's credit name as `picked_credit`.
-pub(crate) fn assignment_joins_sql() -> String {
-    format!(
-        "LEFT JOIN artists picked ON picked.id = assignment.artist_id {}",
-        bae_records::records::read::credit_name_join("assignment", "picked_credit"),
-    )
-}
-
-/// The rows of `table`, aliased `assignment`, that match the SQL condition
-/// `belongs`, as a JSON array of [`ASSIGNMENT_JSON`] in their order.
-pub(crate) fn assignments_json_sql(table: &str, belongs: &str) -> String {
-    format!(
-        "(SELECT json_group_array({ASSIGNMENT_JSON} ORDER BY assignment.position) \
-         FROM {table} AS assignment {joins} WHERE {belongs})",
-        joins = assignment_joins_sql(),
-    )
 }
 
 impl StoredAssignment {

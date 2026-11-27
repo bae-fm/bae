@@ -4,11 +4,13 @@
 //!
 //! The form puts the tracks at the places an applied catalog gives them, or
 //! the library's own, and moves each CUE sheet the person picked a side or
-//! disc for onto that side. One statement lays them out ([`layout_ctes`]), so the
+//! disc for onto that side. One rule lays them out
+//! ([`LaidPlaces`](super::layout_fragments::LaidPlaces)), so the
 //! editor's draft, which shows the rows laid out, and the save, which writes
 //! them, never disagree, and an import draft moves a sheet the same way.
 
 use super::*;
+use bae_store::statement_rows;
 use bae_types::mediums::{ReleaseMedium, TrackPlace};
 
 /// One track of a [`ReleaseLayout`].
@@ -28,245 +30,246 @@ pub struct ReleaseLayout {
     pub tracks: Vec<LaidTrack>,
 }
 
-/// What the statements of [`layout_ctes`] read: the release, whether the
-/// layout starts from `mediums` and `places` (JSON arrays: an applied
-/// catalog's, or an import draft's) rather than the release's own, the CUE
-/// sheets that carve tracks the library does not hold (`carving`), and the
-/// sides picked for CUE sheets (`moves`, a JSON array of objects with a
-/// `sheet_file_id`, a `medium` and a `side`), and what the form does to the
-/// sheets (`edits`, the JSON object of a
-/// [`SheetEdits`](super::sheet_files::SheetEdits)), from which the
-/// statements work out the tracks a save deletes and adds.
-pub struct LayoutParams<'a> {
-    /// The release, `None` for an import draft, which is no release yet.
-    pub release_id: Option<&'a str>,
+/// A release editor's layout of its release's tracks, as
+/// [`ReleaseLaidPlaces`](super::layout_fragments::ReleaseLaidPlaces) binds
+/// it: the release, whether the layout starts from `mediums` and `places`
+/// (an applied catalog's) rather than the release's own, the sides picked for
+/// CUE sheets (`moves`), and what the form does to the sheets (`edits`, the
+/// JSON object of a [`SheetEdits`](super::sheet_files::SheetEdits)), from
+/// which the layout works out the tracks a save deletes and adds.
+#[derive(Debug, Clone)]
+pub struct LibraryLayout {
+    pub release_id: String,
     pub applied: bool,
     /// `[{position, carrier, sides}]`, the applied catalog's mediums.
-    pub mediums: &'a str,
+    pub mediums: String,
     /// `[{track_id, medium, side, number, stated_length_ms, position}]`, the
     /// applied catalog's places, in playing order.
-    pub places: &'a str,
-    /// `[{sheet_file_id, track_id}]`, each track of `places` a CUE sheet
-    /// carves that `carved_tracks` does not hold, such as an import draft's;
-    /// `[]` for a library release.
-    pub carving: &'a str,
-    pub moves: &'a str,
-    pub edits: &'a str,
+    pub places: String,
+    /// `[{sheet_file_id, medium, side}]`.
+    pub moves: String,
+    pub edits: String,
 }
 
-impl<'a> LayoutParams<'a> {
-    /// The named parameters the statements of [`layout_ctes`] bind.
-    pub fn named(&'a self) -> [(&'static str, &'a dyn rusqlite::ToSql); 7] {
-        [
-            (":release", &self.release_id),
-            (":applied", &self.applied),
-            (":mediums", &self.mediums),
-            (":places", &self.places),
-            (":carving", &self.carving),
-            (":moves", &self.moves),
-            (":edits", &self.edits),
-        ]
-    }
+/// An import draft's layout, which is no release's: its mediums and the
+/// places of its tracks (as [`LibraryLayout`] holds them), the track each of
+/// its CUE sheets carves (`carving`, `[{sheet_file_id, track_id}]`) and the
+/// sides picked for its sheets (`moves`).
+#[derive(Debug, Clone)]
+pub struct DraftLayout {
+    pub mediums: String,
+    pub places: String,
+    pub carving: String,
+    pub moves: String,
 }
 
-/// Whether the form's edits delete or add a track, as an SQL condition over
-/// the `dropped_tracks` of [`sheet_changes_ctes`](super::sheet_files::sheet_changes_ctes): every track a save adds
-/// replaces deleted ones.
-const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
+// The mediums a release editor's layout starts from, in order.
+sqlive_compose::read!(
+    LaidMediums(release: String, applied: bool, mediums: String),
+    r#"
+    SELECT base.*
+    FROM @crate::records::layout_fragments::BaseMediums(
+        release: :release, applied: :applied, mediums: :mediums) AS base
+    ORDER BY base.position
+"#
+);
 
-/// The common table expressions that lay a release out, for statements
-/// binding [`LayoutParams::named`]: `base_mediums` (`position`, `carrier`,
-/// `sides`), `laid_places` (`track_id`, `medium`, `side`, `number`,
-/// `stated_length_ms`, `position`), `laid_sheets` (each CUE sheet's
-/// `sheet_file_id` with the `medium` and `side` its first track sits on) and
-/// `honored` (the sheets whose picked side the layout gave them).
-///
-/// The mediums are the source's, `base_mediums`: a layout neither adds nor
-/// drops one, so a medium no track sits on stays at its position.
-///
-/// The layout starts from the given places, else the library's.
-/// A sheet picked onto a side a medium has, with a track not on it,
-/// moves all its tracks there, after the tracks already on that side, each
-/// numbered one more than the highest number on that side, so no two tracks
-/// of a side share a number; sheets going to one side keep the order of
-/// their first tracks. The tracks then take their playing order from their
-/// places. A form that moves no sheet lays the tracks out as they were.
-///
-/// A form that deletes or adds tracks (`edits`) lays out what is left: the
-/// deleted tracks go, each added track takes the place of its anchor, the
-/// first track of the sheet whose tracks it replaces, ahead of the track
-/// that holds it, and every side numbers its tracks from one in playing
-/// order. An added track is named by its file's id. The tracks the edits
-/// delete and add are those of
-/// [`sheet_changes_ctes`](super::sheet_files::sheet_changes_ctes), which come first.
-pub fn layout_ctes() -> String {
-    let changes = super::sheet_files::sheet_changes_ctes(":release", ":edits");
-    format!("{changes}, {BASE_MEDIUMS}, {LAYOUT}").replace("{changing}", CHANGING)
-}
+// The tracks a release editor's layout lays out, in playing order.
+sqlive_compose::read!(
+    LaidReleaseTracks(
+        release: String,
+        applied: bool,
+        mediums: String,
+        places: String,
+        moves: String,
+        edits: String,
+    ),
+    r#"
+    SELECT laid.*
+    FROM @crate::records::layout_fragments::ReleaseLaidPlaces(
+        release: :release, applied: :applied, mediums: :mediums, places: :places,
+        moves: :moves, edits: :edits) AS laid
+    ORDER BY laid.position
+"#
+);
 
-const BASE_MEDIUMS: &str = "base_mediums (position, carrier, sides) AS ( \
-         SELECT j.value ->> 'position', j.value ->> 'carrier', j.value ->> 'sides' \
-         FROM json_each(:mediums) AS j WHERE :applied \
-         UNION ALL \
-         SELECT position, medium, side_count FROM release_mediums \
-         WHERE release_id = :release AND NOT :applied)";
+// The sides picked for CUE sheets that a release editor's layout gave the
+// sheets: those on which a sheet's first laid track sits.
+sqlive_compose::read!(
+    HonoredSheetPicks(
+        release: String, applied: bool, mediums: String, places: String, moves: String,
+        edits: String
+    ) { sheet_file_id: String, medium: i64, side: i64 },
+    r#"
+    WITH laid AS (
+        SELECT place.*
+        FROM @crate::records::layout_fragments::ReleaseLaidPlaces(
+            release: :release, applied: :applied, mediums: :mediums, places: :places,
+            moves: :moves, edits: :edits) AS place),
+    firsts AS (
+        SELECT cut.sheet_file_id, laid.medium, laid.side,
+               ROW_NUMBER() OVER (PARTITION BY cut.sheet_file_id ORDER BY laid.position) AS n
+        FROM laid
+        JOIN carved_tracks AS cut ON cut.track_id = laid.track_id),
+    picks AS (
+        SELECT picked.value ->> 'sheet_file_id' AS sheet_file_id,
+               picked.value ->> 'medium' AS medium, picked.value ->> 'side' AS side
+        FROM json_each(:moves) AS picked)
+    SELECT picks.sheet_file_id AS sheet_file_id, picks.medium AS medium, picks.side AS side
+    FROM picks
+    JOIN firsts ON firsts.sheet_file_id = picks.sheet_file_id AND firsts.n = 1
+    WHERE firsts.medium = picks.medium AND firsts.side = picks.side
+"#
+);
 
-const LAYOUT: &str = "base_places (track_id, medium, side, number, stated_length_ms, position) AS ( \
-         SELECT j.value ->> 'track_id', j.value ->> 'medium', j.value ->> 'side', \
-                j.value ->> 'number', j.value ->> 'stated_length_ms', j.value ->> 'position' \
-         FROM json_each(:places) AS j WHERE :applied \
-         UNION ALL \
-         SELECT t.id, m.position, t.side, t.track_number, t.stated_length_ms, t.position \
-         FROM tracks t JOIN release_mediums m ON m.id = t.medium_id \
-         WHERE t.release_id = :release AND NOT :applied), \
-     picks (sheet_file_id, medium, side) AS ( \
-         SELECT j.value ->> 'sheet_file_id', j.value ->> 'medium', j.value ->> 'side' \
-         FROM json_each(:moves) AS j), \
-     carving (sheet_file_id, track_id) AS ( \
-         SELECT sheet_file_id, track_id FROM carved_tracks \
-         UNION ALL \
-         SELECT j.value ->> 'sheet_file_id', j.value ->> 'track_id' FROM json_each(:carving) AS j), \
-     sheet_tracks (sheet_file_id, track_id, position, first_position) AS ( \
-         SELECT c.sheet_file_id, c.track_id, p.position, \
-                MIN(p.position) OVER (PARTITION BY c.sheet_file_id) \
-         FROM carving c JOIN base_places p ON p.track_id = c.track_id), \
-     moves (track_id, medium, side, first_position, position) AS ( \
-         SELECT st.track_id, pick.medium, pick.side, st.first_position, st.position \
-         FROM picks pick JOIN sheet_tracks st ON st.sheet_file_id = pick.sheet_file_id \
-         WHERE EXISTS (SELECT 1 FROM base_mediums target \
-                       WHERE target.position = pick.medium \
-                         AND pick.side BETWEEN 1 AND target.sides) \
-           AND EXISTS (SELECT 1 FROM sheet_tracks other \
-                       JOIN base_places place ON place.track_id = other.track_id \
-                       WHERE other.sheet_file_id = pick.sheet_file_id \
-                         AND (place.medium <> pick.medium OR place.side <> pick.side))), \
-     targets (track_id, medium, side, number, stated_length_ms, position, moved, first_position) AS ( \
-         SELECT p.track_id, COALESCE(mv.medium, p.medium), COALESCE(mv.side, p.side), \
-                p.number, p.stated_length_ms, p.position, mv.track_id IS NOT NULL, mv.first_position \
-         FROM base_places p LEFT JOIN moves mv ON p.track_id = mv.track_id), \
-     kept (track_id, medium, side, number, stated_length_ms, position) AS ( \
-         SELECT track_id, medium, side, \
-                CASE WHEN moved \
-                     THEN COALESCE(MAX(number) FILTER (WHERE NOT moved) OVER side, 0) \
-                          + ROW_NUMBER() OVER (PARTITION BY medium, side, moved \
-                                               ORDER BY first_position, position) \
-                     ELSE number END, \
-                stated_length_ms, position \
-         FROM targets WINDOW side AS (PARTITION BY medium, side)), \
-     numbered (track_id, medium, side, number, stated_length_ms, position) AS ( \
-         SELECT CASE WHEN pass.fresh THEN a.file_id ELSE k.track_id END, k.medium, k.side, \
-                CASE WHEN {changing} \
-                     THEN ROW_NUMBER() OVER (PARTITION BY k.medium, k.side \
-                                             ORDER BY k.number, pass.fresh DESC, a.ord, k.position) \
-                     ELSE k.number END, \
-                CASE WHEN pass.fresh THEN NULL ELSE k.stated_length_ms END, k.position \
-         FROM kept k \
-         JOIN (SELECT 0 AS fresh UNION ALL SELECT 1) AS pass \
-         LEFT JOIN (SELECT added.file_id, st.track_id AS anchor, \
-                           added.first_position AS ord \
-                    FROM added_files added JOIN sheet_tracks st \
-                        ON st.sheet_file_id = added.sheet_file_id \
-                       AND st.position = st.first_position) AS a \
-             ON pass.fresh AND a.anchor = k.track_id \
-         WHERE (NOT pass.fresh AND k.track_id NOT IN (SELECT track_id FROM dropped_tracks)) \
-            OR (pass.fresh AND a.file_id IS NOT NULL)), \
-     moving (yes) AS (SELECT EXISTS (SELECT 1 FROM moves) OR {changing}), \
-     laid_places (track_id, medium, side, number, stated_length_ms, position) AS ( \
-         SELECT n.track_id, n.medium, n.side, n.number, n.stated_length_ms, \
-                CASE WHEN moving.yes \
-                     THEN ROW_NUMBER() OVER (ORDER BY n.medium, n.side, n.number) - 1 \
-                     ELSE n.position END \
-         FROM numbered n, moving), \
-     laid_sheets (sheet_file_id, medium, side) AS ( \
-         SELECT sheet_file_id, medium, side FROM ( \
-             SELECT st.sheet_file_id, place.medium, place.side, \
-                    ROW_NUMBER() OVER (PARTITION BY st.sheet_file_id \
-                                       ORDER BY place.position) AS n \
-             FROM sheet_tracks st JOIN laid_places place ON place.track_id = st.track_id) \
-         WHERE n = 1), \
-     honored (sheet_file_id, medium, side) AS ( \
-         SELECT pick.sheet_file_id, pick.medium, pick.side FROM picks pick \
-         JOIN laid_sheets sheet ON sheet.sheet_file_id = pick.sheet_file_id \
-         WHERE sheet.medium = pick.medium AND sheet.side = pick.side)";
+// An import draft's mediums, in order.
+sqlive_compose::read!(
+    DraftLayoutMediums(mediums: String),
+    r#"
+    SELECT given.*
+    FROM @crate::records::layout_fragments::GivenMediums(mediums: :mediums) AS given
+    ORDER BY given.position
+"#
+);
 
-/// A statement's table of the release's mediums as a form lays them out, in
-/// the shape [`MediumsSource::Draft`] takes for `mediums`. These are the
-/// source's, a medium no track sits on among them. The track table's headings
-/// and the place pop-ups of its CUE sheets number the mediums this way.
-pub fn base_mediums_source() -> String {
-    format!(
-        "(WITH {BASE_MEDIUMS} SELECT position AS id, :release AS release_id, position, \
-             carrier AS medium, sides AS side_count FROM base_mediums)"
-    )
-}
-
-/// A statement's table of the laid-out places in the shape
-/// [`MediumsSource::Draft`] takes for `places`.
-pub fn laid_places_source() -> String {
-    format!(
-        "(WITH {} SELECT track_id AS id, :release AS release_id, medium AS medium_id, side, \
-                 number AS track_number, stated_length_ms, position FROM laid_places)",
-        layout_ctes()
-    )
-}
+// The tracks of an import draft's layout, in playing order.
+sqlive_compose::read!(
+    LaidDraftTracks(mediums: String, places: String, carving: String, moves: String),
+    r#"
+    WITH given_mediums AS (
+        SELECT given.*
+        FROM @crate::records::layout_fragments::GivenMediums(mediums: :mediums) AS given)
+    SELECT laid.*
+    FROM @crate::records::layout_fragments::LaidPlaces(
+        base_mediums: (SELECT position, carrier, sides FROM given_mediums),
+        base_places: (SELECT placed.value ->> 'track_id', placed.value ->> 'medium',
+                             placed.value ->> 'side', placed.value ->> 'number',
+                             placed.value ->> 'stated_length_ms', placed.value ->> 'position'
+                      FROM json_each(:places) AS placed),
+        picks: (SELECT picked.value ->> 'sheet_file_id', picked.value ->> 'medium',
+                       picked.value ->> 'side'
+                FROM json_each(:moves) AS picked),
+        carving: (SELECT cut.value ->> 'sheet_file_id', cut.value ->> 'track_id'
+                  FROM json_each(:carving) AS cut),
+        dropped: (SELECT NULL WHERE 0),
+        added: (SELECT NULL, NULL, NULL WHERE 0)) AS laid
+    ORDER BY laid.position
+"#
+);
 
 /// The sides picked for CUE sheets that the layout gave the sheets: each a
 /// sheet's file id with the side.
 pub fn honored_picks_on(
     sql: &impl coven::SqlRead,
-    layout: &LayoutParams<'_>,
+    layout: &LibraryLayout,
 ) -> Result<Vec<(String, bae_types::mediums::MediumSide)>, DbError> {
-    Ok(sql.query(
-        &format!("WITH {} SELECT sheet_file_id, medium, side FROM honored", layout_ctes()),
-        layout.named().as_slice(),
-        |row| {
-            Ok((
-                row.get(0)?,
-                bae_types::mediums::MediumSide { medium: row.get(1)?, side: row.get(2)? },
-            ))
-        },
-    )?)
+    let params = HonoredSheetPicksParams {
+        release: layout.release_id.clone(),
+        applied: layout.applied,
+        mediums: layout.mediums.clone(),
+        places: layout.places.clone(),
+        moves: layout.moves.clone(),
+        edits: layout.edits.clone(),
+    };
+    statement_rows(sql, &params)?
+        .into_iter()
+        .map(|row| {
+            let side = bae_types::mediums::MediumSide {
+                medium: fits(row.medium, "a picked medium")?,
+                side: fits(row.side, "a picked side")?,
+            };
+            Ok((row.sheet_file_id, side))
+        })
+        .collect()
 }
 
-/// The layout the statements of [`layout_ctes`] give, as one value.
+/// The layout a release editor's form gives its release's tracks.
 pub fn laid_out_on(
     sql: &impl coven::SqlRead,
-    layout: &LayoutParams<'_>,
+    layout: &LibraryLayout,
 ) -> Result<ReleaseLayout, DbError> {
-    let mediums = sql.query(
-        &format!(
-            "WITH {} SELECT carrier, sides FROM base_mediums ORDER BY position",
-            layout_ctes()
-        ),
-        layout.named().as_slice(),
-        |row| {
-            let carrier: Option<String> = row.get(0)?;
-            let carrier = carrier
-                .map(|key| {
-                    bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
-                        rusqlite::Error::InvalidParameterName(format!("unknown medium {key:?}"))
-                    })
-                })
-                .transpose()?;
-            Ok(ReleaseMedium { carrier, sides: row.get(1)? })
-        },
-    )?;
-    let tracks = sql.query(
-        &format!(
-            "WITH {} SELECT track_id, medium, side, number, stated_length_ms \
-             FROM laid_places ORDER BY position",
-            layout_ctes()
-        ),
-        layout.named().as_slice(),
-        |row| {
-            Ok(LaidTrack {
-                track_id: row.get(0)?,
-                place: TrackPlace { medium: row.get(1)?, side: row.get(2)?, number: row.get(3)? },
-                stated_length_ms: row.get(4)?,
-            })
-        },
-    )?;
+    let mediums = LaidMediumsParams {
+        release: layout.release_id.clone(),
+        applied: layout.applied,
+        mediums: layout.mediums.clone(),
+    };
+    let mediums = statement_rows(sql, &mediums)?
+        .into_iter()
+        .map(|row| medium_of(row.base.carrier, row.base.sides))
+        .collect::<Result<_, _>>()?;
+    let tracks = LaidReleaseTracksParams {
+        release: layout.release_id.clone(),
+        applied: layout.applied,
+        mediums: layout.mediums.clone(),
+        places: layout.places.clone(),
+        moves: layout.moves.clone(),
+        edits: layout.edits.clone(),
+    };
+    let tracks = statement_rows(sql, &tracks)?
+        .into_iter()
+        .map(|row| laid_track(row.laid.into_laid()))
+        .collect::<Result<_, _>>()?;
     Ok(ReleaseLayout { mediums, tracks })
+}
+
+/// The layout an import draft's sheet moves give its tracks.
+pub fn draft_laid_out_on(
+    sql: &impl coven::SqlRead,
+    layout: &DraftLayout,
+) -> Result<ReleaseLayout, DbError> {
+    let mediums = DraftLayoutMediumsParams { mediums: layout.mediums.clone() };
+    let mediums = statement_rows(sql, &mediums)?
+        .into_iter()
+        .map(|row| medium_of(row.given.carrier, row.given.sides))
+        .collect::<Result<_, _>>()?;
+    let tracks = LaidDraftTracksParams {
+        mediums: layout.mediums.clone(),
+        places: layout.places.clone(),
+        carving: layout.carving.clone(),
+        moves: layout.moves.clone(),
+    };
+    let tracks = statement_rows(sql, &tracks)?
+        .into_iter()
+        .map(|row| laid_track(row.laid))
+        .collect::<Result<_, _>>()?;
+    Ok(ReleaseLayout { mediums, tracks })
+}
+
+/// `value`, which holds `what`, in the integer type a layout keeps it in.
+fn fits<T: TryFrom<i64>>(value: i64, what: &str) -> Result<T, DbError> {
+    T::try_from(value).map_err(|_error| DbError::unreadable(what, value))
+}
+
+/// The medium of one row of a layout's mediums.
+fn medium_of(carrier: Option<String>, sides: Option<i64>) -> Result<ReleaseMedium, DbError> {
+    let carrier = carrier
+        .map(|key| {
+            bae_types::pressing::Medium::from_key(&key)
+                .ok_or_else(|| DbError::unreadable("a laid medium's carrier", key))
+        })
+        .transpose()?;
+    let sides = sides
+        .and_then(|sides| u8::try_from(sides).ok())
+        .and_then(std::num::NonZeroU8::new)
+        .ok_or_else(|| DbError::unreadable("a laid medium's sides", sides))?;
+    Ok(ReleaseMedium { carrier, sides })
+}
+
+/// The track of one row of a layout's tracks.
+fn laid_track(row: super::layout_fragments::LaidPlaces) -> Result<LaidTrack, DbError> {
+    let (track_id, medium, side, number, stated_length_ms) = row.into_place();
+    let unreadable = || DbError::unreadable("a laid track's place", &track_id);
+    let place = TrackPlace {
+        medium: std::num::NonZeroU16::new(fits(medium, "a laid track's medium")?)
+            .ok_or_else(unreadable)?,
+        side: std::num::NonZeroU8::new(fits(side, "a laid track's side")?)
+            .ok_or_else(unreadable)?,
+        number: std::num::NonZeroU32::new(fits(number, "a laid track's number")?)
+            .ok_or_else(unreadable)?,
+    };
+    let stated_length_ms =
+        stated_length_ms.map(|length| fits(length, "a laid track's listed length")).transpose()?;
+    Ok(LaidTrack { track_id, place, stated_length_ms })
 }
 
 /// Write `layout` over the release `release_id`: each medium at its

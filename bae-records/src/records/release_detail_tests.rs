@@ -202,14 +202,7 @@ async fn the_statements_place_tracks_by_one_rule() {
     #[cfg(desktop)]
     {
         let edited = db
-            .read(move |sql| {
-                super::release::release_edit_tracks_on(
-                    &sql,
-                    "?1",
-                    MediumsSource::Release,
-                    [release],
-                )
-            })
+            .read(move |sql| super::editor_tracks::release_edit_tracks_on(&sql, release))
             .await
             .unwrap();
         let edited: Vec<_> =

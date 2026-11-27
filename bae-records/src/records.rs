@@ -47,7 +47,6 @@ pub(crate) mod artist_sql;
 pub mod artist_standing;
 pub(crate) mod catalog_rank;
 pub mod credit_rule;
-#[cfg(desktop)]
 pub(crate) mod lengths_disagree;
 use artist_credit_names::settle_credit_name;
 pub mod artist_resolution;
@@ -75,12 +74,7 @@ pub mod spread_fragments;
 #[cfg(desktop)]
 pub use release_records::RecordsChange;
 mod release;
-pub use release::ReleaseMetadataRows;
-#[cfg(desktop)]
-pub use release::{
-    release_edit_row_of_row, release_edit_track_of_row, release_edit_tracks_on,
-    release_edit_tracks_sql,
-};
+pub use release::{edited_release_on, EditedRelease, ReleaseMetadataRows};
 // Only saving a release edit session writes metadata alongside records.
 #[cfg(desktop)]
 use release::write_release_metadata_on;
@@ -93,12 +87,20 @@ pub use release_edit_save::{
 };
 mod emptied;
 pub mod layout;
+pub mod layout_fragments;
 pub mod sheet_files;
+pub mod sheet_fragments;
 use emptied::Emptiable;
 pub mod browse_fragments;
 pub mod credit_fragments;
 #[cfg(desktop)]
 pub mod editor_files;
+#[cfg(desktop)]
+pub mod editor_tracks;
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use editor_tracks::draft_release_edit_tracks_on;
+#[cfg(desktop)]
+pub use editor_tracks::{draft_release_edit_row_of, release_edit_tracks_on};
 pub mod file_fragments;
 pub mod place_fragments;
 mod release_credits;
@@ -119,10 +121,7 @@ mod release_tracks;
 pub mod release_with_files;
 pub mod track_display;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
-pub use release_tracks::{
-    sheet_side_choices_sql, track_places_ctes, track_places_on, track_position_of, track_side_of,
-    MediumsSource,
-};
+pub use release_tracks::{track_places_on, track_position_of, track_side_of};
 pub use release_with_files::ReleaseWithFiles;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;

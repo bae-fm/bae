@@ -30,6 +30,7 @@ bae-catalogs = { workspace = true }
 # in.
 bae-store = { workspace = true }
 bae-records = { workspace = true }
+bae-people = { workspace = true }
 # The bugs and telemetry an import reports, and the error categories a pane
 # shows.
 bae-diagnostics = { workspace = true }

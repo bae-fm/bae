@@ -100,7 +100,7 @@ sqlive_compose::fragment!(
         id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER
     ) {
         medium: i64,
-        side: Option<i64>,
+        side: i64,
         kind: String,
         ordinal: i64
     },
@@ -115,5 +115,63 @@ sqlive_compose::fragment!(
     FROM medium AS m
     JOIN json_each('[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255]') AS counted
       ON counted.value = 1 OR (m.sided AND counted.value <= m.side_count)
+    WHERE counted.value IS NOT NULL
+"#
+);
+
+// Each of the placed tracks `placed` ([`TrackPlaces`]' rows), and for a track
+// a CUE sheet carves, the sheet and the side its first track in playing order
+// is on, as a [`SheetSideChoices`] row names it: that side of a medium played
+// side by side, else the medium's first side, since every side of another
+// medium shares the disc's heading.
+sqlive_compose::fragment!(
+    PlacedWithSheetSides
+    with placed(
+        track_id TEXT, position INTEGER, medium_position INTEGER, side INTEGER, number INTEGER,
+        side_kind TEXT, side_ordinal INTEGER, stated_length_ms INTEGER
+    ) {
+        track_id: String,
+        position: i64,
+        medium_position: i64,
+        side: i64,
+        number: i64,
+        side_kind: String,
+        side_ordinal: i64,
+        stated_length_ms: Option<i64>,
+        sheet_file_id: Option<String>,
+        sheet_medium: Option<i64>,
+        sheet_side: Option<i64>,
+        sheet_kind: Option<String>,
+        sheet_ordinal: Option<i64>
+    },
+    r#"
+    SELECT place.track_id, place.position, place.medium_position, place.side, place.number,
+           place.side_kind, place.side_ordinal, place.stated_length_ms, cut.sheet_file_id,
+           FIRST_VALUE(place.medium_position) OVER on_sheet AS sheet_medium,
+           FIRST_VALUE(CASE WHEN place.side_kind = 'sided' THEN place.side ELSE 1 END)
+               OVER on_sheet AS sheet_side,
+           FIRST_VALUE(CASE WHEN place.side_kind = 'sided' THEN 'sided' ELSE 'disc' END)
+               OVER on_sheet AS sheet_kind,
+           FIRST_VALUE(CASE WHEN place.side_kind = 'sided' THEN place.side_ordinal
+                            ELSE place.medium_position END) OVER on_sheet AS sheet_ordinal
+    FROM placed AS place
+    LEFT JOIN carved_tracks AS cut ON cut.track_id = place.track_id
+    WINDOW on_sheet AS (PARTITION BY cut.sheet_file_id ORDER BY place.position)
+"#
+);
+
+// The choices of a CUE sheet's caption over the mediums the caller gives
+// ([`SheetSideChoices`]), as one JSON array in order.
+sqlive_compose::fragment!(
+    SheetSideChoicesJson
+    with mediums(
+        id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER
+    ) { choices: String },
+    r#"
+    SELECT json_group_array(json_object(
+               'medium', choice.medium, 'side', choice.side, 'kind', choice.kind,
+               'ordinal', choice.ordinal) ORDER BY choice.medium, choice.side) AS choices
+    FROM @crate::records::place_fragments::SheetSideChoices(
+        mediums: (SELECT * FROM mediums)) AS choice
 "#
 );

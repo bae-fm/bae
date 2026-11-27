@@ -140,7 +140,7 @@ struct RunJson {
 
 #[derive(serde::Deserialize)]
 struct SideJson {
-    /// The side's kind and ordinal, as `track_places_ctes` names them.
+    /// The side's kind and ordinal, as the `TrackPlaces` fragment names them.
     kind: String,
     ordinal: u32,
     runs: Vec<RunJson>,

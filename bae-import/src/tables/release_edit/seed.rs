@@ -24,12 +24,7 @@ pub(crate) fn release_edit_rows_on(
     let Some(release) = bae_records::records::release_editor_rows_on(sql, release_id)? else {
         return Ok(None);
     };
-    let tracks = bae_records::records::release_edit_tracks_on(
-        sql,
-        "?1",
-        bae_records::records::MediumsSource::Release,
-        [release_id],
-    )?;
+    let tracks = bae_records::records::release_edit_tracks_on(sql, release_id)?;
     Ok(Some(ReleaseEditRows { release, tracks }))
 }
 

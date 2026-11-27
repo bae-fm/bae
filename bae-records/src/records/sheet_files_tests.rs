@@ -1,7 +1,7 @@
 //! What a release editor's edits do to a release's tracks, as the statements
-//! of `sheet_changes_ctes` work it out.
+//! of the sheet fragments work it out.
 
-use super::layout::{base_mediums_source, laid_out_on, laid_places_source, LayoutParams};
+use super::layout::{laid_out_on, LibraryLayout};
 use super::*;
 use crate::test_fixtures::{ALBUM_A, RELEASE_A};
 use crate::ReleaseFileRole;
@@ -161,27 +161,23 @@ fn audio_rows(track: &Track) -> (DbAudioFormat, DbAudioSegment) {
 }
 
 /// The edits that bind each `FILE` line of `no_audio` (sheet label, line) to
-/// no audio, and type the titles `titles` (file label, title), as the
-/// statements bind them.
-fn edits(no_audio: &[(&str, &str)], titles: &[(&str, &str)]) -> String {
-    serde_json::to_string(&serde_json::json!({
-        "picks": no_audio
+/// no audio, and type the titles `titles` (file label, title).
+fn edits(no_audio: &[(&str, &str)], titles: &[(&str, &str)]) -> SheetEdits {
+    SheetEdits {
+        picks: no_audio
             .iter()
-            .map(|(sheet, line)| serde_json::json!({
-                "sheet_file_id": uuid(sheet),
-                "file_reference": line,
-                "audio_file_id": null,
-            }))
-            .collect::<Vec<_>>(),
-        "titles": titles
-            .iter()
-            .map(|(file, title)| (uuid(file), (*title).to_string()))
-            .collect::<std::collections::BTreeMap<_, _>>(),
-    }))
-    .unwrap()
+            .map(|(sheet, line)| SheetFilePick {
+                sheet_file_id: uuid(sheet),
+                file_reference: (*line).to_string(),
+                audio_file_id: None,
+            })
+            .collect(),
+        ignored: Vec::new(),
+        titles: titles.iter().map(|(file, title)| (uuid(file), (*title).to_string())).collect(),
+    }
 }
 
-async fn changes(db: &Store, edits: String) -> SheetTrackChanges {
+async fn changes(db: &Store, edits: SheetEdits) -> SheetTrackChanges {
     db.read(move |sql| sheet_track_changes_on(&sql, RELEASE_A, &edits)).await.unwrap()
 }
 
@@ -200,7 +196,7 @@ async fn edits_that_bind_no_line_to_no_audio_delete_and_add_nothing() {
     let (db, _folder) =
         release(1, &[loose("a", 1, "loose"), carved("s1", 1, ("one", "image.flac"), "image", 0)])
             .await;
-    let none = changes(&db, "{}".to_string()).await;
+    let none = changes(&db, SheetEdits::default()).await;
     assert_eq!((none.dropped, none.added), (Vec::new(), Vec::new()));
     let empty = changes(&db, edits(&[], &[])).await;
     assert_eq!((empty.dropped, empty.added), (Vec::new(), Vec::new()));
@@ -268,34 +264,10 @@ async fn a_file_a_staying_track_plays_gets_no_track() {
     assert_eq!(added_ids(&changes), Vec::<String>::new());
 }
 
-/// The edits' picks and layout bound as the editor's statements bind them.
-fn params_for(edits: &str) -> (String, String) {
-    (edits.to_string(), RELEASE_A.to_string())
-}
-
-async fn rows(db: &Store, edits: String) -> Vec<DbReleaseEditRow> {
-    let (edits, release) = params_for(&edits);
+async fn rows(db: &Store, edits: SheetEdits) -> Vec<DbReleaseEditRow> {
+    let json = edits.json().unwrap();
     db.read(move |sql| {
-        let layout = LayoutParams {
-            release_id: Some(&release),
-            applied: false,
-            mediums: "[]",
-            places: "[]",
-            carving: "[]",
-            moves: "[]",
-            edits: &edits,
-        };
-        let mediums = base_mediums_source();
-        let places = laid_places_source();
-        Ok(sql.query(
-            &release_edit_tracks_sql(
-                ":release",
-                MediumsSource::Draft { mediums: &mediums, places: &places },
-                ":edits",
-            ),
-            layout.named().as_slice(),
-            release_edit_row_of_row,
-        )?)
+        crate::records::draft_release_edit_tracks_on(&sql, &stored_layout(&json), &edits.titles)
     })
     .await
     .unwrap()
@@ -384,25 +356,8 @@ async fn an_added_track_stays_on_the_disc_of_the_sheet() {
         ],
     )
     .await;
-    let (edits, release) =
-        (edits(&[("two", "first.flac"), ("two", "second.flac")], &[]), RELEASE_A.to_string());
-    let layout = db
-        .read(move |sql| {
-            laid_out_on(
-                &sql,
-                &LayoutParams {
-                    release_id: Some(&release),
-                    applied: false,
-                    mediums: "[]",
-                    places: "[]",
-                    carving: "[]",
-                    moves: "[]",
-                    edits: &edits,
-                },
-            )
-        })
-        .await
-        .unwrap();
+    let edits = edits(&[("two", "first.flac"), ("two", "second.flac")], &[]).json().unwrap();
+    let layout = db.read(move |sql| laid_out_on(&sql, &stored_layout(&edits))).await.unwrap();
     let places: Vec<(String, u16)> = layout
         .tracks
         .iter()
@@ -415,19 +370,19 @@ async fn an_added_track_stays_on_the_disc_of_the_sheet() {
     );
 }
 
-async fn files_for_edits(db: &Store, edits: String) -> DbReleaseFiles {
+async fn files_for_edits(db: &Store, edits: SheetEdits) -> DbReleaseFiles {
+    let edits = edits.json().unwrap();
     db.read(move |sql| super::release_files_on(&sql, stored_files_form(edits))).await.unwrap()
 }
 
-fn stored_layout(edits: &str) -> LayoutParams<'_> {
-    LayoutParams {
-        release_id: Some(RELEASE_A),
+fn stored_layout(edits: &str) -> LibraryLayout {
+    LibraryLayout {
+        release_id: RELEASE_A.to_owned(),
         applied: false,
-        mediums: "[]",
-        places: "[]",
-        carving: "[]",
-        moves: "[]",
-        edits,
+        mediums: "[]".to_owned(),
+        places: "[]".to_owned(),
+        moves: "[]".to_owned(),
+        edits: edits.to_owned(),
     }
 }
 
@@ -442,7 +397,7 @@ fn stored_files_form(edits: String) -> crate::records::EditorReleaseFilesParams 
 
 /// The names of the Files list's entries for `edits`, each a file by its name
 /// or a sheet with no tracks by its name and its lines' text.
-async fn carried(db: &Store, edits: String) -> (bool, Vec<String>) {
+async fn carried(db: &Store, edits: SheetEdits) -> (bool, Vec<String>) {
     let files = files_for_edits(db, edits).await;
     let entries = files
         .carried
@@ -549,9 +504,7 @@ async fn an_ignored_sheet_keeps_its_binding_choices_and_replaces_only_lost_audio
             audio_file_id: None,
         }],
         ..SheetEdits::default()
-    }
-    .json()
-    .unwrap();
+    };
     let changes = changes(&db, edits.clone()).await;
     assert_eq!(changes.dropped, ids(&["b1", "b2", "b3"]));
     assert!(changes.bindings.is_empty());
@@ -583,7 +536,7 @@ async fn an_ignored_sheet_can_go_back_on_its_empty_disc() {
         ],
     )
     .await;
-    let edits = SheetEdits { ignored: ids(&["two"]), ..SheetEdits::default() }.json().unwrap();
+    let edits = SheetEdits { ignored: ids(&["two"]), ..SheetEdits::default() };
     let rows = rows(&db, edits.clone()).await;
     let [DbReleaseEditRow::EmptySide(emptied), DbReleaseEditRow::Stored(track)] = rows.as_slice()
     else {

@@ -59,7 +59,6 @@ name = "bae_lengths_disagree"
 arguments = 2
 version = 1
 compute = "crate::records::lengths_disagree::lengths_disagree"
-desktop = true
 
 # Records' part: records.sql, and the device's sort language's table.
 [[part]]

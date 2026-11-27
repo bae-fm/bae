@@ -81,3 +81,24 @@ sqlive_compose::fragment!(
     FROM history AS play
 "#
 );
+
+// Whether any of the tracks `asked` has what a person keeps of it: a rating,
+// a play in the history or a playlist entry. Deleting the track deletes them.
+sqlive_compose::fragment!(
+    TracksHaveKeptData with asked(track_id TEXT) { kept: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM asked
+                   JOIN ratings AS rated ON rated.track_id = asked.track_id)
+        OR EXISTS (SELECT 1 FROM asked
+                   JOIN history AS played ON played.track_id = asked.track_id)
+        OR EXISTS (SELECT 1 FROM asked
+                   JOIN playlist_entries AS entry ON entry.track_id = asked.track_id) AS kept
+"#
+);
+
+impl TracksHaveKeptData {
+    /// Whether any of the tracks has a rating, a play or a playlist entry.
+    pub fn any(&self) -> bool {
+        self.kept
+    }
+}

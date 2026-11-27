@@ -91,7 +91,7 @@ impl Placer {
 
 /// How a track's place reads: on a lettered side of a record or cassette, on
 /// a numbered disc of a release of several mediums, or plain on a release of
-/// one. bae-records' `track_places_ctes` states the rule that gives it. Core
+/// one. bae-records' `TrackPlaces` fragment states the rule that gives it. Core
 /// renders `position_text` from this; the UI only resolves the header word.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrackPosition {

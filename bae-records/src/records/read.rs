@@ -435,21 +435,14 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
     })
 }
 
-/// A stored `source_audio_layout` value, read from `row`'s column `column`.
-#[cfg(desktop)]
-pub(super) fn source_audio_layout_value<I: rusqlite::RowIndex>(
-    row: &Row,
-    column: I,
+/// A stored `source_audio_layout` value, or why it is none.
+pub(super) fn source_audio_layout_of(
     layout: &str,
-) -> rusqlite::Result<crate::source_audio::SourceAudioLayout> {
+) -> Result<crate::source_audio::SourceAudioLayout, String> {
     match layout {
         "file" => Ok(crate::source_audio::SourceAudioLayout::File),
         "cue" => Ok(crate::source_audio::SourceAudioLayout::Cue),
-        other => Err(column_conversion_error(
-            row,
-            column,
-            format!("invalid source_audio_layout {other:?}"),
-        )),
+        other => Err(format!("invalid source_audio_layout {other:?}")),
     }
 }
 
@@ -476,26 +469,6 @@ pub(super) struct FileColumns {
     file_size: u64,
     stored: i64,
 }
-
-/// The names of [`FileColumns`] that come from `release_files` itself.
-pub(super) const FILE_ROW_COLUMNS: [&str; 16] = [
-    "id",
-    "release_id",
-    "original_filename",
-    "content_type",
-    "created_at",
-    "file",
-    "role",
-    "document_kind",
-    "source_audio_layout",
-    "source_audio_content_type",
-    "source_audio_container",
-    "source_audio_duration_ms",
-    "source_audio_sample_rate_hz",
-    "source_audio_bits_per_sample",
-    "source_audio_bitrate_kbps",
-    "source_audio_channels",
-];
 
 impl FileColumns {
     fn of_row(row: &Row) -> rusqlite::Result<Self> {
@@ -529,12 +502,9 @@ pub(super) fn file_of(columns: FileColumns) -> Result<DbFile, (&'static str, Str
     let layout = columns
         .source_audio_layout
         .as_deref()
-        .map(|layout| match layout {
-            "file" => Ok(crate::source_audio::SourceAudioLayout::File),
-            "cue" => Ok(crate::source_audio::SourceAudioLayout::Cue),
-            other => Err(("source_audio_layout", format!("invalid source_audio_layout {other:?}"))),
-        })
-        .transpose()?;
+        .map(source_audio_layout_of)
+        .transpose()
+        .map_err(|reason| ("source_audio_layout", reason))?;
     let source_audio = match (
         columns.source_audio_content_type,
         columns.source_audio_container,

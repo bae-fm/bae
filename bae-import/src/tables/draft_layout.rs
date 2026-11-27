@@ -4,7 +4,7 @@
 
 use super::layout_bindings::{json, mediums_json, moves_json, places_json};
 use super::*;
-use bae_records::records::layout::{laid_out_on, LayoutParams, ReleaseLayout};
+use bae_records::records::layout::{draft_laid_out_on, DraftLayout, ReleaseLayout};
 
 /// A track of the draft that a CUE sheet carves, as `:carving` binds it.
 #[derive(serde::Serialize)]
@@ -40,21 +40,7 @@ impl ImportTables {
             redrawn.sheet_moves.iter().map(|(sheet, side)| (sheet.as_str(), *side)),
             "an import draft's sheet moves",
         )?;
-        self.store
-            .read(move |sql| {
-                laid_out_on(
-                    &sql,
-                    &LayoutParams {
-                        release_id: None,
-                        applied: true,
-                        mediums: &mediums,
-                        places: &places,
-                        carving: &carving,
-                        moves: &moves,
-                        edits: "{}",
-                    },
-                )
-            })
-            .await
+        let layout = DraftLayout { mediums, places, carving, moves };
+        self.store.read(move |sql| draft_laid_out_on(&sql, &layout)).await
     }
 }

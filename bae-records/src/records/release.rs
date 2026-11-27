@@ -500,256 +500,48 @@ impl Records {
     }
 }
 
-/// Each track of the release `release` (an SQL expression naming its id) in
-/// release order, on the mediums `source` names for it and on the files the
-/// edits `edits` (an SQL expression, see
-/// [`super::sheet_files::sheet_files_ctes`]) lay its sheets' lines on: its
-/// side's kind and ordinal and its number there, its length, the length
-/// `source` lists for it where that length disagrees with the track's own
-/// (`bae_lengths_disagree`), how many audio formats it stores, how many main
-/// segments they hold, and the first main segment's file id and where it
-/// starts in that file, with the name and audio layout of the release file
-/// of that id when the release holds one, and the CUE sheet that carves it,
-/// with the sheet's name and the side its first track sits on (the first side
-/// of a medium that is not played side by side, whose sides share its one
-/// heading), how many of the sheet's `FILE` lines carve the release's
-/// tracks that stay, the sheet's lines that play no audio, the sheet's `FILE` line it is under and
-/// the audio files that line can play from (`sheet_audio_options`, see
-/// [`super::sheet_files::sheet_audio_options_ctes`]). A track on a line moved to another file plays to that file's end where
-/// it played to the end of the file before. [`release_edit_track_of_row`]
-/// reads each row.
-/// Whether the medium a `place` row of the editor's statement sits on is
-/// played side by side.
-#[cfg(desktop)]
-pub(super) const SIDED: &str = "place.side_kind = 'sided'";
+// The release `release` as its editor's draft shows it beside the form:
+// whether it has tracks, its records and its cover's version; no row when the
+// library holds no such release.
+sqlive_compose::read!(
+    EditedReleaseHead(release: String) { has_tracks: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM tracks AS held WHERE held.release_id = rel.id) AS has_tracks,
+           described.*, cover.*
+    FROM releases AS rel
+    JOIN @crate::records::fragments::ReleaseRecords AS described
+      ON described.records_release_id = rel.id
+    LEFT JOIN @crate::records::files::CoverVersion AS cover ON cover.id = rel.id
+    WHERE rel.id = :release
+"#
+);
 
-#[cfg(desktop)]
-pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: &str) -> String {
-    let (mediums, keeps_empty_sides) = match source {
-        MediumsSource::Release => {
-            (format!("(SELECT * FROM release_mediums WHERE release_id = {release})"), 0)
-        }
-        MediumsSource::Draft { mediums, .. } => (mediums.to_string(), 1),
-    };
-    let choices = super::sheet_side_choices_sql(&mediums);
-    format!(
-        "WITH {places}, choices AS MATERIALIZED (SELECT * FROM {choices}), \
-         placed_sides AS ( \
-            SELECT COALESCE(place.id, 'empty:' || choice.medium || ':' || choice.side) AS id, \
-                   place.id IS NOT NULL AS has_track, \
-                   COALESCE(place.medium_position, choice.medium) AS medium_position, \
-                   COALESCE(place.position, choice.side) AS position, \
-                   COALESCE(place.number, 0) AS number, \
-                   COALESCE(place.side_kind, choice.kind) AS side_kind, \
-                   COALESCE(place.side_ordinal, choice.ordinal) AS side_ordinal, \
-                   place.stated_length_ms AS place_stated_length_ms, \
-                   FIRST_VALUE(choice.medium) OVER {first} AS sheet_medium, \
-                   FIRST_VALUE(choice.side) OVER {first} AS sheet_side, \
-                   FIRST_VALUE(choice.kind) OVER {first} AS sheet_kind, \
-                   FIRST_VALUE(choice.ordinal) OVER {first} AS sheet_ordinal, \
-                   COUNT(place.id) OVER (PARTITION BY choice.medium) AS tracks_on_medium \
-            FROM choices choice \
-            FULL OUTER JOIN place ON choice.medium = place.medium_position \
-                                 AND choice.side = {side} \
-            LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = place.id), \
-         placed AS ( \
-            SELECT *, NOT has_track AS empty_side FROM placed_sides \
-            WHERE has_track OR ({keeps_empty_sides} AND tracks_on_medium = 0)), \
-         {sheet_files}, {audio_options}, \
-         main AS ( \
-            SELECT s.track_id, s.file_id, s.start_sample * 1000 / s.sample_rate AS start_ms, \
-                   s.end_sample IS NULL AND s.moved AS to_new_end, s.added, \
-                   ROW_NUMBER() OVER (PARTITION BY s.track_id ORDER BY s.segment_index) AS n, \
-                   COUNT(*) OVER (PARTITION BY s.track_id) AS main_count \
-            FROM laid_segments s WHERE s.role = 'main'), \
-         laid AS ( \
-            SELECT t.*, p.id AS row_id, p.medium_position AS placed_medium, p.position AS placed_position, \
-               p.empty_side, p.side_kind, \
-               p.side_ordinal, p.number AS place_number, p.place_stated_length_ms, \
-               CASE WHEN main.to_new_end \
-                    THEN f.source_audio_duration_ms - main.start_ms \
-                    ELSE t.duration_ms END AS laid_duration_ms, \
-               (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = p.id) \
-                   AS audio_format_count, \
-               COALESCE(main.main_count, 0) AS main_count, main.file_id AS main_file_id, \
-               main.start_ms AS main_start_ms, \
-               f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
-               f.source_audio_layout AS main_file_layout, \
-               f.source_audio_duration_ms AS main_file_duration_ms, \
-               carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
-               sheet_file.original_filename AS sheet_name, p.sheet_medium, p.sheet_side, \
-               p.sheet_kind, p.sheet_ordinal, {side_choices} AS sheet_side_choices, \
-               sheet_lines.bound_count AS sheet_line_count, \
-               sheet_lines.unbound AS sheet_unbound_lines, \
-               (SELECT line.value ->> 'options' FROM json_each(sheet_lines.bound) AS line \
-                WHERE line.value ->> 'file_reference' = carved.file_reference) \
-                   AS sheet_audio_options, \
-               COALESCE(main.added, 0) AS is_added, \
-               (SELECT j.value FROM json_each(json_extract({edits}, '$.titles')) AS j \
-                WHERE j.key = p.id) AS added_title \
-            FROM placed p \
-            LEFT JOIN tracks t ON t.id = p.id \
-            LEFT JOIN main ON main.track_id = p.id AND main.n = 1 \
-            LEFT JOIN laid_files f ON f.id = main.file_id \
-            LEFT JOIN (carved_tracks carved \
-               JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
-               ON carved.track_id = p.id \
-            LEFT JOIN sheet_line_options sheet_lines \
-               ON sheet_lines.sheet_file_id = carved.sheet_file_id) \
-     SELECT laid.*, \
-        CASE WHEN laid.place_stated_length_ms IS NOT NULL \
-                  AND bae_lengths_disagree(laid.laid_duration_ms, laid.place_stated_length_ms) \
-             THEN laid.place_stated_length_ms END AS listed_length_ms \
-     FROM laid ORDER BY laid.placed_medium, laid.placed_position",
-        places =
-            super::release_tracks::track_places_ctes(source, &format!("m.release_id = {release}")),
-        first = "(PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position)",
-        side = super::release_tracks::sheet_side_sql(SIDED, "place.side"),
-        side_choices = super::release_tracks::sheet_side_choices_json_sql(),
-        sheet_files = super::sheet_files::sheet_files_ctes(release, edits),
-        audio_options = super::sheet_files::sheet_audio_options_ctes(release),
-    )
+/// A release as its editor's draft shows it beside the form.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EditedRelease {
+    /// The version of the release's cover; `None` when it has none.
+    pub cover_version: Option<String>,
+    pub has_tracks: bool,
+    /// The records of the release as the library holds them.
+    pub records: Vec<bae_catalogs::records::ReleaseRecord>,
 }
 
-/// The tracks of the release `release` (an SQL expression over `params`
-/// naming its id) as the release editor reads their audio, in release order,
-/// each on the mediums `source` names for it and on the files the library
-/// holds them on.
-#[cfg(desktop)]
-pub fn release_edit_tracks_on(
+/// The release `release_id` as its editor's draft shows it; `None` when the
+/// library holds no such release.
+pub fn edited_release_on(
     sql: &impl coven::SqlRead,
-    release: &str,
-    source: MediumsSource<'_>,
-    params: impl rusqlite::Params,
-) -> Result<Vec<DbReleaseEditTrack>, DbError> {
-    Ok(sql.query(
-        &release_edit_tracks_sql(release, source, super::sheet_files::NO_SHEET_EDITS),
-        params,
-        release_edit_track_of_row,
-    )?)
-}
-
-/// One row of [`release_edit_tracks_sql`] as the editor's draft reads it: a
-/// track the library holds, the track a save adds for an audio file, or a
-/// side no track sits on.
-#[cfg(desktop)]
-pub fn release_edit_row_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbReleaseEditRow> {
-    if row.get::<_, bool>("empty_side")? {
-        return super::release_tracks::track_side_of(
-            &row.get::<_, String>("side_kind")?,
-            row.get("side_ordinal")?,
-        )
-        .map(DbReleaseEditRow::EmptySide)
-        .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason));
-    }
-    if !row.get::<_, bool>("is_added")? {
-        return release_edit_track_of_row(row).map(Box::new).map(DbReleaseEditRow::Stored);
-    }
-    let position = super::release_tracks::track_position_of(
-        &row.get::<_, String>("side_kind")?,
-        row.get("side_ordinal")?,
-        row.get("place_number")?,
-    )
-    .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason))?;
-    Ok(DbReleaseEditRow::Added(DbReleaseEditAdded {
-        file: super::sheet_files::AddedFile {
-            file_id: row.get("row_id")?,
-            name: row.get("main_file_name")?,
-            typed_title: row.get("added_title")?,
-        },
-        duration_ms: count_column(row, "main_file_duration_ms")?,
-        position,
-    }))
-}
-
-/// One row of [`release_edit_tracks_sql`]: a track as the release editor
-/// reads its audio.
-#[cfg(desktop)]
-pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbReleaseEditTrack> {
-    let main_file_id: Option<String> = row.get("main_file_id")?;
-    let found: bool = row.get("main_file_found")?;
-    let name: Option<String> = row.get("main_file_name")?;
-    let layout: Option<String> = row.get("main_file_layout")?;
-    let main_segment = main_file_id
-        .map(|file_id| {
-            let file = match (found, name) {
-                (true, Some(name)) => Some(DbReleaseEditSourceFile {
-                    name,
-                    layout: layout
-                        .map(|layout| {
-                            super::read::source_audio_layout_value(row, "main_file_layout", &layout)
-                        })
-                        .transpose()?,
-                }),
-                (false, _) => None,
-                (true, None) => {
-                    return Err(bae_store::read::column_conversion_error(
-                        row,
-                        "main_file_name",
-                        format!("release file {file_id} has no name"),
-                    ));
-                }
-            };
-            Ok(DbReleaseEditSegment { file_id, start_ms: row.get("main_start_ms")?, file })
-        })
-        .transpose()?;
-    let sheet = row
-        .get::<_, Option<String>>("sheet_file_id")?
-        .map(|file_id| {
-            Ok::<_, rusqlite::Error>(DbReleaseEditSheet {
-                file_id,
-                name: row.get("sheet_name")?,
-                place: {
-                    let kind: String = row.get("sheet_kind")?;
-                    DbSheetSideChoice::of_columns(
-                        row.get("sheet_medium")?,
-                        row.get("sheet_side")?,
-                        &kind,
-                        row.get("sheet_ordinal")?,
-                    )
-                    .map_err(|reason| {
-                        bae_store::read::column_conversion_error(row, "sheet_kind", reason)
-                    })?
-                },
-                side_choices: crate::DbSheetSideColumns::decoded_list(
-                    bae_store::read::json_column(row, "sheet_side_choices")?,
-                )
-                .map_err(|reason| {
-                    bae_store::read::column_conversion_error(row, "sheet_side_choices", reason)
-                })?,
-                line_count: count_column(row, "sheet_line_count")?,
-                file_reference: row.get("sheet_file_reference")?,
-                unbound_lines: bae_store::read::optional_json_column(row, "sheet_unbound_lines")?,
-                audio_options: {
-                    let options: String = row.get("sheet_audio_options")?;
-                    serde_json::from_str(&options).map_err(|error| {
-                        bae_store::read::column_conversion_error(
-                            row,
-                            "sheet_audio_options",
-                            format!("{error}: {options}"),
-                        )
-                    })?
-                },
+    release_id: &str,
+) -> Result<Option<EditedRelease>, DbError> {
+    let params = EditedReleaseHeadParams { release: release_id.to_string() };
+    bae_store::statement_optional(sql, &params)?
+        .map(|row| {
+            Ok(EditedRelease {
+                cover_version: row.cover.and_then(super::files::CoverVersion::into_version),
+                has_tracks: row.has_tracks,
+                records: super::read::records_of_json(row.described.records_json())?,
             })
         })
-        .transpose()?;
-    let position = super::release_tracks::track_position_of(
-        &row.get::<_, String>("side_kind")?,
-        row.get("side_ordinal")?,
-        row.get("place_number")?,
-    )
-    .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason))?;
-    let mut track = row_to_track(row)?;
-    track.duration_ms = count_column(row, "laid_duration_ms")?;
-    Ok(DbReleaseEditTrack {
-        track,
-        position,
-        listed_length_ms: row.get("listed_length_ms")?,
-        audio_format_count: row.get("audio_format_count")?,
-        main_segment_count: row.get("main_count")?,
-        main_segment,
-        sheet,
-    })
+        .transpose()
 }
 
 #[cfg(test)]

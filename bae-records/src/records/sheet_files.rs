@@ -2,14 +2,15 @@
 //! once a release editor's form binds lines to other audio files of the
 //! release, and what a save then writes over the old file's rows.
 //!
-//! [`sheet_files_ctes`] lays the files out for the editor's draft, which
-//! shows the tracks and the sheet's Audio file pop-up from it, and for the
-//! save, which writes each file's layout from it. The editor's Files list
-//! reads the same layout through
-//! [`EditorReleaseFiles`](super::editor_files::EditorReleaseFiles), whose
-//! common table expressions state the same rules.
+//! [`LaidFiles`](super::sheet_fragments::LaidFiles) and the fragments beside
+//! it lay the files out for the editor's draft, which shows the tracks, the
+//! Files list and the sheet's Audio file pop-up from them, and for the save,
+//! which writes each file's layout from them.
 
 use super::*;
+use bae_store::{statement_row, statement_rows};
+#[cfg(desktop)]
+use sqlive_compose::Statement as _;
 
 /// The audio file the person picked for one `FILE` line of a CUE sheet in a
 /// release editor: the sheet's file id, the line's text and the audio file's
@@ -24,9 +25,10 @@ pub struct SheetFilePick {
 /// What a release editor's form chose about the release's CUE sheets and the
 /// tracks a save adds: the audio files picked for `FILE` lines, the ignored sheets, and the
 /// titles the person typed for the tracks a save adds, by the id of the
-/// audio file each plays whole. The statements of
-/// [`sheet_files_ctes`] and of the layout read it as one JSON object, and
-/// work out from it which tracks the save deletes and adds.
+/// audio file each plays whole. The
+/// [sheet fragments](super::sheet_fragments) and the layout read it as one
+/// JSON object, and work out from it which tracks the save deletes and
+/// adds.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
 pub struct SheetEdits {
     pub picks: Vec<SheetFilePick>,
@@ -47,218 +49,38 @@ impl SheetEdits {
     }
 }
 
-/// The SQL expression for the edits of a statement that makes none.
-pub const NO_SHEET_EDITS: &str = "'{}'";
+/// The edits of a read that makes none.
+pub const NO_SHEET_EDITS: &str = "{}";
 
-/// The common table expressions that work out what the edits `edits` do to
-/// the tracks of the release `release` (SQL expressions; `edits` a JSON
-/// object of [`SheetEdits`], or [`NO_SHEET_EDITS`]):
-///
-/// - `picked_lines` (`sheet_file_id`, `file_reference`, `audio_file_id`): the
-///   edits' picks, a line that plays no audio with a NULL `audio_file_id`;
-/// - `ignored_sheets` (`sheet_file_id`): the sheets the edits ignore;
-/// - `line_files` (`sheet_file_id`, `file_reference`, `file_id`): each line
-///   of the release's sheets with the file its tracks' bodies play from now;
-/// - `moved_lines` (`sheet_file_id`, `file_reference`, `from_file_id`,
-///   `to_file_id`): the lines picked onto a file they do not play from now;
-/// - `dropped_tracks` (`track_id`, `sheet_file_id`, `position`): each track
-///   the save deletes, under an ignored sheet or a line that plays no audio;
-/// - `kept_segments` (the columns of `laid_segments`): each segment of the
-///   tracks that stay, on the file it then reads;
-/// - `added_files` (`file_id`, `sheet_file_id`, `first_position`): each file
-///   that deleted tracks played and no track that stays plays once the picks
-///   are written, which the save adds a track for, with the sheet and the
-///   place in the release of the first deleted track that played it.
-pub fn sheet_changes_ctes(release: &str, edits: &str) -> String {
-    format!(
-        "picked_lines (sheet_file_id, file_reference, audio_file_id) AS ( \
-             SELECT j.value ->> 'sheet_file_id', j.value ->> 'file_reference', \
-                    j.value ->> 'audio_file_id' \
-             FROM json_each(json_extract({edits}, '$.picks')) AS j), \
-         ignored_sheets (sheet_file_id) AS ( \
-             SELECT value FROM json_each(json_extract({edits}, '$.ignored'))), \
-         active_picks AS ( \
-             SELECT * FROM picked_lines \
-             WHERE sheet_file_id NOT IN (SELECT sheet_file_id FROM ignored_sheets)), \
-         line_files (sheet_file_id, file_reference, file_id) AS ( \
-             SELECT DISTINCT c.sheet_file_id, c.file_reference, s.file_id \
-             FROM carved_tracks c JOIN tracks t ON t.id = c.track_id \
-             JOIN audio_formats af ON af.track_id = c.track_id \
-             JOIN audio_format_segments s ON s.audio_format_id = af.id AND s.role = 'main' \
-             WHERE t.release_id = {release}), \
-         moved_lines (sheet_file_id, file_reference, from_file_id, to_file_id) AS ( \
-             SELECT line.sheet_file_id, line.file_reference, line.file_id, pick.audio_file_id \
-             FROM line_files line JOIN active_picks pick \
-                 ON pick.sheet_file_id = line.sheet_file_id \
-                AND pick.file_reference = line.file_reference \
-             WHERE pick.audio_file_id <> line.file_id), \
-         dropped_tracks (track_id, sheet_file_id, position) AS ( \
-             SELECT c.track_id, c.sheet_file_id, t.position \
-             FROM carved_tracks c JOIN tracks t ON t.id = c.track_id \
-             LEFT JOIN picked_lines pick ON pick.sheet_file_id = c.sheet_file_id \
-                                        AND pick.file_reference = c.file_reference \
-             WHERE t.release_id = {release} \
-               AND (c.sheet_file_id IN (SELECT sheet_file_id FROM ignored_sheets) \
-                    OR (pick.sheet_file_id IS NOT NULL AND pick.audio_file_id IS NULL))), \
-         kept_segments (id, track_id, segment_index, role, file_id, start_sample, \
-                        end_sample, sample_rate, moved) AS ( \
-             SELECT s.id, af.track_id, s.segment_index, s.role, \
-                    COALESCE(moved.to_file_id, s.file_id), \
-                    s.start_sample, s.end_sample, af.sample_rate, moved.to_file_id IS NOT NULL \
-             FROM audio_format_segments s JOIN audio_formats af ON af.id = s.audio_format_id \
-             JOIN tracks t ON t.id = af.track_id \
-             LEFT JOIN carved_tracks c ON c.track_id = af.track_id \
-             LEFT JOIN (SELECT sheet_file_id, from_file_id, MIN(to_file_id) AS to_file_id \
-                        FROM moved_lines GROUP BY sheet_file_id, from_file_id) moved \
-                 ON moved.sheet_file_id = c.sheet_file_id AND moved.from_file_id = s.file_id \
-             WHERE t.release_id = {release} \
-               AND t.id NOT IN (SELECT track_id FROM dropped_tracks)), \
-         added_files (file_id, sheet_file_id, first_position) AS ( \
-             SELECT s.file_id, dropped.sheet_file_id, MIN(dropped.position) \
-             FROM dropped_tracks dropped \
-             JOIN audio_formats af ON af.track_id = dropped.track_id \
-             JOIN audio_format_segments s ON s.audio_format_id = af.id AND s.role = 'main' \
-             WHERE NOT EXISTS ( \
-                 SELECT 1 FROM tracks stays \
-                 JOIN audio_formats stays_format ON stays_format.track_id = stays.id \
-                 JOIN audio_format_segments played \
-                     ON played.audio_format_id = stays_format.id AND played.role = 'main' \
-                 LEFT JOIN carved_tracks carved ON carved.track_id = stays.id \
-                 LEFT JOIN picked_lines pick ON pick.sheet_file_id = carved.sheet_file_id \
-                                            AND pick.file_reference = carved.file_reference \
-                 WHERE stays.release_id = {release} \
-                   AND stays.id NOT IN (SELECT track_id FROM dropped_tracks) \
-                   AND COALESCE(pick.audio_file_id, played.file_id) = s.file_id) \
-             GROUP BY s.file_id)"
-    )
-}
-
-/// The common table expressions that lay out the files of the release
-/// `release` for the edits `edits` (SQL expressions as for
-/// [`sheet_changes_ctes`], whose expressions come first):
-///
-/// - `laid_lines` (the columns of `line_files`, and `stored_file_id`): each
-///   line with the file it plays from once picked, and the one it plays from
-///   now;
-/// - `laid_segments` (the columns of `kept_segments`, and `added`): each
-///   segment of the release's tracks on the file it then reads, a segment of
-///   a sheet's track on a moved line's file moving to the picked one, a
-///   pregap at the tail of that file among them; a deleted track has none,
-///   and a track the edits add has one, whole file, marked `added`;
-/// - `laid_files`: the release's files, with the columns of
-///   `release_files`, each picked file laid out as a CUE image, each file a
-///   track is added for laid out as a whole-file track and each file a line
-///   moved off that no segment then reads as one no track plays from.
-pub fn sheet_files_ctes(release: &str, edits: &str) -> String {
-    let columns = read::FILE_ROW_COLUMNS
-        .iter()
-        .filter(|column| **column != "source_audio_layout")
-        .map(|column| format!("f.{column}"))
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!(
-        "{changes}, \
-         laid_lines (sheet_file_id, file_reference, file_id, stored_file_id) AS ( \
-             SELECT line.sheet_file_id, line.file_reference, \
-                    CASE WHEN pick.sheet_file_id IS NULL THEN line.file_id \
-                         ELSE pick.audio_file_id END, line.file_id \
-             FROM line_files line LEFT JOIN picked_lines pick \
-                 ON pick.sheet_file_id = line.sheet_file_id \
-                AND pick.file_reference = line.file_reference), \
-         laid_segments (id, track_id, segment_index, role, file_id, start_sample, \
-                        end_sample, sample_rate, moved, added) AS ( \
-             SELECT *, 0 FROM kept_segments \
-             UNION ALL \
-             SELECT file_id, file_id, 0, 'main', file_id, 0, NULL, 1, 0, 1 FROM added_files), \
-         laid_files AS ( \
-             SELECT {columns}, \
-                    CASE WHEN played.added THEN 'file' \
-                         WHEN f.id IN (SELECT to_file_id FROM moved_lines) THEN 'cue' \
-                         WHEN f.id IN (SELECT from_file_id FROM moved_lines) \
-                              AND played.file_id IS NULL THEN NULL \
-                         ELSE f.source_audio_layout END AS source_audio_layout \
-             FROM release_files f \
-             LEFT JOIN (SELECT file_id, MAX(added) AS added FROM laid_segments \
-                        GROUP BY file_id) played ON played.file_id = f.id \
-             WHERE f.release_id = {release})",
-        changes = sheet_changes_ctes(release, edits),
-    )
-}
-
-/// The caption's bound count and bound and unbound lines, with each
-/// line's options, of which a bound line's flags the file it plays from. A
-/// sheet with no unbound lines has a NULL unbound list.
-/// The query reads the stored tracks so a line keeps its options even when
-/// the draft drops the tracks it carves.
-pub fn sheet_audio_options_ctes(release: &str) -> String {
-    format!(
-        "line_ends (sheet_file_id, file_reference, end_ms, position) AS ( \
-             SELECT c.sheet_file_id, c.file_reference, \
-                    MAX(COALESCE(s.end_sample, s.start_sample) * 1000 / af.sample_rate), \
-                    MIN(t.position) \
-             FROM carved_tracks c JOIN tracks t ON t.id = c.track_id \
-             JOIN audio_formats af ON af.track_id = c.track_id \
-             JOIN audio_format_segments s ON s.audio_format_id = af.id AND s.role = 'main' \
-             WHERE t.release_id = {release} \
-             GROUP BY c.sheet_file_id, c.file_reference), \
-         line_audio_options (sheet_file_id, file_reference, file_id, options, position) AS ( \
-             SELECT line.sheet_file_id, line.file_reference, line.file_id, \
-                    json_group_array({option} \
-                        ORDER BY f.original_filename COLLATE natural_order, f.id), ends.position \
-             FROM laid_lines line \
-             JOIN line_ends ends ON ends.sheet_file_id = line.sheet_file_id \
-                                AND ends.file_reference = line.file_reference \
-             JOIN laid_files f ON f.role = 'audio' \
-             LEFT JOIN coven_file_reads reads ON reads.file = f.file \
-             WHERE f.id = line.file_id OR f.id = line.stored_file_id \
-                OR (f.source_audio_layout IS NULL AND reads.source IS NOT NULL) \
-             GROUP BY line.sheet_file_id, line.file_reference), \
-         sheet_line_options (sheet_file_id, bound_count, bound, unbound) AS ( \
-             SELECT o.sheet_file_id, COUNT(o.file_id), \
-                    json_group_array({line} ORDER BY o.position) \
-                        FILTER (WHERE o.file_id IS NOT NULL), \
-                    CASE WHEN COUNT(*) > COUNT(o.file_id) THEN \
-                        json_group_array({line} ORDER BY o.position) \
-                        FILTER (WHERE o.file_id IS NULL) END \
-             FROM line_audio_options o GROUP BY o.sheet_file_id)",
-        option = "json_object( \
-                      'file_id', f.id, 'name', f.original_filename, \
-                      'content_type', f.source_audio_content_type, \
-                      'bound', json(CASE WHEN f.id = line.file_id THEN 'true' ELSE 'false' END), \
-                      'fits', json(CASE WHEN ends.end_ms <= f.source_audio_duration_ms THEN 'true' \
-                                        WHEN ends.end_ms > f.source_audio_duration_ms THEN 'false' END))",
-        line = "json_object('file_reference', o.file_reference, 'options', json(o.options))",
-    )
-}
+// The names of the files the picks of `edits` move lines of the release
+// `release`'s sheets onto, each once, in name order; no row when the picks
+// move no line.
+sqlive_compose::read!(
+    SheetFilesToRead(release: String, edits: String),
+    r#"
+    WITH moved AS (
+        SELECT lines.*
+        FROM @crate::records::sheet_fragments::MovedSheetLines(
+            release: :release, edits: :edits) AS lines)
+    SELECT DISTINCT f.original_filename AS name
+    FROM moved
+    JOIN release_files AS f ON f.id = moved.to_file_id
+    ORDER BY f.original_filename COLLATE natural_order
+"#
+);
 
 /// The names of the files the picks of `edits` move lines of the release
-/// `release`'s sheets onto (SQL expressions over `params`, as for
-/// [`sheet_files_ctes`]), which a save reads before it writes, in name
+/// `release_id`'s sheets onto, which a save reads before it writes, in name
 /// order; `None` when the picks move no line.
 pub fn sheet_files_to_read_on(
     sql: &impl coven::SqlRead,
-    release: &str,
+    release_id: &str,
     edits: &str,
-    params: impl rusqlite::Params,
 ) -> Result<Option<Vec<String>>, DbError> {
-    let names: Option<String> = sql.query_row(
-        &format!(
-            "WITH {} SELECT CASE WHEN EXISTS (SELECT 1 FROM moved_lines) THEN ( \
-                 SELECT json_group_array(name ORDER BY name COLLATE natural_order) \
-                 FROM (SELECT DISTINCT f.original_filename AS name FROM moved_lines moved \
-                       JOIN release_files f ON f.id = moved.to_file_id)) END",
-            sheet_files_ctes(release, edits),
-        ),
-        params,
-        |row| row.get(0),
-    )?;
-    names
-        .map(|names| {
-            serde_json::from_str(&names).map_err(|error| {
-                DbError::unreadable_json("the files a save reads first", names.clone(), error)
-            })
-        })
-        .transpose()
+    let params =
+        SheetFilesToReadParams { release: release_id.to_string(), edits: edits.to_string() };
+    let rows = statement_rows(sql, &params)?;
+    Ok((!rows.is_empty()).then(|| rows.into_iter().map(|row| row.name).collect()))
 }
 
 /// An audio file a save adds a track for: the file's id and name, and the
@@ -283,49 +105,73 @@ pub struct SheetTrackChanges {
     pub medium_id: String,
 }
 
-/// What the edits `edits` (the JSON object of a [`SheetEdits`]) do to the
-/// tracks of the release `release_id`.
+// The tracks a save of the edits `edits` deletes from the release
+// `release`, in release order.
+sqlive_compose::read!(
+    DroppedTracksInOrder(release: String, edits: String),
+    r#"
+    SELECT dropped.*
+    FROM @crate::records::sheet_fragments::DroppedSheetTracks(
+        release: :release, edits: :edits) AS dropped
+    ORDER BY dropped.position
+"#
+);
+
+// The files a save of the edits `edits` adds a track for, each with its name,
+// in the order their first deleted track sat.
+sqlive_compose::read!(
+    AddedFilesInOrder(release: String, edits: String),
+    r#"
+    WITH added AS (
+        SELECT fresh.*
+        FROM @crate::records::sheet_fragments::SheetAddedFiles(
+            release: :release, edits: :edits) AS fresh)
+    SELECT added.file_id AS file_id, f.original_filename AS name
+    FROM added
+    JOIN release_files AS f ON f.id = added.file_id
+    ORDER BY added.first_position
+"#
+);
+
+// The release's first medium.
+sqlive_compose::read!(
+    FirstMedium(release: String),
+    r#"
+    SELECT held.id
+    FROM release_mediums AS held
+    WHERE held.release_id = :release
+    ORDER BY held.position
+    LIMIT 1
+"#
+);
+
+/// What the edits `edits` do to the tracks of the release `release_id`.
 pub fn sheet_track_changes_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
-    edits: &str,
+    edits: &SheetEdits,
 ) -> Result<SheetTrackChanges, DbError> {
-    let params = rusqlite::named_params! { ":release": release_id, ":edits": edits };
-    let changes = sheet_changes_ctes(":release", ":edits");
-    let dropped = sql.query(
-        &format!("WITH {changes} SELECT track_id FROM dropped_tracks ORDER BY position"),
-        params,
-        |row| row.get(0),
-    )?;
-    let bindings = sql.query(
-        &format!(
-            "WITH {changes} SELECT sheet_file_id, file_reference, audio_file_id FROM active_picks"
-        ),
-        params,
-        |row| {
-            Ok(SheetFilePick {
-                sheet_file_id: row.get(0)?,
-                file_reference: row.get(1)?,
-                audio_file_id: row.get(2)?,
-            })
-        },
-    )?;
-    let added = sql.query(
-        &format!(
-            "WITH {changes} SELECT added.file_id, f.original_filename, \
-                    (SELECT j.value FROM json_each(json_extract(:edits, '$.titles')) AS j \
-                     WHERE j.key = added.file_id) \
-             FROM added_files added JOIN release_files f ON f.id = added.file_id \
-             ORDER BY added.first_position"
-        ),
-        params,
-        |row| Ok(AddedFile { file_id: row.get(0)?, name: row.get(1)?, typed_title: row.get(2)? }),
-    )?;
-    let medium_id = sql.query_row(
-        "SELECT id FROM release_mediums WHERE release_id = ? ORDER BY position LIMIT 1",
-        [release_id],
-        |row| row.get(0),
-    )?;
+    let release = release_id.to_string();
+    let json = edits.json()?;
+    let dropped = DroppedTracksInOrderParams { release: release.clone(), edits: json.clone() };
+    let dropped =
+        statement_rows(sql, &dropped)?.into_iter().map(|row| row.dropped.into_track_id()).collect();
+    let bindings = edits
+        .picks
+        .iter()
+        .filter(|pick| !edits.ignored.contains(&pick.sheet_file_id))
+        .cloned()
+        .collect();
+    let added = AddedFilesInOrderParams { release: release.clone(), edits: json };
+    let added = statement_rows(sql, &added)?
+        .into_iter()
+        .map(|row| AddedFile {
+            typed_title: edits.titles.get(&row.file_id).cloned(),
+            file_id: row.file_id,
+            name: row.name,
+        })
+        .collect();
+    let medium_id = statement_row(sql, &FirstMediumParams { release })?.id;
     Ok(SheetTrackChanges { dropped, bindings, added, medium_id })
 }
 
@@ -336,7 +182,7 @@ impl Records {
         release_id: &str,
         edits: &SheetEdits,
     ) -> Result<SheetTrackChanges, DbError> {
-        let (release_id, edits) = (release_id.to_string(), edits.json()?);
+        let (release_id, edits) = (release_id.to_string(), edits.clone());
         self.store.read(move |sql| sheet_track_changes_on(&sql, &release_id, &edits)).await
     }
 }
@@ -481,6 +327,22 @@ pub struct ReboundAudio {
     pub album_peak_linear: Option<f64>,
 }
 
+// Give each of the release's files the layout the edits `edits` lay it out
+// with.
+#[cfg(desktop)]
+sqlive_compose::write!(
+    LayOutSheetFiles(release: String, edits: String),
+    r#"
+    UPDATE release_files
+    SET source_audio_layout = (
+        SELECT laid.source_audio_layout
+        FROM @crate::records::sheet_fragments::LaidFiles(
+            release: :release, edits: :edits) AS laid
+        WHERE laid.id = release_files.id)
+    WHERE release_id = :release
+"#
+);
+
 /// Write `rebound` over the release `release_id`: each file's layout as the
 /// edits lay it out, then each moved track's length and audio rows in place
 /// of the ones it had, so no row of the file it played from is left, the
@@ -493,17 +355,9 @@ pub(super) fn write_rebound_audio_on(
     release_id: &str,
     rebound: &ReboundAudio,
 ) -> Result<(), DbError> {
-    let edits = rebound.edits.json()?;
-    tx.execute(
-        &format!(
-            "WITH {} UPDATE release_files SET source_audio_layout = \
-                 (SELECT laid.source_audio_layout FROM laid_files laid \
-                  WHERE laid.id = release_files.id) \
-             WHERE release_id = :release",
-            sheet_files_ctes(":release", ":edits")
-        ),
-        rusqlite::named_params! { ":release": release_id, ":edits": edits },
-    )?;
+    let layouts =
+        LayOutSheetFilesParams { release: release_id.to_string(), edits: rebound.edits.json()? };
+    tx.execute(LayOutSheetFiles::SQL, layouts.params().as_slice())?;
     for (track_id, length_ms) in &rebound.track_lengths {
         tx.execute("DELETE FROM audio_formats WHERE track_id = ?", params![track_id])?;
         tx.execute(

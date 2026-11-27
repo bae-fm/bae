@@ -56,7 +56,7 @@ impl LibraryManager {
 
     /// The write that gives a release `new_records`: the records, and the
     /// album they file it under (policy in [`Self::set_records`]), as
-    /// [`bae_records::records::release_records::records_target_album_sql`]
+    /// [`bae_records::records::fragments::FiledByRecords`]
     /// names it. A new album takes the id of the group the records name,
     /// else a fresh one, and the current album's fields.
     pub(super) async fn records_change(

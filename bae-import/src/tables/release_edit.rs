@@ -116,14 +116,13 @@ impl ImportTables {
             .read(move |sql| {
                 bae_records::records::layout::laid_out_on(
                     &sql,
-                    &bae_records::records::layout::LayoutParams {
-                        release_id: Some(&release_id),
+                    &bae_records::records::layout::LibraryLayout {
+                        release_id: release_id.clone(),
                         applied: false,
-                        mediums: "[]",
-                        places: "[]",
-                        carving: "[]",
-                        moves: "[]",
-                        edits: "{}",
+                        mediums: "[]".to_owned(),
+                        places: "[]".to_owned(),
+                        moves: "[]".to_owned(),
+                        edits: bae_records::records::sheet_files::NO_SHEET_EDITS.to_owned(),
                     },
                 )
             })
