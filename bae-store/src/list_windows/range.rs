@@ -68,7 +68,7 @@ impl ListOrder {
     pub fn window_seeks(&self, from: Option<&OrderKey>) -> Vec<Seek> {
         match from {
             None => vec![self.everything()],
-            Some(from) => self.seeks(from, Side::After, true, false),
+            Some(from) => self.seeks(from, Side::After),
         }
     }
 }

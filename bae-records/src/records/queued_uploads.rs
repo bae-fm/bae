@@ -72,15 +72,6 @@ sqlive_compose::fragment!(
 "#
 );
 
-// [`UploadQueueHeld`]'s row, whose SQL a statement built as text holds.
-sqlive_compose::read!(
-    writer UploadQueueHold,
-    r#"
-    SELECT held.*
-    FROM @crate::records::queued_uploads::UploadQueueHeld AS held
-"#
-);
-
 impl UploadQueueHeld {
     /// What holds the upload queue back; `None` when nothing does.
     pub fn wait(&self) -> Result<Option<UploadQueueWait>, DbError> {
@@ -91,21 +82,6 @@ impl UploadQueueHeld {
                     .ok_or_else(|| DbError::unreadable("the upload queue's wait", name))
             })
             .transpose()
-    }
-}
-
-/// What holds the upload queue back, as [`UploadQueueHold`] names it.
-pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadQueueWait>> {
-    let Some(name) = row.get::<_, Option<String>>("upload_wait")? else {
-        return Ok(None);
-    };
-    match named_wait(&name, row.get("upload_wait_at")?) {
-        Some(wait) => Ok(Some(wait)),
-        None => Err(bae_store::read::column_conversion_error(
-            row,
-            "upload_wait",
-            format!("{name:?} names no upload queue wait"),
-        )),
     }
 }
 

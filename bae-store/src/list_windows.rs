@@ -252,11 +252,6 @@ impl Seek {
         run(&params)
     }
 
-    /// Whether the read skips rows by offset.
-    pub fn by_offset(&self) -> bool {
-        matches!(self.read, SeekRead::Offset(_) | SeekRead::PlaceRow)
-    }
-
     /// How many of the order's leading terms the seek holds equal.
     pub fn held_equal(&self) -> usize {
         self.equal
@@ -406,7 +401,7 @@ impl ListOrder {
             .map(|(at, term)| KeyValue::Read { expression: value_of(at), nullable: term.nullable })
             .collect::<Vec<_>>();
         let rows = self
-            .seeks_from(&values, Side::After, true, false)
+            .seeks_from(&values, Side::After)
             .iter()
             .map(|seek| format!("({})", self.condition(seek)))
             .collect::<Vec<_>>()
@@ -424,27 +419,18 @@ impl ListOrder {
     /// an index seek: counting what they read counts those rows without
     /// numbering the list from its start.
     pub fn seeks_before(&self, key: &OrderKey) -> Vec<Seek> {
-        self.seeks(key, Side::Before, false, true)
-    }
-
-    /// The seeks reading the rows after the row at `key`, then those reading
-    /// the rows before it: what a test holds to the order's index.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn seeks_beside(&self, key: &OrderKey) -> Vec<Seek> {
-        let mut seeks = self.seeks(key, Side::After, false, false);
-        seeks.extend(self.seeks_before(key));
-        seeks
+        self.seeks(key, Side::Before)
     }
 
     /// The rows on `side` of the row at `key`, nearest first, as seeks to run
-    /// in turn, each read against the order when `reversed`, each an index
-    /// seek: the rows that tie the row on every term but the last and
-    /// pass it on that, then those tying it on every term but the last two,
-    /// and so on out to the first term. Within each, the terms the seek holds
-    /// equal are left out of its order, which an index on an expression needs
-    /// to read them in order. With `inclusive`, the row itself is among the
-    /// rows after it.
-    fn seeks(&self, key: &OrderKey, side: Side, inclusive: bool, reversed: bool) -> Vec<Seek> {
+    /// in turn, each an index seek: the rows that tie the row on every term
+    /// but the last and pass it on that, then those tying it on every term
+    /// but the last two, and so on out to the first term. Within each, the
+    /// terms the seek holds equal are left out of its order, which an index on
+    /// an expression needs to read them in order. The row itself is among the
+    /// rows after it, which are read in the list's order; the rows before it
+    /// are read against the order.
+    fn seeks(&self, key: &OrderKey, side: Side) -> Vec<Seek> {
         let values = key
             .0
             .iter()
@@ -454,19 +440,13 @@ impl ListOrder {
                 value: value.clone(),
             })
             .collect::<Vec<_>>();
-        self.seeks_from(&values, side, inclusive, reversed)
+        self.seeks_from(&values, side)
     }
 
     /// The seeks [`Self::seeks`] runs for a key with `values`. A value only
     /// SQL knows can be NULL or not, so the seeks hold both rows past a NULL
     /// and rows past a value, each holding the value to what it passes.
-    fn seeks_from(
-        &self,
-        values: &[KeyValue],
-        side: Side,
-        inclusive: bool,
-        reversed: bool,
-    ) -> Vec<Seek> {
+    fn seeks_from(&self, values: &[KeyValue], side: Side) -> Vec<Seek> {
         let last = self.terms.len() - 1;
         let mut seeks = Vec::new();
         for at in (0..self.terms.len()).rev() {
@@ -482,14 +462,16 @@ impl ListOrder {
                     equal: at,
                     past: Some(past),
                     from,
-                    reversed,
+                    reversed: side == Side::Before,
                     values: values[..compared].to_vec(),
                     read: SeekRead::Window,
                 }
             };
             let value = &values[at];
-            let bound =
-                || Bound { inclusive: inclusive && at == last, value: value.sql().to_string() };
+            let bound = || Bound {
+                inclusive: side == Side::After && at == last,
+                value: value.sql().to_string(),
+            };
             // A value only SQL knows passes a row on each way it can be.
             let guard = |known: bool| (!known).then(|| value.sql().to_string());
             let downward = term.descending != (side == Side::Before);
