@@ -11,7 +11,7 @@ extension AccessibilityTree {
         subject: String
     ) throws -> [AXUIElement] {
         func walk(_ element: AXUIElement) throws -> [AXUIElement] {
-            let role = Reader.string(element, kAXRoleAttribute)
+            let role = try Reader.string(element, kAXRoleAttribute)
             let own = role.map(roles.contains) == true ? [element] : []
             return try own
                 + Reader.children(of: element, subject: subject).flatMap(walk)
