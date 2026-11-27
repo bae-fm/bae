@@ -182,36 +182,25 @@ sqlive_compose::write!(
 "#
 );
 
-// The tracks of the JSON array `tracks` that the library holds, in the array's
-// order, as Up Next's entries numbered from `base` at places from `start`.
+// The tracks of the JSON array `tracks` that the library holds, in the order
+// a given list puts them, as Up Next's entries numbered from `base` at places
+// from `start`.
 sqlive_compose::write!(
     QueueGivenTracks(tracks: &'p str, base: i64, start: i64),
     r#"
     INSERT INTO playback_manual (entry, position, track_id)
-    SELECT :base + added.k, :start + added.k, added.track_id
-    FROM (
-        SELECT track.track_id AS track_id,
-               row_number() OVER (ORDER BY given.key) - 1 AS k
-        FROM json_each(:tracks) AS given
-        JOIN @bae_records::records::spread_fragments::TrackRow AS track
-            ON track.track_id = given.value) AS added
+    SELECT :base + added.place - 1, :start + added.place - 1, added.track_id
+    FROM @bae_records::records::track_list::GivenTracks(tracks: :tracks) AS added
 "#
 );
 
-// [`QueueGivenTracks`] for picked tracks, in the order their releases list
-// them.
+// [`QueueGivenTracks`] in the order a picked list puts them.
 sqlive_compose::write!(
     QueuePickedTracks(tracks: &'p str, base: i64, start: i64),
     r#"
     INSERT INTO playback_manual (entry, position, track_id)
-    SELECT :base + added.k, :start + added.k, added.track_id
-    FROM (
-        SELECT track.track_id AS track_id,
-               row_number() OVER (
-                   ORDER BY track.release_id, track.position, track.track_id) - 1 AS k
-        FROM json_each(:tracks) AS picked
-        JOIN @bae_records::records::spread_fragments::TrackRow AS track
-            ON track.track_id = picked.value) AS added
+    SELECT :base + added.place - 1, :start + added.place - 1, added.track_id
+    FROM @bae_records::records::track_list::PickedTracks(tracks: :tracks) AS added
 "#
 );
 

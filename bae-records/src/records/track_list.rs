@@ -1,7 +1,48 @@
 //! The tracks an action names, and the order the action puts them in.
 
-use bae_store::DbError;
+use bae_store::{statement_rows, DbError};
 use std::collections::BTreeSet;
+
+// The tracks of the JSON array `tracks` that the library holds, each with its
+// `place` in the order a given list puts them: the array's.
+sqlive_compose::fragment!(
+    GivenTracks(tracks: String) { place: i64 },
+    r#"
+    SELECT track.id AS track_id, row_number() OVER (ORDER BY given.key) AS place
+    FROM json_each(:tracks) AS given
+    JOIN tracks AS track ON track.id = given.value
+"#
+);
+
+// [`GivenTracks`] in the order a picked list puts them: the order their
+// releases list them, by release, then stored position.
+sqlive_compose::fragment!(
+    PickedTracks(tracks: String) { place: i64 },
+    r#"
+    SELECT track.id AS track_id,
+           row_number() OVER (ORDER BY track.release_id, track.position, track.id) AS place
+    FROM json_each(:tracks) AS picked
+    JOIN tracks AS track ON track.id = picked.value
+"#
+);
+
+sqlive_compose::read!(
+    writer HeldGivenTracks(tracks: &'p str),
+    r#"
+    SELECT held.track_id
+    FROM @crate::records::track_list::GivenTracks(tracks: :tracks) AS held
+    ORDER BY held.place
+"#
+);
+
+sqlive_compose::read!(
+    writer HeldPickedTracks(tracks: &'p str),
+    r#"
+    SELECT held.track_id
+    FROM @crate::records::track_list::PickedTracks(tracks: :tracks) AS held
+    ORDER BY held.place
+"#
+);
 
 /// The tracks an action names, and the order it puts them in: the order a
 /// caller gives, or, for tracks a person picked, the order their release
@@ -35,16 +76,6 @@ impl From<Vec<String>> for TrackList {
 }
 
 impl TrackList {
-    /// How a statement orders the rows of
-    /// `json_each(<ids_json>) j JOIN tracks t ON t.id = j.value` as the list
-    /// puts them.
-    pub fn order_sql(&self) -> &'static str {
-        match self {
-            Self::Given(_) => "j.key",
-            Self::Picked(_) => "t.release_id, t.position, t.id",
-        }
-    }
-
     /// How many tracks the list names: a given list counts a track named
     /// twice twice, a picked list each pick once.
     pub fn track_count(&self) -> usize {
@@ -70,19 +101,34 @@ impl TrackList {
         sql: &impl bae_store::WriterRead,
         reading: TrackReading,
     ) -> Result<Vec<String>, DbError> {
-        let statement = match (self, reading) {
-            (Self::Given(ids), TrackReading::Named) => return Ok(ids.clone()),
-            (Self::Picked(_), TrackReading::Named) => format!(
-                "SELECT j.value FROM json_each(?1) j LEFT JOIN tracks t ON t.id = j.value \
-                 ORDER BY t.id IS NOT NULL, {}, j.key",
-                self.order_sql()
-            ),
-            (_, TrackReading::Held) => format!(
-                "SELECT t.id FROM json_each(?1) j JOIN tracks t ON t.id = j.value ORDER BY {}",
-                self.order_sql()
-            ),
-        };
-        Ok(sql.query(&statement, [self.ids_json()], |row| row.get(0))?)
+        Ok(match (self, reading) {
+            (Self::Given(ids), TrackReading::Named) => ids.clone(),
+            (Self::Picked(picked), TrackReading::Named) => {
+                let held = self.held_on(sql)?;
+                let found: BTreeSet<&String> = held.iter().collect();
+                let mut named: Vec<String> =
+                    picked.iter().filter(|id| !found.contains(id)).cloned().collect();
+                named.extend(held);
+                named
+            }
+            (_, TrackReading::Held) => self.held_on(sql)?,
+        })
+    }
+
+    /// The list's ids that the library holds, in the list's order.
+    fn held_on(&self, sql: &impl bae_store::WriterRead) -> Result<Vec<String>, DbError> {
+        let ids = self.ids_json();
+        let tracks = ids.as_str();
+        Ok(match self {
+            Self::Given(_) => statement_rows(sql, &HeldGivenTracksParams { tracks })?
+                .into_iter()
+                .map(|row| row.track_id)
+                .collect(),
+            Self::Picked(_) => statement_rows(sql, &HeldPickedTracksParams { tracks })?
+                .into_iter()
+                .map(|row| row.track_id)
+                .collect(),
+        })
     }
 
     /// The list's ids in its order for an action that leaves out what the

@@ -188,10 +188,8 @@ sqlive_compose::write!(
     FROM @crate::tables::queue_fill::PlayOrder(
         shuffled: :shuffled, lead_track: :lead_track, lead_position: :lead_position,
         sourced: (
-            SELECT track.track_id, row_number() OVER (ORDER BY given.key)
-            FROM json_each(:tracks) AS given
-            JOIN @bae_records::records::spread_fragments::TrackRow AS track
-                ON track.track_id = given.value)) AS lane
+            SELECT listed.track_id, listed.place
+            FROM @bae_records::records::track_list::GivenTracks(tracks: :tracks) AS listed)) AS lane
     ORDER BY lane.played
 "#
 );
