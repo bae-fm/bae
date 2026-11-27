@@ -34,7 +34,7 @@
 /* The icon is 1.19 times the text, centred on the first line. */
 .bae-notice-icon { flex: none; display: flex; align-items: center; height: 1lh; }
 /* Android's ring: 1.19 times the text, which Compose rounds to a whole device pixel, half a point at the boards' density. */
-.bae-status-glyph-inline { width: round(1.19em, 0.5px); height: round(1.19em, 0.5px); }
+.bae-status-glyph-inline { width: var(--icon-android-inline); height: var(--icon-android-inline); }
 .bae-status-glyph { color: var(--bae-tone-icon, var(--bae-tone)); flex: none; overflow: visible; }
 /* The danger glyph is red mixed toward grey: still red, calmer than the warning's amber next to it. */
 .bae-notice-body { flex: 1; min-width: 0; }

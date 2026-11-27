@@ -2,8 +2,8 @@
 // One of the design system's symbols (design/system/assets/Symbols), drawn
 // as a mask in the colour of the text around it, or a list of them drawn over
 // each other, such as the ring and a mark inside it. `size` is an Android icon
-// role, drawn at `--icon-android-<role>`, or `inline`, 1.19 times the text
-// beside it, as the design system draws a glyph that leads a line.
+// size, drawn at `--icon-android-<size>`: a role, or `inline`, 1.19 times the
+// text beside it, as the design system draws a glyph that leads a line.
 const drawings = import.meta.glob<string>('../../../design/system/assets/Symbols/*.svg', {
   query: '?url',
   import: 'default',
@@ -27,7 +27,7 @@ const mask = [name]
     return `url("${url}") center / contain no-repeat`;
   })
   .join(', ');
-const side = size === 'inline' ? 'round(1.19em, 0.5px)' : `var(--icon-android-${size})`;
+const side = `var(--icon-android-${size})`;
 ---
 <span
   class:list={['symbol', className]}

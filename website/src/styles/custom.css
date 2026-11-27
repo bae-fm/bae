@@ -228,7 +228,7 @@
    info, tip success, caution warning and danger danger. Starlight's own
    icon in the title gives way to the ring. */
 .sl-markdown-content .starlight-aside:not(:where(.not-content *)) {
-	--notice-ring-size: round(1.19em, 0.5px);
+	--notice-ring-size: var(--icon-android-inline);
 	position: relative;
 	border: 0;
 	border-radius: var(--radius-control);
