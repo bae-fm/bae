@@ -120,8 +120,8 @@ pub(super) enum ShownColumns {
         link_records: Option<String>,
         provenance: Option<StoredProvenance>,
         link: Option<StoredReleaseLink>,
-        cover: Option<StoredCover>,
-        cover_versions: CoverVersionColumns,
+        /// The chosen cover, with the versions of the files it reads.
+        cover: Option<(StoredCover, CoverVersionColumns)>,
     },
 }
 
@@ -211,8 +211,8 @@ fn candidate_columns(
             hex::decode(hex).map(Some).map_err(|_error| DbError::unreadable("a stored path", hex))
         }
     };
-    let (cover, cover_versions) = match cover {
-        Some(cover) => {
+    let cover = cover
+        .map(|cover| {
             let (local_path, local_size, local_modified) = cover.local;
             let (embedded_size, embedded_modified, embedded_path) = cover.embedded;
             let versions = CoverVersionColumns::new(
@@ -222,17 +222,15 @@ fn candidate_columns(
             );
             let stored =
                 StoredCover::new(cover.kind, cover.file_id, cover.url, cover.source, cover.copies);
-            (Some(stored), versions)
-        }
-        None => (None, CoverVersionColumns::new((None, None, None), None, (None, None, None))),
-    };
+            Ok::<_, DbError>((stored, versions))
+        })
+        .transpose()?;
     Ok(ShownColumns::Candidate {
         link_records,
         provenance: provenance
             .map(|(kind, source, release_id)| StoredProvenance::new(kind, source, release_id)),
         link,
         cover,
-        cover_versions,
     })
 }
 

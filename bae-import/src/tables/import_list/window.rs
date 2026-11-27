@@ -24,7 +24,7 @@ use super::window_reads::*;
 use super::*;
 use crate::candidate_detail::ListedRelease;
 use crate::list::{ImportGroupMember, ImportListItem, ImportWindow};
-use crate::tables::import_state::{claimed_records_of_json, StoredCover, StoredReleaseLink};
+use crate::tables::import_state::{claimed_records_of_json, StoredReleaseLink};
 use crate::tables::release_groupings::block_of;
 use crate::triage::{
     import_status_of, TriageListLiveState, TriageReading, TriageRow, TriageRowStatus,
@@ -410,17 +410,15 @@ fn candidate_item(
                 .map(|image| crate::CoverImageSource::Library { image }),
             upload,
         },
-        ShownColumns::Candidate { link_records, provenance, link, cover, cover_versions } => {
+        ShownColumns::Candidate { link_records, provenance, link, cover } => {
             let release_link = link.map(StoredReleaseLink::link).transpose()?;
             let records = match link_records {
                 Some(json) => claimed_records_of_json(&json)?,
                 None => Vec::new(),
             };
             let cover = cover
-                .map(StoredCover::selection)
-                .transpose()?
-                .map(|selection| {
-                    cover_versions.choice(&key, &selection).map(crate::CoverChoice::into_image)
+                .map(|(stored, versions)| {
+                    versions.choice(&key, &stored.selection()?).map(crate::CoverChoice::into_image)
                 })
                 .transpose()?;
             ShownRows {
