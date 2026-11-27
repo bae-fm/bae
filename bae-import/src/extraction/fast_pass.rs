@@ -332,7 +332,8 @@ fn read_capped_text(path: &Path, place: LeasePlace) -> std::io::Result<String> {
 /// track, or on every track what a label delivers with a download — an ISRC,
 /// a phonographic copyright line and the label — where no rip document or
 /// track sheet says a disc was read. A rip document `inputs` left out says
-/// nothing.
+/// nothing. `files` are the audio files whose tags were read, so a delivery
+/// set is on every track only where they are all of them.
 fn download_proof(
     files: &[crate::file_tag_snapshot::DeliveredFileTags],
     categorized: &CategorizedFiles,
@@ -351,6 +352,7 @@ fn download_proof(
         _ => false,
     });
     let delivered = !files.is_empty()
+        && files.len() == categorized.audio().count()
         && files.iter().all(|file| {
             !file.delivery.isrcs.is_empty()
                 && !file.delivery.labels.is_empty()

@@ -68,8 +68,8 @@ fn extraction_refuses_a_file_whose_scanned_size_changed() {
     assert_eq!(reader.0.load(std::sync::atomic::Ordering::Relaxed), 0);
 }
 
-/// For identification, a file whose read fails states nothing, as one whose
-/// tags do not parse does, and every other file's tags are read.
+/// For identification, a file whose read fails gives no reading, and every
+/// other file's tags are read.
 #[test]
 fn identification_leaves_out_a_file_whose_tags_cannot_be_read() {
     let dir = TestFolder::new();
@@ -84,8 +84,13 @@ fn identification_leaves_out_a_file_whose_tags_cannot_be_read() {
         &inputs,
     );
 
-    assert!(matches!(files[0].fact.tags, TagReading::Unparseable(_)), "{:?}", files[0].fact);
-    assert_eq!(files[1].fact.tags.stated().title.as_deref(), Some("Track Alpha"));
+    let read: Vec<(&str, Option<&str>)> = files
+        .iter()
+        .map(|file| {
+            (file.fact.observation.relative_path.as_str(), file.fact.tags.stated().title.as_deref())
+        })
+        .collect();
+    assert_eq!(read, vec![("02.flac", Some("Track Alpha"))]);
     assert_eq!(
         bugs.reports(),
         vec![("identify: audio tags".to_string(), "it changed after it was scanned".to_string())]

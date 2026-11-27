@@ -271,6 +271,29 @@ fn a_label_s_delivery_set_on_every_track_proves_a_download() {
     );
 }
 
+/// A delivery set is on every track: with one file's tags unread, the others'
+/// tags prove no download.
+#[test]
+fn a_file_left_out_leaves_no_delivery_set_on_every_track() {
+    let tmp = TestFolder::new();
+    let folder = tmp.path().join("Album Title");
+    tmp.create_folder(&folder);
+    for name in ["01.flac", "02.flac"] {
+        tagged_flac(&tmp, &folder.join(name), DELIVERED);
+    }
+    let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        &folder,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("candidate scan");
+    tmp.remove(folder.join("02.flac"));
+
+    let pass = gather(&[folder], &files).expect("the pass goes on without the file");
+
+    assert_eq!(pass.origin.source, None);
+}
+
 /// A rip log that can't be read says no disc was read, as in a folder without
 /// it, so the tags' delivery set proves a download.
 #[test]

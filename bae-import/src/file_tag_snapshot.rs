@@ -278,9 +278,9 @@ pub(crate) struct DeliveredFileTags {
 
 /// The tags of each of `audio_files` as `reader` reads them now, in their
 /// order, for identification. A file whose read fails at the file itself is
-/// left out through `inputs`: it states nothing, as one whose tags do not
-/// parse does. `reader` opens each file in a place of `lease`, one after the
-/// other. Call it on the blocking pool, never in an async task.
+/// left out through `inputs`, so it gives no entry. `reader` opens each file
+/// in a place of `lease`, one after the other. Call it on the blocking pool,
+/// never in an async task.
 pub(crate) fn read_delivered_file_tags(
     audio_files: &[ScannedFile],
     reader: &dyn FileTagReader,
@@ -289,24 +289,16 @@ pub(crate) fn read_delivered_file_tags(
 ) -> Vec<DeliveredFileTags> {
     audio_files
         .iter()
-        .map(|file| {
-            let read = inputs.read(InputRead::AudioTags, &file.version.path, || {
-                Ok(read_observed(file, reader, lease.place_blocking())?)
-            });
-            let (observation, tags, delivery) = match read {
-                Some((observation, Ok(read))) => {
-                    (observation, TagReading::Stated(read.tags), read.delivery)
-                }
-                Some((observation, Err(reason))) => {
-                    (observation, TagReading::Unparseable(reason), DeliveryTags::default())
-                }
-                None => (
-                    FileObservation::scanned(file),
-                    TagReading::Unparseable("the file could not be read".to_string()),
-                    DeliveryTags::default(),
-                ),
+        .filter_map(|file| {
+            let (observation, read) =
+                inputs.read(InputRead::AudioTags, &file.version.path, || {
+                    Ok(read_observed(file, reader, lease.place_blocking())?)
+                })?;
+            let (tags, delivery) = match read {
+                Ok(read) => (TagReading::Stated(read.tags), read.delivery),
+                Err(reason) => (TagReading::Unparseable(reason), DeliveryTags::default()),
             };
-            DeliveredFileTags { fact: FileTagFact { observation, tags }, delivery }
+            Some(DeliveredFileTags { fact: FileTagFact { observation, tags }, delivery })
         })
         .collect()
 }
