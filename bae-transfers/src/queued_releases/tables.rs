@@ -238,6 +238,7 @@ pub(super) fn output_request(
 
 /// `release_id, created_at` and the payload's columns, each prefixed by
 /// `prefix`.
+#[cfg(desktop)]
 fn entry_columns<P: QueuedPayload>(prefix: &str) -> String {
     ["release_id", "created_at"]
         .iter()
