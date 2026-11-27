@@ -212,39 +212,37 @@ fn load_held_root_scans_on(sql: &SqlReadContext<'_>) -> Result<HeldRootScans, Db
     Ok(held)
 }
 
-/// Every watched folder, in the order the folders are listed (their
-/// `position`, by its index), with its scan root when a scan has opened one
-/// A scan root is always a watched folder: deleting the folder deletes its
-/// root. `volume` is never NULL on a root, so a NULL one is a folder with
-/// none.
-const FOLDER_SCAN_PROGRESS: &str = "SELECT watched.path, roots.status, \
-            roots.detail, roots.unwatched_directory, roots.unwatched_cause, roots.volume \
-     FROM watched_import_folders AS watched \
-     LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
-     ORDER BY watched.position";
+// Every watched folder, in the order the folders are listed (their
+// `position`, by its index), with its scan root when a scan has opened one
+// A scan root is always a watched folder: deleting the folder deletes its
+// root. `volume` is never NULL on a root, so a NULL one is a folder with
+// none.
+sqlive_compose::read!(
+    StoredFolderScans,
+    r#"
+    SELECT watched.*, roots.status, roots.detail, roots.unwatched_directory,
+        roots.unwatched_cause, roots.volume
+    FROM @crate::tables::watched_folders::fragments::WatchedFolderRows AS watched
+    LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.watched_path
+    ORDER BY watched.position
+"#
+);
 
 fn load_stored_folder_scans_on(sql: &SqlReadContext<'_>) -> Result<Vec<StoredRootScan>, DbError> {
     let mut scans = Vec::new();
-    for (watched_folder_path, status, detail, directory, cause, volume) in
-        sql.query(FOLDER_SCAN_PROGRESS, [], |row| {
-            Ok((
-                path_column::get(row, 0)?,
-                row.get::<_, Option<String>>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                path_column::get_optional(row, 3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<String>>(5)?,
-            ))
-        })?
-    {
-        let last_scan = match volume {
+    for row in bae_store::statement_rows(sql, &StoredFolderScansParams {})? {
+        let watched_folder_path = path_column::decode(row.watched.watched_path)?;
+        let last_scan = match row.volume {
             None => None,
             Some(volume) => Some(StoredScan {
                 outcome: stored_outcome(
                     &watched_folder_path,
-                    status,
-                    detail,
-                    directory.zip(cause),
+                    row.status,
+                    row.detail,
+                    row.unwatched_directory
+                        .map(path_column::decode)
+                        .transpose()?
+                        .zip(row.unwatched_cause),
                 )?,
                 on_network_volume: super::columns::volume_of(&volume)?
                     == crate::VolumeKind::Network,

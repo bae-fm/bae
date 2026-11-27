@@ -6,8 +6,10 @@
 
 use super::*;
 use crate::RelativeFolder;
+use bae_store::{statement_optional, statement_row, statement_rows};
 use std::path::{Path, PathBuf};
 
+pub(crate) mod fragments;
 mod removal;
 pub mod watched_path;
 pub use removal::WatchedFoldersRemoved;
@@ -20,9 +22,6 @@ pub enum WatchedFolderRefusal {
     /// stopped being watched.
     #[error("{} is under no watched folder", coven::path_text(.0))]
     Unwatched(PathBuf),
-    /// The folder came to be watched while the add was deciding.
-    #[error("watched folder {} was added while this add was deciding", coven::path_text(.0))]
-    AddedMeanwhile(PathBuf),
     /// The folder holds, or lies in, a watched folder.
     #[error(
         "watched folders cannot overlap: {} conflicts with {}",
@@ -104,6 +103,44 @@ pub(super) fn require_watched(
         .ok_or_else(|| WatchedFolderRefusal::Unwatched(folder.to_path_buf()).into())
 }
 
+sqlive_compose::read!(
+    WatchedAmong(folders: String),
+    r#"
+    SELECT watched.path
+    FROM watched_import_folders AS watched
+    WHERE watched.path IN (SELECT unhex(wanted.value) FROM json_each(:folders) AS wanted)
+    LIMIT 1
+"#
+);
+
+sqlive_compose::read!(
+    WatchedRoots,
+    "SELECT watched.path FROM watched_import_folders AS watched ORDER BY watched.position"
+);
+
+sqlive_compose::read!(
+    IsWatched(path: Vec<u8>) { watched: bool },
+    "SELECT EXISTS (SELECT 1 FROM watched_import_folders AS stored
+                    WHERE stored.path = :path) AS watched"
+);
+
+sqlive_compose::read!(
+    AnyWatched { watched: bool },
+    "SELECT EXISTS (SELECT 1 FROM watched_import_folders) AS watched"
+);
+
+// The watched folders inside a folder, not the folder itself, in their order:
+// those whose key is in the range of paths below it, from `first` to `past`.
+sqlive_compose::read!(
+    WatchedBelow(first: Vec<u8>, past: Vec<u8>, folder: Vec<u8>),
+    r#"
+    SELECT watched.path
+    FROM watched_import_folders AS watched
+    WHERE watched.path >= :first AND watched.path < :past AND watched.path <> :folder
+    ORDER BY watched.position
+"#
+);
+
 /// The watched folder among `folders`, each looked up by the watched
 /// folders' key. Watched folders never overlap, so the ancestors of one
 /// folder name at most one.
@@ -111,21 +148,16 @@ pub(super) fn watched_folder_among_on<'a>(
     sql: &impl coven::SqlRead,
     folders: impl Iterator<Item = &'a Path>,
 ) -> Result<Option<PathBuf>, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT path FROM watched_import_folders \
-             WHERE path IN (SELECT unhex(value) FROM json_each(?))",
-            [path_column::hex_list(folders)],
-            |row| path_column::get(row, 0),
-        )
-        .optional()?)
+    let request = WatchedAmongParams { folders: path_column::hex_list(folders) };
+    statement_optional(sql, &request)?.map(|row| path_column::decode(row.path)).transpose()
 }
 
 /// Every watched root, as stored, in the order they were added.
 pub(super) fn watched_roots_on(sql: &impl coven::SqlRead) -> Result<Vec<PathBuf>, DbError> {
-    Ok(sql.query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
-        path_column::get(row, 0)
-    })?)
+    statement_rows(sql, &WatchedRootsParams {})?
+        .into_iter()
+        .map(|row| path_column::decode(row.path))
+        .collect()
 }
 
 /// Every watched folder, in the order they were added. A stored root that
@@ -146,17 +178,13 @@ pub(super) fn watched_folders_on(
 /// Whether `folder`, spelled as the store keys it, is a watched folder, read
 /// by the watched folders' key.
 fn is_watched_on(sql: &impl coven::SqlRead, folder: &Path) -> Result<bool, DbError> {
-    Ok(sql.query_row(
-        "SELECT EXISTS (SELECT 1 FROM watched_import_folders WHERE path = ?)",
-        [coven::path_bytes(folder)],
-        |row| row.get(0),
-    )?)
+    let request = IsWatchedParams { path: coven::path_bytes(folder) };
+    Ok(statement_row(sql, &request)?.watched)
 }
 
 /// Whether bae watches any folder.
 pub(super) fn any_watched_on(sql: &impl coven::SqlRead) -> Result<bool, DbError> {
-    Ok(sql
-        .query_row("SELECT EXISTS (SELECT 1 FROM watched_import_folders)", [], |row| row.get(0))?)
+    Ok(statement_row(sql, &AnyWatchedParams {})?.watched)
 }
 
 /// A watched folder other than `folder` that overlaps it: the watched folder
@@ -171,23 +199,7 @@ fn overlapping_watched_folder_on(
     if let Some(above) = watched_folder_among_on(sql, folder.ancestors().skip(1))? {
         return Ok(Some(above));
     }
-    Ok(sql
-        .query_row(&format!("{BELOW} LIMIT 1"), below_params(folder), |row| {
-            path_column::get(row, 0)
-        })
-        .optional()?)
-}
-
-/// The watched folders inside a folder, not the folder itself, in their
-/// order: those whose key lies in the range of paths below it, given
-/// [`below_params`].
-const BELOW: &str = "SELECT path FROM watched_import_folders \
-                     WHERE path >= ?1 AND path < ?2 AND path <> ?3 ORDER BY position";
-
-/// The parameters [`BELOW`] reads the watched folders inside `folder` with.
-fn below_params(folder: &Path) -> [Vec<u8>; 3] {
-    let (first, past) = crate::tables::watched_path::paths_below(folder);
-    [first, past, coven::path_bytes(folder)]
+    Ok(watched_folders_below_on(sql, folder)?.into_iter().next())
 }
 
 /// The watched folders inside `folder`, not `folder` itself, in their order.
@@ -195,7 +207,9 @@ fn watched_folders_below_on(
     sql: &impl coven::SqlRead,
     folder: &Path,
 ) -> Result<Vec<PathBuf>, DbError> {
-    Ok(sql.query(BELOW, below_params(folder), |row| path_column::get(row, 0))?)
+    let (first, past) = crate::tables::watched_path::paths_below(folder);
+    let request = WatchedBelowParams { first, past, folder: coven::path_bytes(folder) };
+    statement_rows(sql, &request)?.into_iter().map(|row| path_column::decode(row.path)).collect()
 }
 
 /// Refuse `folder` when it holds, or lies in, a watched folder. The error
@@ -244,32 +258,23 @@ impl ImportTables {
         self.store.read(move |sql| watched_folders_below_on(&sql, &path)).await
     }
 
-    /// Every watched root, in the order they were added.
-    async fn watched_import_roots(&self) -> Result<Vec<PathBuf>, DbError> {
-        self.store.read(move |sql| watched_roots_on(&sql)).await
-    }
-
     /// Watch the folder `path` names, keyed by its canonical spelling, and
     /// return the folders watched after the add, read inside its write;
     /// `None` when it is already watched.
     ///
-    /// The overlap check runs inside the inserting write, so two overlapping
-    /// folders added at once cannot both pass. Already-watched is answered by
-    /// a read first, since the store refuses a write that changes nothing; a
-    /// folder watched in between fails the write.
+    /// Whether the folder is watched and whether it overlaps a watched one are
+    /// read inside the inserting write, so two overlapping folders added at
+    /// once cannot both pass.
     pub async fn add_watched_import_folder(
         &self,
         path: &Path,
     ) -> Result<Option<Vec<crate::WatchedFolder>>, crate::ImportError> {
         let path = crate::tables::watched_path::canonical_absolute_root(path)?;
-        if self.is_watched_import_folder(&path).await? {
-            return Ok(None);
-        }
         self.store
             .write(move |sql| {
                 let sql = &sql;
                 if is_watched_on(sql, &path)? {
-                    return Err(WatchedFolderRefusal::AddedMeanwhile(path).into());
+                    return Ok(None);
                 }
                 refuse_overlap_on(sql, &path)?;
                 watch_folder_on(sql, &path)?;

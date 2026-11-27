@@ -40,16 +40,15 @@ impl ImportTables {
         if roots.is_empty() {
             return Err(WatchedFolderRefusal::NoneToRemove.into());
         }
-        let watched = self.watched_import_roots().await?;
-        if roots.iter().all(|root| !is_among(&watched, root))
-            && parent.as_ref().is_none_or(|parent| is_among(&watched, parent))
-        {
-            return Ok(None);
-        }
         self.store
             .write(move |sql| {
                 let sql = &sql;
                 let watched = super::watched_roots_on(sql)?;
+                if roots.iter().all(|root| !is_among(&watched, root))
+                    && parent.as_ref().is_none_or(|parent| is_among(&watched, parent))
+                {
+                    return Ok(None);
+                }
                 if let Some(root) = roots.iter().find(|root| !is_among(&watched, root)) {
                     return Err(WatchedFolderRefusal::NotWatched(root.clone()).into());
                 }

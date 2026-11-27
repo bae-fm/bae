@@ -437,7 +437,7 @@ async fn stored_scans_list_the_folders_in_their_order() {
 
     let plan = db
         .read(|sql| {
-            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::FOLDER_SCAN_PROGRESS), [], |row| {
+            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::StoredFolderScans::SQL), [], |row| {
                 row.get::<_, String>(3)
             })
             .map_err(bae_store::DbError::from)

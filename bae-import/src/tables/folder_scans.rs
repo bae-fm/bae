@@ -206,6 +206,15 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
     to_i64(generation, "folder scan generation")
 }
 
+sqlive_compose::read!(
+    ScanDirectories(watched_folder_path: Vec<u8>),
+    r#"
+    SELECT recorded.path, recorded.modified_at
+    FROM folder_scan_directory AS recorded
+    WHERE recorded.watched_folder_path = :watched_folder_path
+"#
+);
+
 impl ImportTables {
     /// The root's generation, for a caller that records a failure against
     /// whichever generation stands now.
@@ -377,17 +386,14 @@ impl ImportTables {
         &self,
         watched_folder_path: &Path,
     ) -> Result<Vec<(PathBuf, i64)>, DbError> {
-        let watched_folder_path = coven::path_bytes(watched_folder_path);
+        let request =
+            ScanDirectoriesParams { watched_folder_path: coven::path_bytes(watched_folder_path) };
         self.store
-            .read(move |sql| {
-                Ok(sql.query(
-                    "SELECT path, modified_at FROM folder_scan_directory \
-                 WHERE watched_folder_path = ?",
-                    [watched_folder_path],
-                    |row| Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?)),
-                )?)
-            })
-            .await
+            .read_rows(request)
+            .await?
+            .into_iter()
+            .map(|row| Ok((path_column::decode(row.path)?, row.modified_at)))
+            .collect()
     }
 
     /// Finish one scan generation. On success, remove the entries and sidecars

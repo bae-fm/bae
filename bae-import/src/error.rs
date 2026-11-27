@@ -711,7 +711,6 @@ impl ImportError {
                     C::WatchedFolderOverlap
                 }
                 crate::tables::WatchedFolderRefusal::Unwatched(_)
-                | crate::tables::WatchedFolderRefusal::AddedMeanwhile(_)
                 | crate::tables::WatchedFolderRefusal::NotWatched(_)
                 | crate::tables::WatchedFolderRefusal::InsideChanged { .. } => C::ChangedMeanwhile,
             },
