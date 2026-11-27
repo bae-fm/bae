@@ -165,8 +165,9 @@ struct ImportSettingsTabTests {
     @Test("with a key saved, switching Discogs off asks before it writes")
     func switchingDiscogsOffWithAKeyAsksFirst() async throws {
         let recorder = ImportSettingRecorder()
+        let modals = ModalWindows()
         try await SnapshotTestSupport.withHostedWindow(
-            tab(recorder: recorder),
+            tab(recorder: recorder).modalWindows(modals),
             size: Self.size
         ) { window, host in
             try await SnapshotTestSupport.settle(host)
@@ -174,7 +175,9 @@ struct ImportSettingsTabTests {
                 try discogsSwitch(in: window),
                 in: window
             )
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.untilWindows {
+                modals.panels.count == 1
+            }
 
             #expect(recorder.sourceWrites.isEmpty)
         }
