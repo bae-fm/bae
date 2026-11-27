@@ -1,8 +1,17 @@
-# People's part: the key lists of names order by is the one function its reads
-# name.
+# The SQL function that gives the fewest stars a rating system shows.
+
+[[function]]
+static = "FEWEST_STARS_SHOWN"
+name = "bae_fewest_stars_shown"
+arguments = 1
+version = 1
+compute = "crate::people::rating_systems::fewest_stars_shown"
+
+# People's part: its reads name the key lists of names order by and the fewest
+# stars a rating system shows.
 [[part]]
 sql = ["src/people.sql"]
-functions = ["bae_store::NAME_KEY"]
+functions = ["crate::FEWEST_STARS_SHOWN", "bae_store::NAME_KEY"]
 synced = { tables = "crate::synced::synced_tables", namespaces = "crate::synced::namespaces" }
 first_write = "crate::people::rating_systems::write_first_rating_systems"
 joining_write = "crate::people::joining::write_profile"

@@ -36,15 +36,13 @@ sqlive_compose::fragment!(
 );
 
 // The library's rating system for albums, as `albums`, with the ratings of the
-// album `album` that the system shows: every rating under *Stars*, those of
-// `heart_minimum` stars or more under *Heart*
-// ([`crate::people::MIN_HEART_STARS`]), and none under *None*, whose NULL
-// minimum no rating reaches. `mine` is the rating of the person using this
+// album `album` that the system shows: those of at least
+// `bae_fewest_stars_shown` stars. `mine` is the rating of the person using this
 // device, `others` each other person's, in name then id order, and
 // `has_raters` whether either shows one. SQLite finds the album's ratings
 // through `ratings_album`.
 sqlive_compose::fragment!(
-    AlbumRatingsShown(album: String, heart_minimum: i64) {
+    AlbumRatingsShown(album: String) {
         struct ShownRating { name: String, stars: i64 }
         mine: Option<i64>,
         others: json<Vec<ShownRating>>,
@@ -52,9 +50,7 @@ sqlive_compose::fragment!(
     },
     r#"
     WITH system AS (
-        SELECT library.albums,
-               CASE library.albums WHEN 'stars' THEN 1
-                                   WHEN 'heart' THEN :heart_minimum END AS minimum
+        SELECT library.albums, bae_fewest_stars_shown(library.albums) AS minimum
         FROM @crate::people::rating_systems::LibraryRatingSystems AS library
     ),
     shown AS MATERIALIZED (
@@ -104,11 +100,10 @@ impl AlbumRatingsShown {
 // [`AlbumRatingsShown`]'s row, whose plan a test reads.
 #[cfg(test)]
 sqlive_compose::read!(
-    writer AlbumRatingsRead(album: String, heart_minimum: i64),
+    writer AlbumRatingsRead(album: String),
     r#"
     SELECT ratings.*
-    FROM @crate::people::fragments::AlbumRatingsShown(
-             album: :album, heart_minimum: :heart_minimum) AS ratings
+    FROM @crate::people::fragments::AlbumRatingsShown(album: :album) AS ratings
 "#
 );
 

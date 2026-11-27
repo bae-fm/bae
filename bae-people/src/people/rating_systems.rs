@@ -144,7 +144,25 @@ sqlive_compose::read!(
 );
 
 /// The fewest stars *Heart* shows as a heart.
-pub const MIN_HEART_STARS: Stars = Stars::Three;
+const MIN_HEART_STARS: Stars = Stars::Three;
+
+/// `bae_fewest_stars_shown(system)`: the fewest stars of a rating the stored
+/// rating system `system` shows: one under *Stars*, [`MIN_HEART_STARS`] under
+/// *Heart*, and NULL, which no rating reaches, under *None*.
+pub(crate) fn fewest_stars_shown(
+    arguments: &bae_store::SqlArguments<'_>,
+) -> rusqlite::Result<rusqlite::types::Value> {
+    use rusqlite::types::Value;
+    let system: RatingSystem = arguments
+        .get::<String>(0)?
+        .parse()
+        .map_err(|refusal: String| rusqlite::Error::UserFunctionError(refusal.into()))?;
+    Ok(match system {
+        RatingSystem::Stars => Value::Integer(Stars::One as i64),
+        RatingSystem::Heart => Value::Integer(MIN_HEART_STARS as i64),
+        RatingSystem::Hidden => Value::Null,
+    })
+}
 
 /// Whether *Heart* shows a rating of `stars` as a heart: three stars or
 /// more.

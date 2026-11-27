@@ -33,7 +33,7 @@ async fn ratings_are_found_by_index() {
         .read(|sql| {
             Ok(sql.query(
                 &format!("EXPLAIN QUERY PLAN {}", AlbumRatingsRead::SQL),
-                rusqlite::named_params! { ":album": "id", ":heart_minimum": 3 },
+                rusqlite::named_params! { ":album": "id" },
                 |row| row.get::<_, String>(3),
             )?)
         })
