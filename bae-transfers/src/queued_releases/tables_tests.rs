@@ -19,7 +19,7 @@ async fn enqueue_releases<P: QueuedPayload>(
 async fn next_queued_release<P: QueuedPayload>(
     db: &Store,
 ) -> Result<Option<ReleaseQueueEntry<P>>, DbError> {
-    db.read(|sql| tables::next_queued_release_on::<P>(&sql)).await
+    db.read(|sql| Ok(P::next_up_on(&sql)?.entry)).await
 }
 
 async fn activate_queued_release<P: QueuedPayload>(
@@ -390,6 +390,22 @@ async fn opening_keeps_the_download_queue_and_its_pause() {
     );
 }
 
+/// What a worker looks at before each entry is one statement: the entry it
+/// takes next and, for the download queue, the network.
+#[tokio::test]
+async fn the_worker_s_next_look_is_one_statement() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
+
+    let counter = db.track_work_for_test().await.unwrap();
+    let next = next_queued_release::<DownloadRequest>(&db).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1);
+    assert_eq!(next, Some(download(RELEASE_A)));
+
+    assert_eq!(next_queued_release::<OutputRequest>(&db).await.unwrap(), None);
+    assert_eq!(counter.take().app_read_statements, 1);
+}
+
 /// The worker's lookups use the table's keys.
 #[tokio::test]
 async fn the_queue_lookups_are_planned_on_their_keys() {
@@ -397,7 +413,7 @@ async fn the_queue_lookups_are_planned_on_their_keys() {
     let plan: Vec<String> = db
         .call(|sql| {
             Ok(sql.query(
-                "EXPLAIN QUERY PLAN SELECT state FROM download_queue WHERE release_id = 'r'",
+                &format!("EXPLAIN QUERY PLAN {}", crate::queued_releases::rows::NextDownload::SQL),
                 [],
                 |row| row.get(3),
             )?)

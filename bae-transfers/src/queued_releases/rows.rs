@@ -6,8 +6,8 @@
 use super::tables::download_request;
 use crate::download_snapshot::DownloadRequest;
 use crate::release_queue::{
-    QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueOp, ReleaseQueueProgress,
-    ReleaseQueueRow, ReleaseQueueState,
+    QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
+    ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState,
 };
 use bae_records::records::fragments::{AlbumTitle, ReleaseAlbum};
 use bae_store::{statement_row, DbError};
@@ -24,7 +24,6 @@ sqlive_compose::fragment!(
 );
 
 // Each entry of the export and save queue, with its place in the order queued.
-#[cfg(any(desktop, test, feature = "test-utils"))]
 sqlive_compose::fragment!(
     OutputQueueRow { file_count: u64, total_size: u64 },
     r#"
@@ -52,6 +51,51 @@ sqlive_compose::fragment!(
            COUNT(*) > 0 AS has_entries,
            COUNT(*) FILTER (WHERE kept.state = 'failed') > 0 AS has_failures
     FROM output_queue AS kept
+"#
+);
+
+// Whether coven says the device has a usable network.
+sqlive_compose::read!(
+    CurrentNetwork,
+    r#"
+    SELECT network.*
+    FROM @crate::queue_counts::NetworkUsable AS network
+"#
+);
+
+// What the download worker looks at before each entry: the network, and the
+// entry it takes next, unless the queue is paused or coven says the device has
+// no network. It takes the active entry if there is one, else the first
+// queued. A network coven cannot tell about does not hold the queue.
+sqlive_compose::read!(
+    NextDownload,
+    r#"
+    SELECT network.*, entry.*
+    FROM @crate::queue_counts::NetworkUsable AS network
+    LEFT JOIN @crate::queued_releases::rows::DownloadQueueRow AS entry
+           ON entry.release_id = (
+               SELECT waiting.release_id FROM download_queue AS waiting
+               WHERE waiting.state IN ('active', 'queued')
+                 AND NOT (SELECT pause.paused FROM release_queues AS pause
+                          WHERE pause.queue = 'download')
+                 AND network.network_usable IS NOT 0
+               ORDER BY waiting.state = 'active' DESC, waiting.position LIMIT 1)
+"#
+);
+
+// The entry the export and save worker takes next, unless the queue is paused:
+// the active entry if there is one, else the first queued.
+sqlive_compose::read!(
+    NextOutput,
+    r#"
+    SELECT entry.*
+    FROM @crate::queued_releases::rows::OutputQueueRow AS entry
+    WHERE entry.release_id = (
+        SELECT waiting.release_id FROM output_queue AS waiting
+        WHERE waiting.state IN ('active', 'queued')
+          AND NOT (SELECT pause.paused FROM release_queues AS pause
+                   WHERE pause.queue = 'output')
+        ORDER BY waiting.state = 'active' DESC, waiting.position LIMIT 1)
 "#
 );
 
@@ -147,6 +191,45 @@ fn queued_release(
     }
 }
 
+/// What the worker finds as it looks for its next entry.
+pub struct NextUp<P> {
+    /// The entry to take, if the queue has one it may take now.
+    pub(crate) entry: Option<ReleaseQueueEntry<P>>,
+    /// Whether coven says the device has a usable network, for a queue that
+    /// needs one; `None` where nothing tells, and for a queue that needs none.
+    pub(crate) network_usable: Option<bool>,
+}
+
+/// Why the stored entry of `release_id` can't be read.
+fn unreadable_entry(release_id: &str, problem: String) -> DbError {
+    DbError::unreadable(format!("the queue entry of release {release_id}"), problem)
+}
+
+pub(super) fn next_download_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<NextUp<DownloadRequest>, DbError> {
+    let row = statement_row(sql, &NextDownloadParams {})?;
+    Ok(NextUp {
+        entry: row.entry.map(DownloadQueueRow::into_entry).transpose()?,
+        network_usable: row.network.network_usable,
+    })
+}
+
+pub(super) fn next_output_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<NextUp<crate::OutputRequest>, DbError> {
+    let entry = bae_store::statement_optional(sql, &NextOutputParams {})?
+        .map(|row| row.entry.into_entry())
+        .transpose()?;
+    Ok(NextUp { entry, network_usable: None })
+}
+
+/// Whether coven says the device has a usable network; `None` where nothing
+/// tells.
+pub(super) fn network_usable_on(sql: &SqlReadContext<'_>) -> Result<Option<bool>, DbError> {
+    Ok(statement_row(sql, &CurrentNetworkParams {})?.network.network_usable)
+}
+
 /// What every queue's row stores of an entry, whatever the entry carries.
 struct StoredEntry {
     release_id: String,
@@ -166,9 +249,7 @@ impl StoredEntry {
         release: Option<ReleaseAlbum>,
         album: Option<AlbumTitle>,
     ) -> Result<ReleaseQueueRow<P, ()>, DbError> {
-        let unreadable = |problem: String| {
-            DbError::unreadable(format!("the queue entry of release {}", self.release_id), problem)
-        };
+        let unreadable = |problem| unreadable_entry(&self.release_id, problem);
         let payload = payload.map_err(unreadable)?;
         let state = phase(&self.state, self.error).map_err(unreadable)?;
         let release = queued_release(&self.release_id, release, album)?;
@@ -187,6 +268,14 @@ impl StoredEntry {
 }
 
 impl DownloadQueueRow {
+    /// The entry as the worker takes it.
+    fn into_entry(self) -> Result<ReleaseQueueEntry<DownloadRequest>, DbError> {
+        let target_dir = self.target_dir.map(bae_store::path_column::decode).transpose()?;
+        let payload = download_request(self.kind, target_dir)
+            .map_err(|problem| unreadable_entry(&self.release_id, problem))?;
+        Ok(ReleaseQueueEntry { release_id: self.release_id, created_at: self.created_at, payload })
+    }
+
     /// The entry as the pane shows it, beside its release.
     pub(super) fn into_row(
         self,
@@ -207,9 +296,20 @@ impl DownloadQueueRow {
     }
 }
 
-#[cfg(any(desktop, test, feature = "test-utils"))]
 impl OutputQueueRow {
+    /// The entry as the worker takes it.
+    fn into_entry(self) -> Result<ReleaseQueueEntry<crate::OutputRequest>, DbError> {
+        let payload = super::tables::output_request(
+            bae_store::path_column::decode(self.target_dir)?,
+            &self.kind,
+            [self.preset, self.filename_pattern, self.folder_pattern, self.extras],
+        )
+        .map_err(|problem| unreadable_entry(&self.release_id, problem))?;
+        Ok(ReleaseQueueEntry { release_id: self.release_id, created_at: self.created_at, payload })
+    }
+
     /// The entry as a reader of the queue shows it, beside its release.
+    #[cfg(any(desktop, test, feature = "test-utils"))]
     fn into_row(
         self,
         release: Option<ReleaseAlbum>,

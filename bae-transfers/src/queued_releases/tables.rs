@@ -18,12 +18,11 @@ use crate::release_queue::ReleaseQueueRow;
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_records::release_storage::ReleaseStorageRows;
-use bae_store::read::column_conversion_error;
 use bae_store::DbError;
 use coven::{CovenWrite, SqlReadContext};
 #[cfg(desktop)]
 use rusqlite::types::Value;
-use rusqlite::{params, OptionalExtension, Row};
+use rusqlite::{params, OptionalExtension};
 
 /// What a queue's entries carry beyond their release, and the table that
 /// holds them.
@@ -39,8 +38,13 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     /// Only the queues desktop fills by entry read it.
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError>;
-    /// The payload from a row read with [`Self::COLUMNS`] from column `at`.
-    fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self>;
+    /// The network, and the entry the worker takes next, unless the queue is
+    /// paused or, for a queue that needs the network, coven says the device
+    /// has none: the active entry if there is one, else the first queued. An
+    /// active entry is one the worker took and has not ended, so after a
+    /// restart it is taken first.
+    #[doc(hidden)]
+    fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError>;
     /// How many entries the queue holds in each phase, and what holds it
     /// back.
     fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError>;
@@ -74,9 +78,8 @@ impl QueuedPayload for DownloadRequest {
         })
     }
 
-    fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
-        download_request(row.get(at)?, bae_store::path_column::get_optional(row, at + 1)?)
-            .map_err(|problem| column_conversion_error(row, at, problem))
+    fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
+        rows::next_download_on(sql)
     }
 
     fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
@@ -148,14 +151,8 @@ impl QueuedPayload for OutputRequest {
         ])
     }
 
-    fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
-        let kind: String = row.get(at + 1)?;
-        output_request(
-            bae_store::path_column::get(row, at)?,
-            &kind,
-            [row.get(at + 2)?, row.get(at + 3)?, row.get(at + 4)?, row.get(at + 5)?],
-        )
-        .map_err(|problem| column_conversion_error(row, at + 1, problem))
+    fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
+        rows::next_output_on(sql)
     }
 
     fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
@@ -229,15 +226,6 @@ fn entry_columns<P: QueuedPayload>(prefix: &str) -> String {
         .join(", ")
 }
 
-/// An entry read with [`entry_columns`] from column 0.
-fn entry_from_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQueueEntry<P>> {
-    Ok(ReleaseQueueEntry {
-        release_id: row.get(0)?,
-        created_at: row.get(1)?,
-        payload: P::from_row(row, 2)?,
-    })
-}
-
 #[cfg(any(desktop, test, feature = "test-utils"))]
 pub(crate) fn release_queue_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
@@ -246,12 +234,6 @@ pub(crate) fn release_queue_on<P: QueuedPayload>(
     let counts = P::counts_on(sql)?;
     let paused = counts.paused();
     Ok(ReleaseQueueSnapshot { rows, total: counts.total, paused })
-}
-
-/// Whether coven says the device has a usable network; `None` where nothing
-/// tells.
-pub(crate) fn network_usable_on(sql: &SqlReadContext<'_>) -> Result<Option<bool>, DbError> {
-    Ok(sql.query_row("SELECT (SELECT usable FROM coven_network)", [], |row| row.get(0))?)
 }
 
 /// `release_id`'s entries in the download and export queues.
@@ -366,32 +348,6 @@ pub(crate) fn release_queued_on<P: QueuedPayload>(
         [release_id],
         |row| row.get(0),
     )?)
-}
-
-/// The entry the worker takes next, unless the queue is paused or, for a
-/// queue that needs the network, coven says the device has none: the active
-/// entry if there is one, else the first queued. An active entry is one the
-/// worker took and has not ended, so after a restart it is taken first. A
-/// network coven cannot tell about (`usable` is NULL, as on a platform with no
-/// network watch) does not hold the queue.
-pub(crate) fn next_queued_release_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
-) -> Result<Option<ReleaseQueueEntry<P>>, DbError> {
-    Ok(sql
-        .query_row(
-            &format!(
-                "SELECT {columns} FROM {table} \
-                 WHERE state IN ('active', 'queued') \
-                   AND NOT (SELECT paused FROM release_queues WHERE queue = ?1) \
-                   AND (NOT ?2 OR (SELECT usable FROM coven_network) IS NOT 0) \
-                 ORDER BY state = 'active' DESC, position LIMIT 1",
-                columns = entry_columns::<P>(""),
-                table = P::TABLE,
-            ),
-            params![P::QUEUE, P::NEEDS_NETWORK],
-            entry_from_row::<P>,
-        )
-        .optional()?)
 }
 
 /// Start `release_id`'s entry, or start it again when the process that

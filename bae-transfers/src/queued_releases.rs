@@ -15,6 +15,7 @@ use bae_store::DbError;
 use bae_store::Store;
 use bae_util::task_failure::{caught, caught_sync, Bug, TaskFailed};
 use coven::CovenWrite;
+use rows::NextUp;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
@@ -97,7 +98,7 @@ pub struct Finished(());
 /// the read saw the network in between. A failed read answers too: the
 /// worker's own read reports it. Never once the store has closed.
 async fn network_changed_from(store: &Store, seen: Option<bool>) {
-    let mut usable = store.results(store.subscribe(|sql| tables::network_usable_on(&sql)));
+    let mut usable = store.results(store.subscribe(|sql| rows::network_usable_on(&sql)));
     match usable.next().await {
         Some(Ok(now)) if now == seen => {}
         Some(_) => return,
@@ -458,17 +459,9 @@ where
         loop {
             #[cfg(any(test, feature = "test-utils"))]
             let wakes_heard = self.shared.wakes_sent.load(std::sync::atomic::Ordering::SeqCst);
-            let read = store
-                .read(|sql| {
-                    Ok((
-                        tables::next_queued_release_on::<Extra>(&sql)?,
-                        tables::network_usable_on(&sql)?,
-                    ))
-                })
-                .await;
-            let entry = match read {
-                Ok((Some(entry), _)) => entry,
-                Ok((None, usable)) => {
+            let entry = match store.read(|sql| Extra::next_up_on(&sql)).await {
+                Ok(NextUp { entry: Some(entry), .. }) => entry,
+                Ok(NextUp { entry: None, network_usable }) => {
                     #[cfg(any(test, feature = "test-utils"))]
                     self.shared.rest.send_modify(|rest| {
                         rest.parks += 1;
@@ -479,7 +472,7 @@ where
                     // it left waiting may be takeable now.
                     tokio::select! {
                         () = self.shared.wake.notified() => {}
-                        () = network_changed_from(store, usable), if Extra::NEEDS_NETWORK => {}
+                        () = network_changed_from(store, network_usable), if Extra::NEEDS_NETWORK => {}
                     }
                     continue;
                 }

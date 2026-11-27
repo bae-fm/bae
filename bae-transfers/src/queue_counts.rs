@@ -33,14 +33,23 @@ sqlive_compose::fragment!(
 "#
 );
 
-// The download queue's counts, its pause, and whether coven says the device
-// has a usable network, which is NULL where nothing tells.
+// Whether coven says the device has a usable network: one row, NULL where
+// nothing tells.
 sqlive_compose::fragment!(
-    StoredDownloadCounts { network_usable: Option<bool> },
+    NetworkUsable { network_usable: Option<bool> },
     r#"
-    SELECT tally.*, pause.*, (SELECT usable FROM coven_network) AS network_usable
+    SELECT (SELECT usable FROM coven_network) AS network_usable
+"#
+);
+
+// The download queue's counts, its pause, and the network.
+sqlive_compose::fragment!(
+    StoredDownloadCounts,
+    r#"
+    SELECT tally.*, pause.*, network.*
     FROM @crate::queue_counts::DownloadQueueTally AS tally
     JOIN @crate::queue_counts::QueuePause AS pause ON pause.queue = 'download'
+    JOIN @crate::queue_counts::NetworkUsable AS network ON 1
 "#
 );
 
@@ -48,7 +57,7 @@ impl StoredDownloadCounts {
     /// How many entries the download queue holds in each phase, and what
     /// holds it back.
     pub fn into_counts(self) -> ReleaseQueueCounts {
-        let Self { tally, pause, network_usable } = self;
+        let Self { tally, pause, network } = self;
         ReleaseQueueCounts {
             total: ReleaseQueueProgress {
                 queued: tally.queued,
@@ -57,7 +66,7 @@ impl StoredDownloadCounts {
             },
             has_entries: tally.has_entries,
             has_failures: tally.has_failures,
-            wait: QueueWait::of(pause.paused, network_usable),
+            wait: QueueWait::of(pause.paused, network.network_usable),
         }
     }
 }
