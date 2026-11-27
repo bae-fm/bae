@@ -68,11 +68,6 @@ sqlive_compose::fragment!(
 );
 
 impl ReleaseDetail {
-    /// The release the detail is of.
-    pub fn release_id(&self) -> &str {
-        &self.detail_release_id
-    }
-
     /// The release's row.
     fn release(&self) -> Result<DbRelease, DbError> {
         let facts = super::pressing_columns::facts_of_columns(
