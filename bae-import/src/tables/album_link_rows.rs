@@ -15,7 +15,7 @@ use super::*;
 use bae_catalogs::album_links::{AlbumLinks, GroupAlbum};
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::source_release::SourceRelease;
-use bae_store::statement_row;
+use bae_store::{statement_row, WriteStatements};
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored)
@@ -73,7 +73,18 @@ pub(super) fn album_links_of(
     })
 }
 
-const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key";
+sqlive_compose::write!(
+    DeleteGroupAlbumLinks(release_group: &'p str),
+    r#"DELETE FROM release_group_album_link WHERE release_group = :release_group"#
+);
+
+sqlive_compose::write!(
+    InsertGroupAlbumLink(release_group: &'p str, catalog: &'static str, key: &'p str),
+    r#"
+    INSERT INTO release_group_album_link (release_group, catalog, key)
+    VALUES (:release_group, :catalog, :key)
+"#
+);
 
 // For each of `wanted`, every album kept for any of the albums `asked` gives
 // it: one a MusicBrainz release group among them was found to be, or one of
@@ -219,17 +230,13 @@ pub(super) fn replace_group_album_links_on(
             changed.push(MetadataRef::new(catalog_of(&catalog)?, key));
         }
         changed.extend(albums.iter().cloned());
-        sql.execute(
-            "DELETE FROM release_group_album_link WHERE release_group = ?",
-            params![group],
-        )?;
+        sql.run(&DeleteGroupAlbumLinksParams { release_group: group })?;
         for album in albums {
-            sql.execute(
-                &format!(
-                    "INSERT INTO release_group_album_link ({GROUP_LINK_COLUMNS}) VALUES (?, ?, ?)"
-                ),
-                params![group, album.catalog.as_str(), album.key],
-            )?;
+            sql.run(&InsertGroupAlbumLinkParams {
+                release_group: group,
+                catalog: album.catalog.as_str(),
+                key: &album.key,
+            })?;
         }
     }
     super::import_state::store_claims_of_albums_on(sql, &changed)

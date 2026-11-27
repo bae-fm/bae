@@ -6,15 +6,14 @@
 //! row naming it, which stores it whole (`store_named_releases_on`); the
 //! schema's triggers delete it in the write that drops the last such row. It
 //! is read whole by every import surface but the import list's rows, which
-//! read only the records it names. Writing it again replaces every row under
-//! it in one transaction, so a reader sees one extraction or the other, never
-//! a mix.
+//! read only the records it names. Writing it again (`writes.rs`) replaces
+//! every row under it in one transaction, so a reader sees one extraction or
+//! the other, never a mix.
 //!
 //! Their tables are `source_releases.sql`, `source_releases/tracklist.sql` and
 //! `album_link_rows.sql`.
 
 use super::*;
-use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::album_links::GroupAlbum;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
@@ -26,49 +25,16 @@ use bae_catalogs::source_release::{
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
 use bae_store::statement_rows;
-use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
+use bae_types::pressing::{Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use reads::ReleasesWithKeptAlbumsParams;
-use tracklist::{insert_entry, insert_release_role, mediums_of, release_roles_of, Numbering};
+use tracklist::{mediums_of, release_roles_of};
+use writes::replace_source_release_on;
 
 mod fragments;
 mod reads;
 pub mod row_fragments;
 mod tracklist;
-
-/// The tables under `source_release`, children before the tables they hang
-/// off. Deleting a release's mediums takes its entries, and with them their
-/// credits, roles and works.
-const CHILD_TABLES: [&str; 13] = [
-    "source_release_label",
-    "source_release_barcode",
-    "source_release_album_artist",
-    "source_release_link",
-    "source_release_album_link",
-    "source_release_format",
-    "source_release_record",
-    "source_release_cover_copy",
-    "source_release_cover",
-    "source_release_archive_group",
-    "source_release_role",
-    "source_release_medium",
-    "source_release_unfetched",
-];
-
-/// The `album_links` column a release's facts are stored with: a MusicBrainz
-/// release's reading, none for a Discogs release. Fetching a MusicBrainz
-/// release reads its album links, or fails to, so a stored one never holds
-/// links nothing asked for.
-fn album_links_column(facts: &CatalogFacts) -> Option<&'static str> {
-    match facts {
-        CatalogFacts::MusicBrainz { album_links: AlbumLinks::NotAsked, .. } => {
-            panic!("a fetched MusicBrainz release carries album links that were never read")
-        }
-        CatalogFacts::MusicBrainz { album_links, .. } => {
-            Some(super::album_link_rows::album_links_column(album_links))
-        }
-        CatalogFacts::Discogs { .. } => None,
-    }
-}
+mod writes;
 
 #[expect(
     clippy::map_err_ignore,
@@ -105,234 +71,6 @@ fn check_derived_facts(release: &SourceRelease) {
         release.release,
         metadata.pressing.facts.media
     );
-}
-
-/// Write `release`, replacing whatever was stored for it.
-pub(super) fn replace_source_release_on(
-    sql: &CovenWrite<'_>,
-    release: &SourceRelease,
-) -> Result<(), DbError> {
-    check_derived_facts(release);
-    let catalog = release.release.catalog.as_str();
-    let key = release.release.key.as_str();
-    let metadata = &release.metadata;
-    let pressing = &metadata.pressing;
-    let facts = bae_records::records::pressing_columns::FactColumns::of(&pressing.facts);
-    sql.execute(
-        "INSERT INTO source_release \
-             (catalog, release_id, source_group_id, album_title, \
-              album_first_year, year, country, region, status, \
-              packaging, discogs_details, notes, archive_release_id, archive_group_id, \
-              album_links) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-         ON CONFLICT (catalog, release_id) DO UPDATE SET \
-             source_group_id = excluded.source_group_id, \
-             album_title = excluded.album_title, \
-             album_first_year = excluded.album_first_year, \
-             year = excluded.year, \
-             country = excluded.country, region = excluded.region, \
-             status = excluded.status, packaging = excluded.packaging, \
-             discogs_details = excluded.discogs_details, notes = excluded.notes, \
-             archive_release_id = excluded.archive_release_id, \
-             archive_group_id = excluded.archive_group_id, \
-             album_links = excluded.album_links",
-        params![
-            catalog,
-            key,
-            release.source_group_id,
-            metadata.album.title,
-            metadata.album.first_year,
-            pressing.typed.year,
-            facts.country,
-            facts.region,
-            facts.status,
-            facts.packaging,
-            facts.discogs_details,
-            serde_json::to_string(&release.notes).expect("notes serialize"),
-            release.archive_release.as_ref().map(|archive| archive.release_id.as_str()),
-            release.archive_release.as_ref().and_then(|archive| archive.group_id.as_deref()),
-            album_links_column(&release.catalog),
-        ],
-    )?;
-    for table in CHILD_TABLES {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE catalog = ? AND release_id = ?"),
-            params![catalog, key],
-        )?;
-    }
-    for (position, label) in pressing.typed.labels.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO source_release_label \
-                 (catalog, release_id, position, name, catalog_number, \
-                  musicbrainz_label_id, discogs_label_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
-            params![
-                catalog,
-                key,
-                position as i64,
-                label.name(),
-                label.catalog_number(),
-                label.musicbrainz_label_id(),
-                label.discogs_label_id()
-            ],
-        )?;
-    }
-    for (position, barcode) in pressing.typed.barcodes.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO source_release_barcode (catalog, release_id, position, barcode) \
-             VALUES (?, ?, ?, ?)",
-            params![catalog, key, position as i64, barcode],
-        )?;
-    }
-    for (position, stated) in metadata.album.artists.iter().enumerate() {
-        let artist = &stated.credit;
-        sql.execute(
-            "INSERT INTO source_release_album_artist \
-                 (catalog, release_id, position, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id, credited_as, join_phrase) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                catalog,
-                key,
-                position as i64,
-                artist.name,
-                artist.sort_name,
-                artist.musicbrainz_artist_id,
-                artist.discogs_artist_id,
-                artist.credited_as,
-                stated.join,
-            ],
-        )?;
-    }
-    match &release.catalog {
-        CatalogFacts::MusicBrainz { links, album_links } => {
-            for (position, link) in links.iter().enumerate() {
-                sql.execute(
-                    "INSERT INTO source_release_link \
-                         (catalog, release_id, position, link_catalog, link_key) \
-                     VALUES (?, ?, ?, ?, ?)",
-                    params![catalog, key, position as i64, link.catalog.as_str(), link.key],
-                )?;
-            }
-            for (ordinal, album) in album_links.read().iter().enumerate() {
-                sql.execute(
-                    "INSERT INTO source_release_album_link \
-                         (catalog, release_id, ordinal, album_catalog, album_key) \
-                     VALUES (?, ?, ?, ?, ?)",
-                    params![catalog, key, ordinal as i64, album.catalog.as_str(), album.key,],
-                )?;
-            }
-        }
-        CatalogFacts::Discogs { media } => {
-            let formats: &[StatedFormat] = match media {
-                StatedMedia::Formats(formats) => formats,
-                StatedMedia::Undescribed => &[],
-                StatedMedia::PerMedium(_) => {
-                    unreachable!("a Discogs release states its media as format entries")
-                }
-            };
-            for (position, format) in formats.iter().enumerate() {
-                sql.execute(
-                    "INSERT INTO source_release_format \
-                         (catalog, release_id, position, medium, quantity) \
-                     VALUES (?, ?, ?, ?, ?)",
-                    params![
-                        catalog,
-                        key,
-                        position as i64,
-                        format.medium.map(Medium::key),
-                        format.quantity,
-                    ],
-                )?;
-            }
-        }
-    }
-    for role in &release.release_roles {
-        insert_release_role(sql, catalog, key, role)?;
-    }
-    for record in &release.other_records {
-        let (kind, album_key) = match record {
-            ReleaseRecord::Pressing { album_key, .. } => ("pressing", album_key.as_deref()),
-            ReleaseRecord::Album { .. } => ("album", None),
-        };
-        sql.execute(
-            "INSERT INTO source_release_record \
-                 (catalog, release_id, record_catalog, kind, key, album_key) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![catalog, key, record.catalog().as_str(), kind, record.key(), album_key],
-        )?;
-    }
-    for (scope, covers) in [("release", &release.covers.release), ("album", &release.covers.album)]
-    {
-        for (position, cover) in covers.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO source_release_cover \
-                     (catalog, release_id, scope, position, url, label, source, standing) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    catalog,
-                    key,
-                    scope,
-                    position as i64,
-                    cover.image.url,
-                    super::cover_labels::label_json(&cover.label)?,
-                    cover.source.as_str(),
-                    cover.standing.as_str(),
-                ],
-            )?;
-            for copy in &cover.image.downscaled {
-                sql.execute(
-                    "INSERT INTO source_release_cover_copy \
-                         (catalog, release_id, scope, position, max_edge, url) \
-                     VALUES (?, ?, ?, ?, ?, ?)",
-                    params![catalog, key, scope, position as i64, copy.max_edge, copy.url],
-                )?;
-            }
-        }
-    }
-    for (position, group) in release.archive_groups.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO source_release_archive_group (catalog, release_id, position, group_id) \
-             VALUES (?, ?, ?, ?)",
-            params![catalog, key, position as i64, group],
-        )?;
-    }
-    for unfetched in &release.unfetched {
-        sql.execute(
-            "INSERT INTO source_release_unfetched (catalog, release_id, document, key, reason) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![
-                catalog,
-                key,
-                unfetched.document.as_str(),
-                unfetched.key,
-                match unfetched.reason {
-                    UnfetchedReason::Failed => "failed",
-                    UnfetchedReason::NotAsked => "not_asked",
-                    UnfetchedReason::StoppedShort => "stopped_short",
-                },
-            ],
-        )?;
-    }
-    let mut numbering = Numbering::default();
-    for (position, medium) in release.mediums.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO source_release_medium (catalog, release_id, position, medium) \
-             VALUES (?, ?, ?, ?)",
-            params![catalog, key, position as i64, medium.medium.map(Medium::key)],
-        )?;
-        for (disc, disc_id) in medium.disc_ids.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO source_release_medium_disc \
-                 (catalog, release_id, position, disc, disc_id) VALUES (?, ?, ?, ?, ?)",
-                params![catalog, key, position as i64, disc as i64, disc_id],
-            )?;
-        }
-        for entry in &medium.entries {
-            insert_entry(sql, catalog, key, position as i64, None, entry, &mut numbering)?;
-        }
-    }
-    Ok(())
 }
 
 /// The release `release` names as the columns `stored` read hold it: what its

@@ -6,6 +6,7 @@
 //! Their tables are `tracklist.sql`.
 
 use super::*;
+use bae_store::WriteStatements;
 
 /// The next entry and work node numbers of the release being written.
 #[derive(Default)]
@@ -25,66 +26,52 @@ pub(super) fn insert_entry(
 ) -> Result<(), DbError> {
     let number = numbering.entry;
     numbering.entry += 1;
-    sql.execute(
-        "INSERT INTO source_release_entry \
-             (catalog, release_id, entry, medium, parent, kind, position, title, duration_ms) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![
-            catalog,
-            key,
-            number,
-            medium,
-            parent,
-            entry.kind.as_str(),
-            entry.position,
-            entry.title,
-            entry.duration_ms.map(|duration| to_i64(duration, "track duration")).transpose()?,
-        ],
-    )?;
+    sql.run(&InsertSourceReleaseEntryParams {
+        catalog,
+        key,
+        entry: number,
+        medium,
+        parent,
+        kind: entry.kind.as_str(),
+        position: entry.position.as_deref(),
+        title: entry.title.as_deref(),
+        duration_ms: entry
+            .duration_ms
+            .map(|duration| to_i64(duration, "track duration"))
+            .transpose()?,
+    })?;
     for credit in &entry.credits {
         let artist = credit.artist.as_ref();
-        sql.execute(
-            "INSERT INTO source_release_entry_credit \
-                 (catalog, release_id, entry, position, credited_name, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, join_phrase) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                catalog,
-                key,
-                number,
-                credit.position,
-                credit.credited_name,
-                artist.map(|artist| artist.name.as_str()),
-                artist.and_then(|artist| artist.sort_name.as_deref()),
-                artist.and_then(|artist| artist.musicbrainz_artist_id.as_deref()),
-                artist.and_then(|artist| artist.discogs_artist_id.as_deref()),
-                credit.join,
-            ],
-        )?;
+        sql.run(&InsertSourceReleaseEntryCreditParams {
+            catalog,
+            key,
+            entry: number,
+            position: credit.position,
+            credited_name: &credit.credited_name,
+            name: artist.map(|artist| artist.name.as_str()),
+            sort_name: artist.and_then(|artist| artist.sort_name.as_deref()),
+            musicbrainz_artist_id: artist
+                .and_then(|artist| artist.musicbrainz_artist_id.as_deref()),
+            discogs_artist_id: artist.and_then(|artist| artist.discogs_artist_id.as_deref()),
+            join_phrase: credit.join.as_deref(),
+        })?;
     }
     for role in &entry.roles {
         let columns = role.role.columns();
-        sql.execute(
-            "INSERT INTO source_release_entry_role \
-                 (catalog, release_id, entry, position, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, credited_as, role, role_words, \
-                  qualifiers) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                catalog,
-                key,
-                number,
-                role.position,
-                role.artist.name,
-                role.artist.sort_name,
-                role.artist.musicbrainz_artist_id,
-                role.artist.discogs_artist_id,
-                role.artist.credited_as,
-                columns.role,
-                columns.role_words,
-                columns.qualifiers,
-            ],
-        )?;
+        sql.run(&InsertSourceReleaseEntryRoleParams {
+            catalog,
+            key,
+            entry: number,
+            position: role.position,
+            name: &role.artist.name,
+            sort_name: role.artist.sort_name.as_deref(),
+            musicbrainz_artist_id: role.artist.musicbrainz_artist_id.as_deref(),
+            discogs_artist_id: role.artist.discogs_artist_id.as_deref(),
+            credited_as: role.artist.credited_as.as_deref(),
+            role: columns.role,
+            role_words: columns.role_words.as_deref(),
+            qualifiers: &columns.qualifiers,
+        })?;
     }
     for performed in &entry.works {
         insert_work(
@@ -134,50 +121,37 @@ fn insert_work(
             (None, Some(parent), Some(direction_column(direction)))
         }
     };
-    sql.execute(
-        "INSERT INTO source_release_work \
-             (catalog, release_id, node, entry, parent, position, direction, \
-              musicbrainz_work_id, title, disambiguation, work_type) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![
-            catalog,
-            key,
-            node,
-            entry,
-            parent,
-            position,
-            direction,
-            work.musicbrainz_work_id,
-            work.title,
-            work.disambiguation,
-            work.work_type,
-        ],
-    )?;
+    sql.run(&InsertSourceReleaseWorkParams {
+        catalog,
+        key,
+        node,
+        entry,
+        parent,
+        position,
+        direction,
+        musicbrainz_work_id: &work.musicbrainz_work_id,
+        title: &work.title,
+        disambiguation: work.disambiguation.as_deref(),
+        work_type: work.work_type.as_deref(),
+    })?;
     for (event_position, event) in work.events.iter().enumerate() {
         match event {
             SourceWorkEvent::Credit { artist, role } => {
                 let role = role.columns();
-                sql.execute(
-                    "INSERT INTO source_release_work_credit \
-                         (catalog, release_id, node, position, name, sort_name, \
-                          musicbrainz_artist_id, discogs_artist_id, credited_as, role, \
-                          role_words, qualifiers) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    params![
-                        catalog,
-                        key,
-                        node,
-                        event_position as i64,
-                        artist.name,
-                        artist.sort_name,
-                        artist.musicbrainz_artist_id,
-                        artist.discogs_artist_id,
-                        artist.credited_as,
-                        role.role,
-                        role.role_words,
-                        role.qualifiers,
-                    ],
-                )?;
+                sql.run(&InsertSourceReleaseWorkCreditParams {
+                    catalog,
+                    key,
+                    node,
+                    position: event_position as i64,
+                    name: &artist.name,
+                    sort_name: artist.sort_name.as_deref(),
+                    musicbrainz_artist_id: artist.musicbrainz_artist_id.as_deref(),
+                    discogs_artist_id: artist.discogs_artist_id.as_deref(),
+                    credited_as: artist.credited_as.as_deref(),
+                    role: role.role,
+                    role_words: role.role_words.as_deref(),
+                    qualifiers: &role.qualifiers,
+                })?;
             }
             SourceWorkEvent::Part { direction, work } => {
                 insert_work(
@@ -194,6 +168,147 @@ fn insert_work(
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    InsertSourceReleaseEntry(
+        catalog: &'p str,
+        key: &'p str,
+        entry: i64,
+        medium: i64,
+        parent: Option<i64>,
+        kind: &'static str,
+        position: Option<&'p str>,
+        title: Option<&'p str>,
+        duration_ms: Option<i64>,
+    ),
+    r#"
+    INSERT INTO source_release_entry (
+        catalog, release_id, entry, medium, parent, kind, position, title, duration_ms)
+    VALUES (
+        :catalog, :key, :entry, :medium, :parent, :kind, :position, :title, :duration_ms)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSourceReleaseEntryCredit(
+        catalog: &'p str,
+        key: &'p str,
+        entry: i64,
+        position: i32,
+        credited_name: &'p str,
+        name: Option<&'p str>,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        join_phrase: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO source_release_entry_credit (
+        catalog, release_id, entry, position, credited_name, name, sort_name,
+        musicbrainz_artist_id, discogs_artist_id, join_phrase)
+    VALUES (
+        :catalog, :key, :entry, :position, :credited_name, :name, :sort_name,
+        :musicbrainz_artist_id, :discogs_artist_id, :join_phrase)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSourceReleaseEntryRole(
+        catalog: &'p str,
+        key: &'p str,
+        entry: i64,
+        position: i32,
+        name: &'p str,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        role: &'static str,
+        role_words: Option<&'p str>,
+        qualifiers: &'p str,
+    ),
+    r#"
+    INSERT INTO source_release_entry_role (
+        catalog, release_id, entry, position, name, sort_name, musicbrainz_artist_id,
+        discogs_artist_id, credited_as, role, role_words, qualifiers)
+    VALUES (
+        :catalog, :key, :entry, :position, :name, :sort_name, :musicbrainz_artist_id,
+        :discogs_artist_id, :credited_as, :role, :role_words, :qualifiers)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSourceReleaseWork(
+        catalog: &'p str,
+        key: &'p str,
+        node: i64,
+        entry: Option<i64>,
+        parent: Option<i64>,
+        position: i32,
+        direction: Option<&'static str>,
+        musicbrainz_work_id: &'p str,
+        title: &'p str,
+        disambiguation: Option<&'p str>,
+        work_type: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO source_release_work (
+        catalog, release_id, node, entry, parent, position, direction, musicbrainz_work_id,
+        title, disambiguation, work_type)
+    VALUES (
+        :catalog, :key, :node, :entry, :parent, :position, :direction, :musicbrainz_work_id,
+        :title, :disambiguation, :work_type)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSourceReleaseWorkCredit(
+        catalog: &'p str,
+        key: &'p str,
+        node: i64,
+        position: i64,
+        name: &'p str,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        role: &'static str,
+        role_words: Option<&'p str>,
+        qualifiers: &'p str,
+    ),
+    r#"
+    INSERT INTO source_release_work_credit (
+        catalog, release_id, node, position, name, sort_name, musicbrainz_artist_id,
+        discogs_artist_id, credited_as, role, role_words, qualifiers)
+    VALUES (
+        :catalog, :key, :node, :position, :name, :sort_name, :musicbrainz_artist_id,
+        :discogs_artist_id, :credited_as, :role, :role_words, :qualifiers)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSourceReleaseRole(
+        catalog: &'p str,
+        key: &'p str,
+        position: i32,
+        name: &'p str,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        role: &'static str,
+        role_words: Option<&'p str>,
+        qualifiers: &'p str,
+    ),
+    r#"
+    INSERT INTO source_release_role (
+        catalog, release_id, position, name, sort_name, musicbrainz_artist_id, discogs_artist_id,
+        credited_as, role, role_words, qualifiers)
+    VALUES (
+        :catalog, :key, :position, :name, :sort_name, :musicbrainz_artist_id, :discogs_artist_id,
+        :credited_as, :role, :role_words, :qualifiers)
+"#
+);
 
 /// One stored entry, before its children and works are attached.
 struct EntryRow {
@@ -265,25 +380,19 @@ pub(super) fn insert_release_role(
     role: &RoleCredit,
 ) -> Result<(), DbError> {
     let columns = role.role.columns();
-    sql.execute(
-        "INSERT INTO source_release_role \
-             (catalog, release_id, position, name, sort_name, musicbrainz_artist_id, \
-              discogs_artist_id, credited_as, role, role_words, qualifiers) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![
-            catalog,
-            key,
-            role.position,
-            role.artist.name,
-            role.artist.sort_name,
-            role.artist.musicbrainz_artist_id,
-            role.artist.discogs_artist_id,
-            role.artist.credited_as,
-            columns.role,
-            columns.role_words,
-            columns.qualifiers,
-        ],
-    )?;
+    sql.run(&InsertSourceReleaseRoleParams {
+        catalog,
+        key,
+        position: role.position,
+        name: &role.artist.name,
+        sort_name: role.artist.sort_name.as_deref(),
+        musicbrainz_artist_id: role.artist.musicbrainz_artist_id.as_deref(),
+        discogs_artist_id: role.artist.discogs_artist_id.as_deref(),
+        credited_as: role.artist.credited_as.as_deref(),
+        role: columns.role,
+        role_words: columns.role_words.as_deref(),
+        qualifiers: &columns.qualifiers,
+    })?;
     Ok(())
 }
 
