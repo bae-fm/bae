@@ -20,7 +20,7 @@ use super::*;
 use crate::folder_scanner::{
     new_grouping_key, FolderReleaseDecision, FolderReleaseDecisionAuthor, FolderReleaseDecisionKey,
 };
-use crate::CandidateKey;
+use crate::{CandidateKey, FolderCandidate};
 use bae_util::task_failure::TaskFailed;
 use std::ffi::{OsStr, OsString};
 
@@ -240,8 +240,8 @@ async fn read_folder_again(
     let services = &scan.services;
     let tables = &services.tables;
     let stamp = tables.begin_folder_reading(root).await?;
-    let stored_edits = tables.load_stored_candidate_edits().await?;
-    let mut decisions = tables.load_folder_release_decisions(root).await?;
+    let (stored_edits, mut decisions, reads) =
+        tables.load_known_of_root(root, services.file_tags.clone(), services.files.clone()).await?;
     // The person's answer reads the folder under the grouping it already
     // has, when it has one: the release it reads as keeps its key.
     let decision = decision.map(|(key, decision)| {
@@ -257,9 +257,7 @@ async fn read_folder_again(
         decisions.insert(key.relative_folder.clone(), reading.clone());
         (key.clone(), reading)
     });
-    let reads = Arc::new(
-        tables.load_file_reads(root, services.file_tags.clone(), services.files.clone()).await?,
-    );
+    let reads = Arc::new(reads);
     let walk_reads = reads.clone();
 
     let directories = services.directories.clone();
@@ -322,32 +320,38 @@ async fn read_folder_again(
     // written over them, which every later read seeds.
     let mut moved = HashSet::new();
     let (_commit, crate::tables::FolderReadingWrite { writes, pruned, regrouped }, timings) = loop {
-        let mut items = Vec::with_capacity(dated.len());
-        for (entry, folder_date) in &dated {
-            let item = match entry {
-                FolderEntry::Release(item) => item,
-                FolderEntry::Sidecar(sidecar) => {
-                    items.push(crate::tables::FolderEntryToWrite::Sidecar(sidecar.clone()));
-                    continue;
+        let releases: Vec<ScanItem> = dated
+            .iter()
+            .filter_map(|(entry, _)| match entry {
+                FolderEntry::Release(item) => Some(item.clone()),
+                FolderEntry::Sidecar(_) => None,
+            })
+            .collect();
+        let mut seeds = super::scan_items::scan_item_seeds(
+            tables,
+            &services.diagnostics,
+            &releases,
+            stamp.generation,
+            reads.clone(),
+            &moved,
+        )
+        .await?
+        .into_iter();
+        let items: Vec<crate::tables::FolderEntryToWrite> = dated
+            .iter()
+            .map(|(entry, folder_date)| match entry {
+                FolderEntry::Release(item) => {
+                    crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+                        item: item.clone(),
+                        seed: seeds.next().expect("each release has its seed"),
+                        folder_date: *folder_date,
+                    })
                 }
-            };
-            let seed = super::scan_item_seed(
-                tables,
-                &services.diagnostics,
-                item,
-                stamp.generation,
-                reads.clone(),
-                &moved,
-            )
-            .await?;
-            items.push(crate::tables::FolderEntryToWrite::Release(
-                crate::tables::ScanItemToWrite {
-                    item: item.clone(),
-                    seed,
-                    folder_date: *folder_date,
-                },
-            ));
-        }
+                FolderEntry::Sidecar(sidecar) => {
+                    crate::tables::FolderEntryToWrite::Sidecar(sidecar.clone())
+                }
+            })
+            .collect();
         let prepared_at = started.elapsed();
 
         let commit = services.folder_state_commit.lock("store a folder reading").await;
@@ -362,24 +366,29 @@ async fn read_folder_again(
         }
         // The walk read each candidate with the file decisions stored then.
         // One stored since describes files this reading did not settle.
-        for to_write in &items {
-            let crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
-                item: ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
-                ..
-            }) = to_write
-            else {
-                continue;
-            };
-            let edits = tables.load_candidate_file_edits(&candidate.files.content_hash()).await?;
-            if edits.revision != candidate.file_edit_revision {
-                return Err(crate::ImportError::Internal {
-                    detail: format!(
-                        "{} changed while its folder was being read again: its file decisions \
-                         were edited",
-                        candidate.relative_folder.text()
-                    ),
-                });
-            }
+        let candidates: Vec<&FolderCandidate> = items
+            .iter()
+            .filter_map(|to_write| match to_write {
+                crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+                    item: ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
+                    ..
+                }) => Some(candidate),
+                _ => None,
+            })
+            .collect();
+        let read_at = candidates
+            .iter()
+            .map(|candidate| (candidate.files.content_hash(), candidate.file_edit_revision));
+        if let Some(edited) =
+            super::scan_items::first_edited_since(tables, read_at.collect()).await?
+        {
+            return Err(crate::ImportError::Internal {
+                detail: format!(
+                    "{} changed while its folder was being read again: its file decisions were \
+                     edited",
+                    candidates[edited].relative_folder.text()
+                ),
+            });
         }
         // An entry that changed since it was read as unchanged was not
         // seeded: seed it as it now stands.

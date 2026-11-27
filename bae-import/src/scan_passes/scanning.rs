@@ -244,20 +244,18 @@ async fn walk_and_reconcile(
     let services = &scan.services;
     let event_tx = &services.event_tx;
     let tables = &services.tables;
-    // What the user has decided about each candidate's files — which audio
-    // each sheet describes, and which files are the release's tracks — read
-    // once for the whole walk. A folder's roles are only what its filenames
-    // propose until these land on top, so the walk takes them with it
-    // rather than having every candidate corrected afterwards.
-    let stored_edits = tables.load_stored_candidate_edits().await?;
-    let decisions = tables.load_folder_release_decisions(root).await?;
-    // What the last pass over this root read of each file, so this one
-    // opens only the files that are new or changed since, and what this
-    // one reads, which the drafts of the releases it finds are seeded
-    // from.
-    let reads = Arc::new(
-        tables.load_file_reads(root, services.file_tags.clone(), services.files.clone()).await?,
-    );
+    // What the store knows of the root, read once for the whole walk: what
+    // the user has decided about each candidate's files — which audio each
+    // sheet describes, and which files are the release's tracks — and how its
+    // folders read. A folder's roles are only what its filenames propose
+    // until the decisions land on top, so the walk takes them with it rather
+    // than having every candidate corrected afterwards. And what the last
+    // pass over this root read of each file, so this one opens only the files
+    // that are new or changed since, and what this one reads, which the
+    // drafts of the releases it finds are seeded from.
+    let (stored_edits, decisions, reads) =
+        tables.load_known_of_root(root, services.file_tags.clone(), services.files.clone()).await?;
+    let reads = Arc::new(reads);
     let walk_reads = reads.clone();
     let root_buf = root.to_path_buf();
     let dropped_item_root = root.to_path_buf();

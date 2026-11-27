@@ -23,7 +23,6 @@ use crate::RelativeFolder;
 use bae_types::audio_format::AudioFormat;
 use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
-use std::collections::HashMap;
 use track_sheets::{StoredSheet, StoredSheetAudio};
 
 mod track_sheets;
@@ -45,20 +44,6 @@ impl RowSources {
         }
     }
 }
-
-sqlive_compose::read!(
-    ItemsUnderRoot(root: Vec<u8>, grouping_releases: bool),
-    r#"
-    SELECT item.*
-    FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (
-        SELECT candidate.path AS candidate_key
-        FROM scan_candidate AS candidate
-        WHERE candidate.watched_folder_path = :root)) AS item
-    WHERE item.watched_folder_path = :root
-        AND (:grouping_releases OR item.source_kind = 'folder')
-    ORDER BY item.path
-"#
-);
 
 sqlive_compose::read!(
     ItemsAtKeys(keys: String, grouping_releases: bool),
@@ -84,11 +69,6 @@ fn rows_at_keys<'a>(
     statement_rows(sql, &statement)?.into_iter().map(|row| CandidateRow::of(row.item)).collect()
 }
 
-/// `rows`, still to be decoded.
-fn decoding(rows: Vec<CandidateRow>) -> FinishRead<Vec<StoredScanItem>> {
-    Box::new(move || rows.into_iter().map(CandidateRow::item).collect())
-}
-
 /// One stored entry: the key it is addressed by, the scan generation that
 /// wrote it, and the item itself.
 pub(crate) struct StoredScanItem {
@@ -97,42 +77,46 @@ pub(crate) struct StoredScanItem {
     pub(crate) item: ScanItem,
 }
 
-/// Every entry stored under one watched root, in persisted-key order.
-///
-/// An entry stamped with a generation the root never reached is a store
-/// nothing here wrote, so the assembly refuses it.
+/// Every entry stored under one watched root, in key order, as a test reads
+/// them.
+#[cfg(test)]
 pub(super) fn load_items(
     sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
-    let statement = ItemsUnderRootParams {
-        root: coven::path_bytes(watched_folder_path),
-        grouping_releases: sources.takes_grouping_releases(),
-    };
-    let items = decoding(
-        statement_rows(sql, &statement)?
-            .into_iter()
-            .map(|row| CandidateRow::of(row.item))
-            .collect::<Result<_, _>>()?,
-    );
-    let root_generation = super::root_generation_on(sql, watched_folder_path)?
-        .map(|generation| to_u64(generation, "a folder scan root's generation"))
-        .transpose()?;
+    let keys = sql.query(
+        "SELECT path FROM scan_candidate WHERE watched_folder_path = ?",
+        [coven::path_bytes(watched_folder_path)],
+        |row| row.get::<_, CandidateKey>(0),
+    )?;
+    let rows = rows_at_keys(sql, keys.iter(), sources)?;
+    let root_generation = super::root_generation_on(sql, watched_folder_path)?;
     Ok(Box::new(move || {
-        let items = items()?;
-        if let Some(root_generation) = root_generation {
-            for item in &items {
-                if item.generation > root_generation {
-                    return Err(DbError::unreadable(
-                        format!("scan_candidate.generation of {}, newer than its root's", item.key),
-                        (item.generation, root_generation),
-                    ));
-                }
-            }
-        }
+        let items =
+            rows.into_iter().map(CandidateRow::item).collect::<Result<Vec<_>, DbError>>()?;
+        check_generations(&items, root_generation)?;
         Ok(items)
     }))
+}
+
+/// Refuse an entry of `items` stamped with a generation their root, at
+/// `root_generation`, never reached.
+pub(super) fn check_generations(
+    items: &[StoredScanItem],
+    root_generation: Option<i64>,
+) -> Result<(), DbError> {
+    let Some(root_generation) = root_generation else {
+        return Ok(());
+    };
+    let root_generation = to_u64(root_generation, "a folder scan root's generation")?;
+    match items.iter().find(|item| item.generation > root_generation) {
+        Some(item) => Err(DbError::unreadable(
+            format!("scan_candidate.generation of {}, newer than its root's", item.key),
+            (item.generation, root_generation),
+        )),
+        None => Ok(()),
+    }
 }
 
 /// The entry at `entry_key`, and the root it is under. Watched roots never
@@ -143,22 +127,6 @@ pub(crate) fn load_item_by_key(
     sources: RowSources,
 ) -> Result<Option<(PathBuf, StoredScanItem)>, DbError> {
     load_item_by_key_rows(sql, entry_key, sources)?.map(|process| process()).transpose()
-}
-
-/// The entries at `keys`, in one statement, by key. An entry no row stores
-/// is absent.
-pub(crate) fn load_items_by_keys(
-    sql: &impl coven::SqlRead,
-    keys: &[&CandidateKey],
-    sources: RowSources,
-) -> Result<HashMap<CandidateKey, StoredScanItem>, DbError> {
-    if keys.is_empty() {
-        return Ok(HashMap::new());
-    }
-    Ok(decoding(rows_at_keys(sql, keys.iter().copied(), sources)?)()?
-        .into_iter()
-        .map(|item| (item.key.clone(), item))
-        .collect())
 }
 
 pub(crate) fn load_item_by_key_rows(
@@ -208,84 +176,86 @@ pub(crate) enum Readers<'a> {
     Besides(&'a CandidateKey),
 }
 
+/// The columns a row of [`super::fragments::FolderReaders`]' coverages binds:
+/// the root, the folder the coverage reads, the folders above it up to the
+/// root, and the range of folders below it when it reads them all.
+pub(super) struct CoveredFolders {
+    pub root: Vec<u8>,
+    pub folder: Vec<u8>,
+    /// A JSON array of the folders' paths in hex.
+    pub above: String,
+    pub below: Option<(Vec<u8>, Vec<u8>)>,
+}
+
+impl CoveredFolders {
+    pub(super) fn of(watched_folder_path: &Path, coverage: &Coverage) -> Self {
+        Self {
+            root: coven::path_bytes(watched_folder_path),
+            folder: coven::path_bytes(&coverage.folder),
+            above: path_column::hex_list(
+                coverage
+                    .folder
+                    .ancestors()
+                    .skip(1)
+                    .take_while(|above| above.starts_with(watched_folder_path)),
+            ),
+            below: coverage
+                .whole_subtree
+                .then(|| crate::tables::watched_path::paths_below(&coverage.folder)),
+        }
+    }
+}
+
+sqlive_compose::read!(
+    ReadersCovering(
+        root: Vec<u8>,
+        folder: Vec<u8>,
+        above: String,
+        below_first: Option<Vec<u8>>,
+        below_past: Option<Vec<u8>>,
+        besides: Option<crate::CandidateKey>,
+    ),
+    r#"
+    SELECT reader.*
+    FROM @crate::tables::folder_scans::fragments::FolderReaders(covered: (
+        SELECT 0 AS at, :root AS root, :folder AS folder, :above AS above,
+            :below_first AS below_first, :below_past AS below_past, :besides AS besides)) AS reader
+"#
+);
+
 /// The keys of the entries the scans stored under the root that read any of
 /// the files `coverage` reads, in key order: an entry whose folder is
 /// `coverage`'s, one above it read whole, or — for `coverage` over a whole
 /// folder — one below it.
 ///
 /// A scan asks this of every folder it writes, so it reads only the entries
-/// it returns, whatever else the root holds: see [`entries_reading_sql`].
+/// it returns, whatever else the root holds: see
+/// [`super::fragments::FolderReaders`].
 pub(crate) fn entries_reading(
     sql: &impl coven::SqlRead,
     watched_folder_path: &Path,
     coverage: &Coverage,
     readers: Readers<'_>,
 ) -> Result<Vec<CandidateKey>, DbError> {
-    let root = coven::path_bytes(watched_folder_path);
-    let folder = coven::path_bytes(&coverage.folder);
-    let above = path_column::hex_list(
-        coverage
-            .folder
-            .ancestors()
-            .skip(1)
-            .take_while(|above| above.starts_with(watched_folder_path)),
-    );
-    let below =
-        coverage.whole_subtree.then(|| crate::tables::watched_path::paths_below(&coverage.folder));
-    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> =
-        vec![(":root", &root), (":folder", &folder), (":above", &above)];
-    if let Readers::Besides(key) = &readers {
-        params.push((":key", key));
-    }
-    if let Some((first, past)) = &below {
-        params.push((":below_first", first));
-        params.push((":below_past", past));
-    }
-    let mut keys =
-        sql.query(&entries_reading_sql(readers, below.is_some()), params.as_slice(), |row| {
-            row.get::<_, CandidateKey>(0)
-        })?;
+    let covered = CoveredFolders::of(watched_folder_path, coverage);
+    let (below_first, below_past) = covered.below.unzip();
+    let request = ReadersCoveringParams {
+        root: covered.root,
+        folder: covered.folder,
+        above: covered.above,
+        below_first,
+        below_past,
+        besides: match readers {
+            Readers::Settled => None,
+            Readers::Besides(key) => Some(key.clone()),
+        },
+    };
+    let mut keys: Vec<CandidateKey> =
+        statement_rows(sql, &request)?.into_iter().map(|row| row.reader.reader_key).collect();
     // Sorted here: an `ORDER BY` has SQLite read each part in key order, a
     // pass over every entry under the root.
-    #[expect(
-        clippy::read_sort,
-        reason = "kept finding: sorts the entry keys in Rust, since an ORDER BY makes SQLite read every entry under the root"
-    )]
     keys.sort();
     Ok(keys)
-}
-
-/// [`entries_reading`]'s statement: lookups in `idx_scan_candidate_file_root`
-/// by the root and the folder, by the root and each folder above it, and —
-/// `below` — by the root and the range of folders below it. Each part reads
-/// other folders, so no entry is in two of them. They are separate selects in
-/// no order: joined by `OR` in one select, sorted by key, or told apart with
-/// `UNION`, SQLite may plan them as passes over every entry under the root,
-/// as it does with no statistics, and with those coven gathers of a large
-/// watched folder.
-pub(super) fn entries_reading_sql(readers: Readers<'_>, below: bool) -> String {
-    let kept = match readers {
-        Readers::Settled => "source_kind = 'folder' AND kind IN ('valid', 'invalid')",
-        Readers::Besides(_) => "source_kind = 'folder' AND path != :key",
-    };
-    let mut statement = format!(
-        "SELECT path FROM scan_candidate \
-         WHERE watched_folder_path = :root AND file_root = :folder AND {kept} \
-         UNION ALL \
-         SELECT path FROM scan_candidate \
-         WHERE watched_folder_path = :root \
-           AND file_root IN (SELECT unhex(value) FROM json_each(:above)) \
-           AND scope = 'recursive' AND {kept}"
-    );
-    if below {
-        statement.push_str(&format!(
-            " UNION ALL \
-             SELECT path FROM scan_candidate \
-             WHERE watched_folder_path = :root \
-               AND file_root >= :below_first AND file_root < :below_past AND {kept}"
-        ));
-    }
-    statement
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────

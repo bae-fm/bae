@@ -86,12 +86,7 @@ async fn persist_scan_items(
         // other files than the ones read: read them again, as decided now.
         let read_at: Vec<(String, u64)> =
             prepared.iter().filter_map(|(_, edits_read)| edits_read.clone()).collect();
-        let hashes: Vec<String> = read_at.iter().map(|(hash, _)| hash.clone()).collect();
-        let stored = tables.load_candidate_file_edit_revisions(&hashes).await?;
-        let edited = read_at
-            .iter()
-            .any(|(hash, read_revision)| stored.get(hash).copied().unwrap_or(0) != *read_revision);
-        if edited {
+        if first_edited_since(tables, read_at).await?.is_some() {
             drop(commit);
             continue;
         }
@@ -111,6 +106,19 @@ async fn persist_scan_items(
         };
         return Ok(Some(PersistedScanItems { commit, writes }));
     }
+}
+
+/// The place in `read_at` of the first content hash whose file decisions no
+/// longer stand at the revision beside it, all read at once.
+pub(super) async fn first_edited_since(
+    tables: &crate::tables::ImportTables,
+    read_at: Vec<(String, u64)>,
+) -> Result<Option<usize>, crate::ImportError> {
+    let hashes: Vec<String> = read_at.iter().map(|(hash, _)| hash.clone()).collect();
+    let stored = tables.load_candidate_file_edits_of(&hashes).await?;
+    Ok(read_at.iter().position(|(hash, read_revision)| {
+        stored.get(hash).map_or(0, |edits| edits.revision) != *read_revision
+    }))
 }
 
 /// The date of the folder `item` was read from.
@@ -298,7 +306,7 @@ pub(super) async fn store_scan_items(
 /// folder. Nor does an item the entry stored at its key already is, unless
 /// that entry is in `moved`, having changed after a read found it so: the
 /// store keeps the entry, and refuses the write if it changed by then.
-async fn scan_item_seeds(
+pub(super) async fn scan_item_seeds(
     tables: &crate::tables::ImportTables,
     diagnostics: &bae_diagnostics::Diagnostics,
     items: &[crate::folder_scanner::ScanItem],
@@ -344,6 +352,7 @@ async fn scan_item_seeds(
 }
 
 /// [`scan_item_seeds`] of one item.
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) async fn scan_item_seed(
     tables: &crate::tables::ImportTables,
     diagnostics: &bae_diagnostics::Diagnostics,

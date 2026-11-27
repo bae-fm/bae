@@ -4,6 +4,17 @@ use crate::tables::import_state::tests::*;
 use bae_store::test_fixtures::empty_db;
 use bae_util::test_files::TestFolder;
 
+/// The file decisions stored for `content_hash`.
+async fn current_edits(
+    tables: &crate::tables::ImportTables,
+    content_hash: &str,
+) -> crate::folder_scanner::CandidateFileEdits {
+    let hash = content_hash.to_string();
+    let mut stored =
+        tables.load_candidate_file_edits_of(std::slice::from_ref(&hash)).await.unwrap();
+    stored.remove(&hash).unwrap_or_default()
+}
+
 /// A binding the user cleared survives a relaunch: it is stored under the
 /// candidate's content hash, read back from a cold database, and the scan
 /// that follows reports the folder as they settled it rather than as its
@@ -74,16 +85,13 @@ async fn a_cleared_binding_survives_a_relaunch() {
         .await
         .unwrap();
 
-    let current = tables.load_candidate_file_edits(&scanned.content_hash()).await.unwrap();
+    let current = current_edits(&tables, &scanned.content_hash()).await;
     assert_eq!(current.revision, 1);
     assert_eq!(
         current.sheet_bindings.get("cd.cue").and_then(|references| references.get("cd.wav")),
         Some(&UserSheetBinding::Cleared)
     );
-    assert_eq!(
-        tables.load_candidate_file_edits("missing").await.unwrap(),
-        CandidateFileEdits::default()
-    );
+    assert_eq!(current_edits(&tables, "missing").await, CandidateFileEdits::default());
 
     let restored = tables.load_folder_scan_snapshots().await.unwrap();
     let crate::folder_scanner::ScanItem::Valid(restored_candidate) = &restored[0].items[0] else {
@@ -96,7 +104,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
     // A subsequent scan reads the same decisions, at the revision they stand
     // at, and derives the same shape as the candidate restored before that
     // scan.
-    let stored = tables.load_stored_candidate_edits().await.unwrap();
+    let stored = crate::tables::tests::known_of_root(&tables, folder.path()).await.0;
     assert_eq!(stored.revision_for_hash(&scanned.content_hash()), 1);
     assert_eq!(stored.revision_for_hash("missing"), 0);
     let reopened = collect_release_candidate_files_with_scope(
@@ -182,7 +190,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
         .await
         .unwrap();
 
-    let current = tables.load_candidate_file_edits(&scanned.content_hash()).await.unwrap();
+    let current = current_edits(&tables, &scanned.content_hash()).await;
     assert_eq!(current.revision, 1);
     assert_eq!(
         current.sheet_places.get("alpha.cue"),
@@ -190,7 +198,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
     );
 
     // The next scan reads the stored decisions.
-    let stored = tables.load_stored_candidate_edits().await.unwrap();
+    let stored = crate::tables::tests::known_of_root(&tables, folder.path()).await.0;
     let reopened = collect_release_candidate_files_with_scope(
         folder.path(),
         crate::ReleaseFileScope::Recursive,

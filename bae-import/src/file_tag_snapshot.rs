@@ -8,7 +8,7 @@ use bae_catalogs::StoreMarker;
 use bae_util::content_type::ContentType;
 use coven::{FileLease, LeasePlace};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub(crate) struct FileObservation {
     pub relative_path: String,
     pub size: u64,

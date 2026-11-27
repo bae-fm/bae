@@ -1062,6 +1062,21 @@ is read back only when the track it came from is unchanged. A rescan leaves a
 release whose files are all unchanged exactly as it was. A store that says two
 different things about one file fails the scan.
 
+A pass over a watched folder, whether it reads the whole folder or one folder
+below it again, begins with one composed statement that reads what the store
+knows of the watched folder: the file decisions made for any files, how the
+folders below it read, and the releases, sidecar files and tags the scans
+stored under it. Before the pass writes a batch of releases, one statement
+reads what the store has for each of them. The statement takes the audio files
+the pass found, and reads a stored picture only when the track it came from is
+among them unchanged. For a release with an entry stored at its key, the
+statement reads that entry and no tags; when an entry turns out to differ from
+the release the pass found, the same statement runs once more, in the same
+snapshot, and reads the tags that release's draft starts from. After the pass
+takes the lock to write a batch, one statement reads the batch's file decisions
+again. A file decision reads every release that reads its files with one
+statement.
+
 **Edge cases.**
 
 - **A broken folder.** A folder with corrupt or zero-byte audio, or no valid

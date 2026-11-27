@@ -36,3 +36,24 @@ sqlive_compose::fragment!(
         AS imported ON 1
 "#
 );
+
+// Each grouping in `keys`: the folder it is anchored at, if any, how it reads
+// and who decided that, and the releases a grouping with no anchor takes in,
+// as a JSON array in play order.
+sqlive_compose::fragment!(
+    Groupings with keys(grouping_key BLOB) {
+        struct StoredMember { key: hex }
+        stored_key: crate::CandidateKey,
+        combined: bool,
+        members: json<Vec<StoredMember>>
+    },
+    r#"
+    SELECT stored.key AS stored_key, stored.anchor_folder, stored.combined, stored.author,
+        (SELECT json_group_array(json_object('key', hex(member.member_key))
+                    ORDER BY member.position)
+         FROM release_grouping_member AS member
+         WHERE member.grouping_key = stored.key) AS members
+    FROM keys
+    JOIN release_grouping AS stored ON stored.key = keys.grouping_key
+"#
+);

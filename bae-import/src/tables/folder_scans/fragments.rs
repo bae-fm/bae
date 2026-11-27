@@ -269,44 +269,151 @@ sqlive_compose::fragment!(
         ))) AS pane_files
 "#);
 
+// What was read from the tags of each file of a stored file-tag snapshot, in
+// the files' order, each with the path of its file, as a JSON array.
 sqlive_compose::fragment!(
-    TagSnapshot(key: crate::CandidateKey, with_cover_bytes: bool) {
+    SnapshotFileTags on scan_candidate_tag_snapshot { tag_files: String },
+    r#"
+    SELECT json_group_array(json_object('relative_path', tags.relative_path,
+        'absolute_path', hex(files.absolute_path),
+        'file_size', tags.file_size, 'modified_at_ns', tags.modified_at_ns,
+        'unparseable_reason', tags.unparseable_reason, 'title', tags.title,
+        'track_artists', tags.track_artists, 'album_title', tags.album_title,
+        'album_artists', tags.album_artists, 'compilation', tags.compilation,
+        'years', tags.years, 'track_number', tags.track_number,
+        'disc_number', tags.disc_number) ORDER BY files.position) AS tag_files
+    FROM scan_candidate_file_tag AS tags
+    JOIN scan_candidate_file AS files
+        ON files.watched_folder_path = tags.watched_folder_path
+        AND files.candidate_path = tags.candidate_path
+        AND files.relative_path = tags.relative_path
+    WHERE tags.watched_folder_path = @parent.watched_folder_path
+        AND tags.candidate_path = @parent.candidate_path
+"#
+);
+
+// The file-tag snapshot stored for each candidate in `wanted`, under the
+// watched folder storing the candidate's key, each row carrying its `at`. The
+// picture's bytes come with a row whose `found` is NULL, and otherwise only
+// when the file the picture came from is, as it was read, one of `found`: a
+// JSON array of files by relative path, size and modification time.
+sqlive_compose::fragment!(
+    TagSnapshot with wanted(at INTEGER, candidate_key BLOB, found TEXT) {
+        snapshot_at: i64,
+        snapshot_key: crate::CandidateKey,
         scan_generation: i64,
         tag_file_edit_revision: i64,
         cover_source_relative_path: Option<String>,
         cover_content_type: Option<String>,
         has_cover_data: bool,
-        cover_data: Option<Vec<u8>>,
-        tag_files: String
+        cover_data: Option<Vec<u8>>
     },
     r#"
-    SELECT snapshot.scan_generation,
+    SELECT wanted.at AS snapshot_at,
+        snapshot.candidate_path AS snapshot_key,
+        snapshot.scan_generation,
         snapshot.file_edit_revision AS tag_file_edit_revision,
         snapshot.embedded_cover_source_relative_path AS cover_source_relative_path,
         snapshot.embedded_cover_content_type AS cover_content_type,
         snapshot.embedded_cover_data IS NOT NULL AS has_cover_data,
-        CASE WHEN :with_cover_bytes THEN snapshot.embedded_cover_data END AS cover_data,(
-            SELECT json_group_array(json_object('relative_path', tags.relative_path,
-                'file_size', tags.file_size, 'modified_at_ns', tags.modified_at_ns,
-                'unparseable_reason', tags.unparseable_reason, 'title', tags.title,
-                'track_artists', tags.track_artists, 'album_title', tags.album_title,
-                'album_artists', tags.album_artists, 'compilation', tags.compilation,
-                'years', tags.years, 'track_number', tags.track_number,
-                'disc_number', tags.disc_number) ORDER BY files.position)
-            FROM scan_candidate_file_tag AS tags
-            JOIN scan_candidate_file AS files
-                ON files.watched_folder_path = tags.watched_folder_path
-                AND files.candidate_path = tags.candidate_path
-                AND files.relative_path = tags.relative_path
-            WHERE tags.watched_folder_path = snapshot.watched_folder_path
-                AND tags.candidate_path = snapshot.candidate_path
-        ) AS tag_files
-    FROM scan_candidate_tag_snapshot AS snapshot
-    WHERE snapshot.watched_folder_path = (
-        SELECT candidate.watched_folder_path
-        FROM scan_candidate AS candidate
-        WHERE candidate.path = :key
-        LIMIT 1
-    ) AND snapshot.candidate_path = :key
+        CASE WHEN wanted.found IS NULL OR EXISTS (
+            SELECT 1
+            FROM scan_candidate_file_tag AS source
+            JOIN json_each(wanted.found) AS found
+                ON found.value ->> 'relative_path' = source.relative_path
+                AND found.value ->> 'size' = source.file_size
+                AND found.value ->> 'modified_at_ns' = source.modified_at_ns
+            WHERE source.watched_folder_path = snapshot.watched_folder_path
+                AND source.candidate_path = snapshot.candidate_path
+                AND source.relative_path = snapshot.embedded_cover_source_relative_path
+        ) THEN snapshot.embedded_cover_data END AS cover_data,
+        @crate::tables::folder_scans::fragments::SnapshotFileTags(parent: snapshot)
+            AS file_tags
+    FROM wanted
+    CROSS JOIN scan_candidate_tag_snapshot AS snapshot
+        ON snapshot.watched_folder_path = (
+            SELECT candidate.watched_folder_path
+            FROM scan_candidate AS candidate
+            WHERE candidate.path = wanted.candidate_key
+            LIMIT 1
+        )
+        AND snapshot.candidate_path = wanted.candidate_key
+"#
+);
+
+// Each stored sidecar, its files riding on it as a JSON array in their order.
+sqlive_compose::fragment!(
+    Sidecars {
+        sidecar_folder: Vec<u8>,
+        sidecar_root: Vec<u8>,
+        sidecar_files: String
+    },
+    r#"
+    SELECT sidecar.folder AS sidecar_folder,
+        sidecar.watched_folder_path AS sidecar_root, sidecar.state,(
+            SELECT json_group_array(json_object('relative_path', file.relative_path,
+                'absolute_path', hex(file.absolute_path), 'size', file.size,
+                'modified_at_ns', file.modified_at_ns, 'role', file.role,
+                'audio_damage', file.audio_damage, 'document_kind', file.document_kind)
+                ORDER BY file.position)
+            FROM scan_sidecar_file AS file
+            WHERE file.folder = sidecar.folder
+        ) AS sidecar_files
+    FROM scan_sidecar AS sidecar
+"#
+);
+
+// The entries the scans stored that read any of the files of each coverage in
+// `covered`, each with its coverage's `at`: those reading the coverage's
+// folder, those reading a folder of `above` (the folders above it, up to its
+// watched folder) with all below it, and those reading a folder in the range
+// from `below_first` to `below_past`, which is NULL for a coverage of one
+// folder alone. A coverage whose `besides` is NULL takes the settled entries,
+// valid or invalid, and one that names a key takes every entry but that one.
+//
+// Each part is a lookup in `idx_scan_candidate_file_root` by the root and the
+// folders it reads. The parts read different folders, so no entry is in two of
+// them. They are separate selects in no order: joined by `OR` in one select,
+// sorted by key, or told apart with `UNION`, SQLite may plan them as passes
+// over every entry under the root, as it does with no statistics, and with
+// those coven gathers of a large watched folder. `CROSS JOIN` keeps the
+// coverages the outer loop.
+sqlive_compose::fragment!(
+    FolderReaders with covered(
+        at INTEGER, root BLOB, folder BLOB, above TEXT, below_first BLOB, below_past BLOB,
+        besides BLOB
+    ) {
+        reader_at: i64,
+        reader_key: crate::CandidateKey
+    },
+    r#"
+    SELECT covered.at AS reader_at, candidate.path AS reader_key
+    FROM covered
+    CROSS JOIN scan_candidate AS candidate
+        ON candidate.watched_folder_path = covered.root
+        AND candidate.file_root = covered.folder
+    WHERE candidate.source_kind = 'folder'
+        AND CASE WHEN covered.besides IS NULL THEN candidate.kind IN ('valid', 'invalid')
+            ELSE candidate.path != covered.besides END
+    UNION ALL
+    SELECT covered.at, candidate.path
+    FROM covered
+    CROSS JOIN json_each(covered.above) AS above
+    CROSS JOIN scan_candidate AS candidate
+        ON candidate.watched_folder_path = covered.root
+        AND candidate.file_root = unhex(above.value)
+    WHERE candidate.source_kind = 'folder' AND candidate.scope = 'recursive'
+        AND CASE WHEN covered.besides IS NULL THEN candidate.kind IN ('valid', 'invalid')
+            ELSE candidate.path != covered.besides END
+    UNION ALL
+    SELECT covered.at, candidate.path
+    FROM covered
+    CROSS JOIN scan_candidate AS candidate
+        ON candidate.watched_folder_path = covered.root
+        AND candidate.file_root >= covered.below_first
+        AND candidate.file_root < covered.below_past
+    WHERE candidate.source_kind = 'folder'
+        AND CASE WHEN covered.besides IS NULL THEN candidate.kind IN ('valid', 'invalid')
+            ELSE candidate.path != covered.besides END
 "#
 );

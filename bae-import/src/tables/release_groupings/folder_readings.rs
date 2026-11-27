@@ -3,7 +3,8 @@
 //! the folder, so it lives in `release_grouping` with the groupings it is one
 //! kind of; a person's reading is never replaced by the scan's.
 
-use super::*;
+use super::fragments::Groupings;
+use super::{decision_of, *};
 use crate::folder_scanner::{FolderReleaseDecisionAuthor, FolderReleaseDecisions};
 use crate::tables::watched_folders::relative_below;
 
@@ -95,6 +96,41 @@ pub(crate) fn store_folder_reading(
         .into());
     }
     Ok(())
+}
+
+/// The folder readings `anchored`, the groupings anchored below the watched
+/// folder `watched_folder_path`, store, by path below it.
+pub(crate) fn folder_release_decisions(
+    watched_folder_path: &Path,
+    anchored: Vec<Groupings>,
+) -> Result<FolderReleaseDecisions, DbError> {
+    let mut readings = HashMap::new();
+    for stored in anchored {
+        let Some(anchor) = stored.anchor_folder else {
+            return Err(DbError::unreadable(
+                "release_grouping.anchor_folder of a grouping read by its anchor",
+                stored.stored_key,
+            ));
+        };
+        let folder = crate::tables::path_column::decode(anchor)?;
+        crate::tables::watched_path::validate_stored_folder(&folder)
+            .map_err(|_refused| DbError::unreadable("release_grouping.anchor_folder", &folder))?;
+        let path = relative_below(watched_folder_path, &folder)?;
+        let author = match stored.author.as_str() {
+            "user" => FolderReleaseDecisionAuthor::User,
+            "heuristic" => FolderReleaseDecisionAuthor::Heuristic,
+            other => return Err(DbError::unreadable("release_grouping.author", other)),
+        };
+        readings.insert(
+            path,
+            crate::folder_scanner::FolderReading {
+                decision: decision_of(stored.combined),
+                author,
+                grouping: stored.stored_key,
+            },
+        );
+    }
+    Ok(FolderReleaseDecisions::new(readings))
 }
 
 pub(crate) fn validate_decision_key_ownership(
@@ -259,63 +295,6 @@ impl ImportTables {
                     )?
                     .into_iter()
                     .collect())
-            })
-            .await
-    }
-
-    /// Each stored folder reading below one watched root, by path below it.
-    pub async fn load_folder_release_decisions(
-        &self,
-        watched_folder_path: &Path,
-    ) -> Result<FolderReleaseDecisions, DbError> {
-        let watched_folder_path = watched_folder_path.to_path_buf();
-        let (below_first, below_past) =
-            crate::tables::watched_path::paths_below(&watched_folder_path);
-        self.store
-            .read(move |sql| {
-                let rows = sql.query(
-                    "SELECT anchor_folder, combined, author, key FROM release_grouping \
-                 WHERE anchor_folder = :root \
-                    OR (anchor_folder >= :below_first AND anchor_folder < :below_past)",
-                    rusqlite::named_params! {
-                        ":root": coven::path_bytes(&watched_folder_path),
-                        ":below_first": below_first,
-                        ":below_past": below_past,
-                    },
-                    |row| {
-                        Ok((
-                            path_column::get(row, 0)?,
-                            row.get::<_, bool>(1)?,
-                            row.get::<_, String>(2)?,
-                            row.get::<_, CandidateKey>(3)?,
-                        ))
-                    },
-                )?;
-                let mut readings = HashMap::new();
-                for (folder, combined, author, grouping) in rows {
-                    crate::tables::watched_path::validate_stored_folder(&folder).map_err(
-                        |_refused| DbError::unreadable("release_grouping.anchor_folder", &folder),
-                    )?;
-                    let path = relative_below(&watched_folder_path, &folder)?;
-                    let author = match author.as_str() {
-                        "user" => FolderReleaseDecisionAuthor::User,
-                        "heuristic" => FolderReleaseDecisionAuthor::Heuristic,
-                        other => return Err(DbError::unreadable("release_grouping.author", other)),
-                    };
-                    readings.insert(
-                        path,
-                        crate::folder_scanner::FolderReading {
-                            decision: if combined {
-                                FolderReleaseDecision::CombineAsOneRelease
-                            } else {
-                                FolderReleaseDecision::KeepAsSeparateReleases
-                            },
-                            author,
-                            grouping,
-                        },
-                    );
-                }
-                Ok(FolderReleaseDecisions::new(readings))
             })
             .await
     }

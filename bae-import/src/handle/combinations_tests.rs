@@ -35,7 +35,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
 #[tokio::test(flavor = "multi_thread")]
 async fn separating_picked_folders_returns_them_as_they_were() {
     let (parts, db, _library) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(db);
+    let tables = crate::tables::ImportTables::new(db.clone());
     let first_root = TestFolder::new();
     let second_root = TestFolder::new();
     let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume A").await;
@@ -51,8 +51,11 @@ async fn separating_picked_folders_returns_them_as_they_were() {
     members.sort();
     assert_eq!(pending(&handle).await, vec![members[0].1.to_string()]);
     let order: Vec<crate::CandidateKey> = members.into_iter().map(|(key, _)| key).collect();
+    let counter = db.track_work_for_test().await.unwrap();
+    let grouping = tables.load_grouping(&key).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1, "one statement reads a grouping");
     assert!(matches!(
-        tables.load_grouping(&key).await.unwrap(),
+        grouping,
         Some(crate::tables::GroupingFacts::Picked { members }) if members == order
     ));
 
@@ -185,10 +188,9 @@ async fn album_of_discs(
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
-    let reading = tables
-        .load_folder_release_decisions(&root)
+    let reading = crate::tables::tests::known_of_root(tables, &root)
         .await
-        .unwrap()
+        .1
         .get(&crate::RelativeFolder::test("Album"))
         .cloned()
         .expect("the scan read the album folder");

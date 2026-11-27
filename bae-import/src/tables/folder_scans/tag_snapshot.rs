@@ -11,28 +11,28 @@ use crate::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags, StoredCover,
     StoredTagReading, TagReading,
 };
-use crate::folder_scanner::{FileVersion, ScannedFile};
+use crate::folder_scanner::FileVersion;
 use crate::tables::release_groupings::fragments::EnteredCandidate;
 use crate::tables::release_groupings::CandidateEntry;
 use bae_store::{statement_optional, statement_rows};
 use bae_util::content_type::ContentType;
 
 sqlive_compose::read!(
-    TagSnapshotAt(key: crate::CandidateKey, with_cover_bytes: bool),
+    TagSnapshotAt(key: crate::CandidateKey),
     r#"
     SELECT tags.*
     FROM @crate::tables::folder_scans::fragments::TagSnapshot(
-        key: :key, with_cover_bytes: :with_cover_bytes) AS tags
+        wanted: (SELECT 0 AS at, :key AS candidate_key, NULL AS found)) AS tags
 "#
 );
 
 sqlive_compose::read!(
-    EntryTagSnapshotAt(key: crate::CandidateKey, with_cover_bytes: bool),
+    EntryTagSnapshotAt(key: crate::CandidateKey),
     r#"
     SELECT entry.*, tags.*
     FROM @crate::tables::release_groupings::fragments::EnteredCandidate(key: :key) AS entry
     LEFT JOIN @crate::tables::folder_scans::fragments::TagSnapshot(
-        key: :key, with_cover_bytes: :with_cover_bytes) AS tags ON 1
+        wanted: (SELECT 0 AS at, :key AS candidate_key, NULL AS found)) AS tags ON 1
 "#
 );
 
@@ -247,58 +247,6 @@ impl ImportTables {
     }
 }
 
-/// The tag reading stored for the release at `candidate_path` under
-/// `watched_folder_path`, when the release stored there reads its files from
-/// `file_root`: each of its facts is then of the file at the same path below
-/// that folder. The picture's bytes are read only when the file they came
-/// from is among `audio_files` as it was read: a changed file is read from
-/// disk, so the pass takes none of the stored picture.
-pub(super) fn load_stored_file_tag_reading_on(
-    sql: &impl coven::SqlRead,
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    file_root: &Path,
-    audio_files: &[ScannedFile],
-) -> Result<Option<StoredTagReading>, DbError> {
-    let stored_root: Option<Vec<u8>> = sql
-        .query_row(
-            "SELECT file_root FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
-            params![coven::path_bytes(watched_folder_path), candidate_path],
-            |row| row.get(0),
-        )
-        .optional()?;
-    if stored_root.as_ref() != Some(&coven::path_bytes(file_root)) {
-        return Ok(None);
-    }
-    let Some(head) = load_stored_snapshot(sql, candidate_path, false)? else {
-        return Ok(None);
-    };
-    let cover = match head.cover {
-        None => StoredCover::Absent,
-        Some(source) => {
-            let unchanged = head
-                .files
-                .iter()
-                .filter(|fact| fact.observation.relative_path == source.relative_path)
-                .any(|fact| {
-                    audio_files
-                        .iter()
-                        .any(|file| FileObservation::scanned(file) == fact.observation)
-                });
-            #[expect(
-                clippy::read_keyed_statement,
-                reason = "kept finding: reads the embedded cover keyed by the cover source the snapshot's head returned"
-            )]
-            if unchanged {
-                StoredCover::Picture(load_embedded_cover(sql, candidate_path, source)?)
-            } else {
-                StoredCover::Replaced { source_relative_path: source.relative_path }
-            }
-        }
-    };
-    Ok(Some(StoredTagReading { files: head.files, cover }))
-}
-
 /// The candidate's entry and any snapshot stored for it, read as one
 /// statement. The stored snapshot is returned even when its stamp is older
 /// than the entry's, so the caller can distinguish an absent reading from one
@@ -309,7 +257,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     sql: &impl coven::SqlRead,
     candidate_path: &CandidateKey,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
-    let request = EntryTagSnapshotAtParams { key: candidate_path.clone(), with_cover_bytes: true };
+    let request = EntryTagSnapshotAtParams { key: candidate_path.clone() };
     let mut rows = statement_rows(sql, &request)?;
     if rows.len() > 1 {
         return Err(DbError::unreadable(
@@ -336,28 +284,56 @@ pub(crate) fn load_file_tag_snapshot(
     sql: &impl coven::SqlRead,
     candidate_path: &CandidateKey,
 ) -> Result<Option<FileTagSnapshot>, DbError> {
-    load_stored_snapshot(sql, candidate_path, true)?
-        .map(|stored| stored.snapshot(candidate_path))
+    let request = TagSnapshotAtParams { key: candidate_path.clone() };
+    statement_optional(sql, &request)?
+        .map(|row| StoredSnapshot::of(candidate_path, row.tags)?.snapshot(candidate_path))
         .transpose()
 }
 
-fn load_stored_snapshot(
-    sql: &impl coven::SqlRead,
+/// Each file's fact in `json`, [`SnapshotFileTags`]' array of the snapshot
+/// stored under `candidate_path`, with the path the file was read at.
+///
+/// [`SnapshotFileTags`]: super::fragments::SnapshotFileTags
+fn file_tags_of(
     candidate_path: &CandidateKey,
-    with_cover_bytes: bool,
-) -> Result<Option<StoredSnapshot>, DbError> {
-    let request = TagSnapshotAtParams { key: candidate_path.clone(), with_cover_bytes };
-    statement_optional(sql, &request)?
-        .map(|row| StoredSnapshot::of(candidate_path, row.tags))
-        .transpose()
+    json: &str,
+) -> Result<Vec<(PathBuf, FileTagFact)>, DbError> {
+    let files: Vec<StoredFileTags> = serde_json::from_str(json).map_err(|error| {
+        DbError::unreadable_json(
+            format!("the file tags stored under {candidate_path}"),
+            json,
+            error,
+        )
+    })?;
+    files.into_iter().map(|stored| Ok((stored.absolute_path.clone(), stored.fact()?))).collect()
+}
+
+/// What the tags of each track in `json`, [`file_tags_of`]'s array, state, or
+/// why they do not parse, by the version of the track it was read from.
+pub(super) fn track_readings(
+    candidate_path: &CandidateKey,
+    json: &str,
+) -> Result<Vec<(FileVersion, TagReading)>, DbError> {
+    Ok(file_tags_of(candidate_path, json)?
+        .into_iter()
+        .map(|(path, fact)| {
+            let version = FileVersion {
+                path,
+                size: fact.observation.size,
+                modified_at_ns: fact.observation.modified_at_ns,
+            };
+            (version, fact.tags)
+        })
+        .collect())
 }
 
 /// A stored file-tag reading, with its picture's bytes where the read took
 /// them.
-struct StoredSnapshot {
+pub(super) struct StoredSnapshot {
     scan_generation: u64,
     file_edit_revision: u64,
-    files: Vec<FileTagFact>,
+    /// Each file's fact with the path it was read at.
+    files: Vec<(PathBuf, FileTagFact)>,
     cover: Option<StoredCoverSource>,
 }
 
@@ -370,7 +346,7 @@ struct StoredCoverSource {
 }
 
 impl StoredSnapshot {
-    fn of(candidate_path: &CandidateKey, row: TagSnapshot) -> Result<Self, DbError> {
+    pub(super) fn of(candidate_path: &CandidateKey, row: TagSnapshot) -> Result<Self, DbError> {
         let cover =
             match (row.cover_source_relative_path, row.cover_content_type, row.has_cover_data) {
                 (None, None, false) => None,
@@ -386,22 +362,36 @@ impl StoredSnapshot {
                     ))
                 }
             };
-        let files: Vec<StoredFileTags> = serde_json::from_str(&row.tag_files).map_err(|error| {
-            DbError::unreadable_json(
-                format!("the file tags stored under {candidate_path}"),
-                &row.tag_files,
-                error,
-            )
-        })?;
+        let files = file_tags_of(candidate_path, &row.file_tags.tag_files)?;
         Ok(Self {
             scan_generation: to_u64(row.scan_generation, "a file-tag snapshot's scan generation")?,
             file_edit_revision: to_u64(
                 row.tag_file_edit_revision,
                 "a file-tag snapshot's file edit revision",
             )?,
-            files: files.into_iter().map(StoredFileTags::fact).collect::<Result<_, _>>()?,
+            files,
             cover,
         })
+    }
+
+    /// The reading as it seeds a pass, from a read that took the picture's
+    /// bytes only where the file it came from is unchanged: a picture with no
+    /// bytes is of a file the pass reads from disk.
+    pub(super) fn reading(self) -> StoredTagReading {
+        let cover = match self.cover {
+            None => StoredCover::Absent,
+            Some(StoredCoverSource { relative_path, content_type, data: Some(data) }) => {
+                StoredCover::Picture(EmbeddedCoverFact {
+                    source_relative_path: relative_path,
+                    content_type,
+                    data,
+                })
+            }
+            Some(StoredCoverSource { relative_path, data: None, .. }) => {
+                StoredCover::Replaced { source_relative_path: relative_path }
+            }
+        };
+        StoredTagReading { files: self.files.into_iter().map(|(_, fact)| fact).collect(), cover }
     }
 
     /// The reading, from a read that took its picture's bytes.
@@ -425,68 +415,10 @@ impl StoredSnapshot {
         Ok(FileTagSnapshot {
             scan_generation: self.scan_generation,
             file_edit_revision: self.file_edit_revision,
-            files: self.files,
+            files: self.files.into_iter().map(|(_, fact)| fact).collect(),
             embedded_cover,
         })
     }
-}
-
-/// The picture stored from `source`, bytes and all.
-fn load_embedded_cover(
-    sql: &impl coven::SqlRead,
-    candidate_path: &CandidateKey,
-    source: StoredCoverSource,
-) -> Result<EmbeddedCoverFact, DbError> {
-    let data = stored_embedded_cover_bytes(sql, candidate_path, &source.relative_path)?
-        .ok_or_else(|| {
-            DbError::unreadable(
-                format!("the embedded cover of {candidate_path}'s tag snapshot"),
-                source.relative_path.clone(),
-            )
-        })?;
-    Ok(EmbeddedCoverFact {
-        source_relative_path: source.relative_path,
-        content_type: source.content_type,
-        data,
-    })
-}
-
-/// Every tag reading stored for a scanned release under the root — what a
-/// track's tags state, or why they do not parse — by the version of the track
-/// it was read from.
-pub(super) fn load_root_file_tags(
-    sql: &impl coven::SqlRead,
-    watched_folder_path: &Path,
-) -> Result<Vec<(FileVersion, TagReading)>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT files.absolute_path, {FILE_TAG_COLUMNS} \
-             FROM scan_candidate_file_tag AS tags \
-             INNER JOIN scan_candidate_file AS files \
-                 ON files.watched_folder_path = tags.watched_folder_path \
-                AND files.candidate_path = tags.candidate_path \
-                AND files.relative_path = tags.relative_path \
-             INNER JOIN scan_candidate AS candidate \
-                 ON candidate.watched_folder_path = tags.watched_folder_path \
-                AND candidate.path = tags.candidate_path \
-             WHERE tags.watched_folder_path = ? AND candidate.source_kind = 'folder'"
-        ),
-        [coven::path_bytes(watched_folder_path)],
-        |row| Ok((row.get::<_, Vec<u8>>(0)?, StoredFileTags::of_row(row, 1)?)),
-    )?;
-    rows.into_iter()
-        .map(|(absolute_path, stored)| {
-            let fact = stored.fact()?;
-            Ok((
-                FileVersion {
-                    path: path_column::decode(absolute_path)?,
-                    size: fact.observation.size,
-                    modified_at_ns: fact.observation.modified_at_ns,
-                },
-                fact.tags,
-            ))
-        })
-        .collect()
 }
 
 /// The bytes of the embedded cover the candidate's tag snapshot stored from
@@ -506,15 +438,14 @@ pub(crate) fn stored_embedded_cover_bytes(
         .optional()?)
 }
 
-/// The `scan_candidate_file_tag` columns a query selects, in this order.
-const FILE_TAG_COLUMNS: &str = "tags.relative_path, tags.file_size, tags.modified_at_ns, \
-     tags.unparseable_reason, tags.title, tags.track_artists, tags.album_title, \
-     tags.album_artists, tags.compilation, tags.years, tags.track_number, tags.disc_number";
-
-/// One `scan_candidate_file_tag` row as SQLite returns it, or as
-/// [`TagSnapshot`] holds it.
+/// One `scan_candidate_file_tag` row, with the path of its file, as
+/// [`SnapshotFileTags`] holds it.
+///
+/// [`SnapshotFileTags`]: super::fragments::SnapshotFileTags
 #[derive(serde::Deserialize)]
 struct StoredFileTags {
+    #[serde(deserialize_with = "path_column::from_hex")]
+    absolute_path: PathBuf,
     relative_path: String,
     #[serde(rename = "file_size")]
     size: i64,
@@ -544,24 +475,6 @@ fn flag_of_integer<'de, D: serde::Deserializer<'de>>(
 }
 
 impl StoredFileTags {
-    /// The row's [`FILE_TAG_COLUMNS`], selected from column `first` on.
-    fn of_row(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        Ok(Self {
-            relative_path: row.get(first)?,
-            size: row.get(first + 1)?,
-            modified_at_ns: row.get(first + 2)?,
-            unparseable_reason: row.get(first + 3)?,
-            title: row.get(first + 4)?,
-            track_artists: row.get(first + 5)?,
-            album_title: row.get(first + 6)?,
-            album_artists: row.get(first + 7)?,
-            compilation: row.get(first + 8)?,
-            years: row.get(first + 9)?,
-            track_number: row.get(first + 10)?,
-            disc_number: row.get(first + 11)?,
-        })
-    }
-
     fn fact(self) -> Result<FileTagFact, DbError> {
         let tags = match (
             self.unparseable_reason,

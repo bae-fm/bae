@@ -85,20 +85,18 @@ sqlive_compose::read!(
 "#
 );
 
-// The file decisions of every candidate a decision was made for: those that
+// The content hash of every candidate a decision was made for: those that
 // hold one, and those whose revision moved past zero though none stands now.
-sqlive_compose::read!(
-    EveryDecidedFileEdits,
+sqlive_compose::fragment!(
+    DecidedFileHashes,
     r#"
-    SELECT decided.*
-    FROM @crate::tables::import_state::file_decision_rows::FileEdits(keys: (
-        SELECT state.content_hash
-        FROM import_candidate_state AS state
-        WHERE state.edit_revision > 0
-           OR EXISTS (SELECT 1 FROM import_candidate_sheet_place AS placed
-                      WHERE placed.content_hash = state.content_hash)
-           OR EXISTS (SELECT 1 FROM import_candidate_sheet_reference AS bound
-                      WHERE bound.content_hash = state.content_hash))) AS decided
+    SELECT state.content_hash
+    FROM import_candidate_state AS state
+    WHERE state.edit_revision > 0
+       OR EXISTS (SELECT 1 FROM import_candidate_sheet_place AS placed
+                  WHERE placed.content_hash = state.content_hash)
+       OR EXISTS (SELECT 1 FROM import_candidate_sheet_reference AS bound
+                  WHERE bound.content_hash = state.content_hash)
 "#
 );
 
@@ -131,7 +129,7 @@ impl FileEdits {
 }
 
 /// Each candidate's decisions in `rows`, keyed by its content hash.
-fn edits_by_hash(
+pub(crate) fn edits_by_hash(
     rows: impl IntoIterator<Item = FileEdits>,
 ) -> Result<HashMap<String, CandidateFileEdits>, DbError> {
     rows.into_iter().map(|row| Ok((row.content_hash.clone(), row.edits()?))).collect()
@@ -195,31 +193,8 @@ pub(super) fn settle_scanned_candidates(
 }
 
 impl ImportTables {
-    /// Every candidate's user-set file decisions, keyed by `content_hash`, so a
-    /// folder scan reports the roles the user settled.
-    pub async fn load_stored_candidate_edits(&self) -> Result<StoredCandidateEdits, DbError> {
-        self.store
-            .read(move |sql| load_stored_candidate_edits_on(&sql))
-            .process(|process| process())
-            .await
-    }
-
-    /// One candidate's file decisions, by one indexed lookup, for a scan that
-    /// has just computed the content hash.
-    pub async fn load_candidate_file_edits(
-        &self,
-        content_hash: &str,
-    ) -> Result<CandidateFileEdits, DbError> {
-        let content_hash = content_hash.to_string();
-        self.store
-            .read(move |sql| load_candidate_file_edits_on(&sql, &content_hash))
-            .process(|process| process())
-            .await
-    }
-
     /// The file decisions of each of `content_hashes`, in one read. A hash
-    /// nothing is stored for reads as no decisions at revision zero, as
-    /// [`Self::load_candidate_file_edits`] reads it.
+    /// nothing is stored for reads as no decisions at revision zero.
     pub async fn load_candidate_file_edits_of(
         &self,
         content_hashes: &[String],
@@ -234,47 +209,6 @@ impl ImportTables {
             .process(|process| process())
             .await
     }
-
-    /// The revision the file decisions of each of `content_hashes` stand at,
-    /// in one read; a hash nothing is stored for stands at revision zero.
-    pub async fn load_candidate_file_edit_revisions(
-        &self,
-        content_hashes: &[String],
-    ) -> Result<HashMap<String, u64>, DbError> {
-        let hashes = serde_json::to_string(content_hashes)
-            .map_err(|error| DbError::encode("the content hashes to read revisions of", error))?;
-        self.store
-            .read(move |sql| {
-                let rows = sql.query(
-                    "SELECT content_hash, edit_revision FROM import_candidate_state \
-                     WHERE content_hash IN (SELECT value FROM json_each(?))",
-                    [hashes],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-                )?;
-                rows.into_iter()
-                    .map(|(content_hash, revision)| {
-                        let revision =
-                            to_u64(revision, &format!("{content_hash}'s file edit revision"))?;
-                        Ok((content_hash, revision))
-                    })
-                    .collect()
-            })
-            .await
-    }
-}
-
-/// The file decisions of every candidate a decision was made for, each at its
-/// revision: the candidates whose decisions stand, and those whose revision
-/// moved past zero though none stands now. Any other candidate has none at
-/// revision zero, which is what a scan reads where nothing is stored.
-pub(crate) fn load_stored_candidate_edits_on(
-    sql: &impl coven::SqlRead,
-) -> Result<FinishRead<crate::folder_scanner::StoredCandidateEdits>, DbError> {
-    let rows = statement_rows(sql, &EveryDecidedFileEditsParams {})?;
-    Ok(Box::new(move || {
-        let edits = edits_by_hash(rows.into_iter().map(|row| row.decided))?;
-        Ok(crate::folder_scanner::StoredCandidateEdits::new(edits))
-    }))
 }
 
 /// One candidate's file decisions, revision included; none at revision zero

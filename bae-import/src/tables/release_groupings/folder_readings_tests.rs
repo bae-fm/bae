@@ -55,7 +55,14 @@ async fn corrupt_folder_decision_keys_fail_when_loaded() {
     })
     .await
     .unwrap();
-    assert!(tables.load_folder_release_decisions(&root).await.is_err());
+    let known = tables
+        .load_known_of_root(
+            &root,
+            std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            coven::FileBudget::for_test(),
+        )
+        .await;
+    assert!(known.is_err());
 }
 
 /// A folder is offered combined while two releases or more are read from it
@@ -125,7 +132,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
     .await
     .unwrap();
 
-    let decisions = tables.load_folder_release_decisions(&key.watched_folder_path).await.unwrap();
+    let decisions = crate::tables::tests::known_of_root(&tables, &key.watched_folder_path).await.1;
     assert_eq!(
         decisions.get(&key.relative_folder).map(|reading| (reading.decision, reading.author)),
         Some((

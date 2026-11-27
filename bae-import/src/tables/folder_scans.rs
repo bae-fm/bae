@@ -58,7 +58,6 @@ pub(super) use self::dates::forget_discovery_at_or_below;
 pub(super) use self::file_decisions::settle_candidate_files;
 pub(crate) use self::file_reads::ScanItemReadings;
 pub(super) use self::sidecar::load_sidecar;
-use self::sidecar::load_sidecars;
 pub(super) use self::write::{delete_entry, insert_candidate_files};
 
 /// What finishing a scan generation removed: the entries it did not see, and

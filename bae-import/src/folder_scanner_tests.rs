@@ -48,7 +48,7 @@ pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions
             .await
             .unwrap();
     }
-    let decisions = tables.load_folder_release_decisions(&root).await.unwrap();
+    let decisions = crate::tables::tests::known_of_root(&tables, &root).await.1;
     let mut walked = Vec::new();
     scan_for_candidates_with_decisions(
         root.clone(),

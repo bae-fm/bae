@@ -82,44 +82,43 @@ pub(crate) fn settle_candidate_files(
     Ok(settled)
 }
 
+sqlive_compose::read!(
+    ReleasesReadingFiles(content_hash: String, file_edit_revision: i64),
+    r#"
+    SELECT release.*
+    FROM @crate::tables::folder_scans::fragments::ScanItems(keys: (
+        SELECT reading.path AS candidate_key
+        FROM scan_candidate AS reading
+        WHERE reading.content_hash = :content_hash
+            AND reading.file_edit_revision = :file_edit_revision
+            AND reading.kind IN ('tentative', 'valid'))) AS release
+    ORDER BY release.watched_folder_path, release.path
+"#
+);
+
 impl ImportTables {
     /// Every release a scan stored reading the files `content_hash` names at
     /// file decision revision `file_edit_revision`, under whichever root, with
     /// those files in key order: what a file decision settles together.
-    #[expect(
-        clippy::read_query_per_row,
-        reason = "kept finding: reads each release's items with a statement of its own, keyed by the release keys the first statement returned"
-    )]
     pub async fn load_releases_reading(
         &self,
         content_hash: &str,
         file_edit_revision: u64,
     ) -> Result<Vec<(CandidateKey, crate::folder_scanner::CategorizedFiles)>, DbError> {
-        let content_hash = content_hash.to_string();
-        let file_edit_revision = to_i64(file_edit_revision, "a file decision revision")?;
+        let request = ReleasesReadingFilesParams {
+            content_hash: content_hash.to_string(),
+            file_edit_revision: to_i64(file_edit_revision, "a file decision revision")?,
+        };
         self.store
             .read(move |sql| {
-                let keys = sql.query(
-                    "SELECT path FROM scan_candidate \
-                 WHERE content_hash = ? AND file_edit_revision = ? \
-                   AND kind IN ('tentative', 'valid') \
-                 ORDER BY watched_folder_path, path",
-                    params![content_hash, file_edit_revision],
-                    |row| row.get::<_, CandidateKey>(0),
-                )?;
-                keys.into_iter()
-                    .map(|key| {
-                        // Both reads are of one snapshot, which lists the key.
-                        read::load_item_by_key_rows(&sql, &key, RowSources::Any)?.ok_or_else(|| {
-                            DbError::unreadable(format!("the scan_candidate rows of {key}"), 0)
-                        })
-                    })
-                    .collect::<Result<Vec<_>, DbError>>()
-            })
-            .process(|releases| {
-                releases
+                bae_store::statement_rows(&sql, &request)?
                     .into_iter()
-                    .map(|release| match release()?.1 {
+                    .map(|row| read::CandidateRow::of(row.release))
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .process(|rows| {
+                rows.into_iter()
+                    .map(|row| match row.item()? {
                         read::StoredScanItem {
                             key,
                             item: ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),

@@ -57,12 +57,9 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
         ]
     );
     assert_eq!(
-        fixture
-            .test
-            .tables()
-            .load_folder_release_decisions(&fixture.root)
+        crate::tables::tests::known_of_root(fixture.test.tables(), &fixture.root)
             .await
-            .unwrap()
+            .1
             .get(&crate::RelativeFolder::test("Artist/Album"))
             .map(|reading| (reading.decision, reading.author)),
         Some((
@@ -125,14 +122,12 @@ async fn combining_parts_trades_both_rows_for_the_combined_one_at_once() {
 async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
     let before = fixture.stored_paths().await;
-    let decisions_before = fixture
-        .test
-        .tables()
-        .load_folder_release_decisions(&fixture.root)
-        .await
-        .unwrap()
-        .get(&crate::RelativeFolder::test("Artist/Album"))
-        .cloned();
+    let decisions_before =
+        crate::tables::tests::known_of_root(fixture.test.tables(), &fixture.root)
+            .await
+            .1
+            .get(&crate::RelativeFolder::test("Artist/Album"))
+            .cloned();
 
     // Hold the commit lock, so the reading waits at it with its walk done,
     // and move the root's generation under it the way a pass over the root
@@ -170,12 +165,9 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     );
     assert_eq!(fixture.stored_paths().await, before);
     assert_eq!(
-        fixture
-            .test
-            .tables()
-            .load_folder_release_decisions(&fixture.root)
+        crate::tables::tests::known_of_root(fixture.test.tables(), &fixture.root)
             .await
-            .unwrap()
+            .1
             .get(&crate::RelativeFolder::test("Artist/Album"))
             .cloned(),
         decisions_before
@@ -357,10 +349,9 @@ async fn a_folders_release_keeps_its_key_across_readings() {
     let (test, scan, root) = scanned_root(&["Album/Disc 1", "Album/Disc 2"]).await;
     let tables = test.tables().clone();
     let grouping_of = || async {
-        tables
-            .load_folder_release_decisions(&root)
+        crate::tables::tests::known_of_root(&tables, &root)
             .await
-            .unwrap()
+            .1
             .get(&crate::RelativeFolder::test("Album"))
             .map(|reading| reading.grouping.clone())
             .expect("the scan read the album's discs as one")

@@ -20,16 +20,20 @@ use crate::folder_scanner::{
 };
 use crate::grouping::{CombineRefusal, GroupingBlock};
 use crate::CandidateKey;
+pub(crate) use folder_readings::folder_release_decisions;
 pub(super) use folder_readings::{store_folder_reading, validate_decision_key_ownership};
 use std::path::{Path, PathBuf};
 
 pub(super) mod entry;
+mod facts;
 pub(super) mod folder_readings;
 pub(crate) mod fragments;
+pub mod row_fragments;
 pub(crate) use entry::{
     listed_entry_of, load_candidate_entry_on, require_editable_files_on, require_workable_on,
     CandidateEntry, ScannedEntry,
 };
+pub(crate) use facts::GroupingFacts;
 pub use folder_readings::FolderReadingRefusal;
 
 /// Why reading a release of folders picked together apart again was
@@ -57,15 +61,6 @@ impl GroupingChanges {
         self.found.extend(other.found);
         self.removed.extend(other.removed);
     }
-}
-
-/// How a grouping reads, as the actions on its release need it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum GroupingFacts {
-    /// A folder's reading: the folder, and whether its releases are one.
-    Anchored { folder: FolderReleaseDecisionKey, decision: FolderReleaseDecision },
-    /// Releases the person read as one, by key, in play order.
-    Picked { members: Vec<CandidateKey> },
 }
 
 /// Forget every grouping anchored at or taking a release from a folder at or
@@ -445,22 +440,13 @@ fn blocked(
     Ok(GroupingChanges::default())
 }
 
-/// The folder a grouping is anchored at, addressed below the watched folder
-/// covering it.
-fn anchored_at(
-    sql: &impl coven::SqlRead,
-    anchor: &Path,
-) -> Result<FolderReleaseDecisionKey, DbError> {
-    // A grouping anchored at a folder goes with the watched folder covering
-    // it.
-    let root = super::watched_folders::watched_folder_among_on(sql, anchor.ancestors())?
-        .ok_or_else(|| {
-            DbError::unreadable("release_grouping.anchor_folder under no watched folder", anchor)
-        })?;
-    Ok(FolderReleaseDecisionKey {
-        relative_folder: super::watched_folders::relative_below(&root, anchor)?,
-        watched_folder_path: root,
-    })
+/// How an anchored grouping stored as `combined` reads its folder.
+fn decision_of(combined: bool) -> FolderReleaseDecision {
+    if combined {
+        FolderReleaseDecision::CombineAsOneRelease
+    } else {
+        FolderReleaseDecision::KeepAsSeparateReleases
+    }
 }
 
 /// Refuse to take `member`, as the caller read it, into a new grouping,
@@ -637,50 +623,6 @@ impl ImportTables {
             None => Ok(None),
             Some(workable) => workable.map(|entry| entry.map(|entry| entry.candidate)),
         })
-    }
-
-    /// How the grouping `key` reads, or `None` when no grouping has that key.
-    #[expect(
-        clippy::read_keyed_statement,
-        reason = "kept finding: reads the anchored folder keyed by the anchor the first statement returned"
-    )]
-    pub(crate) async fn load_grouping(
-        &self,
-        key: &CandidateKey,
-    ) -> Result<Option<GroupingFacts>, DbError> {
-        let key = key.clone();
-        self.store
-            .read(move |sql| {
-                let stored: Option<(Option<PathBuf>, bool)> = sql
-                    .query_row(
-                        "SELECT anchor_folder, combined FROM release_grouping WHERE key = ?",
-                        [&key],
-                        |row| Ok((path_column::get_optional(row, 0)?, row.get(1)?)),
-                    )
-                    .optional()?;
-                let Some((anchor, combined)) = stored else {
-                    return Ok(None);
-                };
-                Ok(Some(match anchor {
-                    Some(anchor) => GroupingFacts::Anchored {
-                        folder: anchored_at(&sql, &anchor)?,
-                        decision: if combined {
-                            FolderReleaseDecision::CombineAsOneRelease
-                        } else {
-                            FolderReleaseDecision::KeepAsSeparateReleases
-                        },
-                    },
-                    None => GroupingFacts::Picked {
-                        members: sql.query(
-                            "SELECT member_key FROM release_grouping_member \
-                         WHERE grouping_key = ? ORDER BY position",
-                            [&key],
-                            |row| row.get(0),
-                        )?,
-                    },
-                }))
-            })
-            .await
     }
 
     /// Combine `members`, as the caller read them, into one release under the

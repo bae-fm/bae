@@ -133,7 +133,6 @@ pub(super) use standing_rows::{
     RUNTIME_FACT_COLUMNS,
 };
 
-use crate::folder_scanner::StoredCandidateEdits;
 use crate::CandidateKey;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::LookupRef;

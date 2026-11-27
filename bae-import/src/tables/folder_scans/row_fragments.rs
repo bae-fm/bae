@@ -168,3 +168,30 @@ sqlive_compose::fragment!(
     )
     GROUP BY sheet, file_reference
 "#);
+
+// The keys of what a pass over the watched folder `root` knows of it, a row
+// for each, with the other columns NULL: its entries, its sidecars,
+// the content hashes in `decided` and the groupings in `anchored`. A read
+// joins what is stored under each key to its row.
+sqlive_compose::fragment!(
+    RootKeys(root: Vec<u8>) with decided(content_hash TEXT), anchored(grouping_key BLOB) {
+        item_key: Option<crate::CandidateKey>,
+        sidecar_key: Option<Vec<u8>>,
+        decided_hash: Option<String>,
+        anchored_key: Option<crate::CandidateKey>
+    },
+    r#"
+    SELECT candidate.path AS item_key, NULL AS sidecar_key, NULL AS decided_hash,
+        NULL AS anchored_key
+    FROM scan_candidate AS candidate
+    WHERE candidate.watched_folder_path = :root
+    UNION ALL
+    SELECT NULL, sidecar.folder, NULL, NULL
+    FROM scan_sidecar AS sidecar
+    WHERE sidecar.watched_folder_path = :root
+    UNION ALL
+    SELECT NULL, NULL, decided.content_hash, NULL FROM decided
+    UNION ALL
+    SELECT NULL, NULL, NULL, anchored.grouping_key FROM anchored
+"#
+);

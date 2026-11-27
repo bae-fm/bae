@@ -19,7 +19,7 @@ pub mod import_state;
 mod layout_bindings;
 mod picture_copies;
 mod release_edit;
-mod release_groupings;
+pub mod release_groupings;
 pub(crate) mod release_sheet_decisions;
 mod sheet_decision_columns;
 pub mod skipped_candidates;

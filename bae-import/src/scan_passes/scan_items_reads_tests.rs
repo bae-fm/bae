@@ -166,14 +166,16 @@ async fn an_unchanged_release_is_not_seeded_and_its_picture_is_not_loaded() {
     let items = tables.load_folder_scan_items(&root).await.unwrap();
     assert_eq!(items.len(), 3, "every release was scanned");
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    let reads = Arc::new(
-        tables
-            .load_file_reads(&root, services.file_tags.clone(), services.files.clone())
-            .await
-            .unwrap(),
-    );
+    let counter = services.store.track_work_for_test().await.unwrap();
+    let known = tables
+        .load_known_of_root(&root, services.file_tags.clone(), services.files.clone())
+        .await
+        .unwrap();
+    assert_eq!(counter.take().app_read_statements, 1, "one statement reads the root");
+    let reads = Arc::new(known.2);
 
     let readings = tables.load_scan_batch_readings(&items, &HashSet::new()).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1, "one statement reads unchanged items");
     let seeds = scan_item_seeds(
         tables,
         &services.diagnostics,
@@ -191,7 +193,9 @@ async fn an_unchanged_release_is_not_seeded_and_its_picture_is_not_loaded() {
     assert_eq!(seeded, 0, "no release is seeded");
 
     let moved = HashSet::from([items[0].key()]);
+    counter.take();
     let readings = tables.load_scan_batch_readings(&items, &moved).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1, "one statement reads a moved item's seed");
     assert_eq!(picture_bytes(&readings), PICTURE_BYTES, "the moved entry's picture is loaded");
 }
 
@@ -227,8 +231,14 @@ async fn a_changed_cover_source_track_does_not_load_the_stored_picture() {
     let source_changed =
         tables.load_scan_batch_readings(&with_track_changed(0), &HashSet::new()).await.unwrap();
     assert_eq!(picture_bytes(&source_changed), 0, "the changed source's picture is not loaded");
+    let counter = services.store.track_work_for_test().await.unwrap();
     let other_changed =
         tables.load_scan_batch_readings(&with_track_changed(1), &HashSet::new()).await.unwrap();
+    assert_eq!(
+        counter.take().app_read_statements,
+        2,
+        "an entry that proves another than the item is read once more, for its seed"
+    );
     assert_eq!(
         picture_bytes(&other_changed),
         PICTURE_BYTES,
@@ -278,9 +288,10 @@ async fn an_entry_changed_between_the_read_and_the_write_is_read_again() {
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     let reads = Arc::new(
         tables
-            .load_file_reads(&root, services.file_tags.clone(), services.files.clone())
+            .load_known_of_root(&root, services.file_tags.clone(), services.files.clone())
             .await
-            .unwrap(),
+            .unwrap()
+            .2,
     );
     let held = services.folder_state_commit.lock("hold the pass's write back").await;
 

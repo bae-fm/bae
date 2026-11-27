@@ -92,10 +92,9 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
     assert_eq!(removed_by(&combined), vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]);
     assert_eq!(stored_keys(&db, root).await, vec![key_of(root, "Box"), key_of(root, "Other")]);
     assert_eq!(
-        tables
-            .load_folder_release_decisions(root)
+        crate::tables::tests::known_of_root(&tables, root)
             .await
-            .unwrap()
+            .1
             .get(&crate::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::CombineAsOneRelease, FolderReleaseDecisionAuthor::User))
@@ -120,10 +119,9 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2"), key_of(root, "Other")]
     );
     assert_eq!(
-        tables
-            .load_folder_release_decisions(root)
+        crate::tables::tests::known_of_root(&tables, root)
             .await
-            .unwrap()
+            .1
             .get(&crate::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::KeepAsSeparateReleases, FolderReleaseDecisionAuthor::User))
@@ -207,10 +205,9 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
         ),
         "{error:?}"
     );
-    assert!(tables
-        .load_folder_release_decisions(root)
+    assert!(crate::tables::tests::known_of_root(&tables, root)
         .await
-        .unwrap()
+        .1
         .get(&crate::RelativeFolder::test("Box"))
         .is_none());
     assert_eq!(tables.load_folder_scan_snapshots().await.unwrap()[0].generation, moved);
@@ -249,10 +246,9 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
         matches!(failed, crate::ImportError::Database(bae_store::DbError::OutOfRange { .. })),
         "{failed:?}"
     );
-    assert!(tables
-        .load_folder_release_decisions(root)
+    assert!(crate::tables::tests::known_of_root(&tables, root)
         .await
-        .unwrap()
+        .1
         .get(&crate::RelativeFolder::test("Box"))
         .is_none());
     assert_eq!(tables.load_folder_scan_snapshots().await.unwrap()[0].generation, generation);

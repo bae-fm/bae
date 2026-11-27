@@ -818,7 +818,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     let unbound = collect_release_candidate_files_with_scope(
         folder.path(),
         crate::ReleaseFileScope::Recursive,
-        &tables.load_stored_candidate_edits().await.unwrap(),
+        &crate::tables::tests::known_of_root(&tables, folder.path()).await.0,
     )
     .unwrap();
     assert_eq!(

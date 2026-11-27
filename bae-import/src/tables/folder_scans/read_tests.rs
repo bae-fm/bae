@@ -7,7 +7,6 @@
 /// that puts 286 entries under the root, and as they are.
 #[test]
 fn the_entries_reading_a_folder_are_looked_up_by_the_folders_they_read() {
-    let key = crate::CandidateKey::grouping("key");
     let mut passes = Vec::new();
     for under_root in [None, Some(286), Some(33_790)] {
         let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
@@ -15,58 +14,60 @@ fn the_entries_reading_a_folder_are_looked_up_by_the_folders_they_read() {
         if let Some(under_root) = under_root {
             plant_one_folders_statistics(&conn, under_root);
         }
-        for readers in [super::Readers::Settled, super::Readers::Besides(&key)] {
-            for below in [false, true] {
-                let plan = plan_of(&conn, &super::entries_reading_sql(readers, below));
-                let keyed =
-                    plan.iter().filter(|step| step.contains("scan_candidate")).all(|step| {
-                        step.starts_with(
-                            "SEARCH scan_candidate USING INDEX idx_scan_candidate_file_root \
-                             (watched_folder_path=? AND file_root",
-                        )
-                    });
-                if !keyed {
-                    passes.push((
-                        format!("{under_root:?} under the root, {readers:?}, below {below}"),
-                        plan,
-                    ));
-                }
-            }
+        let plan = plan_of(&conn, super::ReadersCovering::SQL);
+        let searched: Vec<&String> =
+            plan.iter().filter(|step| step.contains("candidate")).collect();
+        // One lookup for each part: the folder, those above it, those below.
+        let keyed = searched.len() == 3
+            && searched.iter().all(|step| {
+                step.starts_with(
+                    "SEARCH candidate USING INDEX idx_scan_candidate_file_root \
+                     (watched_folder_path=? AND file_root",
+                )
+            });
+        if !keyed {
+            passes.push((format!("{under_root:?} under the root"), plan));
         }
     }
     assert!(passes.is_empty(), "{passes:#?}");
 }
 
 /// A scan reads the entry stored at a folder's key for every folder it
-/// writes, and a pass reads a root's entries: the first looks each key up, and
-/// the second searches the root's entries alone, so neither passes over every
-/// entry. That holds with no statistics and with those of one watched folder
-/// of 33,790 entries.
+/// writes, and a pass reads what the store knows of its root: the first looks
+/// each key up, and the second searches the root's entries by the root and
+/// looks up what it joins to each of its rows, so neither passes over every
+/// entry, and no join passes over what it joins for each row. That holds with
+/// no statistics and with those of one watched folder of 33,790 entries.
 #[test]
 fn the_entries_a_read_takes_in_are_searched_by_an_index() {
-    let at_keys: &[&str] = &["SEARCH candidate USING INDEX idx_scan_candidate_path (path=?)"];
-    let under_a_root: &[&str] = &[
-        "SEARCH candidate USING INDEX sqlite_autoindex_scan_candidate_1 (watched_folder_path=?)",
-        "SEARCH candidate USING COVERING INDEX sqlite_autoindex_scan_candidate_1 \
-         (watched_folder_path=? AND path=?)",
-    ];
     for under_root in [None, Some(286), Some(33_790)] {
         let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
         crate::TEST_SCHEMA.open_bare_library(&conn);
         if let Some(under_root) = under_root {
             plant_one_folders_statistics(&conn, under_root);
         }
-        for (statement, expected) in
-            [(super::ItemsAtKeys::SQL, at_keys), (super::ItemsUnderRoot::SQL, under_a_root)]
-        {
-            let searched: Vec<String> = plan_of(&conn, statement)
-                .into_iter()
-                .filter(|step| {
-                    step.starts_with("SCAN candidate ") || step.starts_with("SEARCH candidate ")
-                })
-                .collect();
-            assert_eq!(searched, expected, "{under_root:?} under the root");
-        }
+        let searched: Vec<String> = plan_of(&conn, super::ItemsAtKeys::SQL)
+            .into_iter()
+            .filter(|step| {
+                step.starts_with("SCAN candidate ") || step.starts_with("SEARCH candidate ")
+            })
+            .collect();
+        assert_eq!(
+            searched,
+            ["SEARCH candidate USING INDEX idx_scan_candidate_path (path=?)"],
+            "{under_root:?} under the root"
+        );
+
+        let plan = plan_of(&conn, super::super::file_reads::KnownOfRootRows::SQL);
+        let passes: Vec<&String> = plan
+            .iter()
+            .filter(|step| {
+                step.starts_with("SCAN candidate")
+                    || step.starts_with("SCAN entry")
+                    || (step.starts_with("SCAN ") && step.ends_with("LEFT-JOIN"))
+            })
+            .collect();
+        assert!(passes.is_empty(), "{under_root:?} under the root: {plan:#?}");
     }
 }
 

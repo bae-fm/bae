@@ -120,6 +120,25 @@ pub(crate) fn the_reported_bug(
     reported[0].message.clone()
 }
 
+/// What a pass over the watched folder `root` reads of it as it begins.
+pub(crate) async fn known_of_root(
+    tables: &ImportTables,
+    root: &std::path::Path,
+) -> (
+    crate::folder_scanner::StoredCandidateEdits,
+    crate::folder_scanner::FolderReleaseDecisions,
+    crate::folder_scanner::FileReads,
+) {
+    tables
+        .load_known_of_root(
+            root,
+            std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            coven::FileBudget::for_test(),
+        )
+        .await
+        .expect("what the store knows of the root reads")
+}
+
 /// `empty_db` plus a watched-folder root that exists on disk.
 pub(crate) async fn watched_root() -> (Store, bae_util::test_files::TestFolder, std::path::PathBuf)
 {

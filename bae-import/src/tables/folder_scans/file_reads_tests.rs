@@ -56,7 +56,7 @@ async fn two_rows_disagreeing_about_a_file_fail_the_read_as_the_scan() {
     ImportTables::store_sidecar_file_as_for_test(tmp.path(), "back.jpg", "cover.jpg").await;
 
     let Err(error) = tables
-        .load_file_reads(
+        .load_known_of_root(
             &root,
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
             coven::FileBudget::for_test(),
@@ -67,4 +67,48 @@ async fn two_rows_disagreeing_about_a_file_fail_the_read_as_the_scan() {
     };
 
     assert!(matches!(error, crate::ImportError::Scan(FolderScanError::Other(_))), "{error:?}");
+}
+
+/// The releases a file decision settles, the watched folders' scans, the
+/// directories a root's last scan saw and the watched-folder checks are each
+/// one statement.
+#[tokio::test]
+async fn each_read_a_pass_asks_for_is_one_statement() {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let tables = ImportTables::new(db.clone());
+    let root = tmp.path().join("watch");
+    let files = crate::tables::tests::track_files_candidate(&[("01.flac", 123)]);
+    let content_hash = files.content_hash();
+    let candidates = ["First", "Second"].map(|name| {
+        crate::tables::tests::candidate_with(&root, name, files.clone(), ReleaseFileScope::Direct)
+    });
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Network).await.unwrap();
+    for candidate in &candidates {
+        tables
+            .save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+            .await
+            .unwrap()
+            .expect("the current scan takes the release");
+    }
+    let directories = vec![(root.clone(), 1)];
+    tables.record_folder_scan_directories(&root, &directories).await.unwrap();
+    let counter = db.track_work_for_test().await.unwrap();
+
+    let releases = tables.load_releases_reading(&content_hash, 0).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1, "the releases reading the files");
+    assert_eq!(releases.len(), 2);
+
+    let scans = tables.load_stored_folder_scans().await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1, "the watched folders' scans");
+    assert!(scans[0].last_scan.as_ref().is_some_and(|scan| scan.on_network_volume));
+
+    assert_eq!(tables.load_folder_scan_directories(&root).await.unwrap(), directories);
+    assert_eq!(counter.take().app_read_statements, 1, "the directories the last scan saw");
+
+    assert!(tables.is_watched_import_folder(&root).await.unwrap());
+    assert_eq!(counter.take().app_read_statements, 1, "whether a folder is watched");
+
+    assert_eq!(tables.watched_import_folders_below(tmp.path()).await.unwrap(), [root]);
+    assert_eq!(counter.take().app_read_statements, 1, "the watched folders below a folder");
 }

@@ -133,10 +133,9 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         assert_eq!(rows_in(&db, table).await, 0, "{table} still holds rows");
     }
     assert_eq!(
-        tables
-            .load_folder_release_decisions(root)
+        crate::tables::tests::known_of_root(&tables, root)
             .await
-            .unwrap()
+            .1
             .get(&crate::RelativeFolder::test("Collection")),
         None
     );
@@ -230,7 +229,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         tables.load_skipped_import_candidates(&music).await.unwrap(),
         std::collections::HashSet::from([crate::RelativeFolder::test("one/Album")])
     );
-    let box_reading = tables.load_folder_release_decisions(&music).await.unwrap();
+    let box_reading = crate::tables::tests::known_of_root(&tables, &music).await.1;
     let box_reading = box_reading
         .get(&crate::RelativeFolder::test("one/Box"))
         .expect("the box still reads its way");

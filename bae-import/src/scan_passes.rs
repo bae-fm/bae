@@ -18,6 +18,7 @@ mod scan_items;
 mod scanning;
 
 use folder_reading::{change_folder_reading, read_changed_folders};
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) use scan_items::scan_item_seed;
 #[cfg(any(test, feature = "test-utils"))]
 pub use scan_items::store_scan_item;
