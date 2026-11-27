@@ -132,13 +132,18 @@ async fn a_search_counts_its_albums_live() {
 }
 
 /// A search reads its albums in title order from the listing's title index,
-/// so it stops at its cap: its page, which also reads the first albums
-/// library search lists, computes no title's key and sorts no albums, at any
-/// level of the statement.
+/// so it stops at its cap and computes no title's key. A page and the count
+/// sort no albums, at any level of the statement. The first albums library
+/// search lists are sorted once, after the index has picked them: the count
+/// beside them makes SQLite do so.
 #[tokio::test]
 async fn a_search_reads_its_albums_in_order_from_the_title_index() {
     let (db, _tmp) = crate::tests::library().await;
-    for (what, statement) in [("page", SearchAlbums::SQL), ("count", SearchAlbumCount::SQL)] {
+    for (what, statement, sorts) in [
+        ("first albums", FirstSearchAlbums::SQL, 1),
+        ("page", SearchAlbums::SQL, 0),
+        ("count", SearchAlbumCount::SQL, 0),
+    ] {
         assert!(!statement.contains("bae_name_key"), "{what}: {statement}");
         let steps = db
             .read(move |sql| {
@@ -147,8 +152,7 @@ async fn a_search_reads_its_albums_in_order_from_the_title_index() {
             })
             .await
             .unwrap();
-        eprintln!("PLAN {what}: {steps:#?}");
-        if what == "page" {
+        if what != "count" {
             assert!(
                 steps.iter().any(|step| step
                     .detail
@@ -156,6 +160,8 @@ async fn a_search_reads_its_albums_in_order_from_the_title_index() {
                 "{what}: {steps:?}"
             );
         }
-        assert!(!crate::tests::sorts_at_any_level(&steps), "{what}: {steps:?}");
+        let sorted =
+            steps.iter().filter(|step| step.detail == "USE TEMP B-TREE FOR ORDER BY").count();
+        assert_eq!(sorted, sorts, "{what}: {steps:?}");
     }
 }

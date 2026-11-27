@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::{
-    DbAlbumSearchResult, DbArtistSummary, DbComposerSummary, DbLibrarySearchResults,
+    DbAlbumSummary, DbArtistSummary, DbComposerSummary, DbLibrarySearchResults,
     DbTrackSearchResult, DbWorkSummary,
 };
 
@@ -36,7 +36,7 @@ impl SearchResults {
     }
 }
 
-/// A field-by-field copy of `DbAlbumSearchResult` under the public name.
+/// An album a search found, as its row shows it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumSearchResult {
     pub id: String,
@@ -68,7 +68,7 @@ pub struct TrackSearchResult {
 }
 
 impl AlbumSearchResult {
-    pub(crate) fn from_raw(raw: DbAlbumSearchResult) -> AlbumSearchResult {
+    pub(crate) fn from_raw(raw: DbAlbumSummary) -> AlbumSearchResult {
         let cover = cover_ref(&raw.primary_release_id, raw.cover_version);
         AlbumSearchResult {
             id: raw.id,

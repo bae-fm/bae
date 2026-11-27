@@ -245,7 +245,7 @@ pub struct BridgeAlbumChoice {
 
 #[cfg(desktop)]
 impl BridgeAlbumChoice {
-    pub(crate) fn from_core(album: bae_views::DbAlbumSearchResult) -> Self {
+    pub(crate) fn from_core(album: bae_records::DbAlbumSummary) -> Self {
         Self {
             album_id: album.id,
             title: album.title,

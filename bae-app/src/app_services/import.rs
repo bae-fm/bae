@@ -10,7 +10,7 @@ impl AppServices {
     pub async fn search_albums(
         &self,
         query: &bae_views::LibrarySearchQuery,
-    ) -> Result<Vec<bae_views::DbAlbumSearchResult>, bae_library::LibraryError> {
+    ) -> Result<Vec<bae_records::DbAlbumSummary>, bae_library::LibraryError> {
         Ok(self
             .inner
             .views

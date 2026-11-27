@@ -8,31 +8,56 @@ use crate::album_detail::AlbumSearchResult;
 use bae_records::records::fragments::AlbumSummary;
 use bae_store::{statement_row, statement_rows};
 
-// A page of the albums a search for `pattern` lists: of the first `cap`
-// albums that hold it, those at the places from `offset` on, in title order,
-// ties going by id, at most `limit`. The read walks the listing's title index, tests each album against
-// the albums the search finds, and stops at the `cap`th album that holds the
-// pattern. `INDEXED BY` holds it to that index: left to choose, SQLite reads
-// the albums the search finds by id and sorts them all. Every album holds a
-// release (§2.1), so every album has a listing row. The statement reads what
-// an album shows only for the albums of the page.
+// The albums a search for `pattern` lists: the first `cap` albums that hold
+// it, in title order, ties going by id. The read walks the listing's title
+// index, tests each album against the albums the search finds, and stops at
+// the `cap`th album that holds the pattern. `INDEXED BY` holds it to that
+// index: left to choose, SQLite reads the albums the search finds by id and
+// sorts them all. Every album holds a release (§2.1), so every album has a
+// listing row.
+sqlive_compose::fragment!(
+    SearchedAlbums(pattern: Option<String>, cap: i64),
+    r#"
+    SELECT entry.album_id AS searched_album_id, entry.title_sort_key AS searched_title_key
+    FROM album_listing AS entry INDEXED BY idx_album_listing_title
+    WHERE entry.album_id IN (
+        SELECT found.album_id
+        FROM @crate::album_search::AlbumsFound(pattern: :pattern) AS found)
+    ORDER BY entry.title_sort_key, entry.album_id
+    LIMIT :cap
+"#
+);
+
+// A page of the albums a search lists ([`SearchedAlbums`]): those at the
+// places from `offset` on, at most `limit`. The statement reads what an album
+// shows only for the albums of the page.
 sqlive_compose::read!(
     writer SearchAlbums(pattern: Option<String>, cap: i64, offset: i64, limit: i64),
     r#"
     SELECT shown.*
-    FROM (SELECT capped.album_id, capped.title_sort_key
-          FROM (SELECT entry.album_id, entry.title_sort_key
-                FROM album_listing AS entry INDEXED BY idx_album_listing_title
-                WHERE entry.album_id IN (
-                    SELECT found.album_id
-                    FROM @crate::album_search::AlbumsFound(pattern: :pattern) AS found)
-                ORDER BY entry.title_sort_key, entry.album_id
-                LIMIT :cap) AS capped
-          ORDER BY capped.title_sort_key, capped.album_id
+    FROM (SELECT listed.searched_album_id, listed.searched_title_key
+          FROM @crate::album::search_albums::SearchedAlbums(
+                   pattern: :pattern, cap: :cap) AS listed
+          ORDER BY listed.searched_title_key, listed.searched_album_id
           LIMIT :limit OFFSET :offset) AS picked
     CROSS JOIN @bae_records::records::fragments::AlbumSummary AS shown
-            ON shown.summary_album_id = picked.album_id
-    ORDER BY picked.title_sort_key, picked.album_id
+            ON shown.summary_album_id = picked.searched_album_id
+    ORDER BY picked.searched_title_key, picked.searched_album_id
+"#
+);
+
+// The first `limit` albums a search lists ([`SearchedAlbums`]), as library
+// search shows them, each beside how many rows the statement lists. The count
+// makes SQLite sort those rows, at most `limit` of them, once more.
+sqlive_compose::read!(
+    writer FirstSearchAlbums(pattern: Option<String>, limit: i64) { listed: u64 },
+    r#"
+    SELECT shown.*, COUNT(*) OVER () AS listed
+    FROM @crate::album::search_albums::SearchedAlbums(
+             pattern: :pattern, cap: :limit) AS picked
+    CROSS JOIN @bae_records::records::fragments::AlbumSummary AS shown
+            ON shown.summary_album_id = picked.searched_album_id
+    ORDER BY picked.searched_title_key, picked.searched_album_id
 "#
 );
 
@@ -70,11 +95,9 @@ impl LibraryViews {
                 None => Ok(Vec::new()),
             })
             .process(|albums| {
-                let albums = albums
-                    .into_iter()
-                    .map(|album| album_hit(album).map(AlbumSearchResult::from_raw))
-                    .collect::<Result<_, _>>()?;
-                Ok(crate::ListRows::SearchAlbums(albums))
+                Ok(crate::ListRows::SearchAlbums(
+                    album_summaries(albums)?.into_iter().map(AlbumSearchResult::from_raw).collect(),
+                ))
             })
     }
 
@@ -122,23 +145,20 @@ pub(super) fn first_search_albums_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     limit: u64,
-) -> Result<(Vec<DbAlbumSearchResult>, u64), DbError> {
-    let albums = search_albums_on(sql, pattern, limit, ListPage { offset: 0, limit })?;
-    let listed = albums.len() as u64;
-    Ok((albums.into_iter().map(album_hit).collect::<Result<_, _>>()?, listed))
+) -> Result<(Vec<DbAlbumSummary>, u64), DbError> {
+    let statement = FirstSearchAlbumsParams {
+        pattern: Some(pattern.to_string()),
+        limit: bae_store::list_windows::sql_bound(limit),
+    };
+    let rows = statement_rows(sql, &statement)?;
+    let listed = rows.first().map_or(0, |row| row.listed);
+    let albums = rows.into_iter().map(|row| row.shown).collect();
+    Ok((album_summaries(albums)?, listed))
 }
 
-/// An album as a search lists it.
-fn album_hit(shown: AlbumSummary) -> Result<DbAlbumSearchResult, DbError> {
-    let album = shown.into_row()?.process()?;
-    Ok(DbAlbumSearchResult {
-        id: album.id,
-        title: album.title,
-        year: album.year,
-        primary_release_id: album.primary_release_id,
-        cover_version: album.cover_version,
-        artist_line: album.artist_line,
-    })
+/// The albums as read, each made into its summary.
+fn album_summaries(albums: Vec<AlbumSummary>) -> Result<Vec<DbAlbumSummary>, DbError> {
+    albums.into_iter().map(|shown| shown.into_row()?.process()).collect()
 }
 
 #[cfg(test)]
