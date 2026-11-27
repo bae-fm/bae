@@ -34,11 +34,6 @@ CREATE TABLE IF NOT EXISTS release_storage (
     CHECK ((queued_count = 0) = (first_queued_position IS NULL))
 ) STRICT;
 
--- The releases with files waiting in this device's upload queue, in the order
--- their first files wait: what the import list's Done tab runs first (§3.2).
-CREATE INDEX IF NOT EXISTS idx_release_storage_uploading ON release_storage (first_queued_position, release_id)
-    WHERE first_queued_position IS NOT NULL;
-
 -- Inserting a release id into `release_storage_refresh` rewrites that
 -- release's row from its files and coven's records of them. The view holds no
 -- rows; it names the statement its INSTEAD OF trigger runs.

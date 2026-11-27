@@ -54,15 +54,6 @@ pub(super) fn image_file_column(image_type: &LibraryImageType) -> &'static str {
     }
 }
 
-/// Each release with files in coven's upload queue, and where its first
-/// queued file stands in it, as each release's storage row keeps them, for
-/// the import list's order. Covers and other images in the queue are no
-/// release uploading.
-pub const UPLOADING_RELEASES: &str =
-    "SELECT uploading.release_id, uploading.first_queued_position AS position \
-     FROM release_storage uploading \
-     WHERE uploading.first_queued_position IS NOT NULL";
-
 /// The credits of `owner_expr` in `table` (`album_artists` or
 /// `track_artists`), in list order, as a JSON array (see
 /// [`super::read::credits_from_json`]): each the artist it shows after merges,
