@@ -2,7 +2,6 @@
 import '../generated/tokens.css';
 import Chip from './Chip.astro';
 import Logo from './Logo.astro';
-import Notice from './Notice.astro';
 import StatusGlyph from './StatusGlyph.astro';
 import Symbol from './Symbol.astro';
 import sheepUrl from '../../../design/system/assets/Logos/bae-sheep.svg?url';
@@ -139,8 +138,14 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   h1.jumbo .pink{color:var(--accent-pink);} h1.jumbo .violet{color:var(--accent-orchid);}
   .dek{margin:var(--space-section) 0 0;color:var(--text-secondary);max-width:48ch;}
   .dek b{color:var(--text-primary);font-weight:var(--type-web-label-weight);}
-  .devstatus{margin-top:var(--space-section);max-width:520px;}
-  .devstatus .chip{margin-bottom:var(--space-compact);}
+  .devstatus{position:relative;margin-top:var(--space-section);max-width:520px;overflow:hidden;border-radius:var(--radius-panel);border:1px solid color-mix(in srgb, var(--warning) calc(var(--opacity-tint-strong) * 100%), transparent);background:linear-gradient(180deg,color-mix(in srgb, var(--warning) calc(var(--opacity-tint) * 100%), transparent),var(--elevated));box-shadow:0 18px 42px var(--shadow);}
+  .devstatus::before{content:"";display:block;height:8px;background:repeating-linear-gradient(135deg,var(--warning) 0 14px,var(--background) 14px 28px);}
+  .devstatus-in{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:18px 20px;align-items:start;}
+  .devstatus-mark{width:42px;height:42px;border-radius:var(--radius-card);display:grid;place-items:center;background:color-mix(in srgb, var(--warning) calc(var(--opacity-tint) * 100%), transparent);border:1px solid color-mix(in srgb, var(--warning) calc(var(--opacity-tint-strong) * 100%), transparent);color:var(--warning);font-family:var(--font-web-mono);font-weight:600;font-size:20px;}
+  .devstatus-kicker{display:flex;align-items:center;gap:var(--space-related);font-family:var(--font-web-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warning);margin-bottom:var(--space-compact);}
+  .devstatus-led{width:7px;height:7px;border-radius:50%;background:var(--warning);box-shadow:0 0 10px var(--warning);}
+  .devstatus strong{display:block;color:var(--text-primary);font-family:var(--font-web-display);font-size:20px;line-height:1.08;letter-spacing:0;font-weight:700;}
+  .devstatus p{margin:7px 0 0;color:var(--text-secondary);font-size:14.5px;line-height:1.5;}
   .cta{display:flex;gap:var(--space-group);margin-top:var(--space-page);flex-wrap:wrap;align-items:center;}
   .cta .meta{color:var(--text-tertiary);}
   .hero .cta .meta{margin-left:var(--space-related);}
@@ -301,6 +306,8 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .hero .cta{justify-content:center;}
     .cta{margin-top:46px;gap:var(--space-edge);}
     .cta .meta{flex-basis:100%;text-align:center;margin-top:var(--space-line);}
+    .devstatus-in{grid-template-columns:1fr;gap:var(--space-group);}
+    .devstatus-mark{width:38px;height:38px;}
     .hero .cta .meta{margin-left:0;}
     .trust{flex-direction:column;align-items:center;gap:var(--space-section);margin-top:var(--space-page);padding-top:var(--space-page);padding-bottom:var(--space-page);border-bottom:1px solid var(--hairline);}
     .trust .t{align-items:center;text-align:center;gap:var(--space-inline);}
@@ -357,10 +364,15 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
       <h1 class="jumbo web-headline r d1">{text.heroTitle[0]}<br/><span class="pink">{text.heroTitle[1]}</span></h1>
       <p class="dek web-lead r d2">{text.heroText} <b style="white-space:nowrap;">{text.heroBold}</b></p>
-      <div class="devstatus r d3">
-        <Notice tone="warning" title={text.statusTitle} subtitle={text.statusText} label={text.statusLabel}>
-          <Chip tone="warning">{text.statusKicker}</Chip>
-        </Notice>
+      <div class="devstatus r d3" role="status" aria-label={text.statusLabel}>
+        <div class="devstatus-in">
+          <div class="devstatus-mark">!</div>
+          <div>
+            <div class="devstatus-kicker"><span class="devstatus-led"></span>{text.statusKicker}</div>
+            <strong>{text.statusTitle}</strong>
+            <p>{text.statusText}</p>
+          </div>
+        </div>
       </div>
       <div class="cta r d3">
         <a class="btn pink web-label" href={macUrl}>{text.downloadMac}</a>

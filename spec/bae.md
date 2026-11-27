@@ -6376,7 +6376,9 @@ drawing, and the favicons are its small sheep, drawn for 16 and 32 pixels.
 The home page and the docs draw their buttons, notices, chips, status
 glyphs and cards as the design system draws them, and their icons are the
 design system's Material Symbols, the set Android draws, shown only where
-an icon is the control.
+an icon is the control. The home page's pre-1.0 banner is the site's own
+piece, drawn in the design system's warning color: a striped top edge, a
+"!" mark, a glowing dot before "Pre-1.0", and the heading and text.
 
 ---
 
