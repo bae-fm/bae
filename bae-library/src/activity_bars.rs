@@ -52,10 +52,6 @@ impl ActivityBars {
 
 /// `rows`' share done plus each moving key's share times the fraction
 /// `fraction` gives it, or nothing when it gives none.
-#[expect(
-    clippy::read_aggregate,
-    reason = "adds each moving file's or release's share times how far its transfer has got; the fractions are in-memory transfer progress, which SQL cannot read"
-)]
 fn bar<Key>(rows: &BatchBar<Key>, fraction: impl Fn(&Key) -> Option<f64>) -> f64 {
     rows.done
         + rows

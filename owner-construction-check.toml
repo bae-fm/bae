@@ -1431,6 +1431,7 @@ tables = [
 name = "transfers"
 owner = "bae_transfers::queued_releases::QueuedReleases"
 homes = [
+    "bae-transfers/src/download_batch.rs",
     "bae-transfers/src/download_entry.rs",
     "bae-transfers/src/queued_releases.rs",
     "bae-transfers/src/queued_releases/",

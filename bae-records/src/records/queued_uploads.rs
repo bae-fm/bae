@@ -58,7 +58,7 @@ pub const RELEASE_UPLOAD_COLUMNS: &str =
     concat!(release_upload_count_columns!(), ", storage.missing_original_file");
 
 // What holds the upload queue back, as one row: `upload_wait` names the wait
-// ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the earliest
+// ([`UploadQueueHeld::wait`] gives what it names) and `upload_wait_at` is the earliest
 // time coven gives a file's wait to end. Each file's wait is coven's, as
 // `coven_upload_phases` gives it, read once. The first that holds names the
 // wait: `paused` while the person paused uploads; `sync_stopped` while sync
@@ -95,25 +95,45 @@ sqlive_compose::read!(
 "#
 );
 
+impl UploadQueueHeld {
+    /// What holds the upload queue back; `None` when nothing does.
+    pub fn wait(&self) -> Result<Option<UploadQueueWait>, DbError> {
+        self.upload_wait
+            .as_deref()
+            .map(|name| {
+                named_wait(name, self.upload_wait_at)
+                    .ok_or_else(|| DbError::unreadable("the upload queue's wait", name))
+            })
+            .transpose()
+    }
+}
+
 /// What holds the upload queue back, as [`UploadQueueHold`] names it.
 pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadQueueWait>> {
-    let Some(wait) = row.get::<_, Option<String>>("upload_wait")? else {
+    let Some(name) = row.get::<_, Option<String>>("upload_wait")? else {
         return Ok(None);
     };
-    Ok(Some(match wait.as_str() {
+    match named_wait(&name, row.get("upload_wait_at")?) {
+        Some(wait) => Ok(Some(wait)),
+        None => Err(bae_store::read::column_conversion_error(
+            row,
+            "upload_wait",
+            format!("{name:?} names no upload queue wait"),
+        )),
+    }
+}
+
+/// The wait [`UploadQueueHeld`] names `name`, whose retry is due at `at_ms`;
+/// `None` when `name` names no wait, or a retry has no time.
+fn named_wait(name: &str, at_ms: Option<i64>) -> Option<UploadQueueWait> {
+    Some(match name {
         "paused" => UploadQueueWait::Paused { by: PausedBy::Person },
         "sync_stopped" => UploadQueueWait::Paused { by: PausedBy::SyncStopped },
         "offline" => UploadQueueWait::Offline,
         "metered" => UploadQueueWait::Metered,
-        "retrying" => UploadQueueWait::Retrying { at_ms: row.get("upload_wait_at")? },
-        _ => {
-            return Err(bae_store::read::column_conversion_error(
-                row,
-                "upload_wait",
-                format!("{wait:?} names no upload queue wait"),
-            ))
-        }
-    }))
+        "retrying" => UploadQueueWait::Retrying { at_ms: at_ms? },
+        _ => return None,
+    })
 }
 
 /// How many of a release's files wait, are being sent and are stored, as

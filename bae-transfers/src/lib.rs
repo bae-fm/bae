@@ -3,6 +3,7 @@
 //! table of this device's, drained one release at a time by its owner
 //! ([`QueuedReleases`]), each entry ended in the write that does its work.
 
+pub mod download_batch;
 pub mod download_entry;
 mod download_snapshot;
 mod output_snapshot;

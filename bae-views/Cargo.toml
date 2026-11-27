@@ -15,6 +15,8 @@ path = "src/lib.rs"
 bae-desktop-cfg = { workspace = true }
 # Writes the schema this crate declares from its `schema.toml`.
 bae-schema-manifest = { workspace = true }
+# Checks the crate's read fragments against the schema and writes the Rust they include.
+bae-fragments-build = { workspace = true }
 
 [dependencies]
 # The catalogs' descriptions of a release its detail shows.
@@ -38,6 +40,8 @@ bae-types = { workspace = true }
 # Content types and the duration and size labels the screens show.
 bae-util = { workspace = true }
 coven = { workspace = true }
+# The macros the views' read fragments are written with.
+sqlive-compose = { workspace = true }
 time = { workspace = true }
 rusqlite = { workspace = true }
 # A playlist's covers come back as JSON columns, which serde reads into typed

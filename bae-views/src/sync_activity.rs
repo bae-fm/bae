@@ -3,8 +3,6 @@
 
 use super::*;
 use bae_diagnostics::UiError;
-use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UploadQueueHold};
-use bae_records::release_storage::ReleaseStorageRows;
 use bae_sync_status::SyncStatusSnapshot;
 use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
@@ -84,9 +82,8 @@ impl DownloadQueueActivity {
     }
 }
 
-/// What the activity reads of the upload queue in one query: the Uploading
-/// line's batch, how many files this process is sending now, and what holds
-/// the queue back.
+/// What the activity reads of the upload queue: the Uploading line's batch,
+/// how many files this process is sending now, and what holds the queue back.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueCounts {
     pub batch: TransferBatch,
@@ -146,113 +143,70 @@ impl SyncActivity {
 #[path = "sync_activity_tests.rs"]
 pub(crate) mod tests;
 
-/// The activity as one read sees it: the queues' counts, and the sync status
-/// the activity takes its failure and state from.
+// The Uploading line's batch: the releases it holds, how many of them are
+// done (every file stored and none queued), and how many files this process
+// is sending now, a cover or a picture among them. The bytes the files move
+// are not read, so a confirmed part reruns nothing.
+sqlive_compose::fragment!(
+    UploadBatchCounts { upload_total: u32, upload_done: u32, uploads_sending: u32 },
+    r#"
+    SELECT (SELECT COUNT(*) FROM upload_batch) AS upload_total,
+           (SELECT COUNT(*)
+            FROM upload_batch AS batch
+            CROSS JOIN @bae_records::release_storage::ReleaseStorage AS storage
+                ON storage.release_id = batch.release_id
+            WHERE storage.stored = 1 AND storage.queued_count = 0) AS upload_done,
+           (SELECT COUNT(*) FROM coven_sending) AS uploads_sending
+"#
+);
+
+// The batches of the Pinning and the Moving to this device lines: the
+// releases each holds, and how many of them are done.
+sqlive_compose::fragment!(
+    DownloadBatchCounts { pin_total: u32, pin_done: u32, move_total: u32, move_done: u32 },
+    r#"
+    SELECT COUNT(*) FILTER (WHERE batched.kind = 'pin') AS pin_total,
+           COUNT(*) FILTER (WHERE batched.kind = 'pin' AND batched.done) AS pin_done,
+           COUNT(*) FILTER (WHERE batched.kind = 'move_to_this_device') AS move_total,
+           COUNT(*) FILTER (WHERE batched.kind = 'move_to_this_device' AND batched.done)
+               AS move_done
+    FROM @crate::download_batches::DownloadBatchRelease AS batched
+"#
+);
+
+// The transfer lines' batches, beside what holds the upload queue back: one
+// row.
+sqlive_compose::read!(
+    TransferLines,
+    r#"
+    SELECT uploads.*, downloads.*, held.*
+    FROM @crate::sync_activity::UploadBatchCounts AS uploads
+    JOIN @crate::sync_activity::DownloadBatchCounts AS downloads ON 1
+    JOIN @bae_records::records::queued_uploads::UploadQueueHeld AS held ON 1
+"#
+);
+
+/// The activity as one read sees it: the transfer lines' batches, the download
+/// queue's counts, and the sync status the activity takes its failure and
+/// state from.
 fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae_store::DbError> {
-    let uploads = upload_queue_counts_on(sql)?;
-    let downloads = download_queue_counts_on(sql)?;
-    let status = bae_sync_status::sync_status_on(sql)?;
-    Ok(SyncActivity::new(&status, &uploads, &downloads))
-}
-
-/// The Uploading line's batch, how many files this process is sending now,
-/// and what holds the queue back. The bytes the files move are not read, so
-/// a confirmed part reruns nothing.
-fn upload_queue_counts_on(
-    sql: &coven::SqlReadContext<'_>,
-) -> Result<UploadQueueCounts, bae_store::DbError> {
-    Ok(sql.query_row(
-        &format!(
-            "SELECT (SELECT COUNT(*) FROM upload_batch) AS batch_total, \
-                 (SELECT COUNT(*) FROM upload_batch AS batch \
-                  JOIN ({storage}) AS storage ON storage.release_id = batch.release_id \
-                  WHERE storage.stored = 1 AND storage.queued_count = 0) AS batch_done, \
-                 (SELECT COUNT(*) FROM coven_sending) AS uploads_sending, \
-                 hold.upload_wait, hold.upload_wait_at \
-             FROM ({hold}) AS hold",
-            hold = UploadQueueHold::SQL,
-            storage = ReleaseStorageRows::SQL,
-        ),
-        [],
-        |row| {
-            Ok(UploadQueueCounts {
-                batch: transfer_batch_in_row(row)?,
-                sending: bae_store::read::count_column(row, "uploads_sending")?,
-                wait: upload_queue_wait_in_row(row)?,
-            })
+    let TransferLinesRow { uploads, downloads, held } =
+        bae_store::statement_row(sql, &TransferLinesParams {})?;
+    let upload_counts = UploadQueueCounts {
+        batch: TransferBatch { done: uploads.upload_done, total: uploads.upload_total },
+        sending: uploads.uploads_sending,
+        wait: held.wait()?,
+    };
+    let download_counts = DownloadQueueCounts {
+        pins: TransferBatch { done: downloads.pin_done, total: downloads.pin_total },
+        moving_to_this_device: TransferBatch {
+            done: downloads.move_done,
+            total: downloads.move_total,
         },
-    )?)
-}
-
-/// The download queue's batches of pins and moves-to-this-device, beside its counts.
-fn download_queue_counts_on(
-    sql: &coven::SqlReadContext<'_>,
-) -> Result<DownloadQueueCounts, bae_store::DbError> {
-    Ok(DownloadQueueCounts {
-        pins: download_batch_on(sql, &DownloadLine::PINS)?,
-        moving_to_this_device: download_batch_on(sql, &DownloadLine::MOVING_TO_THIS_DEVICE)?,
         queue: <bae_transfers::DownloadRequest as bae_transfers::QueuedPayload>::counts_on(sql)?,
-    })
-}
-
-/// One kind of download's line: the kind `download_batch` and
-/// `download_queue` name it by, and what a release's storage row `storage`
-/// says once the kind's work on it is done.
-pub(crate) struct DownloadLine {
-    pub(crate) kind: &'static str,
-    stored_done: &'static str,
-}
-
-impl DownloadLine {
-    /// The Pinning line: a release is done once every file is pinned.
-    pub(crate) const PINS: Self = Self { kind: "pin", stored_done: "storage.pinned" };
-    /// The Moving to this device line: a release is done once it is no longer stored
-    /// in the cloud.
-    pub(crate) const MOVING_TO_THIS_DEVICE: Self =
-        Self { kind: "move_to_this_device", stored_done: "storage.stored = 0" };
-
-    /// Whether the release of `batch`, a `download_batch` row joined to its
-    /// storage row as `storage`, is done: no entry of the line's kind for it
-    /// is in the queue, and its storage row says the work is done. A release
-    /// the library no longer holds has no storage row, so the condition is
-    /// NULL for it: never done.
-    pub(crate) fn done(&self) -> String {
-        format!(
-            "{} AND NOT EXISTS ( \
-                 SELECT 1 FROM download_queue AS queue \
-                 WHERE queue.release_id = batch.release_id AND queue.kind = batch.kind)",
-            self.stored_done
-        )
-    }
-}
-
-/// The batch of `line` in `download_batch`, a release done as
-/// [`DownloadLine::done`] says.
-fn download_batch_on(
-    sql: &coven::SqlReadContext<'_>,
-    line: &DownloadLine,
-) -> Result<TransferBatch, bae_store::DbError> {
-    Ok(sql.query_row(
-        &format!(
-            "SELECT COUNT(*) AS batch_total, \
-                 COUNT(*) FILTER (WHERE {}) AS batch_done \
-             FROM download_batch AS batch \
-             LEFT JOIN ({storage}) AS storage ON storage.release_id = batch.release_id \
-             WHERE batch.kind = ?1",
-            line.done(),
-            storage = ReleaseStorageRows::SQL,
-        ),
-        [line.kind],
-        transfer_batch_in_row,
-    )?)
-}
-
-/// A batch as its `batch_total` and `batch_done` columns count it.
-fn transfer_batch_in_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TransferBatch> {
-    Ok(TransferBatch {
-        done: bae_store::read::count_column(row, "batch_done")?,
-        total: bae_store::read::count_column(row, "batch_total")?,
-    })
+    };
+    let status = bae_sync_status::sync_status_on(sql)?;
+    Ok(SyncActivity::new(&status, &upload_counts, &download_counts))
 }
 
 impl LibraryViews {
