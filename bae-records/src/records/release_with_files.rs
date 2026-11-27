@@ -20,15 +20,8 @@ sqlive_compose::read!(
                        ORDER BY listed.original_filename COLLATE natural_order,
                                 listed.document_file_id)
             FROM @crate::records::file_fragments::FileDocuments(
-                     files: (SELECT file.id, file.release_id, file.original_filename,
-                                    file.content_type, file.created_at, file.file, file.role,
-                                    file.document_kind, file.source_audio_layout,
-                                    file.source_audio_content_type, file.source_audio_container,
-                                    file.source_audio_duration_ms,
-                                    file.source_audio_sample_rate_hz,
-                                    file.source_audio_bits_per_sample,
-                                    file.source_audio_bitrate_kbps, file.source_audio_channels
-                             FROM release_files AS file
+                     files: (SELECT file.*
+                             FROM @crate::records::file_fragments::ReleaseFileColumns AS file
                              WHERE file.release_id = :release)) AS listed) AS files,
            (SELECT cover.browse_file FROM covers AS cover
             WHERE cover.id = release.id) AS cover_file
@@ -44,15 +37,9 @@ sqlive_compose::read!(
     r#"
     SELECT listed.*
     FROM @crate::records::file_fragments::FileDocuments(
-             files: (SELECT file.id, file.release_id, file.original_filename,
-                            file.content_type, file.created_at, file.file, file.role,
-                            file.document_kind, file.source_audio_layout,
-                            file.source_audio_content_type, file.source_audio_container,
-                            file.source_audio_duration_ms, file.source_audio_sample_rate_hz,
-                            file.source_audio_bits_per_sample, file.source_audio_bitrate_kbps,
-                            file.source_audio_channels
-                     FROM release_files AS file
-                     WHERE file.id = :file AND file.release_id = :release)) AS listed
+             files: (SELECT file.*
+                             FROM @crate::records::file_fragments::ReleaseFileColumns AS file
+                             WHERE file.id = :file AND file.release_id = :release)) AS listed
 "#
 );
 

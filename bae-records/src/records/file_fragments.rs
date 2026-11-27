@@ -39,6 +39,21 @@ sqlive_compose::fragment!(
 "#
 );
 
+// Each release file's row, with the columns of `release_files` that
+// [`FileDocuments`] and [`ReleaseFiles`] take as their `files`.
+sqlive_compose::fragment!(
+    ReleaseFileColumns,
+    r#"
+    SELECT file.id, file.release_id, file.original_filename, file.content_type,
+           file.created_at, file.file, file.role, file.document_kind, file.source_audio_layout,
+           file.source_audio_content_type, file.source_audio_container,
+           file.source_audio_duration_ms, file.source_audio_sample_rate_hz,
+           file.source_audio_bits_per_sample, file.source_audio_bitrate_kbps,
+           file.source_audio_channels
+    FROM release_files AS file
+"#
+);
+
 // Each release file `files` gives, with the columns of `release_files`: its
 // id as `document_file_id`, its name, content type and size, and `file_json`,
 // the JSON object every list of a release's files holds it as.

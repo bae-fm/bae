@@ -34,14 +34,9 @@ sqlive_compose::fragment!(
            @crate::records::track_group_fragments::PerformsWorks(parent: rel) AS work_presence,
            @crate::records::file_fragments::ReleaseFiles(
                parent: rel,
-               files: (SELECT file.id, file.release_id, file.original_filename,
-                              file.content_type, file.created_at, file.file, file.role,
-                              file.document_kind, file.source_audio_layout,
-                              file.source_audio_content_type, file.source_audio_container,
-                              file.source_audio_duration_ms, file.source_audio_sample_rate_hz,
-                              file.source_audio_bits_per_sample,
-                              file.source_audio_bitrate_kbps, file.source_audio_channels
-                       FROM release_files AS file WHERE file.release_id = rel.id),
+               files: (SELECT file.*
+                       FROM @crate::records::file_fragments::ReleaseFileColumns AS file
+                       WHERE file.release_id = rel.id),
                segments: (SELECT segment.file_id
                           FROM release_files AS heard
                           JOIN audio_format_segments AS segment ON segment.file_id = heard.id
