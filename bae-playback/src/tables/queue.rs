@@ -85,21 +85,10 @@ sqlive_compose::write!(ClearUpNext, r#"DELETE FROM playback_manual"#);
 
 sqlive_compose::write!(ClearContextLane, r#"DELETE FROM playback_context"#);
 
-// What the context lane plays from cleared: its source and its cursor, which
-// the schema keeps NULL together exactly while the lane is empty. The shuffle
-// mode stays.
-sqlive_compose::write!(
-    ClearContextSource,
-    r#"
-    UPDATE playback_queue
-    SET source_kind = NULL, source_release_id = NULL, ordered_cursor = NULL,
-        shuffled_cursor = NULL
-"#
-);
-
-// [`ClearContextSource`] where the lane is empty. The schema's
-// `tracks_leave_playback_queue` trigger writes the same clear when a deleted
-// track was the lane's last.
+// Where the lane is empty, what it plays from cleared: its source and its
+// cursor, which the schema keeps NULL together exactly while the lane is empty.
+// The shuffle mode stays. The schema's `tracks_leave_playback_queue` trigger
+// writes the same clear when a deleted track was the lane's last.
 sqlive_compose::write!(
     ClearEmptiedContextSource,
     r#"
@@ -485,7 +474,7 @@ fn set_cursor_on(sql: &CovenWrite<'_>, entry: i64) -> rusqlite::Result<()> {
 /// Empty the context lane and clear what it played from, in the same write.
 fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
     sql.run(&ClearContextLaneParams {})?;
-    sql.run(&ClearContextSourceParams {})?;
+    sql.run(&ClearEmptiedContextSourceParams {})?;
     Ok(())
 }
 
