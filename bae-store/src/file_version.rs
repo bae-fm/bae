@@ -29,22 +29,3 @@ impl StoredFileVersion {
         (self.file, self.version)
     }
 }
-
-// Every stored file's version, whose SQL a statement built as text holds.
-sqlive_compose::read!(
-    writer StoredFileVersions,
-    r#"
-    SELECT stored.*
-    FROM @crate::file_version::StoredFileVersion AS stored
-"#
-);
-
-/// The version of the file the column `file` names (a SQL expression over
-/// it), NULL when it names none, for a statement built as text.
-pub fn file_version_sql(file: &str) -> String {
-    format!(
-        "(SELECT stored_version.version FROM ({versions}) AS stored_version \
-          WHERE stored_version.file = {file})",
-        versions = StoredFileVersions::SQL,
-    )
-}
