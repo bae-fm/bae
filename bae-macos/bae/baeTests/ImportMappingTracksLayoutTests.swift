@@ -323,7 +323,6 @@ extension ImportMappingTracksLayoutTests {
                     source: sheetEntryMapping(number: number).source,
                     audition: .libraryTrack,
                     trackId: "sheet-track-\(number)",
-                    isPreviewing: false,
                     actions: actions(recording: MappingTrackActionRecorder())
                         .audition
                 )
