@@ -319,3 +319,169 @@ every MusicBrainz request.
 | `9506d9fc1` | Put the import list's air inside its row |
 | `809b4e11c` | Keep a rescan from reading multi-disc albums' tracks again |
 | `707bd0f02` | Show an album without waiting on the disk its originals sit on |
+
+---
+
+## Notes: pictures from a share (2026-11-24)
+
+*Notes, not yet written up. Facts come from plans/picture-pipeline.md (profiling of 2026-11-23, the survey of every picture path, the person's decisions, and the libvips proof of 2026-11-24) and bae's commits of 2026-11-24. The proof's numbers were taken on one shared development Mac while other builds ran, and on an arm64 Android emulator on the same Mac.*
+
+### The symptom
+
+A person adds a folder on an SMB share to import. Selecting a release in the
+import list left the main pane blank for seconds, and the scan's progress bar
+stopped moving while it was blank.
+
+### Where the time went
+
+A sample of the running app showed 13 of Swift's shared threads, the pool that
+runs every piece of Swift async work, inside ImageIO, each copying bytes out of
+a memory-mapped file on the share. The main thread was idle. Rust's scan,
+import and identification threads were parked, waiting for work. Nothing was
+busy; the pool was full of picture reads, and everything else waited behind
+them, including the release pane's data and the scan's progress.
+
+Three things put the reads there:
+
+- **One click started about fifteen full reads.** The release had fifteen scans
+  in its folder (booklet pages, back, disc and obi), PNGs of 25 to 63 MB each,
+  about 500 MB in all. The import pane read every one of them whole from the
+  share to draw a 256 px tile.
+- **ImageIO memory-maps the file.** `CGImageSourceCreateWithURL` maps it, so
+  every read is a page fault on whichever thread copies the bytes. On a share,
+  each fault waits on the network, nothing can cancel it, and a share that
+  drops or a file that changes ends in a crash instead of a read error. The
+  decode ran inside `Task.detached`, which is the shared pool.
+- **PNG has no cheap small decode.** A JPEG decodes straight to a half, a
+  quarter or an eighth of its size. A PNG must be read and decoded whole
+  before it can be shrunk, so a 256 px tile of a 50 MB PNG costs as much as
+  the full picture.
+
+A debugger trace found one more: a cancelled load kept its decode running and
+was forgotten, so the next request for the same picture started a second
+decode of the same file. The import list cancels and restarts a row's cover
+load on every redraw, so during a scan some covers decoded twice.
+
+### Every picture path, before
+
+A survey of every place bae shows a picture found three decoders (Rust's
+`image` crate in core, ImageIO on the Mac, BitmapFactory on Android), and the
+apps decoding nearly every picture themselves:
+
+- A folder picture was read by the app for its thumbnail, read whole again by
+  core for the barcode and text pass, and read a third time to make the stored
+  cover.
+- Orientation was handled four ways, and pictures were shrunk three ways.
+- The Mac had five decoded caches, Android two plus two byte caches, and Now
+  Playing on the Mac kept its own one-entry cache beside them.
+- Every library cover is stored at 600 px, so several places drew it upscaled:
+  the Mac album panel at 680 px, Android's full player at 777 to 1,281 px, and
+  every full-size viewer.
+
+### The plan
+
+One path for every picture:
+
+- **Core reads each original once,** in plain chunks, never memory-mapped,
+  checking between chunks whether anyone still wants the picture. A few reads
+  run at once per volume, fewer on a network share, and what is on screen
+  reads before what is prefetched.
+- **Core makes the size the app asks for,** rounded up to the next of four
+  steps (192, 384, 768 and 1536 px), applies the orientation and converts the
+  colour, keeps the copy on disk, and sends the app its encoded bytes. Requests
+  for the same picture and size share one job, and the job stops when its last
+  requester goes away.
+- **The full-size viewer zooms from tiles** that core cuts, 512 px each, on the
+  Mac and on Android alike, so memory holds about a screen's worth of the
+  picture instead of all of it.
+- **Each app keeps one image store,** which decodes only core's small copies,
+  on a queue of its own.
+- **Covers name their source picture,** with synced 768 px and 1536 px copies
+  made from it, and every image file of a release gets a synced 384 px preview
+  of about 30 KB. A release with fifteen scans syncs about 450 KB of previews
+  beside about 500 MB of originals, so any device can show its pictures without
+  downloading the originals.
+
+### The apps' image stores (landed 2026-11-24)
+
+The first step changed only the apps, and it removes the stall on its own:
+
+- **The Mac decodes on a queue the image store owns,** at most four at once,
+  never on Swift's shared threads. A slow read now holds one of the store's
+  four decode slots instead of the pool every other piece of async work needs.
+- **A started decode stays joinable** after its last waiter cancels, so asking
+  again decodes once. An import row keeps its cover load running across
+  redraws.
+- **One cache per app.** The Mac's five decoded caches became one of 256 MB.
+  Android's became one decoded cache of 64 MB with shared loads and three
+  decode threads, and its byte caches went, since core already keeps the files.
+- **Now Playing and the lightbox go through the store.** The lightbox reads the
+  original only when a zoom asks for full resolution.
+
+### Picking the decoder: libvips
+
+Moving every decode into core needs a decoder that reads a file once, top to
+bottom, shrinking as rows arrive, and that cuts tiles. Core's `image` crate
+reads JPEG, PNG, GIF and WebP but not TIFF, which many rips use for their
+scans. libvips does all of it: its thumbnail operation streams the file, its
+`dzsave` cuts tile pyramids, and it handles orientation and colour profiles.
+The cost is a C library with glib underneath, which bae has to build for the
+Mac and for every Android architecture and ship the way it ships FFmpeg. So
+the first step was a proof that it builds and runs on Android.
+
+It does. libvips 8.18.7 builds from source for the Mac (arm64) and for both
+Android ABIs the app ships (arm64-v8a and x86_64), with JPEG, PNG, TIFF, WebP,
+GIF, EXIF orientation and colour profiles. It reads through a custom source
+that calls Rust's `read` and `seek`, so nothing is memory-mapped, and that read
+callback is where a cancellation check goes.
+
+The test picture was a 6,000 by 5,600 PNG of 55.7 MiB with the "rotate
+clockwise" orientation flag. Decoding it whole would take 96 MiB. Each job ran
+in its own process, and peak memory includes the test binary and libvips:
+
+| Job | Mac | Android arm64 emulator |
+| --- | --- | --- |
+| 256 px JPEG thumbnail, turned upright | 62 to 68 MiB, 0.48 s | 49 MiB, 0.50 s |
+| 512 px tile pyramid, 14 levels, 191 tiles | 78 to 84 MiB, 0.46 s | 53 MiB, 0.57 s |
+
+The emulator runs arm64 code through the Mac's virtualisation, so its time
+shows that the code runs, not how fast a phone is.
+
+What it costs to ship:
+
+- **Download size:** the Mac app grows by 4.1 MiB compressed (FFmpeg takes
+  3.4 MiB), and the Android app by 5.1 MiB compressed per ABI (FFmpeg takes
+  2.2 MiB).
+- **Licences:** libvips, glib, libexif and, on Android, libiconv are LGPL, so
+  bae ships them as separate shared libraries a person can replace, with their
+  licence texts and a source offer, as it does FFmpeg. Everything else is
+  permissive. No GPL or patent-encumbered codec is in the build, which leaves
+  out HEIC for now.
+
+One constraint for tiles came out of the proof: a picture stored sideways
+(orientations 5 to 8) can't be turned a quarter turn while it streams without
+holding all of it, so the tile service turns each tile instead of the whole
+picture.
+
+### What's left
+
+- **The picture service:** core reads, sizes and keeps the copies, and the
+  apps ask it through one call, `picture(source, pixels)`.
+- **Cover sources and synced copies:** covers name their source picture and
+  get their 768 px and 1536 px copies, and release image files get their
+  384 px previews.
+- **The tiled viewer** on the Mac and on Android.
+
+### Commits on main
+
+| Commit | What |
+|---|---|
+| `d1e317f517` | Decode pictures on the image store's own queue |
+| `9f23c5914d` | Keep an import row's cover load running across redraws |
+| `3f89609c10` | Draw Now Playing's cover through the image store |
+| `0696e974b4` | Decode the Mac lightbox's screen-fit picture through the image store |
+| `679b2d1629` | Give Android's image store one cache, shared loads and a bounded decoder |
+| `6790ef6f16` | Make each image store own its decode queue |
+| `1c38406eed` | Build the import cell's cover-load accessor only for tests |
+
+The libvips proof is on branch `libvips-proof` and lands with the picture service, its first caller.
