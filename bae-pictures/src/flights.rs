@@ -1,6 +1,7 @@
 //! One running job for each picture and size. Requests for the same key share
-//! the job; it runs while some request still waits for it, and stops, between
-//! two reads of the original, when the last one goes away.
+//! the job; it runs while some request still waits for it, at the highest turn
+//! any of them asks, and stops, between two reads of the original, when the
+//! last one goes away.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -11,7 +12,7 @@ use bae_diagnostics::Diagnostics;
 use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 
-use crate::IsCancelled;
+use crate::{AskedTurn, IsCancelled, PictureTurn};
 
 /// How a job ended for the requests that shared it.
 #[derive(Debug)]
@@ -31,8 +32,57 @@ type Running<K, T, E> = Arc<Mutex<HashMap<K, Arc<Flight<T, E>>>>>;
 struct Flight<T, E> {
     cancel: CancellationToken,
     outcome: watch::Sender<Outcome<T, E>>,
-    /// The requests still waiting. Guarded by the map's lock.
-    waiters: Mutex<usize>,
+    asks: Mutex<Asks>,
+    /// The highest turn any waiting request asks, which the job reads.
+    turn: watch::Sender<PictureTurn>,
+}
+
+/// The requests still waiting on a job.
+#[derive(Default)]
+struct Asks {
+    /// The turn each of them asks now, by the request's number.
+    turns: HashMap<u64, PictureTurn>,
+    /// The number the next request gets.
+    next: u64,
+}
+
+impl Asks {
+    /// Adds a request that asks `turn`, and returns its number.
+    fn add(&mut self, turn: PictureTurn) -> u64 {
+        let number = self.next;
+        self.next += 1;
+        self.turns.insert(number, turn);
+        number
+    }
+}
+
+impl<T, E> Flight<T, E> {
+    fn lock_asks(&self) -> MutexGuard<'_, Asks> {
+        self.asks.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Sets the job's turn to the highest one `asks` holds. A job no request
+    /// waits on keeps the turn it had. The caller holds the lock of `asks`, so
+    /// that two changes reach the job in the order they were made.
+    fn publish_turn(&self, asks: &Asks) {
+        if let Some(&highest) = asks.turns.values().max() {
+            self.turn.send_if_modified(|turn| std::mem::replace(turn, highest) != highest);
+        }
+    }
+
+    fn join(&self, turn: PictureTurn) -> u64 {
+        let mut asks = self.lock_asks();
+        let number = asks.add(turn);
+        self.publish_turn(&asks);
+        number
+    }
+
+    /// The request `number` asks `turn` now.
+    fn ask(&self, number: u64, turn: PictureTurn) {
+        let mut asks = self.lock_asks();
+        asks.turns.insert(number, turn);
+        self.publish_turn(&asks);
+    }
 }
 
 /// The jobs running now, by key.
@@ -63,26 +113,44 @@ where
     }
 
     /// The result of the job for `key`: the running one when there is one,
-    /// else the one `start` builds. `start` gets the flag that ends the job
-    /// when no request wants it any more (a question the job asks between two
-    /// reads), and runs on the runtime, not in
-    /// this future, so a request that goes away does not take the job with
-    /// it while another still waits.
-    pub async fn request<F, Fut>(&self, key: K, start: F) -> Result<Arc<T>, FlightError<E>>
+    /// else the one `start` builds. `turn` says how soon this request wants
+    /// the result, and may change while it waits. `start` gets the flag that
+    /// ends the job when no request wants it any more (a question the job asks
+    /// between two reads) and the job's turn, the highest any waiting request
+    /// asks. The job runs on the runtime, not in this future, so a request
+    /// that goes away does not take the job with it while another still waits.
+    pub async fn request<F, Fut>(
+        &self,
+        key: K,
+        mut turn: AskedTurn,
+        start: F,
+    ) -> Result<Arc<T>, FlightError<E>>
     where
-        F: FnOnce(IsCancelled) -> Fut,
+        F: FnOnce(IsCancelled, AskedTurn) -> Fut,
         Fut: Future<Output = Result<T, E>> + Send + 'static,
     {
-        let mut waiter = self.join(key, start);
-        let result = waiter.outcome.wait_for(Option::is_some).await;
-        match result {
-            Ok(done) => match done.as_ref() {
-                Some(Ok(value)) => Ok(value.clone()),
-                Some(Err(FlightError::Failed(error))) => Err(FlightError::Failed(error.clone())),
-                Some(Err(FlightError::Panicked)) | None => Err(FlightError::Panicked),
-            },
-            // The job's task ended without a result: its runtime shut down.
-            Err(_) => Err(FlightError::Panicked),
+        let waiter = self.join(key, turn.now(), start);
+        let mut outcome = waiter.outcome.clone();
+        let done = async move {
+            match outcome.wait_for(Option::is_some).await {
+                Ok(done) => match done.as_ref() {
+                    Some(Ok(value)) => Ok(value.clone()),
+                    Some(Err(FlightError::Failed(error))) => {
+                        Err(FlightError::Failed(error.clone()))
+                    }
+                    Some(Err(FlightError::Panicked)) | None => Err(FlightError::Panicked),
+                },
+                // The job's task ended without a result: its runtime shut down.
+                Err(_) => Err(FlightError::Panicked),
+            }
+        };
+        tokio::pin!(done);
+        loop {
+            tokio::select! {
+                biased;
+                () = turn.changed() => waiter.flight.ask(waiter.number, turn.now()),
+                result = &mut done => return result,
+            }
         }
     }
 
@@ -90,15 +158,16 @@ where
         self.running.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    fn join<F, Fut>(&self, key: K, start: F) -> Waiter<K, T, E>
+    fn join<F, Fut>(&self, key: K, turn: PictureTurn, start: F) -> Waiter<K, T, E>
     where
-        F: FnOnce(IsCancelled) -> Fut,
+        F: FnOnce(IsCancelled, AskedTurn) -> Fut,
         Fut: Future<Output = Result<T, E>> + Send + 'static,
     {
         let mut running = self.lock();
         if let Some(flight) = running.get(&key) {
-            *flight.waiters.lock().unwrap_or_else(PoisonError::into_inner) += 1;
+            let number = flight.join(turn);
             return Waiter {
+                number,
                 running: self.running.clone(),
                 outcome: flight.outcome.subscribe(),
                 flight: flight.clone(),
@@ -106,11 +175,18 @@ where
             };
         }
         let (outcome, receiver) = watch::channel(None);
-        let flight =
-            Arc::new(Flight { cancel: CancellationToken::new(), outcome, waiters: Mutex::new(1) });
+        let mut asks = Asks::default();
+        let number = asks.add(turn);
+        let (job_turn, job_asked) = watch::channel(turn);
+        let flight = Arc::new(Flight {
+            cancel: CancellationToken::new(),
+            outcome,
+            asks: Mutex::new(asks),
+            turn: job_turn,
+        });
         running.insert(key.clone(), flight.clone());
         let token = flight.cancel.clone();
-        let job = start(Arc::new(move || token.is_cancelled()));
+        let job = start(Arc::new(move || token.is_cancelled()), AskedTurn::from(job_asked));
         let ended = flight.clone();
         let map = self.running.clone();
         let ended_key = key.clone();
@@ -130,7 +206,7 @@ where
             // No request may be left to hear it.
             ended.outcome.send_replace(Some(result));
         }));
-        Waiter { running: self.running.clone(), outcome: receiver, flight, key }
+        Waiter { running: self.running.clone(), outcome: receiver, flight, key, number }
     }
 }
 
@@ -147,6 +223,8 @@ where
     running: Running<K, T, E>,
     key: K,
     flight: Arc<Flight<T, E>>,
+    /// The request's number among the job's.
+    number: u64,
     /// What the request waits on for the job's result.
     outcome: watch::Receiver<Outcome<T, E>>,
 }
@@ -159,9 +237,10 @@ where
 {
     fn drop(&mut self) {
         let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
-        let mut waiters = self.flight.waiters.lock().unwrap_or_else(PoisonError::into_inner);
-        *waiters -= 1;
-        if *waiters == 0 && self.flight.outcome.borrow().is_none() {
+        let mut asks = self.flight.lock_asks();
+        asks.turns.remove(&self.number);
+        self.flight.publish_turn(&asks);
+        if asks.turns.is_empty() && self.flight.outcome.borrow().is_none() {
             self.flight.cancel.cancel();
             if running.get(&self.key).is_some_and(|flight| Arc::ptr_eq(flight, &self.flight)) {
                 running.remove(&self.key);

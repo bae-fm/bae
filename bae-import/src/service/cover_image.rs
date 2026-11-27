@@ -93,16 +93,11 @@ impl ImportCover {
                 let file = folder_cover(discovered_files, &path)?;
                 let file_id = release_file_id(release_file_ids, file, &path)?;
                 let picture = crate::ImportPicture::Folder { file: file.version.clone() };
+                let turn = bae_pictures::AskedTurn::unchanging(bae_pictures::PictureTurn::Visible);
                 let browse = pictures
-                    .read_copy(
-                        picture.clone(),
-                        CoverCopy::Browse.step(),
-                        bae_pictures::Priority::Visible,
-                    )
+                    .read_copy(picture.clone(), CoverCopy::Browse.step(), turn.clone())
                     .await?;
-                let large = pictures
-                    .read_copy(picture, CoverCopy::Large.step(), bae_pictures::Priority::Visible)
-                    .await?;
+                let large = pictures.read_copy(picture, CoverCopy::Large.step(), turn).await?;
                 (NewCoverPicture::ReleaseFile { file_id }, crate::cover_copies_of(browse, large)?)
             }
             Self::Embedded { source_relative_path, art }

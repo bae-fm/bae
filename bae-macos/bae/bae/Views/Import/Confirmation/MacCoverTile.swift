@@ -17,7 +17,10 @@ struct MacCoverTile: View {
                     content: item.image,
                     contentMode: .fit,
                     pointSize: 180,
-                    cornerRadius: nil
+                    cornerRadius: nil,
+                    // The ringed tile's picture is the one the preview
+                    // shows large.
+                    turn: selected ? .focused : .visible
                 )
                 // The picture's own corners, which Artwork leaves to the
                 // view around it when it fits its picture.

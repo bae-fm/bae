@@ -89,7 +89,7 @@ pub mod pane;
 #[cfg(desktop)]
 mod pictures;
 #[cfg(desktop)]
-pub use bae_pictures::Priority as PicturePriority;
+pub use bae_pictures::{AskedTurn, PictureTurn};
 #[cfg(desktop)]
 pub use pictures::PictureError;
 #[cfg(desktop)]

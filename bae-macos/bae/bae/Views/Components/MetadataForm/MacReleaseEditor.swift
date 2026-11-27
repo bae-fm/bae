@@ -439,10 +439,12 @@ struct ReleaseCoverWell: View {
     private var dropTargeted = false
 
     var body: some View {
+        // The cover is shown large over the release's other pictures.
         Artwork(
             content: coverContent,
             pointSize: Self.coverSize,
-            cornerRadius: nil
+            cornerRadius: nil,
+            turn: .focused
         )
         .frame(width: Self.coverSize, height: Self.coverSize)
         .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))

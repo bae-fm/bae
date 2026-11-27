@@ -2254,12 +2254,25 @@ chunks, turns it upright by its orientation flag, converts its colours to sRGB
 and shrinks it, as a JPEG, or as a PNG when the picture has transparency.
 Requests for one picture and size share one read, and the read stops between two
 chunks when no request wants the picture any more. A disk is read a few pictures
-at a time, a network share fewer, and a picture a screen shows goes before one
-it only expects to show. The candidate keeps each copy on this device until it is
-imported or set aside, so showing the picture again reads the copy, and nothing
-syncs a copy. The lightbox's zoom reads the original through the same reader
-(below). Core refuses a file that is not an image of a candidate in the
-import list.
+at a time, a network share fewer. The candidate keeps each copy on this device
+until it is imported or set aside, so showing the picture again reads the copy,
+and nothing syncs a copy. The lightbox's zoom reads the original through the same
+reader (below), as the picture the person looks at (next paragraph). Core
+refuses a file that is not an image of a candidate in the import list.
+
+Where a screen shows several pictures, the one the person looks at goes first:
+the cover at the top of a candidate's pane or of the *Edit release* sheet, before
+the thumbnails under it; the cover in the picker's preview, with its ringed
+tile; and the picture a lightbox shows, with its thumbnail in the strip. The
+other pictures a screen shows come next, and the ones it only expects to show
+come last. Core reads a candidate's pictures in that order, and a read that
+requests share waits in the first of the turns they ask. Besides the places a
+disk's reads take, each disk has one more that only a picture the person looks
+at takes, so that its read does not wait for the other pictures' reads under way
+to end. The Mac and Android apps decode the pictures they have the bytes of in
+the same order. When the person moves to another picture, the new one goes first
+and the one before takes its turn among the others again. A read under way goes
+on.
 
 A library release's picker and a candidate's each show, under the source the
 person chose (all, the release's files, or one catalog): a library release's
@@ -6407,7 +6420,7 @@ piece, drawn in the design system's warning color: a striped top edge, a
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the panic hook that reports each panic once, the tasks and threads that end what a panicking one served, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
 | bae-audio | the audio codec over FFmpeg (decode, encode, probe, resample), the sparse buffer a decode reads a file's bytes from, the stream a decoded track plays from, and the art an audio file's tags carry |
-| bae-pictures | pictures through libvips: copies at fixed sizes, and the tiles a viewer zooms a picture from, each made from one read of the original in chunks a job stops between, with orientation and colour applied; the job that requests for one picture share; the tile cache, with its table `cached_tiles`; and how many reads a volume takes at once |
+| bae-pictures | pictures through libvips: copies at fixed sizes, and the tiles a viewer zooms a picture from, each made from one read of the original in chunks a job stops between, with orientation and colour applied; the job that requests for one picture share; the tile cache, with its table `cached_tiles`; and how many reads a volume takes at once, and which waits first |
 | bae-types | the domain values the catalogs, identification and the library share: what a pressing is, how two pieces of written text name one thing, and how a barcode is read |
 | bae-util | what the other crates build on, with no library vocabulary and nothing else in bae beneath it: content types, duration labels, outbound HTTP and its retries, error text, the natural order of names and the folding library search compares text by, stored images, text encodings, the embedded-server lifecycle, the log subscriber every app installs |
 | bae-bridge | the uniffi exports for the apps |

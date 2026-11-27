@@ -10,7 +10,7 @@ use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::sync::Arc;
 
 use bae_pictures::{
-    FlightError, Flights, IsCancelled, PictureCopy, PictureStep, Priority, Volumes,
+    AskedTurn, FlightError, Flights, IsCancelled, PictureCopy, PictureStep, PictureTurn, Volumes,
 };
 use coven::LeasedFile;
 
@@ -77,15 +77,15 @@ impl ImportPictures {
     }
 
     /// The bytes of `source` at the size `pixels` asks for. Requests for the
-    /// same picture and size share one job, and the job ends when the last of
-    /// them is dropped.
+    /// same picture and size share one job, which reads at the highest turn
+    /// any of them asks and ends when the last of them is dropped.
     pub(crate) async fn read(
         &self,
         source: ImportPicture,
         pixels: u32,
-        priority: Priority,
+        turn: AskedTurn,
     ) -> Result<Vec<u8>, ImportError> {
-        Ok(self.read_copy(source, PictureStep::covering(pixels), priority).await?.bytes)
+        Ok(self.read_copy(source, PictureStep::covering(pixels), turn).await?.bytes)
     }
 
     /// The copy of `source` at `step`, with its format, which the import
@@ -94,14 +94,16 @@ impl ImportPictures {
         &self,
         source: ImportPicture,
         step: PictureStep,
-        priority: Priority,
+        turn: AskedTurn,
     ) -> Result<PictureCopy, ImportError> {
         let job = {
             let (services, volumes, source) =
                 (self.services.clone(), self.volumes.clone(), source.clone());
-            move |cancelled: IsCancelled| make(services, volumes, source, step, priority, cancelled)
+            move |cancelled: IsCancelled, turn| {
+                make(services, volumes, source, step, turn, cancelled)
+            }
         };
-        match self.flights.request((source, step), job).await {
+        match self.flights.request((source, step), turn, job).await {
             Ok(copy) => Ok(Arc::try_unwrap(copy).unwrap_or_else(|shared| (*shared).clone())),
             Err(FlightError::Failed(error)) => Err(ImportError::Picture(error)),
             Err(FlightError::Panicked) => Err(ImportError::Internal {
@@ -113,8 +115,8 @@ impl ImportPictures {
     /// The original of `source` for a cut that reads it to its end, such as
     /// the viewer's tiles: the image file at the version the scan read, or
     /// the art the candidate's snapshot stored. The file is opened off the
-    /// app's threads, and holds one of its volume's places for reads, as a
-    /// visible picture, until the origin is dropped.
+    /// app's threads, and holds one of its volume's places for reads, as the
+    /// picture the person looks at, until the origin is dropped.
     pub(crate) async fn open_original(
         &self,
         source: ImportPicture,
@@ -129,12 +131,12 @@ impl ImportPictures {
         match source_origin(services, &source).await.map_err(picture_error)? {
             Origin::Art(art) => Ok(Box::new(Cursor::new(art))),
             Origin::File(version) => {
-                let turn = self
+                let place = self
                     .volumes
                     .read_place(
                         &owner.watched_folder_path,
                         reads_at_once(owner.volume),
-                        Priority::Visible,
+                        AskedTurn::unchanging(PictureTurn::Focused),
                     )
                     .await;
                 let lease = bae_store::lease_one(&services.files).await;
@@ -144,7 +146,7 @@ impl ImportPictures {
                     .await
                     .map_err(|failed| picture_error(PictureError::Task(failed)))?
                     .map_err(picture_error)?;
-                Ok(Box::new(bae_pictures::HeldOrigin::new(file, turn)))
+                Ok(Box::new(bae_pictures::HeldOrigin::new(file, place)))
             }
         }
     }
@@ -182,7 +184,7 @@ async fn make(
     volumes: Volumes,
     source: ImportPicture,
     step: PictureStep,
-    priority: Priority,
+    turn: AskedTurn,
     cancelled: IsCancelled,
 ) -> Result<PictureCopy, PictureError> {
     let picture = services
@@ -195,10 +197,10 @@ async fn make(
     }
     let owner = picture.owner;
     let origin = source_origin(&services, &source).await?;
-    // Visible pictures read before prefetched ones, and a share is read a few
-    // files at a time.
-    let _turn =
-        volumes.read_place(&owner.watched_folder_path, reads_at_once(owner.volume), priority).await;
+    // A share is read a few files at a time, and the picture's turn says
+    // where it stands in the line for one of those reads.
+    let _place =
+        volumes.read_place(&owner.watched_folder_path, reads_at_once(owner.volume), turn).await;
     let lease = bae_store::lease_one(&services.files).await;
     let copy = services
         .diagnostics

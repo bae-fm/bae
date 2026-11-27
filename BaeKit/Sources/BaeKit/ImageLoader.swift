@@ -38,7 +38,7 @@ public enum ImageLoader {
     /// The decode runs on `queue`, never on Swift's cooperative pool, and
     /// produces an image backed by an already-decoded CGImage. Throws
     /// `CancellationError` if the surrounding task is cancelled, or
-    /// `shouldStart` answers false, before the decode starts, or
+    /// `admission` says not to start, before the decode starts, or
     /// `DecodeError` if the bytes can't be decoded. A decode that has started
     /// is not interrupted: its image is returned even to a cancelled caller.
     public static func load(
@@ -46,9 +46,9 @@ public enum ImageLoader {
         points: CGFloat,
         displayScale: CGFloat,
         queue: ImageDecodeQueue,
-        shouldStart: @escaping @Sendable () -> Bool
+        admission: DecodeAdmission
     ) async throws -> DecodedImage {
-        let decoded = try await queue.run(shouldStart: shouldStart) {
+        let decoded = try await queue.run(admission) {
             thumbnail(of: data, points: points, displayScale: displayScale)
         }
         guard let decoded else {
@@ -64,7 +64,9 @@ public enum ImageLoader {
         data: Data,
         queue: ImageDecodeQueue
     ) async throws -> CGImage {
-        let decoded = try await queue.run {
+        // A viewer reads tiles of the picture the person zoomed into.
+        let focused = DecodeAdmission(turn: { .focused })
+        let decoded = try await queue.run(focused) {
             CGImageSourceCreateWithData(data as CFData, nil)
                 .flatMap {
                     // ShouldCacheImmediately forces the bytes-to-bitmap step to

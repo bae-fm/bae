@@ -1,7 +1,28 @@
 import Foundation
 
+/// What a request for a decode says while it waits for a thread.
+public struct DecodeAdmission: Sendable {
+    /// How soon the decode is wanted now, which may answer differently while
+    /// the request waits.
+    let turn: @Sendable () -> BridgePictureTurn
+    /// Whether the request still wants the decode, asked once a thread is
+    /// free for it.
+    let shouldStart: @Sendable () -> Bool
+
+    public init(
+        turn: @escaping @Sendable () -> BridgePictureTurn,
+        shouldStart: @escaping @Sendable () -> Bool = { true }
+    ) {
+        self.turn = turn
+        self.shouldStart = shouldStart
+    }
+}
+
 /// The threads picture decodes run on: a dispatch queue of the app's own that
 /// runs at most `width` decodes at once.
+///
+/// Among the decodes that wait for a thread, the one of the highest turn
+/// starts first, and the oldest among equals.
 ///
 /// A decode blocks its thread: ImageIO reads the file through a memory
 /// mapping, so a file on a network share makes the thread wait on the network
@@ -23,11 +44,15 @@ public final class ImageDecodeQueue: @unchecked Sendable {
         let execute: @Sendable () -> Void
         /// Resumes the caller of a request that never started.
         let abandon: @Sendable () -> Void
+        /// The request's turn now, read each time a thread is free.
+        let turn: @Sendable () -> BridgePictureTurn
 
         init(
+            turn: @escaping @Sendable () -> BridgePictureTurn,
             execute: @escaping @Sendable () -> Void,
             abandon: @escaping @Sendable () -> Void
         ) {
+            self.turn = turn
             self.execute = execute
             self.abandon = abandon
         }
@@ -89,20 +114,21 @@ public final class ImageDecodeQueue: @unchecked Sendable {
 
     /// Run `work` on this queue and return what it returns. Throws
     /// `CancellationError` when the surrounding task is cancelled before the
-    /// work starts, or when `shouldStart` answers false at the moment a thread
-    /// is free for it. Work that has started runs to its end, and its result
+    /// work starts, or when `admission` says it should not start at the moment
+    /// a thread is free for it. Work that has started runs to its end, and its result
     /// is returned even to a cancelled caller: a decode can't be interrupted,
     /// and its result is worth keeping.
     public func run<T: Sendable>(
-        shouldStart: @escaping @Sendable () -> Bool = { true },
+        _ admission: DecodeAdmission,
         _ work: @escaping @Sendable () -> T
     ) async throws -> T {
         let ticket = Ticket()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 let entry = Entry(
+                    turn: admission.turn,
                     execute: { [self] in
-                        guard shouldStart() else {
+                        guard admission.shouldStart() else {
                             continuation.resume(throwing: CancellationError())
                             return
                         }
@@ -165,7 +191,16 @@ public final class ImageDecodeQueue: @unchecked Sendable {
         defer { lock.unlock() }
         guard running < width, !pending.isEmpty else { return nil }
         running += 1
-        return pending.removeFirst()
+        var next = 0
+        var highest = pending[0].turn().rank
+        for index in pending.indices.dropFirst() {
+            let rank = pending[index].turn().rank
+            if rank > highest {
+                next = index
+                highest = rank
+            }
+        }
+        return pending.remove(at: next)
     }
 
     private func finished() {

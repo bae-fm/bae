@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use bae_pictures::Priority;
+use bae_pictures::{AskedTurn, PictureTurn};
 use bae_records::NewReleasePreview;
 
 use super::ImportService;
@@ -39,8 +39,8 @@ impl ImportService {
             let picture = ImportPicture::Folder { file: entry.file.version.clone() };
             let pictures = self.pictures.clone();
             reads.spawn(async move {
-                let copy =
-                    pictures.read_copy(picture, NewReleasePreview::STEP, Priority::Visible).await;
+                let turn = AskedTurn::unchanging(PictureTurn::Visible);
+                let copy = pictures.read_copy(picture, NewReleasePreview::STEP, turn).await;
                 (position, release_file_id, copy)
             });
         }

@@ -26,6 +26,9 @@ struct Artwork: View {
     let ring: Bool
     let shadow: Shadow?
     let dimmed: Bool
+    /// `.focused` for the picture the person looks at among the several its
+    /// screen shows.
+    let turn: BridgePictureTurn
 
     @Environment(ImageStore.self)
     private var imageStore
@@ -39,6 +42,9 @@ struct Artwork: View {
     /// identity, so a retry restarts it.
     @State
     private var attempt = 0
+    /// What the slot's load asks, which follows `turn` while it runs.
+    @State
+    private var imageTurn: ImageTurn
 
     init(
         content: ImageContent?,
@@ -47,7 +53,8 @@ struct Artwork: View {
         cornerRadius: CGFloat? = ThemeRadius.cover,
         ring: Bool = false,
         shadow: Shadow? = nil,
-        dimmed: Bool = false
+        dimmed: Bool = false,
+        turn: BridgePictureTurn = .visible
     ) {
         self.content = content
         self.contentMode = contentMode
@@ -56,6 +63,8 @@ struct Artwork: View {
         self.ring = ring
         self.shadow = shadow
         self.dimmed = dimmed
+        self.turn = turn
+        _imageTurn = State(initialValue: ImageTurn(turn))
         _lastLoad = State(
             initialValue: SlotLoad(content: content, state: .pending(.empty))
         )
@@ -70,6 +79,9 @@ struct Artwork: View {
             .contentShape(Rectangle())
             .task(id: LoadRequest(content: content, attempt: attempt)) {
                 await load()
+            }
+            .onChange(of: turn) { _, turn in
+                imageTurn.set(turn)
             }
     }
 
@@ -188,11 +200,13 @@ struct Artwork: View {
         guard let requested else {
             return
         }
+        imageTurn.set(turn)
         do {
             if let image = try await imageStore.image(
                 requested,
                 pointSize: pointSize,
-                displayScale: displayScale
+                displayScale: displayScale,
+                turn: imageTurn
             ) {
                 lastLoad = SlotLoad(
                     content: requested,

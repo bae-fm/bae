@@ -21,6 +21,7 @@ import uniffi.bae_bridge.BridgeCoverImageSource
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryImageType
+import uniffi.bae_bridge.BridgePictureTurn
 import java.io.ByteArrayInputStream
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -111,18 +112,17 @@ private const val DECODED_IMAGE_BUDGET = 64 * MEGABYTE
 private const val DECODE_WIDTH = 3
 
 /**
- * A dispatcher for picture decodes: at most [DECODE_WIDTH] at a time, apart from
- * the threads that draw and the ones other coroutines share. Each [ImageStore]
- * makes its own.
+ * A dispatcher that runs at most [DECODE_WIDTH] coroutines at a time, apart from
+ * the threads that draw. Each [PictureTileStore] makes its own for its tiles.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun boundedDecodeDispatcher(): CoroutineDispatcher = Dispatchers.Default.limitedParallelism(DECODE_WIDTH)
 
 /**
- * The app's image pipeline: bytes → decode at the slot's pixel size on a bounded
- * dispatcher → one bounded decoded cache → synchronous first-frame read. One instance per open library,
- * read from the composition through [LocalImageStore]; views hold no fetch,
- * cache, or decode logic of their own.
+ * The app's image pipeline: bytes → decode at the slot's pixel size through a bounded
+ * decode queue, which starts the highest turn first → one bounded decoded cache →
+ * synchronous first-frame read. One instance per open library, read from the
+ * composition through [LocalImageStore]; views hold no fetch, cache, or decode logic of their own.
  *
  * What a cached decode is pinned to — its token — is the content's identity, so
  * no entry can outlive the bytes it came from: a curated image keys on its
@@ -149,7 +149,7 @@ class ImageStore(
     decodedBudget: Int = DECODED_IMAGE_BUDGET,
     /** Where fetches and decodes run. Injected so tests drive them on their own
      *  scheduler. */
-    private val dispatcher: CoroutineDispatcher = boundedDecodeDispatcher(),
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     /** Turns bytes into a bitmap at a size, on a thread of [dispatcher]. Injected so a
      *  test can see where decodes run. */
     private val decode: (ByteArray, DecodeSize) -> Bitmap? = ::decodeBytes,
@@ -164,6 +164,7 @@ class ImageStore(
 
     private val decoded = bitmapCache(decodedBudget)
     private val loads = SharedLoads<Bitmap?>(CoroutineScope(SupervisorJob() + dispatcher))
+    private val decodes = DecodeQueue(DECODE_WIDTH)
 
     /**
      * The already-decoded bitmap for [content] at this size, or null when it isn't
@@ -190,14 +191,17 @@ class ImageStore(
      * is cancelled, the load is cancelled too unless its decode has started: a
      * decode can't be interrupted, so the next request for it joins that decode
      * instead of starting another.
+     *
+     * A load's decode waits in the highest turn any of its requests asks, and [turn] may change while this one waits.
      */
     suspend fun image(
         content: ImageContent,
         size: DecodeSize.FitTo,
+        turn: ImageTurn = ImageTurn(),
     ): Bitmap? {
         val key = cacheKey(content, size)
         decoded.get(key)?.let { return it }
-        return loads.join(key) { control ->
+        return loads.join(key, turn) { control ->
             decoded.get(key) ?: loadImage(content, size, key, control)
         }
     }
@@ -209,10 +213,12 @@ class ImageStore(
         control: LoadControl,
     ): Bitmap? {
         val bytes = withContext(dispatcher) { fetchBytes(content, size.pixels.toUInt()) } ?: return null
-        control.beginDecoding()
         val bitmap =
-            withContext(dispatcher) {
-                decode(bytes, size) ?: throw UnreadableImage(content.description, bytes.size)
+            decodes.run(control::turn) {
+                control.beginDecoding()
+                withContext(dispatcher) {
+                    decode(bytes, size) ?: throw UnreadableImage(content.description, bytes.size)
+                }
             }
         decoded.put(key, bitmap)
         return bitmap
@@ -342,6 +348,27 @@ private class LoadControl {
     private var decoding = false
     private var cancelled = false
 
+    /** What each request waiting on the load asks. */
+    private val asks = mutableListOf<ImageTurn>()
+
+    /** The turn the load had when its last request left. */
+    private var lastTurn = BridgePictureTurn.VISIBLE
+
+    /** The highest turn any waiting request asks. A load no request waits on keeps the turn it had. */
+    @Synchronized
+    fun turn(): BridgePictureTurn = asks.maxOfOrNull { it.asked } ?: lastTurn
+
+    @Synchronized
+    fun add(asked: ImageTurn) {
+        asks.add(asked)
+    }
+
+    @Synchronized
+    fun remove(asked: ImageTurn) {
+        lastTurn = turn()
+        asks.remove(asked)
+    }
+
     /** The decode is about to start: throws when the load was cancelled first. */
     @Synchronized
     fun beginDecoding() {
@@ -379,18 +406,20 @@ private class SharedLoads<T>(
     /** The result of the load for [key], started with [operation] when none runs. */
     suspend fun join(
         key: String,
+        turn: ImageTurn,
         operation: suspend (LoadControl) -> T,
     ): T {
-        val load = enter(key, operation)
+        val load = enter(key, turn, operation)
         try {
             return load.result.await()
         } finally {
-            leave(key, load)
+            leave(key, load, turn)
         }
     }
 
     private fun enter(
         key: String,
+        turn: ImageTurn,
         operation: suspend (LoadControl) -> T,
     ): Load<T> =
         synchronized(lock) {
@@ -408,6 +437,7 @@ private class SharedLoads<T>(
                     }
                 }
             load.waiters++
+            load.control.add(turn)
             load
         }
 
@@ -423,7 +453,9 @@ private class SharedLoads<T>(
     private fun leave(
         key: String,
         load: Load<T>,
+        turn: ImageTurn,
     ) = synchronized(lock) {
+        load.control.remove(turn)
         load.waiters--
         if (load.waiters == 0 && load.control.cancelUnlessDecoding()) {
             if (loads[key] === load) loads.remove(key)

@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Testing
+import os
 
 @testable import BaeKit
 @testable import bae
@@ -94,10 +95,22 @@ private actor PictureAsks {
         let size = "\(pixels) px"
         let turnName =
             switch turn {
+            case .focused: "focused"
             case .visible: "visible"
             case .prefetch: "prefetch"
             }
         asks.append("\(size) \(turnName)")
+    }
+}
+
+/// The names of the decodes, in the order they ran.
+private final class DecodeOrder: Sendable {
+    private let recorded = OSAllocatedUnfairLock<[String]>(initialState: [])
+
+    var names: [String] { recorded.withLock { $0 } }
+
+    func record(_ name: String) {
+        recorded.withLock { $0.append(name) }
     }
 }
 
@@ -181,7 +194,7 @@ struct ImageStoreCacheTests {
         let bytes = try makePngBytes(width: 8, height: 8)
         let asked = PictureAsks()
         let store = ImageStore(fetchPicture: { _, pixels, turn in
-            await asked.record(pixels, turn)
+            await asked.record(pixels, turn.turn())
             return bytes
         })
         let content = ImageContent.localFile(
@@ -369,37 +382,37 @@ struct ImageStoreCacheTests {
     }
 }
 
+/// Holds each decode that starts on a queue until `release`, and says
+/// when one has started.
+private final class DecodeHold: Sendable {
+    private let started = DispatchSemaphore(value: 0)
+    private let released = DispatchSemaphore(value: 0)
+
+    func install(on queue: ImageDecodeQueue) {
+        queue.beforeRun = { [started, released] in
+            started.signal()
+            released.wait()
+        }
+    }
+
+    func waitUntilStarted() async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global()
+                .async { [started] in
+                    started.wait()
+                    continuation.resume()
+                }
+        }
+    }
+
+    func release() {
+        released.signal()
+    }
+}
+
 @Suite("ImageStore decoding")
 struct ImageStoreDecodingTests {
     private let content = ImageContent.libraryImage(coverRef(version: "1"))
-
-    /// Holds each decode that starts on a queue until `release`, and says
-    /// when one has started.
-    private final class DecodeHold: Sendable {
-        private let started = DispatchSemaphore(value: 0)
-        private let released = DispatchSemaphore(value: 0)
-
-        func install(on queue: ImageDecodeQueue) {
-            queue.beforeRun = { [started, released] in
-                started.signal()
-                released.wait()
-            }
-        }
-
-        func waitUntilStarted() async {
-            await withCheckedContinuation { continuation in
-                DispatchQueue.global()
-                    .async { [started] in
-                        started.wait()
-                        continuation.resume()
-                    }
-            }
-        }
-
-        func release() {
-            released.signal()
-        }
-    }
 
     @Test("every decode runs on the decode queue, off Swift's shared threads")
     func decodesRunOnTheDecodeQueue() async throws {
@@ -555,6 +568,119 @@ struct ImageStoreDecodingTests {
                 != nil
         )
         #expect(queue.runs.count == 2)
+    }
+}
+
+@Suite("ImageStore turns")
+struct ImageStoreTurnTests {
+    /// Core reads at the turn the signal says, so the signal follows the
+    /// requests that share the load while its read runs.
+    @Test(
+        "a load asks the highest turn of the requests that wait on it, as they change"
+    )
+    func aLoadAsksTheHighestTurnOfItsRequests() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let gate = FetchGate()
+        let (signals, asked) = AsyncStream<BridgePictureTurnSignal>
+            .makeStream()
+        let store = ImageStore(fetchPicture: { _, _, turn in
+            asked.yield(turn)
+            await gate.pass()
+            return bytes
+        })
+        let content = ImageContent.localFile(
+            BridgeFileVersion(
+                path: Data("/folder/front.png".utf8),
+                size: 1_000,
+                modifiedAtNs: 1_000
+            )
+        )
+        let thumbnail = ImageTurn(.visible)
+        let first = Task {
+            try await store.image(
+                content,
+                pointSize: 56,
+                displayScale: 2,
+                turn: thumbnail
+            )
+        }
+        var read = signals.makeAsyncIterator()
+        let signal = try #require(await read.next())
+        #expect(signal.turn() == .visible)
+
+        thumbnail.set(.focused)
+        #expect(signal.turn() == .focused)
+        thumbnail.set(.visible)
+        #expect(signal.turn() == .visible)
+
+        // The request joins the load before this body goes on.
+        let executor = SerialTaskExecutor()
+        let second = await withTaskExecutorPreference(executor) {
+            let second = Task(executorPreference: executor) {
+                try await store.image(
+                    content,
+                    pointSize: 56,
+                    displayScale: 2,
+                    turn: ImageTurn(.focused)
+                )
+            }
+            await Task.yield()
+            return second
+        }
+        #expect(signal.turn() == .focused)
+        second.cancel()
+        #expect(signal.turn() == .visible)
+
+        await gate.open()
+        #expect(try await first.value != nil)
+        _ = try? await second.value
+        asked.finish()
+        #expect(await read.next() == nil, "one read served both")
+    }
+
+    @Test("a waiting decode of a higher turn starts first")
+    func aHigherTurnDecodesFirst() async throws {
+        let queue = ImageDecodeQueue(width: 1)
+        let hold = DecodeHold()
+        hold.install(on: queue)
+        let order = DecodeOrder()
+        let blocker = Task {
+            try await queue.run(DecodeAdmission(turn: { .visible })) {
+                order.record("blocker")
+            }
+        }
+        await hold.waitUntilStarted()
+        let chosen = ImageTurn(.visible)
+        let requests = [
+            ("prefetch", ImageTurn(.prefetch)),
+            ("visible", ImageTurn(.visible)),
+            ("chosen", chosen),
+        ]
+        // Each request joins the line before the next one asks.
+        let executor = SerialTaskExecutor()
+        let waiting = await withTaskExecutorPreference(executor) {
+            var waiting: [Task<Void, Error>] = []
+            for (name, turn) in requests {
+                waiting.append(
+                    Task(executorPreference: executor) {
+                        let admission = DecodeAdmission(turn: { turn.current })
+                        try await queue.run(admission) {
+                            order.record(name)
+                        }
+                    }
+                )
+                await Task.yield()
+            }
+            return waiting
+        }
+        // The person looks at the picture of the last request now.
+        chosen.set(.focused)
+
+        for _ in 0...waiting.count { hold.release() }
+        try await blocker.value
+        for task in waiting { try await task.value }
+
+        #expect(order.names == ["blocker", "chosen", "visible", "prefetch"])
     }
 }
 

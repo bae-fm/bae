@@ -77,7 +77,8 @@ final class LightboxImageLoad {
                 let decoded = try await images.image(
                     image,
                     pointSize: points,
-                    displayScale: displayScale
+                    displayScale: displayScale,
+                    turn: ImageTurn(.focused)
                 )
             else {
                 logger.warning(

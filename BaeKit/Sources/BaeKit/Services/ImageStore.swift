@@ -155,7 +155,7 @@ public final class ImageStore: Sendable, Observable {
         @Sendable (
             _ source: BridgeCoverImageSource,
             _ pixels: UInt32,
-            _ turn: BridgePictureTurn
+            _ turn: BridgePictureTurnSignal
         ) async throws -> Data
     /// Bytes of a person's avatar, or nil when they have none.
     private let fetchAvatarBytes:
@@ -213,7 +213,7 @@ public final class ImageStore: Sendable, Observable {
             @escaping @Sendable (
                 BridgeCoverImageSource,
                 UInt32,
-                BridgePictureTurn
+                BridgePictureTurnSignal
             ) async throws -> Data = { _, _, _ in
                 throw ImageStoreUnavailable()
             },
@@ -332,14 +332,16 @@ public final class ImageStore: Sendable, Observable {
     /// is one, otherwise fetch the bytes, decode them on the decode queue at
     /// `pointSize × displayScale`, and store the result. Requests for the same
     /// content and size share one load, including a decode that is already
-    /// running after every earlier request for it was cancelled. Returns nil when no
+    /// running after every earlier request for it was cancelled. The load
+    /// reads and decodes in the highest turn any of its requests asks, and
+    /// `turn` may change while this one waits. Returns nil when no
     /// such image exists (a library image with no bytes); a fetch or decode
     /// failure surfaces, not masked.
     public func image(
         _ content: ImageContent,
         pointSize: CGFloat,
         displayScale: CGFloat,
-        turn: BridgePictureTurn = .visible
+        turn: ImageTurn = ImageTurn()
     ) async throws -> DecodedImage? {
         #if DEBUG
             asked.change(by: 1)
@@ -354,7 +356,8 @@ public final class ImageStore: Sendable, Observable {
             return cached
         }
 
-        let waiter = inFlightLoads.join(key) { [self] control in
+        let waiter = inFlightLoads.join(key, asking: turn) {
+            [self] control, loadTurn in
             if let cached = cache.image(for: key) {
                 return cached
             }
@@ -362,7 +365,7 @@ public final class ImageStore: Sendable, Observable {
                 content,
                 pointSize: pointSize,
                 displayScale: displayScale,
-                turn: turn,
+                turn: loadTurn,
                 control: control
             )
         }
@@ -385,7 +388,7 @@ public final class ImageStore: Sendable, Observable {
         _ content: ImageContent,
         pointSize: CGFloat,
         displayScale: CGFloat,
-        turn: BridgePictureTurn,
+        turn: LoadTurn,
         control: LoadControl
     ) async throws -> DecodedImage? {
         let pixels = Int((pointSize * displayScale).rounded())
@@ -393,7 +396,7 @@ public final class ImageStore: Sendable, Observable {
             let data = try await decodeSource(
                 for: content,
                 pixels: UInt32(clamping: pixels),
-                turn: turn
+                turn: turn.signal
             )
         else {
             return nil
@@ -403,7 +406,10 @@ public final class ImageStore: Sendable, Observable {
             points: pointSize,
             displayScale: displayScale,
             queue: decodeQueue,
-            shouldStart: { control.beginDecoding() }
+            admission: DecodeAdmission(
+                turn: { turn.current },
+                shouldStart: { control.beginDecoding() }
+            )
         )
         cache.store(
             image,
@@ -465,7 +471,7 @@ extension ImageStore {
                     content,
                     pointSize: pointSize,
                     displayScale: displayScale,
-                    turn: .prefetch
+                    turn: ImageTurn(.prefetch)
                 )
             }
             catch is CancellationError {
@@ -489,7 +495,7 @@ extension ImageStore {
     func decodeSource(
         for content: ImageContent,
         pixels: UInt32,
-        turn: BridgePictureTurn = .visible
+        turn: BridgePictureTurnSignal
     ) async throws -> Data? {
         switch content {
         case .libraryImage(let image):
@@ -641,23 +647,28 @@ private final class LoadControl: @unchecked Sendable {
 
 private final class InFlightImageLoad: @unchecked Sendable {
     let control: LoadControl
+    let turn: LoadTurn
     let task: Task<DecodedImage?, Error>
     /// The requests still waiting on this load. Guarded by the owning
     /// `InFlightImageLoads`' lock.
     fileprivate var waiters = 0
 
-    /// `onEnd` runs when the load's task ends, however it ends.
+    /// `onEnd` runs when the load's task ends, however it ends. `first` is
+    /// the turn of the request that starts the load.
     init(
+        first: BridgePictureTurn,
         operation:
-            @escaping @Sendable (LoadControl) async throws ->
+            @escaping @Sendable (LoadControl, LoadTurn) async throws ->
             DecodedImage?,
         onEnd: @escaping @Sendable (LoadControl) -> Void
     ) {
         let control = LoadControl()
         self.control = control
+        let turn = LoadTurn(first)
+        self.turn = turn
         task = Task {
             defer { onEnd(control) }
-            return try await operation(control)
+            return try await operation(control, turn)
         }
     }
 }
@@ -688,8 +699,9 @@ private final class InFlightImageLoads: @unchecked Sendable {
 
     func join(
         _ key: String,
+        asking turn: ImageTurn,
         operation:
-            @escaping @Sendable (LoadControl) async throws ->
+            @escaping @Sendable (LoadControl, LoadTurn) async throws ->
             DecodedImage?
     ) -> InFlightImageWaiter {
         lock.lock()
@@ -699,14 +711,19 @@ private final class InFlightImageLoads: @unchecked Sendable {
             load = existing
         }
         else {
-            load = InFlightImageLoad(operation: operation) {
+            load = InFlightImageLoad(
+                first: turn.current,
+                operation: operation
+            ) {
                 [self] control in
                 ended(key, control: control)
             }
             loads[key] = load
         }
         load.waiters += 1
-        return InFlightImageWaiter(load: load, key: key)
+        let waiter = InFlightImageWaiter(load: load, key: key)
+        load.turn.add(ObjectIdentifier(waiter), asking: turn)
+        return waiter
     }
 
     /// The waiter's request has its answer.
@@ -752,6 +769,7 @@ private final class InFlightImageLoads: @unchecked Sendable {
         }
         waiter.left = true
         waiter.load.waiters -= 1
+        waiter.load.turn.remove(ObjectIdentifier(waiter))
         return true
     }
 }

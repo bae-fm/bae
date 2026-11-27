@@ -417,15 +417,16 @@ forward! {
         /// smallest step (192, 384, 768 or 1536 px on the longer side) that
         /// holds `pixels`. Core reads the file once, in chunks, off the app's
         /// threads, keeps the copy with its candidate, and stops reading when
-        /// every call for the picture is dropped. `turn` says whether a
-        /// screen shows the picture now or may show it soon.
+        /// every call for the picture is dropped. `turn` says how soon the
+        /// call wants the picture, and the app may change it while the call
+        /// runs.
         fn picture(
             source: crate::types::BridgeCoverImageSource,
             pixels: u32,
-            turn: crate::types::BridgePictureTurn,
+            turn: std::sync::Arc<crate::types::BridgePictureTurnSignal>,
         ) -> Vec<u8> {
             this.services
-                .import_read_picture(source.into_picture()?, pixels, turn.into_core())
+                .import_read_picture(source.into_picture()?, pixels, turn.watched())
                 .await
                 .map_err(BridgeError::from)
         }

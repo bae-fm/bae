@@ -17,7 +17,10 @@ use coven::CovenWrite;
 use tracing::{debug, warn};
 
 use crate::tiles::{cut_tiles, tile_path, Pyramid};
-use crate::{CopyFormat, FlightError, Flights, IsCancelled, PictureOrigin, PicturesError};
+use crate::{
+    AskedTurn, CopyFormat, FlightError, Flights, IsCancelled, PictureOrigin, PictureTurn,
+    PicturesError,
+};
 
 // The size of each picture's tiles that the cache keeps.
 sqlive_compose::fragment!(
@@ -222,12 +225,14 @@ impl PictureTiles {
         let disk = self.disk.clone();
         let job = {
             let folder = folder.clone();
-            move |cancelled: IsCancelled| async move {
+            move |cancelled: IsCancelled, _| async move {
                 let origin = open().await.map_err(TilesError::Open)?;
                 disk.cut_and_keep(&folder, origin, cancelled).await
             }
         };
-        match self.cuts.request(folder, job).await {
+        // A viewer cuts a picture once the person zooms into it.
+        let turn = AskedTurn::unchanging(PictureTurn::Focused);
+        match self.cuts.request(folder, turn, job).await {
             Ok(pyramid) => Ok(*pyramid),
             Err(FlightError::Failed(error)) => Err(TilesError::Shared(error)),
             Err(FlightError::Panicked) => Err(TilesError::Panicked),

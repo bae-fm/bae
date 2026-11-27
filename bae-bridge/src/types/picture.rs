@@ -4,20 +4,58 @@
 
 #[cfg(desktop)]
 use super::*;
+use bae_types::picture_turn::PictureTurn;
+use tokio::sync::watch;
 
-/// Whether a screen shows a picture now, or may show it soon. Core reads what
-/// is shown first.
+/// How soon a request wants its picture: `Prefetch` for one a screen may show
+/// soon, `Visible` for one a screen shows, and `Focused` for the picture the
+/// person looks at among the several a screen shows. A later variant goes
+/// first, in core's reads and in the apps' decodes.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgePictureTurn {
-    Visible,
     Prefetch,
+    Visible,
+    Focused,
 }
 
 mirror_enum! {
-    #[cfg(desktop)]
-    BridgePictureTurn = bae_import::PicturePriority,
+    BridgePictureTurn = PictureTurn,
+    from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Visible, Prefetch },
+    variants: { Prefetch, Visible, Focused },
+}
+
+/// The turn of one picture request, which the app hands the call and changes
+/// while the call runs, as what the person looks at changes.
+#[derive(uniffi::Object)]
+pub struct BridgePictureTurnSignal {
+    turn: watch::Sender<PictureTurn>,
+}
+
+#[uniffi::export]
+impl BridgePictureTurnSignal {
+    #[uniffi::constructor]
+    pub fn new(turn: BridgePictureTurn) -> std::sync::Arc<Self> {
+        let (turn, _) = watch::channel(turn.into_core());
+        std::sync::Arc::new(Self { turn })
+    }
+
+    pub fn set(&self, turn: BridgePictureTurn) {
+        self.turn.send_replace(turn.into_core());
+    }
+
+    /// The turn the request asks now.
+    pub fn turn(&self) -> BridgePictureTurn {
+        BridgePictureTurn::from_core(*self.turn.borrow())
+    }
+}
+
+#[cfg(desktop)]
+impl BridgePictureTurnSignal {
+    /// The turn for one call to watch.
+    pub(crate) fn watched(&self) -> bae_import::AskedTurn {
+        self.turn.subscribe().into()
+    }
 }
 
 #[cfg(desktop)]

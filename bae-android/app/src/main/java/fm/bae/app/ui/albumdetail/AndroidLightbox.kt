@@ -54,6 +54,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
+import fm.bae.app.data.ImageTurn
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SymbolIcons
@@ -70,6 +71,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGalleryLabel
+import uniffi.bae_bridge.BridgePictureTurn
 
 private const val DISMISS_THRESHOLD_DP = 150f
 private const val DRAG_FADE_DISTANCE_MULTIPLIER = 2f
@@ -161,7 +163,10 @@ internal fun GalleryViewer(
                         .semantics { contentDescription = shownLabel },
             ) {
                 HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                    GalleryPage(releaseId = releaseId, title = title, item = items[page])
+                    // The page shown is the picture the person looks at, ahead of one a swipe brings in.
+                    val turn =
+                        if (page == pagerState.currentPage) BridgePictureTurn.FOCUSED else BridgePictureTurn.VISIBLE
+                    GalleryPage(releaseId = releaseId, title = title, item = items[page], turn = turn)
                 }
                 GalleryCloseButton(onDismiss = onDismiss)
                 GalleryFoot(items = items, count = count, pagerState = pagerState)
@@ -206,10 +211,16 @@ private fun GalleryPage(
     releaseId: String,
     title: String,
     item: BridgeGalleryItem,
+    turn: BridgePictureTurn,
 ) {
     val content =
         remember(releaseId, item.id) { ImageContent.ReleaseImage(releaseId, item.source) }
-    GalleryImage(content = content, label = LocalContext.current.galleryLabelText(item.label), title = title)
+    GalleryImage(
+        content = content,
+        label = LocalContext.current.galleryLabelText(item.label),
+        title = title,
+        turn = turn,
+    )
 }
 
 /** A gallery slot's name: the cover in the app's language, a file by its filename. */
@@ -266,8 +277,10 @@ private fun GalleryImage(
     content: ImageContent,
     label: String,
     title: String,
+    turn: BridgePictureTurn,
 ) {
     val store = LocalImageStore.current
+    val imageTurn = rememberImageTurn(content, turn)
     BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val fitSize = DecodeSize.FitTo(maxOf(constraints.maxWidth, constraints.maxHeight))
         var fitted by remember(content, fitSize) { mutableStateOf(store.cachedImage(content, fitSize)) }
@@ -280,7 +293,7 @@ private fun GalleryImage(
         LaunchedEffect(content, fitSize, attempt) {
             if (fitted != null) return@LaunchedEffect
             try {
-                val loaded = store.image(content, fitSize)
+                val loaded = store.image(content, fitSize, imageTurn)
                 if (loaded == null) {
                     logger.warning("no bytes for gallery image $label")
                     failure = GalleryFailure.NoBytes
@@ -328,6 +341,17 @@ private fun GalleryImage(
             }
         }
     }
+}
+
+/** What the load of [content] asks, which follows [turn] while it runs. */
+@Composable
+private fun rememberImageTurn(
+    content: ImageContent,
+    turn: BridgePictureTurn,
+): ImageTurn {
+    val imageTurn = remember(content) { ImageTurn(turn) }
+    SideEffect { imageTurn.asked = turn }
+    return imageTurn
 }
 
 /** The spinner naming the load of a gallery image, on the gallery's backdrop. */

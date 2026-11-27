@@ -206,9 +206,12 @@ non_owner_types = [
     "bae_pictures::flights::Flight",
     "bae_pictures::gate::Gate",
     "bae_pictures::gate::GateState",
-    "bae_pictures::gate::Pending",
+    "bae_pictures::gate::Granted",
     "bae_pictures::gate::Waiting",
     "bae_pictures::source::Reader",
+    # What one picture request asks of its turn: a value its caller makes
+    # and changes, which the request's job and its place in line read.
+    "bae_pictures::turn::AskedTurn",
     # Plain data the owner that holds it guards with its own lock: the
     # holder is built at its root, the data starts empty inside it.
     "bae_import::candidate_runtime::work::WorkInFlight",
@@ -612,6 +615,9 @@ task_types = [
 # the call takes the cancel's signal with the guard that sends it when the
 # call's future drops.
 "bae-bridge/src/cancellation.rs" = ["BridgeCancellation::new", "BridgeCancellation::watched"]
+# The app makes a turn for each picture it asks for and changes it while
+# the call runs.
+"bae-bridge/src/types/picture.rs" = ["BridgePictureTurnSignal::new"]
 "bae-bridge/src/host.rs" = [
     "BridgeHost::open_prepared",
     "BridgeHost::create_library",

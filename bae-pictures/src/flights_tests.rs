@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use bae_diagnostics::Diagnostics;
 use bae_util::test_channels::HANG_GUARD;
-use tokio::sync::Notify;
+use tokio::sync::{watch, Notify};
 
-use crate::{FlightError, Flights, IsCancelled};
+use crate::{AskedTurn, FlightError, Flights, IsCancelled, PictureTurn};
 
 /// What a test job returns.
 type Job = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<u8>, String>> + Send>>;
@@ -15,9 +15,17 @@ fn flights() -> Flights<&'static str, Vec<u8>, String> {
     Flights::new(Diagnostics::noop(), tokio::runtime::Handle::current())
 }
 
+/// The turn of a request a screen shows.
+fn visible() -> AskedTurn {
+    AskedTurn::unchanging(PictureTurn::Visible)
+}
+
+/// The turn a job is started with.
+type Turn = AskedTurn;
+
 /// A job that counts its starts and finishes when told.
-fn job(starts: Arc<AtomicUsize>, finish: Arc<Notify>) -> impl FnOnce(IsCancelled) -> Job {
-    move |_cancel| {
+fn job(starts: Arc<AtomicUsize>, finish: Arc<Notify>) -> impl FnOnce(IsCancelled, Turn) -> Job {
+    move |_cancel, _turn| {
         starts.fetch_add(1, Ordering::SeqCst);
         Box::pin(async move {
             finish.notified().await;
@@ -41,8 +49,10 @@ async fn two_requests_for_one_key_run_one_job() {
     let flights = flights();
     let starts = Arc::new(AtomicUsize::new(0));
     let finish = Arc::new(Notify::new());
-    let mut first = Box::pin(flights.request("cover", job(starts.clone(), finish.clone())));
-    let mut second = Box::pin(flights.request("cover", job(starts.clone(), finish.clone())));
+    let mut first =
+        Box::pin(flights.request("cover", visible(), job(starts.clone(), finish.clone())));
+    let mut second =
+        Box::pin(flights.request("cover", visible(), job(starts.clone(), finish.clone())));
     join_first(&mut first).await;
     join_first(&mut second).await;
     // Both are waiting on the job, which the permit lets through.
@@ -59,8 +69,8 @@ async fn two_requests_for_one_key_run_one_job() {
 fn reading_job(
     started: Arc<Notify>,
     saw_cancel: tokio::sync::oneshot::Sender<()>,
-) -> impl FnOnce(IsCancelled) -> Job {
-    move |cancel| {
+) -> impl FnOnce(IsCancelled, Turn) -> Job {
+    move |cancel, _turn| {
         Box::pin(async move {
             started.notify_one();
             loop {
@@ -79,7 +89,7 @@ async fn a_request_cancelled_mid_read_stops_the_read() {
     let flights = flights();
     let started = Arc::new(Notify::new());
     let (saw_cancel, cancelled) = tokio::sync::oneshot::channel();
-    let request = flights.request("scan", reading_job(started.clone(), saw_cancel));
+    let request = flights.request("scan", visible(), reading_job(started.clone(), saw_cancel));
     // The caller goes away once the job is reading.
     tokio::select! {
         _ = request => panic!("the job never ends before it is cancelled"),
@@ -97,8 +107,10 @@ async fn a_job_runs_on_while_another_request_waits() {
     let flights = flights();
     let starts = Arc::new(AtomicUsize::new(0));
     let finish = Arc::new(Notify::new());
-    let mut leaving = Box::pin(flights.request("cover", job(starts.clone(), finish.clone())));
-    let mut staying = Box::pin(flights.request("cover", job(starts.clone(), finish.clone())));
+    let mut leaving =
+        Box::pin(flights.request("cover", visible(), job(starts.clone(), finish.clone())));
+    let mut staying =
+        Box::pin(flights.request("cover", visible(), job(starts.clone(), finish.clone())));
     join_first(&mut leaving).await;
     join_first(&mut staying).await;
     drop(leaving);
@@ -115,7 +127,7 @@ async fn a_request_after_the_end_starts_a_new_job() {
     for _ in 0..2 {
         let starts = starts.clone();
         let result = flights
-            .request("cover", move |_cancel| {
+            .request("cover", visible(), move |_cancel, _turn| {
                 starts.fetch_add(1, Ordering::SeqCst);
                 async { Ok::<_, String>(vec![9]) }
             })
@@ -129,10 +141,61 @@ async fn a_request_after_the_end_starts_a_new_job() {
 async fn a_failed_job_fails_every_request() {
     let flights = flights();
     let result = flights
-        .request("cover", |_cancel| async { Err::<Vec<u8>, _>("no such file".to_string()) })
+        .request("cover", visible(), |_cancel, _turn| async {
+            Err::<Vec<u8>, _>("no such file".to_string())
+        })
         .await;
     match result {
         Err(FlightError::Failed(error)) => assert_eq!(*error, "no such file"),
         other => panic!("{other:?}"),
     }
+}
+
+/// A job that hands the test its turn and finishes when told.
+fn turn_job(
+    handed: tokio::sync::oneshot::Sender<Turn>,
+    finish: Arc<Notify>,
+) -> impl FnOnce(IsCancelled, Turn) -> Job {
+    move |_cancel, turn| {
+        handed.send(turn).expect("the test waits for the job's turn");
+        Box::pin(async move {
+            finish.notified().await;
+            Ok(vec![1])
+        })
+    }
+}
+
+/// A job that must not start, since another one runs for its key.
+fn no_job() -> impl FnOnce(IsCancelled, Turn) -> Job {
+    |_cancel, _turn| panic!("a second job started for the key")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_job_has_the_highest_turn_its_requests_ask() {
+    let flights = flights();
+    let finish = Arc::new(Notify::new());
+    let (handed, job_turn) = tokio::sync::oneshot::channel();
+    let (first_turn, first_asked) = watch::channel(PictureTurn::Prefetch);
+    let mut first =
+        Box::pin(flights.request("cover", first_asked.into(), turn_job(handed, finish.clone())));
+    join_first(&mut first).await;
+    let job_turn = job_turn.await.expect("the job started");
+    assert_eq!(job_turn.now(), PictureTurn::Prefetch);
+
+    // A second request raises the job's turn, and leaving gives it back.
+    let focused = AskedTurn::unchanging(PictureTurn::Focused);
+    let mut second = Box::pin(flights.request("cover", focused, no_job()));
+    join_first(&mut second).await;
+    assert_eq!(job_turn.now(), PictureTurn::Focused);
+    drop(second);
+    assert_eq!(job_turn.now(), PictureTurn::Prefetch);
+
+    // A request that changes its turn while it waits changes the job's.
+    for turn in [PictureTurn::Focused, PictureTurn::Visible] {
+        first_turn.send_replace(turn);
+        join_first(&mut first).await;
+        assert_eq!(job_turn.now(), turn);
+    }
+    finish.notify_one();
+    assert_eq!(*first.await.expect("the job finishes"), vec![1]);
 }

@@ -15,14 +15,17 @@ mod origin;
 mod source;
 pub mod tile_cache;
 pub mod tiles;
+mod turn;
 #[cfg(libvips)]
 mod vips;
 
 pub use bae_types::picture_step::PictureStep;
+pub use bae_types::picture_turn::PictureTurn;
 pub use copy::{make_copy, make_copy_of_bytes, CopyFormat, PictureCopy};
 pub use flights::{FlightError, Flights};
-pub use gate::{Permit, Priority, Volumes};
+pub use gate::{Permit, Volumes};
 pub use origin::{HeldOrigin, PictureOrigin};
+pub use turn::AskedTurn;
 
 include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 

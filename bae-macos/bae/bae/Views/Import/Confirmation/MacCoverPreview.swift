@@ -22,7 +22,8 @@ struct MacCoverPreview: View {
                         content: cover.image,
                         contentMode: .fit,
                         pointSize: 800,
-                        cornerRadius: nil
+                        cornerRadius: nil,
+                        turn: .focused
                     )
                     .frame(width: 300, height: 300)
                     .clipShape(

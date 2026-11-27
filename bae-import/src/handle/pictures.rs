@@ -7,15 +7,16 @@ impl ImportServiceHandle {
     /// The bytes of the import-list picture `source`: a copy at the step that
     /// covers `pixels`, or the original's own bytes for `None`. The picture
     /// must be an image of a candidate in the import list, or art in one of
-    /// its audio files. Dropping the call ends the read when no other request
-    /// wants the same picture and size.
+    /// its audio files. `turn` says how soon this request wants the picture,
+    /// and may change while the call waits. Dropping the call ends the read
+    /// when no other request wants the same picture and size.
     pub async fn read_picture(
         &self,
         source: crate::ImportPicture,
         pixels: u32,
-        priority: bae_pictures::Priority,
+        turn: bae_pictures::AskedTurn,
     ) -> Result<Vec<u8>, crate::ImportError> {
-        self.pictures.read(source, pixels, priority).await
+        self.pictures.read(source, pixels, turn).await
     }
 
     /// The original of the import-list picture `source`, for a read to its

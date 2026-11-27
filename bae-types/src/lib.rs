@@ -14,6 +14,7 @@ pub mod credits;
 pub mod edit_validation;
 pub mod mediums;
 pub mod picture_step;
+pub mod picture_turn;
 pub mod pressing;
 pub mod progress;
 pub mod release_storage;
