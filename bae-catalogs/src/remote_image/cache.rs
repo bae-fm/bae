@@ -8,7 +8,7 @@ use super::fetch::{send_image_request, ImageResponse};
 use super::RemoteImageError;
 use bae_diagnostics::Diagnostics;
 use bae_store::query::to_i64;
-use bae_store::{DbError, Store};
+use bae_store::{DbError, Store, WriteStatements};
 use bae_util::content_type::ContentType;
 use bae_util::http::Http;
 use coven::CovenWrite;
@@ -250,44 +250,68 @@ fn write_file(dir: &Path, path: &Path, entry: &DiskImageEntry) -> std::io::Resul
     Ok(bytes)
 }
 
+sqlive_compose::write!(
+    MarkImageUsed(file: &'p str),
+    r#"
+    UPDATE cached_image SET used = (SELECT MAX(used) + 1 FROM cached_image)
+    WHERE file = :file
+"#
+);
+
+sqlive_compose::write!(
+    KeepImage(file: &'p str, bytes: i64),
+    r#"
+    INSERT INTO cached_image (file, bytes, used)
+    VALUES (:file, :bytes, (SELECT COALESCE(MAX(used), 0) + 1 FROM cached_image))
+    ON CONFLICT (file) DO UPDATE SET bytes = excluded.bytes, used = excluded.used
+"#
+);
+
+// The least recently used rows that don't fit `budget` with the more recently
+// used ones.
+sqlive_compose::write!(
+    DeleteImagesOverBudget(budget: i64),
+    r#"
+    DELETE FROM cached_image WHERE file IN (
+        SELECT file FROM (
+            SELECT file, SUM(bytes) OVER (ORDER BY used DESC) AS held FROM cached_image
+        ) WHERE held > :budget
+    )
+    RETURNING file
+"#
+);
+
+sqlive_compose::write!(
+    DeleteImage(file: &'p str),
+    r#"DELETE FROM cached_image WHERE file = :file"#
+);
+
+sqlive_compose::write!(DeleteAllImages, r#"DELETE FROM cached_image"#);
+
 /// Mark `file`'s row as the most recently used; whether there is one.
 fn mark_used(sql: &CovenWrite<'_>, file: &str) -> Result<bool, DbError> {
-    Ok(sql.execute(
-        "UPDATE cached_image SET used = (SELECT MAX(used) + 1 FROM cached_image) WHERE file = ?1",
-        [file],
-    )? > 0)
+    Ok(sql.run(&MarkImageUsedParams { file })? > 0)
 }
 
 /// Record `file`, of `bytes`, as the most recently used, then delete the
 /// least recently used rows until the rest fit `budget`, and return the
 /// files whose rows it deleted.
 fn keep(sql: &CovenWrite<'_>, file: &str, bytes: u64, budget: u64) -> Result<Vec<String>, DbError> {
-    sql.execute(
-        "INSERT INTO cached_image (file, bytes, used) \
-         VALUES (?1, ?2, (SELECT COALESCE(MAX(used), 0) + 1 FROM cached_image)) \
-         ON CONFLICT (file) DO UPDATE SET bytes = excluded.bytes, used = excluded.used",
-        (file, to_i64(bytes, "a cached image's size")?),
-    )?;
-    Ok(sql.query(
-        "DELETE FROM cached_image WHERE file IN ( \
-             SELECT file FROM ( \
-                 SELECT file, SUM(bytes) OVER (ORDER BY used DESC) AS held FROM cached_image \
-             ) WHERE held > ?1 \
-         ) RETURNING file",
-        [to_i64(budget, "the image cache's budget")?],
-        |row| row.get(0),
-    )?)
+    sql.run(&KeepImageParams { file, bytes: to_i64(bytes, "a cached image's size")? })?;
+    let budget = to_i64(budget, "the image cache's budget")?;
+    let deleted = sql.returning(&DeleteImagesOverBudgetParams { budget })?;
+    Ok(deleted.into_iter().map(|row| row.file).collect())
 }
 
 /// Delete `file`'s row.
 fn forget(sql: &CovenWrite<'_>, file: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM cached_image WHERE file = ?1", [file])?;
+    sql.run(&DeleteImageParams { file })?;
     Ok(())
 }
 
 /// Delete every row.
 fn forget_all(sql: &CovenWrite<'_>) -> Result<(), DbError> {
-    sql.execute("DELETE FROM cached_image", [])?;
+    sql.run(&DeleteAllImagesParams {})?;
     Ok(())
 }
 
