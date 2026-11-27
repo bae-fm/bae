@@ -188,16 +188,33 @@ fn storage_inspector_transfers(
 #[path = "storage_inspector_tests.rs"]
 mod tests;
 
-// Each release file with its phase in its release's queued or active
-// download: the entry's kind, and where the file stands, `waiting`,
-// `downloading` or `done`; both NULL while no entry waits or runs. A pin checks
-// coven's pinned and downloading files. A move checks the copies coven has
-// placed and the one it is downloading into the chosen folder.
+/// Where a file of a release stands in the release's download.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DownloadPhase {
+    Waiting,
+    Downloading,
+    Done,
+}
+
+impl rusqlite::types::FromSql for DownloadPhase {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        match value.as_str()? {
+            "waiting" => Ok(Self::Waiting),
+            "downloading" => Ok(Self::Downloading),
+            "done" => Ok(Self::Done),
+            other => Err(rusqlite::types::FromSqlError::Other(
+                format!("{other:?} is no download phase").into(),
+            )),
+        }
+    }
+}
+
+// Each file of a release with a queued or active download: the entry's kind,
+// and where the file stands. A pin checks coven's pinned and downloading files.
+// A move checks the copies coven has placed and the one it is downloading into
+// the chosen folder.
 sqlive_compose::fragment!(
-    ReleaseFileDownload {
-        download_kind: Option<DownloadKind>,
-        download_state: Option<String>,
-    },
+    ReleaseFileDownload { download_kind: DownloadKind, download_state: DownloadPhase },
     r#"
     SELECT file.file_id AS download_file_id, file.release_id AS download_release_id,
            queued.kind AS download_kind,
@@ -213,8 +230,8 @@ sqlive_compose::fragment!(
                    ELSE 'waiting' END
            END AS download_state
     FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
-    LEFT JOIN @bae_transfers::download_entry::QueuedDownloadEntry AS queued
-           ON queued.release_id = file.release_id AND queued.state <> 'failed'
+    JOIN @bae_transfers::download_entry::QueuedDownloadEntry AS queued
+      ON queued.release_id = file.release_id AND queued.state <> 'failed'
     LEFT JOIN coven_pins AS pin ON queued.kind = 'pin' AND pin.file = file.stored_file
     LEFT JOIN coven_downloading AS downloading
            ON queued.kind = 'pin' AND downloading.file = file.stored_file
@@ -222,6 +239,33 @@ sqlive_compose::fragment!(
            ON queued.kind = 'move_to_this_device' AND placed.file = file.stored_file
     LEFT JOIN coven_device_only_downloading AS copying
            ON queued.kind = 'move_to_this_device' AND copying.file = file.stored_file
+"#
+);
+
+// Each file waiting in this device's upload queue: whether this process is
+// sending it now, and the record of what it waits for.
+sqlive_compose::fragment!(
+    QueuedUpload {
+        uploading_file: coven::FileId,
+        sending: bool,
+        pending: Option<coven::PendingRecord>,
+    },
+    r#"
+    SELECT upload.file AS uploading_file, upload.sending, upload.pending
+    FROM coven_uploads AS upload
+"#
+);
+
+// Each record of what coven's work waits for, with the text of the error behind
+// it when coven keeps it.
+sqlive_compose::fragment!(
+    KeptPending {
+        record: coven::PendingRecord,
+        cause: Option<String>,
+    },
+    r#"
+    SELECT kept.position, kept.file, kept.record, kept.cause
+    FROM coven_pending AS kept
 "#
 );
 
@@ -260,32 +304,23 @@ sqlive_compose::read!(
 );
 
 // The files of the release `release` in natural filename order, each with its
-// download, its queued upload and the error behind its upload record when
-// coven keeps one. Apart from its upload, the file carries the record of the
-// move that found its original missing or changed, matched by its path, with
-// the error behind it.
+// download while the release has one, its queued upload while it waits in the
+// queue and the record that upload names. Apart from its upload, the file
+// carries the record of the move that found its original missing or changed,
+// matched by its path.
 sqlive_compose::read!(
-    writer InspectedFiles(release: String) {
-        upload_file: Option<coven::FileId>,
-        upload_sending: Option<bool>,
-        upload_pending: Option<coven::PendingRecord>,
-        upload_cause: Option<String>,
-        move_pending: Option<coven::PendingRecord>,
-        move_cause: Option<String>,
-    },
+    writer InspectedFiles(release: String),
     r#"
-    SELECT file.*, download.*,
-           upload.file AS upload_file, upload.sending AS upload_sending,
-           upload.pending AS upload_pending, upload_record.cause AS upload_cause,
-           move_record.record AS move_pending, move_record.cause AS move_cause
+    SELECT file.*, download.*, upload.*, upload_record.*, move_record.*
     FROM @bae_records::records::file_fragments::ReleaseFileRecord AS file
-    JOIN @crate::storage_inspector::ReleaseFileDownload AS download
-      ON download.download_file_id = file.id
-    LEFT JOIN coven_uploads AS upload ON upload.file = file.file
-    LEFT JOIN coven_pending AS upload_record
+    LEFT JOIN @crate::storage_inspector::ReleaseFileDownload AS download
+           ON download.download_release_id = :release AND download.download_file_id = file.id
+    LEFT JOIN @crate::storage_inspector::QueuedUpload AS upload
+           ON upload.uploading_file = file.file
+    LEFT JOIN @crate::storage_inspector::KeptPending AS upload_record
            ON upload_record.file = file.file AND upload_record.record = upload.pending
     LEFT JOIN coven_user_files AS original ON original.file = file.file
-    LEFT JOIN coven_pending AS move_record
+    LEFT JOIN @crate::storage_inspector::KeptPending AS move_record
            ON move_record.position = (SELECT MIN(failed.position) FROM coven_pending AS failed
                                       WHERE failed.subject_kind = 'move'
                                         AND failed.reason_kind = 'original'
@@ -353,40 +388,28 @@ impl InspectorRows {
 /// One file as the inspector shows it, from its row.
 fn inspector_file(row: InspectedFilesRow) -> Result<DbStorageInspectorFile, DbError> {
     let file = row.file.into_file()?;
-    let unreadable = |what: &str, value: Option<&str>| {
-        DbError::unreadable(format!("the {what} of file {}", file.id), value)
-    };
-    let kind = row.download.download_kind;
-    let download = match (row.download.download_state.as_deref(), kind) {
-        (None, _) => None,
-        (Some("done"), _) => Some(FileDownload::Done),
-        (Some("downloading"), Some(kind)) => {
-            Some(FileDownload::Downloading { kind, file: file.file })
+    let download = row.download.map(|download| {
+        let kind = download.download_kind;
+        match download.download_state {
+            DownloadPhase::Waiting => FileDownload::Waiting { kind },
+            DownloadPhase::Downloading => FileDownload::Downloading { kind, file: file.file },
+            DownloadPhase::Done => FileDownload::Done,
         }
-        (Some("waiting"), Some(kind)) => Some(FileDownload::Waiting { kind }),
-        (state, _) => return Err(unreadable("download state", state)),
-    };
-    let upload = match row.upload_file {
-        Some(uploading) => Some(DbFileUpload {
-            file: uploading,
-            sending: row.upload_sending.ok_or_else(|| unreadable("upload's sending", None))?,
-            pending: with_cause(row.upload_pending, row.upload_cause),
-        }),
-        None => None,
-    };
-    let move_record = with_cause(row.move_pending, row.move_cause);
+    });
+    let cause = row.upload_record.and_then(|kept| kept.cause);
+    let upload = row.upload.map(|upload| DbFileUpload {
+        file: upload.uploading_file,
+        sending: upload.sending,
+        pending: upload.pending.map(|record| with_cause(record, cause)),
+    });
+    let move_record = row.move_record.map(|kept| with_cause(kept.record, kept.cause));
     Ok(DbStorageInspectorFile { file, download, upload, move_record })
 }
 
 /// `record` with the text of the error behind it, `cause`.
-fn with_cause(
-    record: Option<coven::PendingRecord>,
-    cause: Option<String>,
-) -> Option<coven::PendingRecord> {
-    record.map(|mut record| {
-        record.cause = cause;
-        record
-    })
+fn with_cause(mut record: coven::PendingRecord, cause: Option<String>) -> coven::PendingRecord {
+    record.cause = cause;
+    record
 }
 
 impl LibraryViews {
