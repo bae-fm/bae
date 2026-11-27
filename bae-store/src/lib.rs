@@ -1,6 +1,6 @@
 //! bae's library store, with no table of its own: the `Store` over coven's
 //! handle and the entry points every read, write and live query runs
-//! through, the coven calls bae makes on a library, the schema's shape (each
+//! through, how a generated read or write runs, the coven calls bae makes on a library, the schema's shape (each
 //! crate's parts of it, run as one migration) and the SQL functions and
 //! collation the parts declare, list windows, the cancellable live queries a
 //! surface pulls values from, and the names a person enters.
@@ -40,6 +40,8 @@ pub use store::{unsent_to_storage, utc_now, StorageSetupSteps, Store};
 mod store_read;
 pub mod upload_flags;
 pub use store_read::StoreRead;
+mod write_statement;
+pub use write_statement::WriteStatements;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_devices;
 #[cfg(any(test, feature = "test-utils"))]

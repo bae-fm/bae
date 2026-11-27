@@ -13,9 +13,8 @@ use super::{
     ReplayGainMode, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameValue, SaveFolderValue,
     SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
 };
-use bae_store::{statement_row, DbError, Store};
+use bae_store::{statement_row, DbError, Store, WriteStatements};
 use coven::CovenWrite;
-use rusqlite::params;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use std::path::PathBuf;
 
@@ -181,6 +180,90 @@ sqlive_compose::read!(
             (SELECT chosen.id FROM save_preset AS chosen WHERE chosen.id = :selected),
             (SELECT stored.last_save_preset FROM preferences AS stored)) AS chosen_id
     FROM @crate::row::StoredSavePresets AS presets
+"#
+);
+
+sqlive_compose::write!(DeleteSavePresets, r#"DELETE FROM save_preset"#);
+
+sqlive_compose::write!(
+    InsertSavePreset(
+        id: &'p str,
+        position: i64,
+        name: &'p str,
+        codec: &'static str,
+        bit_depth: Option<&'static str>,
+        bitrate_kbps: Option<u32>,
+    ),
+    r#"
+    INSERT INTO save_preset (id, position, name, codec, bit_depth, bitrate_kbps)
+    VALUES (:id, :position, :name, :codec, :bit_depth, :bitrate_kbps)
+"#
+);
+
+sqlive_compose::write!(DeleteFilenameTokens, r#"DELETE FROM save_filename_token"#);
+
+sqlive_compose::write!(
+    InsertFilenameToken(position: i64, value: Option<&'static str>, text: Option<&'p str>),
+    r#"INSERT INTO save_filename_token (position, value, text) VALUES (:position, :value, :text)"#
+);
+
+sqlive_compose::write!(DeleteFolderTokens, r#"DELETE FROM save_folder_token"#);
+
+sqlive_compose::write!(
+    InsertFolderToken(position: i64, value: Option<&'static str>, text: Option<&'p str>),
+    r#"INSERT INTO save_folder_token (position, value, text) VALUES (:position, :value, :text)"#
+);
+
+// Every column of the `preferences` row.
+sqlive_compose::write!(
+    UpdatePreferences(
+        discogs_key: Option<&'static str>,
+        replay_gain_mode: &'static str,
+        last_save_preset: &'p str,
+        save_embed_cover: bool,
+        save_cover_file: bool,
+        save_loudness_tags: bool,
+        pause_between_sides: bool,
+        side_pause_countdown_seconds: Option<i64>,
+        max_concurrent_uploads: u32,
+        max_concurrent_downloads: u32,
+        show_remaining_time: bool,
+        library_full_width: bool,
+        ask_before_unpinning: bool,
+        import_destination: &'static str,
+        identify_automatically: bool,
+        import_when_identified: bool,
+        ask_musicbrainz: bool,
+        ask_discogs: bool,
+        cast_enabled: bool,
+        cast_transcode_format: &'static str,
+        mcp_enabled: bool,
+        mcp_port: u16,
+        subsonic_enabled: bool,
+        subsonic_port: u32,
+        subsonic_username: &'p str,
+        subsonic_network: &'static str,
+        subsonic_network_interface: Option<&'p str>,
+    ),
+    r#"
+    UPDATE preferences
+    SET discogs_key = :discogs_key, replay_gain_mode = :replay_gain_mode,
+        last_save_preset = :last_save_preset, save_embed_cover = :save_embed_cover,
+        save_cover_file = :save_cover_file, save_loudness_tags = :save_loudness_tags,
+        pause_between_sides = :pause_between_sides,
+        side_pause_countdown_seconds = :side_pause_countdown_seconds,
+        max_concurrent_uploads = :max_concurrent_uploads,
+        max_concurrent_downloads = :max_concurrent_downloads,
+        show_remaining_time = :show_remaining_time, library_full_width = :library_full_width,
+        ask_before_unpinning = :ask_before_unpinning, import_destination = :import_destination,
+        identify_automatically = :identify_automatically,
+        import_when_identified = :import_when_identified, ask_musicbrainz = :ask_musicbrainz,
+        ask_discogs = :ask_discogs, cast_enabled = :cast_enabled,
+        cast_transcode_format = :cast_transcode_format, mcp_enabled = :mcp_enabled,
+        mcp_port = :mcp_port, subsonic_enabled = :subsonic_enabled,
+        subsonic_port = :subsonic_port, subsonic_username = :subsonic_username,
+        subsonic_network = :subsonic_network,
+        subsonic_network_interface = :subsonic_network_interface
 "#
 );
 
@@ -424,7 +507,7 @@ fn write_preferences_on(
         return Ok(());
     }
     if edited.save_presets != stored.save_presets {
-        sql.execute("DELETE FROM save_preset", [])?;
+        sql.run(&DeleteSavePresetsParams {})?;
         for (position, preset) in edited.save_presets.iter().enumerate() {
             let (codec, bit_depth, bitrate_kbps) = match preset.codec {
                 SaveCodec::Flac { bit_depth } => ("flac", Some(bit_depth_column(bit_depth)), None),
@@ -434,11 +517,14 @@ fn write_preferences_on(
                 SaveCodec::Aac { bitrate_kbps } => ("aac", None, Some(bitrate_kbps)),
                 SaveCodec::OpusOgg { bitrate_kbps } => ("opus_ogg", None, Some(bitrate_kbps)),
             };
-            sql.execute(
-                "INSERT INTO save_preset (id, position, name, codec, bit_depth, bitrate_kbps) \
-                 VALUES (?, ?, ?, ?, ?, ?)",
-                params![preset.id, position as i64, preset.name, codec, bit_depth, bitrate_kbps,],
-            )?;
+            sql.run(&InsertSavePresetParams {
+                id: &preset.id,
+                position: position as i64,
+                name: &preset.name,
+                codec,
+                bit_depth,
+                bitrate_kbps,
+            })?;
         }
     }
     if edited.save_filename_pattern != stored.save_filename_pattern {
@@ -469,83 +555,92 @@ fn write_preferences_on(
         mcp,
         subsonic,
     } = edited;
-    sql.execute(
-        "UPDATE preferences SET discogs_key = ?, replay_gain_mode = ?, \
-             last_save_preset = ?, save_embed_cover = ?, save_cover_file = ?, \
-             save_loudness_tags = ?, \
-             pause_between_sides = ?, side_pause_countdown_seconds = ?, \
-             max_concurrent_uploads = ?, max_concurrent_downloads = ?, \
-             show_remaining_time = ?, library_full_width = ?, \
-             ask_before_unpinning = ?, \
-             import_destination = ?, identify_automatically = ?, \
-             import_when_identified = ?, ask_musicbrainz = ?, ask_discogs = ?, \
-             cast_enabled = ?, cast_transcode_format = ?, mcp_enabled = ?, mcp_port = ?, \
-             subsonic_enabled = ?, subsonic_port = ?, subsonic_username = ?, \
-             subsonic_network = ?, subsonic_network_interface = ?",
-        params![
-            discogs.map(|state| match state {
-                DiscogsValidation::Unvalidated => "unvalidated",
-                DiscogsValidation::Valid => "valid",
-                DiscogsValidation::Rejected => "rejected",
-            }),
-            match replay_gain_mode {
-                ReplayGainMode::Off => "off",
-                ReplayGainMode::Track => "track",
-                ReplayGainMode::Album => "album",
-            },
-            last_save_preset,
-            save_extras.embed_cover,
-            save_extras.cover_file,
-            save_extras.loudness_tags,
-            pause_between_sides,
-            side_pause_countdown.duration().map(|duration| duration.as_secs() as i64),
-            max_concurrent_uploads.get(),
-            max_concurrent_downloads.get(),
-            show_remaining_time,
-            library_full_width,
-            ask_before_unpinning,
-            match import_destination {
-                ImportDestination::ThisDevice => "this_device",
-                ImportDestination::Cloud => "cloud",
-            },
-            identification.automatic,
-            identification.import_when_identified,
-            identification.catalogs.musicbrainz,
-            identification.catalogs.discogs,
-            cast_enabled,
-            match cast_transcode_format {
-                CastTranscodeFormat::Mp3 => "mp3",
-                CastTranscodeFormat::Wav => "wav",
-            },
-            mcp.enabled,
-            mcp.port,
-            subsonic.enabled,
-            subsonic.port,
-            subsonic.username,
-            match &subsonic.network {
-                SubsonicNetwork::ThisMachine => "this_machine",
-                SubsonicNetwork::Interface(_) => "interface",
-                SubsonicNetwork::Every => "every",
-            },
-            match &subsonic.network {
-                SubsonicNetwork::Interface(interface) => Some(interface.as_str()),
-                SubsonicNetwork::ThisMachine | SubsonicNetwork::Every => None,
-            },
-        ],
-    )?;
+    sql.run(&UpdatePreferencesParams {
+        discogs_key: discogs.map(|state| match state {
+            DiscogsValidation::Unvalidated => "unvalidated",
+            DiscogsValidation::Valid => "valid",
+            DiscogsValidation::Rejected => "rejected",
+        }),
+        replay_gain_mode: match replay_gain_mode {
+            ReplayGainMode::Off => "off",
+            ReplayGainMode::Track => "track",
+            ReplayGainMode::Album => "album",
+        },
+        last_save_preset,
+        save_embed_cover: save_extras.embed_cover,
+        save_cover_file: save_extras.cover_file,
+        save_loudness_tags: save_extras.loudness_tags,
+        pause_between_sides: *pause_between_sides,
+        side_pause_countdown_seconds: side_pause_countdown
+            .duration()
+            .map(|duration| duration.as_secs() as i64),
+        max_concurrent_uploads: max_concurrent_uploads.get(),
+        max_concurrent_downloads: max_concurrent_downloads.get(),
+        show_remaining_time: *show_remaining_time,
+        library_full_width: *library_full_width,
+        ask_before_unpinning: *ask_before_unpinning,
+        import_destination: match import_destination {
+            ImportDestination::ThisDevice => "this_device",
+            ImportDestination::Cloud => "cloud",
+        },
+        identify_automatically: identification.automatic,
+        import_when_identified: identification.import_when_identified,
+        ask_musicbrainz: identification.catalogs.musicbrainz,
+        ask_discogs: identification.catalogs.discogs,
+        cast_enabled: *cast_enabled,
+        cast_transcode_format: match cast_transcode_format {
+            CastTranscodeFormat::Mp3 => "mp3",
+            CastTranscodeFormat::Wav => "wav",
+        },
+        mcp_enabled: mcp.enabled,
+        mcp_port: mcp.port,
+        subsonic_enabled: subsonic.enabled,
+        subsonic_port: subsonic.port,
+        subsonic_username: &subsonic.username,
+        subsonic_network: match &subsonic.network {
+            SubsonicNetwork::ThisMachine => "this_machine",
+            SubsonicNetwork::Interface(_) => "interface",
+            SubsonicNetwork::Every => "every",
+        },
+        subsonic_network_interface: match &subsonic.network {
+            SubsonicNetwork::Interface(interface) => Some(interface.as_str()),
+            SubsonicNetwork::ThisMachine | SubsonicNetwork::Every => None,
+        },
+    })?;
     Ok(())
 }
 
-/// A value a name pattern holds, and the table its pattern's pieces are
-/// rows of.
+/// A value a name pattern holds, with the writes of the table its pattern's
+/// pieces are rows of.
 trait PatternValue: Copy {
-    const TABLE: &'static str;
+    /// Delete every piece of the stored pattern.
+    fn delete_pieces(sql: &CovenWrite<'_>) -> rusqlite::Result<()>;
+    /// Store one piece, a value or a text, at `position`.
+    fn insert_piece(
+        sql: &CovenWrite<'_>,
+        position: i64,
+        value: Option<&'static str>,
+        text: Option<&str>,
+    ) -> rusqlite::Result<()>;
     fn from_column(column: &str) -> Option<Self>;
     fn column(self) -> &'static str;
 }
 
 impl PatternValue for SaveFilenameValue {
-    const TABLE: &'static str = "save_filename_token";
+    fn delete_pieces(sql: &CovenWrite<'_>) -> rusqlite::Result<()> {
+        sql.run(&DeleteFilenameTokensParams {})?;
+        Ok(())
+    }
+
+    fn insert_piece(
+        sql: &CovenWrite<'_>,
+        position: i64,
+        value: Option<&'static str>,
+        text: Option<&str>,
+    ) -> rusqlite::Result<()> {
+        sql.run(&InsertFilenameTokenParams { position, value, text })?;
+        Ok(())
+    }
 
     fn from_column(column: &str) -> Option<Self> {
         Some(match column {
@@ -576,7 +671,20 @@ impl PatternValue for SaveFilenameValue {
 }
 
 impl PatternValue for SaveFolderValue {
-    const TABLE: &'static str = "save_folder_token";
+    fn delete_pieces(sql: &CovenWrite<'_>) -> rusqlite::Result<()> {
+        sql.run(&DeleteFolderTokensParams {})?;
+        Ok(())
+    }
+
+    fn insert_piece(
+        sql: &CovenWrite<'_>,
+        position: i64,
+        value: Option<&'static str>,
+        text: Option<&str>,
+    ) -> rusqlite::Result<()> {
+        sql.run(&InsertFolderTokenParams { position, value, text })?;
+        Ok(())
+    }
 
     fn from_column(column: &str) -> Option<Self> {
         Some(match column {
@@ -626,16 +734,13 @@ fn write_pattern<Value: PatternValue>(
     sql: &CovenWrite<'_>,
     pattern: &NamePattern<Value>,
 ) -> rusqlite::Result<()> {
-    sql.execute(&format!("DELETE FROM {}", Value::TABLE), [])?;
+    Value::delete_pieces(sql)?;
     for (position, piece) in pattern.pieces().iter().enumerate() {
         let (value, text) = match piece {
             NamePiece::Value(value) => (Some(value.column()), None),
             NamePiece::Text(text) => (None, Some(text.as_str())),
         };
-        sql.execute(
-            &format!("INSERT INTO {} (position, value, text) VALUES (?, ?, ?)", Value::TABLE),
-            params![position as i64, value, text],
-        )?;
+        Value::insert_piece(sql, position as i64, value, text)?;
     }
     Ok(())
 }
