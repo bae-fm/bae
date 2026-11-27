@@ -1,5 +1,4 @@
 use super::*;
-use bae_store::file_version_sql;
 
 /// Why an image's replacement was refused. Nothing of it landed.
 #[derive(Debug, thiserror::Error)]
@@ -379,25 +378,77 @@ const AUDIO_AND_SHEET_ORIGINALS: &str = concat!(
      ORDER BY f.original_filename COLLATE natural_order, f.id"
 );
 
+// Each cover's version, by the release it is the cover of: the version of its
+// browse copy.
+sqlive_compose::fragment!(
+    CoverVersion { version: Option<String> },
+    r#"
+    SELECT cover.id,
+           (SELECT stored.version
+            FROM @bae_store::file_version::StoredFileVersion AS stored
+            WHERE stored.file = cover.browse_file) AS version
+    FROM covers AS cover
+"#
+);
+
+// Every cover's version, whose SQL a statement built as text holds.
+sqlive_compose::read!(
+    CoverVersions,
+    r#"
+    SELECT cover.*
+    FROM @crate::records::files::CoverVersion AS cover
+"#
+);
+
+// Each artist image's version, by the artist it is the image of.
+sqlive_compose::fragment!(
+    ArtistImageVersion { version: Option<String> },
+    r#"
+    SELECT image.id,
+           (SELECT stored.version
+            FROM @bae_store::file_version::StoredFileVersion AS stored
+            WHERE stored.file = image.file) AS version
+    FROM artist_images AS image
+"#
+);
+
+// Every artist image's version, whose SQL a statement built as text holds.
+sqlive_compose::read!(
+    ArtistImageVersions,
+    r#"
+    SELECT image.*
+    FROM @crate::records::files::ArtistImageVersion AS image
+"#
+);
+
 /// The version of the cover of the release `release_id` (a SQL expression),
 /// found by the covers' key; NULL when the release has no cover.
 pub fn cover_version_sql(release_id: &str) -> String {
-    format!(
-        "(SELECT {version} FROM {table} AS cover WHERE cover.id = {release_id})",
-        table = image_table(&LibraryImageType::Cover),
-        version = file_version_sql("cover.browse_file")
-    )
+    image_version_sql(&LibraryImageType::Cover, release_id)
 }
 
 /// The version of the image of the artist `artist_id` (a SQL expression),
 /// found by the artist images' key; NULL when the artist has no image.
 pub fn artist_image_version_sql(artist_id: &str) -> String {
+    image_version_sql(&LibraryImageType::Artist, artist_id)
+}
+
+/// The version of the image of `image_type` keyed by `id` (a SQL
+/// expression), as a statement built as text holds it.
+fn image_version_sql(image_type: &LibraryImageType, id: &str) -> String {
     format!(
-        "(SELECT {version} FROM {table} AS artist_image \
-          WHERE artist_image.id = {artist_id})",
-        table = image_table(&LibraryImageType::Artist),
-        version = file_version_sql("artist_image.file")
+        "(SELECT image_version.version FROM ({versions}) AS image_version \
+          WHERE image_version.id = {id})",
+        versions = image_versions(image_type),
     )
+}
+
+/// The statement that reads every version of the images of `image_type`.
+fn image_versions(image_type: &LibraryImageType) -> &'static str {
+    match image_type {
+        LibraryImageType::Cover => CoverVersions::SQL,
+        LibraryImageType::Artist => ArtistImageVersions::SQL,
+    }
 }
 
 /// The version of one image row, or `None` when there is no such row.
@@ -406,12 +457,12 @@ pub(super) fn image_version_on<Q: coven::SqlRead>(
     image_type: &LibraryImageType,
     id: &str,
 ) -> Result<Option<String>, DbError> {
-    let table = image_table(image_type);
     Ok(sql
         .query_row(
             &format!(
-                "SELECT {version} FROM {table} AS image WHERE image.id = ?",
-                version = file_version_sql(&format!("image.{}", image_file_column(image_type)))
+                "SELECT image_version.version FROM ({versions}) AS image_version \
+                 WHERE image_version.id = ?",
+                versions = image_versions(image_type),
             ),
             params![id],
             |row| row.get::<_, String>(0),

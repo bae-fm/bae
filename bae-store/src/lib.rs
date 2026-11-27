@@ -17,7 +17,7 @@ mod file_budget;
 pub use file_budget::lease_one;
 mod file_stream;
 pub use file_stream::{BlockingFileReader, FileStream};
-mod file_version;
+pub mod file_version;
 pub use file_version::file_version_sql;
 pub mod list_windows;
 pub use list_windows::{ListPage, ListWindow, SortDirection, WindowRead};

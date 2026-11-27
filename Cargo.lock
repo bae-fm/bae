@@ -1325,6 +1325,7 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-app-dir",
  "bae-desktop-cfg",
+ "bae-fragments-build",
  "bae-schema-manifest",
  "bae-util",
  "coven",
