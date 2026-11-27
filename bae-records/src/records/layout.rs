@@ -9,6 +9,7 @@
 //! editor's draft, which shows the rows laid out, and the save, which writes
 //! them, never disagree, and an import draft moves a sheet the same way.
 
+use super::read::rows_of;
 use super::*;
 use bae_store::statement_row;
 use bae_types::mediums::{ReleaseMedium, TrackPlace};
@@ -223,11 +224,6 @@ struct HonoredJson {
     sheet_file_id: String,
     medium: i64,
     side: i64,
-}
-
-/// The rows the JSON array `json`, which holds `what`, has.
-fn rows_of<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
-    serde_json::from_str(json).map_err(|error| DbError::unreadable_json(what, json, error))
 }
 
 /// The layout whose mediums and tracks a layout read wrote as the JSON arrays

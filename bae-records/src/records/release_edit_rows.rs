@@ -6,7 +6,7 @@
 //! rows changed.
 
 use super::editor_tracks::StoredEditorTrack;
-use super::read::{file_of, FileColumns};
+use super::read::{file_of, rows_of, FileColumns};
 use super::release_records::RecordsTargetAlbum;
 use super::sheet_files::{DbCarvedTrack, DbReleaseAudio};
 use super::*;
@@ -305,14 +305,6 @@ struct SegmentRowJson {
     start_byte: Option<u64>,
     end_byte: Option<u64>,
     created_at: String,
-}
-
-/// The rows the JSON array `json`, which holds `what`, has.
-pub(super) fn rows_of<T: serde::de::DeserializeOwned>(
-    json: &str,
-    what: &str,
-) -> Result<Vec<T>, DbError> {
-    serde_json::from_str(json).map_err(|error| DbError::unreadable_json(what, json, error))
 }
 
 /// When the row holding `what` was made, which its column states as `text`.

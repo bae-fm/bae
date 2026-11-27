@@ -246,6 +246,14 @@ sqlive_compose::read!(
 "#
 );
 
+/// The rows the JSON array `json`, which holds `what`, has.
+pub(super) fn rows_of<T: serde::de::DeserializeOwned>(
+    json: &str,
+    what: &str,
+) -> Result<Vec<T>, DbError> {
+    serde_json::from_str(json).map_err(|error| DbError::unreadable_json(what, json, error))
+}
+
 /// The release's records as the document `json` of
 /// [`crate::records::fragments::ReleaseRecords`] holds them.
 pub fn records_of_json(json: &str) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {

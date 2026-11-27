@@ -171,8 +171,8 @@ pub fn sheet_track_changes_on(
     let statement = OneSheetChangesParams { release: release_id.to_string(), edits: edits.json()? };
     let changes = statement_row(sql, &statement)?.changes;
     track_changes_of(
-        &super::release_edit_rows::rows_of(&changes.dropped, "the tracks a save deletes")?,
-        &super::release_edit_rows::rows_of(&changes.added, "the files a save adds tracks for")?,
+        &super::read::rows_of(&changes.dropped, "the tracks a save deletes")?,
+        &super::read::rows_of(&changes.added, "the files a save adds tracks for")?,
         changes.first_medium.as_deref(),
         edits,
     )
