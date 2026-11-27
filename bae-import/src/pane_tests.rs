@@ -27,6 +27,11 @@ fn draft(tracks: usize) -> CandidateDraft {
     blank_candidate_draft(&files)
 }
 
+/// The audio units `draft`'s tracks play, which are all of its folder's.
+fn units(draft: &CandidateDraft) -> Vec<crate::AudioFile> {
+    draft.tracks.iter().map(|track| track.edit.file.clone()).collect()
+}
+
 /// A reading of tracks at `places` on `mediums`.
 fn metadata(
     mediums: Vec<bae_types::mediums::ReleaseMedium>,
@@ -73,6 +78,7 @@ fn metadata_splits_one_draft_disc_into_sides() {
     };
     let laid = values_over_audio(
         metadata(vec![record], &[place(1, 1, 1), place(1, 1, 2), place(1, 2, 1), place(1, 2, 2)]),
+        units(&current),
         &current,
     )
     .unwrap();
@@ -88,7 +94,7 @@ fn metadata_merges_two_draft_discs_into_one() {
     current.mediums.push(bae_types::mediums::ReleaseMedium::one_sided(None));
     current.tracks[2].place = place(2, 1, 1);
     current.tracks[3].place = place(2, 1, 2);
-    let laid = values_over_audio(one_disc(4), &current).unwrap();
+    let laid = values_over_audio(one_disc(4), units(&current), &current).unwrap();
     assert_eq!(laid.mediums.len(), 1);
     assert_eq!(laid.tracks[3].place, place(1, 1, 4));
 }
@@ -99,10 +105,28 @@ fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
     let mut current = draft(2);
     current.tracks[0].edit.id = "kept-first".into();
     current.tracks[1].edit.id = "kept-second".into();
-    let laid = values_over_audio(one_disc(2), &current).unwrap();
+    let laid = values_over_audio(one_disc(2), units(&current), &current).unwrap();
     assert_eq!(
         laid.tracks.iter().map(|track| track.edit.id.as_str()).collect::<Vec<_>>(),
         ["kept-first", "kept-second"],
+    );
+}
+
+/// A source laid over a draft that left audio out takes every unit again: a
+/// unit the draft played keeps its row's identity, and the one it left out
+/// takes an identity no other row has.
+#[test]
+fn metadata_over_a_draft_that_left_audio_out_gives_every_row_its_own_identity() {
+    let all = draft(3);
+    let mut current = all.clone();
+    // The draft plays the first and the third unit, and the third has the
+    // identity the second would be read under.
+    current.tracks.remove(1);
+    current.tracks[1].edit.id = candidate_track_id(1);
+    let laid = values_over_audio(one_disc(3), units(&all), &current).unwrap();
+    assert_eq!(
+        laid.tracks.iter().map(|track| track.edit.id.clone()).collect::<Vec<_>>(),
+        [candidate_track_id(0), candidate_track_id(2), candidate_track_id(1)],
     );
 }
 
@@ -112,14 +136,54 @@ fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
 fn metadata_with_a_different_track_count_is_refused() {
     let current = draft(3);
     assert!(matches!(
-        values_over_audio(one_disc(2), &current),
+        values_over_audio(one_disc(2), units(&current), &current),
         Err(ImportError::MetadataTrackCount { folder_tracks: 3, release_tracks: 2 })
     ));
 }
 
-/// A sheet the files put on a side the draft holds moves there by the
-/// library's layout statement: after the tracks on that side, numbered on
-/// from the highest, and the disc it left goes.
+/// Loose files `0.flac` to `count - 1`.flac, as a folder's scan holds them.
+fn loose_files(count: usize) -> CategorizedFiles {
+    CategorizedFiles {
+        files: (0..count)
+            .map(|index| {
+                let name = format!("{index}.flac");
+                CandidateFile {
+                    file: ScannedFile::new(name.clone().into(), name, 100, 1)
+                        .with_test_flac_audio(),
+                    role: FileRole::Audio,
+                }
+            })
+            .collect(),
+        parts: Vec::new(),
+    }
+}
+
+/// A file decision adds no disc: audio it gains where the folder's layout
+/// puts it on a disc the draft's source lacks is left out, and so is audio
+/// the draft had left out already.
+#[test]
+fn a_file_decision_leaves_out_audio_that_lands_on_no_disc_of_the_draft() {
+    let before = loose_files(3);
+    let after = loose_files(5);
+    let mut current = blank_candidate_draft(&before);
+    current.tracks.remove(1);
+    let mut initialized = blank_candidate_draft(&after);
+    initialized.mediums.push(bae_types::mediums::ReleaseMedium::one_sided(None));
+    initialized.tracks[4].place = place(2, 1, 1);
+
+    let redrawn =
+        redraw_draft_for_files(&before, &after, initialized, &current, None, &coven::UuidIds);
+
+    assert_eq!(redrawn.draft.mediums, current.mediums);
+    assert_eq!(
+        redrawn.draft.tracks.iter().map(|track| track.edit.file.file_id()).collect::<Vec<_>>(),
+        ["0.flac", "2.flac", "3.flac"],
+    );
+}
+
+/// A sheet put on a side the draft holds moves there by the library's layout
+/// statement: after the tracks on that side, numbered on from the highest,
+/// and the disc it left stays with no track.
 #[tokio::test]
 async fn a_sheet_moves_onto_a_side_the_draft_holds_by_the_library_rule() {
     let (db, _folder) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
@@ -148,7 +212,7 @@ async fn a_sheet_moves_onto_a_side_the_draft_holds_by_the_library_rule() {
     };
     let layout = tables.lay_out_sheet_moves(&redrawn).await.unwrap();
     let laid = redrawn.laid_out(layout).unwrap();
-    assert_eq!(laid.mediums, [record]);
+    assert_eq!(laid.mediums, [record, bae_types::mediums::ReleaseMedium::one_sided(None)]);
     assert_eq!(
         laid.tracks.iter().map(|track| track.place).collect::<Vec<_>>(),
         [place(1, 1, 1), place(1, 2, 1), place(1, 2, 2), place(1, 2, 3)]

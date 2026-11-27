@@ -1,4 +1,4 @@
-//! Moving an import draft's CUE sheets onto the sides the files put them on,
+//! Moving an import draft's CUE sheet onto the side the person put it on,
 //! by the library's layout statement, so that the import pane and the
 //! release editor move a sheet's tracks by one rule.
 

@@ -302,6 +302,9 @@ pub(crate) struct ImportRows<'a> {
     pub audio_segments: &'a [DbAudioSegment],
     pub scrub_points: &'a [DbScrubPoints],
     pub records: &'a [bae_catalogs::records::ReleaseRecord],
+    /// The folder's audio the release leaves out, by path, which it has no
+    /// file of.
+    pub left_out_audio: &'a [String],
 }
 
 /// The sheet that carves each carved track of an import, each sheet named by
@@ -433,6 +436,7 @@ impl ImportTables {
             .map(|prepared| (prepared.row, (prepared.original, prepared.place)))
             .unzip();
         let records = rows.records.to_vec();
+        let left_out_audio = rows.left_out_audio.to_vec();
         let ImportCommitGuard::Candidate { expectation, .. } = &guard;
         let content_hash = expectation.candidate.content_hash.clone();
         let now_dt = self.store.now_utc();
@@ -603,7 +607,12 @@ impl ImportTables {
                         .iter()
                         .map(|row| (row.original_filename.as_str(), row.id.as_str()))
                         .collect();
-                    crate::tables::release_sheet_decisions::store_on(tx, &decided, &file_ids)?;
+                    crate::tables::release_sheet_decisions::store_on(
+                        tx,
+                        &decided,
+                        &file_ids,
+                        &left_out_audio,
+                    )?;
                     // What the import worked out and showed about the sheets
                     // that carve its tracks, which the release editor reads.
                     carving.store_on(tx, &file_ids)?;

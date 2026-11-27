@@ -230,7 +230,12 @@ async fn lead_metadata(
     };
     let source_draft = reading
         .and_then(|values| {
-            crate::pane::external_candidate_draft(values, &current.metadata.draft, pressing_year)
+            crate::pane::external_candidate_draft(
+                values,
+                crate::audio_layout::audio_units(&candidate.files),
+                &current.metadata.draft,
+                pressing_year,
+            )
         })
         .map_err(|error| {
             tracing::error!(

@@ -55,7 +55,7 @@ impl FileMetadataSeed {
     ) -> Result<Self, ImportError> {
         let mut draft = crate::pane::file_metadata_draft(candidate, &snapshot)?;
         if let Some(keeping) = keeping {
-            crate::pane::keep_row_identities(&mut draft.tracks, keeping)?;
+            crate::pane::keep_row_identities(&mut draft.tracks, keeping);
         }
         let cover = crate::cover_art::file_tags_cover(
             crate::cover_art::embedded_cover_selection(&snapshot),

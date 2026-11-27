@@ -295,9 +295,9 @@ async fn test_multi_disc_cue_ape_remote() {
 
 /// The release editor puts a CUE sheet on another disc of the release: the
 /// draft shows the sheet's tracks under that disc at once, after the tracks
-/// the disc holds, and saving writes the move: the medium the sheet left is
-/// gone, the moved tracks number on from the disc's own, and the sheet is the
-/// disc its tracks are on.
+/// the disc holds, and saving writes the move: the medium the sheet left
+/// stays with no track, the moved tracks number on from the disc's own, and
+/// the sheet is the disc its tracks are on.
 #[tokio::test]
 async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
     let (library, _temp_root, release_id) =
@@ -355,11 +355,12 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
     manager.save_release_edit(moved, bae_library::GonePick::Refuse).await.expect("save the form");
 
     let mediums = library.records().get_release_mediums(&release_id).await.unwrap();
-    assert_eq!(mediums.len(), 1, "the disc the sheet left is gone");
+    assert_eq!(mediums.len(), 2, "the disc the sheet left stays");
     let tracks = library.records().get_tracks_for_release(&release_id).await.unwrap();
     let places: Vec<_> =
         tracks.iter().map(|track| (track.side.get(), track.track_number.get())).collect();
     assert_eq!(places, [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)]);
+    assert!(tracks.iter().all(|track| track.medium_id == mediums[1].id));
     let reopened = manager.open_release_edit(&release_id).await.unwrap();
     let discs: Vec<_> = reopened
         .opened
@@ -368,5 +369,16 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
         .iter()
         .map(|track| track.sheet.as_ref().map(|sheet| sheet.place.side))
         .collect();
-    assert_eq!(discs, [Some(disc(1)); 6], "each sheet is on the side its tracks are on");
+    assert_eq!(discs, [Some(disc(2)); 6], "each sheet is on the side its tracks are on");
+    drafts.set(Some(reopened)).expect("the draft takes the reopened form");
+    let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
+    let sides = draft.sides.as_deref().expect("the release has tracks");
+    assert_eq!(
+        sides.iter().map(|side| (side.side.clone(), side.runs.len())).collect::<Vec<_>>(),
+        [
+            (bae_types::mediums::TrackSide::Disc { disc: 1 }, 0),
+            (bae_types::mediums::TrackSide::Disc { disc: 2 }, 2),
+        ],
+        "the editor heads the empty disc when it opens again"
+    );
 }

@@ -1,9 +1,11 @@
 //! Candidate drafts, their source initialization, and their table projection.
 //!
-//! A draft holds one track per audio unit of the folder, in the folder's
-//! order. Applying a source lays its reading's tracks over those units, and a
-//! change to the folder's files redraws them. The pane renders that draft; it
-//! does not replay edits over a provider tracklist.
+//! A draft holds its source's discs, and one track for each of the folder's
+//! audio units that lands on one of them, in the folder's order: a unit that
+//! lands on none is left out of the import. Applying a source lays its
+//! reading's tracks over the units, and a change to the folder's files redraws
+//! them. The pane renders that draft; it does not replay edits over a
+//! provider tracklist.
 
 use crate::folder_scanner::CategorizedFiles;
 use crate::types::{CandidateDraft, CandidateTrack, RawReleaseEdit, RawTrackEdit};
@@ -55,28 +57,28 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft 
     }
 }
 
-/// Lay a reading's tracks over the draft's audio: track `i` becomes what the
-/// audio of the draft's row `i` commits as, under that row's identity, with
-/// every value the reading holds. The discs and sides are the reading's,
-/// whatever the draft grouped the audio into: an LP ripped as one tagged disc
-/// takes the record's two sides, and a release that states one disc where the
-/// files were tagged two takes one.
+/// Lay a reading's tracks over the folder's audio `units`: track `i` becomes
+/// what unit `i` commits as, with every value the reading holds, under the
+/// identity of the draft's row that plays the unit. The discs and sides are
+/// the reading's, whatever the draft grouped the audio into: an LP ripped as
+/// one tagged disc takes the record's two sides, and a release that states one
+/// disc where the files were tagged two takes one.
 ///
 /// Refuses a reading of a different number of tracks than the folder has
 /// audio units.
 pub(crate) fn values_over_audio(
     values: ReleaseValues,
+    units: Vec<crate::AudioFile>,
     current: &CandidateDraft,
 ) -> Result<CandidateDraft, ImportError> {
-    if values.tracks.len() != current.tracks.len() {
+    if values.tracks.len() != units.len() {
         return Err(ImportError::MetadataTrackCount {
-            folder_tracks: track_count(current.tracks.len()),
+            folder_tracks: track_count(units.len()),
             release_tracks: track_count(values.tracks.len()),
         });
     }
-    let units = current.tracks.iter().map(|track| track.edit.file.clone()).collect();
     let mut draft = crate::reading_draft::candidate_draft(values, units);
-    keep_row_identities(&mut draft.tracks, &current.tracks)?;
+    keep_row_identities(&mut draft.tracks, &current.tracks);
     Ok(draft)
 }
 
@@ -172,127 +174,136 @@ fn track_count(tracks: usize) -> u32 {
     u32::try_from(tracks).expect("a tracklist's length fits u32")
 }
 
-/// Carry the draft's row identities onto tracks read afresh from the same
-/// audio units.
-pub(crate) fn keep_row_identities(
-    fresh: &mut [CandidateTrack],
-    current: &[CandidateTrack],
-) -> Result<(), ImportError> {
-    if fresh.len() != current.len() {
-        return Err(ImportError::Internal {
-            detail: format!("{} tracks were read for a draft of {}", fresh.len(), current.len()),
-        });
-    }
-    for (track, existing) in fresh.iter_mut().zip(current) {
-        if track.edit.file != existing.edit.file {
-            return Err(ImportError::Internal {
-                detail: format!(
-                    "draft track {} plays {:?}, not the {:?} read for it",
-                    existing.edit.id, existing.edit.file, track.edit.file
-                ),
-            });
+/// Carry the draft's row identities onto tracks read afresh: a track whose
+/// audio a row of `current` plays takes that row's identity, and any other
+/// takes one no row of `current` has.
+pub(crate) fn keep_row_identities(fresh: &mut [CandidateTrack], current: &[CandidateTrack]) {
+    let mut taken: std::collections::HashSet<String> =
+        current.iter().map(|track| track.edit.id.clone()).collect();
+    let mut unused = (0..).map(candidate_track_id);
+    for track in fresh {
+        match current.iter().find(|existing| existing.edit.file == track.edit.file) {
+            Some(existing) => track.edit.id.clone_from(&existing.edit.id),
+            None => {
+                if taken.contains(&track.edit.id) {
+                    track.edit.id = unused
+                        .find(|id| !taken.contains(id))
+                        .expect("the row identities never run out");
+                }
+                taken.insert(track.edit.id.clone());
+            }
         }
-        track.edit.id.clone_from(&existing.edit.id);
     }
-    Ok(())
 }
 
 /// The draft over the folder's new audio units, before the library's layout
-/// statement moves the CUE sheets the files now put on another side, and
-/// those moves.
+/// statement moves the tracks of the CUE sheet the person put on a side, and
+/// that move.
 pub(crate) struct RedrawnDraft {
     pub(crate) draft: CandidateDraft,
-    /// Each CUE sheet the files now put on another side the draft holds,
-    /// with that side.
+    /// The CUE sheet the person put on another side than some of its tracks
+    /// are on, with that side.
     pub(crate) sheet_moves: Vec<(String, bae_types::mediums::MediumSide)>,
 }
 
-/// The draft over the folder's new audio units: a unit the draft already
-/// had keeps its track, with every value it holds, and a new one takes the
-/// track `initialized` read for it, which no source states anything about.
-/// Metadata belongs to its audio identity, never to the position another
-/// file happens to occupy. The draft keeps only the works its tracks still
-/// perform.
+/// The draft over the folder's new audio units, on the draft's own mediums,
+/// which are its source's. A unit the draft already had keeps its track, with
+/// every value it holds, and its place: only `placed_sheet`, the CUE sheet
+/// the person just put on a side or took out, moves, by the library's layout
+/// statement. Metadata belongs to its audio identity, never to the position
+/// another file happens to occupy. The draft keeps only the works its tracks
+/// still perform.
 ///
-/// A new track takes the place the folder's layout gives it: the draft's
-/// medium at its disc's position, the draft gaining mediums of unstated
-/// carrier up to it when it holds fewer. A sheet the files now put on
-/// another side the draft's mediums hold is one of the redrawn draft's
-/// moves, which the library's layout statement makes; where the draft's medium
-/// has no such side, the sheet's retained slices take the place the
-/// folder's layout gives them.
+/// A unit the draft left out stays out, unless the person just put its sheet
+/// on a side. Such a unit, and one the decision gained, takes the track
+/// `initialized` read for it, which no source states anything about: on the
+/// side the person just put its sheet on, else on the side the draft has the
+/// sheet's other tracks on, else where the folder's layout, `initialized`'s,
+/// puts it. A unit whose side the draft's mediums lack is left out.
 pub(crate) fn redraw_draft_for_files(
     previous_files: &CategorizedFiles,
     files: &CategorizedFiles,
     initialized: CandidateDraft,
     draft: &CandidateDraft,
+    placed_sheet: Option<&str>,
     ids: &dyn coven::IdSource,
 ) -> RedrawnDraft {
     use bae_types::mediums::{MediumSide, TrackPlace};
-    let mut mediums = draft.mediums.clone();
-    let mut laid_out = |place: TrackPlace| {
-        while mediums.len() <= place.medium_index() {
-            mediums.push(bae_types::mediums::ReleaseMedium::one_sided(None));
-        }
-        place
-    };
-    let side_of = |files: &CategorizedFiles, sheet_id: &str| {
+    let side_of = |sheet_id: &str| {
         files
             .carving_sheets()
             .into_iter()
             .find(|sheet| sheet.file.relative_path == sheet_id)
             .and_then(|sheet| sheet.place.side())
     };
-    // Whether the draft's mediums hold the side.
-    let held = |side: MediumSide| {
-        usize::try_from(side.medium)
-            .ok()
-            .and_then(|medium| draft.mediums.get(medium.checked_sub(1)?))
-            .is_some_and(|held| side.side >= 1 && side.side <= u32::from(held.sides.get()))
+    // The place on `side` of a track numbered `number`, where the draft's
+    // mediums have that side.
+    let on_side = |side: MediumSide, number: std::num::NonZeroU32| {
+        let medium = std::num::NonZeroU16::new(u16::try_from(side.medium).ok()?)?;
+        let held = draft.mediums.get(usize::from(medium.get()) - 1)?;
+        let side = std::num::NonZeroU8::new(u8::try_from(side.side).ok()?)?;
+        (side <= held.sides).then_some(TrackPlace { medium, side, number })
     };
+    let previous_units = crate::audio_layout::audio_units(previous_files);
     let mut sheet_moves: Vec<(String, MediumSide)> = Vec::new();
     let tracks: Vec<CandidateTrack> = initialized
         .tracks
         .into_iter()
-        .map(|fresh| {
+        .filter_map(|fresh| {
             let audio = &fresh.edit.file;
+            let sheet_id = match audio {
+                crate::AudioFile::SheetSlice { sheet_id, .. } => Some(sheet_id.as_str()),
+                crate::AudioFile::Standalone { .. } => None,
+            };
+            let placed = sheet_id.is_some() && sheet_id == placed_sheet;
             if let Some(existing) = draft.tracks.iter().find(|track| &track.edit.file == audio) {
-                let mut retained = existing.clone();
-                if let crate::AudioFile::SheetSlice { sheet_id, .. } = audio {
-                    let side = side_of(files, sheet_id);
-                    if side_of(previous_files, sheet_id) != side {
-                        match side.filter(|side| held(*side)) {
-                            Some(side) => {
-                                if sheet_moves.iter().all(|(moved, _)| moved != sheet_id) {
-                                    sheet_moves.push((sheet_id.clone(), side));
-                                }
-                            }
-                            None => retained.place = laid_out(fresh.place),
+                if let Some(sheet_id) = sheet_id.filter(|_| placed) {
+                    let side = side_of(sheet_id)
+                        .filter(|side| on_side(*side, existing.place.number).is_some());
+                    if let Some(side) = side {
+                        if sheet_moves.iter().all(|(moved, _)| moved != sheet_id) {
+                            sheet_moves.push((sheet_id.to_string(), side));
                         }
                     }
                 }
-                return retained;
+                return Some(existing.clone());
             }
+            if !placed && previous_units.contains(audio) {
+                return None;
+            }
+            let number = fresh.place.number;
+            let folders_side = MediumSide {
+                medium: u32::from(fresh.place.medium.get()),
+                side: u32::from(fresh.place.side.get()),
+            };
+            let place = match sheet_id {
+                Some(sheet_id) if placed => {
+                    side_of(sheet_id).and_then(|side| on_side(side, number))
+                }
+                Some(sheet_id) => match draft.first_sheet_track(sheet_id) {
+                    Some(drawn) => Some(TrackPlace { number, ..drawn.place }),
+                    None => on_side(folders_side, number),
+                },
+                None => on_side(folders_side, number),
+            }?;
             let mut edit = fresh.edit;
             edit.id = ids.new_id().to_string();
-            CandidateTrack::unsourced(edit, laid_out(fresh.place))
+            Some(CandidateTrack::unsourced(edit, place))
         })
         .collect();
-    RedrawnDraft { draft: CandidateDraft { mediums, ..draft.with_tracks(tracks) }, sheet_moves }
+    RedrawnDraft { draft: draft.with_tracks(tracks), sheet_moves }
 }
 
 impl RedrawnDraft {
     /// The draft with its tracks at the places `layout`, the library's
-    /// layout statement over the draft and its sheet moves, gives them, and
-    /// only the mediums a track sits on. A layout that misses a track of the
-    /// draft is refused.
+    /// layout statement over the draft and its sheet moves, gives them. A
+    /// layout that misses a track of the draft is refused.
     pub(crate) fn laid_out(
         self,
         layout: bae_records::records::layout::ReleaseLayout,
     ) -> Result<CandidateDraft, ImportError> {
-        let mediums = layout.mediums;
-        let mut tracks = self.draft.tracks.clone();
-        for track in &mut tracks {
+        let mut draft = self.draft;
+        for track in &mut draft.tracks {
             let laid = layout.tracks.iter().find(|laid| laid.track_id == track.edit.id);
             let Some(laid) = laid else {
                 return Err(ImportError::Internal {
@@ -301,29 +312,8 @@ impl RedrawnDraft {
             };
             track.place = laid.place;
         }
-        let (mediums, tracks) = without_empty_mediums(mediums, tracks);
-        Ok(CandidateDraft { mediums, ..self.draft.with_tracks(tracks) })
+        Ok(draft)
     }
-}
-
-/// `mediums` with only the ones a track of `tracks` sits on, in order, and
-/// the tracks placed on them: a medium the folder's audio no longer reaches
-/// is not one of the release's.
-fn without_empty_mediums(
-    mediums: Vec<bae_types::mediums::ReleaseMedium>,
-    mut tracks: Vec<CandidateTrack>,
-) -> (Vec<bae_types::mediums::ReleaseMedium>, Vec<CandidateTrack>) {
-    let used: std::collections::BTreeSet<usize> =
-        tracks.iter().map(|track| track.place.medium_index()).collect();
-    let kept: Vec<usize> = used.into_iter().collect();
-    for track in &mut tracks {
-        let index = kept
-            .iter()
-            .position(|kept| *kept == track.place.medium_index())
-            .expect("every track's medium is kept");
-        track.place.medium = bae_types::mediums::medium_position(index);
-    }
-    (kept.into_iter().map(|index| mediums[index]).collect(), tracks)
 }
 
 /// The draft a folder's stored file-tag reading makes, one track per audio
@@ -347,20 +337,21 @@ pub(crate) fn file_metadata_draft(
 }
 
 /// The candidate draft a release's reading writes, keeping each current
-/// track on its file. A reading of tracks lays every value it states over
-/// the folder's audio; a release that lists none leaves the draft's tracks
-/// as they are. Where the release states no year, the pressing's is
+/// row's identity on its file. A reading of tracks lays every value it states
+/// over the folder's audio `units`; a release that lists none leaves the
+/// draft's tracks as they are. Where the release states no year, the pressing's is
 /// `pressing_year`, the folder's — see
 /// `identify::row_facts::folder_pressing_year`.
 pub(crate) fn external_candidate_draft(
     values: bae_catalogs::release_values::ReleaseValues,
+    units: Vec<crate::AudioFile>,
     current: &crate::CandidateDraft,
     pressing_year: Option<i32>,
 ) -> Result<crate::CandidateDraft, crate::ImportError> {
     let mut draft = if values.tracks.is_empty() {
         album_over_draft(values, current)
     } else {
-        values_over_audio(values, current)?
+        values_over_audio(values, units, current)?
     };
     if draft.pressing.year.trim().is_empty() {
         if let Some(year) = pressing_year {

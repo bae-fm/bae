@@ -26,12 +26,15 @@ use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
 /// Write the sheet decisions in `decided`, which name files by their path in
 /// the release, as rows over the release's files `file_ids` (each path with
 /// the id of its `release_files` row). A candidate's decisions name only its
-/// own files, and the release holds every one of them, so a decision that
-/// names any other path is a damaged row, and `store_on` fails the commit.
+/// own files, and the release holds every one of them but the audio
+/// `left_out`, so a decision that names any other path is a damaged row, and
+/// `store_on` fails the commit. A binding of a line to left-out audio is not
+/// the release's, which has no such file.
 pub(super) fn store_on(
     sql: &CovenWrite<'_>,
     decided: &CandidateFileEdits,
     file_ids: &HashMap<&str, &str>,
+    left_out: &[String],
 ) -> Result<(), DbError> {
     let file_id = |path: &str| {
         file_ids
@@ -51,6 +54,9 @@ pub(super) fn store_on(
     for (sheet, references) in decided.sheet_bindings.iter() {
         let sheet_file_id = file_id(sheet)?;
         for (reference, decision) in references.iter() {
+            if decision.stored_file().is_some_and(|path| left_out.iter().any(|out| out == path)) {
+                continue;
+            }
             let audio_file_id = decision.stored_file().map(file_id).transpose()?;
             sql.execute(
                 "INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id) \
@@ -183,7 +189,7 @@ impl ImportTables {
             .write(move |sql| {
                 let file_ids: HashMap<&str, &str> =
                     file_ids.iter().map(|(path, id)| (path.as_str(), id.as_str())).collect();
-                store_on(&sql, &decided, &file_ids)
+                store_on(&sql, &decided, &file_ids, &[])
             })
             .await
     }

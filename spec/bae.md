@@ -392,9 +392,10 @@ file, so it leaves out the pregap of the track after it.
 A release holds its *mediums*: the discs, records or tapes its audio was read
 from, in order, each with its carrier where the source states one and its
 number of sides (a CD is one side, a record as many as its tracks' positions
-name). They are what the person has, not every medium the pressing is made
-of: Carol's CD rip of a box of records and CDs holds the CDs alone, while the
-pressing's media still say what the box is.
+name). They are the ones its source states for what the person has, not every
+medium the pressing is made of: Carol's CD rip of a box of records and CDs
+holds the CDs alone, while the pressing's media still say what the box is. A
+medium no track sits on stays among them (§3.6).
 
 Each track records:
 
@@ -442,8 +443,10 @@ reading of the release's Disc ID or artwork that needs it fails with the
 reason.
 
 The files of a release include everything in its folder, not only the audio:
-the CUE sheet, the rip log, scans of the booklet. A release's folder comes back
-whole on export (§4.6).
+the CUE sheet, the rip log, scans of the booklet. The one exception is audio
+the import left out because it lands on none of the release's discs (§3.6),
+which the release has no file of. A release's files come back whole on export
+(§4.6).
 
 A release's detail lists the files no track plays from, by the rule of the
 release's *Files* list (§3.8), in the release's file order. An image bae can
@@ -854,7 +857,8 @@ playlists point at. What another device imported refuses nothing here.
 release: each one's path relative to the release folder, as the release names
 it (§3.1), its size and its modification time, sorted, so moving or renaming
 the folder doesn't change its hash. Each device records, for itself alone, the
-hash of the files each of its imports read (`local_release_origin`); the record
+hash of the folder's files each of its imports was made from
+(`local_release_origin`); the record
 never syncs, and the release carries no hash. It does one job: a folder whose
 hash it holds is on Imported in this device's import list (§3.2), wherever the folder
 sits now.
@@ -1900,9 +1904,9 @@ candidate, and changing them starts the next run.
 ### 3.6 The draft
 
 A *draft* is the metadata an import will write, as plain values: the album
-fields, the pressing facts, the album's artists, the mediums the audio is on,
-and one track per audio unit with its title, artists, place (medium, side and
-number), and the length its source lists for it. It also holds what the source credits beyond the editable fields: each
+fields, the pressing facts, the album's artists, its source's mediums, and a
+track for each audio unit that lands on one of them, with its title, artists,
+place (medium, side and number), and the length its source lists for it. It also holds what the source credits beyond the editable fields: each
 track's credits in every role, the works it performs and the works those
 nest among, and the credits the source states on the release as a whole. An *audio unit* is
 what one track plays: a whole file, or one slice a bound CUE sheet carves out of
@@ -1928,10 +1932,14 @@ the library lists the release's files in. Ben's download names its files by titl
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 
 **Mediums and places.** Applying a source writes the draft's mediums and each
-track's place. The release editor (§3.8) shows a track's place and edits only
-its title and artists; what changes mediums and places afterwards is applying
-another source in it, its CUE sheets' place pop-up, which moves a sheet's
-tracks to another side or disc, and, before an import, the pane's file
+track's place. A release's mediums are its source's alone: the catalog
+release's, the files' tags', the folder's layout where there is no source, or
+the mediums the library stores for a library release. Nothing else adds or
+drops one, and a medium no track sits on stays, in the editor's table and
+after *Save*. The release editor (§3.8) shows a track's place and edits only
+its title and artists; what changes places afterwards is applying another
+source in it, its CUE sheets' place pop-up, which moves a sheet's tracks to
+another side or disc of the release, and, before an import, the pane's file
 decisions below.
 
 - A MusicBrainz release gives each medium it reads its format; a record or
@@ -1950,19 +1958,26 @@ decisions below.
 - A track whose source states no number is one more than the tracks before it
   on its own side.
 
-A file decision that gains a track places that audio as the folder lays it
-out, adding a medium of unstated carrier where the draft holds fewer; a medium
-no track sits on any more is dropped. A CUE sheet's place pop-up in the
-release editor (§3.8) moves the sheet's tracks onto a side or disc: they
-go after the tracks already on that side, each numbered one more than the
-highest number on that side, so no two tracks of a side share a number. A
-medium no track sits on any more is dropped, and the mediums after it move up:
-in the pane at once, and in the editor when it saves, since until then the
-editor's table and every place pop-up keep the headings the editor opened
-with (§3.8). In the pane, a sheet moved onto a disc the draft
-lacks is laid out as the folder lays it out, on a medium of unstated carrier
-added for it. A file decision is kept under the files' hash, so it settles every
-folder holding the same files in one write, each found by that hash.
+A file decision keeps every track it doesn't delete where that track is. It
+places a CUE sheet's track it gains on the side or disc the sheet's other
+tracks are on, and any other audio it gains as the folder lays it out. Audio
+that lands on a side or disc the draft's mediums lack is left out of the
+import: the draft has no track for it, the pane lists it neither among the
+tracks nor under *Files*, and the release has no file of it. A CUE sheet all
+of whose tracks are left out takes its place in *Files* as its caption. A
+later decision brings the audio back only by putting its sheet on a side or
+disc, and applying a source lays the source over all of the folder's audio
+again. A CUE sheet's place pop-up, in the pane and in the release editor
+(§3.8), offers the sides and discs of the release's own mediums and no other,
+and moves the sheet's tracks onto one: they go after the tracks already on
+that side, each numbered one more than the highest number on that side, so no
+two tracks of a side share a number. The pop-up names the side or disc the
+sheet's first track is on. A disc the move empties stays, and putting the
+sheet back on it restores the release. Ignoring a sheet in the pane leaves its
+disc in place the same way.
+
+A file decision is kept under the files' hash, so it settles every folder
+holding the same files in one write, each found by that hash.
 
 **What the files' tags say.** The tags are read whole: a tag stating a value
 more than once (two `ARTIST` comments, an ID3v2.4 frame of two values) states
@@ -2474,12 +2489,12 @@ lays the tracks out at its own places and clears the picks, so the pop-up then
 shows the catalog's side or disc; a pick made after it moves the sheet again,
 and a file pick stays.
 
-While a library release's editor is open, its table and the place pop-ups of
-its sheets keep the discs and sides the editor opened with. A disc that
-moving or ignoring a sheet leaves with no track keeps its heading with no
-tracks under it, and the discs after it keep their numbers, so picking the
-heading a sheet had puts the sheet back. A save drops the disc with no track,
-and the discs after it move up.
+A library release's editor, its table and the place pop-ups of its sheets show
+the release's mediums, or an applied catalog's. A disc that moving or ignoring
+a sheet leaves with no track keeps its heading with no tracks under it, and the
+discs after it keep their numbers, so picking the heading a sheet had puts the
+sheet back. A save keeps the disc with no track, which the editor heads the same
+way when it opens again.
 
 A library release's save that ignores a sheet, or leaves a line playing no
 audio, deletes the tracks the sheet carved there, and bae matches none of them
@@ -2517,7 +2532,9 @@ with the lightbox's arrows (§3.7).
 
 **Files.** A release's *Files* list is one list, the same in all three places:
 the files no track plays from, such as a rip log, a track sheet that carves no
-tracks, or an audio file no track plays from, in the release's file order. A
+tracks, or an audio file no track plays from, in the release's file order.
+Audio an import leaves out (§3.6) is no file of the release, so a Found
+folder's pane doesn't list it. A
 CUE sheet that carves tracks plays, so the list leaves it out. A CUE sheet the
 person set to *Ignored* carves none, so it takes its place in the list as its
 caption, its place pop-up reading *Ignored*, and the person can place it back
@@ -2655,7 +2672,9 @@ library release. A catalog image that the cover keeps is stored once, in the
 `cover_originals` namespace, and bae downloads it once, when it makes the
 cover; another device fetches it only when its viewer opens the cover.
 A cover made from an image file or from embedded art keeps no second copy of
-the picture.
+the picture. The one exception is art embedded in audio the import left out
+(§3.6): the release has no file to name, so the cover keeps the art as its
+original.
 
 **A release's image files have previews.** Every image file of a release (a
 scan, a booklet page, artwork; never audio, a log or a CUE sheet) has a preview
@@ -6609,7 +6628,7 @@ Beside them, keyed by the release an import made:
 |---|---|
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 | `release_sheet_places` | the side or disc the person said a release's CUE sheet is on, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows. When a person changes a sheet's side or sets it to *Ignored*, Save in the release's editor (§3.8) writes that choice. Identifying the release again reads these rows and `release_sheet_bindings`. Deleting the sheet deletes its row. The table syncs (Appendix B) |
-| `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane or the release's editor, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); a save in the release's editor (§3.8) rewrites the row of a `FILE` line it binds to another audio file, in the save's own transaction; identifying the release again reads them. Deleting either file deletes the row. The table syncs (Appendix B) |
+| `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane or the release's editor, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release; a line bound to audio the import leaves out gets no row); a save in the release's editor (§3.8) rewrites the row of a `FILE` line it binds to another audio file, in the save's own transaction; identifying the release again reads them. Deleting either file deletes the row. The table syncs (Appendix B) |
 
 ### A.6 Identification
 

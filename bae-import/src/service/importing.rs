@@ -256,6 +256,20 @@ impl ImportService {
         }
         let artist_images = self.fetch_discogs_artist_images(new_artists).await?;
 
+        // Audio the draft has no track for is not the release's.
+        let left_out_audio: Vec<String> = crate::audio_layout::left_out_audio(
+            &categorized,
+            preparation.metadata.draft.tracks.iter().map(|track| &track.edit.file),
+        )
+        .into_iter()
+        .collect();
+        let release_files: Vec<_> = categorized
+            .files
+            .iter()
+            .filter(|entry| !left_out_audio.contains(&entry.file.relative_path))
+            .cloned()
+            .collect();
+
         // Each track row becomes a TrackFile's DbTrack, bound to the audio
         // its slot named and measured by it. Past here the tracks live in
         // `tracks_to_files`.
@@ -276,7 +290,11 @@ impl ImportService {
             ImportRun { import_id: &import_id, candidate_key: &candidate_key },
             destination,
             &mut prepared,
-            ImportFiles { discovered: &categorized.files, tracks: &tracks_to_files },
+            ImportFiles {
+                discovered: &release_files,
+                left_out_audio: &left_out_audio,
+                tracks: &tracks_to_files,
+            },
             cover,
             &artist_images,
         )
@@ -314,7 +332,8 @@ impl ImportService {
         cover: Option<ImportCover>,
         artist_images: &[DiscogsArtistImage],
     ) -> Result<(), ImportStop> {
-        let ImportFiles { discovered: discovered_files, tracks: tracks_to_files } = files;
+        let ImportFiles { discovered: discovered_files, left_out_audio, tracks: tracks_to_files } =
+            files;
         let ImportRun { import_id, candidate_key } = run;
         let total_files = discovered_files.len();
         let PreparedMetadata {
@@ -574,6 +593,7 @@ impl ImportService {
                     .made(
                         &self.pictures,
                         discovered_files,
+                        left_out_audio,
                         &file_ids,
                         &db_release.id,
                         &self.diagnostics,
@@ -633,6 +653,7 @@ impl ImportService {
                     audio_segments: &built_audio.audio_segments,
                     scrub_points: &loudness.scrub_points,
                     records,
+                    left_out_audio,
                 },
                 prepared_files,
                 cover_winner.as_ref(),

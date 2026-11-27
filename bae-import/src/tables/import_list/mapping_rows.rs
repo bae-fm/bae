@@ -5,10 +5,10 @@
 //! `FILE` lines can be bound to), and the draft stores each track's place. The
 //! statement joins each draft track to its audio unit and returns a row per
 //! draft track, the rows grouped into sides and runs, each sheet's header, the
-//! files that are not audio, the gallery of images, and the count of rows
+//! files that offer no audio unit, the gallery of images, and the count of rows
 //! nobody has named. The code here only turns that document into the
-//! mapping table's types and refuses a draft whose tracks are not the folder's
-//! units.
+//! mapping table's types and refuses a draft whose tracks are not units of
+//! the folder in its order.
 
 use super::*;
 use crate::folder_scanner::{SheetBindingOffer, SheetReferenceOptions};
@@ -17,11 +17,6 @@ use crate::{
     ImportError, MappingContainer, SheetBound, SheetBoundAudio, SheetGroup, TrackAudition,
     TrackSource, TrackTableRow, TrackTableRun, TrackTableSide,
 };
-
-/// A SQL truth value, which JSON holds as 0 or 1.
-fn flag<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
-    Ok(<i64 as serde::Deserialize>::deserialize(deserializer)? != 0)
-}
 
 #[derive(serde::Deserialize)]
 struct AudioJson {
@@ -38,16 +33,17 @@ struct RowJson {
     /// The track's own artists, each with how it stands to the library, as
     /// the standing clauses wrote them; `None` when it has none of its own.
     artists: Option<super::ArtistFieldJson>,
-    #[serde(deserialize_with = "flag")]
-    matches: bool,
+    /// The place among the folder's units of the one the track plays; `None`
+    /// when the folder has no such unit.
+    unit_position: Option<u32>,
     /// The track's number on its side.
     number: u32,
     /// The length the track's source lists. The statement sets it only when
     /// `bae_lengths_disagree` finds that it differs too much from the audio's
     /// own length.
     listed_ms: Option<u64>,
-    /// The folder's audio unit at the track's position; `None` when the
-    /// folder has fewer units than the draft has tracks.
+    /// The folder's audio unit the track plays; `None` when the folder has no
+    /// such unit.
     unit: Option<UnitJson>,
 }
 
@@ -189,13 +185,13 @@ struct Document {
     images: Option<Vec<ImageJson>>,
     /// The track table's sides; `None` when the folder offers no track.
     sides: Option<Vec<SideJson>>,
-    /// The files no track plays from; `None` when there are none.
+    /// The files that offer no audio unit, and the CUE sheets that carve no
+    /// track of the draft; `None` when there are none.
     files: Option<Vec<CarriedJson>>,
     untitled: u32,
     tracks: u32,
     /// How long the draft's tracks play together, in milliseconds.
     length_ms: u64,
-    units: u32,
 }
 
 /// The mapping statement's document, read: the mapping table, and how long
@@ -214,9 +210,10 @@ impl MappingRows {
     }
 
     /// The mapping table over the draft's tracks, each marked by whether
-    /// the preview player holds `previewed`, its stretch of audio. Refuses a draft whose
-    /// tracks are not the folder's audio units in order: every write that
-    /// changes the folder's files rebuilds the draft, so a mismatch is a
+    /// the preview player holds `previewed`, its stretch of audio. Refuses a
+    /// draft whose tracks are not units of the folder's audio in its order:
+    /// every write that changes the folder's files rebuilds the draft, so a
+    /// mismatch is a
     /// stored state that contradicts itself.
     pub(super) fn read(
         &self,
@@ -226,11 +223,22 @@ impl MappingRows {
         let internal = |detail: String| ImportError::Internal { detail };
         let document: Document = serde_json::from_str(&self.document)
             .map_err(|error| internal(format!("the mapping statement's document: {error}")))?;
-        if document.tracks != document.units {
-            return Err(internal(format!(
-                "the draft holds {} tracks for the folder's {} audio units",
-                document.tracks, document.units
-            )));
+        let units = document
+            .sides
+            .iter()
+            .flatten()
+            .flat_map(|side| &side.runs)
+            .flat_map(|run| &run.rows)
+            .map(|row| row.unit_position);
+        let mut previous = None;
+        for unit in units {
+            if unit.is_none() || unit <= previous {
+                return Err(internal(format!(
+                    "the draft's tracks are not the folder's audio units in order: one plays \
+                     unit {unit:?} after {previous:?}"
+                )));
+            }
+            previous = unit;
         }
         let track_sides = document
             .sides
@@ -346,7 +354,9 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         BoundJson::RefusedCodec { codec } => SheetBound::RefusedCodec { codec },
     };
     let assigned = match (sheet.place.as_str(), sheet.assigned) {
-        ("side", Some(choice)) => Some(choice.decoded().map_err(internal)?),
+        // A sheet on a side whose tracks the draft leaves out is on none of
+        // the draft's.
+        ("side", choice) => choice.map(|choice| choice.decoded().map_err(internal)).transpose()?,
         ("ignored", None) => None,
         (place, assigned) => {
             return Err(internal(format!(
@@ -424,13 +434,12 @@ fn table_row(
 ) -> Result<TrackTableRow, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
     let track = row.track.track()?;
-    if !row.matches {
-        return Err(internal(format!(
-            "draft track {} plays {:?}, which is not the folder's audio unit there",
+    let unit = row.unit.ok_or_else(|| {
+        internal(format!(
+            "draft track {} plays {:?}, which is no audio unit of the folder",
             track.edit.id, track.edit.file
-        )));
-    }
-    let unit = row.unit.ok_or_else(|| internal("a draft track has no audio unit".to_owned()))?;
+        ))
+    })?;
     let audio = unit.audio.ok_or_else(|| internal("an audio unit names no file".to_owned()))?;
     let (source, audition) = match unit.source {
         UnitSourceJson::Standalone => (

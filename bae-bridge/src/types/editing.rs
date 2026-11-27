@@ -321,13 +321,12 @@ pub struct BridgeSheetGroup {
     /// The sheet's FILE lines that play no audio, in the sheet's order, each
     /// offered from a menu of its own; `None` where every line plays audio.
     pub unbound_references: Option<Vec<BridgeSheetReferenceOptions>>,
-    /// The side or disc the sheet is on, with its heading, which the
-    /// caption's place pop-up names; `None` where the sheet is ignored.
+    /// The side or disc the sheet's first track is on, with its heading,
+    /// which the caption's place pop-up names; `None` where the sheet is
+    /// ignored, or an import leaves its tracks out.
     pub assigned: Option<BridgeSheetSideChoice>,
-    /// The sides and discs this sheet can be put on, in order: in the
-    /// import pane, the sides of the draft's mediums, and a disc at each
-    /// position up to the count of the folder's bound sheets that the draft
-    /// lacks, so that each sheet can go on a disc of its own.
+    /// The sides and discs this sheet can be put on, in order: those of the
+    /// mediums the release's source gives it.
     pub side_choices: Vec<BridgeSheetSideChoice>,
 }
 

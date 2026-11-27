@@ -1,27 +1,13 @@
 //! The place pop-up of a CUE sheet's caption: the sides and discs the
-//! mapping table offers a sheet, and the one it names.
+//! mapping table offers a sheet, and the one it names; and what the table
+//! shows of audio the draft leaves out.
 
 use super::*;
 
+/// A sheet's place menu offers the draft's discs and no other, whatever
+/// discs the files' decisions name, and names the disc its tracks are on.
 #[tokio::test]
-async fn a_sheet_place_menu_keeps_the_assigned_disc_available() {
-    let tmp = TestFolder::new();
-    write_flac(&tmp, "disc.flac");
-    tmp.write("disc.cue", cue_sheet_text("disc.flac", 2));
-    let mut files = scan(tmp.path());
-    assign_discs(&mut files, &[("disc.cue", 2)]);
-    let table = blank_table(&files).await;
-    let [TrackTableRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
-        panic!("the selected CUE groups its tracks");
-    };
-    assert!(sheet.side_choices.iter().any(|choice| choice.side.medium == 2));
-}
-
-/// Each resolved sheet's place menu offers every disc from one up to the
-/// count of resolved sheets, and the disc each sheet is on, each named as its
-/// disc.
-#[tokio::test]
-async fn a_sheet_place_menu_counts_up_to_the_resolved_sheets() {
+async fn a_sheet_place_menu_offers_the_drafts_discs_alone() {
     let tmp = TestFolder::new();
     for stem in ["alpha", "beta", "gamma"] {
         write_flac(&tmp, format!("{stem}.flac"));
@@ -32,19 +18,80 @@ async fn a_sheet_place_menu_counts_up_to_the_resolved_sheets() {
     }
     let mut files = scan(tmp.path());
     assign_discs(&mut files, &[("alpha.cue", 1), ("beta.cue", 2), ("gamma.cue", 5)]);
-    let table = blank_table(&files).await;
-    let menus: Vec<Vec<bae_types::mediums::TrackSide>> = runs(&table)
+    let disc = || bae_types::mediums::ReleaseMedium::one_sided(None);
+    // A source of two discs, the second holding both later sheets' tracks.
+    let draft = numbered_draft(
+        &files,
+        vec![disc(), disc()],
+        &[(1, 1, 1), (1, 1, 2), (2, 1, 1), (2, 1, 2), (2, 1, 3), (2, 1, 4)],
+    );
+    let table = mapping_table(&files, &draft).await.unwrap();
+    let discs: Vec<_> = [1, 2].map(|disc| bae_types::mediums::TrackSide::Disc { disc }).to_vec();
+    let sheets: Vec<_> = runs(&table)
         .into_iter()
         .map(|run| match run {
-            TrackTableRun::Sheet { sheet, .. } => {
-                sheet.side_choices.iter().map(|choice| choice.heading.clone()).collect()
-            }
+            TrackTableRun::Sheet { sheet, .. } => (
+                sheet.side_choices.iter().map(|choice| choice.heading.clone()).collect::<Vec<_>>(),
+                sheet.assigned.as_ref().map(|choice| choice.side.medium),
+            ),
             TrackTableRun::Track(_) => panic!("each CUE groups its tracks"),
         })
         .collect();
-    let discs: Vec<_> =
-        [1, 2, 3, 5].map(|disc| bae_types::mediums::TrackSide::Disc { disc }).to_vec();
-    assert_eq!(menus, vec![discs; 3]);
+    assert_eq!(sheets, [(discs.clone(), Some(1)), (discs.clone(), Some(2)), (discs, Some(2))]);
+}
+
+/// A draft that leaves audio out of the import draws the rows it has, and its
+/// Files list leaves that audio out too: the release has no such file.
+#[tokio::test]
+async fn audio_a_draft_leaves_out_has_no_row_and_no_place_in_the_files_list() {
+    let tmp = TestFolder::new();
+    for number in 1..=3 {
+        write_flac(&tmp, format!("{number:02}.flac"));
+    }
+    tmp.write("rip.log", "a rip log");
+    let files = scan(tmp.path());
+
+    let mut draft = blank_candidate_draft(&files);
+    draft.tracks.remove(1);
+    let table = mapping_table(&files, &draft).await.unwrap();
+
+    assert_eq!(mapping_tracks(&table), draft.release_edit().tracks);
+    assert_eq!(table.track_count, 2);
+    assert_eq!(
+        table_files(&table)
+            .iter()
+            .map(|row| match row {
+                MappingFileRow::File(file) => file.name.clone(),
+                MappingFileRow::Sheet(sheet) => sheet.name.clone(),
+            })
+            .collect::<Vec<_>>(),
+        ["rip.log"]
+    );
+}
+
+/// A sheet whose tracks the draft leaves out heads its line of the Files list
+/// on none of the draft's discs, which its menu still offers.
+#[tokio::test]
+async fn a_sheet_the_draft_leaves_out_names_no_disc() {
+    let tmp = TestFolder::new();
+    for stem in ["alpha", "beta"] {
+        write_flac(&tmp, format!("{stem}.flac"));
+        tmp.write(
+            tmp.path().join(format!("{stem}.cue")),
+            cue_sheet_text(&format!("{stem}.flac"), 2),
+        );
+    }
+    let files = scan(tmp.path());
+    let mut draft = blank_candidate_draft(&files);
+    draft.mediums.truncate(1);
+    draft.tracks.truncate(2);
+    let table = mapping_table(&files, &draft).await.unwrap();
+    let [MappingFileRow::Sheet(sheet)] = table_files(&table) else {
+        panic!("the left-out sheet is the Files list's one line: {:?}", table_files(&table));
+    };
+    assert_eq!(sheet.sheet_id, "beta.cue");
+    assert_eq!(sheet.assigned, None);
+    assert_eq!(sheet.side_choices.iter().map(|choice| choice.side.medium).collect::<Vec<_>>(), [1]);
 }
 
 /// A sheet on a record offers each of the record's sides, lettered as the

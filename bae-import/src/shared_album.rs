@@ -7,8 +7,9 @@
 //! `barcode::comparison_key` — album titles by `text_match::bare_album_title`
 //! squashed, artists by `text_match::same_artist_name`, label names by
 //! `text_match::same_label_name`, and track titles position by position by
-//! `text_match::track_title_key`. The tracks agree only where every row lists
-//! as many as the folder has.
+//! `text_match::track_title_key`, each draft track by the position of its
+//! audio among the folder's. The tracks agree only where every row lists as
+//! many as the folder has.
 
 use crate::{CandidateDraft, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments};
 use bae_types::text_match;
@@ -38,10 +39,12 @@ impl OfferedReading {
 /// top-ranked row's first — taken from them, and every other field as it is.
 /// Where they share no pressing year, the year is `folder_year`, the year the
 /// folder names the pressing by, when it names one. The mediums and track
-/// places are taken only as a whole: when every row lays the folder's audio on
-/// the same mediums at the same places.
+/// places are taken only as a whole: when every row lays the folder's audio,
+/// `units`, on the same mediums at the same places, and the draft leaves none
+/// of that audio out.
 pub(crate) fn shared_draft(
     current: &CandidateDraft,
+    units: &[crate::AudioFile],
     readings: &[OfferedReading],
     folder_year: Option<i32>,
 ) -> CandidateDraft {
@@ -114,10 +117,14 @@ pub(crate) fn shared_draft(
     ) {
         facts.discogs_details = details.clone();
     }
-    let tracks_agree = offered.iter().all(|row| row.tracks.len() == current.tracks.len());
+    let tracks_agree = offered.iter().all(|row| row.tracks.len() == units.len());
     if tracks_agree {
-        for (position, track) in draft.tracks.iter_mut().enumerate() {
+        for track in &mut draft.tracks {
             let edit = &mut track.edit;
+            let position = units
+                .iter()
+                .position(|unit| *unit == edit.file)
+                .expect("a draft's tracks play the folder's audio units");
             if let Some(title) = agreed(
                 offered,
                 |row| stated(&row.tracks[position].title),
@@ -138,8 +145,9 @@ pub(crate) fn shared_draft(
         let one_layout = readings.iter().all(|reading| {
             reading.mediums == first.mediums
                 && reading.places == first.places
-                && reading.places.len() == draft.tracks.len()
+                && reading.places.len() == units.len()
         });
+        let one_layout = one_layout && draft.tracks.len() == units.len();
         if one_layout {
             draft.mediums.clone_from(&first.mediums);
             for (track, place) in draft.tracks.iter_mut().zip(&first.places) {

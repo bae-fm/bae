@@ -124,7 +124,7 @@ fn place(id: &str, medium: u16, side: u8, number: u32) -> (String, u16, u8, u32)
 }
 
 /// A sheet's tracks go after the tracks of the disc it moves to, numbered on
-/// from them, and the disc it left is gone.
+/// from them, and the disc it left stays with no track.
 #[tokio::test]
 async fn a_sheet_moves_after_the_tracks_of_its_new_disc() {
     let (db, _folder) = release(
@@ -136,9 +136,9 @@ async fn a_sheet_moves_after_the_tracks_of_its_new_disc() {
     let (places, mediums) = laid(&db, &[("sheet-a", 2, 1)]).await;
     assert_eq!(
         places,
-        [place("b1", 1, 1, 1), place("b2", 1, 1, 2), place("a1", 1, 1, 3), place("a2", 1, 1, 4)]
+        [place("b1", 2, 1, 1), place("b2", 2, 1, 2), place("a1", 2, 1, 3), place("a2", 2, 1, 4)]
     );
-    assert_eq!(mediums, 1);
+    assert_eq!(mediums, 2);
 }
 
 /// A number the disc's tracks leave a gap in is not taken again: the moved
@@ -152,13 +152,13 @@ async fn moved_tracks_number_past_the_highest_number_of_the_side() {
     )
     .await;
     let (places, _) = laid(&db, &[("sheet-a", 2, 1)]).await;
-    assert_eq!(places, [place("b1", 1, 1, 1), place("b2", 1, 1, 5), place("a1", 1, 1, 6)]);
+    assert_eq!(places, [place("b1", 2, 1, 1), place("b2", 2, 1, 5), place("a1", 2, 1, 6)]);
 }
 
-/// A medium between others that loses its tracks goes, and the mediums
-/// after it move up.
+/// A medium between others that loses its tracks stays, and the mediums
+/// after it keep their positions.
 #[tokio::test]
-async fn the_mediums_after_an_emptied_one_move_up() {
+async fn an_emptied_medium_stays_between_the_others() {
     let (db, _folder) = release(
         &plain(&[1, 1, 1]),
         &[("a", 1, 1, 1), ("b", 2, 1, 1), ("c", 3, 1, 1)],
@@ -166,8 +166,8 @@ async fn the_mediums_after_an_emptied_one_move_up() {
     )
     .await;
     let (places, mediums) = laid(&db, &[("sheet-b", 1, 1)]).await;
-    assert_eq!(places, [place("a", 1, 1, 1), place("b", 1, 1, 2), place("c", 2, 1, 1)]);
-    assert_eq!(mediums, 2);
+    assert_eq!(places, [place("a", 1, 1, 1), place("b", 1, 1, 2), place("c", 3, 1, 1)]);
+    assert_eq!(mediums, 3);
 }
 
 /// A pick of a side the release lacks, and of the side a sheet is on
@@ -196,9 +196,9 @@ async fn a_sheet_moves_onto_the_side_picked() {
     )
     .await;
     let (places, _) = laid(&db, &[("sheet-a", 2, 1)]).await;
-    assert_eq!(places, [place("s1", 1, 1, 1), place("a", 1, 1, 2), place("s2", 1, 2, 1)]);
+    assert_eq!(places, [place("s1", 2, 1, 1), place("a", 2, 1, 2), place("s2", 2, 2, 1)]);
     let (places, _) = laid(&db, &[("sheet-a", 2, 2)]).await;
-    assert_eq!(places, [place("s1", 1, 1, 1), place("s2", 1, 2, 1), place("a", 1, 2, 2)]);
+    assert_eq!(places, [place("s1", 2, 1, 1), place("s2", 2, 2, 1), place("a", 2, 2, 2)]);
 }
 
 /// A sheet can go on each side of a medium played side by side, lettered
@@ -253,12 +253,12 @@ async fn two_sheets_on_one_disc_keep_their_order() {
     )
     .await;
     let (places, mediums) = laid(&db, &[("sheet-b", 3, 1), ("sheet-a", 3, 1)]).await;
-    assert_eq!(places, [place("c", 1, 1, 1), place("a", 1, 1, 2), place("b", 1, 1, 3)]);
-    assert_eq!(mediums, 1);
+    assert_eq!(places, [place("c", 3, 1, 1), place("a", 3, 1, 2), place("b", 3, 1, 3)]);
+    assert_eq!(mediums, 3);
 }
 
-/// A pick names its disc as the editor opened the release, so a sheet moved
-/// onto a disc is still honored when the move empties a disc before it.
+/// A sheet moved onto a disc is honored when the move empties a disc before
+/// it.
 #[tokio::test]
 async fn a_pick_is_honored_when_the_move_empties_an_earlier_disc() {
     let (db, _folder) = release(

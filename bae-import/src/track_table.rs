@@ -135,8 +135,9 @@ pub struct SheetGroup {
     /// The sheet's FILE lines that play no audio, in the sheet's order, each
     /// offered from a menu of its own; `None` where every line plays audio.
     pub unbound_references: Option<Vec<SheetReferenceOptions>>,
-    /// The side or disc the sheet is on, with its heading, which the
-    /// caption's place pop-up names; `None` where the sheet is ignored.
+    /// The side or disc the sheet's first track is on, with its heading,
+    /// which the caption's place pop-up names; `None` where the sheet is
+    /// ignored, or an import leaves its tracks out.
     pub assigned: Option<bae_records::DbSheetSideChoice>,
     /// The sides and discs this sheet can be put on, in order.
     pub side_choices: Vec<bae_records::DbSheetSideChoice>,

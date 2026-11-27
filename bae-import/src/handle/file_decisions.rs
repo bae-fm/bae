@@ -78,7 +78,7 @@ impl ImportServiceHandle {
                 UserSheetBinding::Describes { file_id }
             }
         };
-        self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
+        self.write_file_edits(&candidate_key, files, offered_revision, None, |edits| {
             edits.sheet_bindings.set_reference(sheet_file_id, file_reference, decision);
         })
         .await
@@ -128,9 +128,13 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
             });
         };
-        // The menu fires even when the current place is picked again; writing
+        // The menu fires even when the place it shows is picked again; writing
         // would clear the verdict of a folder whose shape did not change.
-        if selected.place == place {
+        let restated = match place.side() {
+            Some(side) => self.draft_shows_sheet_on(&files, &sheet_file_id, side).await?,
+            None => selected.place == place,
+        };
+        if restated {
             self.editable_candidate(&candidate_key).await?;
             debug!("{sheet_file_id} is already on {place:?}; nothing to write");
             return Ok(());
@@ -157,7 +161,8 @@ impl ImportServiceHandle {
         } else {
             Vec::new()
         };
-        self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
+        let placed = place.side().map(|_| sheet_file_id.clone());
+        self.write_file_edits(&candidate_key, files, offered_revision, placed, |edits| {
             for other in competing {
                 edits.sheet_places.set(other, SheetPlace::Ignored);
             }
@@ -166,16 +171,46 @@ impl ImportServiceHandle {
         .await
     }
 
+    /// Whether the place pop-up of the CUE sheet `sheet_id` names `side` in
+    /// the draft of the folder holding `files`: the side of the sheet's first
+    /// track there. A source's discs can put a sheet's tracks on another side
+    /// than the files' decisions name, and a sheet whose tracks the draft
+    /// leaves out is on none of its sides.
+    async fn draft_shows_sheet_on(
+        &self,
+        files: &crate::folder_scanner::CategorizedFiles,
+        sheet_id: &str,
+        side: bae_types::mediums::MediumSide,
+    ) -> Result<bool, crate::ImportError> {
+        let content_hash = files.content_hash();
+        let preparation =
+            crate::preparations::stored_preparation(&self.services.tables, &content_hash)
+                .await?
+                .ok_or_else(|| crate::ImportError::Internal {
+                    detail: format!("the files {content_hash} have no stored import preparation"),
+                })?;
+        let draft = &preparation.metadata.draft;
+        Ok(draft.first_sheet_track(sheet_id).is_some_and(|track| {
+            let medium = &draft.mediums[track.place.medium_index()];
+            u32::from(track.place.medium.get()) == side.medium
+                && (u32::from(track.place.side.get()) == side.side
+                    || !medium.carrier.is_some_and(bae_types::pressing::Medium::is_sided))
+        }))
+    }
+
     /// Add one file decision to the candidate's stored ones, apply it to every
     /// scanned candidate with these files, store the result, and announce it.
     ///
     /// The decision is applied to copies first, so one the folder cannot take
     /// (unreadable audio) fails with nothing written.
+    /// `placed_sheet` is the CUE sheet the decision puts on a side, whose
+    /// tracks the draft moves there.
     async fn write_file_edits(
         &self,
         candidate_key: &crate::CandidateKey,
         files: crate::folder_scanner::CategorizedFiles,
         offered_revision: u64,
+        placed_sheet: Option<String>,
         decide: impl FnOnce(&mut crate::folder_scanner::CandidateFileEdits),
     ) -> Result<(), crate::ImportError> {
         // Settled files and the draft are prepared before the commit lock,
@@ -266,6 +301,7 @@ impl ImportServiceHandle {
                 settled_files,
                 initialized,
                 &preparation.metadata.draft,
+                placed_sheet.as_deref(),
                 self.services.ids.as_ref(),
             );
             let layout = self.services.tables.lay_out_sheet_moves(&redrawn).await?;

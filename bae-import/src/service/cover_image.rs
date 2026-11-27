@@ -74,13 +74,16 @@ impl ImportCover {
     /// `release_file_ids` names, and its copies come from the copies its
     /// candidate keeps, read from the folder only when none exists. Embedded
     /// art names the release's audio file that holds it, and its copies come
-    /// from the art the snapshot captured. A catalog's image becomes the
+    /// from the art the snapshot captured; where that audio is one of
+    /// `left_out_audio`, which the release has no file of, the art becomes the
+    /// cover's original. A catalog's image becomes the
     /// cover's original, which the import keeps in the cover's own namespace
     /// beside the copies.
     pub(super) async fn made(
         self,
         pictures: &crate::pictures::ImportPictures,
         discovered_files: &[CandidateFile],
+        left_out_audio: &[String],
         release_file_ids: &std::collections::HashMap<std::path::PathBuf, String>,
         release_id: &str,
         diagnostics: &bae_diagnostics::Diagnostics,
@@ -101,6 +104,12 @@ impl ImportCover {
                     .read_copy(picture, CoverCopy::Large.step(), bae_pictures::Priority::Visible)
                     .await?;
                 (NewCoverPicture::ReleaseFile { file_id }, crate::cover_copies_of(browse, large)?)
+            }
+            Self::Embedded { source_relative_path, art }
+                if left_out_audio.contains(&source_relative_path) =>
+            {
+                let copies = copies_of_bytes(art.clone(), diagnostics).await?;
+                (NewCoverPicture::Original { bytes: art }, copies)
             }
             Self::Embedded { source_relative_path, art } => {
                 let file = art_source(discovered_files, &source_relative_path)?;

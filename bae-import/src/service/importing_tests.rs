@@ -812,3 +812,61 @@ async fn an_imported_release_keeps_the_sheet_decisions_the_person_made() {
     let kept = test.service.tables.load_release_sheet_decisions(&release).await.unwrap();
     assert_eq!(kept, decided);
 }
+
+/// Audio the draft has no track for is left out of the import: the release has
+/// a track and a file for each of the draft's tracks, and no file of the rest.
+#[tokio::test]
+async fn an_import_leaves_out_the_audio_its_draft_has_no_track_for() {
+    let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
+    let folder = test.temp.path().join("Album");
+    test.temp.create_folder(&folder);
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
+    for track in 1..=3 {
+        test.temp.copy_fixture(&fixture, folder.join(format!("0{track} Track {track}.flac")));
+    }
+    test.temp.write(folder.join("rip.log"), "a rip log");
+    let (candidate_key, mut expectation) = store_scanned_candidate(&test, &folder, "Album").await;
+    let content_hash = expectation.candidate.content_hash.clone();
+    let mut preparation = crate::preparations::stored_preparation(&tables, &content_hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is prepared");
+    preparation.metadata.draft.tracks.remove(1);
+    expectation.candidate.metadata_revision = tables
+        .apply_source(&expectation.candidate, &candidate_key, &preparation.metadata)
+        .await
+        .unwrap();
+
+    test.service.queue_import_for_test(&candidate_key, "import-1").await;
+    test.service
+        .prepare_and_run_folder_import(
+            "import-1".to_string(),
+            candidate_key.clone(),
+            crate::release_candidate::CandidateSource {
+                path: folder.clone(),
+                scope: crate::ReleaseFileScope::Recursive,
+                parts: Vec::new(),
+            },
+            expectation,
+            ImportDestination::ThisDevice,
+        )
+        .await
+        .expect("the release imports");
+
+    let release = imported_release(&test, &candidate_key)
+        .await
+        .expect("the import records the release of its files");
+    let records = bae_records::test_fixtures::test_records(&test.db);
+    assert_eq!(records.get_tracks_for_release(&release).await.unwrap().len(), 2);
+    let mut files: Vec<_> = records
+        .get_files_for_release(&release)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|file| file.original_filename)
+        .collect();
+    files.sort();
+    assert_eq!(files, ["01 Track 1.flac", "03 Track 3.flac", "rip.log"]);
+}

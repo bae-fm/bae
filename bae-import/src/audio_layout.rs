@@ -155,6 +155,41 @@ pub(crate) fn audio_durations(
         .collect()
 }
 
+/// The folder's audio an import leaves out when its tracks play `imported`,
+/// by path: each file the folder's units read and none of those tracks does.
+/// A CUE track reads the file it plays from and the file its pregap is in.
+pub(crate) fn left_out_audio<'a>(
+    files: &CategorizedFiles,
+    imported: impl IntoIterator<Item = &'a AudioFile>,
+) -> std::collections::BTreeSet<String> {
+    let sheets = files.carving_sheets();
+    let read_by = |unit: &AudioFile| -> Vec<String> {
+        let mut read = vec![unit.file_id().to_string()];
+        if let AudioFile::SheetSlice { sheet_id, index, .. } = unit {
+            let sheet = sheets
+                .iter()
+                .find(|sheet| sheet.file.relative_path == *sheet_id)
+                .expect("a sheet slice belongs to a carving sheet");
+            let pregap = sheet
+                .sheet
+                .playable_tracks()
+                .nth(*index as usize)
+                .and_then(|track| track.audio_pregap());
+            if let Some(pregap) = pregap {
+                let (_, audio) = sheet
+                    .audio_files
+                    .iter()
+                    .find(|(reference, _)| *reference == pregap.file_reference)
+                    .expect("a bound sheet resolved every file its tracks name");
+                read.push(audio.relative_path.clone());
+            }
+        }
+        read
+    };
+    let kept: HashSet<String> = imported.into_iter().flat_map(read_by).collect();
+    audio_units(files).iter().flat_map(read_by).filter(|file| !kept.contains(file)).collect()
+}
+
 /// One audio unit of a folder, where the folder's layout puts it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FolderTrack {

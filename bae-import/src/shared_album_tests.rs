@@ -101,10 +101,31 @@ fn draft() -> CandidateDraft {
     }
 }
 
+/// The folder's audio, which the draft plays whole.
+fn units() -> Vec<AudioFile> {
+    draft().tracks.into_iter().map(|track| track.edit.file).collect()
+}
+
+/// A draft that leaves the first file out takes each track it has from the
+/// position its audio has in the folder.
+#[test]
+fn a_draft_that_leaves_audio_out_takes_each_track_by_its_audios_position() {
+    let mut current = draft();
+    current.tracks.remove(0);
+    let rows = vec![row("Album Title", "ABC-100", &["First Song", "Second Song"])];
+    let shared = shared_draft(&current, &units(), &offered(rows), None);
+    assert_eq!(
+        shared.tracks.iter().map(|track| track.edit.title.as_str()).collect::<Vec<_>>(),
+        ["Second Song"]
+    );
+    assert_eq!(shared.mediums, current.mediums, "the layout is of audio the draft leaves out");
+}
+
 #[test]
 fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
     let shared = shared_draft(
         &draft(),
+        &units(),
         &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song (Remastered)"]),
             row("ALBUM TITLE", "ABC-200", &["first song", "Second Song"]),
@@ -135,6 +156,7 @@ fn what_the_pressings_disagree_on_or_leave_unstated_stays_as_the_draft_has_it() 
     unstated.album_year.clear();
     let shared = shared_draft(
         &current,
+        &units(),
         &offered(vec![row("Album Title", "ABC-100", &["First Song", "Second Song"]), unstated]),
         None,
     );
@@ -149,6 +171,7 @@ fn what_the_pressings_disagree_on_or_leave_unstated_stays_as_the_draft_has_it() 
 fn catalog_numbers_agree_only_as_one_number() {
     let shared = shared_draft(
         &draft(),
+        &units(),
         &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             row("Album Title", "abc 100", &["First Song", "Second Song"]),
@@ -163,6 +186,7 @@ fn tracks_agree_only_when_every_pressing_lists_the_folders_count() {
     let current = draft();
     let shared = shared_draft(
         &current,
+        &units(),
         &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             row("Album Title", "ABC-200", &["First Song", "Second Song", "Bonus"]),
@@ -184,7 +208,7 @@ fn media_every_pressing_states_alike_are_taken() {
         },
         ..first.clone()
     };
-    let shared = shared_draft(&draft(), &offered(vec![first.clone(), second]), None);
+    let shared = shared_draft(&draft(), &units(), &offered(vec![first.clone(), second]), None);
     assert_eq!(shared.pressing.facts.media, first.pressing.facts.media);
 }
 
@@ -196,8 +220,10 @@ fn a_year_the_pressings_do_not_share_is_the_folder_s() {
     first.pressing.year = "2005".to_string();
     let mut second = row("Album Title", "ABC-200", &["First Song", "Second Song"]);
     second.pressing.year = "2010".to_string();
-    let shared = shared_draft(&draft(), &offered(vec![first.clone(), second]), Some(1986));
+    let shared =
+        shared_draft(&draft(), &units(), &offered(vec![first.clone(), second]), Some(1986));
     assert_eq!(shared.pressing.year, "1986");
-    let agreeing = shared_draft(&draft(), &offered(vec![first.clone(), first.clone()]), Some(1986));
+    let agreeing =
+        shared_draft(&draft(), &units(), &offered(vec![first.clone(), first.clone()]), Some(1986));
     assert_eq!(agreeing.pressing.year, "2005");
 }

@@ -164,11 +164,12 @@ impl ImportServiceHandle {
         release: &bae_catalogs::source_release::SourceRelease,
         values: bae_catalogs::release_values::ReleaseValues,
         partners: Vec<bae_catalogs::source_release::SourceRelease>,
+        units: Vec<crate::AudioFile>,
         current: &crate::CandidateDraft,
         pressing_year: Option<i32>,
         steps: &crate::CatalogApplySteps,
     ) -> Result<crate::CandidateMetadataDraft, crate::ImportError> {
-        let draft = crate::pane::external_candidate_draft(values, current, pressing_year)?;
+        let draft = crate::pane::external_candidate_draft(values, units, current, pressing_year)?;
         let cover = self.fetch_release_cover(release, &partners, steps).await?;
         Ok(external_metadata_with_cover(draft, release, cover))
     }
@@ -338,6 +339,7 @@ impl ImportServiceHandle {
                 release,
                 values,
                 prepared_partners,
+                crate::audio_layout::audio_units(&candidate.files),
                 &current.metadata.draft,
                 bae_identify::row_facts::folder_pressing_year(&text, &records),
                 steps,

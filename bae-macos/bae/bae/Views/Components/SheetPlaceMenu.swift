@@ -8,7 +8,7 @@ struct SheetPlaceMenu: View {
     /// The sides and discs the pop-up offers, in order.
     let choices: [BridgeSheetSideChoice]
     /// The side or disc the sheet is on, with its heading; `nil` where the
-    /// sheet is ignored.
+    /// sheet is ignored, or an import leaves its tracks out.
     let assigned: BridgeSheetSideChoice?
     let onAssign: (BridgeSheetPlace) -> Void
 

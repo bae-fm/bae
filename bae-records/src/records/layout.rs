@@ -75,31 +75,30 @@ impl<'a> LayoutParams<'a> {
 const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
 
 /// The common table expressions that lay a release out, for statements
-/// binding [`LayoutParams::named`]: `laid_mediums` (`position`, `carrier`,
-/// `sides`, `base_medium`), `laid_places` (`track_id`, `medium`, `side`,
-/// `number`, `stated_length_ms`, `position`, `base_medium`), `laid_sheets` (each CUE sheet's
+/// binding [`LayoutParams::named`]: `base_mediums` (`position`, `carrier`,
+/// `sides`), `laid_places` (`track_id`, `medium`, `side`, `number`,
+/// `stated_length_ms`, `position`), `laid_sheets` (each CUE sheet's
 /// `sheet_file_id` with the `medium` and `side` its first track sits on) and
-/// `honored` (the sheets whose picked side the layout gave them). A sheet's
-/// `laid_sheets` row and `honored` row name its medium as `base_mediums` does,
-/// as the picks do.
+/// `honored` (the sheets whose picked side the layout gave them).
+///
+/// The mediums are the source's, `base_mediums`: a layout neither adds nor
+/// drops one, so a medium no track sits on stays at its position.
 ///
 /// The layout starts from the given places, else the library's.
-/// A sheet picked onto a side the layout holds, with a track not on it,
+/// A sheet picked onto a side a medium has, with a track not on it,
 /// moves all its tracks there, after the tracks already on that side, each
 /// numbered one more than the highest number on that side, so no two tracks
 /// of a side share a number; sheets going to one side keep the order of
-/// their first tracks. Then the media no track sits on are
-/// dropped, the rest numbered from one, and the tracks take their playing
-/// order from their places. A form that moves no sheet lays the tracks out
-/// as they were.
+/// their first tracks. The tracks then take their playing order from their
+/// places. A form that moves no sheet lays the tracks out as they were.
 ///
 /// A form that deletes or adds tracks (`edits`) lays out what is left: the
 /// deleted tracks go, each added track takes the place of its anchor, the
 /// first track of the sheet whose tracks it replaces, ahead of the track
 /// that holds it, and every side numbers its tracks from one in playing
-/// order. The media no track sits on are then dropped, as for a move. An
-/// added track is named by its file's id. The tracks the edits delete and
-/// add are those of [`sheet_changes_ctes`](super::sheet_files::sheet_changes_ctes), which come first.
+/// order. An added track is named by its file's id. The tracks the edits
+/// delete and add are those of
+/// [`sheet_changes_ctes`](super::sheet_files::sheet_changes_ctes), which come first.
 pub fn layout_ctes() -> String {
     let changes = super::sheet_files::sheet_changes_ctes(":release", ":edits");
     format!("{changes}, {BASE_MEDIUMS}, {LAYOUT}").replace("{changing}", CHANGING)
@@ -172,24 +171,15 @@ const LAYOUT: &str = "base_places (track_id, medium, side, number, stated_length
          WHERE (NOT pass.fresh AND k.track_id NOT IN (SELECT track_id FROM dropped_tracks)) \
             OR (pass.fresh AND a.file_id IS NOT NULL)), \
      moving (yes) AS (SELECT EXISTS (SELECT 1 FROM moves) OR {changing}), \
-     used (medium, new_medium) AS ( \
-         SELECT medium, DENSE_RANK() OVER (ORDER BY medium) \
-         FROM (SELECT DISTINCT medium FROM numbered)), \
-     laid_places (track_id, medium, side, number, stated_length_ms, position, base_medium) AS ( \
-         SELECT k.track_id, CASE WHEN moving.yes THEN k.new_medium ELSE k.medium END, \
-                k.side, k.number, k.stated_length_ms, \
+     laid_places (track_id, medium, side, number, stated_length_ms, position) AS ( \
+         SELECT n.track_id, n.medium, n.side, n.number, n.stated_length_ms, \
                 CASE WHEN moving.yes \
-                     THEN ROW_NUMBER() OVER (ORDER BY k.new_medium, k.side, k.number) - 1 \
-                     ELSE k.position END, k.medium \
-         FROM (SELECT n.*, DENSE_RANK() OVER (ORDER BY n.medium) AS new_medium \
-               FROM numbered n) k, moving), \
-     laid_mediums (position, carrier, sides, base_medium) AS ( \
-         SELECT CASE WHEN moving.yes THEN u.new_medium ELSE m.position END, m.carrier, m.sides, m.position \
-         FROM base_mediums m LEFT JOIN used u ON u.medium = m.position, moving \
-         WHERE NOT moving.yes OR u.medium IS NOT NULL), \
+                     THEN ROW_NUMBER() OVER (ORDER BY n.medium, n.side, n.number) - 1 \
+                     ELSE n.position END \
+         FROM numbered n, moving), \
      laid_sheets (sheet_file_id, medium, side) AS ( \
          SELECT sheet_file_id, medium, side FROM ( \
-             SELECT st.sheet_file_id, place.base_medium AS medium, place.side, \
+             SELECT st.sheet_file_id, place.medium, place.side, \
                     ROW_NUMBER() OVER (PARTITION BY st.sheet_file_id \
                                        ORDER BY place.position) AS n \
              FROM sheet_tracks st JOIN laid_places place ON place.track_id = st.track_id) \
@@ -199,11 +189,10 @@ const LAYOUT: &str = "base_places (track_id, medium, side, number, stated_length
          JOIN laid_sheets sheet ON sheet.sheet_file_id = pick.sheet_file_id \
          WHERE sheet.medium = pick.medium AND sheet.side = pick.side)";
 
-/// A statement's table of the release's mediums as the form opens them,
-/// before a save drops the mediums no track sits on, in the shape
-/// [`MediumsSource::Draft`] takes for `mediums`. The track table's headings
-/// and the place pop-ups of its CUE sheets number the mediums this way, so
-/// each names the same disc or side until Save.
+/// A statement's table of the release's mediums as a form lays them out, in
+/// the shape [`MediumsSource::Draft`] takes for `mediums`. These are the
+/// source's, a medium no track sits on among them. The track table's headings
+/// and the place pop-ups of its CUE sheets number the mediums this way.
 pub fn base_mediums_source() -> String {
     format!(
         "(WITH {BASE_MEDIUMS} SELECT position AS id, :release AS release_id, position, \
@@ -215,7 +204,7 @@ pub fn base_mediums_source() -> String {
 /// [`MediumsSource::Draft`] takes for `places`.
 pub fn laid_places_source() -> String {
     format!(
-        "(WITH {} SELECT track_id AS id, :release AS release_id, base_medium AS medium_id, side, \
+        "(WITH {} SELECT track_id AS id, :release AS release_id, medium AS medium_id, side, \
                  number AS track_number, stated_length_ms, position FROM laid_places)",
         layout_ctes()
     )
@@ -246,7 +235,7 @@ pub fn laid_out_on(
 ) -> Result<ReleaseLayout, DbError> {
     let mediums = sql.query(
         &format!(
-            "WITH {} SELECT carrier, sides FROM laid_mediums ORDER BY position",
+            "WITH {} SELECT carrier, sides FROM base_mediums ORDER BY position",
             layout_ctes()
         ),
         layout.named().as_slice(),

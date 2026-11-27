@@ -130,6 +130,19 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
     }
 }
 
+impl CandidateDraft {
+    /// The first track the CUE sheet `sheet_id` carves, in playing order;
+    /// `None` where the draft has none of its tracks.
+    pub(crate) fn first_sheet_track(&self, sheet_id: &str) -> Option<&CandidateTrack> {
+        self.tracks.iter().find(|track| {
+            matches!(
+                &track.edit.file,
+                crate::AudioFile::SheetSlice { sheet_id: carving, .. } if carving == sheet_id
+            )
+        })
+    }
+}
+
 /// What the current draft's values were read from. Direct entry and a
 /// cleared draft carry no provenance.
 ///

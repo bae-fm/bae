@@ -637,9 +637,9 @@ async fn the_commit_tracks_are_the_table_s_rows_in_order() {
     );
 }
 
-/// A draft that does not play the folder's audio units in order is a stored
-/// state that contradicts the folder, and drawing it is refused rather than
-/// pairing rows with the wrong audio.
+/// A draft whose tracks are not units of the folder's audio in its order is a
+/// stored state that contradicts the folder, and drawing it is refused rather
+/// than pairing rows with the wrong audio.
 #[tokio::test]
 async fn mapping_statement_refuses_a_draft_track_whose_unit_differs() {
     let tmp = TestFolder::new();
@@ -651,10 +651,6 @@ async fn mapping_statement_refuses_a_draft_track_whose_unit_differs() {
     let mut swapped = blank_candidate_draft(&files);
     swapped.tracks.swap(0, 1);
     assert!(matches!(mapping_table(&files, &swapped).await, Err(ImportError::Internal { .. })));
-
-    let mut short = blank_candidate_draft(&files);
-    short.tracks.pop();
-    assert!(matches!(mapping_table(&files, &short).await, Err(ImportError::Internal { .. })));
 
     let mut long = blank_candidate_draft(&files);
     long.tracks.push(long.tracks[0].clone());

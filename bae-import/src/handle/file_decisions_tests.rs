@@ -301,6 +301,8 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .metadata
         .draft;
     assert_eq!(after.tracks.len(), 3, "one image plus two loose tracks");
+    assert_eq!(after.mediums, before.mediums, "the sheet's emptied disc stays");
+    assert!(after.tracks.iter().all(|track| track.place.medium.get() == 1));
     assert!(after
         .tracks
         .iter()
@@ -324,7 +326,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .set_sheet_place(
             crate::CandidateKey::folder(&dir),
             "Test Album.cue".into(),
-            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
+            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(2)),
         )
         .await
         .unwrap();
@@ -342,6 +344,11 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .collect::<Vec<_>>();
     assert_eq!(slices.len(), 3);
     assert_eq!(slices[0].edit.title, "Track One (Silence)");
+    assert_eq!(restored.mediums, before.mediums);
+    let places = |draft: &crate::CandidateDraft| {
+        draft.tracks.iter().map(|track| track.place).collect::<Vec<_>>()
+    };
+    assert_eq!(places(&restored), places(&before), "putting the sheet back restores the discs");
     assert!(restored.tracks.iter().all(|track| track.edit.id != image.edit.id));
 }
 
@@ -523,13 +530,14 @@ async fn restating_a_file_decision_changes_nothing() {
     let key = crate::CandidateKey::folder(&dir);
     let mut events = fixture.import.every_event();
 
-    // The sheet already carves disc one and already binds its own container.
+    // The pop-up already shows the sheet on disc two, after the loose audio's
+    // disc, and the sheet already binds its own container.
     fixture
         .import
         .set_sheet_place(
             key.clone(),
             "Test Album.cue".to_string(),
-            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
+            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(2)),
         )
         .await
         .unwrap();

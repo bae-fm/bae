@@ -363,12 +363,14 @@ pub(super) fn save_preparation_on(
             settle_scanned_candidates(sql, content_hash, expected_edit, next_edit, &settled_by_key)?
         }
     };
-    // The draft holds one track per audio unit, in the folder's order, so a
-    // reshape lands only with a draft redrawn over the files it produced.
+    // The draft's tracks play the folder's audio units, each once and in the
+    // folder's order, so a reshape lands only with a draft redrawn over the
+    // files it produced.
     for candidate in &reshaped {
         let units = crate::audio_layout::audio_units(&candidate.files);
-        let drawn = prep.metadata.draft.tracks.iter().map(|track| &track.edit.file);
-        if !drawn.eq(units.iter()) {
+        let mut units = units.iter();
+        let mut drawn = prep.metadata.draft.tracks.iter().map(|track| &track.edit.file);
+        if !drawn.all(|file| units.any(|unit| unit == file)) {
             return Err(PreparationRefusal::DraftNotOverAudio(candidate.key()).into());
         }
     }

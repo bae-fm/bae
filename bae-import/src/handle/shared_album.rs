@@ -87,6 +87,7 @@ impl ImportServiceHandle {
         }
         let draft = crate::shared_album::shared_draft(
             &current.metadata.draft,
+            &crate::audio_layout::audio_units(&candidate.files),
             &offered,
             bae_identify::row_facts::folder_pressing_year(&text, &records),
         );

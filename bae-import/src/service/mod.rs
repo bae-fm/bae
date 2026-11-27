@@ -52,7 +52,11 @@ pub(super) struct ImportRun<'a> {
 /// read from the same folder.
 #[derive(Clone, Copy)]
 pub(super) struct ImportFiles<'a> {
+    /// The folder's files the release has: all of them but `left_out_audio`.
     pub(super) discovered: &'a [crate::folder_scanner::CandidateFile],
+    /// The folder's audio none of the tracks reads, by path, which the import
+    /// leaves out.
+    pub(super) left_out_audio: &'a [String],
     pub(super) tracks: &'a [TrackFile],
 }
 

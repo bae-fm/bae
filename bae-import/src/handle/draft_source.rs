@@ -79,7 +79,7 @@ impl ImportServiceHandle {
             self.services.tables.load_blank_draft(&content_hash).await?.ok_or_else(|| {
                 crate::tables::CandidateStateRefusal::NoState(content_hash.clone())
             })?;
-        crate::pane::keep_row_identities(&mut draft.tracks, &current.metadata.draft.tracks)?;
+        crate::pane::keep_row_identities(&mut draft.tracks, &current.metadata.draft.tracks);
         let _commit = self.services.folder_state_commit.lock("clear metadata").await;
         self.services
             .tables
