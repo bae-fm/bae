@@ -83,32 +83,24 @@ sqlive_compose::fragment!(
 );
 
 // Every row of People's invites in the order coven started their operations:
-// this device's open invites, and each invite whose operation ended with a
-// sharing refusal nobody has dismissed: `coven_operations` lists an invite
-// only once a sharing refusal ends it.
+// this device's open invites, each with its columns, and each invite whose
+// operation ended with a sharing refusal nobody has dismissed, with how it
+// ended: `coven_operations` lists an invite only once a sharing refusal ends
+// it.
 sqlive_compose::read!(
-    ListedInvites {
-        operation: i64,
-        kind: String,
-        invite: Option<Vec<u8>>,
-        has_request: Option<bool>,
-        requester: Option<String>,
-        record: Option<Vec<u8>>,
-        cause: Option<String>,
-        outcome: Option<coven::InviteOutcome>
-    },
+    ListedInvites { listed_operation: i64, outcome: Option<coven::InviteOutcome> },
     r#"
-    WITH open_invites AS (
-        SELECT open.* FROM @crate::invites::OpenInviteRows AS open
-    )
-    SELECT listed.operation, 'open' AS kind, listed.invite, listed.has_request,
-           listed.requester, listed.record, listed.cause, NULL AS outcome
-    FROM open_invites AS listed
-    UNION ALL
-    SELECT ended.operation, 'refused', NULL, NULL, NULL, NULL, NULL, ended.outcome
-    FROM coven_operations AS ended
-    WHERE ended.kind = 'Invite'
-    ORDER BY operation
+    SELECT listed.operation AS listed_operation, listed.outcome, open.*
+    FROM (
+        SELECT i.operation, NULL AS outcome
+        FROM coven_invites AS i
+        UNION ALL
+        SELECT ended.operation, ended.outcome
+        FROM coven_operations AS ended
+        WHERE ended.kind = 'Invite'
+    ) AS listed
+    LEFT JOIN @crate::invites::OpenInviteRows AS open ON open.operation = listed.operation
+    ORDER BY listed.operation
 "#
 );
 
@@ -138,30 +130,7 @@ sqlive_compose::read!(
 "#
 );
 
-/// The columns of an open invite, as either read of them returns them.
-struct OpenColumns {
-    operation: i64,
-    invite: Vec<u8>,
-    has_request: bool,
-    requester: Option<String>,
-    record: Option<Vec<u8>>,
-    cause: Option<String>,
-}
-
-impl From<OpenInviteRows> for OpenColumns {
-    fn from(row: OpenInviteRows) -> Self {
-        Self {
-            operation: row.operation,
-            invite: row.invite,
-            has_request: row.has_request,
-            requester: row.requester,
-            record: row.record,
-            cause: row.cause,
-        }
-    }
-}
-
-impl OpenColumns {
+impl OpenInviteRows {
     /// The invite these columns hold.
     fn open_invite(self) -> Result<OpenInvite, DbError> {
         let operation = coven::OperationId(self.operation);
@@ -192,34 +161,19 @@ impl OpenColumns {
 
 /// The entry one row of [`ListedInvites`] lists.
 fn invite_entry(row: ListedInvitesRow) -> Result<InviteEntry, DbError> {
-    let operation = row.operation;
-    let missing = |what: &str| {
-        DbError::unreadable(
-            format!("the {what} of the invite of operation {operation}"),
-            None::<i64>,
-        )
-    };
-    match row.kind.as_str() {
-        "open" => Ok(InviteEntry::Open(
-            OpenColumns {
-                operation,
-                invite: row.invite.ok_or_else(|| missing("state"))?,
-                has_request: row.has_request.ok_or_else(|| missing("request"))?,
-                requester: row.requester,
-                record: row.record,
-                cause: row.cause,
-            }
-            .open_invite()?,
-        )),
-        _ => {
-            let coven::InviteOutcome::SharingRefused { account, refusal } =
-                row.outcome.ok_or_else(|| missing("outcome"))?;
+    match (row.open, row.outcome) {
+        (Some(open), None) => Ok(InviteEntry::Open(open.open_invite()?)),
+        (None, Some(coven::InviteOutcome::SharingRefused { account, refusal })) => {
             Ok(InviteEntry::Refused(RefusedInvite {
-                operation: coven::OperationId(operation),
+                operation: coven::OperationId(row.listed_operation),
                 address: account,
                 refusal,
             }))
         }
+        (open, outcome) => Err(DbError::unreadable(
+            format!("the invite of operation {}", row.listed_operation),
+            (open.is_some(), outcome),
+        )),
     }
 }
 
@@ -244,7 +198,7 @@ impl LibraryViews {
         let invite = invite.0.to_string();
         self.store.subscribe(move |sql| {
             statement_optional(&sql, &InviteOfIdParams { invite: invite.clone() })?
-                .map(|row| OpenColumns::from(row.open).open_invite())
+                .map(|row| row.open.open_invite())
                 .transpose()
         })
     }
@@ -263,7 +217,7 @@ impl LibraryViews {
         .to_string();
         self.store.subscribe(move |sql| {
             statement_optional(&sql, &FirstWaitingRequestParams { closed: closed.clone() })?
-                .map(|row| OpenColumns::from(row.open).open_invite())
+                .map(|row| row.open.open_invite())
                 .transpose()
         })
     }

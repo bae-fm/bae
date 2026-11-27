@@ -18,9 +18,10 @@ fn rows(conn: &rusqlite::Connection) -> Vec<Shown> {
     conn.prepare(ListedInvites::SQL)
         .unwrap()
         .query_map([], |row| {
+            let refused = row.get::<_, Option<coven::InviteOutcome>>("outcome")?.is_some();
             Ok((
-                row.get("operation")?,
-                row.get("kind")?,
+                row.get("listed_operation")?,
+                if refused { "refused" } else { "open" }.to_string(),
                 row.get("has_request")?,
                 row.get("requester")?,
                 row.get("record")?,
