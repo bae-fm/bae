@@ -42,7 +42,7 @@ screen against them. Each line names one rule file there.
   form goes.
 - `no-restyling-a-component-from-outside.md`, `no-music-note-imagery.md` and
   `no-real-artist-album-song-names-in-artifacts.md`.
-- In `rules/screen-content/`: `no-decorative-icons-or-emoji.md` and
+- In `rules/screen-content/`: `icons-only-where-they-help.md`, `no-emoji.md` and
   `no-llm-slop-chips.md`.
 
 ## Shots
