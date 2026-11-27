@@ -19,19 +19,51 @@ use crate::ReleaseLink;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
 use bae_catalogs::source_release::{claimed_records, pick_covers, SourceRelease};
 use bae_store::statement_rows;
+use bae_store::WriteStatements as _;
+
+sqlive_compose::write!(
+    DeleteClaimedRecords(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_claimed_record WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteOfferedCovers(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_offered_cover WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertClaimedRecord(
+        content_hash: &'p str,
+        position: i64,
+        catalog: &'p str,
+        kind: &'static str,
+        key: &'p str,
+        album: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_claimed_record (content_hash, position, catalog, kind, key, album)
+    VALUES (:content_hash, :position, :catalog, :kind, :key, :album)
+"#
+);
+
+sqlive_compose::write!(
+    InsertOfferedCover(content_hash: &'p str, position: i64, source: &'p str, cover: String),
+    r#"
+    INSERT INTO import_candidate_offered_cover (content_hash, position, source, cover)
+    VALUES (:content_hash, :position, :source, :cover)
+"#
+);
 
 /// Work out what the link of the candidate `content_hash` claims, over the
 /// claimed releases as this write has stored them, and store it in place of
 /// what was stored. A candidate linked to nothing claims nothing.
 pub(super) fn store_claims_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_claimed_record WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    sql.execute(
-        "DELETE FROM import_candidate_offered_cover WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.run(&DeleteClaimedRecordsParams { content_hash })?;
+    sql.run(&DeleteOfferedCoversParams { content_hash })?;
     let Some(listed) = load_release_link_on(sql, content_hash)? else {
         return Ok(());
     };
@@ -63,32 +95,23 @@ pub(super) fn store_claims_on(sql: &CovenWrite<'_>, content_hash: &str) -> Resul
             ReleaseRecord::Pressing { album_key, .. } => ("pressing", album_key.as_deref()),
             ReleaseRecord::Album { .. } => ("album", None),
         };
-        sql.execute(
-            "INSERT INTO import_candidate_claimed_record \
-                 (content_hash, position, catalog, kind, key, album) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                to_i64(position, "a claimed record's position")?,
-                record.catalog().as_str(),
-                kind,
-                record.key(),
-                album
-            ],
-        )?;
+        sql.run(&InsertClaimedRecordParams {
+            content_hash,
+            position: to_i64(position, "a claimed record's position")?,
+            catalog: record.catalog().as_str(),
+            kind,
+            key: record.key(),
+            album,
+        })?;
     }
     for (position, cover) in covers.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_offered_cover (content_hash, position, source, cover) \
-             VALUES (?, ?, ?, ?)",
-            params![
-                content_hash,
-                to_i64(position, "an offered cover's position")?,
-                cover.source.as_str(),
-                serde_json::to_string(cover)
-                    .map_err(|error| DbError::encode("an offered cover", error))?,
-            ],
-        )?;
+        sql.run(&InsertOfferedCoverParams {
+            content_hash,
+            position: to_i64(position, "an offered cover's position")?,
+            source: cover.source.as_str(),
+            cover: serde_json::to_string(cover)
+                .map_err(|error| DbError::encode("an offered cover", error))?,
+        })?;
     }
     Ok(())
 }

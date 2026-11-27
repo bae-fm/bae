@@ -25,6 +25,7 @@ use bae_identify::{
     IdentifyRunView, IsrcStepView, LookupView, NotAskedReason, ProviderCell, SearchStepView,
     SignalValueRow,
 };
+use bae_store::WriteStatements as _;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -115,17 +116,157 @@ pub(super) fn step_columns<'a>(
     }
 }
 
+sqlive_compose::write!(
+    DeleteLookupValues(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_lookup_value WHERE verdict_id = :verdict
+"#
+);
+
+sqlive_compose::write!(
+    DeleteLookupProviders(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_lookup_provider WHERE verdict_id = :verdict
+"#
+);
+
+sqlive_compose::write!(
+    DeleteLookupIsrcs(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_lookup_isrc WHERE verdict_id = :verdict
+"#
+);
+
+sqlive_compose::write!(
+    DeleteOfferedCatalogs(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_lookup_offered_catalog WHERE verdict_id = :verdict
+"#
+);
+
+sqlive_compose::write!(
+    InsertLookupProvider(verdict: super::verdict_rows::VerdictId, position: i64, catalog: &'p str),
+    r#"
+    INSERT INTO import_candidate_lookup_provider
+        (verdict_id, position, catalog)
+    VALUES (:verdict, :position, :catalog)
+"#
+);
+
+sqlive_compose::write!(
+    InsertLookupValue(
+        verdict: super::verdict_rows::VerdictId,
+        step: &'p str,
+        position: i64,
+        value: Option<&'p str>,
+        excluded: bool,
+    ),
+    r#"
+    INSERT INTO import_candidate_lookup_value
+        (verdict_id, step, position, value, excluded)
+    VALUES (:verdict, :step, :position, :value, :excluded)
+"#
+);
+
+sqlive_compose::write!(
+    InsertOfferedCatalog(verdict: super::verdict_rows::VerdictId, position: i64, value: &'p str),
+    r#"
+    INSERT INTO import_candidate_lookup_offered_catalog
+        (verdict_id, position, value)
+    VALUES (:verdict, :position, :value)
+"#
+);
+
+sqlive_compose::write!(
+    InsertLookupIsrc(verdict: super::verdict_rows::VerdictId, position: i64, isrc: &'p str),
+    r#"
+    INSERT INTO import_candidate_lookup_isrc
+        (verdict_id, position, isrc)
+    VALUES (:verdict, :position, :isrc)
+"#
+);
+
+sqlive_compose::write!(
+    InsertLookup(
+        verdict: super::verdict_rows::VerdictId,
+        step: &'p str,
+        position: i64,
+        cell: i64,
+        catalog: Option<&'p str>,
+        answer: &'static str,
+        not_asked_reason: Option<&'static str>,
+        failure: Option<&'static str>,
+        failure_status: Option<i64>,
+        asked_by: Option<i64>,
+    ),
+    r#"
+    INSERT INTO import_candidate_lookup
+        (verdict_id, step, position, cell, catalog, answer, not_asked_reason, failure,
+        failure_status, asked_by)
+    VALUES (:verdict, :step, :position, :cell, :catalog, :answer, :not_asked_reason,
+        :failure, :failure_status, :asked_by)
+"#
+);
+
+sqlive_compose::write!(
+    InsertLookupRelease(
+        verdict: super::verdict_rows::VerdictId,
+        step: &'p str,
+        position: i64,
+        cell: i64,
+        ordinal: i64,
+        match_position: i64,
+        pressing: u32,
+        card: u32,
+        record_order: u32,
+        section: u32,
+        row_order: u32,
+    ),
+    r#"
+    INSERT INTO import_candidate_lookup_release
+        (verdict_id, step, position, cell, ordinal, match_position, pressing, card,
+        record_order, section, row_order)
+    VALUES (:verdict, :step, :position, :cell, :ordinal, :match_position, :pressing, :card,
+        :record_order, :section, :row_order)
+"#
+);
+
+// Damage a test plants: a ledger's ISRC rows gone.
+#[cfg(test)]
+sqlive_compose::write!(
+    LoseIsrcRows(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_lookup_isrc
+    WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict
+                      WHERE content_hash = :content_hash)
+"#
+);
+
+// What a test rewrites the one not-asked cell of a candidate's ledger as.
+#[cfg(test)]
+sqlive_compose::write!(
+    RewriteNotAskedCell(
+        answer: &'static str,
+        not_asked_reason: Option<&'static str>,
+        asked_by: Option<i64>,
+        content_hash: &'p str,
+    ),
+    r#"
+    UPDATE import_candidate_lookup
+    SET answer = :answer, not_asked_reason = :not_asked_reason, asked_by = :asked_by
+    WHERE answer = 'not_asked'
+        AND verdict_id = (SELECT verdict_id FROM import_candidate_verdict
+                      WHERE content_hash = :content_hash)
+"#
+);
+
 /// Clear the ledger rows `verdict` holds; the lookups and the releases they
 /// found go with their rows, and each cell's list with its cards.
 pub(super) fn delete_ledger(sql: &CovenWrite<'_>, verdict: VerdictId) -> Result<(), DbError> {
-    for table in [
-        "import_candidate_lookup_value",
-        "import_candidate_lookup_provider",
-        "import_candidate_lookup_isrc",
-        "import_candidate_lookup_offered_catalog",
-    ] {
-        sql.execute(&format!("DELETE FROM {table} WHERE verdict_id = ?"), params![verdict])?;
-    }
+    sql.run(&DeleteLookupValuesParams { verdict })?;
+    sql.run(&DeleteLookupProvidersParams { verdict })?;
+    sql.run(&DeleteLookupIsrcsParams { verdict })?;
+    sql.run(&DeleteOfferedCatalogsParams { verdict })?;
     Ok(())
 }
 
@@ -147,19 +288,20 @@ pub(super) fn store_ledger(
     asked_by: Option<i64>,
 ) -> Result<(), DbError> {
     for (position, catalog) in ledger.providers.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_lookup_provider (verdict_id, position, catalog) \
-             VALUES (?, ?, ?)",
-            params![verdict, column(position)?, catalog.as_str()],
-        )?;
+        sql.run(&InsertLookupProviderParams {
+            verdict,
+            position: column(position)?,
+            catalog: catalog.as_str(),
+        })?;
     }
     let row = |step: &str, position: usize, value: Option<&str>, excluded: bool| {
-        sql.execute(
-            "INSERT INTO import_candidate_lookup_value \
-                 (verdict_id, step, position, value, excluded) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![verdict, step, column(position)?, value, excluded],
-        )?;
+        sql.run(&InsertLookupValueParams {
+            verdict,
+            step,
+            position: column(position)?,
+            value,
+            excluded,
+        })?;
         Ok::<_, DbError>(())
     };
     let cell = |step: &str,
@@ -197,20 +339,16 @@ pub(super) fn store_ledger(
     if let CatalogStepView::Numbers { rows, candidates, .. } = &ledger.catalog {
         value_rows(STEP_CATALOG, rows)?;
         for (position, candidate) in candidates.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO import_candidate_lookup_offered_catalog (verdict_id, position, value) \
-                 VALUES (?, ?, ?)",
-                params![verdict, column(position)?, candidate.value],
-            )?;
+            sql.run(&InsertOfferedCatalogParams {
+                verdict,
+                position: column(position)?,
+                value: &candidate.value,
+            })?;
         }
     }
     if let IsrcStepView::Read { isrcs, lookup, .. } = &ledger.isrc {
         for (position, isrc) in isrcs.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO import_candidate_lookup_isrc (verdict_id, position, isrc) \
-                 VALUES (?, ?, ?)",
-                params![verdict, column(position)?, isrc],
-            )?;
+            sql.run(&InsertLookupIsrcParams { verdict, position: column(position)?, isrc })?;
         }
         row(STEP_ISRC, 0, None, false)?;
         cell(STEP_ISRC, 0, 0, None, lookup)?;
@@ -266,25 +404,19 @@ fn store_lookup(
         LookupView::Failed { failure } => ("failed", None, Some(failure)),
     };
     let failure = failure_columns(failure);
-    sql.execute(
-        "INSERT INTO import_candidate_lookup \
-             (verdict_id, step, position, cell, catalog, answer, \
-              not_asked_reason, failure, failure_status, asked_by) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![
-            owner,
-            step,
-            column(position)?,
-            column(cell)?,
-            catalog.map(|catalog| catalog.as_str()),
-            answer,
-            reason,
-            failure.kind,
-            failure.status,
-            // A queued cell or one under way names the run asking it.
-            asked_by.filter(|_| matches!(answer, "queued" | "looking_up")),
-        ],
-    )?;
+    sql.run(&InsertLookupParams {
+        verdict: owner,
+        step,
+        position: column(position)?,
+        cell: column(cell)?,
+        catalog: catalog.map(|catalog| catalog.as_str()),
+        answer,
+        not_asked_reason: reason,
+        failure: failure.kind,
+        failure_status: failure.status,
+        // A queued cell or one under way names the run asking it.
+        asked_by: asked_by.filter(|_| matches!(answer, "queued" | "looking_up")),
+    })?;
     let releases = lookup.releases();
     if releases.is_empty() {
         return Ok(());
@@ -312,25 +444,19 @@ fn store_lookup(
             release.source.as_str(),
             release.release_id
         );
-        sql.execute(
-            "INSERT INTO import_candidate_lookup_release \
-                 (verdict_id, step, position, cell, ordinal, match_position, \
-                  pressing, card, record_order, section, row_order) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                owner,
-                step,
-                column(position)?,
-                column(cell)?,
-                column(ordinal)?,
-                column(*match_position)?,
-                place.pressing,
-                place.card,
-                place.record_order,
-                place.section,
-                place.row_order,
-            ],
-        )?;
+        sql.run(&InsertLookupReleaseParams {
+            verdict: owner,
+            step,
+            position: column(position)?,
+            cell: column(cell)?,
+            ordinal: column(ordinal)?,
+            match_position: column(*match_position)?,
+            pressing: place.pressing,
+            card: place.card,
+            record_order: place.record_order,
+            section: place.section,
+            row_order: place.row_order,
+        })?;
     }
     store_list_text(
         sql,

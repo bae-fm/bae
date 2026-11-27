@@ -69,7 +69,7 @@ use bae_store::path_column;
 use bae_store::query::*;
 use bae_store::*;
 use coven::{CovenWrite, SqlReadContext};
-use rusqlite::{named_params, params, OptionalExtension, Row};
+use rusqlite::{params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::str::FromStr;
 

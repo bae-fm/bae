@@ -13,20 +13,11 @@ use bae_identify::signals::{
     BarcodeSignal, ComputedDiscId, DiscIdSignal, PaneSignals, Signals, SourcedValue, TextLine,
     TextSignal,
 };
-
-const SIGNALS_COLUMNS: &str =
-    "content_hash, identify_run, audio_source, cd_rip_proof, download_proof, \
-     audio_source_file, not_cd_rate, \
-     disc_id_state, \
-     disc_id_failure, barcode_state, barcode_failure, text_state, text_failure";
+use bae_store::WriteStatements as _;
 
 /// The stored `download_proof` of a label's delivery set; a store's marker is
 /// stored as its own key.
 const DELIVERY_SET: &str = "delivery_set";
-
-const SIGNAL_VALUE_COLUMNS: &str = "signals_id, list, position, value, origin_path";
-
-const TEXT_LINE_COLUMNS: &str = "signals_id, position, text, origin";
 
 /// The id of an `import_candidate_signals` header row, which every value and
 /// text line under it names.
@@ -72,9 +63,115 @@ pub(crate) fn file_evidence_of_json(json: &str) -> Result<Vec<crate::FileEvidenc
         .collect()
 }
 
+sqlive_compose::write!(
+    DeleteSignals(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_signals WHERE content_hash = :content_hash
+"#
+);
+
+// The signals' header row, written over the one its owner holds. The only
+// rows an insert here can conflict with are that one: the owner's, by
+// content_hash or by identify_run.
+sqlive_compose::write!(
+    UpsertSignals(
+        content_hash: Option<String>,
+        identify_run: Option<i64>,
+        audio_source: Option<&'static str>,
+        cd_rip_proof: Option<&'static str>,
+        download_proof: Option<&'static str>,
+        audio_source_file: Option<String>,
+        not_cd_rate: Option<u32>,
+        disc_id_state: &'static str,
+        disc_id_failure: Option<String>,
+        barcode_state: &'static str,
+        barcode_failure: Option<String>,
+        text_state: &'static str,
+        text_failure: Option<String>,
+    ),
+    r#"
+    INSERT INTO import_candidate_signals
+        (content_hash, identify_run, audio_source, cd_rip_proof, download_proof,
+        audio_source_file, not_cd_rate, disc_id_state, disc_id_failure, barcode_state,
+        barcode_failure, text_state, text_failure)
+    VALUES (:content_hash, :identify_run, :audio_source, :cd_rip_proof, :download_proof,
+        :audio_source_file, :not_cd_rate, :disc_id_state, :disc_id_failure, :barcode_state,
+        :barcode_failure, :text_state, :text_failure)
+    ON CONFLICT DO UPDATE SET
+        audio_source = excluded.audio_source, cd_rip_proof = excluded.cd_rip_proof,
+        download_proof = excluded.download_proof, audio_source_file =
+        excluded.audio_source_file, not_cd_rate = excluded.not_cd_rate, disc_id_state =
+        excluded.disc_id_state, disc_id_failure = excluded.disc_id_failure, barcode_state =
+        excluded.barcode_state, barcode_failure = excluded.barcode_failure, text_state =
+        excluded.text_state, text_failure = excluded.text_failure
+    RETURNING signals_id
+"#
+);
+
+sqlive_compose::write!(
+    DeleteSignalValues(signals_id: SignalsId),
+    r#"
+    DELETE FROM import_candidate_signal_value WHERE signals_id = :signals_id
+"#
+);
+
+sqlive_compose::write!(
+    DeleteSignalTextLines(signals_id: SignalsId),
+    r#"
+    DELETE FROM import_candidate_text_line WHERE signals_id = :signals_id
+"#
+);
+
+sqlive_compose::write!(
+    InsertSignalValue(
+        signals_id: SignalsId,
+        list: &'p str,
+        position: i64,
+        value: String,
+        origin_path: Option<String>,
+    ),
+    r#"
+    INSERT INTO import_candidate_signal_value
+        (signals_id, list, position, value, origin_path)
+    VALUES (:signals_id, :list, :position, :value, :origin_path)
+"#
+);
+
+sqlive_compose::write!(
+    InsertTextLine(signals_id: SignalsId, position: i64, text: &'p str, origin: &'p str),
+    r#"
+    INSERT INTO import_candidate_text_line
+        (signals_id, position, text, origin)
+    VALUES (:signals_id, :position, :text, :origin)
+"#
+);
+
+// Damage a test plants: every text line of the signals of a candidate gone.
+#[cfg(test)]
+sqlive_compose::write!(
+    LoseTextLines(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_text_line
+    WHERE signals_id = (SELECT signals_id FROM import_candidate_signals
+                        WHERE content_hash = :content_hash)
+"#
+);
+
+// Damage a test plants: every catalog number of the signals of a candidate
+// gone.
+#[cfg(test)]
+sqlive_compose::write!(
+    LoseCatalogNumbers(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_signal_value
+    WHERE signals_id = (SELECT signals_id FROM import_candidate_signals
+                        WHERE content_hash = :content_hash) AND list = 'catalog'
+"#
+);
+
 /// Every signal row under `content_hash`. The values cascade from the header.
 pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_signals WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteSignalsParams { content_hash })?;
     Ok(())
 }
 
@@ -123,43 +220,27 @@ pub(super) fn store_signals(
     };
     let detail = |failure: Option<&InternalFailure>| failure.map(|failure| failure.detail.clone());
 
-    let signals_id = SignalsId(sql.query_row(
-        &format!(
-            "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT ({column}) DO UPDATE SET \
-                 audio_source = excluded.audio_source, cd_rip_proof = excluded.cd_rip_proof, \
-                 download_proof = excluded.download_proof, \
-                 audio_source_file = excluded.audio_source_file, \
-                 not_cd_rate = excluded.not_cd_rate, disc_id_state = excluded.disc_id_state, \
-                 disc_id_failure = excluded.disc_id_failure, \
-                 barcode_state = excluded.barcode_state, \
-                 barcode_failure = excluded.barcode_failure, text_state = excluded.text_state, \
-                 text_failure = excluded.text_failure \
-             RETURNING signals_id",
-            column = owner.column(),
-        ),
-        params![
-            owner.content_hash(),
-            owner.run(),
+    let signals_id = SignalsId(
+        sql.returning_one(&UpsertSignalsParams {
+            content_hash: owner.content_hash(),
+            identify_run: owner.run(),
             audio_source,
             cd_rip_proof,
             download_proof,
             audio_source_file,
-            signals.origin.not_cd_rate,
+            not_cd_rate: signals.origin.not_cd_rate,
             disc_id_state,
-            detail(disc_id_failure),
+            disc_id_failure: detail(disc_id_failure),
             barcode_state,
-            detail(barcode_failure),
+            barcode_failure: detail(barcode_failure),
             text_state,
-            detail(text_failure),
-        ],
-        |row| row.get(0),
-    )?);
+            text_failure: detail(text_failure),
+        })?
+        .signals_id,
+    );
 
-    for table in ["import_candidate_signal_value", "import_candidate_text_line"] {
-        sql.execute(&format!("DELETE FROM {table} WHERE signals_id = ?"), params![signals_id])?;
-    }
+    sql.run(&DeleteSignalValuesParams { signals_id })?;
+    sql.run(&DeleteSignalTextLinesParams { signals_id })?;
     let unsourced = |values: &[String]| -> Vec<(String, Option<String>)> {
         values.iter().map(|value| (value.clone(), None)).collect()
     };
@@ -184,25 +265,24 @@ pub(super) fn store_signals(
     ];
     for (list, values) in lists {
         for (position, (value, origin_path)) in values.into_iter().enumerate() {
-            sql.execute(
-                &format!(
-                    "INSERT INTO import_candidate_signal_value ({SIGNAL_VALUE_COLUMNS}) \
-                     VALUES (?, ?, ?, ?, ?)"
-                ),
-                params![signals_id, list, position as i64, value, origin_path],
-            )?;
+            sql.run(&InsertSignalValueParams {
+                signals_id,
+                list,
+                position: position as i64,
+                value,
+                origin_path,
+            })?;
         }
     }
 
     // The candidate's own text, in reading order.
     for (position, line) in signals.text_pool.iter().enumerate() {
-        sql.execute(
-            &format!(
-                "INSERT INTO import_candidate_text_line ({TEXT_LINE_COLUMNS}) \
-                 VALUES (?, ?, ?, ?)"
-            ),
-            params![signals_id, position as i64, line.text, line.origin.as_str()],
-        )?;
+        sql.run(&InsertTextLineParams {
+            signals_id,
+            position: position as i64,
+            text: &line.text,
+            origin: line.origin.as_str(),
+        })?;
     }
     // The text changed, so check and group the verdict's rows again against
     // it.

@@ -20,6 +20,7 @@ use bae_catalogs::search::MetadataResult;
 use bae_identify::release_group::{
     group_results, unranked, AlbumHeading, ReleaseGroup, ReleaseGroupSource, Statement, Statements,
 };
+use bae_store::WriteStatements as _;
 use std::collections::HashMap;
 
 /// Where one release of a list stands: its row, its card, its place among
@@ -263,6 +264,83 @@ impl<'a> OwnersList<'a> {
     }
 }
 
+sqlive_compose::write!(
+    DeleteCardList(
+        verdict: Option<super::verdict_rows::VerdictId>,
+        search_run: Option<i64>,
+        step: Option<&'p str>,
+        position: Option<i64>,
+        cell: Option<i64>,
+    ),
+    r#"
+    DELETE FROM import_candidate_card_list
+    WHERE verdict_id IS :verdict AND search_run IS :search_run AND step IS :step
+        AND position IS :position AND cell IS :cell
+"#
+);
+
+sqlive_compose::write!(
+    InsertCardList(
+        verdict: Option<super::verdict_rows::VerdictId>,
+        search_run: Option<i64>,
+        step: Option<&'p str>,
+        position: Option<i64>,
+        cell: Option<i64>,
+    ),
+    r#"
+    INSERT INTO import_candidate_card_list (verdict_id, search_run, step, position, cell)
+    VALUES (:verdict, :search_run, :step, :position, :cell)
+    RETURNING list
+"#
+);
+
+sqlive_compose::write!(
+    InsertCardText(list: i64, card: u32, kind: &'p str, ordinal: i64, text: &'p str),
+    r#"
+    INSERT INTO import_candidate_card_text
+        (list, card, kind, ordinal, text)
+    VALUES (:list, :card, :kind, :ordinal, :text)
+"#
+);
+
+sqlive_compose::write!(
+    InsertCard(
+        list: i64,
+        card: u32,
+        card_order: u32,
+        id: &'p str,
+        cover_ord: Option<u32>,
+        year_min: Option<i32>,
+        year_max: Option<i32>,
+        sources: String,
+        headings: Option<String>,
+    ),
+    r#"
+    INSERT INTO import_candidate_card
+        (list, card, card_order, id, cover_ord, year_min, year_max, sources, headings)
+    VALUES (:list, :card, :card_order, :id, :cover_ord, :year_min, :year_max, :sources,
+        :headings)
+"#
+);
+
+sqlive_compose::write!(
+    InsertRowStatement(
+        list: i64,
+        listing: &'static str,
+        pressing: u32,
+        fact: &'p str,
+        line: i64,
+        ordinal: i64,
+        value: &'p str,
+        catalogs: String,
+    ),
+    r#"
+    INSERT INTO import_candidate_row_statement
+        (list, listing, pressing, fact, line, ordinal, value, catalogs)
+    VALUES (:list, :listing, :pressing, :fact, :line, :ordinal, :value, :catalogs)
+"#
+);
+
 /// Write `layout`'s cards, card text and row statements as `owner`'s list,
 /// in place of what that list held.
 pub(super) fn store_list_text(
@@ -272,24 +350,18 @@ pub(super) fn store_list_text(
 ) -> Result<(), DbError> {
     let (verdict, search_run) = (owner.owner.verdict(), owner.owner.search());
     let (step, position, cell) = owner.list.columns();
-    sql.execute(
-        "DELETE FROM import_candidate_card_list WHERE verdict_id IS ? \
-         AND search_run IS ? AND step IS ? AND position IS ? AND cell IS ?",
-        params![verdict, search_run, step, position, cell],
-    )?;
-    let list: i64 = sql.query_row(
-        "INSERT INTO import_candidate_card_list \
-             (verdict_id, search_run, step, position, cell) \
-         VALUES (?, ?, ?, ?, ?) RETURNING list",
-        params![verdict, search_run, step, position, cell],
-        |row| row.get(0),
-    )?;
+    sql.run(&DeleteCardListParams { verdict, search_run, step, position, cell })?;
+    let list = sql
+        .returning_one(&InsertCardListParams { verdict, search_run, step, position, cell })?
+        .list;
     let card_text = |card: u32, kind: &str, ordinal: usize, text: &str| {
-        sql.execute(
-            "INSERT INTO import_candidate_card_text (list, card, kind, ordinal, text) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![list, card, kind, ordinal_column(ordinal)?, text],
-        )?;
+        sql.run(&InsertCardTextParams {
+            list,
+            card,
+            kind,
+            ordinal: ordinal_column(ordinal)?,
+            text,
+        })?;
         Ok::<_, DbError>(())
     };
     let source_json = |source: &ReleaseGroupSource| {
@@ -314,22 +386,17 @@ pub(super) fn store_list_text(
             )
             .to_string()
         });
-        sql.execute(
-            "INSERT INTO import_candidate_card \
-                 (list, card, card_order, id, cover_ord, year_min, year_max, sources, headings) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                list,
-                card.card,
-                card.card_order,
-                card.id,
-                card.cover_ord,
-                card.year_min,
-                card.year_max,
-                sources.to_string(),
-                headings,
-            ],
-        )?;
+        sql.run(&InsertCardParams {
+            list,
+            card: card.card,
+            card_order: card.card_order,
+            id: &card.id,
+            cover_ord: card.cover_ord,
+            year_min: card.year_min,
+            year_max: card.year_max,
+            sources: sources.to_string(),
+            headings,
+        })?;
         for (ordinal, title) in card.titles.iter().enumerate() {
             card_text(card.card, "title", ordinal, title)?;
         }
@@ -344,22 +411,17 @@ pub(super) fn store_list_text(
         let statement =
             |fact: &str, line: usize, ordinal: usize, value: &str, catalogs: &[LookupCatalog]| {
                 let catalogs: Vec<&str> = catalogs.iter().map(|catalog| catalog.as_str()).collect();
-                sql.execute(
-                    "INSERT INTO import_candidate_row_statement \
-                     (list, listing, pressing, fact, line, ordinal, value, catalogs) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    params![
-                        list,
-                        row.listing,
-                        row.pressing,
-                        fact,
-                        ordinal_column(line)?,
-                        ordinal_column(ordinal)?,
-                        value,
-                        serde_json::to_string(&catalogs)
-                            .map_err(|error| DbError::encode("a statement's catalogs", error))?,
-                    ],
-                )?;
+                sql.run(&InsertRowStatementParams {
+                    list,
+                    listing: row.listing,
+                    pressing: row.pressing,
+                    fact,
+                    line: ordinal_column(line)?,
+                    ordinal: ordinal_column(ordinal)?,
+                    value,
+                    catalogs: serde_json::to_string(&catalogs)
+                        .map_err(|error| DbError::encode("a statement's catalogs", error))?,
+                })?;
                 Ok::<_, DbError>(())
             };
         let Statements { years, labels, barcodes, areas, media } = &row.statements;
@@ -384,6 +446,33 @@ pub(super) fn store_list_text(
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    PlaceSearchMatch(
+        pressing: u32,
+        card: u32,
+        record_order: u32,
+        section: u32,
+        row_order: u32,
+        album_links: &'static str,
+        search_run: i64,
+        position: i64,
+    ),
+    r#"
+    UPDATE import_candidate_match
+    SET pressing = :pressing, card = :card, record_order = :record_order, section = :section,
+        row_order = :row_order, album_links = :album_links
+    WHERE search_run = :search_run AND position = :position
+    RETURNING match_id
+"#
+);
+
+sqlive_compose::write!(
+    DeleteMatchAlbumLinks(match_id: super::match_rows::MatchId),
+    r#"
+    DELETE FROM import_candidate_match_album_link WHERE match_id = :match_id
+"#
+);
 
 /// Lay out the typed search `run`'s whole list again, inside the write that
 /// changed it, and store what the rules decided: each release's row, card
@@ -412,27 +501,20 @@ pub(super) fn lay_out_search_on(
     let groups = group_results(unranked(results.clone()), None);
     let layout = ListLayout::of(&results, &groups, "returned");
     for ((row, result), place) in rows.iter().zip(&results).zip(&layout.places) {
-        let match_id = sql.query_row(
-            "UPDATE import_candidate_match \
-             SET pressing = ?, card = ?, record_order = ?, section = ?, row_order = ?, \
-                 album_links = ? \
-             WHERE search_run = ? AND position = ? RETURNING match_id",
-            params![
-                place.pressing,
-                place.card,
-                place.record_order,
-                place.section,
-                place.row_order,
-                album_links_column(&result.album_links),
-                run,
-                row.position
-            ],
-            |row| row.get::<_, MatchId>(0),
-        )?;
-        sql.execute(
-            "DELETE FROM import_candidate_match_album_link WHERE match_id = ?",
-            params![match_id],
-        )?;
+        let match_id = MatchId(
+            sql.returning_one(&PlaceSearchMatchParams {
+                pressing: place.pressing,
+                card: place.card,
+                record_order: place.record_order,
+                section: place.section,
+                row_order: place.row_order,
+                album_links: album_links_column(&result.album_links),
+                search_run: run,
+                position: row.position,
+            })?
+            .match_id,
+        );
+        sql.run(&DeleteMatchAlbumLinksParams { match_id })?;
         store_album_link_rows(sql, match_id, &result.album_links)?;
     }
     store_list_text(

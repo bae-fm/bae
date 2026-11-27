@@ -9,7 +9,60 @@ use crate::ReleaseLink;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::MetadataRef;
 use bae_identify::{AlbumLink, PressingLink};
+use bae_store::WriteStatements as _;
 use std::str::FromStr;
+
+sqlive_compose::write!(
+    DeleteReleaseLink(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_release_link WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteLinkPartners(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_release_link_partner WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteLinkAlbums(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_release_link_album WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    UpsertReleaseLink(
+        content_hash: &'p str,
+        kind: &'static str,
+        source: Option<&'p str>,
+        release_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id)
+    VALUES (:content_hash, :kind, :source, :release_id)
+    ON CONFLICT (content_hash) DO UPDATE SET
+        kind = excluded.kind, source = excluded.source, release_id = excluded.release_id
+"#
+);
+
+sqlive_compose::write!(
+    InsertLinkPartner(content_hash: &'p str, source: &'p str, release_id: &'p str),
+    r#"
+    INSERT INTO import_candidate_release_link_partner (content_hash, kind, source, release_id)
+    VALUES (:content_hash, 'pressing', :source, :release_id)
+"#
+);
+
+sqlive_compose::write!(
+    InsertLinkAlbum(content_hash: &'p str, catalog: &'p str, album_id: &'p str),
+    r#"
+    INSERT INTO import_candidate_release_link_album (content_hash, kind, catalog, album_id)
+    VALUES (:content_hash, 'album', :catalog, :album_id)
+"#
+);
 
 /// Make the candidate's release link `link`, or remove it. A link that
 /// stays is written in place, so the candidate never reads as unlinked on
@@ -22,54 +75,37 @@ pub(super) fn store_release_link(
     let Some(link) = link else {
         // The partner and album rows hang off the link row, so this clears
         // them too.
-        sql.execute(
-            "DELETE FROM import_candidate_release_link WHERE content_hash = ?",
-            [content_hash],
-        )?;
+        sql.run(&DeleteReleaseLinkParams { content_hash })?;
         return Ok(());
     };
     // The partner and album rows name the link's kind, which the row below
     // may change, so the previous link's go first.
-    sql.execute(
-        "DELETE FROM import_candidate_release_link_partner WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    sql.execute(
-        "DELETE FROM import_candidate_release_link_album WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.run(&DeleteLinkPartnersParams { content_hash })?;
+    sql.run(&DeleteLinkAlbumsParams { content_hash })?;
     let (kind, source, release_id) = match link {
         ReleaseLink::Pressing(pressing) => {
             ("pressing", Some(pressing.record.catalog.as_str()), Some(pressing.record.key.as_str()))
         }
         ReleaseLink::Album(_) => ("album", None, None),
     };
-    sql.execute(
-        "INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id) \
-         VALUES (?, ?, ?, ?) \
-         ON CONFLICT (content_hash) DO UPDATE SET \
-             kind = excluded.kind, source = excluded.source, release_id = excluded.release_id",
-        params![content_hash, kind, source, release_id],
-    )?;
+    sql.run(&UpsertReleaseLinkParams { content_hash, kind, source, release_id })?;
     match link {
         ReleaseLink::Pressing(pressing) => {
             for partner in &pressing.partners {
-                sql.execute(
-                    "INSERT INTO import_candidate_release_link_partner \
-                         (content_hash, kind, source, release_id) \
-                     VALUES (?, 'pressing', ?, ?)",
-                    params![content_hash, partner.catalog.as_str(), partner.key],
-                )?;
+                sql.run(&InsertLinkPartnerParams {
+                    content_hash,
+                    source: partner.catalog.as_str(),
+                    release_id: &partner.key,
+                })?;
             }
         }
         ReleaseLink::Album(album) => {
             for album in album.albums() {
-                sql.execute(
-                    "INSERT INTO import_candidate_release_link_album \
-                         (content_hash, kind, catalog, album_id) \
-                     VALUES (?, 'album', ?, ?)",
-                    params![content_hash, album.catalog.as_str(), album.key],
-                )?;
+                sql.run(&InsertLinkAlbumParams {
+                    content_hash,
+                    catalog: album.catalog.as_str(),
+                    album_id: &album.key,
+                })?;
             }
         }
     }

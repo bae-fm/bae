@@ -3,11 +3,35 @@
 //! the ones that no cell of the verdict's ledger shows, so that a screen can
 //! show each of them on its own line.
 
-use super::lookup_failure_columns::{failure_columns, failure_of};
+use super::lookup_failure_columns::{failure_of, failure_stated};
 use super::verdict_rows::VerdictId;
 use super::*;
 use bae_catalogs::search::SourceFailure;
 use bae_identify::IdentifyFailure;
+use bae_store::WriteStatements as _;
+
+sqlive_compose::write!(
+    DeleteVerdictFailures(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_verdict_failure WHERE verdict_id = :verdict
+"#
+);
+
+sqlive_compose::write!(
+    InsertVerdictFailure(
+        verdict: super::verdict_rows::VerdictId,
+        position: i64,
+        lookup: &'static str,
+        catalog: Option<&'static str>,
+        failure: &'static str,
+        failure_status: Option<i64>,
+    ),
+    r#"
+    INSERT INTO import_candidate_verdict_failure
+        (verdict_id, position, lookup, catalog, failure, failure_status)
+    VALUES (:verdict, :position, :lookup, :catalog, :failure, :failure_status)
+"#
+);
 
 /// Write `failures` as `verdict`'s, over the failures it stored before.
 pub(super) fn store_failures(
@@ -15,10 +39,7 @@ pub(super) fn store_failures(
     verdict: VerdictId,
     failures: &[IdentifyFailure],
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_verdict_failure WHERE verdict_id = ?",
-        params![verdict],
-    )?;
+    sql.run(&DeleteVerdictFailuresParams { verdict })?;
     for (position, failure) in failures.iter().enumerate() {
         let (lookup, catalog, failed) = match failure {
             IdentifyFailure::DiscId(failed) => ("disc_id", None, failed),
@@ -29,20 +50,15 @@ pub(super) fn store_failures(
             IdentifyFailure::Pressing(failed) => ("pressing", Some(failed.source), &failed.failure),
             IdentifyFailure::Cover(failed) => ("cover", Some(failed.source), &failed.failure),
         };
-        let columns = failure_columns(Some(failed));
-        sql.execute(
-            "INSERT INTO import_candidate_verdict_failure \
-                 (verdict_id, position, lookup, catalog, failure, failure_status) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                verdict,
-                to_i64(position, "a verdict's failure position")?,
-                lookup,
-                catalog.map(|catalog| catalog.as_str()),
-                columns.kind,
-                columns.status,
-            ],
-        )?;
+        let (kind, status) = failure_stated(failed);
+        sql.run(&InsertVerdictFailureParams {
+            verdict,
+            position: to_i64(position, "a verdict's failure position")?,
+            lookup,
+            catalog: catalog.map(|catalog| catalog.as_str()),
+            failure: kind,
+            failure_status: status,
+        })?;
     }
     Ok(())
 }

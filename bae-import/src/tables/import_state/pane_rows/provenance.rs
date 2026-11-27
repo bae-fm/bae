@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::MetadataProvenance;
+use bae_store::WriteStatements as _;
 
 /// The provenance as its columns. Only an external release names a source and
 /// a release.
@@ -27,6 +28,41 @@ fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> 
     }
 }
 
+sqlive_compose::write!(
+    DeleteDraftProvenance(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_draft_provenance WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    UpsertDraftProvenance(
+        content_hash: &'p str,
+        kind: &'static str,
+        source: Option<&'static str>,
+        release_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_draft_provenance (content_hash, kind, source, release_id)
+    VALUES (:content_hash, :kind, :source, :release_id)
+    ON CONFLICT (content_hash) DO UPDATE SET
+        kind = excluded.kind, source = excluded.source, release_id = excluded.release_id
+"#
+);
+
+sqlive_compose::write!(
+    InsertDraftProvenance(
+        content_hash: &'p str,
+        kind: &'static str,
+        source: Option<&'static str>,
+        release_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_draft_provenance (content_hash, kind, source, release_id)
+    VALUES (:content_hash, :kind, :source, :release_id)
+"#
+);
+
 /// Make the draft's provenance `provenance`, or remove it: in place when one
 /// stays, so the draft never reads as read from nowhere on its way from one
 /// source to another.
@@ -36,21 +72,16 @@ pub(crate) fn store_provenance(
     provenance: Option<&MetadataProvenance>,
 ) -> Result<(), DbError> {
     let Some(provenance) = provenance else {
-        sql.execute(
-            "DELETE FROM import_candidate_draft_provenance WHERE content_hash = ?",
-            [content_hash],
-        )?;
+        sql.run(&DeleteDraftProvenanceParams { content_hash })?;
         return Ok(());
     };
     let columns = provenance_columns(provenance);
-    sql.execute(
-        "INSERT INTO import_candidate_draft_provenance \
-             (content_hash, kind, source, release_id) \
-         VALUES (?, ?, ?, ?) \
-         ON CONFLICT (content_hash) DO UPDATE SET \
-             kind = excluded.kind, source = excluded.source, release_id = excluded.release_id",
-        params![content_hash, columns.kind, columns.source, columns.release_id],
-    )?;
+    sql.run(&UpsertDraftProvenanceParams {
+        content_hash,
+        kind: columns.kind,
+        source: columns.source,
+        release_id: columns.release_id,
+    })?;
     Ok(())
 }
 
@@ -61,12 +92,12 @@ pub(crate) fn insert_provenance(
     provenance: &MetadataProvenance,
 ) -> Result<(), DbError> {
     let columns = provenance_columns(provenance);
-    sql.execute(
-        "INSERT INTO import_candidate_draft_provenance \
-             (content_hash, kind, source, release_id) \
-         VALUES (?, ?, ?, ?)",
-        params![content_hash, columns.kind, columns.source, columns.release_id],
-    )?;
+    sql.run(&InsertDraftProvenanceParams {
+        content_hash,
+        kind: columns.kind,
+        source: columns.source,
+        release_id: columns.release_id,
+    })?;
     Ok(())
 }
 

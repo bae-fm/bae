@@ -16,6 +16,7 @@ use bae_identify::signals::{SourcedValue, TextLine};
 use bae_identify::{
     Agreements, CandidateText, CatalogStepView, Findings, IdentifyRunView, JudgedFindings,
 };
+use bae_store::WriteStatements as _;
 
 /// A verdict's releases as the rules laid them out, aligned with
 /// [`Findings::releases`]: the offered releases, then the ones set aside.
@@ -140,6 +141,34 @@ sqlive_compose::read!(
 "#
 );
 
+sqlive_compose::write!(
+    PlaceVerdictMatch(
+        card: u32,
+        record_order: u32,
+        section: u32,
+        row_order: u32,
+        agrees_disc_id: bool,
+        agrees_barcode: bool,
+        agrees_catalog: bool,
+        agrees_label: bool,
+        agrees_year: bool,
+        agrees_country: bool,
+        agrees_title: bool,
+        agrees_artist: bool,
+        verdict: super::verdict_rows::VerdictId,
+        position: i64,
+    ),
+    r#"
+    UPDATE import_candidate_match SET
+        card = :card, record_order = :record_order, section = :section, row_order = :row_order,
+        agrees_disc_id = :agrees_disc_id, agrees_barcode = :agrees_barcode, agrees_catalog =
+        :agrees_catalog, agrees_label = :agrees_label, agrees_year = :agrees_year,
+        agrees_country = :agrees_country, agrees_title = :agrees_title, agrees_artist =
+        :agrees_artist
+    WHERE verdict_id = :verdict AND position = :position
+"#
+);
+
 /// Lay out `owner`'s stored releases again, at the end of a write that
 /// changes their signals' text or the discounted catalog numbers.
 /// An owner with no verdict, or one that found nothing, holds no layout.
@@ -163,29 +192,22 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
     for index in 0..findings.releases().count() {
         let placed = layout.placed(index);
         let agrees = placed.agreements;
-        sql.execute(
-            "UPDATE import_candidate_match \
-             SET card = ?, record_order = ?, section = ?, row_order = ?, agrees_disc_id = ?, \
-                 agrees_barcode = ?, agrees_catalog = ?, agrees_label = ?, agrees_year = ?, \
-                 agrees_country = ?, agrees_title = ?, agrees_artist = ? \
-             WHERE verdict_id = ? AND position = ?",
-            params![
-                placed.place.card,
-                placed.place.record_order,
-                placed.place.section,
-                placed.place.row_order,
-                agrees.disc_id,
-                agrees.barcode,
-                agrees.catalog,
-                agrees.label,
-                agrees.year,
-                agrees.country,
-                agrees.title,
-                agrees.artist,
-                verdict,
-                ordinal_column(index)?,
-            ],
-        )?;
+        sql.run(&PlaceVerdictMatchParams {
+            card: placed.place.card,
+            record_order: placed.place.record_order,
+            section: placed.place.section,
+            row_order: placed.place.row_order,
+            agrees_disc_id: agrees.disc_id,
+            agrees_barcode: agrees.barcode,
+            agrees_catalog: agrees.catalog,
+            agrees_label: agrees.label,
+            agrees_year: agrees.year,
+            agrees_country: agrees.country,
+            agrees_title: agrees.title,
+            agrees_artist: agrees.artist,
+            verdict,
+            position: ordinal_column(index)?,
+        })?;
     }
     layout.store_text(sql, verdict)
 }

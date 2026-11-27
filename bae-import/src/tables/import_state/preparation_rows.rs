@@ -14,6 +14,7 @@ use crate::folder_scanner::FolderCandidate;
 use crate::preparations::{CandidatePreparation, StoredPreparation};
 use crate::tables::release_groupings::{load_candidate_entry_on, require_editable_files_on};
 use bae_store::statement_optional;
+use bae_store::WriteStatements as _;
 
 /// The revisions a save was prepared against, and — for a person's write —
 /// the candidate it edits.
@@ -256,6 +257,24 @@ fn answers_on(
     }))
 }
 
+sqlive_compose::write!(
+    AdvanceCandidateRevisions(
+        content_hash: &'p str,
+        candidate_key: &'p crate::CandidateKey,
+        next_edit: i64,
+        next_metadata: i64,
+        expected_edit: i64,
+        expected_metadata: i64,
+    ),
+    r#"
+    UPDATE import_candidate_state SET
+        candidate_key = :candidate_key,
+        edit_revision = :next_edit, metadata_revision = :next_metadata
+    WHERE content_hash = :content_hash
+        AND edit_revision = :expected_edit AND metadata_revision = :expected_metadata
+"#
+);
+
 /// Write `prep` over what is stored, provided the stored revisions still
 /// match `expected`: every row that differs, and no other.
 pub(super) fn save_preparation_on(
@@ -287,21 +306,14 @@ pub(super) fn save_preparation_on(
     let next_edit = to_i64(prep.file_edits.revision, "candidate edit revision")?;
     let next_metadata = to_i64(prep.metadata_revision, "candidate metadata revision")?;
 
-    let changed = sql.execute(
-        "UPDATE import_candidate_state SET \
-             candidate_key = :candidate_key, \
-             edit_revision = :next_edit, metadata_revision = :next_metadata \
-         WHERE content_hash = :content_hash \
-           AND edit_revision = :expected_edit AND metadata_revision = :expected_metadata",
-        named_params! {
-            ":candidate_key": prep.candidate_key,
-            ":next_edit": next_edit,
-            ":next_metadata": next_metadata,
-            ":content_hash": content_hash,
-            ":expected_edit": expected_edit,
-            ":expected_metadata": expected_metadata,
-        },
-    )?;
+    let changed = sql.run(&AdvanceCandidateRevisionsParams {
+        content_hash,
+        candidate_key: &prep.candidate_key,
+        next_edit,
+        next_metadata,
+        expected_edit,
+        expected_metadata,
+    })?;
     if changed != 1 {
         let exists = sql
             .query_row(

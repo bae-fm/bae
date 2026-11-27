@@ -31,6 +31,7 @@ use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles, SaveFailure};
 use crate::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
 use bae_store::statement_row;
+use bae_store::WriteStatements as _;
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads
 /// them.
@@ -309,6 +310,28 @@ pub(crate) fn end_file_work_unless_of_on(
     Ok(())
 }
 
+sqlive_compose::write!(
+    JoinIdentificationBatch(candidate_key: &'p crate::CandidateKey),
+    r#"
+    INSERT INTO import_identification_batch (candidate_key, ended) VALUES (:candidate_key, 0)
+    ON CONFLICT (candidate_key) DO UPDATE SET ended = 0
+"#
+);
+
+sqlive_compose::write!(
+    EndBatchIdentification(candidate_key: &'p crate::CandidateKey),
+    r#"
+    UPDATE import_identification_batch SET ended = 1 WHERE candidate_key = :candidate_key
+"#
+);
+
+sqlive_compose::write!(
+    ClearIdentificationBatch,
+    r#"
+    DELETE FROM import_identification_batch
+"#
+);
+
 /// Move the identification count by what one change did to `candidate_key`:
 /// a candidate whose identification starts (an admission with none in
 /// flight) joins the batch, or rejoins it when its last one ended; an ending
@@ -324,17 +347,10 @@ fn count_on(
     };
     match (in_flight(moved.before.as_ref()), in_flight(moved.after.as_ref())) {
         (false, true) => {
-            sql.execute(
-                "INSERT INTO import_identification_batch (candidate_key, ended) VALUES (?, 0) \
-                 ON CONFLICT (candidate_key) DO UPDATE SET ended = 0",
-                [candidate_key],
-            )?;
+            sql.run(&JoinIdentificationBatchParams { candidate_key })?;
         }
         (true, false) => {
-            let counted = sql.execute(
-                "UPDATE import_identification_batch SET ended = 1 WHERE candidate_key = ?",
-                [candidate_key],
-            )?;
+            let counted = sql.run(&EndBatchIdentificationParams { candidate_key })?;
             // Every identification in flight joined the batch as it started.
             if counted == 0 {
                 return Err(DbError::unreadable(
@@ -348,13 +364,55 @@ fn count_on(
                 |row| row.get::<_, bool>(0),
             )?;
             if over {
-                sql.execute("DELETE FROM import_identification_batch", [])?;
+                sql.run(&ClearIdentificationBatchParams {})?;
             }
         }
         (false, false) | (true, true) => {}
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    DeleteStanding(candidate_key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM import_candidate_standing WHERE candidate_key = :candidate_key
+"#
+);
+
+sqlive_compose::write!(
+    UpsertStanding(
+        candidate_key: &'p crate::CandidateKey,
+        identification: Option<&'static str>,
+        content_hash: Option<&'p str>,
+        file_edit_revision: Option<i64>,
+        admission: Option<&'static str>,
+        identify_run: Option<i64>,
+        import_asked: Option<bool>,
+        save_failure_error: Option<&'p str>,
+        import_step: Option<&'static str>,
+        import_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_standing
+        (candidate_key, identification, content_hash, file_edit_revision, admission,
+        identify_run, import_asked, save_failure_error, import_step, import_id)
+    VALUES (:candidate_key, :identification, :content_hash, :file_edit_revision, :admission,
+        :identify_run, :import_asked, :save_failure_error, :import_step, :import_id)
+    ON CONFLICT (candidate_key) DO UPDATE SET
+        identification = excluded.identification, content_hash = excluded.content_hash,
+        file_edit_revision = excluded.file_edit_revision, admission = excluded.admission,
+        identify_run = excluded.identify_run, import_asked = excluded.import_asked,
+        save_failure_error = excluded.save_failure_error, import_step = excluded.import_step,
+        import_id = excluded.import_id
+"#
+);
+
+sqlive_compose::write!(
+    ClearStandings,
+    r#"
+    DELETE FROM import_candidate_standing
+"#
+);
 
 /// Store `standing` as `candidate_key`'s row, or remove the row when nothing
 /// is running for it.
@@ -364,10 +422,7 @@ fn write_on(
     standing: &StoredStanding,
 ) -> Result<(), DbError> {
     if standing == &StoredStanding::default() {
-        sql.execute(
-            "DELETE FROM import_candidate_standing WHERE candidate_key = ?",
-            [candidate_key],
-        )?;
+        sql.run(&DeleteStandingParams { candidate_key })?;
         return Ok(());
     }
     let mut identification = None;
@@ -410,34 +465,18 @@ fn write_on(
         None => (None, None),
         Some(stored) => (Some(import_step_column(stored.step)), Some(stored.import_id.as_str())),
     };
-    sql.execute(
-        &format!(
-            "INSERT INTO import_candidate_standing (candidate_key, {COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT (candidate_key) DO UPDATE SET \
-                 identification = excluded.identification, \
-                 content_hash = excluded.content_hash, \
-                 file_edit_revision = excluded.file_edit_revision, \
-                 admission = excluded.admission, \
-                 identify_run = excluded.identify_run, \
-                 import_asked = excluded.import_asked, \
-                 save_failure_error = excluded.save_failure_error, \
-                 import_step = excluded.import_step, \
-                 import_id = excluded.import_id"
-        ),
-        params![
-            candidate_key,
-            identification,
-            content_hash,
-            file_edit_revision,
-            admission,
-            identify_run,
-            import_asked,
-            save_failure_error,
-            import_step,
-            import_id,
-        ],
-    )?;
+    sql.run(&UpsertStandingParams {
+        candidate_key,
+        identification,
+        content_hash,
+        file_edit_revision,
+        admission,
+        identify_run,
+        import_asked,
+        save_failure_error,
+        import_step,
+        import_id,
+    })?;
     Ok(())
 }
 
@@ -516,8 +555,8 @@ impl ImportTables {
     pub(crate) async fn clear_candidate_standings(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {
-                sql.execute("DELETE FROM import_candidate_standing", [])?;
-                sql.execute("DELETE FROM import_identification_batch", [])?;
+                sql.run(&ClearStandingsParams {})?;
+                sql.run(&ClearIdentificationBatchParams {})?;
                 super::run_rows::delete_every_run_on(sql)?;
                 super::search_rows::delete_every_search_on(sql)?;
                 Ok(())

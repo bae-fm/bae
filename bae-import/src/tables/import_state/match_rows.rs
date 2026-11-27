@@ -13,6 +13,7 @@ use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteImageSet};
 use bae_catalogs::search::{MetadataResult, SourceTracks};
+use bae_store::WriteStatements as _;
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use std::str::FromStr;
 
@@ -34,7 +35,7 @@ pub(super) fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
 /// The id of an `import_candidate_match` row, which every row under the
 /// match names it by.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct MatchId(i64);
+pub(super) struct MatchId(pub(super) i64);
 
 impl rusqlite::types::FromSql for MatchId {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
@@ -58,14 +59,6 @@ pub(super) enum MatchOwner {
 }
 
 impl MatchOwner {
-    /// The column that names this owner on every row it owns.
-    pub(super) fn column(self) -> &'static str {
-        match self {
-            Self::Verdict(_) => "verdict_id",
-            Self::Search(_) => "search_run",
-        }
-    }
-
     pub(super) fn verdict(self) -> Option<VerdictId> {
         match self {
             Self::Verdict(verdict) => Some(verdict),
@@ -101,30 +94,75 @@ pub(super) enum Written<'a> {
     Returned,
 }
 
+sqlive_compose::write!(
+    DeleteVerdictCoverCopies(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_match_cover_copy
+    WHERE match_id IN (SELECT match_id FROM import_candidate_match WHERE verdict_id = :verdict)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteVerdictMatchLabels(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_match_label
+    WHERE match_id IN (SELECT match_id FROM import_candidate_match WHERE verdict_id = :verdict)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteVerdictMatchBarcodes(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_match_barcode
+    WHERE match_id IN (SELECT match_id FROM import_candidate_match WHERE verdict_id = :verdict)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteVerdictMatchMediums(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_match_medium
+    WHERE match_id IN (SELECT match_id FROM import_candidate_match WHERE verdict_id = :verdict)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteVerdictMatchLinks(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_match_link
+    WHERE match_id IN (SELECT match_id FROM import_candidate_match WHERE verdict_id = :verdict)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteVerdictAlbumLinks(verdict: super::verdict_rows::VerdictId),
+    r#"
+    DELETE FROM import_candidate_match_album_link
+    WHERE match_id IN (SELECT match_id FROM import_candidate_match WHERE verdict_id = :verdict)
+"#
+);
+
 /// Delete the rows below every match the verdict `verdict` holds, so the
 /// matches a write stores next carry only their own.
 pub(super) fn delete_verdict_match_entries(
     sql: &CovenWrite<'_>,
     verdict: VerdictId,
 ) -> Result<(), DbError> {
-    for table in [
-        "import_candidate_match_cover_copy",
-        "import_candidate_match_label",
-        "import_candidate_match_barcode",
-        "import_candidate_match_medium",
-        "import_candidate_match_link",
-        "import_candidate_match_album_link",
-    ] {
-        sql.execute(
-            &format!(
-                "DELETE FROM {table} WHERE match_id IN \
-                 (SELECT match_id FROM import_candidate_match WHERE verdict_id = ?)"
-            ),
-            params![verdict],
-        )?;
-    }
+    sql.run(&DeleteVerdictCoverCopiesParams { verdict })?;
+    sql.run(&DeleteVerdictMatchLabelsParams { verdict })?;
+    sql.run(&DeleteVerdictMatchBarcodesParams { verdict })?;
+    sql.run(&DeleteVerdictMatchMediumsParams { verdict })?;
+    sql.run(&DeleteVerdictMatchLinksParams { verdict })?;
+    sql.run(&DeleteVerdictAlbumLinksParams { verdict })?;
     Ok(())
 }
+
+sqlive_compose::write!(
+    DeleteVerdictMatchesFrom(verdict: super::verdict_rows::VerdictId, position: i64),
+    r#"
+    DELETE FROM import_candidate_match WHERE verdict_id = :verdict AND position >= :position
+"#
+);
 
 /// Delete `verdict`'s matches from `position` on: those an earlier verdict
 /// held past the ones a write just stored.
@@ -133,24 +171,177 @@ pub(super) fn delete_verdict_matches_from(
     verdict: VerdictId,
     position: usize,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_match WHERE verdict_id = ? AND position >= ?",
-        params![verdict, ordinal_column(position)?],
-    )?;
+    sql.run(&DeleteVerdictMatchesFromParams { verdict, position: ordinal_column(position)? })?;
     Ok(())
 }
+
+sqlive_compose::write!(
+    DeleteSearchMatches(source: &'p str),
+    r#"
+    DELETE FROM import_candidate_match WHERE search_run IS NOT NULL AND source = :source
+"#
+);
 
 /// Delete every release a search part asking `catalog` returned.
 pub(super) fn delete_search_matches_of(
     sql: &CovenWrite<'_>,
     catalog: LookupCatalog,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_match WHERE search_run IS NOT NULL AND source = ?",
-        [catalog.as_str()],
-    )?;
+    sql.run(&DeleteSearchMatchesParams { source: catalog.as_str() })?;
     Ok(())
 }
+
+// A match, written over the one its owner holds at the position. The only
+// rows an insert here can conflict with are that one: the owner's, by
+// (verdict_id, position) or by (search_run, position).
+sqlive_compose::write!(
+    UpsertMatch(
+        verdict_id: Option<super::verdict_rows::VerdictId>,
+        search_run: Option<i64>,
+        search_state: Option<&'static str>,
+        position: i64,
+        pressing: Option<i64>,
+        card: Option<i64>,
+        record_order: Option<i64>,
+        section: Option<i64>,
+        row_order: Option<i64>,
+        agrees_disc_id: bool,
+        agrees_barcode: bool,
+        agrees_catalog: bool,
+        agrees_label: bool,
+        agrees_year: bool,
+        agrees_country: bool,
+        agrees_title: bool,
+        agrees_artist: bool,
+        source: &'p str,
+        release_id: &'p str,
+        title: &'p str,
+        credits: Option<String>,
+        year: Option<i32>,
+        country: Option<&'static str>,
+        region: Option<&'static str>,
+        status: Option<&'static str>,
+        packaging: Option<&'static str>,
+        discogs_details: &'p str,
+        media_kind: &'p str,
+        cover_url: Option<&'p str>,
+        cover_label: Option<String>,
+        cover_source: Option<&'p str>,
+        cover_standing: Option<&'p str>,
+        source_group_id: Option<&'p str>,
+        album_links: &'static str,
+        source_tracks_kind: Option<&'static str>,
+        source_tracks_count: Option<i64>,
+        listing: &'static str,
+        document_failure: Option<&'static str>,
+        document_failure_status: Option<i64>,
+        named_note: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_match
+        (verdict_id, search_run, search_state, position, pressing, card, record_order, section,
+        row_order, agrees_disc_id, agrees_barcode, agrees_catalog, agrees_label, agrees_year,
+        agrees_country, agrees_title, agrees_artist, source, release_id, title, credits, year,
+        country, region, status, packaging, discogs_details, media_kind, cover_url, cover_label,
+        cover_source, cover_standing, source_group_id, album_links, source_tracks_kind,
+        source_tracks_count, listing, document_failure, document_failure_status, named_note)
+    VALUES (:verdict_id, :search_run, :search_state, :position, :pressing, :card, :record_order,
+        :section, :row_order, :agrees_disc_id, :agrees_barcode, :agrees_catalog, :agrees_label,
+        :agrees_year, :agrees_country, :agrees_title, :agrees_artist, :source, :release_id,
+        :title, :credits, :year, :country, :region, :status, :packaging, :discogs_details,
+        :media_kind, :cover_url, :cover_label, :cover_source, :cover_standing, :source_group_id,
+        :album_links, :source_tracks_kind, :source_tracks_count, :listing, :document_failure,
+        :document_failure_status, :named_note)
+    ON CONFLICT DO UPDATE SET
+        pressing = excluded.pressing, card = excluded.card, record_order =
+        excluded.record_order, section = excluded.section, row_order = excluded.row_order,
+        agrees_disc_id = excluded.agrees_disc_id, agrees_barcode = excluded.agrees_barcode,
+        agrees_catalog = excluded.agrees_catalog, agrees_label = excluded.agrees_label,
+        agrees_year = excluded.agrees_year, agrees_country = excluded.agrees_country,
+        agrees_title = excluded.agrees_title, agrees_artist = excluded.agrees_artist, source =
+        excluded.source, release_id = excluded.release_id, title = excluded.title, credits =
+        excluded.credits, year = excluded.year, country = excluded.country, region =
+        excluded.region, status = excluded.status, packaging = excluded.packaging,
+        discogs_details = excluded.discogs_details, media_kind = excluded.media_kind, cover_url
+        = excluded.cover_url, cover_label = excluded.cover_label, cover_source =
+        excluded.cover_source, cover_standing = excluded.cover_standing, source_group_id =
+        excluded.source_group_id, album_links = excluded.album_links, source_tracks_kind =
+        excluded.source_tracks_kind, source_tracks_count = excluded.source_tracks_count, listing
+        = excluded.listing, document_failure = excluded.document_failure,
+        document_failure_status = excluded.document_failure_status, named_note =
+        excluded.named_note
+    RETURNING match_id
+"#
+);
+
+sqlive_compose::write!(
+    InsertMatchCoverCopy(
+        match_id: super::match_rows::MatchId,
+        cover_url: &'p str,
+        max_edge: u32,
+        url: &'p str,
+    ),
+    r#"
+    INSERT INTO import_candidate_match_cover_copy
+        (match_id, cover_url, max_edge, url)
+    VALUES (:match_id, :cover_url, :max_edge, :url)
+"#
+);
+
+sqlive_compose::write!(
+    InsertMatchLabel(
+        match_id: super::match_rows::MatchId,
+        ordinal: i64,
+        name: Option<&'p str>,
+        catalog_number: Option<&'p str>,
+        musicbrainz_label_id: Option<&'p str>,
+        discogs_label_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_match_label
+        (match_id, ordinal, name, catalog_number, musicbrainz_label_id, discogs_label_id)
+    VALUES (:match_id, :ordinal, :name, :catalog_number, :musicbrainz_label_id,
+        :discogs_label_id)
+"#
+);
+
+sqlive_compose::write!(
+    InsertMatchBarcode(match_id: super::match_rows::MatchId, ordinal: i64, barcode: &'p str),
+    r#"
+    INSERT INTO import_candidate_match_barcode
+        (match_id, ordinal, barcode)
+    VALUES (:match_id, :ordinal, :barcode)
+"#
+);
+
+sqlive_compose::write!(
+    InsertMatchMedium(
+        match_id: super::match_rows::MatchId,
+        media_kind: &'p str,
+        ordinal: i64,
+        medium: Option<&'static str>,
+        quantity: u32,
+    ),
+    r#"
+    INSERT INTO import_candidate_match_medium
+        (match_id, media_kind, ordinal, medium, quantity)
+    VALUES (:match_id, :media_kind, :ordinal, :medium, :quantity)
+"#
+);
+
+sqlive_compose::write!(
+    InsertMatchLink(
+        match_id: super::match_rows::MatchId,
+        ordinal: i64,
+        catalog: &'p str,
+        key: &'p str,
+    ),
+    r#"
+    INSERT INTO import_candidate_match_link
+        (match_id, ordinal, catalog, key)
+    VALUES (:match_id, :ordinal, :catalog, :key)
+"#
+);
 
 /// One match at `position`, in place of the one there, with the rows under
 /// it. The rows under the match that stood there are already gone. Only a
@@ -227,147 +418,113 @@ pub(super) fn store_match(
     let facts = bae_records::records::pressing_columns::FactColumns::of(&result.facts());
     let document_failure =
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
-    let (verdict, search, column) = (owner.verdict(), owner.search(), owner.column());
-    let match_id = MatchId(sql.query_row(
-        &format!(
-            "INSERT INTO import_candidate_match \
-             (verdict_id, search_run, search_state, position, pressing, card, \
-              record_order, section, row_order, agrees_disc_id, agrees_barcode, agrees_catalog, agrees_label, \
-              agrees_year, agrees_country, agrees_title, agrees_artist, \
-              source, release_id, title, credits, year, \
-              country, region, status, packaging, discogs_details, \
-              media_kind, cover_url, cover_label, cover_source, \
-              cover_standing, source_group_id, album_links, source_tracks_kind, \
-              source_tracks_count, listing, document_failure, document_failure_status, \
-              named_note) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-         ON CONFLICT ({column}, position) DO UPDATE SET \
-             pressing = excluded.pressing, card = excluded.card, \
-             record_order = excluded.record_order, section = excluded.section, \
-             row_order = excluded.row_order, \
-             agrees_disc_id = excluded.agrees_disc_id, agrees_barcode = excluded.agrees_barcode, \
-             agrees_catalog = excluded.agrees_catalog, agrees_label = excluded.agrees_label, \
-             agrees_year = excluded.agrees_year, agrees_country = excluded.agrees_country, \
-             agrees_title = excluded.agrees_title, agrees_artist = excluded.agrees_artist, \
-             source = excluded.source, \
-             release_id = excluded.release_id, title = excluded.title, \
-             credits = excluded.credits, year = excluded.year, \
-             country = excluded.country, region = excluded.region, status = excluded.status, \
-             packaging = excluded.packaging, discogs_details = excluded.discogs_details, \
-             media_kind = excluded.media_kind, cover_url = excluded.cover_url, \
-             cover_label = excluded.cover_label, cover_source = excluded.cover_source, \
-             cover_standing = excluded.cover_standing, \
-             source_group_id = excluded.source_group_id, album_links = excluded.album_links, \
-             source_tracks_kind = excluded.source_tracks_kind, \
-             source_tracks_count = excluded.source_tracks_count, \
-             listing = excluded.listing, \
-             document_failure = excluded.document_failure, \
-             document_failure_status = excluded.document_failure_status, \
-             named_note = excluded.named_note \
-         RETURNING match_id"
-        ),
-        params![
-            verdict,
-            search,
+    let (verdict, search) = (owner.verdict(), owner.search());
+    let match_id = MatchId(
+        sql.returning_one(&UpsertMatchParams {
+            verdict_id: verdict,
+            search_run: search,
             search_state,
             position,
             pressing,
-            own_card,
+            card: own_card,
             record_order,
             section,
             row_order,
-            agrees.disc_id,
-            agrees.barcode,
-            agrees.catalog,
-            agrees.label,
-            agrees.year,
-            agrees.country,
-            agrees.title,
-            agrees.artist,
-            result.source.as_str(),
-            result.release_id,
-            result.title,
-            result.artist.as_ref().map(stored_credits::line_json).transpose()?,
-            result.year,
-            facts.country,
-            facts.region,
-            facts.status,
-            facts.packaging,
-            facts.discogs_details,
+            agrees_disc_id: agrees.disc_id,
+            agrees_barcode: agrees.barcode,
+            agrees_catalog: agrees.catalog,
+            agrees_label: agrees.label,
+            agrees_year: agrees.year,
+            agrees_country: agrees.country,
+            agrees_title: agrees.title,
+            agrees_artist: agrees.artist,
+            source: result.source.as_str(),
+            release_id: &result.release_id,
+            title: &result.title,
+            credits: result.artist.as_ref().map(stored_credits::line_json).transpose()?,
+            year: result.year,
+            country: facts.country,
+            region: facts.region,
+            status: facts.status,
+            packaging: facts.packaging,
+            discogs_details: &facts.discogs_details,
             media_kind,
-            cover.map(|cover| cover.image.url.as_str()),
+            cover_url: cover.map(|cover| cover.image.url.as_str()),
             cover_label,
-            cover.map(|cover| cover.source.as_str()),
-            cover.map(|cover| cover.standing.as_str()),
-            result.source_group_id,
-            album_links_kind,
-            tracks_kind,
-            tracks_count,
+            cover_source: cover.map(|cover| cover.source.as_str()),
+            cover_standing: cover.map(|cover| cover.standing.as_str()),
+            source_group_id: result.source_group_id.as_deref(),
+            album_links: album_links_kind,
+            source_tracks_kind: tracks_kind,
+            source_tracks_count: tracks_count,
             listing,
-            document_failure.kind,
-            document_failure.status,
+            document_failure: document_failure.kind,
+            document_failure_status: document_failure.status,
             named_note,
-        ],
-        |row| row.get(0),
-    )?);
+        })?
+        .match_id,
+    );
     if let Some(cover) = cover {
         for copy in &cover.image.downscaled {
-            sql.execute(
-                "INSERT INTO import_candidate_match_cover_copy \
-                     (match_id, cover_url, max_edge, url) \
-                 VALUES (?, ?, ?, ?)",
-                params![match_id, cover.image.url, copy.max_edge, copy.url],
-            )?;
+            sql.run(&InsertMatchCoverCopyParams {
+                match_id,
+                cover_url: &cover.image.url,
+                max_edge: copy.max_edge,
+                url: &copy.url,
+            })?;
         }
     }
     for (ordinal, label) in result.labels.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_label \
-                 (match_id, ordinal, name, catalog_number, musicbrainz_label_id, \
-                  discogs_label_id) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                match_id,
-                ordinal_column(ordinal)?,
-                label.name(),
-                label.catalog_number(),
-                label.musicbrainz_label_id(),
-                label.discogs_label_id()
-            ],
-        )?;
+        sql.run(&InsertMatchLabelParams {
+            match_id,
+            ordinal: ordinal_column(ordinal)?,
+            name: label.name(),
+            catalog_number: label.catalog_number(),
+            musicbrainz_label_id: label.musicbrainz_label_id(),
+            discogs_label_id: label.discogs_label_id(),
+        })?;
     }
     for (ordinal, barcode) in result.barcodes.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_barcode \
-                 (match_id, ordinal, barcode) VALUES (?, ?, ?)",
-            params![match_id, ordinal_column(ordinal)?, barcode],
-        )?;
+        sql.run(&InsertMatchBarcodeParams {
+            match_id,
+            ordinal: ordinal_column(ordinal)?,
+            barcode,
+        })?;
     }
     for (ordinal, (medium, quantity)) in media_entries.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_medium \
-                 (match_id, media_kind, ordinal, medium, quantity) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![
-                match_id,
-                media_kind,
-                ordinal_column(ordinal)?,
-                medium.map(Medium::key),
-                quantity,
-            ],
-        )?;
+        sql.run(&InsertMatchMediumParams {
+            match_id,
+            media_kind,
+            ordinal: ordinal_column(ordinal)?,
+            medium: medium.map(Medium::key),
+            quantity: *quantity,
+        })?;
     }
     for (ordinal, link) in result.links.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_link \
-                 (match_id, ordinal, catalog, key) VALUES (?, ?, ?, ?)",
-            params![match_id, ordinal_column(ordinal)?, link.catalog.as_str(), link.key],
-        )?;
+        sql.run(&InsertMatchLinkParams {
+            match_id,
+            ordinal: ordinal_column(ordinal)?,
+            catalog: link.catalog.as_str(),
+            key: &link.key,
+        })?;
     }
     store_album_link_rows(sql, match_id, &result.album_links)?;
     Ok(())
 }
+
+sqlive_compose::write!(
+    InsertMatchAlbumLink(
+        match_id: super::match_rows::MatchId,
+        ordinal: i64,
+        catalog: &'p str,
+        key: &'p str,
+    ),
+    r#"
+    INSERT INTO import_candidate_match_album_link
+        (match_id, ordinal, catalog, key)
+    VALUES (:match_id, :ordinal, :catalog, :key)
+"#
+);
 
 /// The album link rows of the match `match_id`, which holds none yet.
 pub(super) fn store_album_link_rows(
@@ -376,11 +533,12 @@ pub(super) fn store_album_link_rows(
     links: &AlbumLinks,
 ) -> Result<(), DbError> {
     for (ordinal, album) in links.read().iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_album_link \
-                 (match_id, ordinal, catalog, key) VALUES (?, ?, ?, ?)",
-            params![match_id, ordinal_column(ordinal)?, album.catalog.as_str(), album.key],
-        )?;
+        sql.run(&InsertMatchAlbumLinkParams {
+            match_id,
+            ordinal: ordinal_column(ordinal)?,
+            catalog: album.catalog.as_str(),
+            key: &album.key,
+        })?;
     }
     Ok(())
 }

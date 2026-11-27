@@ -11,13 +11,19 @@ pub(super) struct FailureColumns {
 }
 
 pub(super) fn failure_columns(failure: Option<&LookupFailure>) -> FailureColumns {
-    match failure {
+    match failure.map(failure_stated) {
         None => FailureColumns { kind: None, status: None },
-        Some(LookupFailure::Network) => FailureColumns { kind: Some("network"), status: None },
-        Some(LookupFailure::Timeout) => FailureColumns { kind: Some("timeout"), status: None },
-        Some(LookupFailure::Provider { status }) => {
-            FailureColumns { kind: Some("provider"), status: status.map(i64::from) }
-        }
+        Some((kind, status)) => FailureColumns { kind: Some(kind), status },
+    }
+}
+
+/// The two columns of a row that always states `failure`: its kind and the
+/// provider's HTTP status.
+pub(super) fn failure_stated(failure: &LookupFailure) -> (&'static str, Option<i64>) {
+    match failure {
+        LookupFailure::Network => ("network", None),
+        LookupFailure::Timeout => ("timeout", None),
+        LookupFailure::Provider { status } => ("provider", status.map(i64::from)),
     }
 }
 

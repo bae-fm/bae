@@ -20,6 +20,7 @@ use bae_records::DbArtist;
 use bae_store::test_fixtures::empty_db;
 use bae_store::test_fixtures::fixed_now;
 use bae_store::Store;
+use bae_store::WriteStatements as _;
 use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::path::PathBuf;
@@ -463,51 +464,48 @@ pub(crate) async fn stored_verdict(
 /// says nobody wrote it while it is read from a source, so reading the
 /// candidate fails as a damaged row.
 pub(crate) async fn disown_the_draft(db: &Store, content_hash: &str) {
-    bae_store::test_fixtures::exec(
-        db,
-        "UPDATE import_candidate_edit SET author = 'nobody' WHERE content_hash = ?1",
-        &[content_hash],
-    )
-    .await;
+    let content_hash = content_hash.to_string();
+    db.call(move |sql| {
+        sql.run(&super::pane_rows::DisownDraftParams { content_hash: &content_hash })?;
+        Ok(())
+    })
+    .await
+    .unwrap();
 }
 
 /// Damage the candidate `content_hash`'s ledger as no write leaves it: its
 /// ISRC rows are gone while its ISRC step says it read some.
 pub(crate) async fn lose_the_isrc_rows(db: &Store, content_hash: &str) {
-    bae_store::test_fixtures::exec(
-        db,
-        "DELETE FROM import_candidate_lookup_isrc \
-         WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                             WHERE content_hash = ?1)",
-        &[content_hash],
-    )
-    .await;
+    let content_hash = content_hash.to_string();
+    db.call(move |sql| {
+        sql.run(&super::ledger_rows::LoseIsrcRowsParams { content_hash: &content_hash })?;
+        Ok(())
+    })
+    .await
+    .unwrap();
 }
 
 /// Delete every text line of the signals of the candidate `content_hash`.
 pub(crate) async fn delete_text_lines(db: &Store, content_hash: &str) {
-    bae_store::test_fixtures::exec(
-        db,
-        "DELETE FROM import_candidate_text_line \
-         WHERE signals_id = (SELECT signals_id FROM import_candidate_signals \
-                             WHERE content_hash = ?1)",
-        &[content_hash],
-    )
-    .await;
+    let content_hash = content_hash.to_string();
+    db.call(move |sql| {
+        sql.run(&super::signal_rows::LoseTextLinesParams { content_hash: &content_hash })?;
+        Ok(())
+    })
+    .await
+    .unwrap();
 }
 
 /// Delete every catalog number of the signals of the candidate
 /// `content_hash`.
 pub(crate) async fn delete_catalog_numbers(db: &Store, content_hash: &str) {
-    bae_store::test_fixtures::exec(
-        db,
-        "DELETE FROM import_candidate_signal_value \
-         WHERE list = 'catalog' \
-           AND signals_id = (SELECT signals_id FROM import_candidate_signals \
-                             WHERE content_hash = ?1)",
-        &[content_hash],
-    )
-    .await;
+    let content_hash = content_hash.to_string();
+    db.call(move |sql| {
+        sql.run(&super::signal_rows::LoseCatalogNumbersParams { content_hash: &content_hash })?;
+        Ok(())
+    })
+    .await
+    .unwrap();
 }
 
 /// Write the one not-asked cell of the candidate `content_hash`'s ledger as
@@ -521,14 +519,12 @@ pub(crate) async fn set_the_not_asked_cell(
 ) -> Result<usize, bae_store::DbError> {
     let content_hash = content_hash.to_string();
     db.call(move |sql| {
-        Ok(sql.execute(
-            "UPDATE import_candidate_lookup \
-             SET answer = ?1, not_asked_reason = ?2, asked_by = ?3 \
-             WHERE answer = 'not_asked' \
-               AND verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                 WHERE content_hash = ?4)",
-            rusqlite::params![answer, reason, asked_by, content_hash],
-        )?)
+        Ok(sql.run(&super::ledger_rows::RewriteNotAskedCellParams {
+            answer,
+            not_asked_reason: reason,
+            asked_by,
+            content_hash: &content_hash,
+        })?)
     })
     .await
 }

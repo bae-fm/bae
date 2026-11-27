@@ -7,13 +7,52 @@
 use super::*;
 use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
 use crate::tables::FinishRead;
+use bae_store::WriteStatements as _;
+
+sqlive_compose::write!(
+    DeleteSheetReferences(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_sheet_reference WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteSheetPlaces(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_sheet_place WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertCandidateSheetPlace(
+        content_hash: &'p str,
+        sheet_id: &'p str,
+        place: &'static str,
+        medium: Option<u32>,
+        side: Option<u32>,
+    ),
+    r#"
+    INSERT INTO import_candidate_sheet_place (content_hash, sheet_id, place, medium, side)
+    VALUES (:content_hash, :sheet_id, :place, :medium, :side)
+"#
+);
+
+sqlive_compose::write!(
+    InsertCandidateSheetReference(
+        content_hash: &'p str,
+        sheet_id: &'p str,
+        file_reference: &'p str,
+        file_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_sheet_reference (content_hash, sheet_id, file_reference, file_id)
+    VALUES (:content_hash, :sheet_id, :file_reference, :file_id)
+"#
+);
 
 pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_sheet_reference WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    sql.execute("DELETE FROM import_candidate_sheet_place WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteSheetReferencesParams { content_hash })?;
+    sql.run(&DeleteSheetPlacesParams { content_hash })?;
     Ok(())
 }
 
@@ -26,16 +65,22 @@ pub(super) fn insert_file_edits(
 ) -> Result<(), DbError> {
     for (sheet_id, place) in edits.sheet_places.iter() {
         let (kind, medium, side) = place.columns();
-        sql.execute(
-            "INSERT INTO import_candidate_sheet_place \
-                 (content_hash, sheet_id, place, medium, side) VALUES (?, ?, ?, ?, ?)",
-            params![content_hash, sheet_id, kind, medium, side],
-        )?;
+        sql.run(&InsertCandidateSheetPlaceParams {
+            content_hash,
+            sheet_id,
+            place: kind,
+            medium,
+            side,
+        })?;
     }
     for (sheet_id, references) in edits.sheet_bindings.iter() {
         for (reference, decision) in references.iter() {
-            sql.execute("INSERT INTO import_candidate_sheet_reference (content_hash, sheet_id, file_reference, file_id) VALUES (?, ?, ?, ?)",
-                params![content_hash, sheet_id, reference, decision.stored_file()])?;
+            sql.run(&InsertCandidateSheetReferenceParams {
+                content_hash,
+                sheet_id,
+                file_reference: reference,
+                file_id: decision.stored_file(),
+            })?;
         }
     }
     Ok(())

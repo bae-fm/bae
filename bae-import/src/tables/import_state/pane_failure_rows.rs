@@ -5,6 +5,7 @@
 use super::*;
 use crate::{PaneCommand, PaneFailure};
 use bae_diagnostics::{GroupingBlockReason, UiError, UiErrorCategory};
+use bae_store::WriteStatements as _;
 use bae_types::edit_validation::EditValidationError;
 use bae_types::mediums::SideHeading;
 
@@ -299,12 +300,32 @@ pub(crate) fn pane_failure_of(
     })
 }
 
+sqlive_compose::write!(
+    DeletePaneFailure(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_pane_failure WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    UpsertPaneFailure(
+        content_hash: &'p str,
+        command: &'static str,
+        category: String,
+        detail: String,
+    ),
+    r#"
+    INSERT INTO import_candidate_pane_failure (content_hash, command, category, detail)
+    SELECT :content_hash, :command, :category, :detail
+    WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = :content_hash)
+    ON CONFLICT (content_hash) DO UPDATE SET
+        command = excluded.command, category = excluded.category, detail = excluded.detail
+"#
+);
+
 /// Forget the failure the pane states for `content_hash`'s last command.
 pub(super) fn delete_pane_failure(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_pane_failure WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.run(&DeletePaneFailureParams { content_hash })?;
     Ok(())
 }
 
@@ -336,22 +357,12 @@ impl ImportTables {
                     return Ok(delete_pane_failure(sql, &content_hash)?);
                 };
                 let UiError::Diagnostic { category, detail } = error;
-                let affected = sql.execute(
-                    "INSERT INTO import_candidate_pane_failure \
-                         (content_hash, command, category, detail) \
-                     SELECT ?1, ?2, ?3, ?4 \
-                     WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?1) \
-                     ON CONFLICT (content_hash) DO UPDATE SET \
-                         command = excluded.command, \
-                         category = excluded.category, \
-                         detail = excluded.detail",
-                    params![
-                        content_hash,
-                        command_column(command),
-                        category_column(category),
-                        detail
-                    ],
-                )?;
+                let affected = sql.run(&UpsertPaneFailureParams {
+                    content_hash: &content_hash,
+                    command: command_column(command),
+                    category: category_column(category),
+                    detail,
+                })?;
                 // The write read the candidate as listed, and a listed
                 // candidate holds a state row.
                 assert!(affected == 1, "the pane's failure has no candidate state row to hang off");

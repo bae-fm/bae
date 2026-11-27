@@ -29,11 +29,19 @@ use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::{Failure, InternalFailure};
 use bae_preferences::{CatalogAvailability, SourceAvailability};
+use bae_store::WriteStatements as _;
 use std::str::FromStr;
+
+sqlive_compose::write!(
+    DeleteEverySearch,
+    r#"
+    DELETE FROM import_candidate_search
+"#
+);
 
 /// Delete every typed search: none outlives the process that asked it.
 pub(super) fn delete_every_search_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_search", [])?;
+    sql.run(&DeleteEverySearchParams {})?;
     Ok(())
 }
 
@@ -248,6 +256,35 @@ pub(super) fn load_picks_on(
     picks_of(&json)
 }
 
+sqlive_compose::write!(
+    DeleteSearchPick(run: i64, release_id: &'p str),
+    r#"
+    DELETE FROM import_candidate_search_pick WHERE search_run = :run AND release_id = :release_id
+"#
+);
+
+sqlive_compose::write!(
+    InsertSearchPick(run: i64, release_id: &'p str, links: &'static str),
+    r#"
+    INSERT INTO import_candidate_search_pick (search_run, release_id, links)
+    VALUES (:run, :release_id, :links)
+"#
+);
+
+sqlive_compose::write!(
+    InsertSearchPickAlbum(
+        run: i64,
+        release_id: &'p str,
+        ordinal: i64,
+        catalog: &'p str,
+        key: &'p str,
+    ),
+    r#"
+    INSERT INTO import_candidate_search_pick_album (search_run, release_id, ordinal, catalog, key)
+    VALUES (:run, :release_id, :ordinal, :catalog, :key)
+"#
+);
+
 /// Store what a pick of the release `release_id` read, in place of what an
 /// earlier pick of it read.
 fn store_pick_on(
@@ -256,30 +293,43 @@ fn store_pick_on(
     release_id: &str,
     links: &AlbumLinks,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_search_pick WHERE search_run = ? AND release_id = ?",
-        params![run, release_id],
-    )?;
-    sql.execute(
-        "INSERT INTO import_candidate_search_pick (search_run, release_id, links) \
-         VALUES (?, ?, ?)",
-        params![run, release_id, crate::tables::album_link_rows::album_links_column(links)],
-    )?;
+    sql.run(&DeleteSearchPickParams { run, release_id })?;
+    sql.run(&InsertSearchPickParams {
+        run,
+        release_id,
+        links: crate::tables::album_link_rows::album_links_column(links),
+    })?;
     for (ordinal, album) in links.read().iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_search_pick_album \
-                 (search_run, release_id, ordinal, catalog, key) VALUES (?, ?, ?, ?, ?)",
-            params![
-                run,
-                release_id,
-                super::match_rows::ordinal_column(ordinal)?,
-                album.catalog.as_str(),
-                album.key
-            ],
-        )?;
+        sql.run(&InsertSearchPickAlbumParams {
+            run,
+            release_id,
+            ordinal: super::match_rows::ordinal_column(ordinal)?,
+            catalog: album.catalog.as_str(),
+            key: &album.key,
+        })?;
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    DeleteSearchOf(candidate_key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM import_candidate_search WHERE candidate_key = :candidate_key
+"#
+);
+
+sqlive_compose::write!(
+    DeleteSearchOfOtherFiles(
+        candidate_key: &'p crate::CandidateKey,
+        content_hash: &'p str,
+        file_edit_revision: i64,
+    ),
+    r#"
+    DELETE FROM import_candidate_search
+    WHERE candidate_key = :candidate_key
+        AND (content_hash, file_edit_revision) IS NOT (:content_hash, :file_edit_revision)
+"#
+);
 
 /// End, inside the caller's scan write, `key`'s search unless it is of
 /// `held` — the files the write leaves the candidate with, `None` for a write
@@ -290,21 +340,44 @@ pub(super) fn end_search_unless_of_on(
     held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
     match held {
-        None => {
-            sql.execute("DELETE FROM import_candidate_search WHERE candidate_key = ?", [key])?
-        }
-        Some(files) => sql.execute(
-            "DELETE FROM import_candidate_search WHERE candidate_key = ? \
-             AND (content_hash, file_edit_revision) IS NOT (?, ?)",
-            params![
-                key,
-                files.content_hash,
-                to_i64(files.file_edit_revision, "a file edit revision")?
-            ],
-        )?,
+        None => sql.run(&DeleteSearchOfParams { candidate_key: key })?,
+        Some(files) => sql.run(&DeleteSearchOfOtherFilesParams {
+            candidate_key: key,
+            content_hash: &files.content_hash,
+            file_edit_revision: to_i64(files.file_edit_revision, "a file edit revision")?,
+        })?,
     };
     Ok(())
 }
+
+sqlive_compose::write!(
+    InsertSearch(
+        candidate_key: &'p crate::CandidateKey,
+        content_hash: Option<&'p str>,
+        file_edit_revision: Option<i64>,
+        mode: &'static str,
+        artist: Option<&'p str>,
+        album: Option<&'p str>,
+        catalog_number: Option<&'p str>,
+        barcode: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_search
+        (candidate_key, content_hash, file_edit_revision, mode, artist, album, catalog_number,
+        barcode)
+    VALUES (:candidate_key, :content_hash, :file_edit_revision, :mode, :artist, :album,
+        :catalog_number, :barcode)
+    RETURNING search_run
+"#
+);
+
+sqlive_compose::write!(
+    InsertSearchSource(run: i64, catalog: &'p str, position: i64, state: &'static str),
+    r#"
+    INSERT INTO import_candidate_search_source (search_run, catalog, position, state)
+    VALUES (:run, :catalog, :position, :state)
+"#
+);
 
 /// Store a search of `query` as `key`'s, of `files`, in place of any search
 /// it had, with a part for each of `sources` in their order: searching where
@@ -317,38 +390,29 @@ fn start_on(
     query: &SearchQuery,
     sources: &[CatalogAvailability],
 ) -> Result<(SearchRun, Vec<LookupCatalog>), DbError> {
-    sql.execute("DELETE FROM import_candidate_search WHERE candidate_key = ?", [key])?;
+    sql.run(&DeleteSearchOfParams { candidate_key: key })?;
     let query = query_columns(query);
-    let run: i64 = sql.query_row(
-        "INSERT INTO import_candidate_search \
-             (candidate_key, content_hash, file_edit_revision, mode, artist, album, \
-              catalog_number, barcode) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING search_run",
-        params![
-            key,
-            files.map(|files| files.content_hash.as_str()),
-            files
+    let run = sql
+        .returning_one(&InsertSearchParams {
+            candidate_key: key,
+            content_hash: files.map(|files| files.content_hash.as_str()),
+            file_edit_revision: files
                 .map(|files| to_i64(files.file_edit_revision, "a file edit revision"))
                 .transpose()?,
-            query.mode,
-            query.artist,
-            query.album,
-            query.catalog_number,
-            query.barcode,
-        ],
-        |row| row.get(0),
-    )?;
+            mode: query.mode,
+            artist: query.artist,
+            album: query.album,
+            catalog_number: query.catalog_number,
+            barcode: query.barcode,
+        })?
+        .search_run;
     for (position, source) in sources.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_search_source \
-                 (search_run, catalog, position, state) VALUES (?, ?, ?, ?)",
-            params![
-                run,
-                source.catalog.as_str(),
-                super::match_rows::ordinal_column(position)?,
-                starting_state(source.state)
-            ],
-        )?;
+        sql.run(&InsertSearchSourceParams {
+            run,
+            catalog: source.catalog.as_str(),
+            position: super::match_rows::ordinal_column(position)?,
+            state: starting_state(source.state),
+        })?;
     }
     // The parts just written searching are the catalogs to ask.
     let asked = sources
@@ -365,6 +429,23 @@ fn catalog_of(catalog: &str) -> Result<LookupCatalog, DbError> {
         .map_err(|_unknown| DbError::unreadable("import_candidate_search_source.catalog", catalog))
 }
 
+sqlive_compose::write!(
+    LandSearchSource(
+        state: &'static str,
+        failure: Option<&'static str>,
+        failure_status: Option<i64>,
+        error_detail: Option<&'p str>,
+        run: i64,
+        catalog: &'p str,
+    ),
+    r#"
+    UPDATE import_candidate_search_source
+    SET state = :state, failure = :failure, failure_status = :failure_status,
+        error_detail = :error_detail
+    WHERE search_run = :run AND catalog = :catalog AND state = 'searching'
+"#
+);
+
 /// Land `catalog`'s answer on its part of the search `run`, if that part is
 /// still searching; whether it landed.
 fn land_on(
@@ -375,19 +456,14 @@ fn land_on(
 ) -> Result<bool, DbError> {
     let results = outcome.as_deref().unwrap_or_default();
     let columns = landed_columns(outcome);
-    let landed = sql.execute(
-        "UPDATE import_candidate_search_source \
-         SET state = ?, failure = ?, failure_status = ?, error_detail = ? \
-         WHERE search_run = ? AND catalog = ? AND state = 'searching'",
-        params![
-            columns.state,
-            columns.failure,
-            columns.failure_status,
-            columns.error_detail,
-            run.number(),
-            catalog.as_str()
-        ],
-    )?;
+    let landed = sql.run(&LandSearchSourceParams {
+        state: columns.state,
+        failure: columns.failure,
+        failure_status: columns.failure_status,
+        error_detail: columns.error_detail,
+        run: run.number(),
+        catalog: catalog.as_str(),
+    })?;
     if landed == 0 {
         return Ok(false);
     }
@@ -418,6 +494,32 @@ fn land_on(
     lay_out_search_on(sql, run.number())?;
     Ok(true)
 }
+
+sqlive_compose::write!(
+    RetryFailedSources(run: i64),
+    r#"
+    UPDATE import_candidate_search_source
+    SET state = 'searching', failure = NULL, failure_status = NULL, error_detail = NULL
+    WHERE search_run = :run AND state = 'failed'
+    RETURNING position, catalog
+"#
+);
+
+sqlive_compose::write!(
+    DeleteEverySearchPick,
+    r#"
+    DELETE FROM import_candidate_search_pick
+"#
+);
+
+sqlive_compose::write!(
+    SwitchSourceOff(catalog: &'p str),
+    r#"
+    UPDATE import_candidate_search_source
+    SET state = 'off', failure = NULL, failure_status = NULL, error_detail = NULL
+    WHERE catalog = :catalog AND state <> 'off'
+"#
+);
 
 impl ImportTables {
     /// Store a search of `query` as `key`'s in place of any search it had,
@@ -479,15 +581,11 @@ impl ImportTables {
                 else {
                     return Ok(None);
                 };
-                let mut retried = sql.query(
-                    "UPDATE import_candidate_search_source \
-                 SET state = 'searching', failure = NULL, failure_status = NULL, \
-                     error_detail = NULL \
-                 WHERE search_run = ? AND state = 'failed' \
-                 RETURNING position, catalog",
-                    [run],
-                    |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
-                )?;
+                let mut retried: Vec<(i64, String)> = sql
+                    .returning(&RetryFailedSourcesParams { run })?
+                    .into_iter()
+                    .map(|row| (row.position, row.catalog))
+                    .collect();
                 if retried.is_empty() {
                     return Ok(None);
                 }
@@ -522,17 +620,12 @@ impl ImportTables {
                 super::match_rows::delete_search_matches_of(sql, catalog)?;
                 if catalog == LookupCatalog::MusicBrainz {
                     // A person can pick only a MusicBrainz release.
-                    sql.execute("DELETE FROM import_candidate_search_pick", [])?;
+                    sql.run(&DeleteEverySearchPickParams {})?;
                 }
                 for run in held {
                     lay_out_search_on(sql, run)?;
                 }
-                sql.execute(
-                    "UPDATE import_candidate_search_source \
-                 SET state = 'off', failure = NULL, failure_status = NULL, error_detail = NULL \
-                 WHERE catalog = ? AND state <> 'off'",
-                    [catalog.as_str()],
-                )?;
+                sql.run(&SwitchSourceOffParams { catalog: catalog.as_str() })?;
                 Ok(())
             })
             .await

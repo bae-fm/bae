@@ -17,13 +17,14 @@ mod provenance;
 mod values;
 
 use super::draft_values::{
-    form_row_values, insert_album_artist_assignments, insert_barcode_rows, insert_draft_values,
-    insert_label_rows, insert_medium_rows, insert_track_artist_assignments, insert_track_values,
-    mediums_of, roles_of, works_of, StoredRole, FORM_COLUMNS,
+    insert_album_artist_assignments, insert_barcode_rows, insert_draft_values, insert_label_rows,
+    insert_medium_rows, insert_track_artist_assignments, insert_track_values, mediums_of, roles_of,
+    works_of, FormColumns, StoredRole,
 };
 use crate::tables::draft_rows::{
     assignment_kind_column, assignments_of, decoded, StoredAssignment,
 };
+use bae_store::WriteStatements as _;
 
 pub(crate) use provenance::{insert_provenance, store_provenance, StoredProvenance};
 
@@ -32,11 +33,6 @@ use crate::{
     AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, RawLabelEdit, RawPressingEdit,
     RawTrackEdit, TrackArtistAssignments,
 };
-use rusqlite::ToSql;
-
-const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
-     artist_assignment_kind, medium, side, track_number, stated_length_ms, \
-     file_kind, file_id, sheet_id, slice_index";
 
 /// The column a draft's author is stored as.
 fn author_column(author: MetadataAuthor) -> &'static str {
@@ -58,10 +54,83 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
     }
 }
 
+sqlive_compose::write!(
+    DeleteDraft(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_edit WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertDraft(
+        content_hash: &'p str,
+        album_title: &'p str,
+        album_year: &'p str,
+        year: &'p str,
+        country: Option<&'static str>,
+        region: Option<&'static str>,
+        media: &'p str,
+        status: Option<&'static str>,
+        packaging: Option<&'static str>,
+        discogs_details: &'p str,
+        author: &'static str,
+        draft_blank: bool,
+        draft_valid: bool,
+    ),
+    r#"
+    INSERT INTO import_candidate_edit
+        (content_hash, album_title, album_year, year, country, region, media, status, packaging,
+        discogs_details, author, draft_blank, draft_valid)
+    VALUES (:content_hash, :album_title, :album_year, :year, :country, :region, :media, :status,
+        :packaging, :discogs_details, :author, :draft_blank, :draft_valid)
+"#
+);
+
+sqlive_compose::write!(
+    UpsertDraftTrack(
+        content_hash: &'p str,
+        track_id: &'p str,
+        position: i64,
+        title: &'p str,
+        artist_assignment_kind: &'static str,
+        medium: std::num::NonZeroU16,
+        side: std::num::NonZeroU8,
+        track_number: std::num::NonZeroU32,
+        stated_length_ms: Option<i64>,
+        file_kind: &'p str,
+        file_id: &'p str,
+        sheet_id: Option<&'p str>,
+        slice_index: Option<i64>,
+    ),
+    r#"
+    INSERT INTO import_candidate_track
+        (content_hash, track_id, position, title, artist_assignment_kind, medium, side,
+        track_number, stated_length_ms, file_kind, file_id, sheet_id, slice_index)
+    VALUES (:content_hash, :track_id, :position, :title, :artist_assignment_kind, :medium,
+        :side, :track_number, :stated_length_ms, :file_kind, :file_id, :sheet_id, :slice_index)
+    ON CONFLICT (content_hash, track_id) DO UPDATE SET
+        position = excluded.position, title = excluded.title, artist_assignment_kind =
+        excluded.artist_assignment_kind, medium = excluded.medium, side = excluded.side,
+        track_number = excluded.track_number, stated_length_ms = excluded.stated_length_ms,
+        file_kind = excluded.file_kind, file_id = excluded.file_id, sheet_id =
+        excluded.sheet_id, slice_index = excluded.slice_index
+"#
+);
+
+// Damage a test plants: a draft read from a source that says nobody wrote
+// it.
+#[cfg(test)]
+sqlive_compose::write!(
+    DisownDraft(content_hash: &'p str),
+    r#"
+    UPDATE import_candidate_edit SET author = 'nobody' WHERE content_hash = :content_hash
+"#
+);
+
 /// Delete the draft of `content_hash`: its source and every row below it
 /// hang off the draft row and go with it.
 pub(super) fn delete_draft(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_edit WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteDraftParams { content_hash })?;
     Ok(())
 }
 
@@ -73,38 +142,48 @@ pub(super) fn insert_draft(
     draft: &CandidateDraft,
     author: MetadataAuthor,
 ) -> Result<(), DbError> {
-    sql.execute(
-        &format!(
-            "INSERT INTO import_candidate_edit \
-                 (content_hash, {FORM_COLUMNS}, author, draft_blank, draft_valid) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        ),
-        rusqlite::params_from_iter(edit_row_values(content_hash, draft, author)),
-    )?;
-    let key: &dyn ToSql = &content_hash;
-    insert_label_rows(sql, key, &draft.pressing.labels)?;
-    insert_barcode_rows(sql, key, &draft.pressing.barcodes)?;
-    insert_album_artist_assignments(sql, key, &draft.album_artist_assignments)?;
+    let row = EditRow::of(draft, author);
+    sql.run(&InsertDraftParams {
+        content_hash,
+        album_title: &row.form.album_title,
+        album_year: &row.form.album_year,
+        year: &row.form.year,
+        country: row.form.country,
+        region: row.form.region,
+        media: &row.form.media,
+        status: row.form.status,
+        packaging: row.form.packaging,
+        discogs_details: &row.form.discogs_details,
+        author: row.author,
+        draft_blank: row.draft_blank,
+        draft_valid: row.draft_valid,
+    })?;
+    insert_label_rows(sql, content_hash, &draft.pressing.labels)?;
+    insert_barcode_rows(sql, content_hash, &draft.pressing.barcodes)?;
+    insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
     insert_draft_body(sql, content_hash, draft)
 }
 
-/// The draft row's columns: its key, the [`FORM_COLUMNS`] in their order,
-/// then its author and whether it is blank and would import.
-pub(super) fn edit_row_values(
-    content_hash: &str,
-    draft: &CandidateDraft,
-    author: MetadataAuthor,
-) -> Vec<rusqlite::types::Value> {
-    use rusqlite::types::Value;
-    let release_edit = draft.release_edit();
-    let mut values = vec![Value::Text(content_hash.to_string())];
-    values.extend(form_row_values(&release_edit));
-    values.extend([
-        Value::Text(author_column(author).to_string()),
-        Value::Integer(release_edit.is_blank().into()),
-        Value::Integer(release_edit.shape().is_ok().into()),
-    ]);
-    values
+/// What a candidate's draft row holds beside its key: the form's album-level
+/// fields, who wrote the draft, and whether it is blank and would import.
+#[derive(PartialEq)]
+pub(super) struct EditRow {
+    pub(super) form: FormColumns,
+    pub(super) author: &'static str,
+    pub(super) draft_blank: bool,
+    pub(super) draft_valid: bool,
+}
+
+impl EditRow {
+    pub(super) fn of(draft: &CandidateDraft, author: MetadataAuthor) -> Self {
+        let release_edit = draft.release_edit();
+        Self {
+            form: FormColumns::of(&release_edit),
+            author: author_column(author),
+            draft_blank: release_edit.is_blank(),
+            draft_valid: release_edit.shape().is_ok(),
+        }
+    }
 }
 
 /// The draft's mediums, tracks and the values hanging off them: the rows
@@ -114,10 +193,9 @@ pub(super) fn insert_draft_body(
     content_hash: &str,
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
-    let key: &dyn ToSql = &content_hash;
-    insert_medium_rows(sql, key, &draft.mediums)?;
+    insert_medium_rows(sql, content_hash, &draft.mediums)?;
     // The works first: a track names the works it performs.
-    insert_draft_values(sql, key, &draft.works, &draft.release_roles)?;
+    insert_draft_values(sql, content_hash, &draft.works, &draft.release_roles)?;
     for (position, track) in draft.tracks.iter().enumerate() {
         insert_track(sql, content_hash, position, track)?;
     }
@@ -148,35 +226,21 @@ pub(super) fn store_track_row(
         .stated_length_ms
         .map(|length| to_i64(length, "a track's stated length"))
         .transpose()?;
-    sql.execute(
-        &format!(
-            "INSERT INTO import_candidate_track ({TRACK_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT (content_hash, track_id) DO UPDATE SET \
-                 position = excluded.position, title = excluded.title, \
-                 artist_assignment_kind = excluded.artist_assignment_kind, \
-                 medium = excluded.medium, side = excluded.side, \
-                 track_number = excluded.track_number, \
-                 stated_length_ms = excluded.stated_length_ms, file_kind = excluded.file_kind, \
-                 file_id = excluded.file_id, sheet_id = excluded.sheet_id, \
-                 slice_index = excluded.slice_index"
-        ),
-        params![
-            content_hash,
-            track.edit.id,
-            position as i64,
-            track.edit.title,
-            assignment_kind_column(&track.edit.artist_assignments),
-            track.place.medium,
-            track.place.side,
-            track.place.number,
-            stated_length_ms,
-            file_kind,
-            file_id,
-            sheet_id,
-            slice_index,
-        ],
-    )?;
+    sql.run(&UpsertDraftTrackParams {
+        content_hash,
+        track_id: &track.edit.id,
+        position: position as i64,
+        title: &track.edit.title,
+        artist_assignment_kind: assignment_kind_column(&track.edit.artist_assignments),
+        medium: track.place.medium,
+        side: track.place.side,
+        track_number: track.place.number,
+        stated_length_ms,
+        file_kind,
+        file_id,
+        sheet_id,
+        slice_index,
+    })?;
     Ok(())
 }
 
@@ -186,11 +250,10 @@ pub(super) fn insert_track_rows(
     content_hash: &str,
     track: &CandidateTrack,
 ) -> Result<(), DbError> {
-    let key: &dyn ToSql = &content_hash;
     if let TrackArtistAssignments::Explicit(assignments) = &track.edit.artist_assignments {
-        insert_track_artist_assignments(sql, key, &track.edit.id, assignments)?;
+        insert_track_artist_assignments(sql, content_hash, &track.edit.id, assignments)?;
     }
-    insert_track_values(sql, key, &track.edit.id, &track.roles, &track.works)
+    insert_track_values(sql, content_hash, &track.edit.id, &track.roles, &track.works)
 }
 
 fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i64>) {

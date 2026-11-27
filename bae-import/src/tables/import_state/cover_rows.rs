@@ -8,9 +8,8 @@ use crate::cover_art::PreparedCover;
 use crate::tables::downscaled_copies::copies_of;
 use crate::CoverSelection;
 use bae_catalogs::remote_image::RemoteImageSet;
+use bae_store::WriteStatements as _;
 use bae_util::content_type::ContentType;
-
-const COVER_COLUMNS: &str = "content_hash, kind, file_id, url, source";
 
 /// One cover selection as its row states it: the kind, and whichever of the
 /// file it names or the address and catalog it names that kind carries.
@@ -27,6 +26,66 @@ fn cover_columns(
         }
     }
 }
+
+sqlive_compose::write!(
+    DeleteCoverCopies(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_cover_copy WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    UpsertCover(
+        content_hash: &'p str,
+        kind: &'static str,
+        file_id: Option<&'p str>,
+        url: Option<&'p str>,
+        source: Option<&'p str>,
+        content_type: Option<&'p str>,
+        bytes: Option<&'p [u8]>,
+    ),
+    r#"
+    INSERT INTO import_candidate_cover (content_hash, kind, file_id, url, source, content_type, bytes)
+    VALUES (:content_hash, :kind, :file_id, :url, :source, :content_type, :bytes)
+    ON CONFLICT (content_hash) DO UPDATE SET
+        kind = excluded.kind, file_id = excluded.file_id, url = excluded.url,
+        source = excluded.source, content_type = excluded.content_type, bytes = excluded.bytes
+"#
+);
+
+sqlive_compose::write!(
+    InsertCoverCopy(content_hash: &'p str, image_url: &'p str, max_edge: u32, url: &'p str),
+    r#"
+    INSERT INTO import_candidate_cover_copy (content_hash, image_url, max_edge, url)
+    VALUES (:content_hash, :image_url, :max_edge, :url)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteCover(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_cover WHERE content_hash = :content_hash
+"#
+);
+
+// Damage a test plants: a cover row stating whatever the test names, which
+// the table's checks and the cover reads refuse.
+#[cfg(test)]
+sqlive_compose::write!(
+    PlantCoverRow(
+        content_hash: &'p str,
+        kind: &'p str,
+        file_id: Option<&'p str>,
+        url: Option<&'p str>,
+        source: Option<&'p str>,
+        content_type: Option<&'p str>,
+        bytes: Option<&'p [u8]>,
+    ),
+    r#"
+    INSERT INTO import_candidate_cover (content_hash, kind, file_id, url, source, content_type, bytes)
+    VALUES (:content_hash, :kind, :file_id, :url, :source, :content_type, :bytes)
+"#
+);
 
 /// Store `cover` as the candidate's: its row, with the bytes a remote one was
 /// fetched with, and the copies a catalog serves of a remote one. Every caller
@@ -46,34 +105,24 @@ pub(super) fn save_cover(
     };
     // The copies reference the previous choice's address, which the upsert
     // replaces, so they go first.
-    sql.execute("DELETE FROM import_candidate_cover_copy WHERE content_hash = ?", [content_hash])?;
-    sql.execute(
-        &format!(
-            "INSERT INTO import_candidate_cover ({COVER_COLUMNS}, content_type, bytes) \
-             VALUES (?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT (content_hash) DO UPDATE SET \
-                 kind = excluded.kind, file_id = excluded.file_id, \
-                 url = excluded.url, source = excluded.source, \
-                 content_type = excluded.content_type, bytes = excluded.bytes"
-        ),
-        params![
-            content_hash,
-            kind,
-            file_id,
-            url,
-            source,
-            fetched.map(|(content_type, _)| content_type),
-            fetched.map(|(_, bytes)| bytes),
-        ],
-    )?;
+    sql.run(&DeleteCoverCopiesParams { content_hash })?;
+    sql.run(&UpsertCoverParams {
+        content_hash,
+        kind,
+        file_id,
+        url,
+        source,
+        content_type: fetched.map(|(content_type, _)| content_type),
+        bytes: fetched.map(|(_, bytes)| bytes),
+    })?;
     if let PreparedCover::Remote { image, .. } = cover {
         for copy in &image.downscaled {
-            sql.execute(
-                "INSERT INTO import_candidate_cover_copy \
-                     (content_hash, image_url, max_edge, url) \
-                 VALUES (?, ?, ?, ?)",
-                params![content_hash, image.url, copy.max_edge, copy.url],
-            )?;
+            sql.run(&InsertCoverCopyParams {
+                content_hash,
+                image_url: &image.url,
+                max_edge: copy.max_edge,
+                url: &copy.url,
+            })?;
         }
     }
     Ok(())
@@ -81,7 +130,7 @@ pub(super) fn save_cover(
 
 /// Remove the candidate's cover choice.
 pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_cover WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteCoverParams { content_hash })?;
     Ok(())
 }
 
@@ -222,11 +271,15 @@ impl ImportTables {
         let (content_hash, file_id) = (content_hash.to_string(), file_id.to_string());
         self.store
             .call(move |sql| {
-                sql.execute(
-                    "INSERT INTO import_candidate_cover (content_hash, kind, file_id) \
-                     VALUES (?, 'local', ?)",
-                    params![content_hash, file_id],
-                )?;
+                sql.run(&PlantCoverRowParams {
+                    content_hash: &content_hash,
+                    kind: "local",
+                    file_id: Some(&file_id),
+                    url: None,
+                    source: None,
+                    content_type: None,
+                    bytes: None,
+                })?;
                 Ok(())
             })
             .await

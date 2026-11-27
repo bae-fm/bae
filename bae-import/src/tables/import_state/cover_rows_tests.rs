@@ -5,6 +5,7 @@ use crate::cover_art::PreparedCover;
 use crate::tables::import_state::tests::*;
 use bae_catalogs::catalog::Catalog;
 use bae_store::test_fixtures::empty_db;
+use bae_store::WriteStatements as _;
 
 fn remote_with_copies(url: &str) -> PreparedCover {
     use bae_catalogs::remote_image::{DownscaledCopy, RemoteImageSet};
@@ -142,12 +143,15 @@ async fn a_cover_row_holds_only_what_its_kind_names() {
         let hash = hash.clone();
         let refused = db
             .call(move |conn| {
-                conn.execute(
-                    "INSERT INTO import_candidate_cover \
-                         (content_hash, kind, file_id, url, source, content_type, bytes) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    rusqlite::params![hash, kind, file_id, url, source, content_type, bytes],
-                )
+                conn.run(&super::PlantCoverRowParams {
+                    content_hash: &hash,
+                    kind,
+                    file_id,
+                    url,
+                    source,
+                    content_type,
+                    bytes: bytes.as_deref(),
+                })
                 .map_err(bae_store::DbError::from)
             })
             .await

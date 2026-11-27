@@ -11,13 +11,21 @@
 
 use super::*;
 use crate::{CandidateDraft, CandidateTrack, RawTrackEdit, TrackArtistAssignments};
+use bae_store::WriteStatements as _;
+
+sqlive_compose::write!(
+    SeedBlankDraft(content_hash: &'p str),
+    r#"
+    INSERT INTO blank_draft_seed (content_hash) VALUES (:content_hash)
+"#
+);
 
 /// Store the blank draft and cover of the candidate `content_hash`, which
 /// holds no draft row, through `blank_draft_seed`, the write the trigger on a
 /// deleted release runs too. Stores nothing for a state the scan holds no
 /// audio units of yet.
 pub(super) fn seed_blank_draft_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("INSERT INTO blank_draft_seed (content_hash) VALUES (?)", [content_hash])?;
+    sql.run(&SeedBlankDraftParams { content_hash })?;
     Ok(())
 }
 

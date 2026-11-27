@@ -10,6 +10,7 @@
 use super::*;
 use bae_identify::{ChoiceChange, LookupChoices, SearchWords};
 use bae_store::statement_optional;
+use bae_store::WriteStatements as _;
 
 // What a person decided the identification of each candidate that has decided
 // anything asks about: the header row, with its lists as JSON arrays.
@@ -85,6 +86,77 @@ fn load_lookup_choices_on(
         .unwrap_or_default())
 }
 
+sqlive_compose::write!(
+    DeleteLookupChoices(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_lookup_choices WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    UpsertLookupChoices(
+        content_hash: &'p str,
+        disc_id_excluded: bool,
+        search_album: Option<&'p str>,
+        search_artist: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_lookup_choices
+        (content_hash, disc_id_excluded, search_album, search_artist)
+    SELECT :content_hash, :disc_id_excluded, :search_album, :search_artist
+    WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = :content_hash)
+    ON CONFLICT (content_hash) DO UPDATE SET
+        disc_id_excluded = excluded.disc_id_excluded,
+        search_album = excluded.search_album,
+        search_artist = excluded.search_artist
+"#
+);
+
+sqlive_compose::write!(
+    DeleteExcludedBarcodes(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_excluded_barcode WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertExcludedBarcode(content_hash: &'p str, value: &'p str),
+    r#"
+    INSERT INTO import_candidate_excluded_barcode (content_hash, value)
+    VALUES (:content_hash, :value)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteChosenCatalogs(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_chosen_catalog WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertChosenCatalog(content_hash: &'p str, position: i64, value: &'p str),
+    r#"
+    INSERT INTO import_candidate_chosen_catalog (content_hash, position, value)
+    VALUES (:content_hash, :position, :value)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteDiscountedCatalogs(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_discounted_catalog WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertDiscountedCatalog(content_hash: &'p str, value: &'p str),
+    r#"
+    INSERT INTO import_candidate_discounted_catalog (content_hash, value)
+    VALUES (:content_hash, :value)
+"#
+);
+
 /// The rows under `content_hash` become exactly `choices`, on the
 /// connection the caller holds — its own transaction, or a candidate save's.
 /// A hash no candidate row stands under has nothing to hold a decision, and
@@ -95,10 +167,7 @@ pub(super) fn delete_lookup_choices(
     sql: &CovenWrite<'_>,
     content_hash: &str,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_lookup_choices WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.run(&DeleteLookupChoicesParams { content_hash })?;
     Ok(())
 }
 
@@ -107,64 +176,32 @@ pub(super) fn replace_lookup_choices_on(
     content_hash: &str,
     choices: &LookupChoices,
 ) -> Result<(), DbError> {
-    let affected = sql.execute(
-        "INSERT INTO import_candidate_lookup_choices (\
-             content_hash, disc_id_excluded, search_album, search_artist) \
-         SELECT ?, ?, ?, ? \
-         WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
-         ON CONFLICT (content_hash) DO UPDATE SET \
-             disc_id_excluded = excluded.disc_id_excluded, \
-             search_album = excluded.search_album, \
-             search_artist = excluded.search_artist",
-        params![
-            content_hash,
-            i64::from(choices.disc_id_excluded),
-            choices.search_words.as_ref().map(|words| words.album.as_str()),
-            choices.search_words.as_ref().map(|words| words.artist.as_str()),
-            content_hash,
-        ],
-    )?;
+    let affected = sql.run(&UpsertLookupChoicesParams {
+        content_hash,
+        disc_id_excluded: choices.disc_id_excluded,
+        search_album: choices.search_words.as_ref().map(|words| words.album.as_str()),
+        search_artist: choices.search_words.as_ref().map(|words| words.artist.as_str()),
+    })?;
     // A pane's edit reads the candidate listed in this transaction, and a
     // listed candidate holds a state row.
     assert!(affected == 1, "a candidate's lookup choices have no candidate state row to hang off");
-    sql.execute(
-        "DELETE FROM import_candidate_excluded_barcode WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.run(&DeleteExcludedBarcodesParams { content_hash })?;
     // A set, like the struck-out numbers: a value named twice is the
     // caller contradicting itself, and the primary key says so rather
     // than the second insert being quietly dropped.
     for value in &choices.excluded_barcodes {
-        sql.execute(
-            "INSERT INTO import_candidate_excluded_barcode (content_hash, value) \
-             VALUES (?, ?)",
-            params![content_hash, value],
-        )?;
+        sql.run(&InsertExcludedBarcodeParams { content_hash, value })?;
     }
-    sql.execute(
-        "DELETE FROM import_candidate_chosen_catalog WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.run(&DeleteChosenCatalogsParams { content_hash })?;
     for (position, value) in choices.chosen_catalogs.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_chosen_catalog (content_hash, position, value) \
-             VALUES (?, ?, ?)",
-            params![content_hash, position as i64, value],
-        )?;
+        sql.run(&InsertChosenCatalogParams { content_hash, position: position as i64, value })?;
     }
-    sql.execute(
-        "DELETE FROM import_candidate_discounted_catalog WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.run(&DeleteDiscountedCatalogsParams { content_hash })?;
     // A set: a value named twice is the caller contradicting itself,
     // and the primary key says so rather than the second insert being
     // quietly dropped.
     for value in &choices.discounted_catalogs {
-        sql.execute(
-            "INSERT INTO import_candidate_discounted_catalog (content_hash, value) \
-             VALUES (?, ?)",
-            params![content_hash, value],
-        )?;
+        sql.run(&InsertDiscountedCatalogParams { content_hash, value })?;
     }
     // Check and group the verdict's rows again against the text, without the
     // catalog numbers the person discounted.

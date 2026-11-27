@@ -5,12 +5,51 @@
 //! never reads the candidate as having no draft, no title or no artist on its
 //! way from one draft to the next.
 
-use super::draft_values::{
-    insert_barcode_rows, insert_label_rows, store_album_artist_assignments, FORM_COLUMNS,
-};
-use super::pane_rows::{edit_row_values, insert_draft_body, insert_track_rows, store_track_row};
+use super::draft_values::{insert_barcode_rows, insert_label_rows, store_album_artist_assignments};
+use super::pane_rows::{insert_draft_body, insert_track_rows, store_track_row, EditRow};
 use super::*;
 use crate::{AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, TrackArtistAssignments};
+use bae_store::WriteStatements as _;
+
+sqlive_compose::write!(
+    UpdateDraftRow(
+        content_hash: &'p str,
+        album_title: &'p str,
+        album_year: &'p str,
+        year: &'p str,
+        country: Option<&'static str>,
+        region: Option<&'static str>,
+        media: &'p str,
+        status: Option<&'static str>,
+        packaging: Option<&'static str>,
+        discogs_details: &'p str,
+        author: &'static str,
+        draft_blank: bool,
+        draft_valid: bool,
+    ),
+    r#"
+    UPDATE import_candidate_edit SET
+        album_title = :album_title, album_year = :album_year, year = :year, country = :country,
+        region = :region, media = :media, status = :status, packaging = :packaging,
+        discogs_details = :discogs_details, author = :author, draft_blank = :draft_blank,
+        draft_valid = :draft_valid
+    WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteDraftLabels(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_edit_label WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteDraftBarcodes(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_edit_barcode WHERE content_hash = :content_hash
+"#
+);
 
 /// Write `draft`, authored by `author`, over `stored`, which `stored_author`
 /// wrote.
@@ -20,37 +59,35 @@ pub(super) fn store_draft(
     (stored, stored_author): (&CandidateDraft, MetadataAuthor),
     (draft, author): (&CandidateDraft, MetadataAuthor),
 ) -> Result<(), DbError> {
-    let mut row = edit_row_values(content_hash, draft, author);
-    if edit_row_values(content_hash, stored, stored_author) != row {
-        // The key goes last, after the columns it sets.
-        row.rotate_left(1);
-        sql.execute(
-            &format!(
-                "UPDATE import_candidate_edit SET \
-                     ({FORM_COLUMNS}, author, draft_blank, draft_valid) = \
-                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-                 WHERE content_hash = ?"
-            ),
-            rusqlite::params_from_iter(row),
-        )?;
+    let row = EditRow::of(draft, author);
+    if EditRow::of(stored, stored_author) != row {
+        sql.run(&UpdateDraftRowParams {
+            content_hash,
+            album_title: &row.form.album_title,
+            album_year: &row.form.album_year,
+            year: &row.form.year,
+            country: row.form.country,
+            region: row.form.region,
+            media: &row.form.media,
+            status: row.form.status,
+            packaging: row.form.packaging,
+            discogs_details: &row.form.discogs_details,
+            author: row.author,
+            draft_blank: row.draft_blank,
+            draft_valid: row.draft_valid,
+        })?;
     }
     if stored.pressing.labels != draft.pressing.labels {
-        sql.execute(
-            "DELETE FROM import_candidate_edit_label WHERE content_hash = ?",
-            params![content_hash],
-        )?;
-        insert_label_rows(sql, &content_hash, &draft.pressing.labels)?;
+        sql.run(&DeleteDraftLabelsParams { content_hash })?;
+        insert_label_rows(sql, content_hash, &draft.pressing.labels)?;
     }
     if stored.pressing.barcodes != draft.pressing.barcodes {
-        sql.execute(
-            "DELETE FROM import_candidate_edit_barcode WHERE content_hash = ?",
-            params![content_hash],
-        )?;
-        insert_barcode_rows(sql, &content_hash, &draft.pressing.barcodes)?;
+        sql.run(&DeleteDraftBarcodesParams { content_hash })?;
+        insert_barcode_rows(sql, content_hash, &draft.pressing.barcodes)?;
     }
     store_album_artist_assignments(
         sql,
-        &content_hash,
+        content_hash,
         &stored.album_artist_assignments,
         &draft.album_artist_assignments,
     )?;
@@ -120,22 +157,39 @@ impl<'a> TrackRows<'a> {
     }
 }
 
+sqlive_compose::write!(
+    DeleteTrackArtists(content_hash: &'p str, track_id: &'p str),
+    r#"
+    DELETE FROM import_candidate_track_artist_assignment
+    WHERE content_hash = :content_hash AND track_id = :track_id
+"#
+);
+
+sqlive_compose::write!(
+    DeleteTrackRoles(content_hash: &'p str, track_id: &'p str),
+    r#"
+    DELETE FROM import_candidate_track_role
+    WHERE content_hash = :content_hash AND track_id = :track_id
+"#
+);
+
+sqlive_compose::write!(
+    DeleteTrackWorks(content_hash: &'p str, track_id: &'p str),
+    r#"
+    DELETE FROM import_candidate_track_work
+    WHERE content_hash = :content_hash AND track_id = :track_id
+"#
+);
+
 /// The rows hanging off one track: its artists, its roles and its works.
 fn delete_track_rows(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     track_id: &str,
 ) -> Result<(), DbError> {
-    for table in [
-        "import_candidate_track_artist_assignment",
-        "import_candidate_track_role",
-        "import_candidate_track_work",
-    ] {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE content_hash = ? AND track_id = ?"),
-            params![content_hash, track_id],
-        )?;
-    }
+    sql.run(&DeleteTrackArtistsParams { content_hash, track_id })?;
+    sql.run(&DeleteTrackRolesParams { content_hash, track_id })?;
+    sql.run(&DeleteTrackWorksParams { content_hash, track_id })?;
     Ok(())
 }
 
@@ -176,17 +230,41 @@ impl<'a> DraftBody<'a> {
     }
 }
 
+sqlive_compose::write!(
+    DeleteDraftTracks(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_track WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteDraftWorks(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_work WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteDraftReleaseRoles(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_release_role WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    DeleteDraftMediums(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_medium WHERE content_hash = :content_hash
+"#
+);
+
 /// Clear the draft's body: tracks first, which reference the mediums and the
 /// works, each taking the rows that hang off it.
 fn delete_draft_body(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    for table in [
-        "import_candidate_track",
-        "import_candidate_work",
-        "import_candidate_release_role",
-        "import_candidate_medium",
-    ] {
-        sql.execute(&format!("DELETE FROM {table} WHERE content_hash = ?"), [content_hash])?;
-    }
+    sql.run(&DeleteDraftTracksParams { content_hash })?;
+    sql.run(&DeleteDraftWorksParams { content_hash })?;
+    sql.run(&DeleteDraftReleaseRolesParams { content_hash })?;
+    sql.run(&DeleteDraftMediumsParams { content_hash })?;
     Ok(())
 }
 

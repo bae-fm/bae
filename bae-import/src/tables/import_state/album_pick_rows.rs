@@ -3,6 +3,7 @@
 //! Its table is `album_pick_rows.sql`, which every device's library holds.
 
 use super::*;
+use bae_store::WriteStatements as _;
 
 // What the person picked for the album of each candidate they picked one for:
 // the library album `picked_album_id`, or a new album when it is NULL.
@@ -26,9 +27,25 @@ pub(super) fn album_pick_of(row: Option<AlbumPickRow>) -> crate::AlbumPick {
     }
 }
 
+sqlive_compose::write!(
+    DeleteAlbumPick(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_album_pick WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    SetAlbumPick(content_hash: &'p str, album_id: Option<String>),
+    r#"
+    INSERT INTO import_candidate_album_pick (content_hash, album_id)
+    VALUES (:content_hash, :album_id)
+    ON CONFLICT (content_hash) DO UPDATE SET album_id = excluded.album_id
+"#
+);
+
 /// Leave the candidate `content_hash` to the album its records name.
 pub(super) fn delete_album_pick(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_album_pick WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteAlbumPickParams { content_hash })?;
     Ok(())
 }
 
@@ -54,12 +71,7 @@ impl ImportTables {
                     crate::AlbumPick::New => None,
                     crate::AlbumPick::Album { album_id } => Some(album_id),
                 };
-                sql.execute(
-                    "INSERT INTO import_candidate_album_pick (content_hash, album_id) \
-                     VALUES (?, ?) \
-                     ON CONFLICT (content_hash) DO UPDATE SET album_id = excluded.album_id",
-                    params![content_hash, album_id],
-                )?;
+                sql.run(&SetAlbumPickParams { content_hash: &content_hash, album_id })?;
                 Ok(())
             })
             .await

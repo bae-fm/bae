@@ -29,6 +29,7 @@ use crate::IdentifyRunId;
 use bae_catalogs::source_release::SourceRelease;
 use bae_identify::signals::Signals;
 use bae_identify::{IdentifyState, PublishedRun, RunOutcome};
+use bae_store::WriteStatements as _;
 
 sqlive_compose::fragment!(
     RuntimeRows with keys(candidate_key TEXT) {
@@ -202,12 +203,31 @@ fn runtime_in(row: RuntimeOfRow) -> Result<StoredRuntime, DbError> {
     runtime_of(row.runtime).map(|(_, runtime)| runtime)
 }
 
+sqlive_compose::write!(
+    DeleteEveryRun,
+    r#"
+    DELETE FROM import_identify_run
+"#
+);
+
 /// Delete every run's published state: nothing a run published outlives
 /// the process that ran it.
 pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_identify_run", [])?;
+    sql.run(&DeleteEveryRunParams {})?;
     Ok(())
 }
+
+sqlive_compose::write!(
+    ClaimRunKey(
+        run: i64,
+        key: &'p crate::CandidateKey,
+    ) { candidate_key: crate::CandidateKey },
+    r#"
+    INSERT INTO import_identify_run (identify_run, candidate_key) VALUES (:run, :key)
+    ON CONFLICT (identify_run) DO UPDATE SET candidate_key = candidate_key
+    RETURNING candidate_key
+"#
+);
 
 /// Store `outcome` as how `run` of `key` stands, with each of `releases`
 /// its rows name, and `signals`, where given, as what extraction last read
@@ -220,18 +240,9 @@ fn store_run_on(
     releases: &[SourceRelease],
     signals: Option<&Signals>,
 ) -> Result<(), DbError> {
-    let stored_key: Option<CandidateKey> = sql
-        .query(
-            "INSERT INTO import_identify_run (identify_run, candidate_key) VALUES (?1, ?2) \
-             ON CONFLICT (identify_run) DO UPDATE SET candidate_key = candidate_key \
-             RETURNING candidate_key",
-            params![run, key],
-            |row| row.get(0),
-        )?
-        .into_iter()
-        .next();
+    let stored_key = sql.returning_one(&ClaimRunKeyParams { run, key })?.candidate_key;
     // Each run is minted for one key.
-    assert!(stored_key.as_ref() == Some(key), "run {run} of {key} is stored as another key's");
+    assert!(stored_key == *key, "run {run} of {key} is stored as another key's");
     let owner = Owner::Run(run);
     // Store the signals first, because the outcome write checks its rows
     // against their text.
@@ -291,6 +302,20 @@ fn publish_candidate_run_on(
     }
     Ok(named)
 }
+
+sqlive_compose::write!(
+    DeleteRunOfKey(key: &'p crate::CandidateKey, run: i64),
+    r#"
+    DELETE FROM import_identify_run WHERE candidate_key = :key AND identify_run = :run
+"#
+);
+
+sqlive_compose::write!(
+    DeleteRunsOfKey(key: &'p crate::CandidateKey),
+    r#"
+    DELETE FROM import_identify_run WHERE candidate_key = :key
+"#
+);
 
 impl ImportTables {
     /// Where `key` stands and what each of its runs in flight last published.
@@ -428,11 +453,10 @@ impl ImportTables {
                     store_release_run_on(sql, &key, run, &outcome, &releases, signals.as_ref())
                 }
                 None => {
-                    sql.execute(
-                        "DELETE FROM import_identify_run \
-                         WHERE candidate_key = ? AND identify_run = ?",
-                        params![key, to_i64(run.number(), "an identify run")?],
-                    )?;
+                    sql.run(&DeleteRunOfKeyParams {
+                        key: &key,
+                        run: to_i64(run.number(), "an identify run")?,
+                    })?;
                     Ok(())
                 }
             })
@@ -449,7 +473,7 @@ impl ImportTables {
         self.store
             .call(move |sql| {
                 let moved = change_identification_on(sql, &key, &IdentificationChange::Cancelled)?;
-                sql.execute("DELETE FROM import_identify_run WHERE candidate_key = ?", [&key])?;
+                sql.run(&DeleteRunsOfKeyParams { key: &key })?;
                 Ok(moved)
             })
             .await

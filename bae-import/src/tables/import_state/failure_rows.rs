@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::{ImportFailure, ImportFailureReason};
+use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
 
 /// The failure the last import of `candidate` left.
@@ -40,9 +41,26 @@ pub(crate) fn failure_of(error: String, failed_at: &str) -> Result<ImportFailure
     })
 }
 
+sqlive_compose::write!(
+    DeleteImportFailure(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_failure WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    UpsertImportFailure(content_hash: &'p str, error: &'p str, failed_at: String),
+    r#"
+    INSERT INTO import_candidate_failure (content_hash, error, failed_at)
+    VALUES (:content_hash, :error, :failed_at)
+    ON CONFLICT (content_hash) DO UPDATE SET
+        error = excluded.error, failed_at = excluded.failed_at
+"#
+);
+
 /// Drop the failure the last import of `content_hash` left.
 pub(crate) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteImportFailureParams { content_hash })?;
     Ok(())
 }
 
@@ -70,14 +88,7 @@ fn save_failure_on(
         .into());
     }
     let failed_at = failure.failed_at.to_rfc3339();
-    sql.execute(
-        "INSERT INTO import_candidate_failure \
-             (content_hash, error, failed_at) \
-         VALUES (?, ?, ?) \
-         ON CONFLICT (content_hash) DO UPDATE SET \
-             error = excluded.error, failed_at = excluded.failed_at",
-        params![content_hash, failure.reason.detail, failed_at],
-    )?;
+    sql.run(&UpsertImportFailureParams { content_hash, error: &failure.reason.detail, failed_at })?;
     Ok(())
 }
 

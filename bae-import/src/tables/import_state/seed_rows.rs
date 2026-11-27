@@ -4,6 +4,33 @@
 //! Its tables are `seed_rows.sql`, which every device's library holds.
 
 use super::*;
+use bae_store::WriteStatements as _;
+
+sqlive_compose::write!(
+    InsertCandidateStateIfNew(content_hash: &'p str, candidate_key: &'p crate::CandidateKey),
+    r#"
+    INSERT INTO import_candidate_state (content_hash, candidate_key)
+    VALUES (:content_hash, :candidate_key)
+    ON CONFLICT (content_hash) DO NOTHING
+"#
+);
+
+sqlive_compose::write!(
+    SetCandidateStateKey(content_hash: &'p str, candidate_key: &'p crate::CandidateKey),
+    r#"
+    UPDATE import_candidate_state SET candidate_key = :candidate_key
+    WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertCandidateFolder(content_hash: &'p str, folder: Vec<u8>),
+    r#"
+    INSERT INTO import_candidate_folder (content_hash, folder)
+    VALUES (:content_hash, :folder)
+    ON CONFLICT DO NOTHING
+"#
+);
 
 /// Make sure `files` has a state row, and record `folder` as a folder on disk
 /// it was found at; the state lives while a watched folder covers one of
@@ -20,22 +47,17 @@ pub(crate) fn ensure_candidate_state(
     file_metadata: Option<&crate::file_metadata_seed::FileMetadataSeed>,
 ) -> Result<(), DbError> {
     let content_hash = files.content_hash();
-    let created = sql.execute(
-        "INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES (?, ?) \
-         ON CONFLICT (content_hash) DO NOTHING",
-        params![content_hash, path],
-    )? == 1;
+    let created = sql.run(&InsertCandidateStateIfNewParams {
+        content_hash: &content_hash,
+        candidate_key: path,
+    })? == 1;
     if !created {
-        sql.execute(
-            "UPDATE import_candidate_state SET candidate_key = ? WHERE content_hash = ?",
-            params![path, content_hash],
-        )?;
+        sql.run(&SetCandidateStateKeyParams { content_hash: &content_hash, candidate_key: path })?;
     }
-    sql.execute(
-        "INSERT INTO import_candidate_folder (content_hash, folder) \
-         VALUES (?, ?) ON CONFLICT DO NOTHING",
-        params![content_hash, coven::path_bytes(folder)],
-    )?;
+    sql.run(&InsertCandidateFolderParams {
+        content_hash: &content_hash,
+        folder: coven::path_bytes(folder),
+    })?;
     if crate::tables::import_origin::imported_release_on(sql, &content_hash)?.is_some()
         || super::pane_rows::has_draft_row_on(sql, &content_hash)?
     {
@@ -55,6 +77,21 @@ pub(crate) fn ensure_candidate_state(
     Ok(())
 }
 
+sqlive_compose::write!(
+    DeleteCandidateState(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_state WHERE content_hash = :content_hash
+"#
+);
+
+sqlive_compose::write!(
+    InsertCandidateState(content_hash: &'p str, candidate_key: &'p crate::CandidateKey),
+    r#"
+    INSERT INTO import_candidate_state (content_hash, candidate_key)
+    VALUES (:content_hash, :candidate_key)
+"#
+);
+
 /// Start the state of the files hashed `content_hash` over, under `key`: drop
 /// the state an undone grouping of the same files left, and when `inherited`
 /// holds file decisions, store a state row carrying them.
@@ -64,16 +101,31 @@ pub(crate) fn restart_state_on(
     key: &CandidateKey,
     inherited: &crate::folder_scanner::CandidateFileEdits,
 ) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_state WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteCandidateStateParams { content_hash })?;
     if !inherited.is_empty() {
-        sql.execute(
-            "INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES (?, ?)",
-            params![content_hash, key],
-        )?;
+        sql.run(&InsertCandidateStateParams { content_hash, candidate_key: key })?;
         super::file_decision_rows::store_file_edits(sql, content_hash, inherited)?;
     }
     Ok(())
 }
+
+sqlive_compose::write!(
+    ForgetCandidateFolders(folder: &'p [u8], below_first: &'p [u8], below_past: &'p [u8]),
+    r#"
+    DELETE FROM import_candidate_folder
+    WHERE folder = :folder OR (folder >= :below_first AND folder < :below_past)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteStatesFoundNowhere(content_hashes: String),
+    r#"
+    DELETE FROM import_candidate_state
+    WHERE content_hash IN (SELECT wanted.value FROM json_each(:content_hashes) AS wanted)
+        AND NOT EXISTS (SELECT 1 FROM import_candidate_folder AS found
+                        WHERE found.content_hash = import_candidate_state.content_hash)
+"#
+);
 
 /// Forget every folder at or below `folders` that files were found at, and
 /// the state of every candidate found only there.
@@ -87,14 +139,14 @@ pub(crate) fn forget_at_or_below(
         &folders.params(),
         |row| row.get(0),
     )?;
-    sql.execute(&format!("DELETE FROM import_candidate_folder WHERE {under}"), &folders.params())?;
-    sql.execute(
-        "DELETE FROM import_candidate_state \
-         WHERE content_hash IN (SELECT value FROM json_each(?)) \
-           AND NOT EXISTS (SELECT 1 FROM import_candidate_folder AS found \
-                           WHERE found.content_hash = import_candidate_state.content_hash)",
-        [serde_json::Value::from(found).to_string()],
-    )?;
+    sql.run(&ForgetCandidateFoldersParams {
+        folder: &folders.folder,
+        below_first: &folders.below_first,
+        below_past: &folders.below_past,
+    })?;
+    sql.run(&DeleteStatesFoundNowhereParams {
+        content_hashes: serde_json::Value::from(found).to_string(),
+    })?;
     Ok(())
 }
 

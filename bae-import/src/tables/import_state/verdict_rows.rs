@@ -22,6 +22,7 @@ use bae_identify::{
     Declined, Findings, FolderCheck, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict,
     NamedNote, RunOutcome, TerminalVerdict,
 };
+use bae_store::WriteStatements as _;
 
 /// Whose verdict-shaped rows these are: a candidate's verdict, under its
 /// files' content hash, or how a run in flight stands, under the run.
@@ -144,10 +145,17 @@ impl<'a> Outcome<'a> {
     }
 }
 
+sqlive_compose::write!(
+    DeleteVerdict(content_hash: &'p str),
+    r#"
+    DELETE FROM import_candidate_verdict WHERE content_hash = :content_hash
+"#
+);
+
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
 /// it: they hang off the verdict row.
 pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_verdict WHERE content_hash = ?", [content_hash])?;
+    sql.run(&DeleteVerdictParams { content_hash })?;
     Ok(())
 }
 
@@ -168,6 +176,48 @@ pub(super) fn store_verdict(
         identification.kept_own_draft,
     )
 }
+
+// The verdict's row, written over the one its owner holds. The only rows an
+// insert here can conflict with are that one: the owner's, by content_hash or
+// by identify_run.
+sqlive_compose::write!(
+    UpsertVerdict(
+        content_hash: Option<String>,
+        identify_run: Option<i64>,
+        kind: &'static str,
+        track_count: Option<u32>,
+        error_detail: Option<&'p str>,
+        disc_id_step: Option<&'static str>,
+        barcode_step: Option<&'static str>,
+        catalog_step: Option<&'static str>,
+        isrc_step: Option<&'static str>,
+        search_step: Option<&'static str>,
+        search_album: Option<&'p str>,
+        search_artist: Option<&'p str>,
+        medium_conflict: Option<&'static str>,
+        unattended_pick: Option<&'p str>,
+        declined: Option<&'static str>,
+        kept_own_draft: bool,
+    ) { verdict_id: super::verdict_rows::VerdictId },
+    r#"
+    INSERT INTO import_candidate_verdict
+        (content_hash, identify_run, kind, track_count, error_detail, disc_id_step,
+        barcode_step, catalog_step, isrc_step, search_step, search_album, search_artist,
+        medium_conflict, unattended_pick, declined, kept_own_draft)
+    VALUES (:content_hash, :identify_run, :kind, :track_count, :error_detail, :disc_id_step,
+        :barcode_step, :catalog_step, :isrc_step, :search_step, :search_album, :search_artist,
+        :medium_conflict, :unattended_pick, :declined, :kept_own_draft)
+    ON CONFLICT DO UPDATE SET
+        kind = excluded.kind, track_count = excluded.track_count, error_detail =
+        excluded.error_detail, disc_id_step = excluded.disc_id_step, barcode_step =
+        excluded.barcode_step, catalog_step = excluded.catalog_step, isrc_step =
+        excluded.isrc_step, search_step = excluded.search_step, search_album =
+        excluded.search_album, search_artist = excluded.search_artist, medium_conflict =
+        excluded.medium_conflict, unattended_pick = excluded.unattended_pick, declined =
+        excluded.declined, kept_own_draft = excluded.kept_own_draft
+    RETURNING verdict_id
+"#
+);
 
 /// Write `outcome` as `owner`'s, over whatever it stored before, as
 /// [`store_verdict`] writes a verdict. Only a run in flight stores a ledger
@@ -213,47 +263,26 @@ pub(super) fn store_outcome(
         Outcome::Running { .. } | Outcome::Settled(_) => None,
     };
     let (unattended_pick, declined) = decision_columns(outcome);
-    let column = owner.column();
-    let verdict = sql.query_row(
-        &format!(
-            "INSERT INTO import_candidate_verdict \
-                 (content_hash, identify_run, kind, track_count, error_detail, \
-                  disc_id_step, barcode_step, catalog_step, isrc_step, search_step, \
-                  search_album, search_artist, medium_conflict, unattended_pick, declined, \
-                  kept_own_draft) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT ({column}) DO UPDATE SET \
-                 kind = excluded.kind, track_count = excluded.track_count, \
-                 error_detail = excluded.error_detail, \
-                 disc_id_step = excluded.disc_id_step, barcode_step = excluded.barcode_step, \
-                 catalog_step = excluded.catalog_step, isrc_step = excluded.isrc_step, \
-                 search_step = excluded.search_step, search_album = excluded.search_album, \
-                 search_artist = excluded.search_artist, \
-                 medium_conflict = excluded.medium_conflict, \
-                 unattended_pick = excluded.unattended_pick, declined = excluded.declined, \
-                 kept_own_draft = excluded.kept_own_draft \
-             RETURNING verdict_id"
-        ),
-        params![
-            owner.content_hash(),
-            owner.run(),
+    let verdict = sql
+        .returning_one(&UpsertVerdictParams {
+            content_hash: owner.content_hash(),
+            identify_run: owner.run(),
             kind,
             track_count,
             error_detail,
-            steps.disc_id,
-            steps.barcode,
-            steps.catalog,
-            steps.isrc,
-            steps.search,
-            steps.search_album,
-            steps.search_artist,
+            disc_id_step: steps.disc_id,
+            barcode_step: steps.barcode,
+            catalog_step: steps.catalog,
+            isrc_step: steps.isrc,
+            search_step: steps.search,
+            search_album: steps.search_album,
+            search_artist: steps.search_artist,
             medium_conflict,
             unattended_pick,
             declined,
             kept_own_draft,
-        ],
-        |row| row.get::<_, VerdictId>(0),
-    )?;
+        })?
+        .verdict_id;
     store_failures(sql, verdict, failures)?;
     // The ledger's rows link the match rows, and the rows under each match
     // name what the match row below may change (its cover's address, its

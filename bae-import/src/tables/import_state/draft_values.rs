@@ -9,56 +9,276 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
 use bae_store::DbError;
+use bae_store::WriteStatements as _;
 use bae_types::credit_role::CreditedAs;
 use coven::CovenWrite;
-use rusqlite::{params, ToSql};
 use std::str::FromStr;
 
-/// The columns a candidate's edit row holds the form's album-level fields in.
-pub(crate) const FORM_COLUMNS: &str =
-    "album_title, album_year, year, country, region, media, status, packaging, discogs_details";
-
-/// The values of [`FORM_COLUMNS`] for `form`, in their order.
-pub(crate) fn form_row_values(form: &RawReleaseEdit) -> Vec<rusqlite::types::Value> {
-    use rusqlite::types::Value;
-    let facts = bae_records::records::pressing_columns::FactColumns::of(&form.pressing.facts);
-    let optional = |value: Option<&str>| value.map_or(Value::Null, |v| Value::Text(v.to_string()));
-    vec![
-        Value::Text(form.album_title.clone()),
-        Value::Text(form.album_year.clone()),
-        Value::Text(form.pressing.year.clone()),
-        optional(facts.country),
-        optional(facts.region),
-        Value::Text(bae_records::records::pressing_columns::media_column(
-            &form.pressing.facts.media,
-        )),
-        optional(facts.status),
-        optional(facts.packaging),
-        Value::Text(facts.discogs_details),
-    ]
+/// The form's album-level fields, as the columns of a candidate's edit row
+/// hold them.
+#[derive(PartialEq)]
+pub(super) struct FormColumns {
+    pub(super) album_title: String,
+    pub(super) album_year: String,
+    pub(super) year: String,
+    pub(super) country: Option<&'static str>,
+    pub(super) region: Option<&'static str>,
+    pub(super) media: String,
+    pub(super) status: Option<&'static str>,
+    pub(super) packaging: Option<&'static str>,
+    pub(super) discogs_details: String,
 }
+
+impl FormColumns {
+    pub(super) fn of(form: &RawReleaseEdit) -> Self {
+        let facts = bae_records::records::pressing_columns::FactColumns::of(&form.pressing.facts);
+        Self {
+            album_title: form.album_title.clone(),
+            album_year: form.album_year.clone(),
+            year: form.pressing.year.clone(),
+            country: facts.country,
+            region: facts.region,
+            media: bae_records::records::pressing_columns::media_column(&form.pressing.facts.media),
+            status: facts.status,
+            packaging: facts.packaging,
+            discogs_details: facts.discogs_details,
+        }
+    }
+}
+
+sqlive_compose::write!(
+    InsertDraftLabel(
+        content_hash: &'p str,
+        position: i64,
+        name: &'p str,
+        catalog_number: &'p str,
+        musicbrainz_label_id: Option<&'p str>,
+        discogs_label_id: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_edit_label
+        (content_hash, position, name, catalog_number, musicbrainz_label_id, discogs_label_id)
+    VALUES (:content_hash, :position, :name, :catalog_number, :musicbrainz_label_id,
+        :discogs_label_id)
+"#
+);
+
+sqlive_compose::write!(
+    InsertDraftBarcode(content_hash: &'p str, position: i64, barcode: &'p str),
+    r#"
+    INSERT INTO import_candidate_edit_barcode
+        (content_hash, position, barcode)
+    VALUES (:content_hash, :position, :barcode)
+"#
+);
+
+sqlive_compose::write!(
+    InsertDraftMedium(
+        content_hash: &'p str,
+        position: std::num::NonZeroU16,
+        medium: Option<&'static str>,
+        side_count: std::num::NonZeroU8,
+    ),
+    r#"
+    INSERT INTO import_candidate_medium
+        (content_hash, position, medium, side_count)
+    VALUES (:content_hash, :position, :medium, :side_count)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteAlbumArtistsFrom(content_hash: &'p str, position: i64),
+    r#"
+    DELETE FROM import_candidate_album_artist_assignment
+    WHERE content_hash = :content_hash AND position >= :position
+"#
+);
+
+sqlive_compose::write!(
+    UpsertAlbumArtist(
+        content_hash: &'p str,
+        position: i64,
+        assignment_kind: &'static str,
+        artist_id: Option<&'p str>,
+        name: Option<&'p str>,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credit_key: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        join_phrase: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_album_artist_assignment
+        (content_hash, position, assignment_kind, artist_id, name, sort_name,
+        musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase)
+    VALUES (:content_hash, :position, :assignment_kind, :artist_id, :name, :sort_name,
+        :musicbrainz_artist_id, :discogs_artist_id, :credit_key, :credited_as, :join_phrase)
+    ON CONFLICT (content_hash, position) DO UPDATE SET
+        assignment_kind = excluded.assignment_kind, artist_id = excluded.artist_id, name =
+        excluded.name, sort_name = excluded.sort_name, musicbrainz_artist_id =
+        excluded.musicbrainz_artist_id, discogs_artist_id = excluded.discogs_artist_id,
+        credit_key = excluded.credit_key, credited_as = excluded.credited_as, join_phrase =
+        excluded.join_phrase
+"#
+);
+
+sqlive_compose::write!(
+    InsertTrackArtist(
+        content_hash: &'p str,
+        track_id: &'p str,
+        position: i64,
+        assignment_kind: &'static str,
+        artist_id: Option<&'p str>,
+        name: Option<&'p str>,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credit_key: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        join_phrase: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_track_artist_assignment
+        (content_hash, track_id, position, assignment_kind, artist_id, name, sort_name,
+        musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase)
+    VALUES (:content_hash, :track_id, :position, :assignment_kind, :artist_id, :name,
+        :sort_name, :musicbrainz_artist_id, :discogs_artist_id, :credit_key, :credited_as,
+        :join_phrase)
+"#
+);
+
+sqlive_compose::write!(
+    InsertDraftWork(
+        content_hash: &'p str,
+        musicbrainz_work_id: &'p str,
+        position: i64,
+        title: &'p str,
+        disambiguation: Option<&'p str>,
+        work_type: Option<&'p str>,
+    ),
+    r#"
+    INSERT INTO import_candidate_work
+        (content_hash, musicbrainz_work_id, position, title, disambiguation, work_type)
+    VALUES (:content_hash, :musicbrainz_work_id, :position, :title, :disambiguation, :work_type)
+"#
+);
+
+sqlive_compose::write!(
+    InsertWorkCredit(
+        content_hash: &'p str,
+        musicbrainz_work_id: &'p str,
+        position: i64,
+        name: &'p str,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        role: &'static str,
+        role_words: Option<String>,
+        qualifiers: String,
+    ),
+    r#"
+    INSERT INTO import_candidate_work_credit
+        (content_hash, musicbrainz_work_id, position, name, sort_name, musicbrainz_artist_id,
+        discogs_artist_id, credited_as, role, role_words, qualifiers)
+    VALUES (:content_hash, :musicbrainz_work_id, :position, :name, :sort_name,
+        :musicbrainz_artist_id, :discogs_artist_id, :credited_as, :role, :role_words,
+        :qualifiers)
+"#
+);
+
+sqlive_compose::write!(
+    InsertWorkPart(
+        content_hash: &'p str,
+        position: i64,
+        parent_work_id: &'p str,
+        child_work_id: &'p str,
+    ),
+    r#"
+    INSERT INTO import_candidate_work_part
+        (content_hash, position, parent_work_id, child_work_id)
+    VALUES (:content_hash, :position, :parent_work_id, :child_work_id)
+"#
+);
+
+sqlive_compose::write!(
+    InsertReleaseRole(
+        content_hash: &'p str,
+        position: i64,
+        name: &'p str,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        source: &'p str,
+        role: &'static str,
+        role_words: Option<String>,
+        qualifiers: String,
+    ),
+    r#"
+    INSERT INTO import_candidate_release_role
+        (content_hash, position, name, sort_name, musicbrainz_artist_id, discogs_artist_id,
+        credited_as, source, role, role_words, qualifiers)
+    VALUES (:content_hash, :position, :name, :sort_name, :musicbrainz_artist_id,
+        :discogs_artist_id, :credited_as, :source, :role, :role_words, :qualifiers)
+"#
+);
+
+sqlive_compose::write!(
+    InsertTrackRole(
+        content_hash: &'p str,
+        track_id: &'p str,
+        position: i64,
+        name: &'p str,
+        sort_name: Option<&'p str>,
+        musicbrainz_artist_id: Option<&'p str>,
+        discogs_artist_id: Option<&'p str>,
+        credited_as: Option<&'p str>,
+        source: &'p str,
+        role: &'static str,
+        role_words: Option<String>,
+        qualifiers: String,
+    ),
+    r#"
+    INSERT INTO import_candidate_track_role
+        (content_hash, track_id, position, name, sort_name, musicbrainz_artist_id,
+        discogs_artist_id, credited_as, source, role, role_words, qualifiers)
+    VALUES (:content_hash, :track_id, :position, :name, :sort_name, :musicbrainz_artist_id,
+        :discogs_artist_id, :credited_as, :source, :role, :role_words, :qualifiers)
+"#
+);
+
+sqlive_compose::write!(
+    InsertTrackWork(
+        content_hash: &'p str,
+        track_id: &'p str,
+        position: i64,
+        musicbrainz_work_id: &'p str,
+    ),
+    r#"
+    INSERT INTO import_candidate_track_work
+        (content_hash, track_id, position, musicbrainz_work_id)
+    VALUES (:content_hash, :track_id, :position, :musicbrainz_work_id)
+"#
+);
 
 /// Insert the draft's label rows, as the form holds them, where the draft
 /// holds none.
 pub(crate) fn insert_label_rows(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     labels: &[RawLabelEdit],
 ) -> Result<(), DbError> {
     for (position, label) in labels.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_edit_label \
-                     (content_hash, position, name, catalog_number, \
-                      musicbrainz_label_id, discogs_label_id) VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                key,
-                position as i64,
-                label.name,
-                label.catalog_number,
-                label.musicbrainz_label_id,
-                label.discogs_label_id
-            ],
-        )?;
+        sql.run(&InsertDraftLabelParams {
+            content_hash,
+            position: position as i64,
+            name: &label.name,
+            catalog_number: &label.catalog_number,
+            musicbrainz_label_id: label.musicbrainz_label_id.as_deref(),
+            discogs_label_id: label.discogs_label_id.as_deref(),
+        })?;
     }
     Ok(())
 }
@@ -67,14 +287,11 @@ pub(crate) fn insert_label_rows(
 /// holds none.
 pub(crate) fn insert_barcode_rows(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     barcodes: &[String],
 ) -> Result<(), DbError> {
     for (position, barcode) in barcodes.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_edit_barcode (content_hash, position, barcode) VALUES (?, ?, ?)",
-            params![key, position as i64, barcode],
-        )?;
+        sql.run(&InsertDraftBarcodeParams { content_hash, position: position as i64, barcode })?;
     }
     Ok(())
 }
@@ -82,30 +299,27 @@ pub(crate) fn insert_barcode_rows(
 /// Insert the draft's mediums, in order, where the draft holds none.
 pub(crate) fn insert_medium_rows(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     mediums: &[bae_types::mediums::ReleaseMedium],
 ) -> Result<(), DbError> {
     for (index, medium) in mediums.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_medium (content_hash, position, medium, side_count) VALUES (?, ?, ?, ?)",
-            params![
-                key,
-                bae_types::mediums::medium_position(index),
-                medium.carrier.map(bae_types::pressing::Medium::key),
-                medium.sides,
-            ],
-        )?;
+        sql.run(&InsertDraftMediumParams {
+            content_hash,
+            position: bae_types::mediums::medium_position(index),
+            medium: medium.carrier.map(bae_types::pressing::Medium::key),
+            side_count: medium.sides,
+        })?;
     }
     Ok(())
 }
 
 pub(crate) fn insert_album_artist_assignments(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     assignments: &[Credited],
 ) -> Result<(), DbError> {
     for (position, assignment) in assignments.iter().enumerate() {
-        store_album_artist_assignment(sql, key, position, assignment)?;
+        store_album_artist_assignment(sql, content_hash, position, assignment)?;
     }
     Ok(())
 }
@@ -114,20 +328,20 @@ pub(crate) fn insert_album_artist_assignments(
 /// its position, and delete the stored ones past the last.
 pub(crate) fn store_album_artist_assignments(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     stored: &[Credited],
     assignments: &[Credited],
 ) -> Result<(), DbError> {
     for (position, assignment) in assignments.iter().enumerate() {
         if stored.get(position) != Some(assignment) {
-            store_album_artist_assignment(sql, key, position, assignment)?;
+            store_album_artist_assignment(sql, content_hash, position, assignment)?;
         }
     }
     if stored.len() > assignments.len() {
-        sql.execute(
-            "DELETE FROM import_candidate_album_artist_assignment WHERE content_hash = ? AND position >= ?",
-            params![key, assignments.len() as i64],
-        )?;
+        sql.run(&DeleteAlbumArtistsFromParams {
+            content_hash,
+            position: assignments.len() as i64,
+        })?;
     }
     Ok(())
 }
@@ -181,69 +395,49 @@ impl<'a> AssignmentRow<'a> {
 /// there.
 fn store_album_artist_assignment(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     position: usize,
     assignment: &Credited,
 ) -> Result<(), DbError> {
     let row = AssignmentRow::of(assignment);
-    sql.execute(
-        "INSERT INTO import_candidate_album_artist_assignment \
-             (content_hash, position, assignment_kind, artist_id, name, sort_name, \
-              musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT (content_hash, position) DO UPDATE SET \
-                 assignment_kind = excluded.assignment_kind, artist_id = excluded.artist_id, \
-                 name = excluded.name, sort_name = excluded.sort_name, \
-                 musicbrainz_artist_id = excluded.musicbrainz_artist_id, \
-                 discogs_artist_id = excluded.discogs_artist_id, \
-                 credit_key = excluded.credit_key, credited_as = excluded.credited_as, \
-                 join_phrase = excluded.join_phrase",
-        params![
-            key,
-            position as i64,
-            row.assignment_kind,
-            row.artist_id,
-            row.name,
-            row.sort_name,
-            row.musicbrainz_artist_id,
-            row.discogs_artist_id,
-            row.credit_key,
-            row.credited_as,
-            row.join_phrase
-        ],
-    )?;
+    sql.run(&UpsertAlbumArtistParams {
+        content_hash,
+        position: position as i64,
+        assignment_kind: row.assignment_kind,
+        artist_id: row.artist_id,
+        name: row.name,
+        sort_name: row.sort_name,
+        musicbrainz_artist_id: row.musicbrainz_artist_id,
+        discogs_artist_id: row.discogs_artist_id,
+        credit_key: row.credit_key,
+        credited_as: row.credited_as,
+        join_phrase: row.join_phrase,
+    })?;
     Ok(())
 }
 
 pub(crate) fn insert_track_artist_assignments(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     track_id: &str,
     assignments: &[Credited],
 ) -> Result<(), DbError> {
     for (position, assignment) in assignments.iter().enumerate() {
         let row = AssignmentRow::of(assignment);
-        sql.execute(
-            "INSERT INTO import_candidate_track_artist_assignment \
-                 (content_hash, track_id, position, assignment_kind, artist_id, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, \
-                  join_phrase) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                key,
-                track_id,
-                position as i64,
-                row.assignment_kind,
-                row.artist_id,
-                row.name,
-                row.sort_name,
-                row.musicbrainz_artist_id,
-                row.discogs_artist_id,
-                row.credit_key,
-                row.credited_as,
-                row.join_phrase
-            ],
-        )?;
+        sql.run(&InsertTrackArtistParams {
+            content_hash,
+            track_id,
+            position: position as i64,
+            assignment_kind: row.assignment_kind,
+            artist_id: row.artist_id,
+            name: row.name,
+            sort_name: row.sort_name,
+            musicbrainz_artist_id: row.musicbrainz_artist_id,
+            discogs_artist_id: row.discogs_artist_id,
+            credit_key: row.credit_key,
+            credited_as: row.credited_as,
+            join_phrase: row.join_phrase,
+        })?;
     }
     Ok(())
 }
@@ -252,76 +446,59 @@ pub(crate) fn insert_track_artist_assignments(
 /// `key`. The caller has already written the candidate's edit row.
 pub(crate) fn insert_draft_values(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     works: &WorkGraph,
     release_roles: &[CreditedRole],
 ) -> Result<(), DbError> {
     for (position, work) in works.works.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_work \
-                 (content_hash, musicbrainz_work_id, position, title, disambiguation, work_type) \
-                 VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                key,
-                work.musicbrainz_work_id,
-                position as i64,
-                work.title,
-                work.disambiguation,
-                work.work_type,
-            ],
-        )?;
+        sql.run(&InsertDraftWorkParams {
+            content_hash,
+            musicbrainz_work_id: &work.musicbrainz_work_id,
+            position: position as i64,
+            title: &work.title,
+            disambiguation: work.disambiguation.as_deref(),
+            work_type: work.work_type.as_deref(),
+        })?;
         for (position, credit) in work.credits.iter().enumerate() {
             let role = credit.role.columns();
-            sql.execute(
-                "INSERT INTO import_candidate_work_credit \
-                     (content_hash, musicbrainz_work_id, position, name, sort_name, \
-                      musicbrainz_artist_id, discogs_artist_id, credited_as, role, role_words, \
-                      qualifiers) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    key,
-                    work.musicbrainz_work_id,
-                    position as i64,
-                    credit.artist.name,
-                    credit.artist.sort_name,
-                    credit.artist.musicbrainz_artist_id,
-                    credit.artist.discogs_artist_id,
-                    credit.artist.credited_as,
-                    role.role,
-                    role.role_words,
-                    role.qualifiers,
-                ],
-            )?;
+            sql.run(&InsertWorkCreditParams {
+                content_hash,
+                musicbrainz_work_id: &work.musicbrainz_work_id,
+                position: position as i64,
+                name: &credit.artist.name,
+                sort_name: credit.artist.sort_name.as_deref(),
+                musicbrainz_artist_id: credit.artist.musicbrainz_artist_id.as_deref(),
+                discogs_artist_id: credit.artist.discogs_artist_id.as_deref(),
+                credited_as: credit.artist.credited_as.as_deref(),
+                role: role.role,
+                role_words: role.role_words,
+                qualifiers: role.qualifiers,
+            })?;
         }
     }
     for (position, part) in works.parts.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_work_part (content_hash, position, parent_work_id, child_work_id) \
-                 VALUES (?, ?, ?, ?)",
-            params![key, position as i64, part.parent, part.child],
-        )?;
+        sql.run(&InsertWorkPartParams {
+            content_hash,
+            position: position as i64,
+            parent_work_id: &part.parent,
+            child_work_id: &part.child,
+        })?;
     }
     for (position, role) in release_roles.iter().enumerate() {
         let columns = role.role.columns();
-        sql.execute(
-            "INSERT INTO import_candidate_release_role \
-                 (content_hash, position, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                key,
-                position as i64,
-                role.artist.name,
-                role.artist.sort_name,
-                role.artist.musicbrainz_artist_id,
-                role.artist.discogs_artist_id,
-                role.artist.credited_as,
-                role.source.as_str(),
-                columns.role,
-                columns.role_words,
-                columns.qualifiers,
-            ],
-        )?;
+        sql.run(&InsertReleaseRoleParams {
+            content_hash,
+            position: position as i64,
+            name: &role.artist.name,
+            sort_name: role.artist.sort_name.as_deref(),
+            musicbrainz_artist_id: role.artist.musicbrainz_artist_id.as_deref(),
+            discogs_artist_id: role.artist.discogs_artist_id.as_deref(),
+            credited_as: role.artist.credited_as.as_deref(),
+            source: role.source.as_str(),
+            role: columns.role,
+            role_words: columns.role_words,
+            qualifiers: columns.qualifiers,
+        })?;
     }
     Ok(())
 }
@@ -331,40 +508,35 @@ pub(crate) fn insert_draft_values(
 /// caller has already written the track row and the works.
 pub(crate) fn insert_track_values(
     sql: &CovenWrite<'_>,
-    key: &dyn ToSql,
+    content_hash: &str,
     track_id: &str,
     roles: &[CreditedRole],
     works: &[String],
 ) -> Result<(), DbError> {
     for (position, role) in roles.iter().enumerate() {
         let columns = role.role.columns();
-        sql.execute(
-            "INSERT INTO import_candidate_track_role \
-                 (content_hash, track_id, position, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                key,
-                track_id,
-                position as i64,
-                role.artist.name,
-                role.artist.sort_name,
-                role.artist.musicbrainz_artist_id,
-                role.artist.discogs_artist_id,
-                role.artist.credited_as,
-                role.source.as_str(),
-                columns.role,
-                columns.role_words,
-                columns.qualifiers,
-            ],
-        )?;
+        sql.run(&InsertTrackRoleParams {
+            content_hash,
+            track_id,
+            position: position as i64,
+            name: &role.artist.name,
+            sort_name: role.artist.sort_name.as_deref(),
+            musicbrainz_artist_id: role.artist.musicbrainz_artist_id.as_deref(),
+            discogs_artist_id: role.artist.discogs_artist_id.as_deref(),
+            credited_as: role.artist.credited_as.as_deref(),
+            source: role.source.as_str(),
+            role: columns.role,
+            role_words: columns.role_words,
+            qualifiers: columns.qualifiers,
+        })?;
     }
     for (position, work) in works.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_track_work (content_hash, track_id, position, musicbrainz_work_id) \
-                 VALUES (?, ?, ?, ?)",
-            params![key, track_id, position as i64, work],
-        )?;
+        sql.run(&InsertTrackWorkParams {
+            content_hash,
+            track_id,
+            position: position as i64,
+            musicbrainz_work_id: work,
+        })?;
     }
     Ok(())
 }
