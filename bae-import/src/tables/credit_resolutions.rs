@@ -14,7 +14,7 @@
 //! the person types is view state, so its draft's read applies the same
 //! rule to the form's credits.
 
-use bae_store::statement_rows;
+use bae_store::{statement_rows, WriteStatements};
 use rusqlite::{params, OptionalExtension};
 
 pub mod row_fragments;
@@ -60,6 +60,44 @@ sqlive_compose::read!(
 "#
 );
 
+sqlive_compose::write!(
+    DeleteCreditAnswer(name_key: &'p str, musicbrainz: Option<&'p str>, discogs: Option<&'p str>),
+    r#"
+    DELETE FROM import_credit_resolution
+    WHERE name_key = :name_key AND musicbrainz_artist_id IS :musicbrainz
+      AND discogs_artist_id IS :discogs
+"#
+);
+
+sqlive_compose::write!(
+    InsertCreditAnswer(name_key: &'p str, musicbrainz: Option<&'p str>, discogs: Option<&'p str>),
+    r#"
+    INSERT INTO import_credit_resolution (name_key, musicbrainz_artist_id, discogs_artist_id)
+    VALUES (:name_key, :musicbrainz, :discogs)
+"#
+);
+
+sqlive_compose::write!(
+    DeleteCreditAnswerArtists(resolution: i64),
+    r#"DELETE FROM import_credit_resolution_artist WHERE resolution = :resolution"#
+);
+
+// The artists of the JSON array `:artists`, as the answer `:resolution`'s.
+sqlive_compose::write!(
+    InsertCreditAnswerArtists(resolution: i64, artists: &'p str),
+    r#"
+    INSERT INTO import_credit_resolution_artist (
+        resolution, position, artist_id, name, sort_name, musicbrainz_artist_id,
+        discogs_artist_id)
+    SELECT :resolution, j.key, j.value ->> 'artist_id', j.value ->> 'name',
+        j.value ->> 'sort_name', j.value ->> 'musicbrainz_artist_id',
+        j.value ->> 'discogs_artist_id'
+    FROM json_each(:artists) AS j
+"#
+);
+
+sqlive_compose::write!(DeleteDueCredits, r#"DELETE FROM import_credit_resolution_due"#);
+
 /// Answer every credit the transaction's writes marked due and empty the
 /// list: each one a draft still holds gets the rule's answer, written where
 /// it differs from the stored one, and each one none holds loses its answer.
@@ -70,7 +108,6 @@ pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven
     }
     let mut held = Vec::new();
     for credit in due {
-        let key = params![credit.name_key, credit.musicbrainz_artist_id, credit.discogs_artist_id];
         if credit.held {
             held.push(serde_json::json!({
                 "name_key": credit.name_key,
@@ -78,11 +115,11 @@ pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven
                 "discogs_artist_id": credit.discogs_artist_id,
             }));
         } else {
-            sql.execute(
-                "DELETE FROM import_credit_resolution \
-                 WHERE name_key = ?1 AND musicbrainz_artist_id IS ?2 AND discogs_artist_id IS ?3",
-                key,
-            )?;
+            sql.run(&DeleteCreditAnswerParams {
+                name_key: &credit.name_key,
+                musicbrainz: credit.musicbrainz_artist_id.as_deref(),
+                discogs: credit.discogs_artist_id.as_deref(),
+            })?;
         }
     }
     let request = ChangedCreditAnswerParams { credits: serde_json::Value::Array(held).to_string() };
@@ -101,34 +138,23 @@ pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven
         };
         let resolution = match resolution_of()? {
             Some(resolution) => {
-                sql.execute(
-                    "DELETE FROM import_credit_resolution_artist WHERE resolution = ?1",
-                    [resolution],
-                )?;
+                sql.run(&DeleteCreditAnswerArtistsParams { resolution })?;
                 resolution
             }
             None => {
-                sql.execute(
-                    "INSERT INTO import_credit_resolution \
-                         (name_key, musicbrainz_artist_id, discogs_artist_id) \
-                     VALUES (?1, ?2, ?3)",
-                    key,
-                )?;
+                sql.run(&InsertCreditAnswerParams {
+                    name_key: name_key
+                        .as_deref()
+                        .expect("the rule answers a due credit, whose name key is never NULL"),
+                    musicbrainz: musicbrainz.as_deref(),
+                    discogs: discogs.as_deref(),
+                })?;
                 resolution_of()?.expect("the answer this function just inserted")
             }
         };
-        sql.execute(
-            "INSERT INTO import_credit_resolution_artist \
-                 (resolution, position, artist_id, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id) \
-             SELECT ?1, j.key, j.value ->> 'artist_id', j.value ->> 'name', \
-                    j.value ->> 'sort_name', j.value ->> 'musicbrainz_artist_id', \
-                    j.value ->> 'discogs_artist_id' \
-             FROM json_each(?2) AS j",
-            params![resolution, artists],
-        )?;
+        sql.run(&InsertCreditAnswerArtistsParams { resolution, artists })?;
     }
-    sql.execute("DELETE FROM import_credit_resolution_due", [])?;
+    sql.run(&DeleteDueCreditsParams {})?;
     Ok(())
 }
 

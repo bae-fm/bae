@@ -1,9 +1,10 @@
-//! Running a generated `write!` statement in a write's transaction.
+//! Running a generated `write!` statement in a write's transaction, by the
+//! write itself or by the before-commit function coven runs last in it.
 
-use coven::CovenWrite;
+use coven::{CommitSql, CovenWrite};
 use sqlive_compose::{Write, WriteReturning};
 
-/// A write's context, which runs generated writes.
+/// A context that writes, which runs generated writes.
 pub trait WriteStatements {
     /// Run `statement`, and return how many rows it changed.
     fn run<Q: Write>(&self, statement: &Q) -> rusqlite::Result<usize>;
@@ -13,6 +14,16 @@ pub trait WriteStatements {
 }
 
 impl WriteStatements for CovenWrite<'_> {
+    fn run<Q: Write>(&self, statement: &Q) -> rusqlite::Result<usize> {
+        self.execute(Q::SQL, statement.params().as_slice())
+    }
+
+    fn returning<Q: WriteReturning>(&self, statement: &Q) -> rusqlite::Result<Vec<Q::Row>> {
+        self.query(Q::SQL, statement.params().as_slice(), Q::read)
+    }
+}
+
+impl WriteStatements for CommitSql<'_> {
     fn run<Q: Write>(&self, statement: &Q) -> rusqlite::Result<usize> {
         self.execute(Q::SQL, statement.params().as_slice())
     }
