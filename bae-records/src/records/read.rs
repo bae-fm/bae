@@ -195,15 +195,6 @@ pub fn credit_line_column(
     credit_line_of(row, column, &row.get::<_, String>(column)?)
 }
 
-/// The line a nullable credit-list JSON column prints, read in a row closure;
-/// `None` for NULL.
-pub fn optional_credit_line_column(
-    row: &Row,
-    column: &str,
-) -> rusqlite::Result<Option<bae_types::credits::CreditLine>> {
-    row.get::<_, Option<String>>(column)?.map(|json| credit_line_of(row, column, &json)).transpose()
-}
-
 /// The line the credit list `json`, read from `column` of `row`, prints.
 fn credit_line_of(
     row: &Row,
