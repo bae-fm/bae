@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::{CatalogApplyId, CatalogApplyStep};
+use bae_store::statement_optional;
 
 /// The stored `step` value of `step`, and its catalog.
 fn step_columns(step: CatalogApplyStep) -> (&'static str, Catalog) {
@@ -16,19 +17,23 @@ fn step_columns(step: CatalogApplyStep) -> (&'static str, Catalog) {
     }
 }
 
+// The step of the apply `:apply`, while it waits on a read.
+sqlive_compose::read!(
+    StepOfApply(apply: String),
+    r#"
+    SELECT waiting.step, waiting.catalog
+    FROM import_catalog_apply_step AS waiting
+    WHERE waiting.apply_id = :apply
+"#
+);
+
 /// The read `apply` waits on now, or `None` while it waits on none.
 fn load_step_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     apply: &CatalogApplyId,
 ) -> Result<Option<CatalogApplyStep>, DbError> {
-    let columns = sql
-        .query_row(
-            "SELECT step, catalog FROM import_catalog_apply_step WHERE apply_id = ?",
-            [apply.as_str()],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )
-        .optional()?;
-    let Some((step, catalog)) = columns else {
+    let params = StepOfApplyParams { apply: apply.as_str().to_string() };
+    let Some(StepOfApplyRow { step, catalog }) = statement_optional(sql, &params)? else {
         return Ok(None);
     };
     let broken = |what: &str| {
