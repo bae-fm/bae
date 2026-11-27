@@ -234,15 +234,8 @@
   // The glyph each tone leads with, a ring with its mark inside, the one form every status glyph takes: BaeKit's `StatusTone.symbol` (SF Symbols) on macOS, Status.kt's `StatusTone.icon` on Android.
   // On macOS each tone's SF Symbol from the SF table, drawn through Glyph: info.circle, checkmark.circle and exclamationmark.circle (warning and danger alike, told apart by colour).
   var STATUS_SF = { info: 'info', success: 'checkcircle', warning: 'warning', danger: 'warning' };
-  // The ring with its solid mark that Android's notices lead with (Status.kt's StatusRingIcons), across a 20-unit box; each mark is a filled shape.
-  var RING_BANG = 'M10.9 6.5h2.2l-.3 8h-1.6zM12 15.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z';
-  var RING_DRAWING = {
-    ring: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z',
-    info: 'M10.9 10h2.2v7.5h-2.2zM12 5.8a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6z',
-    success: 'M10.4 16.6 6.4 12.6l1.5-1.5 2.5 2.5 5.7-5.7 1.5 1.5z',
-    warning: RING_BANG,
-    danger: RING_BANG
-  };
+  // The ring with its solid mark that Android's notices lead with (Status.kt's StatusRingIcons), across a 20-unit box: assets/Symbols' ring, and each tone's mark from there, each mark a filled shape.
+  var RING_DRAWING = { ring: SYMBOL_DRAWING.ring, info: SYMBOL_DRAWING['ring-mark-info'], success: SYMBOL_DRAWING['ring-mark-success'], warning: SYMBOL_DRAWING['ring-mark-bang'], danger: SYMBOL_DRAWING['ring-mark-bang'] };
   var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
   // A tone's glyph in the tone's colour; set="mac" for macOS, set="ring" for the ring an Android notice leads with, none for Android's Material symbol. `muted` draws it in secondary text. Neutral, accent and activity have none.
   // On macOS `size` (an icon role or points), `weight` and `frame` are what the app's caller sets, as SwiftUI sizes the SF Symbol by the caller's font and lays it out in the caller's frame; `label` is the name VoiceOver reads where the app gives the glyph one. Elsewhere `size` is an icon role, and `inline` (the ring) sizes it at 1.19 times the text beside it instead.
@@ -251,8 +244,8 @@
     if (!STATUS_MATERIAL[tone]) return null;
     var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.muted && 'bae-status-glyph-muted', props.inline && 'bae-status-glyph-inline', props.className);
     if (props.set === 'mac') return h(Glyph, { set: 'mac', name: STATUS_SF[tone], size: props.size, weight: props.weight, frame: props.frame, label: props.label, className: cls });
-    if (props.set === 'ring') return h('svg', { className: cls, style: props.inline ? null : iconBox(props.size), viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
-      h('path', { d: RING_DRAWING.ring, fillRule: 'evenodd' }), h('path', { d: RING_DRAWING[tone] }));
+    if (props.set === 'ring') return h('svg', { className: cls, style: props.inline ? null : iconBox(props.size), viewBox: RING_DRAWING.ring.viewBox, 'aria-hidden': true, fill: 'currentColor' },
+      symbolPaths(RING_DRAWING.ring), symbolPaths(RING_DRAWING[tone]));
     return h(MSymbol, { name: STATUS_MATERIAL[tone], size: props.size, className: cls, fill: 'currentColor' });
   }
   // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. A Mac notice draws the tone's SF Symbol, an Android notice its ring.

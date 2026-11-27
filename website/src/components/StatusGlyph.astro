@@ -1,7 +1,8 @@
 ---
 // A tone's status glyph, as the design system's StatusGlyph draws Android's,
 // in the tone's icon colour, info in the accent: the tone's Material Symbol,
-// or with `ring` the ring with its mark that Android's notices lead with.
+// or with `ring` the ring with the tone's mark inside it, which Android's
+// notices lead with.
 import Symbol, { type SymbolSize } from './Symbol.astro';
 
 export type Tone = 'info' | 'success' | 'warning' | 'danger';
@@ -18,15 +19,15 @@ const SYMBOLS: Record<Tone, string> = {
   warning: 'error',
   danger: 'error',
 };
-const RINGS: Record<Tone, string> = {
-  info: 'ring-info',
-  success: 'ring-success',
-  warning: 'ring-alert',
-  danger: 'ring-alert',
+const MARKS: Record<Tone, string> = {
+  info: 'ring-mark-info',
+  success: 'ring-mark-success',
+  warning: 'ring-mark-bang',
+  danger: 'ring-mark-bang',
 };
 const { tone, size, ring = false } = Astro.props;
 ---
-<Symbol name={(ring ? RINGS : SYMBOLS)[tone]} size={size} class={`status-glyph status-glyph-${tone}`} />
+<Symbol name={ring ? ['ring', MARKS[tone]] : SYMBOLS[tone]} size={size} class={`status-glyph status-glyph-${tone}`} />
 
 <style>
   :global(.status-glyph-info) { color: var(--accent); }

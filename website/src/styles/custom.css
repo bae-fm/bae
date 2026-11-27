@@ -222,9 +222,9 @@
 }
 
 /* ---- Asides: the design system's notices ---- */
-/* Each aside is a notice: the tone's notice fill, the ring with its mark at
-   the top left, 1.19 times the text and level with the first line, the
-   title in the label's weight over the text in secondary text. Note is
+/* Each aside is a notice: the tone's notice fill, the ring with the tone's
+   mark over it at the top left, 1.19 times the text and level with the first
+   line, the title in the label's weight over the text in secondary text. Note is
    info, tip success, caution warning and danger danger. Starlight's own
    icon in the title gives way to the ring. */
 .sl-markdown-content .starlight-aside:not(:where(.not-content *)) {
@@ -248,8 +248,8 @@
 	width: var(--notice-ring-size);
 	height: var(--notice-ring-size);
 	background: var(--notice-ring-colour);
-	-webkit-mask: var(--notice-ring) center / contain no-repeat;
-	mask: var(--notice-ring) center / contain no-repeat;
+	-webkit-mask: url('../../../design/system/assets/Symbols/ring.svg') center / contain no-repeat, var(--notice-mark) center / contain no-repeat;
+	mask: url('../../../design/system/assets/Symbols/ring.svg') center / contain no-repeat, var(--notice-mark) center / contain no-repeat;
 }
 .starlight-aside__title {
 	font-weight: var(--type-web-label-weight);
@@ -267,7 +267,7 @@
 }
 .sl-markdown-content .starlight-aside--note {
 	--notice-fill: var(--neutral-tint);
-	--notice-ring: url('../../../design/system/assets/Symbols/ring-info.svg');
+	--notice-mark: url('../../../design/system/assets/Symbols/ring-mark-info.svg');
 	--notice-ring-colour: var(--accent);
 }
 [data-theme='light'] .sl-markdown-content .starlight-aside--note {
@@ -275,17 +275,17 @@
 }
 .sl-markdown-content .starlight-aside--tip {
 	--notice-fill: var(--success-notice);
-	--notice-ring: url('../../../design/system/assets/Symbols/ring-success.svg');
+	--notice-mark: url('../../../design/system/assets/Symbols/ring-mark-success.svg');
 	--notice-ring-colour: var(--success-icon);
 }
 .sl-markdown-content .starlight-aside--caution {
 	--notice-fill: var(--warning-notice);
-	--notice-ring: url('../../../design/system/assets/Symbols/ring-alert.svg');
+	--notice-mark: url('../../../design/system/assets/Symbols/ring-mark-bang.svg');
 	--notice-ring-colour: var(--warning-icon);
 }
 .sl-markdown-content .starlight-aside--danger {
 	--notice-fill: var(--danger-notice);
-	--notice-ring: url('../../../design/system/assets/Symbols/ring-alert.svg');
+	--notice-mark: url('../../../design/system/assets/Symbols/ring-mark-bang.svg');
 	--notice-ring-colour: var(--danger-icon);
 }
 
