@@ -6,6 +6,7 @@ import Symbol from './Symbol.astro';
 import StatusGlyph from './StatusGlyph.astro';
 import sheepUrl from '../../../design/system/assets/Logos/bae-sheep.svg?url';
 import { getLatest } from '../lib/releases';
+import { preRelease } from '../lib/release-state.mjs';
 import { LOCALES, landing, localeInfo, localizePath } from '../lib/site-locales.mjs';
 
 interface Props {
@@ -135,7 +136,7 @@ const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], [
   }
 
   /* hero */
-  header.hero{padding:130px 0 70px;position:relative;overflow:hidden;}
+  header.hero{padding:130px 0 70px;position:relative;overflow-x:clip;}
   .heroin{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-page);align-items:center;}
   h1.jumbo{margin:0;margin-top:var(--space-page);}
   h1.jumbo .pink{color:var(--accent-pink);} h1.jumbo .violet{color:var(--accent-orchid);}
@@ -367,15 +368,17 @@ const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], [
         <a class="btn web-label" href="#features">{text.seeFeatures}</a>
         <span class="meta web-mono">{PLATFORMS.map(([name, id], i) => <>{i > 0 && ' · '}<a href={`${href('/guide/installation')}#${id}`}>{name}</a></>)}</span>
       </div>
-      <div class="devstatus r d3" role="status" aria-label={text.statusLabel}>
-        <div class="devstatus-in">
-          <div class="devstatus-mark">!</div>
-          <div>
-            <strong>{text.statusTitle}</strong>
-            <p>{text.statusText}</p>
+      {preRelease && (
+        <div class="devstatus r d3" role="status" aria-label={text.statusLabel}>
+          <div class="devstatus-in">
+            <div class="devstatus-mark">!</div>
+            <div>
+              <strong>{text.statusTitle}</strong>
+              <p>{text.statusText}</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
     <div class="herosheep r d2">
       <div class="sheepbox">
