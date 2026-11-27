@@ -248,7 +248,10 @@ public struct MacNotice: View {
     /// The words, wrapping, with the buttons at the right on the title's line,
     /// or under the words when the notice puts them `below`.
     private var titleLine: some View {
-        HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.group) {
+        // The tops line up, as the board lays the line out. Lined up by
+        // text baseline, the line would grow by what the title's baseline
+        // and the button's differ.
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
             // VoiceOver reads the words, then the buttons at the line's
             // end, then the buttons below; by where they sit, it would read
             // the line's end between the title and the line under it.
