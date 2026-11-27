@@ -3,6 +3,7 @@
 
 use bae_store::{DbError, Store};
 use coven::{CovenWrite, SqlReadContext};
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::{params, OptionalExtension, Params, Row};
 use std::sync::Arc;
 use time::UtcDateTime;
@@ -99,21 +100,26 @@ impl HistorySharing {
         }
     }
 
-    pub(crate) fn from_sql(value: &str) -> rusqlite::Result<Self> {
-        match value {
-            "off" => Ok(Self::Off),
-            "private" => Ok(Self::Private),
-            "household" => Ok(Self::Household),
-            _ => Err(rusqlite::Error::InvalidQuery),
-        }
-    }
-
     /// Where a play begun under this setting goes; `None` when none is kept.
     pub fn audience(self, circle: coven::CircleId) -> Option<coven::Audience> {
         match self {
             Self::Off => None,
             Self::Private => Some(Sharing::Private.audience(circle)),
             Self::Household => Some(Sharing::Household.audience(circle)),
+        }
+    }
+}
+
+impl FromSql for HistorySharing {
+    /// The setting a `history_sharing` column holds.
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_str()? {
+            "off" => Ok(Self::Off),
+            "private" => Ok(Self::Private),
+            "household" => Ok(Self::Household),
+            other => {
+                Err(FromSqlError::Other(format!("{other} names no history sharing setting").into()))
+            }
         }
     }
 }
@@ -140,7 +146,7 @@ pub struct PersonProfile {
 
 /// A person's avatar: the coven file the row references, and its version,
 /// which the apps cache the image by as they do covers
-/// ([`bae_store::file_version_sql`]).
+/// ([`bae_store::file_version`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Avatar {
     pub file: coven::FileId,

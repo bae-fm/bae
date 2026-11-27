@@ -1,31 +1,60 @@
 use super::*;
-use crate::membership::fragments::{EveryMember, Member};
+use crate::membership::fragments::Member;
+use crate::people::fragments::Profile;
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
-use bae_records::records::name_sort::sort_key_sql;
+use bae_store::{statement_optional, statement_rows};
 
-/// The columns [`profile_row`] reads of the `people` row `p` and the
-/// `coven_files` row `avatar` of its avatar ([`PROFILES`]): its own, then
-/// the avatar's file and version; [`PROFILE_COLUMN_COUNT`] of them.
-fn profile_columns() -> String {
-    format!(
-        "p.id, p.name, p.private_circle, p.history_sharing, avatar.id, {avatar_version}",
-        avatar_version = bae_store::file_version_sql("avatar.id"),
-    )
-}
+// The library's current members, each with their profile and how many people
+// and active devices the library has. The members with a profile come first, by
+// its name in the device's language; the read reads `name_sort`, so coven
+// reruns it when the device's language changes. The members with no profile yet
+// follow, and member id orders the rest.
+sqlive_compose::read!(
+    CurrentPeople { people: u32, devices: u32 },
+    r#"
+    SELECT member.*, profile.*, count(*) OVER () AS people,
+           sum(member.active_device_count) OVER () AS devices
+    FROM @crate::membership::fragments::Member AS member
+    JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+    LEFT JOIN @crate::people::fragments::Profile AS profile ON profile.id = member.member_id
+    WHERE NOT member.removed
+    ORDER BY profile.id IS NULL, bae_name_key(profile.name, sort.language), member.member_id
+"#
+);
 
-/// Each `people` row `p` with the `coven_files` row `avatar` of the avatar
-/// file it references, none for a profile with no avatar. An avatar's
-/// reference always names a record in `coven_files`, which coven deletes only
-/// with the last reference (coven 17.2).
-const PROFILES: &str = "people AS p LEFT JOIN coven_files AS avatar ON avatar.id = p.avatar_id";
+// The current member `:member`, with their profile.
+sqlive_compose::read!(
+    CurrentPerson(member: coven::MemberId),
+    r#"
+    SELECT member.*, profile.*
+    FROM @crate::membership::fragments::Member AS member
+    LEFT JOIN @crate::people::fragments::Profile AS profile ON profile.id = member.member_id
+    WHERE member.member_id = :member AND NOT member.removed
+"#
+);
 
-/// How many columns [`profile_columns`] names.
-const PROFILE_COLUMN_COUNT: usize = 6;
+// The member using this device, which coven marks as this device's own, with
+// their profile: while they are in the library, and with `:former` also after
+// it removed them.
+sqlive_compose::read!(
+    ThisDevicesPerson(former: bool),
+    r#"
+    SELECT member.*, profile.*
+    FROM @crate::membership::fragments::Member AS member
+    LEFT JOIN @crate::people::fragments::Profile AS profile ON profile.id = member.member_id
+    WHERE member.is_self AND (:former OR NOT member.removed)
+"#
+);
 
-/// The profile of the person `?`.
-fn profile_sql() -> String {
-    format!("SELECT {} FROM {PROFILES} WHERE p.id = ?", profile_columns())
-}
+// The profile of the person `:member`.
+sqlive_compose::read!(
+    ProfileOf(member: coven::MemberId),
+    r#"
+    SELECT profile.*
+    FROM @crate::people::fragments::Profile AS profile
+    WHERE profile.id = :member
+"#
+);
 
 impl People {
     /// The person this device writes as, for plays, ratings, playlists and
@@ -33,33 +62,22 @@ impl People {
     /// after the library removed it, as the removed device keeps its copy and
     /// keeps writing to it.
     pub(super) async fn writing_person(&self) -> Result<Option<Person>, DbError> {
-        let statement = members_sql(IS_OWN_MEMBER, "");
-        Ok(self.inner.store.read(move |sql| people_on(&sql, &statement, [])).await?.pop())
+        self.inner.store.read(|sql| this_devices_person_on(&sql, true)).await
     }
 
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile, which the same registration wrote.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        Ok(self.inner.store.read(|sql| people_on(&sql, &own_person_sql(), [])).await?.pop())
+        self.inner.store.read(|sql| this_devices_person_on(&sql, false)).await
     }
 
     /// The person using this device, the other people, and how many people and
-    /// devices the library has, live: one read of coven's members and devices
-    /// and the profiles, so a screen draws its sections and its counts from
-    /// the same moment.
+    /// devices the library has, live: one statement over coven's members and
+    /// devices and the profiles, so a screen draws its sections and its counts
+    /// from the same moment.
     pub fn subscribe_people(&self) -> coven::LiveQuery<PeopleView, bae_store::DbError> {
-        self.inner.store.subscribe(|sql| {
-            let own = people_on(&sql, &own_person_sql(), [])?.pop();
-            let others = people_on(&sql, &others_sql(), [])?;
-            let (people, devices) = sql.query_row(PEOPLE_COUNTS, [], |row| {
-                Ok((
-                    bae_store::read::count_column(row, "people")?,
-                    bae_store::read::count_column(row, "devices")?,
-                ))
-            })?;
-            Ok(PeopleView { own, others, people, devices })
-        })
+        self.inner.store.subscribe(|sql| people_view_on(&sql))
     }
 
     /// The person with member id `member`, live: none once they have left the
@@ -68,16 +86,20 @@ impl People {
         &self,
         member: coven::MemberId,
     ) -> coven::LiveQuery<Option<Person>, bae_store::DbError> {
-        self.inner
-            .store
-            .subscribe(move |sql| Ok(people_on(&sql, &person_sql(), params![member])?.pop()))
+        self.inner.store.subscribe(move |sql| {
+            statement_optional(&sql, &CurrentPersonParams { member })?
+                .map(|row| person(row.member, row.profile))
+                .transpose()
+        })
     }
 
     pub async fn profile(&self, member: coven::MemberId) -> Result<Option<PersonProfile>, DbError> {
         self.inner
             .store
             .read(move |sql| {
-                Ok(sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?)
+                statement_optional(&sql, &ProfileOfParams { member })?
+                    .map(|row| row.profile.into_profile())
+                    .transpose()
             })
             .await
     }
@@ -219,90 +241,55 @@ pub(crate) fn name_this_person_goes_by(
     .map(|mut found| found.pop())
 }
 
-fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
-    Ok(PersonProfile {
-        id: coven::MemberId(uuid_column(row, 0)?),
-        name: row.get(1)?,
-        private_circle: coven::CircleId(uuid_column(row, 2)?),
-        history_sharing: HistorySharing::from_sql(&row.get::<_, String>(3)?)?,
-        avatar: avatar_columns(row, 4)?,
-    })
+fn people_view_on(sql: &SqlReadContext<'_>) -> Result<PeopleView, DbError> {
+    let rows = statement_rows(sql, &CurrentPeopleParams {})?;
+    // Each row says both counts. A read that returns no row has no member to
+    // count.
+    let (people, devices) = rows.first().map_or((0, 0), |row| (row.people, row.devices));
+    let (mut own, others): (Vec<Person>, Vec<Person>) = rows
+        .into_iter()
+        .map(|row| person(row.member, row.profile))
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .partition(|person| person.membership.is_self);
+    Ok(PeopleView { own: own.pop(), others, people: people.into(), devices: devices.into() })
 }
 
-/// The avatar the columns from `at` read: the file of its `coven_files` row,
-/// then that file's version, both NULL for a profile with no avatar.
-fn avatar_columns(row: &Row<'_>, at: usize) -> rusqlite::Result<Option<Avatar>> {
-    row.get::<_, Option<coven::FileId>>(at)?
-        .map(|file| Ok(Avatar { file, version: row.get(at + 1)? }))
+fn this_devices_person_on(
+    sql: &SqlReadContext<'_>,
+    former: bool,
+) -> Result<Option<Person>, DbError> {
+    statement_optional(sql, &ThisDevicesPersonParams { former })?
+        .map(|row| person(row.member, row.profile))
         .transpose()
 }
 
-/// The library's current members, `narrowing` narrowing them, each with
-/// their profile's columns and then their member's. The members with a
-/// profile come first, by its name in the device's language; the query reads
-/// `name_sort`, so coven reruns it when the device's language changes. The
-/// members with no profile yet follow, and member id orders the rest.
-fn people_sql(narrowing: &str) -> String {
-    members_sql("NOT m.removed", narrowing)
+fn person(member: Member, profile: Option<Profile>) -> Result<Person, DbError> {
+    Ok(Person {
+        profile: profile.map(Profile::into_profile).transpose()?,
+        membership: member.into_membership()?,
+    })
 }
 
-/// [`people_sql`] over the members `condition` keeps, former ones included
-/// when it says so: a profile keeps its member id after the member's removal.
-fn members_sql(condition: &str, narrowing: &str) -> String {
-    format!(
-        "SELECT {profile}, m.* \
-         FROM ({members}) AS m LEFT JOIN ({PROFILES}) ON p.id = m.member_id \
-         WHERE {condition}{narrowing} \
-         ORDER BY p.id IS NULL, {name_key}, m.member_id",
-        profile = profile_columns(),
-        members = EveryMember::SQL,
-        name_key = sort_key_sql("p.name"),
-    )
-}
-
-/// What names the member using this device, over `coven_members` or a read of
-/// its members as `m`: the person using this device is the member coven marks
-/// as this device's own.
-pub(super) const IS_OWN_MEMBER: &str = "m.is_self";
-
-/// The person using this device.
-fn own_person_sql() -> String {
-    people_sql(&format!(" AND {IS_OWN_MEMBER}"))
-}
-
-/// The member bound to `?1`.
-fn person_sql() -> String {
-    people_sql(" AND m.member_id = ?1")
-}
-
-/// Everyone but the person using this device.
-fn others_sql() -> String {
-    people_sql(&format!(" AND NOT {IS_OWN_MEMBER}"))
-}
-
-/// How many people the library has and how many active devices they have.
-const PEOPLE_COUNTS: &str = "\
-    SELECT (SELECT COUNT(*) FROM coven_members AS m WHERE NOT m.removed) AS people, \
-           (SELECT COUNT(*) FROM coven_devices AS d \
-            JOIN coven_members AS m ON m.member = d.member \
-            WHERE NOT m.removed AND d.state = 'active') AS devices";
-
-/// The people `statement` reads with `params`, from [`people_sql`].
-fn people_on(
-    sql: &SqlReadContext<'_>,
-    statement: &str,
-    params: impl Params,
-) -> Result<Vec<Person>, DbError> {
-    sql.query(statement, params, |row| {
-        let profile = match row.get::<_, Option<String>>(0)? {
-            Some(_) => Some(profile_row(row)?),
-            None => None,
-        };
-        Ok((profile, Member::read(row, PROFILE_COLUMN_COUNT)?))
-    })?
-    .into_iter()
-    .map(|(profile, member)| Ok(Person { profile, membership: member.into_membership()? }))
-    .collect()
+impl Profile {
+    fn into_profile(self) -> Result<PersonProfile, DbError> {
+        let avatar = self
+            .avatar_id
+            .map(|file| {
+                let version = self.avatar_version.ok_or_else(|| {
+                    DbError::unreadable(format!("the avatar of {}", self.id), "no stored file")
+                })?;
+                Ok::<_, DbError>(Avatar { file, version })
+            })
+            .transpose()?;
+        Ok(PersonProfile {
+            id: self.id,
+            name: self.name,
+            private_circle: self.private_circle,
+            history_sharing: self.history_sharing,
+            avatar,
+        })
+    }
 }
 
 fn update_profile(

@@ -309,12 +309,7 @@ mod tests;
 /// The member using this device; `None` until their registration has applied.
 /// A removed device keeps its member, as the device keeps writing to its own
 /// copy as that person.
-fn own_member_sql() -> String {
-    format!(
-        "SELECT m.member AS member FROM coven_members AS m WHERE {}",
-        super::profiles::IS_OWN_MEMBER
-    )
-}
+const OWN_MEMBER_SQL: &str = "SELECT m.member AS member FROM coven_members AS m WHERE m.is_self";
 
 /// The rating system for albums and the album `?1`'s ratings that it shows.
 /// SQLite finds the album's ratings through `ratings_album`, and names
@@ -341,7 +336,7 @@ pub fn album_ratings_sql() -> String {
         stars = RatingSystem::Stars.as_str(),
         heart = RatingSystem::Heart.as_str(),
         minimum_heart = MIN_HEART_STARS as i64,
-        own = own_member_sql(),
+        own = OWN_MEMBER_SQL,
     )
 }
 
@@ -352,7 +347,7 @@ pub fn own_track_stars_sql(track_alias: &str) -> String {
     format!(
         "(SELECT r.stars FROM ratings AS r WHERE r.track_id = {track_alias}.id \
           AND r.person_id = (SELECT own.member FROM ({own}) AS own))",
-        own = own_member_sql(),
+        own = OWN_MEMBER_SQL,
     )
 }
 

@@ -1,8 +1,8 @@
 //! What the membership domain offers to other reads: a member of the library
 //! with their devices, and whether the member using this device is an admin,
-//! both read from coven's views. The members list runs the reads here, the
+//! both read from coven's views. The members list runs the read here, the
 //! rating systems read spreads whether the member is an admin, and the people
-//! statements, built as text, hold the members' SQL.
+//! reads spread the member.
 
 sqlive_compose::fragment!(
     SelfIsAdmin { self_is_admin: bool },
@@ -59,14 +59,5 @@ sqlive_compose::read!(
     FROM @crate::membership::fragments::Member AS member
     WHERE NOT member.removed
     ORDER BY member.member_id
-"#
-);
-
-// Every member coven keeps, former ones included.
-sqlive_compose::read!(
-    EveryMember,
-    r#"
-    SELECT member.*
-    FROM @crate::membership::fragments::Member AS member
 "#
 );
