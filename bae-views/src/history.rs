@@ -3,6 +3,12 @@
 //! list is long, so screens read it in windows along `history`'s indexes.
 
 use super::*;
+use bae_people::people::fragments::Profile;
+use bae_records::records::files::CoverVersion;
+use bae_records::records::fragments::ShownTrack;
+use bae_records::records::read::credit_line_of_json;
+use bae_store::list_windows::{sql_bound, Keyed, SortValue};
+use bae_store::{statement_optional, statement_row, statement_rows};
 
 /// One play as History lists it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,122 +58,233 @@ pub struct HistoryCount {
     pub shown: HistoryShown,
 }
 
-/// History's order over `history` aliased `alias`: newest first, which its
-/// indexes hold backwards, the id telling apart plays begun at one moment.
-fn history_order(alias: &str) -> ListOrder {
-    ListOrder::new(vec![
-        SortTerm::descending(format!("{alias}.started_at")),
-        SortTerm::descending(format!("{alias}.id")),
-    ])
+// History's order is `PlayPlace`'s: newest first, by when a play began and
+// then by its id, which tells apart plays begun at one moment. An entry's key
+// is those two values. A list of everyone's plays and a list of one person's
+// are two statements each, so that each seeks along its own index.
+
+// The window of History of everyone's plays: at most `limit` plays at or after
+// the place (`from_at`, `from_id`), each with its track, cover and person. The
+// joins after the plays are CROSS JOINs, so that SQLite reads the plays first,
+// along their index.
+sqlive_compose::read!(
+    HistoryWindow(from_at: String, from_id: String, limit: i64) { opens_day: bool },
+    r#"
+    SELECT play.started_at, play.id, play.played_on, play.opens_day, track.*, cover.*,
+           person.*
+    FROM @bae_people::people::fragments::ListedPlay AS play
+    CROSS JOIN @bae_records::records::fragments::ShownTrack AS track
+            ON track.track_id = play.track_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover ON cover.id = track.release_id
+    CROSS JOIN @bae_people::people::fragments::Profile AS person ON person.id = play.person_id
+    WHERE (play.started_at, play.id) <= (:from_at, :from_id)
+    ORDER BY play.started_at DESC, play.id DESC
+    LIMIT :limit
+"#
+);
+
+// [`HistoryWindow`] of the plays of the person `person`.
+sqlive_compose::read!(
+    PersonHistoryWindow(person: coven::MemberId, from_at: String, from_id: String, limit: i64)
+        { opens_day: bool },
+    r#"
+    SELECT play.started_at, play.id, play.played_on, play.opens_day, track.*, cover.*,
+           person.*
+    FROM @bae_people::people::fragments::ListedPersonPlay AS play
+    CROSS JOIN @bae_records::records::fragments::ShownTrack AS track
+            ON track.track_id = play.track_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover ON cover.id = track.release_id
+    CROSS JOIN @bae_people::people::fragments::Profile AS person ON person.id = play.person_id
+    WHERE play.person_id = :person
+      AND (play.started_at, play.id) <= (:from_at, :from_id)
+    ORDER BY play.started_at DESC, play.id DESC
+    LIMIT :limit
+"#
+);
+
+// How many plays History shows, everyone's or the person `person`'s; its menu
+// of whose plays, the current members with a profile, this device's person
+// first and the others by name in the device's language, each marked when
+// `person` names them; and `person`'s name, NULL when no profile has the id.
+sqlive_compose::read!(
+    HistoryTotals(person: Option<coven::MemberId>) {
+        plays: u64,
+        struct MenuPerson { person: coven::MemberId, name: String, chosen: bool }
+        people: json<Vec<MenuPerson>>,
+        shown_name: Option<String>
+    },
+    r#"
+    SELECT
+        CASE WHEN :person IS NULL
+             THEN (SELECT COUNT(*)
+                   FROM @bae_people::people::fragments::PlayPlace AS every_play)
+             ELSE (SELECT COUNT(*)
+                   FROM @bae_people::people::fragments::PlayPlace AS own_play
+                   WHERE own_play.person_id = :person)
+        END AS plays,
+        (SELECT json_group_array(json_object(
+                    'person', profile.id, 'name', profile.name,
+                    'chosen', json(iif(profile.id IS :person, 'true', 'false')))
+                    ORDER BY member.is_self DESC,
+                             bae_name_key(profile.name, sort.language), member.member_id)
+         FROM @bae_people::membership::fragments::Member AS member
+         JOIN @bae_people::people::fragments::Profile AS profile
+              ON profile.id = member.member_id
+         JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+         WHERE NOT member.removed) AS people,
+        (SELECT shown.name
+         FROM @bae_people::people::fragments::Profile AS shown
+         WHERE shown.id = :person) AS shown_name
+"#
+);
+
+// How many plays of History come before the place (`at`, `id`).
+sqlive_compose::read!(
+    PlaysBefore(at: String, id: String) { plays: u64 },
+    r#"
+    SELECT COUNT(*) AS plays
+    FROM @bae_people::people::fragments::PlayPlace AS play
+    WHERE (play.started_at, play.id) > (:at, :id)
+"#
+);
+
+// [`PlaysBefore`] among the plays of the person `person`.
+sqlive_compose::read!(
+    PersonPlaysBefore(person: coven::MemberId, at: String, id: String) { plays: u64 },
+    r#"
+    SELECT COUNT(*) AS plays
+    FROM @bae_people::people::fragments::PlayPlace AS play
+    WHERE play.person_id = :person AND (play.started_at, play.id) > (:at, :id)
+"#
+);
+
+// The place of the play at `index`, counted from History's top, or of the last
+// play when History ends before it. SQLite reads the offset -1 of an empty
+// list as 0, where there is no row.
+sqlive_compose::read!(
+    PlayAt(index: i64),
+    r#"
+    SELECT play.started_at, play.id
+    FROM @bae_people::people::fragments::PlayPlace AS play
+    ORDER BY play.started_at DESC, play.id DESC
+    LIMIT 1 OFFSET min(
+        :index,
+        (SELECT COUNT(*) FROM @bae_people::people::fragments::PlayPlace AS counted) - 1)
+"#
+);
+
+// [`PlayAt`] among the plays of the person `person`.
+sqlive_compose::read!(
+    PersonPlayAt(person: coven::MemberId, index: i64),
+    r#"
+    SELECT play.started_at, play.id
+    FROM @bae_people::people::fragments::PlayPlace AS play
+    WHERE play.person_id = :person
+    ORDER BY play.started_at DESC, play.id DESC
+    LIMIT 1 OFFSET min(
+        :index,
+        (SELECT COUNT(*)
+         FROM @bae_people::people::fragments::PlayPlace AS counted
+         WHERE counted.person_id = :person) - 1)
+"#
+);
+
+/// A time that sorts after every stored one: where a window from History's top
+/// starts.
+const AFTER_EVERY_PLAY: &str = "\u{10FFFF}";
+
+/// The key of the play that began at `started_at` with the id `id`, both as
+/// their columns hold them.
+fn key_of(started_at: String, id: String) -> OrderKey {
+    OrderKey::new(vec![SortValue::Text(started_at), SortValue::Text(id)])
 }
 
-/// The condition that keeps `alias`'s plays to `:person`'s when the filter
-/// names one.
-fn person_condition(alias: &str, filter: &HistoryFilter) -> String {
-    if filter.is_some() {
-        format!("{alias}.person_id = :person")
-    } else {
-        "1".to_string()
+/// The place `key` names. Only [`key_of`] makes History's keys.
+fn place_of(key: &OrderKey) -> Result<(String, String), DbError> {
+    match key.values() {
+        [SortValue::Text(started_at), SortValue::Text(id)] => Ok((started_at.clone(), id.clone())),
+        values => Err(DbError::unreadable("a History key", values)),
     }
 }
 
-/// Whether the play `h` is the newest the list shows of its day: one index
-/// seek per row.
-fn opens_day_sql(filter: &HistoryFilter) -> String {
-    format!(
-        "((SELECT first.id FROM history first \
-           WHERE first.played_on = h.played_on AND {person} \
-           ORDER BY {order} LIMIT 1) = h.id)",
-        person = person_condition("first", filter),
-        order = history_order("first").clause(),
-    )
+/// A play's own columns, as both windows select them.
+struct PlayColumns {
+    started_at: String,
+    id: String,
+    played_on: String,
+    opens_day: bool,
 }
 
-/// The statement reading the plays `seek` reads in `order`, at most
-/// `:limit`, each with its track, cover, person and key.
-fn history_rows_query(filter: &HistoryFilter, order: &ListOrder, seek: &Seek) -> String {
-    format!(
-        "SELECT h.id, t.title, {credits} AS artist_line, \
-                t.release_id, {cover} AS cover_version, h.started_at, h.played_on, \
-                {opens} AS opens_day, h.person_id, p.name AS person_name, {avatar} AS avatar, \
-                {keys} \
-         FROM history h JOIN tracks t ON t.id = h.track_id \
-              JOIN releases r ON r.id = t.release_id JOIN albums a ON a.id = r.album_id \
-              JOIN people p ON p.id = h.person_id \
-         WHERE {person} AND {condition} \
-         ORDER BY {ordering} {limit}",
-        credits = track_credits_json_sql("t"),
-        cover = cover_version_sql("t.release_id"),
-        opens = opens_day_sql(filter),
-        avatar = bae_store::file_version_sql("p.avatar_id"),
-        keys = order.key_columns(),
-        person = person_condition("h", filter),
-        condition = order.condition(seek),
-        ordering = order.ordering(seek),
-        limit = seek.limit_clause(),
-    )
-}
-
-fn history_row(row: &Row<'_>) -> rusqlite::Result<HistoryRow> {
-    let release_id: String = row.get("release_id")?;
-    let played_on = played_on_column(row)?;
-    Ok(HistoryRow {
-        id: uuid_column(row, "id")?,
-        title: row.get("title")?,
-        artist_line: credit_line_column(row, "artist_line")?,
-        cover: cover_ref(&release_id, row.get("cover_version")?),
-        started_at: rfc3339_column(row, "started_at")?,
+/// A window's row as History lists it, with its key.
+fn listed_play(
+    play: PlayColumns,
+    track: ShownTrack,
+    cover: Option<CoverVersion>,
+    person: Profile,
+) -> Result<Keyed<HistoryRow>, DbError> {
+    let id = uuid::Uuid::parse_str(&play.id)
+        .map_err(|error| DbError::unreadable(format!("the id of play {}", play.id), error))?;
+    let started_at = bae_util::timestamp::parse_rfc3339(&play.started_at)
+        .map_err(|error| DbError::unreadable(format!("the start of play {}", play.id), error))?;
+    let played_on =
+        time::Date::parse(&play.played_on, &time::format_description::well_known::Iso8601::DATE)
+            .map_err(|error| DbError::unreadable(format!("the day of play {}", play.id), error))?;
+    let (release_id, title, credits) = track.into_parts()?;
+    let row = HistoryRow {
+        id,
+        title,
+        artist_line: credit_line_of_json(&credits)?,
+        cover: cover_ref(&release_id, cover.and_then(CoverVersion::into_version)),
+        started_at,
         played_on,
-        opens_day: row.get("opens_day")?,
-        person: bae_people::people::PersonRef {
-            person: coven::MemberId(uuid_column(row, "person_id")?),
-            name: row.get("person_name")?,
-            avatar_version: row.get("avatar")?,
-        },
-    })
+        opens_day: play.opens_day,
+        person: person.into_person_ref(),
+    };
+    Ok((row, key_of(play.started_at, play.id)))
 }
 
-/// The day `played_on` holds, as the play's write stores it: YYYY-MM-DD.
-fn played_on_column(row: &Row<'_>) -> rusqlite::Result<time::Date> {
-    let text: String = row.get("played_on")?;
-    time::Date::parse(&text, &time::format_description::well_known::Iso8601::DATE)
-        .map_err(|error| column_conversion_error(row, "played_on", error))
-}
-
-/// The person `filter` names, as the statements bind it.
-fn person_param(filter: &HistoryFilter) -> Option<String> {
-    filter.map(|person| person.to_string())
-}
-
-/// The plays `seek` reads in `order`, at most `limit`, each with its key.
-fn history_rows_on(
+/// History's `window` under `filter`: its plays from the window's key on, or
+/// from the top, each with its key.
+fn history_window_on(
     sql: &SqlReadContext<'_>,
     filter: &HistoryFilter,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<HistoryRow>>, DbError> {
-    let statement = history_rows_query(filter, order, seek);
-    let person = person_param(filter);
-    Ok(seek.bound(limit, |params| {
-        let mut params = params.to_vec();
-        if let Some(person) = &person {
-            params.push((":person", person as &dyn rusqlite::ToSql));
+    window: &ListWindow,
+) -> Result<WindowRead<HistoryRow>, DbError> {
+    let (from_at, from_id) = match &window.from {
+        Some(key) => place_of(key)?,
+        None => (AFTER_EVERY_PLAY.to_string(), String::new()),
+    };
+    let limit = sql_bound(window.limit);
+    let rows = match *filter {
+        None => statement_rows(sql, &HistoryWindowParams { from_at, from_id, limit })?
+            .into_iter()
+            .map(|row| {
+                let play = PlayColumns {
+                    started_at: row.started_at,
+                    id: row.id,
+                    played_on: row.played_on,
+                    opens_day: row.opens_day,
+                };
+                listed_play(play, row.track, row.cover, row.person)
+            })
+            .collect::<Result<_, _>>()?,
+        Some(person) => {
+            let params = PersonHistoryWindowParams { person, from_at, from_id, limit };
+            statement_rows(sql, &params)?
+                .into_iter()
+                .map(|row| {
+                    let play = PlayColumns {
+                        started_at: row.started_at,
+                        id: row.id,
+                        played_on: row.played_on,
+                        opens_day: row.opens_day,
+                    };
+                    listed_play(play, row.track, row.cover, row.person)
+                })
+                .collect::<Result<_, _>>()?
         }
-        sql.query(&statement, params.as_slice(), |row| Ok((history_row(row)?, order.key_of(row)?)))
-    })?)
-}
-
-/// The people History's menu offers, this device's person first and the
-/// others by name, each marked when `:person` names them.
-fn history_people_sql() -> String {
-    format!(
-        "SELECT p.id AS person, p.name AS name, p.id IS :person AS chosen \
-         FROM coven_members AS m JOIN people AS p ON p.id = m.member \
-         WHERE NOT m.removed \
-         ORDER BY m.is_self DESC, {name_key}, m.member",
-        name_key = sort_key_sql("p.name"),
-    )
+    };
+    Ok(WindowRead { window: window.clone(), rows })
 }
 
 /// How many plays History shows under `filter`, with its menu of whose
@@ -177,33 +294,54 @@ fn history_count_on(
     sql: &SqlReadContext<'_>,
     filter: &HistoryFilter,
 ) -> Result<HistoryCount, DbError> {
-    let person = person_param(filter);
-    let count_sql =
-        format!("SELECT COUNT(*) AS plays FROM history h WHERE {}", person_condition("h", filter));
-    let plays = match &person {
-        Some(person) => {
-            sql.query_row(&count_sql, rusqlite::named_params! { ":person": person }, |row| {
-                count_column(row, "plays")
-            })?
-        }
-        None => sql.query_row(&count_sql, [], |row| count_column(row, "plays"))?,
-    };
-    let people =
-        sql.query(&history_people_sql(), rusqlite::named_params! { ":person": person }, |row| {
-            Ok(HistoryPerson {
-                person: coven::MemberId(uuid_column(row, "person")?),
-                name: row.get("name")?,
-                chosen: row.get("chosen")?,
-            })
-        })?;
-    let shown = match &person {
+    let totals = statement_row(sql, &HistoryTotalsParams { person: *filter })?;
+    let shown = match filter {
         Some(person) => HistoryShown::Person {
-            name: sql
-                .query_row("SELECT name FROM people WHERE id = ?1", [person], |row| row.get(0))?,
+            name: totals.shown_name.ok_or_else(|| {
+                DbError::unreadable(format!("the profile of person {person}"), None::<String>)
+            })?,
         },
         None => HistoryShown::Everyone,
     };
-    Ok(HistoryCount { plays, people, shown })
+    let people = totals
+        .people
+        .into_iter()
+        .map(|listed| HistoryPerson {
+            person: listed.person,
+            name: listed.name,
+            chosen: listed.chosen,
+        })
+        .collect();
+    Ok(HistoryCount { plays: totals.plays, people, shown })
+}
+
+/// How many plays History shows under `filter` before the play at `key`.
+fn history_rows_before_on(
+    sql: &SqlReadContext<'_>,
+    filter: &HistoryFilter,
+    key: &OrderKey,
+) -> Result<u64, DbError> {
+    let (at, id) = place_of(key)?;
+    Ok(match *filter {
+        None => statement_row(sql, &PlaysBeforeParams { at, id })?.plays,
+        Some(person) => statement_row(sql, &PersonPlaysBeforeParams { person, at, id })?.plays,
+    })
+}
+
+/// The key of the play at `position` of History under `filter`, or of the last
+/// one when it ends before it; `None` for no plays.
+fn history_key_at_on(
+    sql: &SqlReadContext<'_>,
+    filter: &HistoryFilter,
+    position: u64,
+) -> Result<Option<OrderKey>, DbError> {
+    let index = sql_bound(position);
+    Ok(match *filter {
+        None => statement_optional(sql, &PlayAtParams { index })?
+            .map(|row| key_of(row.started_at, row.id)),
+        Some(person) => statement_optional(sql, &PersonPlayAtParams { person, index })?
+            .map(|row| key_of(row.started_at, row.id)),
+    })
 }
 
 /// History's count as the list shows it: its plays, and its menu of whose
@@ -214,28 +352,6 @@ pub fn resolve_history_count(count: HistoryCount) -> crate::ListCount {
         items: count.plays,
         extra: crate::ListCountExtra::History { people: count.people, shown: count.shown },
     }
-}
-
-fn history_rows_before_on(
-    sql: &SqlReadContext<'_>,
-    filter: &HistoryFilter,
-    order: &ListOrder,
-    key: &OrderKey,
-) -> Result<u64, DbError> {
-    let person = person_param(filter);
-    let condition = filter.is_some().then(|| person_condition("h", filter));
-    let params: Vec<(&str, &dyn rusqlite::ToSql)> = match &person {
-        Some(person) => vec![(":person", person as &dyn rusqlite::ToSql)],
-        None => Vec::new(),
-    };
-    bae_store::list_windows::rows_before_on(
-        sql,
-        "FROM history h",
-        condition.as_deref(),
-        &params,
-        order,
-        key,
-    )
 }
 
 /// One delivery of History's window as the screen shows it.
@@ -252,10 +368,8 @@ impl LibraryViews {
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<HistoryRow>, bae_store::DbError>
     {
-        let order = history_order("h");
-        let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
-            history_rows_on(sql, &filter, &read_order, seek, limit)
+        self.store.subscribe_reconfigurable(initial, move |window, sql| {
+            history_window_on(&sql, &filter, window)
         })
     }
 
@@ -275,9 +389,8 @@ impl LibraryViews {
         filter: HistoryFilter,
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        let order = history_order("h");
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            history_rows_before_on(&sql, &filter, &order, key)
+            history_rows_before_on(&sql, &filter, key)
         })
     }
 
@@ -288,14 +401,7 @@ impl LibraryViews {
         filter: HistoryFilter,
         position: u64,
     ) -> Result<Option<OrderKey>, DbError> {
-        let order = history_order("h");
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    history_rows_on(&sql, &filter, &order, seek, limit)
-                })
-            })
-            .await
+        self.store.read(move |sql| history_key_at_on(&sql, &filter, position)).await
     }
 }
 

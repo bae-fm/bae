@@ -231,3 +231,27 @@ impl LibraryAlbum {
         Ok((self.album_id, self.title, credits.credits))
     }
 }
+
+// Each track's release and title, and the credits it shows (its own, else its
+// album's), as the JSON array [`super::read::credit_line_of_json`] reads.
+sqlive_compose::fragment!(
+    ShownTrack,
+    r#"
+    SELECT track.id AS track_id, track.release_id, track.title,
+           @crate::records::credit_fragments::TrackCredits(parent: track) AS credits
+    FROM tracks AS track
+"#
+);
+
+impl ShownTrack {
+    /// The track's release, title and shown credits as the JSON array that
+    /// [`super::read::credit_line_of_json`] reads. Every track's release has
+    /// an album, so the credits' own SQL yields a value for every track: a
+    /// missing one is a broken composition.
+    pub fn into_parts(self) -> Result<(String, String, String), DbError> {
+        let shown = self.credits.ok_or_else(|| {
+            DbError::unreadable(format!("the credits of track {}", self.track_id), None::<String>)
+        })?;
+        Ok((self.release_id, self.title, shown.credits))
+    }
+}

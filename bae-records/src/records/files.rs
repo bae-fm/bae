@@ -393,6 +393,13 @@ sqlive_compose::fragment!(
 "#
 );
 
+impl CoverVersion {
+    /// The version of the cover's browse copy.
+    pub fn into_version(self) -> Option<String> {
+        self.version
+    }
+}
+
 // Every cover's version, whose SQL a statement built as text holds.
 sqlive_compose::read!(
     CoverVersions,

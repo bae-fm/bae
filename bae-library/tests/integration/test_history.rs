@@ -260,3 +260,86 @@ async fn history_lists_plays_newest_first_under_their_days() {
     );
     library.manager().close().await.unwrap();
 }
+
+/// A window holds its limit of plays from its key on, `history_key_at` returns
+/// the key of the play at a position, or of the last one past the end, and a
+/// key's position is the number of plays before it. A play begun before a full
+/// window's last one reruns neither that window nor the position of its key; a
+/// play begun after them reruns both.
+#[tokio::test]
+async fn a_history_window_reads_from_its_key_and_reruns_for_its_own_plays() {
+    let directory = bae_util::test_files::TestFolder::new();
+    let (library, _storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
+    let person = own_profile(library.people()).await;
+    let track = test_uuid("window-track");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("window-album"), "Album Title"),
+        &test_uuid("window-release"),
+        &[(&track, "Track Title")],
+    )
+    .await;
+    let record = |hour: u8| {
+        let (people, track) = (&people, &track);
+        async move {
+            let started =
+                bae_util::timestamp::parse_rfc3339(&format!("2026-10-18T{hour:02}:00:00Z"))
+                    .unwrap();
+            let id = coven::IdSource::new_id(&coven::UuidIds);
+            let mut play = people
+                .begin_play(id, track, Some(Duration::from_secs(40)), started, started.date())
+                .await
+                .unwrap()
+                .expect("recorded");
+            play.set_played(Duration::from_secs(30));
+            assert!(people.record_play(&play).await.unwrap());
+            id
+        }
+    };
+    let mut newest_first = Vec::new();
+    for hour in [10, 11, 12, 13, 14] {
+        newest_first.insert(0, record(hour).await);
+    }
+    let views = bae_views::LibraryViews::new(library.store().clone());
+
+    for filter in [None, Some(person.id)] {
+        let second = views.history_key_at(filter, 1).await.unwrap().expect("a play at 1");
+        let mut window = views.subscribe_history_window(
+            filter,
+            bae_store::ListWindow { from: Some(second.clone()), limit: 2 },
+        );
+        let read = window.next_inline().await.expect("open").result.unwrap();
+        let shown: Vec<_> = read.rows.iter().map(|(row, _key)| row.id).collect();
+        assert_eq!(shown, newest_first[1..3].to_vec(), "{filter:?}");
+        assert_eq!(read.rows[0].1, second);
+        let mut position = views.subscribe_history_position(filter, second);
+        assert_eq!(position.next_inline().await.expect("open").result.unwrap(), 1);
+        let last = views.history_key_at(filter, 4).await.unwrap();
+        assert_eq!(views.history_key_at(filter, 99).await.unwrap(), last);
+    }
+    let nobody = coven::MemberId(test_uuid("window-nobody").parse().unwrap());
+    assert_eq!(views.history_key_at(Some(nobody), 0).await.unwrap(), None);
+
+    for (round, filter) in [None, Some(person.id)].into_iter().enumerate() {
+        let second = views.history_key_at(filter, 1).await.unwrap().expect("a play at 1");
+        let mut window = views.subscribe_history_window(filter, bae_store::ListWindow::top(2));
+        let mut position = views.subscribe_history_position(filter, second);
+        window.next_inline().await.expect("open").result.unwrap();
+        position.next_inline().await.expect("open").result.unwrap();
+
+        record(1 + round as u8).await;
+        assert!(!window.is_marked_for_rerun(), "{filter:?}");
+        assert!(!position.is_marked_for_rerun(), "{filter:?}");
+
+        record(20 + round as u8).await;
+        assert!(window.is_marked_for_rerun(), "{filter:?}");
+        assert!(position.is_marked_for_rerun(), "{filter:?}");
+    }
+    library.manager().close().await.unwrap();
+}

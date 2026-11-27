@@ -1,4 +1,6 @@
-//! What the people domain offers to other reads: a person's profile.
+//! What the people domain offers to other reads: a person's profile, the
+//! stars the person using this device gave tracks, and the plays History
+//! lists.
 
 // A person's profile, which keeps its member id after the member's removal,
 // with its avatar's stored file, none for a profile with no avatar. An
@@ -26,5 +28,56 @@ sqlive_compose::fragment!(
     FROM ratings AS rated
     WHERE rated.person_id = (SELECT own.member FROM coven_members AS own WHERE own.is_self)
       AND rated.track_id IS NOT NULL
+"#
+);
+
+impl Profile {
+    /// The person as a row beside their work shows them.
+    pub fn into_person_ref(self) -> crate::people::PersonRef {
+        crate::people::PersonRef {
+            person: self.id,
+            name: self.name,
+            avatar_version: self.avatar.map(|avatar| avatar.into_parts().1),
+        }
+    }
+}
+
+// Each play's place in History's order, newest first (when it began, then its
+// id), and whose it is. `history_order` and `history_person_order` index that
+// order over everyone's plays and over one person's.
+sqlive_compose::fragment!(
+    PlayPlace,
+    r#"
+    SELECT play.started_at, play.id, play.person_id
+    FROM history AS play
+"#
+);
+
+// Each play as History of everyone's plays lists it. `opens_day`: it is the
+// newest play of its day, which `history_day` finds.
+sqlive_compose::fragment!(
+    ListedPlay { opens_day: bool },
+    r#"
+    SELECT play.started_at, play.id, play.person_id, play.track_id, play.played_on,
+           play.id = (SELECT newest.id FROM history AS newest
+                      WHERE newest.played_on = play.played_on
+                      ORDER BY newest.started_at DESC, newest.id DESC
+                      LIMIT 1) AS opens_day
+    FROM history AS play
+"#
+);
+
+// Each play as History of one person's plays lists it. `opens_day`: it is that
+// person's newest play of its day, which `history_person_day` finds.
+sqlive_compose::fragment!(
+    ListedPersonPlay { opens_day: bool },
+    r#"
+    SELECT play.started_at, play.id, play.person_id, play.track_id, play.played_on,
+           play.id = (SELECT newest.id FROM history AS newest
+                      WHERE newest.person_id = play.person_id
+                        AND newest.played_on = play.played_on
+                      ORDER BY newest.started_at DESC, newest.id DESC
+                      LIMIT 1) AS opens_day
+    FROM history AS play
 "#
 );
