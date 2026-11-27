@@ -6,9 +6,11 @@ interface Props {
   text: {
     readingTags: string;
     tracks: string;
-    matchingBarcode: string;
-    matchingCatalog: string;
-    comparingLengths: string;
+    scanningBarcode: string;
+    readingCoverText: string;
+    readingRipLog: string;
+    computingDiscId: string;
+    askingSources: string;
     matched: string;
   };
 }
@@ -28,8 +30,8 @@ const albums = [
     art: 'a1',
     steps: [
       [text.readingTags, `9 ${text.tracks}`],
-      [text.matchingBarcode, '5012345678900'],
-      [text.comparingLengths, '42:18'],
+      [text.scanningBarcode, '5 012345 678900'],
+      [text.askingSources, ''],
     ],
     releases: [['CD', '1992', 0], ['LP', '2014', 1]],
   },
@@ -39,8 +41,8 @@ const albums = [
     art: 'a2',
     steps: [
       [text.readingTags, `11 ${text.tracks}`],
-      [text.matchingCatalog, 'OL-204'],
-      [text.comparingLengths, '38:51'],
+      [text.readingCoverText, 'OL-204'],
+      [text.askingSources, ''],
     ],
     releases: [['LP', '1971', 1], ['CD', '1989', 0]],
   },
@@ -49,9 +51,9 @@ const albums = [
     artist: 'Juno Vale',
     art: 'a3',
     steps: [
-      [text.readingTags, `10 ${text.tracks}`],
-      [text.matchingBarcode, '0724384260521'],
-      [text.comparingLengths, '47:05'],
+      [text.readingRipLog, `10 ${text.tracks}`],
+      [text.computingDiscId, 'kT3p9Q…'],
+      [text.askingSources, ''],
     ],
     releases: [['CD', '2003', 0], ['CD', '2013', 1]],
   },
@@ -68,7 +70,9 @@ const folderPath = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2
       </div>
     ))}
   </div>
-  <div class="ms-status"></div>
+  <div class="ms-flow">
+    <div class="ms-status"></div>
+  </div>
   <div class="ms-ident">
     <div class="ms-skel" aria-hidden="true">
       <div class="ms-head"><i class="ms-art ms-sk"></i><div class="ms-ht"><i class="ms-sk" style="width:160px;height:12px"></i><i class="ms-sk" style="width:104px;height:10px"></i></div></div>
@@ -80,12 +84,15 @@ const folderPath = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2
 </div>
 
 <style is:global>
-  .match-scene{height:342px;box-sizing:border-box;margin:-8px 0 var(--space-section);border-radius:var(--radius-card);background:var(--well);overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 36px;}
+  .match-scene{height:300px;box-sizing:border-box;margin:0 0 var(--space-section);overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:24px 0 8px;}
+  .match-scene{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .3s;}
+  .match-scene.ms-fade{opacity:0;}
+  .match-scene.ms-snap *{transition:none !important;}
   .match-scene .a1{background:linear-gradient(135deg,#5b6cf0,#c46ad6);}
   .match-scene .a2{background:linear-gradient(135deg,#f08a5b,#d6467a);}
   .match-scene .a3{background:linear-gradient(135deg,#3fb6a8,#2d6ec9);}
   .ms-stack{position:relative;width:min(360px,100%);height:44px;flex:none;}
-  .ms-folder{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--hairline);color:var(--text-tertiary);overflow:hidden;min-width:0;transition:color .3s,transform .5s cubic-bezier(.2,.8,.25,1),opacity .5s;}
+  .ms-folder{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:flex-start;transform-origin:left center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--elevated);border:1px solid var(--hairline);color:var(--text-tertiary);overflow:hidden;min-width:0;transition:color .3s,transform .5s cubic-bezier(.2,.8,.25,1),opacity .5s;}
   .ms-folder span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;}
   .ms-folder svg{flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;}
   .ms-folder[data-l="0"]{transform:none;opacity:1;z-index:3;}
@@ -93,15 +100,16 @@ const folderPath = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2
   .ms-folder[data-l="2"]{transform:translateY(-16px) scale(.88);opacity:.25;z-index:1;}
   .ms-folder[data-l="gone"]{transform:translateY(36px) scale(.96);opacity:0;z-index:4;}
   .ms-folder.ms-active{color:var(--text-primary);}
-  .ms-status{position:relative;flex:none;width:min(360px,100%);height:16px;margin-top:-10px;}
-  .ms-line{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--text-primary);opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;}
+  .ms-flow{position:relative;flex:none;display:flex;align-items:center;gap:14px;width:min(360px,100%);height:36px;margin:4px 0 6px;padding-left:13px;box-sizing:border-box;}
+  .ms-status{position:relative;flex:1;min-width:0;height:16px;}
+  .ms-line{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-start;white-space:nowrap;gap:8px;font-size:12px;color:var(--text-primary);opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;}
   .ms-line.ms-in{opacity:1;transform:none;}
-  .ms-line.ms-out{opacity:0;transform:translateY(-6px);}
+  .ms-line.ms-out{opacity:0;transform:translateY(-6px);transition:opacity .12s,transform .2s;}
   .ms-line .ms-sp{flex:none;width:12px;height:12px;box-sizing:border-box;margin-right:2px;border-radius:50%;border:1.5px solid var(--hairline);border-top-color:var(--accent);animation:ms-spin .7s linear infinite;}
   .ms-line.ms-ok .ms-sp{border:none;animation:none;color:var(--accent);display:flex;align-items:center;justify-content:center;}
   .ms-line.ms-ok .ms-sp::before{content:"\2713";font-size:11px;}
   .ms-line .ms-v{font-family:var(--font-web-mono);font-size:11px;color:var(--text-tertiary);}
-  .ms-ident{position:relative;flex:1;width:min(290px,100%);}
+  .ms-ident{position:relative;flex:none;height:144px;width:min(290px,100%);}
   .ms-skel,.ms-card{position:absolute;inset:0;display:flex;flex-direction:column;}
   .ms-skel{opacity:0;transition:opacity .35s;}
   .match-scene.ms-scanning .ms-skel{opacity:1;}
@@ -124,9 +132,6 @@ const folderPath = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2
   .ms-pr.ms-on .ms-tick{opacity:1;}
   .ms-sk{display:block;border-radius:4px;background:var(--hairline);animation:ms-pulse 1.4s ease-in-out infinite;}
   .ms-art.ms-sk{border-radius:8px;}
-  .ms-stack,.ms-ident{transition:opacity .6s;}
-  .match-scene.ms-hide .ms-stack{opacity:0;}
-  .match-scene.ms-snap,.match-scene.ms-snap *{transition:none !important;}
   @keyframes ms-spin{to{transform:rotate(360deg);}}
   @keyframes ms-pulse{50%{opacity:.45;}}
 </style>
@@ -156,7 +161,7 @@ const folderPath = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2
   }
 
   function lineHtml(label: string, value: string) {
-    return `<i class="ms-sp"></i><span>${escape(label)}</span><span class="ms-v">${escape(value)}</span>`;
+    return `<i class="ms-sp"></i><span>${escape(label)}</span>${value ? `<span class="ms-v">${escape(value)}</span>` : ''}`;
   }
 
   function cardFor(album: Album) {
@@ -204,50 +209,82 @@ const folderPath = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2
       return;
     }
 
-    (async () => {
-      for (;;) {
-        await wait(700);
+    let generation = 0;
+
+    const reset = () => {
+      ident.querySelectorAll('.ms-card').forEach((card) => card.remove());
+      status.replaceChildren();
+      folders.forEach((folder) => folder.classList.remove('ms-active'));
+      root.classList.remove('ms-scanning', 'ms-has-card');
+      layer(0);
+    };
+
+    const play = async () => {
+      const mine = ++generation;
+      const step = async (ms: number) => {
+        await wait(ms);
+        if (mine !== generation) throw new Error('replaced');
+      };
+      try {
+        await step(500);
         for (let i = 0; i < albums.length; i++) {
           const album = albums[i];
+          const last = i === albums.length - 1;
           folders[i].classList.add('ms-active');
           root.classList.add('ms-scanning');
           setLine(lineHtml(...album.steps[0]));
-          await wait(900);
+          await step(1400);
           status.querySelector('.ms-line.ms-in')?.classList.add('ms-ok');
           const card = cardFor(album);
           ident.appendChild(card);
-          await wait(60);
+          await step(60);
           card.classList.add('ms-in');
           root.classList.add('ms-has-card');
-          await wait(900);
-          for (const step of album.steps.slice(1)) {
-            setLine(lineHtml(...step));
-            await wait(850);
+          await step(1300);
+          for (const next of album.steps.slice(1)) {
+            setLine(lineHtml(...next));
+            await step(1400);
           }
           card.querySelector('.ms-pr[data-chosen="1"]')!.classList.add('ms-on');
           root.classList.remove('ms-scanning');
           const chosen = chosenOf(album);
           setLine(lineHtml(matched, `${chosen[0]} ${chosen[1]}`), true);
-          await wait(1100);
+          if (last) return;
+          await step(2000);
           layer(i + 1);
           folders[i].classList.remove('ms-active');
           setLine('');
           card.classList.add('ms-out');
           root.classList.remove('ms-has-card');
-          await wait(700);
+          await step(900);
           card.remove();
         }
-        await wait(500);
-        root.classList.add('ms-hide');
-        await wait(700);
-        root.classList.add('ms-snap');
-        layer(0);
-        void root.offsetHeight;
-        root.classList.remove('ms-snap');
-        root.classList.remove('ms-hide');
-        await wait(600);
+      } catch {
+        // A replay started; it owns the scene now.
       }
-    })();
+    };
+
+    const replay = async () => {
+      const mine = ++generation;
+      root.classList.add('ms-fade');
+      await wait(300);
+      if (mine !== generation) return;
+      root.classList.add('ms-snap');
+      reset();
+      void root.offsetHeight;
+      root.classList.remove('ms-snap', 'ms-fade');
+      play();
+    };
+
+    root.addEventListener('click', replay);
+
+    const seen = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        seen.disconnect();
+        play();
+      }
+    }, { threshold: 0.6 });
+    seen.observe(root);
   }
 
   document.querySelectorAll<HTMLElement>('[data-match-scene]').forEach(run);
