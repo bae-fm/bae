@@ -115,12 +115,14 @@ pub mod export_numbers;
 mod release_file;
 mod release_locality;
 mod release_tracks;
+pub mod release_with_files;
 pub mod track_display;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
 pub use release_tracks::{
     sheet_side_choices_sql, track_places_ctes, track_places_on, track_position_of, track_side_of,
     MediumsSource,
 };
+pub use release_with_files::ReleaseWithFiles;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]

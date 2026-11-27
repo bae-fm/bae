@@ -9,8 +9,10 @@
 
 use std::future::Future;
 
+use crate::manager::coven_files::total_bytes;
 use crate::{LibraryError, LibraryManager};
 use bae_diagnostics::{LocalId, TelemetryEvent, Unfinished};
+use bae_records::DbFile;
 use bae_transfers::DownloadTransferProgress;
 use bae_transfers::Finished;
 use bae_transfers::RunningOp;
@@ -49,31 +51,42 @@ impl TransferProgressFeed {
 
 impl LibraryManager {
     /// Pin a release and compose its progress drain, task completion, and abort
-    /// control into the operation the serial queue owns.
+    /// control into the operation the serial queue owns, with the progress the
+    /// pin starts from: none of the total it counts down.
+    ///
+    /// The pin reads the release's files once, here, for its preconditions,
+    /// its progress and its work. A release that fails the preconditions
+    /// starts no pin: its failure is recorded and returned.
     ///
     /// The pin ends `entry` in the write that pins the release's files, and
     /// the operation's outcome carries that proof.
-    pub fn start_pin_transfer<Drive, DriveFuture>(
+    pub async fn start_pin_transfer<Drive, DriveFuture>(
         &self,
         release_id: String,
         entry: bae_transfers::ActiveEntry<bae_transfers::DownloadRequest>,
         drive: Drive,
-    ) -> RunningOp<impl Future<Output = Result<Finished, LibraryError>>>
+    ) -> Result<
+        (DownloadTransferProgress, RunningOp<impl Future<Output = Result<Finished, LibraryError>>>),
+        LibraryError,
+    >
     where
         Drive: FnOnce(TransferProgressFeed) -> DriveFuture,
         DriveFuture: Future<Output = Result<(), LibraryError>>,
     {
+        let files = self.find_files_to_pin(&release_id).await?;
+        let transfer = ReleaseTransfer::new(self.clone(), release_id.clone());
+        let (files, initial) = transfer.start(files).inspect_err(|error| transfer.fail(error))?;
         let library_manager = self.clone();
         let pinned_release_id = release_id.clone();
-        let (progress, running) =
-            spawn_transfer(ReleaseTransfer::new(self.clone(), release_id), move |tx| async move {
-                library_manager
-                    .pin_release_files_with_progress(&pinned_release_id, entry, |progress| {
-                        send_progress(&tx, TransferProgress::Progress { progress });
-                    })
-                    .await
-            });
-        running.then(|ended| async move {
+        let file_count = u32::try_from(files.len()).expect("a release's files fit a u32");
+        let (progress, running) = spawn_transfer(transfer, file_count, move |tx| async move {
+            library_manager
+                .pin_release_files_with_progress(&pinned_release_id, &files, entry, |progress| {
+                    send_progress(&tx, TransferProgress::Progress { progress })
+                })
+                .await
+        });
+        let running = running.then(|ended| async move {
             let drained = drive(TransferProgressFeed(progress)).await;
             match ended.await {
                 Ok(Some(finished)) => drained.map(|()| finished),
@@ -89,12 +102,13 @@ impl LibraryManager {
                 // happened.
                 Err(Unfinished::Panicked(bug)) => Err(bug.into()),
             }
-        })
+        });
+        Ok((initial, running))
     }
 }
 
-/// One pin in flight: which release, and the library it is guarded and
-/// recorded against.
+/// One pin in flight: which release, and the library it is recorded
+/// against.
 ///
 /// Whoever runs a transfer holds one of these from the precondition check
 /// through to the terminal record, so a completion or a failure can only ever
@@ -113,18 +127,22 @@ impl ReleaseTransfer {
         Self { library_manager, release_id }
     }
 
-    /// Guard the transfer's preconditions; returns the release's file count so
-    /// the completion can report it.
-    pub(crate) async fn start(&self) -> Result<u32, LibraryError> {
-        self.library_manager.get_release_by_id(&self.release_id).await?.ok_or_else(|| {
+    /// Guard the transfer's preconditions over the release's `files`, `None`
+    /// when the library holds no such release; returns the files it pins and
+    /// the progress it starts from.
+    pub(crate) fn start(
+        &self,
+        files: Option<Vec<DbFile>>,
+    ) -> Result<(Vec<DbFile>, DownloadTransferProgress), LibraryError> {
+        let files = files.ok_or_else(|| {
             LibraryError::release_missing(&self.release_id, crate::manager::ReleaseWork::Transfer)
         })?;
-        let files = self.library_manager.get_files_for_release(&self.release_id).await?;
         if files.is_empty() {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
         // coven's `prepare_pin` refuses a file that is not in the cloud.
-        Ok(files.len() as u32)
+        let total = total_bytes(&self.release_id, &files)?;
+        Ok((files, DownloadTransferProgress::new(&self.release_id, 0, total)?))
     }
 
     pub(crate) fn complete(&self, file_count: u32) {
@@ -152,14 +170,16 @@ impl ReleaseTransfer {
     }
 }
 
-/// Drive one release transfer on its own task: guard its preconditions, run
-/// `run`, and record whichever terminal state it reaches. A
+/// Drive one release transfer of `file_count` files, whose preconditions
+/// passed, on its own task: run `run` and record whichever terminal state it
+/// reaches. A
 /// panic in the transfer is reported as a bug and ends it as failed, on the
 /// progress channel like any failure, so a caller that drains the channel
 /// alone still hears how it ended. Returns the progress channel to drain and
 /// the running transfer, whose outcome is how it ended.
 fn spawn_transfer<Run, Fut, Done>(
     transfer: ReleaseTransfer,
+    file_count: u32,
     run: Run,
 ) -> (
     mpsc::UnboundedReceiver<TransferProgress>,
@@ -180,7 +200,6 @@ where
     let running = manager.spawn_ending(
         "pin a release",
         async move {
-            let file_count = transfer.start().await?;
             info!(
                 release_id = %transfer.release_id,
                 file_count,

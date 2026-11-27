@@ -220,16 +220,11 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let (picture, bytes) = match selection {
             CoverSelection::ReleaseImage { file_id } => {
-                let file = self.records.find_file_by_id(&file_id).await?.ok_or_else(|| {
-                    LibraryError::FileMissing {
-                        release_id: release_id.to_string(),
-                        file_id: file_id.clone(),
-                    }
-                })?;
+                let file = self.release_file(release_id, &file_id).await?;
 
                 // Read the chosen release image file through coven's locality-aware
                 // read (the user's own file when Local, the cache/cloud when Remote).
-                if file.release_id != release_id || !file.content_type.is_supported_cover() {
+                if !file.content_type.is_supported_cover() {
                     return Err(bae_import::ImportError::CoverArt {
                         detail: format!(
                             "{} is no image of release {release_id} that a cover can be made from",

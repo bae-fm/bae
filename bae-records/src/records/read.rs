@@ -236,25 +236,6 @@ pub fn get_releases_for_album_on(
     .map_err(DbError::from)
 }
 
-/// A release's files in natural order of their names, case aside, the way
-/// the import folder lists them, id breaking a tie: the order every list of
-/// a release's files shows (detail, gallery, storage, export), read from the
-/// index of each release's files in that order.
-pub(super) const RELEASE_FILES_IN_ORDER: &str = concat!(
-    "SELECT ",
-    release_file_columns!(),
-    " FROM release_files AS f WHERE f.release_id = ?1 \
-     ORDER BY f.original_filename COLLATE natural_order, f.id"
-);
-
-pub fn get_files_for_release_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-) -> Result<Vec<DbFile>, DbError> {
-    let files = sql.query(RELEASE_FILES_IN_ORDER, params![release_id], row_to_file)?;
-    Ok(files)
-}
-
 /// Every catalog's description of the release `release` (an SQL expression
 /// naming its id), in the order surfaces list catalogs, as a JSON array for
 /// [`records_column`] that is empty for a release no catalog describes.

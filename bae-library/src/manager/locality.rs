@@ -69,8 +69,13 @@ impl LibraryManager {
         ),
         LibraryError,
     > {
-        let files = self.local_copy_paths(&release_id).await?;
-        let total = self.release_bytes(&release_id).await?;
+        let release = self
+            .records
+            .find_release_with_files(&release_id)
+            .await?
+            .ok_or_else(|| LibraryError::release_missing(&release_id, ReleaseWork::Transfer))?;
+        let total = super::coven_files::total_bytes(&release_id, &release.files)?;
+        let files = local_copy_paths(&release_id, release)?;
         let manager = self.clone();
         let file_count = u32::try_from(files.len()).expect("a release's files fit a u32");
         let local_release_id = release_id.clone();
@@ -152,46 +157,6 @@ impl LibraryManager {
                 entry.finish_on(sql)
             })
             .await?)
-    }
-
-    /// Each release file's coven file with the path below the person's folder
-    /// its copy goes to: the release's folder, then the file's names. Covers
-    /// keep their coven files: they are bae's own, and every device shows
-    /// them.
-    ///
-    /// `original_filename` and `source_folder_name` are synced columns
-    /// another device may have written, so each path is its names, and coven
-    /// writes each name through the rule it uses for its own copies (see
-    /// [`bae_records::stored_name`]): every name is one name inside the
-    /// person's folder. A release with no folder name makes no file local.
-    #[cfg(desktop)]
-    async fn local_copy_paths(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<(coven::FileId, coven::RelativePath)>, LibraryError> {
-        let release = self.get_release_by_id(release_id).await?.ok_or_else(|| {
-            LibraryError::release_missing(release_id, crate::manager::ReleaseWork::Transfer)
-        })?;
-        let folder = release.source_folder_name.ok_or_else(|| {
-            LibraryError::Storage(format!(
-                "release {release_id} has no source folder name; cannot place its folder"
-            ))
-        })?;
-        let files = self.records.get_files_for_release(release_id).await?;
-        if files.is_empty() {
-            return Err(LibraryError::Storage("Release has no files".to_string()));
-        }
-        Ok(files
-            .iter()
-            .map(|f| (f.file, bae_records::stored_name::copy_path(&folder, &f.original_filename)))
-            .collect())
-    }
-
-    /// The bytes of the release's files, as the records hold their sizes.
-    #[cfg(desktop)]
-    async fn release_bytes(&self, release_id: &str) -> Result<u64, LibraryError> {
-        let files = self.records.get_files_for_release(release_id).await?;
-        Ok(files.iter().map(|file| file.file_size).sum())
     }
 
     /// Unpin the releases of a selection, every one in one write: their files
@@ -289,3 +254,34 @@ impl LibraryManager {
 #[cfg(test)]
 #[path = "locality_tests.rs"]
 mod tests;
+
+/// Each release file's coven file with the path below the person's folder its
+/// copy goes to: the release's folder, then the file's names. Covers keep
+/// their coven files: they are bae's own, and every device shows them.
+///
+/// `original_filename` and `source_folder_name` are synced columns another
+/// device may have written, so each path is its names, and coven writes each
+/// name through the rule it uses for its own copies (see
+/// [`bae_records::stored_name`]): every name is one name inside the person's
+/// folder. A release with no folder name makes no file local.
+#[cfg(desktop)]
+fn local_copy_paths(
+    release_id: &str,
+    release: bae_records::ReleaseWithFiles,
+) -> Result<Vec<(coven::FileId, coven::RelativePath)>, LibraryError> {
+    let folder = release.source_folder_name.ok_or_else(|| {
+        LibraryError::Storage(format!(
+            "release {release_id} has no source folder name; cannot place its folder"
+        ))
+    })?;
+    if release.files.is_empty() {
+        return Err(LibraryError::Storage("Release has no files".to_string()));
+    }
+    Ok(release
+        .files
+        .iter()
+        .map(|file| {
+            (file.file, bae_records::stored_name::copy_path(&folder, &file.original_filename))
+        })
+        .collect())
+}

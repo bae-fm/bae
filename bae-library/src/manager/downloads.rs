@@ -108,10 +108,10 @@ impl LibraryManager {
     ///
     /// [`QueuedReleases::run_serial`]: bae_transfers::QueuedReleases::run_serial
     ///
-    /// All this supplies is how an entry runs by its kind. A pin: resolve the
-    /// release's byte totals, ask [`LibraryManager::start_pin_transfer`] to
-    /// compose the pin task with this worker's progress drain, and yield the
-    /// resulting operation. The outcome comes from draining the transfer's
+    /// All this supplies is how an entry runs by its kind. A pin: ask
+    /// [`LibraryManager::start_pin_transfer`] to compose the pin task with
+    /// this worker's progress drain, and yield the progress it starts from
+    /// with the resulting operation. The outcome comes from draining the transfer's
     /// progress channel and then joining the pin task, so a panicked pin
     /// reports the panic rather than "the channel closed". A move-to-this-device: list
     /// the copies and run the download and its write on a task of its own
@@ -132,17 +132,13 @@ impl LibraryManager {
                     let release_id = op.release_id;
                     match op.payload {
                         DownloadRequest::Pin => {
-                            let initial_progress =
-                                self.initial_download_progress(&release_id).await?;
                             let drive_release_id = release_id.clone();
                             let manager = self.clone();
-                            let running = self.start_pin_transfer(
-                                release_id,
-                                entry,
-                                move |progress| async move {
+                            let (initial_progress, running) = self
+                                .start_pin_transfer(release_id, entry, move |progress| async move {
                                     manager.drive_pin(&drive_release_id, progress).await
-                                },
-                            );
+                                })
+                                .await?;
                             Ok((DownloadTransfer::Pin(initial_progress), running.boxed()))
                         }
                         #[cfg(desktop)]

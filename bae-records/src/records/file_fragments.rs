@@ -39,6 +39,48 @@ sqlive_compose::fragment!(
 "#
 );
 
+// Each release file `files` gives, with the columns of `release_files`: its
+// id as `document_file_id`, its name, content type and size, and `file_json`,
+// the JSON object every list of a release's files holds it as.
+sqlive_compose::fragment!(
+    FileDocuments
+    with files(
+        id TEXT, release_id TEXT, original_filename TEXT, content_type TEXT, created_at TEXT,
+        file TEXT, role TEXT, document_kind TEXT, source_audio_layout TEXT,
+        source_audio_content_type TEXT, source_audio_container TEXT,
+        source_audio_duration_ms INTEGER, source_audio_sample_rate_hz INTEGER,
+        source_audio_bits_per_sample INTEGER, source_audio_bitrate_kbps INTEGER,
+        source_audio_channels INTEGER
+    )
+    {
+        document_file_id: String,
+        original_filename: String,
+        content_type: String,
+        file_size: u64,
+        file_json: String,
+    },
+    r#"
+    SELECT f.id AS document_file_id, f.original_filename, f.content_type,
+           stored.size AS file_size,
+           json_object(
+               'id', f.id, 'release_id', f.release_id,
+               'original_filename', f.original_filename, 'content_type', f.content_type,
+               'created_at', f.created_at, 'file', f.file, 'role', f.role,
+               'document_kind', f.document_kind,
+               'source_audio_layout', f.source_audio_layout,
+               'source_audio_content_type', f.source_audio_content_type,
+               'source_audio_container', f.source_audio_container,
+               'source_audio_duration_ms', f.source_audio_duration_ms,
+               'source_audio_sample_rate_hz', f.source_audio_sample_rate_hz,
+               'source_audio_bits_per_sample', f.source_audio_bits_per_sample,
+               'source_audio_bitrate_kbps', f.source_audio_bitrate_kbps,
+               'source_audio_channels', f.source_audio_channels,
+               'file_size', stored.size, 'stored', stored.hash IS NOT NULL) AS file_json
+    FROM files AS f
+    JOIN coven_files AS stored ON stored.id = f.file
+"#
+);
+
 // The release's files, from the rows `files` gives (the release's own, with
 // the columns of `release_files`), as one JSON object: every file, and among them the images
 // the gallery shows and the files no track plays from ([`UnplayedFiles`]),
@@ -72,30 +114,16 @@ sqlive_compose::fragment!(
                           UNION ALL
                           SELECT NULL, cut.sheet_file_id FROM carved AS cut)) AS free),
     listed AS (
-        SELECT f.id, f.original_filename,
+        SELECT f.document_file_id AS id, f.original_filename,
                f.content_type IN (
                    SELECT shown.content_type
                    FROM @crate::records::file_fragments::ShowableImageTypes AS shown) AS showable,
-               f.id IN (SELECT file_id FROM unplayed) AS in_files,
-               stored.size AS size,
-               json_object(
-                   'id', f.id, 'release_id', f.release_id,
-                   'original_filename', f.original_filename, 'content_type', f.content_type,
-                   'created_at', f.created_at, 'file', f.file, 'role', f.role,
-                   'document_kind', f.document_kind,
-                   'source_audio_layout', f.source_audio_layout,
-                   'source_audio_content_type', f.source_audio_content_type,
-                   'source_audio_container', f.source_audio_container,
-                   'source_audio_duration_ms', f.source_audio_duration_ms,
-                   'source_audio_sample_rate_hz', f.source_audio_sample_rate_hz,
-                   'source_audio_bits_per_sample', f.source_audio_bits_per_sample,
-                   'source_audio_bitrate_kbps', f.source_audio_bitrate_kbps,
-                   'source_audio_channels', f.source_audio_channels,
-                   'file_size', stored.size, 'stored', stored.hash IS NOT NULL) AS file_json,
-               (SELECT replaced.sheet FROM sheets AS replaced WHERE replaced.file_id = f.id)
-                   AS sheet_without_tracks
-        FROM files AS f
-        JOIN coven_files AS stored ON stored.id = f.file)
+               f.document_file_id IN (SELECT file_id FROM unplayed) AS in_files,
+               f.file_size AS size, f.file_json,
+               (SELECT replaced.sheet FROM sheets AS replaced
+                WHERE replaced.file_id = f.document_file_id) AS sheet_without_tracks
+        FROM @crate::records::file_fragments::FileDocuments(
+                 files: (SELECT * FROM files)) AS f)
     SELECT json_object(
                'files', json(json_group_array(json(listed.file_json)
                     ORDER BY listed.original_filename COLLATE natural_order, listed.id)),

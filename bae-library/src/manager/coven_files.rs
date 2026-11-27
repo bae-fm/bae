@@ -82,6 +82,7 @@ impl LibraryManager {
     /// coven's record of the file a release file's row references, as this
     /// device reads it now: what coven's reads, pins and streams take. A
     /// row that is gone is an error.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn release_file_ref(
         &self,
         file_id: &str,
@@ -194,37 +195,35 @@ impl LibraryManager {
         Ok(self.records.library_image_file(id, image_type).await?)
     }
 
-    /// Audio and companion files stay pinned together. Covers use their own
-    /// cache budget and are never pinned.
-    pub(super) async fn release_pinnable_files(
+    /// The files a pin of the release `release_id` keeps; `None` when the
+    /// library holds no such release.
+    pub(crate) async fn find_files_to_pin(
         &self,
         release_id: &str,
+    ) -> Result<Option<Vec<DbFile>>, LibraryError> {
+        let release = self.records.find_release_with_files(release_id).await?;
+        Ok(release.map(|release| release.files))
+    }
+
+    /// coven's record of each of a release's `files`, which a pin keeps
+    /// together: audio and companion files alike. Covers use their own cache
+    /// budget and are never pinned.
+    pub(super) async fn release_pinnable_files(
+        &self,
+        files: &[DbFile],
     ) -> Result<Vec<PinnableFile>, LibraryError> {
-        let files = self.records.get_files_for_release(release_id).await?;
         let mut pinnable = Vec::with_capacity(files.len());
-        for file in &files {
+        for file in files {
+            let reference = self.store.file_ref(file.file).await.map_err(|e| {
+                LibraryError::Storage(format!("file reference for release file {}: {e}", file.id))
+            })?;
             pinnable.push(PinnableFile {
                 row_id: file.id.clone(),
-                file: self.release_file_ref(&file.id).await?,
+                file: reference,
                 bytes: file.file_size,
             });
         }
         Ok(pinnable)
-    }
-
-    /// The Downloads pane's opening progress for a queued pin: zero of the same
-    /// total [`Self::pin_release_files_with_progress`] counts down, so the bar
-    /// never jumps when the pin starts reporting.
-    pub(crate) async fn initial_download_progress(
-        &self,
-        release_id: &str,
-    ) -> Result<bae_transfers::DownloadTransferProgress, LibraryError> {
-        let pinnable = self.release_pinnable_files(release_id).await?;
-        Ok(bae_transfers::DownloadTransferProgress::new(
-            release_id,
-            0,
-            total_bytes(release_id, &pinnable)?,
-        )?)
     }
 }
 
@@ -237,13 +236,12 @@ pub(super) struct PinnableFile {
     pub(super) bytes: u64,
 }
 
-pub(super) fn total_bytes(
-    release_id: &str,
-    pinnable: &[PinnableFile],
-) -> Result<u64, LibraryError> {
-    pinnable.iter().try_fold(0u64, |total, entry| {
-        total.checked_add(entry.bytes).ok_or_else(|| {
-            LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))
+/// The bytes of a release's `files`, as their rows record their sizes: what a
+/// pin or a move to this device counts down.
+pub(crate) fn total_bytes(release_id: &str, files: &[DbFile]) -> Result<u64, LibraryError> {
+    files.iter().try_fold(0u64, |total, file| {
+        total.checked_add(file.file_size).ok_or_else(|| {
+            LibraryError::Storage(format!("release {release_id}: byte total overflow"))
         })
     })
 }

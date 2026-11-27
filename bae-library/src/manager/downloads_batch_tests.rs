@@ -58,7 +58,8 @@ async fn queue_pins(manager: &LibraryManager, releases: &[String]) {
 /// the test found it.
 async fn pin(manager: &LibraryManager, release: &str) {
     let entry = manager.started_pin_entry_for_test(release).await;
-    manager.pin_release_files_with_progress(release, entry, |_| {}).await.unwrap();
+    let files = manager.get_files_for_release(release).await.unwrap();
+    manager.pin_release_files_with_progress(release, &files, entry, |_| {}).await.unwrap();
     manager.set_downloads_paused(true).await.unwrap();
 }
 

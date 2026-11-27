@@ -124,11 +124,12 @@ impl LibraryManager {
     pub(crate) async fn pin_release_files_with_progress(
         &self,
         release: &str,
+        files: &[DbFile],
         entry: bae_transfers::ActiveEntry<bae_transfers::DownloadRequest>,
         mut on_progress: impl FnMut(bae_transfers::DownloadTransferProgress) + Send,
     ) -> Result<bae_transfers::Finished, LibraryError> {
-        let pinnable = self.release_pinnable_files(release).await?;
-        let total = super::coven_files::total_bytes(release, &pinnable)?;
+        let total = super::coven_files::total_bytes(release, files)?;
+        let pinnable = self.release_pinnable_files(files).await?;
         let ids: Vec<String> = pinnable.iter().map(|entry| entry.row_id.clone()).collect();
         // Each file's plaintext size, by release file id, which its share of
         // the download counts against.

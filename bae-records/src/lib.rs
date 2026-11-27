@@ -37,7 +37,7 @@ pub use records::RecordsChange;
 pub use records::ReleaseMetadataRows;
 #[cfg(desktop)]
 pub use records::{ArtistCredits, GonePicked};
-pub use records::{DbTrackTags, TrackForSave, TrackSaveRead, UnknownTrackSource};
+pub use records::{DbTrackTags, ReleaseWithFiles, TrackForSave, TrackSaveRead, UnknownTrackSource};
 pub use records::{
     Deleted, DeletionError, DeletionRefusal, IdentityRefusal, IdentityWriteError, ImageWriteError,
     ImageWriteRefusal, OtherDeviceError, PressingParts, PrimaryReleaseError, Records,

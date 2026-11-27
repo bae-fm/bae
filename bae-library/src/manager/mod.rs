@@ -39,7 +39,7 @@ mod album;
 mod artist;
 mod collections;
 mod config;
-mod coven_files;
+pub(crate) mod coven_files;
 mod device_storage;
 #[cfg(desktop)]
 mod document;

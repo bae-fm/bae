@@ -79,13 +79,14 @@ async fn pin_with_events(
     let entry = manager.started_pin_entry_for_test(release_id).await;
     let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let sink = events.clone();
-    let outcome = manager
+    let (_, running) = manager
         .start_pin_transfer(release_id.to_string(), entry, |progress| async move {
             *sink.lock().unwrap() = collect_progress(progress).await;
             Ok(())
         })
-        .finish()
-        .await;
+        .await
+        .unwrap();
+    let outcome = running.finish().await;
     let events = std::mem::take(&mut *events.lock().unwrap());
     (events, outcome)
 }

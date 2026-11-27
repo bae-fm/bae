@@ -823,10 +823,7 @@ async fn a_pin_and_its_entry_end_in_one_write() {
     let pin = bae_util::test_spawn::task({
         let manager = manager.clone();
         let release_id = release_id.clone();
-        async move {
-            let entry = manager.started_pin_entry_for_test(&release_id).await;
-            manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
-        }
+        async move { try_pin_directly(&manager, &release_id).await }
     });
     reading.await.unwrap();
     manager.cancel_download(&release_id).await.unwrap();
@@ -841,8 +838,7 @@ async fn a_pin_and_its_entry_end_in_one_write() {
     assert!(download_queue_now(manager).await.rows.is_empty());
 
     // Uncancelled, the same pin pins the release and ends its entry.
-    let entry = manager.started_pin_entry_for_test(&release_id).await;
-    manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await.unwrap();
+    pin_directly(manager, &release_id).await;
     assert_eq!(manager.store.files_pinned(&[file.file]).await.unwrap(), vec![Some(true)]);
     assert!(download_queue_now(manager).await.rows.is_empty());
 }
@@ -901,10 +897,7 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
     let pin = bae_util::test_spawn::task({
         let manager = manager.clone();
         let release_id = release_id.clone();
-        async move {
-            let entry = manager.started_pin_entry_for_test(&release_id).await;
-            manager.pin_release_files_with_progress(&release_id, entry, |_| {}).await
-        }
+        async move { try_pin_directly(&manager, &release_id).await }
     });
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, stalled)
         .await

@@ -410,11 +410,6 @@ impl Records {
             .await
     }
 
-    pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
-        let release_id = release_id.to_string();
-        self.store.read(move |sql| get_files_for_release_on(&sql, &release_id)).await
-    }
-
     /// Insert an audio format and its segments in one transaction — the rows the
     /// import commit writes, exposed for tests that need a resolvable track
     /// without running the whole import pipeline.
@@ -446,32 +441,9 @@ impl Records {
         let points = points.clone();
         self.store.call_sql(move |sql| insert_scrub_points_row(&sql, &points)).await
     }
-    /// The file `file_id` of the release `release_id`, by the files' key;
-    /// `None` when the release has no such file.
-    pub async fn find_release_file(
-        &self,
-        release_id: &str,
-        file_id: &str,
-    ) -> Result<Option<DbFile>, DbError> {
-        let (release_id, file_id) = (release_id.to_string(), file_id.to_string());
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    concat!(
-                        "SELECT ",
-                        release_file_columns!(),
-                        " FROM release_files AS f WHERE f.id = ? AND f.release_id = ?"
-                    ),
-                    params![file_id, release_id],
-                    row_to_file,
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Find file by ID. Caller-provided ID — may not exist.
+    /// The release file `file_id`, of whichever release holds it. Caller-provided
+    /// ID — may not exist.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
         self.store

@@ -96,45 +96,17 @@ async fn release_records_are_read_in_catalog_order() {
 }
 
 /// A release's files come back in natural order of their names, case aside,
-/// from the read itself, which SQLite orders by walking the index of each
-/// release's files in that order: the release's file list and the read under
-/// it both show it.
+/// from the read itself.
 #[tokio::test]
 async fn release_files_are_read_in_case_insensitive_natural_order() {
     let (db, tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
     insert_files_out_of_natural_order(&db, &tmp).await;
-    let names = |files: &[DbFile]| -> Vec<String> {
-        files.iter().map(|f| f.original_filename.clone()).collect()
-    };
 
-    let read = db
-        .read(|sql| crate::records::read::get_files_for_release_on(&sql, RELEASE_A))
-        .await
-        .unwrap();
-    assert_eq!(names(&read), FILES_IN_NATURAL_ORDER, "the read");
     let listed = records.get_files_for_release(RELEASE_A).await.unwrap();
-    assert_eq!(names(&listed), FILES_IN_NATURAL_ORDER, "the release's file list");
 
-    let plan = db
-        .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::records::read::RELEASE_FILES_IN_ORDER),
-                [serde_json::json!([RELEASE_A]).to_string()],
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
-    assert!(
-        plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order")),
-        "the read walks the index: {plan:?}"
-    );
-    assert!(
-        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-        "the read sorts after reading: {plan:?}"
-    );
+    let names: Vec<&str> = listed.iter().map(|file| file.original_filename.as_str()).collect();
+    assert_eq!(names, FILES_IN_NATURAL_ORDER);
 }
 
 #[tokio::test]

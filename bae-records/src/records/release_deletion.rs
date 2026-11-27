@@ -36,8 +36,9 @@ pub type DeletionError = WriteError<DeletionRefusal>;
 pub struct ReleaseDeletion {
     release_id: String,
     album_id: String,
-    /// File ids and the coven files they reference, ordered by id.
-    files: Vec<(String, Option<coven::FileId>)>,
+    /// File ids and the coven files they reference, in the release's file
+    /// order.
+    files: Vec<(String, coven::FileId)>,
     /// The cover's coven file, when the release has a cover.
     cover: Option<coven::FileId>,
 }
@@ -55,21 +56,16 @@ impl ReleaseDeletion {
         sql: &Q,
         release_id: &str,
     ) -> Result<Option<Self>, DbError> {
-        let Some(album_id) = sql
-            .query_row("SELECT album_id FROM releases WHERE id = ?", params![release_id], |row| {
-                row.get::<_, String>(0)
-            })
-            .optional()?
+        let Some(release) = super::release_with_files::release_with_files_on(sql, release_id)?
         else {
             return Ok(None);
         };
-        let files = sql.query(
-            "SELECT id, file FROM release_files WHERE release_id = ? ORDER BY id",
-            params![release_id],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<coven::FileId>>(1)?)),
-        )?;
-        let cover = super::files::image_file_on(sql, &LibraryImageType::Cover, release_id)?;
-        Ok(Some(Self { release_id: release_id.to_string(), album_id, files, cover }))
+        Ok(Some(Self {
+            release_id: release_id.to_string(),
+            album_id: release.album_id,
+            files: release.files.into_iter().map(|file| (file.id, file.file)).collect(),
+            cover: release.cover_file,
+        }))
     }
 
     pub(super) fn apply_on(&self, sql: &CovenWrite<'_>) -> Result<(), DeletionError> {

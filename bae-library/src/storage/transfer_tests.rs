@@ -104,15 +104,17 @@ async fn a_failed_transfer_ships_storage_transfer_failed() {
     let entry = bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(
         "missing-release",
     );
-    let running = manager.start_pin_transfer(
-        "missing-release".to_string(),
-        entry,
-        |mut progress: TransferProgressFeed| async move {
-            while progress.recv().await.is_some() {}
-            Ok(())
-        },
-    );
-    running.finish().await.expect_err("a failed transfer finishes no queue entry");
+    let refused = manager
+        .start_pin_transfer(
+            "missing-release".to_string(),
+            entry,
+            |mut progress: TransferProgressFeed| async move {
+                while progress.recv().await.is_some() {}
+                Ok(())
+            },
+        )
+        .await;
+    assert!(refused.is_err(), "a failed transfer starts no pin");
 
     let events = shipped_events(&diagnostics, &transport).await;
     let failed = events
