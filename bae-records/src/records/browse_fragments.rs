@@ -38,14 +38,17 @@ impl ArtistRecord {
     }
 }
 
-// The releases that perform each work, each once, with the values their order
-// reads: by album title, compared by the title's sort key in the device's
-// language, then album id, so two albums sharing a title don't interleave,
-// then the album's own order of releases, then release id.
+// Each performance of a work, one for each track that performs it, with the
+// values that order the releases performing a work: by album title, compared by
+// the title's sort key in the device's language, then album id, so two albums
+// sharing a title don't interleave, then the album's own order of releases,
+// then release id. A release with several such tracks has a row for each:
+// a `DISTINCT` here would keep SQLite from reading one work's rows through
+// that work where a read names it by a row's column.
 sqlive_compose::fragment!(
-    WorkPerformingReleases { title_key: Vec<u8> },
+    WorkPerformances { title_key: Vec<u8> },
     r#"
-    SELECT DISTINCT performed.work_id, release.id AS release_id,
+    SELECT performed.id AS link_id, performed.work_id, release.id AS release_id,
            bae_name_key(album.title, (
                SELECT sort.language
                FROM @crate::records::name_sort::NameSortLanguage AS sort)) AS title_key,
@@ -60,7 +63,7 @@ sqlive_compose::fragment!(
 // Each work as a row shows it: its own fields, its composers' names in credit
 // order, how many releases perform it, and the release whose cover it shows.
 // That release is the first of those performing it in the order of
-// [`WorkPerformingReleases`]: the first album's primary release when it
+// [`WorkPerformances`]: the first album's primary release when it
 // performs the work, otherwise its first release in album order that does.
 sqlive_compose::fragment!(
     WorkSummary {
@@ -76,7 +79,7 @@ sqlive_compose::fragment!(
             JOIN tracks AS performing ON performing.id = linked.track_id
             WHERE linked.work_id = work.id) AS linked_release_count,
            (SELECT shown.release_id
-            FROM @crate::records::browse_fragments::WorkPerformingReleases AS shown
+            FROM @crate::records::browse_fragments::WorkPerformances AS shown
             WHERE shown.work_id = work.id
             ORDER BY shown.title_key, shown.album_id, shown.album_order, shown.release_id
             LIMIT 1) AS representative_release_id
@@ -119,7 +122,7 @@ impl WorkSummary {
 // The children of the work `work`, one row each, with the values their order
 // reads: its parts (`section` 0), by their place among the work's parts, then
 // by title; then the releases performing it (`section` 1), in the order of
-// [`WorkPerformingReleases`]. Titles compare by their sort keys in the
+// [`WorkPerformances`]. Titles compare by their sort keys in the
 // device's language. `item_id` is the part's work or the release.
 sqlive_compose::fragment!(
     WorkChildren(work: String) {
@@ -140,8 +143,8 @@ sqlive_compose::fragment!(
     JOIN works AS child ON child.id = part.child_work_id
     WHERE part.parent_work_id = :work
     UNION ALL
-    SELECT 1, NULL, shown.title_key, shown.album_id, shown.album_order, shown.release_id
-    FROM @crate::records::browse_fragments::WorkPerformingReleases AS shown
+    SELECT DISTINCT 1, NULL, shown.title_key, shown.album_id, shown.album_order, shown.release_id
+    FROM @crate::records::browse_fragments::WorkPerformances AS shown
     WHERE shown.work_id = :work
 "#
 );
@@ -417,14 +420,13 @@ sqlive_compose::fragment!(
 "#
 );
 
-// Each track's link to a work it performs, with the release the track is on
-// and the track's place in that release's playing order.
+// Each track's link to a work it performs, with the track's place in its
+// release's playing order.
 sqlive_compose::fragment!(
     TrackWorkLink { position: i32 },
     r#"
     SELECT link.id AS link_id, link.track_id, link.work_id, link.position, link.source,
-           link.created_at, track.release_id AS performed_release_id,
-           track.position AS track_position
+           link.created_at, track.position AS track_position
     FROM track_works AS link
     JOIN tracks AS track ON track.id = link.track_id
 "#

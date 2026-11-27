@@ -689,9 +689,9 @@ sqlive_compose::read!(
     WorkTrackRows(work: String) { listed: i64 },
     r#"
     SELECT link.*, track.*, album.*, COUNT(*) OVER () AS listed
-    FROM @bae_records::records::browse_fragments::WorkPerformingReleases AS shown
+    FROM @bae_records::records::browse_fragments::WorkPerformances AS shown
     JOIN @bae_records::records::browse_fragments::TrackWorkLink AS link
-      ON link.work_id = shown.work_id AND link.performed_release_id = shown.release_id
+      ON link.link_id = shown.link_id
     JOIN @bae_records::records::browse_fragments::TrackRecord AS track
       ON track.track_id = link.track_id
     JOIN @bae_records::records::browse_fragments::AlbumRecord AS album

@@ -323,7 +323,10 @@ async fn a_composer_page_window_seeks_the_pages_index_and_builds_no_whole_table(
     assert!(
         !steps.iter().any(|step| step.detail.starts_with("MATERIALIZE")
             || (step.own && step.detail.contains("TEMP B-TREE"))
-            || step.detail.starts_with("SCAN work")),
+            || step.detail.starts_with("SCAN work")
+            // The links of the works' performances, which a work's cover
+            // finds through its work.
+            || step.detail.starts_with("SCAN performed")),
         "{steps:?}"
     );
 }
