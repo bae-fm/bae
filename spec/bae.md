@@ -6392,7 +6392,7 @@ the desktop's secret service.
 | bae-cast | the AirPlay, Google Cast and UPnP protocols, receiver discovery, the session media server, and its URLs |
 | bae-mirror | the macros that write field-for-field conversions |
 | bae-loc | the string catalog: checks it and writes each platform's resources |
-| bae-theme | the shared theme, written as Swift and Kotlin |
+| bae-theme | the shared theme, written as Swift and Kotlin for the apps and as CSS custom properties for the website |
 | bae-schema-manifest | the build step that writes each crate's schema parts from its `schema.toml` |
 | bae-fragments-build | the build step that each crate holding a `fragment!`, a `read!` or a `write!` runs: it checks the crate's `fragment!`, `read!` and `write!` calls against the library's schema on coven's readable objects (a phone's schema too, for a crate a phone holds), writes the Rust they include, with each `read!` statement's scope plan, which coven's sqlive-compose builds against the desktop's schema, hands the crate's fragments to the crates that spread them, and fails the build when a call reads a table of a domain whose homes don't hold the call's file |
 | bae-uniffi-bindgen | the bindings generator |

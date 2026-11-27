@@ -23,14 +23,15 @@ use crate::{
 /// A family of length tokens.
 #[derive(Deserialize)]
 pub(crate) struct RawLengthFamily {
-    tokens: Vec<RawLengthToken>,
+    pub(crate) tokens: Vec<RawLengthToken>,
 }
 
 #[derive(Deserialize)]
 pub(crate) struct RawLengthToken {
-    name: String,
+    pub(crate) name: String,
     role: Option<String>,
-    value: String,
+    /// The length or fraction as CSS writes it, such as `8px` or `0.14`.
+    pub(crate) value: String,
     ios: Option<String>,
     /// On Apple, the weight SF Symbols draw an icon at.
     weight: Option<Weight>,

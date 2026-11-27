@@ -1,4 +1,4 @@
-//! `theme-gen emit --target {apple|android} --out-dir <dir> [--theme <path>]`
+//! `theme-gen emit --target {apple|android|web} --out-dir <dir> [--theme <path>]`
 //! writes the platform's generated theme under `<dir>`.
 //!
 //! `--theme` defaults to `design/theme.toml` and `--tokens` to
@@ -10,7 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use bae_theme::{android, apple, Theme};
+use bae_theme::{android, apple, web, Theme};
 
 fn main() -> ExitCode {
     match run() {
@@ -77,7 +77,8 @@ fn emit(theme: &Theme, target: Option<String>, out_dir: Option<PathBuf>) -> Resu
             files.extend(android::launch_resources(theme)?);
             files
         }
-        other => return Err(format!("unknown --target `{other}` (apple|android)")),
+        "web" => vec![(web::FILE.to_string(), web::css(&theme.web))],
+        other => return Err(format!("unknown --target `{other}` (apple|android|web)")),
     };
     for (relative, contents) in files {
         write_if_changed(&out_dir.join(relative), &contents)?;

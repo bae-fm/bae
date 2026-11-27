@@ -16,10 +16,16 @@ fn token(name: &str, light: &str, dark: &str) -> String {
 /// platforms.
 fn tokens_json(tokens: &[String]) -> String {
     format!(
-        "{{\"color\": {{\"tokens\": [{}]}}, \"type\": {{\"groups\": {BODY}}}, {LENGTHS}}}",
+        "{{\"color\": {{\"themes\": {THEMES}, \"tokens\": [{}]}}, \"type\": {{\"families\": {FAMILIES}, \"groups\": {BODY}}}, {LENGTHS}}}",
         tokens.join(", ")
     )
 }
+
+/// The colour themes of a tokens.json: dark, then light.
+const THEMES: &str = r#"[{ "id": "dark", "name": "Dark" }, { "id": "light", "name": "Light" }]"#;
+
+/// The font stacks of a tokens.json: one, `sans`.
+const FAMILIES: &str = r#"{ "sans": "system-ui, sans-serif" }"#;
 
 /// The text style groups of a tokens.json with one text role, `body`, on
 /// both platforms.
@@ -502,4 +508,39 @@ fn the_mac_apps_accent_color_asset_is_the_standard_accents_selection() {
     let drawn = channel("red") << 16 | channel("green") << 8 | channel("blue");
     assert_eq!(drawn, selection & 0x00FF_FFFF);
     assert_eq!(components["alpha"], "1.000");
+}
+
+/// The website's stylesheet gives every colour token its dark value on the
+/// page's root and in the dark theme, and its light value in the light theme.
+#[test]
+fn the_website_takes_every_colour_token_in_each_theme() {
+    let theme = from_toml(THEME).unwrap();
+    let css = web::css(&theme.web);
+    let (dark, rest) = css.split_once("\n[data-theme=\"light\"] {\n").unwrap();
+    let (light, measures) = rest.split_once("\n:root {\n").unwrap();
+    assert!(dark.contains("\n:root, [data-theme=\"dark\"] {\n"));
+    let tokens: serde_json::Value = serde_json::from_str(TOKENS).unwrap();
+    for token in tokens["color"]["tokens"].as_array().unwrap() {
+        let name = token["name"].as_str().unwrap();
+        for (block, theme) in [(dark, "dark"), (light, "light")] {
+            let value = token["value"][theme].as_str().unwrap();
+            assert!(block.contains(&format!("  --{name}: {value};\n")), "{name} in {theme}");
+        }
+    }
+    assert!(measures.contains("  --space-related: 8px;\n"));
+    assert!(measures.contains("  --radius-card: 10px;\n"));
+    assert!(measures.contains("  --opacity-tint: 0.14;\n"));
+    assert!(measures.contains("  --font-web-display: \"Mona Sans\", system-ui, sans-serif;\n"));
+}
+
+#[test]
+fn a_colour_token_needs_a_colour_in_each_theme() {
+    let accent =
+        ["accent-blue", "accent-blue-fill", "on-accent-blue-fill", "accent-blue-selection"]
+            .map(|name| token(name, "#000000", "#000000"));
+    let hairline = r##"{"name": "hairline", "value": {"dark": "#FFFFFF1A"}}"##.to_string();
+    let tokens =
+        tokens_json(&[tone("neutral", &["background"]), accent.to_vec(), vec![hairline]].concat());
+    let problems = Theme::from_sources(&format!("{STANDARD}\n{SEMANTICS}"), &tokens).unwrap_err();
+    assert_eq!(problems, ["tokens.json `hairline` has no light colour"]);
 }

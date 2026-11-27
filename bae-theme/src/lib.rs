@@ -1,12 +1,14 @@
-//! The apps' shared theme: `design/theme.toml` for the semantics and scales
-//! and `design/system/tokens.json` for the tones, the accents, the text
-//! styles, the opacities, the radii, the spacing and the icon and size roles,
+//! The apps' and the website's shared theme: `design/theme.toml` for the
+//! semantics and scales and `design/system/tokens.json` for the tones, the
+//! accents, the text styles, the opacities, the radii, the spacing, the icon
+//! and size roles and, for the website, every colour token and font stack,
 //! validated, and emitted as the typed Swift and Kotlin each platform
-//! compiles.
+//! compiles and as the CSS custom properties the website reads.
 
 pub mod android;
 pub mod apple;
 mod lengths;
+pub mod web;
 
 use std::collections::BTreeMap;
 
@@ -104,6 +106,9 @@ pub struct Theme {
     pub icon: BTreeMap<String, IconRole>,
     /// Recurring element sizes, by role.
     pub size: BTreeMap<String, PlatformLengths>,
+    /// What the website reads: every colour token in each colour theme, the
+    /// spacing, radius and opacity tokens and the font stacks, as CSS.
+    pub web: web::Web,
 }
 
 /// The tone and accent a new installation shows until the person chooses
@@ -245,9 +250,9 @@ struct RawModes {
     dark: BTreeMap<String, String>,
 }
 
-/// design/system/tokens.json, of which the tones, the accents, the text
-/// styles, the opacities, the radii, the spacing and the icon and size roles
-/// are read.
+/// design/system/tokens.json, of which the colour tokens and their themes,
+/// the text styles and font stacks, the opacities, the radii, the spacing and
+/// the icon and size roles are read.
 #[derive(Deserialize)]
 struct RawTokens {
     color: RawColorTokens,
@@ -266,6 +271,8 @@ struct RawTokens {
 
 #[derive(Deserialize)]
 struct RawType {
+    /// Each font family's CSS font stack, by its key.
+    families: BTreeMap<String, String>,
     groups: Vec<RawTypeGroup>,
 }
 
@@ -300,7 +307,15 @@ const MONO_FAMILY: &str = "mono";
 
 #[derive(Deserialize)]
 struct RawColorTokens {
+    themes: Vec<RawColorTheme>,
     tokens: Vec<RawToken>,
+}
+
+/// A colour theme, such as dark or light, by the id a colour token's value
+/// names it with.
+#[derive(Deserialize)]
+struct RawColorTheme {
+    id: String,
 }
 
 #[derive(Deserialize)]
@@ -351,6 +366,7 @@ struct TokenRoles {
     space: BTreeMap<String, f64>,
     icon: BTreeMap<String, IconRole>,
     size: BTreeMap<String, PlatformLengths>,
+    web: web::Web,
 }
 
 fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
@@ -367,6 +383,7 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
                 space: BTreeMap::new(),
                 icon: BTreeMap::new(),
                 size: BTreeMap::new(),
+                web: web::Web::default(),
             };
         }
     };
@@ -382,6 +399,7 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
         space: lengths::read_shared("space", &raw.spacing, lengths::shared_length, problems),
         icon: lengths::read_icons(&raw.icon, &raw.icon_android, problems),
         size: lengths::read_sizes(&raw.size, &raw.size_android, problems),
+        web: web::read(&raw, problems),
     }
 }
 
@@ -641,7 +659,7 @@ impl Theme {
             light: roles("semantics.light", &raw.semantics.light),
             dark: roles("semantics.dark", &raw.semantics.dark),
         };
-        let TokenRoles { tones, accents, text, opacity, radius, space, icon, size } =
+        let TokenRoles { tones, accents, text, opacity, radius, space, icon, size, web } =
             read_tokens(tokens, &mut problems);
 
         check_choices("tone", tones.iter().map(|tone| tone.name.as_str()), &mut problems);
@@ -682,6 +700,10 @@ impl Theme {
             &mut problems,
         );
         check_role_names(semantics.light.keys(), &mut problems);
+        // The apps and the website both read a tone's and an accent's
+        // colours, so each names a colour such a token lacks: name it once.
+        let mut named = std::collections::BTreeSet::new();
+        problems.retain(|problem| named.insert(problem.clone()));
 
         if let (true, Some(tone), Some(accent)) =
             (problems.is_empty(), standard_tone, standard_accent)
@@ -697,6 +719,7 @@ impl Theme {
                 space,
                 icon,
                 size,
+                web,
             })
         } else {
             Err(problems)
