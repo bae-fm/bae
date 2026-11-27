@@ -15,7 +15,6 @@ export default {
   statusText: 'テストビルドのみです。データ形式と同期形式は移行なしで変更されます。',
   downloadMac: 'macOS 版をダウンロード',
   seeFeatures: '機能を見る',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['あなたのもの', 'ファイルはあなたのものです'],
     ['非公開', '鍵はあなたのデバイスが保持します'],

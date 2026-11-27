@@ -16,7 +16,6 @@ export default {
   statusText: "มีเฉพาะ build สำหรับทดสอบ รูปแบบข้อมูลและ sync จะเปลี่ยนโดยไม่มี migration",
   downloadMac: "ดาวน์โหลดสำหรับ macOS",
   seeFeatures: "ดูคุณสมบัติ",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "เพลงของคุณ",

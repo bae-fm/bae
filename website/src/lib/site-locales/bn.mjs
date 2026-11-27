@@ -16,7 +16,6 @@ export default {
   statusText: "শুধু পরীক্ষামূলক বিল্ড। ডেটা ও সিঙ্ক ফরম্যাট মাইগ্রেশন ছাড়া বদলাবে।",
   downloadMac: "macOS-এর জন্য ডাউনলোড",
   seeFeatures: "বৈশিষ্ট্য দেখুন",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "আপনার সঙ্গীত",

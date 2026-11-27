@@ -16,7 +16,6 @@ export default {
   statusText: "Solo build di prova. I formati di dati e sincronizzazione cambieranno senza migrazione.",
   downloadMac: "Scarica per macOS",
   seeFeatures: "Vedi funzioni",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "Tua",

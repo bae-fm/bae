@@ -16,7 +16,6 @@ export default {
   statusText: "சோதனை build-கள் மட்டுமே. தரவு மற்றும் sync வடிவங்கள் migration இல்லாமல் மாறும்.",
   downloadMac: "macOS-க்கு பதிவிறக்கு",
   seeFeatures: "அம்சங்களைப் பாருங்கள்",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "உங்கள் இசை",

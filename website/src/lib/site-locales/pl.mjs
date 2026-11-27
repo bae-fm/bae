@@ -15,7 +15,6 @@ export default {
   statusText: 'Tylko kompilacje testowe. Formaty danych i synchronizacji będą się zmieniać bez migracji.',
   downloadMac: 'Pobierz dla macOS',
   seeFeatures: 'Zobacz funkcje',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['Twoja', 'twoje pliki zostają twoje'],
     ['Prywatna', 'twoje urządzenia trzymają klucze'],

@@ -16,7 +16,6 @@ export default {
   statusText: "Chỉ dành cho bản thử nghiệm. Dạng dữ liệu và đồng bộ sẽ thay đổi không kèm chuyển đổi.",
   downloadMac: "Tải cho macOS",
   seeFeatures: "Xem tính năng",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "Của bạn",

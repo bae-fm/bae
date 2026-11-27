@@ -15,7 +15,6 @@ export default {
   statusText: 'Samo testne gradnje. Formati podataka i sinkronizacije mijenjat će se bez migracije.',
   downloadMac: 'Preuzmi za macOS',
   seeFeatures: 'Pogledaj značajke',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['Vaša', 'vaše datoteke ostaju vaše'],
     ['Privatna', 'vaši uređaji čuvaju ključeve'],

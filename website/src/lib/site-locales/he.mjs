@@ -15,7 +15,6 @@ export default {
   statusText: 'גרסאות בדיקה בלבד. מבני הנתונים והסנכרון ישתנו ללא הגירה.',
   downloadMac: 'הורדה ל-macOS',
   seeFeatures: 'הצגת תכונות',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['שלך', 'הקבצים שלך נשארים שלך'],
     ['פרטית', 'המכשירים שלך מחזיקים את המפתחות'],

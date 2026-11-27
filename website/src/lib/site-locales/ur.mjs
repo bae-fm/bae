@@ -16,7 +16,6 @@ export default {
   statusText: "صرف ٹیسٹ build۔ ڈیٹا اور sync فارمیٹ migration کے بغیر بدلیں گے۔",
   downloadMac: "macOS کے لیے ڈاؤن لوڈ",
   seeFeatures: "خصوصیات دیکھیں",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "آپ کی موسیقی",

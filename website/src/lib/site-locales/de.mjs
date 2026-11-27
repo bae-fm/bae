@@ -15,7 +15,6 @@ export default {
   statusText: 'Nur Test-Builds. Daten- und Sync-Formate ändern sich ohne Migration.',
   downloadMac: 'Für macOS herunterladen',
   seeFeatures: 'Funktionen ansehen',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['Deine', 'deine Dateien bleiben deine'],
     ['Privat', 'deine Geräte halten die Schlüssel'],

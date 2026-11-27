@@ -16,7 +16,6 @@ export default {
   statusText: "僅限測試建置。資料與同步格式會在沒有遷移的情況下變更。",
   downloadMac: "下載 macOS 版",
   seeFeatures: "查看功能",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "屬於你",

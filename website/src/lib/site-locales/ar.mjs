@@ -15,7 +15,6 @@ export default {
   statusText: 'إصدارات اختبار فقط. ستتغير صيغ البيانات والمزامنة بلا ترحيل.',
   downloadMac: 'تنزيل لـ macOS',
   seeFeatures: 'عرض الميزات',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['ملكك', 'ملفاتك تبقى ملكك'],
     ['خاصة', 'أجهزتك تحتفظ بالمفاتيح'],

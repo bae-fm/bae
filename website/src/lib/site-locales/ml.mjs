@@ -16,7 +16,6 @@ export default {
   statusText: "പരിശോധന build മാത്രം. ഡാറ്റയും sync രൂപങ്ങളും migration ഇല്ലാതെ മാറും.",
   downloadMac: "macOS-നായി ഡൗൺലോഡ്",
   seeFeatures: "സവിശേഷതകൾ കാണുക",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "നിങ്ങളുടെ സംഗീതം",

@@ -16,7 +16,6 @@ export default {
   statusText: "केवल परीक्षण बिल्ड। डेटा और सिंक फ़ॉर्मेट बिना माइग्रेशन बदलेंगे।",
   downloadMac: "macOS के लिए डाउनलोड",
   seeFeatures: "सुविधाएँ देखें",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "आपका संगीत",

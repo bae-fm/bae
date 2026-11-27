@@ -16,7 +16,6 @@ export default {
   statusText: "ಪರೀಕ್ಷಾ build ಮಾತ್ರ. ಡೇಟಾ ಮತ್ತು sync ರೂಪಗಳು migration ಇಲ್ಲದೆ ಬದಲಾಗುತ್ತವೆ.",
   downloadMac: "macOS ಗೆ ಡೌನ್‌ಲೋಡ್",
   seeFeatures: "ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ನೋಡಿ",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "ನಿಮ್ಮ ಸಂಗೀತ",

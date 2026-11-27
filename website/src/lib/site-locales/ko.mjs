@@ -15,7 +15,6 @@ export default {
   statusText: '테스트 빌드만 제공합니다. 데이터와 동기화 형식은 마이그레이션 없이 바뀔 수 있습니다.',
   downloadMac: 'macOS용 다운로드',
   seeFeatures: '기능 보기',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['내 것', '파일은 계속 내 것입니다'],
     ['비공개', '키는 내 기기에 보관됩니다'],

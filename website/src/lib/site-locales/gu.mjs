@@ -16,7 +16,6 @@ export default {
   statusText: "ફક્ત પરીક્ષણ build. ડેટા અને sync ફોર્મેટ migration વગર બદલાશે.",
   downloadMac: "macOS માટે ડાઉનલોડ",
   seeFeatures: "સુવિધાઓ જુઓ",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "તમારું સંગીત",

@@ -15,7 +15,6 @@ export default {
   statusText: '仅限测试构建。数据和同步格式会在没有迁移的情况下更改。',
   downloadMac: '下载 macOS 版',
   seeFeatures: '查看功能',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['属于你', '你的文件仍然属于你'],
     ['私有', '你的设备保存密钥'],

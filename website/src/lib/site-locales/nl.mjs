@@ -16,7 +16,6 @@ export default {
   statusText: "Alleen testbuilds. Data- en synchronisatieformaten veranderen zonder migratie.",
   downloadMac: "Download voor macOS",
   seeFeatures: "Bekijk functies",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "Van jou",

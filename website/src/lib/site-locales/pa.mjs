@@ -16,7 +16,6 @@ export default {
   statusText: "ਕੇਵਲ ਟੈਸਟ build। ਡਾਟਾ ਅਤੇ sync ਫਾਰਮੈਟ migration ਤੋਂ ਬਿਨਾਂ ਬਦਲਣਗੇ।",
   downloadMac: "macOS ਲਈ ਡਾਊਨਲੋਡ",
   seeFeatures: "ਫੀਚਰ ਵੇਖੋ",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "ਤੁਹਾਡਾ ਸੰਗੀਤ",

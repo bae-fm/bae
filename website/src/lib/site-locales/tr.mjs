@@ -16,7 +16,6 @@ export default {
   statusText: "Yalnızca test derlemeleri. Veri ve eşzamanlama biçimleri geçiş olmadan değişecek.",
   downloadMac: "macOS için indir",
   seeFeatures: "Özellikleri gör",
-  platformMeta: "macOS · iOS · Windows · Android",
   trust: [
     [
       "Senin",

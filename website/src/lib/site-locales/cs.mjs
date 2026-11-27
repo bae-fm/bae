@@ -15,7 +15,6 @@ export default {
   statusText: 'Pouze testovací buildy. Formáty dat a synchronizace se budou měnit bez migrace.',
   downloadMac: 'Stáhnout pro macOS',
   seeFeatures: 'Zobrazit funkce',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['Vaše', 'vaše soubory zůstávají vaše'],
     ['Soukromá', 'vaše zařízení drží klíče'],

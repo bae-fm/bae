@@ -2,8 +2,8 @@
 import '../generated/tokens.css';
 import Chip from './Chip.astro';
 import Logo from './Logo.astro';
-import StatusGlyph from './StatusGlyph.astro';
 import Symbol from './Symbol.astro';
+import StatusGlyph from './StatusGlyph.astro';
 import sheepUrl from '../../../design/system/assets/Logos/bae-sheep.svg?url';
 import { getLatest } from '../lib/releases';
 import { LOCALES, landing, localeInfo, localizePath } from '../lib/site-locales.mjs';
@@ -30,6 +30,8 @@ if (!macFullUrl) {
   console.warn('index: no macOS full build resolved; landing CTAs fall back to the install page');
 }
 const macUrl = macFullUrl ?? href('/guide/installation');
+// Each platform bae ships for, linked to its section of the install page.
+const PLATFORMS = [['macOS', 'macos'], ['iOS', 'ios'], ['Windows', 'windows'], ['Android', 'android'], ['Linux', 'linux']];
 ---
 <!DOCTYPE html>
 <html lang={localeMeta.lang} dir={localeMeta.dir} class="no-js">
@@ -143,23 +145,22 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   .devstatus::before{content:"";display:block;height:8px;background:repeating-linear-gradient(135deg,var(--warning) 0 14px,var(--background) 14px 28px);}
   .devstatus-in{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:18px 20px;align-items:start;}
   .devstatus-mark{width:42px;height:42px;border-radius:var(--radius-card);display:grid;place-items:center;background:color-mix(in srgb, var(--warning) calc(var(--opacity-tint) * 100%), transparent);border:1px solid color-mix(in srgb, var(--warning) calc(var(--opacity-tint-strong) * 100%), transparent);color:var(--warning);font-family:var(--font-web-mono);font-weight:600;font-size:20px;}
-  .devstatus-kicker{display:flex;align-items:center;gap:var(--space-related);font-family:var(--font-web-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warning);margin-bottom:var(--space-compact);}
-  .devstatus-led{width:7px;height:7px;border-radius:50%;background:var(--warning);box-shadow:0 0 10px var(--warning);}
   .devstatus strong{display:block;color:var(--text-primary);font-family:var(--font-web-display);font-size:20px;line-height:1.08;letter-spacing:0;font-weight:700;}
   .devstatus p{margin:7px 0 0;color:var(--text-secondary);font-size:14.5px;line-height:1.5;}
   .cta{display:flex;gap:var(--space-group);margin-top:var(--space-page);flex-wrap:wrap;align-items:center;}
   .cta .meta{color:var(--text-tertiary);}
+  .cta .meta a{color:inherit;}
+  .cta .meta a:hover{color:var(--text-secondary);}
   .hero .cta .meta{margin-left:var(--space-related);}
 
   .herosheep{position:relative;display:grid;place-items:center;}
   .note{position:absolute;background:var(--elevated);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--space-field-inset) var(--space-group);box-shadow:0 12px 30px var(--shadow);animation:floaty 5s ease-in-out infinite;}
-  .note .notehead{display:flex;align-items:center;gap:var(--space-compact);}
   .note .s{display:block;color:var(--text-tertiary);margin-top:var(--space-line);}
-  .note.one{top:8%;left:-6%;} .note.two{bottom:12%;right:-4%;animation-delay:1.2s;}
+  .sheepbox{position:relative;}
+  .note .notehead{display:flex;align-items:center;gap:var(--space-compact);}
+  .notecloud{width:var(--icon-android-small);height:var(--icon-android-small);flex:none;color:var(--accent-sky);}
+  .note.one{top:8%;right:calc(100% + var(--space-group));white-space:nowrap;} .note.two{bottom:12%;left:calc(100% + var(--space-group));white-space:nowrap;animation-delay:1.2s;}
 
-  .trust{display:flex;gap:var(--space-page);flex-wrap:wrap;margin-top:var(--space-page);padding-top:var(--space-section);border-top:1px solid var(--hairline);position:relative;}
-  .trust .t{display:flex;flex-direction:column;gap:var(--space-line);}
-  .trust .t span{color:var(--text-tertiary);}
 
   /* features */
   .sec{padding:84px 0;}
@@ -311,9 +312,6 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     .devstatus-in{grid-template-columns:1fr;gap:var(--space-group);}
     .devstatus-mark{width:38px;height:38px;}
     .hero .cta .meta{margin-left:0;}
-    .trust{flex-direction:column;align-items:center;gap:var(--space-section);margin-top:var(--space-page);padding-top:var(--space-page);padding-bottom:var(--space-page);border-bottom:1px solid var(--hairline);}
-    .trust .t{align-items:center;text-align:center;gap:var(--space-inline);}
-    .trust .t span{color:var(--text-secondary);}
   }
 </style>
 </head>
@@ -367,31 +365,27 @@ const macUrl = macFullUrl ?? href('/guide/installation');
 
       <h1 class="jumbo web-headline r d1">{text.heroTitle[0]}<br/><span class="pink">{text.heroTitle[1]}</span></h1>
       <p class="dek web-lead r d2">{text.heroText} <b style="white-space:nowrap;">{text.heroBold}</b></p>
+      <div class="cta r d3">
+        <a class="btn pink web-label" href={macUrl}>{text.downloadMac}</a>
+        <a class="btn web-label" href="#features">{text.seeFeatures}</a>
+        <span class="meta web-mono">{PLATFORMS.map(([name, id], i) => <>{i > 0 && ' · '}<a href={`${href('/guide/installation')}#${id}`}>{name}</a></>)}</span>
+      </div>
       <div class="devstatus r d3" role="status" aria-label={text.statusLabel}>
         <div class="devstatus-in">
           <div class="devstatus-mark">!</div>
           <div>
-            <div class="devstatus-kicker"><span class="devstatus-led"></span>{text.statusKicker}</div>
             <strong>{text.statusTitle}</strong>
             <p>{text.statusText}</p>
           </div>
         </div>
       </div>
-      <div class="cta r d3">
-        <a class="btn pink web-label" href={macUrl}>{text.downloadMac}</a>
-        <a class="btn web-label" href="#features">{text.seeFeatures}</a>
-        <span class="meta web-mono">{text.platformMeta}</span>
-      </div>
-      <div class="trust r d3">
-        {text.trust.map(([title, subtitle]) => (
-          <div class="t"><b class="web-heading">{title}</b><span class="web-detail">{subtitle}</span></div>
-        ))}
-      </div>
     </div>
     <div class="herosheep r d2">
-      <Logo kind="pair" size={320} bob glow />
+      <div class="sheepbox">
+      <Logo kind="sheep" size={248} bob glow />
       <div class="note one"><span class="notehead web-detail-strong"><StatusGlyph tone="success" size="small" />{text.noteSynced}</span><span class="s web-mono">{text.noteSyncedSub}</span></div>
-      <div class="note two"><span class="web-detail-strong">{text.noteCloud}</span><span class="s web-mono">{text.noteCloudSub}</span></div>
+      <div class="note two"><span class="notehead web-detail-strong"><svg class="notecloud" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18.5h10.8a4.2 4.2 0 0 0 .2-8.4 5.8 5.8 0 0 0-11 1.8A3.4 3.4 0 0 0 6.5 18.5"/></svg>{text.noteCloud}</span><span class="s web-mono">{text.noteCloudSub}</span></div>
+      </div>
     </div>
   </div>
 </header>

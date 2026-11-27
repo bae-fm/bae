@@ -15,7 +15,6 @@ export default {
   statusText: 'Solo compilaciones de prueba. Los formatos de datos y sincronización cambiarán sin migración.',
   downloadMac: 'Descargar para macOS',
   seeFeatures: 'Ver funciones',
-  platformMeta: 'macOS · iOS · Windows · Android',
   trust: [
     ['Tuya', 'tus archivos siguen siendo tuyos'],
     ['Privada', 'tus dispositivos guardan las claves'],
