@@ -436,19 +436,20 @@ pub fn artist_image_version_sql(artist_id: &str) -> String {
 /// The version of the image of `image_type` keyed by `id` (a SQL
 /// expression), as a statement built as text holds it.
 fn image_version_sql(image_type: &LibraryImageType, id: &str) -> String {
-    format!(
-        "(SELECT image_version.version FROM ({versions}) AS image_version \
-          WHERE image_version.id = {id})",
-        versions = image_versions(image_type),
-    )
+    format!("({})", image_version_select(image_type, id))
 }
 
-/// The statement that reads every version of the images of `image_type`.
-fn image_versions(image_type: &LibraryImageType) -> &'static str {
-    match image_type {
+/// The select of the version of the image of `image_type` keyed by `id` (a SQL
+/// expression), which returns no row when there is no such image.
+fn image_version_select(image_type: &LibraryImageType, id: &str) -> String {
+    let versions = match image_type {
         LibraryImageType::Cover => CoverVersions::SQL,
         LibraryImageType::Artist => ArtistImageVersions::SQL,
-    }
+    };
+    format!(
+        "SELECT image_version.version FROM ({versions}) AS image_version \
+         WHERE image_version.id = {id}"
+    )
 }
 
 /// The version of one image row, or `None` when there is no such row.
@@ -458,15 +459,9 @@ pub(super) fn image_version_on<Q: coven::SqlRead>(
     id: &str,
 ) -> Result<Option<String>, DbError> {
     Ok(sql
-        .query_row(
-            &format!(
-                "SELECT image_version.version FROM ({versions}) AS image_version \
-                 WHERE image_version.id = ?",
-                versions = image_versions(image_type),
-            ),
-            params![id],
-            |row| row.get::<_, String>(0),
-        )
+        .query_row(&image_version_select(image_type, "?"), params![id], |row| {
+            row.get::<_, String>(0)
+        })
         .optional()?)
 }
 
