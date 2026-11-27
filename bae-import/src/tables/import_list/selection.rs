@@ -5,7 +5,7 @@
 //! which selected rows another view or a fold takes out of the list.
 
 use super::actions::{action_columns, offers};
-use super::order::{sorted_terms, unit_join, uploading_cte, Item};
+use super::order::{ordering, Item};
 use super::*;
 use crate::selection::{SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection};
 use crate::triage::SelectionOffer;
@@ -117,22 +117,18 @@ pub(super) fn selected(
     let rows = Items::new(request.clone()).query(
         sql,
         &format!(
-            "WITH {uploading} \
-             SELECT p.item, p.key, c.name \
+            "SELECT p.item, p.key, c.name \
              FROM json_each(:keys) AS asked \
              JOIN {shown} AS shown ON shown.key = unhex(asked.value) \
              JOIN import_list_placement AS p ON p.key = shown.key AND p.item <> 'group' \
-             {unit} \
+             JOIN import_list_placement AS u ON u.entry = p.unit_entry \
              JOIN scan_candidate AS c \
                  ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
              LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
-             LEFT JOIN uploading AS u ON u.key = p.key \
              WHERE {offering} \
-             ORDER BY u.position IS NULL, u.position, {terms}",
-            uploading = uploading_cte(),
+             ORDER BY {ordering}",
             shown = request.shown(),
-            unit = unit_join("p", "unit"),
-            terms = sorted_terms(request.view.order, "p", "unit"),
+            ordering = ordering(request.view.order, "u", "p"),
         ),
         &[(":keys", &keys)],
         |row| {

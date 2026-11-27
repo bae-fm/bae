@@ -6,7 +6,7 @@
 //! a surface makes of a list on its own: the view that reveals a candidate,
 //! where the list shows it, and which candidate bae identifies first.
 
-use super::order::{sorted_terms, unit_join, uploading_cte};
+use super::order;
 use super::*;
 use crate::list::{ImportListCount, ImportListReveal, ImportQueueSummary, NarrowedCount};
 use crate::RelativeFolder;
@@ -248,19 +248,18 @@ fn revealing(request: &ImportListRequest, tab: TriageTab) -> ImportListRequest {
 
 /// The statement revealing the candidate at `:key` from the list `request`
 /// shows, in one read: it finds the candidate's placement row by its key,
-/// and an arm for each part of each tab counts, when the row is on that tab
-/// and part, the items before it in the tab's order with the filters cleared
-/// and the candidate's group opened, off the order's index. It selects the
+/// and an arm for each tab counts, when the row is on that tab, the items
+/// before it in the tab's order with the filters cleared and the candidate's
+/// group opened, off the order's index. It selects the
 /// tab, the group and the position.
 pub(super) fn reveal_statement(request: &ImportListRequest) -> String {
     let (ctes, arms): (Vec<String>, Vec<String>) =
         [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped]
             .into_iter()
-            .flat_map(|tab| Items::revealing(revealing(request, tab), REVEALED_GROUP).reveal_arms())
+            .map(|tab| Items::revealing(revealing(request, tab), REVEALED_GROUP).reveal_arm())
             .unzip();
     format!(
-        "WITH {REVEALED}, {uploading}, {ctes} {arms}",
-        uploading = uploading_cte().replacen(" AS (", " AS MATERIALIZED (", 1),
+        "WITH {REVEALED}, {ctes} {arms}",
         ctes = ctes.join(", "),
         arms = arms.join(" UNION ALL ")
     )
@@ -320,19 +319,15 @@ pub(super) fn first_identifying(
     Ok(sql
         .query_row(
             &format!(
-                "WITH {uploading} \
-                 SELECT p.key FROM import_candidate_standing AS st \
+                "SELECT p.key FROM import_candidate_standing AS st \
                  JOIN import_list_placement AS p \
                      ON p.key = st.candidate_key AND p.item = 'candidate' \
-                 {unit} \
-                 LEFT JOIN uploading AS u ON u.key = p.key \
+                 JOIN import_list_placement AS u ON u.entry = p.unit_entry \
                  WHERE st.identification IN ('queued', 'running', 'finalizing', 'reading_pick') \
                  ORDER BY CASE p.tab WHEN 'pending' THEN 0 WHEN 'done' THEN 1 ELSE 2 END, \
-                          u.position IS NULL, u.position, {terms} \
+                          {ordering} \
                  LIMIT 1",
-                uploading = uploading_cte(),
-                unit = unit_join("p", "unit"),
-                terms = sorted_terms(order, "p", "unit"),
+                ordering = order::ordering(order, "u", "p"),
             ),
             [],
             |row| row.get::<_, CandidateKey>(0),

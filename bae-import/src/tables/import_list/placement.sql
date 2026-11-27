@@ -42,8 +42,12 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     -- A release's folder below its watched folder, as `RelativeFolder`
     -- bytes: each name's bytes, joined by `/`. NULL for a header.
     folder              BLOB,
-    -- The text that shows it.
-    display_path        TEXT GENERATED ALWAYS AS (coven_path_text(folder)) STORED,
+    -- The text that shows the row's folder, which the list sorts it by: a
+    -- release's folder, a header's group. A stored column rather than a
+    -- generated one because coven reruns a window only for the writes at or
+    -- before its last row when each ORDER BY term is a stored column, or is
+    -- generated from stored columns of BINARY collation.
+    path_text           TEXT NOT NULL COLLATE natural_order,
     -- The group a Found release is listed under: the first name of its
     -- folder when it is nested, or its own folder when another release is
     -- listed below it. A header's own. Cut from the bytes (`instr` and
@@ -66,19 +70,19 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     -- a header. A member sorts in its header's place rather than by a copy
     -- of it, so a member that moves its group's date writes only the header.
     group_date          INTEGER,
+    -- For a release on Done with files in coven's upload queue, the place of
+    -- the first of them in it, which `release_storage` holds; NULL for every
+    -- other row.
+    upload_position     INTEGER,
+    -- The number of the row this one sorts under: its group's header for a
+    -- group's header and members, and its own for a row in no group. A change
+    -- to what a group sorts by writes its header alone. Written by
+    -- `import_list_reunit` in the write that places the row, which is NULL
+    -- only between that row's insert and the triggers it fires.
+    unit_entry          INTEGER,
     -- For a header: whether its folder is offered to be read as one release
     -- (`import_list_recombine`). NULL off a header.
     combinable          INTEGER CHECK (combinable IN (0, 1)),
-    -- What a header or a row outside every group sorts by first: the
-    -- group's date on a header, the row's own otherwise. NULL on a member,
-    -- which sorts in its header's place.
-    unit_date           INTEGER GENERATED ALWAYS AS (CASE
-        WHEN item = 'group' THEN group_date
-        WHEN group_folder IS NULL THEN own_date END) STORED,
-    -- What the row sorts by after its date: its group's name, else its
-    -- display path, so the list's order follows the text it shows.
-    unit_path           TEXT GENERATED ALWAYS AS (COALESCE(group_name, display_path))
-        VIRTUAL COLLATE natural_order,
     -- Whether a release shows a title and artists: always once this device
     -- imported it, and before then once its draft is not blank, or once a
     -- source or a link answered it. Otherwise it shows its folder's name.
@@ -107,7 +111,27 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     draft_valid         INTEGER CHECK (draft_valid IN (0, 1)),
     lookup              TEXT CHECK (lookup IN ('answered', 'failed')),
     separable           INTEGER CHECK (separable IN (0, 1)),
+    -- The list's sort terms, each never NULL, so a window starts after a row
+    -- by one comparison of row values. The date is a header's group's and any
+    -- other row's own; undated rows sort after dated ones either way. A
+    -- descending date is its negation. The descending path order is read
+    -- backwards, so its terms for the upload queue are negated too, and its
+    -- term that puts a header first is the larger one for the header.
+    sort_queued         INTEGER GENERATED ALWAYS AS (upload_position IS NULL) VIRTUAL,
+    sort_queue          INTEGER GENERATED ALWAYS AS (COALESCE(upload_position, 0)) VIRTUAL,
+    sort_queued_back    INTEGER GENERATED ALWAYS AS (upload_position IS NOT NULL) VIRTUAL,
+    sort_queue_back     INTEGER GENERATED ALWAYS AS (-COALESCE(upload_position, 0)) VIRTUAL,
+    sort_undated        INTEGER GENERATED ALWAYS AS (
+        CASE item WHEN 'group' THEN group_date ELSE own_date END IS NULL) VIRTUAL,
+    sort_oldest         INTEGER GENERATED ALWAYS AS (
+        COALESCE(CASE item WHEN 'group' THEN group_date ELSE own_date END, 0)) VIRTUAL,
+    sort_newest         INTEGER GENERATED ALWAYS AS (
+        -COALESCE(CASE item WHEN 'group' THEN group_date ELSE own_date END, 0)) VIRTUAL,
+    sort_member         INTEGER GENERATED ALWAYS AS (item <> 'group') VIRTUAL,
+    sort_header         INTEGER GENERATED ALWAYS AS (item = 'group') VIRTUAL,
     UNIQUE (watched_folder_path, item, key),
+    CHECK (path_text = coven_path_text(COALESCE(folder, key))),
+    CHECK (tab = 'done' OR upload_position IS NULL),
     CHECK (item <> 'invalid' OR tab = 'skipped'),
     CHECK ((tab = 'pending' AND item <> 'group') = (pending_state IS NOT NULL)),
     CHECK ((pending_state IS 'needs_you') = (needs_you_reason IS NOT NULL)),
@@ -142,87 +166,46 @@ CREATE INDEX IF NOT EXISTS import_list_placement_by_key ON import_list_placement
 CREATE INDEX IF NOT EXISTS import_list_placement_by_folder
     ON import_list_placement (watched_folder_path, folder);
 
--- Done's and Skipped's rows, which hold no group, in each order the list
--- shows them in; undated rows come last either way. Found's rows are read in
--- runs instead (below), so these hold none of them.
+-- A window reads the list as a join of the rows that others sort under (a
+-- group's header, and each row in no group) with the rows sorting under each
+-- (a header's members and itself, or the lone row itself). For each order,
+-- one index holds the first, a tab's in its order, and one the second, under
+-- each row in its order. Done's releases with files queued to upload come
+-- first, the first queued first. Only a group's header and its members tie on
+-- the terms before the number, so the number tells every two units apart.
 CREATE INDEX IF NOT EXISTS import_list_newest_first ON import_list_placement (
-    tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path,
-    item = 'group' DESC, own_date IS NULL, own_date DESC,
-    display_path COLLATE natural_order, key)
-    WHERE tab <> 'pending';
+    tab, sort_queued, sort_queue, sort_undated, sort_newest, root_position,
+    watched_folder_path, path_text, entry)
+    WHERE unit_entry = entry;
 
 CREATE INDEX IF NOT EXISTS import_list_oldest_first ON import_list_placement (
-    tab, unit_date IS NULL, unit_date, root_position, watched_folder_path, unit_path,
-    item = 'group' DESC, own_date IS NULL, own_date, display_path COLLATE natural_order, key)
-    WHERE tab <> 'pending';
+    tab, sort_queued, sort_queue, sort_undated, sort_oldest, root_position,
+    watched_folder_path, path_text, entry)
+    WHERE unit_entry = entry;
 
 CREATE INDEX IF NOT EXISTS import_list_path_ascending ON import_list_placement (
-    tab, root_position, watched_folder_path, unit_path, item = 'group' DESC,
-    display_path COLLATE natural_order, key)
-    WHERE tab <> 'pending';
+    tab, sort_queued, sort_queue, root_position, watched_folder_path, path_text, entry)
+    WHERE unit_entry = entry;
 
 CREATE INDEX IF NOT EXISTS import_list_path_descending ON import_list_placement (
-    tab, root_position DESC, watched_folder_path DESC, unit_path DESC, item = 'group' DESC,
-    display_path COLLATE natural_order DESC, key DESC)
-    WHERE tab <> 'pending';
+    tab, sort_queued_back, sort_queue_back, root_position, watched_folder_path, path_text, entry)
+    WHERE unit_entry = entry;
 
--- Found reads each order in three runs, so a member sorts in its header's
--- place and no read passes a folded group's members: the headers and the
--- rows outside every group (`_unfolded`), each open group's header
--- (`_headers`), and that group's members in its order (`_members`), its
--- header leading them. Within the order's terms up to the folder, only a
--- header and its members tie, so the row's number breaks the tie in the
--- first two and the members take their header's terms and number: the three
--- runs then merge in the order's own sequence.
-CREATE INDEX IF NOT EXISTS import_list_newest_first_unfolded ON import_list_placement (
-    tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path, entry)
-    WHERE item = 'group' OR group_folder IS NULL;
+CREATE INDEX IF NOT EXISTS import_list_newest_first_under ON import_list_placement (
+    unit_entry, sort_member, sort_undated, sort_newest, path_text, key);
 
-CREATE INDEX IF NOT EXISTS import_list_newest_first_headers ON import_list_placement (
-    tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path, entry)
-    WHERE item = 'group';
+CREATE INDEX IF NOT EXISTS import_list_oldest_first_under ON import_list_placement (
+    unit_entry, sort_member, sort_undated, sort_oldest, path_text, key);
 
-CREATE INDEX IF NOT EXISTS import_list_newest_first_members ON import_list_placement (
-    watched_folder_path, group_folder, item = 'group' DESC, own_date IS NULL, own_date DESC,
-    display_path COLLATE natural_order, key)
-    WHERE item <> 'group' AND group_folder IS NOT NULL;
+CREATE INDEX IF NOT EXISTS import_list_path_ascending_under ON import_list_placement (
+    unit_entry, sort_member, path_text, key);
 
-CREATE INDEX IF NOT EXISTS import_list_oldest_first_unfolded ON import_list_placement (
-    tab, unit_date IS NULL, unit_date, root_position, watched_folder_path, unit_path, entry)
-    WHERE item = 'group' OR group_folder IS NULL;
+CREATE INDEX IF NOT EXISTS import_list_path_descending_under ON import_list_placement (
+    unit_entry, sort_header, path_text, key);
 
-CREATE INDEX IF NOT EXISTS import_list_oldest_first_headers ON import_list_placement (
-    tab, unit_date IS NULL, unit_date, root_position, watched_folder_path, unit_path, entry)
-    WHERE item = 'group';
-
-CREATE INDEX IF NOT EXISTS import_list_oldest_first_members ON import_list_placement (
-    watched_folder_path, group_folder, item = 'group' DESC, own_date IS NULL, own_date,
-    display_path COLLATE natural_order, key)
-    WHERE item <> 'group' AND group_folder IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS import_list_path_ascending_unfolded ON import_list_placement (
-    tab, root_position, watched_folder_path, unit_path, entry)
-    WHERE item = 'group' OR group_folder IS NULL;
-
-CREATE INDEX IF NOT EXISTS import_list_path_ascending_headers ON import_list_placement (
-    tab, root_position, watched_folder_path, unit_path, entry)
-    WHERE item = 'group';
-
-CREATE INDEX IF NOT EXISTS import_list_path_ascending_members ON import_list_placement (
-    watched_folder_path, group_folder, item = 'group' DESC, display_path COLLATE natural_order, key)
-    WHERE item <> 'group' AND group_folder IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS import_list_path_descending_unfolded ON import_list_placement (
-    tab, root_position DESC, watched_folder_path DESC, unit_path DESC, entry)
-    WHERE item = 'group' OR group_folder IS NULL;
-
-CREATE INDEX IF NOT EXISTS import_list_path_descending_headers ON import_list_placement (
-    tab, root_position DESC, watched_folder_path DESC, unit_path DESC, entry)
-    WHERE item = 'group';
-
-CREATE INDEX IF NOT EXISTS import_list_path_descending_members ON import_list_placement (
-    watched_folder_path, group_folder, item = 'group' DESC,
-    display_path COLLATE natural_order DESC, key DESC)
+-- A group's members, its newest first: what dates the group.
+CREATE INDEX IF NOT EXISTS import_list_by_group ON import_list_placement (
+    watched_folder_path, group_folder, sort_undated, sort_newest)
     WHERE item <> 'group' AND group_folder IS NOT NULL;
 
 -- The releases the queue lists, each as the row it is listed as: settled
@@ -251,7 +234,7 @@ SELECT watched_folder_path, item, key, root_position, tab, pending_state, needs_
                 CASE WHEN identification IN ('not_written', 'inapplicable')
                      THEN save_failure_error ELSE verdict_error END
             END AS error_detail,
-       own_date, folder, has_summary, shown_title, shown_credits,
+       own_date, upload_position, folder, has_summary, shown_title, shown_credits,
        CASE WHEN shown_credits IS NOT NULL THEN
                 COALESCE((SELECT group_concat(shown.value ->> 'name', ', ')
                           FROM json_each(shown_credits) AS shown), '')
@@ -271,6 +254,7 @@ FROM (
            CASE WHEN tab = 'pending' AND running_import IS NULL AND identification IS NULL
                 THEN stored_reason END AS needs_you_reason,
            CASE WHEN tab = 'done' THEN imported_at ELSE discovered_at END AS own_date,
+           CASE WHEN tab = 'done' THEN first_queued_position END AS upload_position,
            -- An imported release shows its library album's title and
            -- credits, as the library holds them now.
            CASE WHEN item = 'invalid' THEN COALESCE(tag_title, name)
@@ -338,6 +322,7 @@ FROM (
                    -- Only what this device imported places a folder in Done.
                    origin.release_id IS NOT NULL AS imported,
                    released.created_at AS imported_at_text,
+                   stored.first_queued_position,
                    CASE WHEN substr(released.created_at, 20, 1) = '.'
                         THEN ltrim(substr(released.created_at, 21), '0123456789')
                         ELSE substr(released.created_at, 20) END AS imported_at_offset,
@@ -429,6 +414,7 @@ FROM (
             LEFT JOIN local_release_origin AS origin ON origin.content_hash = c.content_hash
             LEFT JOIN releases AS released ON released.id = origin.release_id
             LEFT JOIN albums AS album ON album.id = released.album_id
+            LEFT JOIN release_storage AS stored ON stored.release_id = origin.release_id
             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = c.path
             LEFT JOIN scan_skipped_tags AS t
                 ON t.watched_folder_path = c.watched_folder_path AND t.candidate_path = c.path
@@ -447,12 +433,12 @@ CREATE TRIGGER IF NOT EXISTS import_list_replace_release INSTEAD OF INSERT ON im
 BEGIN
     INSERT INTO import_list_placement
         (watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
-         reason_pressings, error_detail, own_date, folder, has_summary,
-         shown_title, shown_credits, shown_artists, actionable, import_failed, draft_valid, lookup,
+         reason_pressings, error_detail, own_date, upload_position, folder, path_text,
+         has_summary, shown_title, shown_credits, shown_artists, actionable, import_failed, draft_valid, lookup,
          separable)
     SELECT watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
-           reason_pressings, error_detail, own_date, folder, has_summary,
-           shown_title, shown_credits, shown_artists, actionable, import_failed, draft_valid,
+           reason_pressings, error_detail, own_date, upload_position, folder,
+           coven_path_text(folder), has_summary, shown_title, shown_credits, shown_artists, actionable, import_failed, draft_valid,
            lookup, separable
     FROM import_list_entry WHERE key = NEW.key
     ON CONFLICT (watched_folder_path, item, key) DO UPDATE SET
@@ -463,7 +449,9 @@ BEGIN
         reason_pressings = excluded.reason_pressings,
         error_detail = excluded.error_detail,
         own_date = excluded.own_date,
+        upload_position = excluded.upload_position,
         folder = excluded.folder,
+        path_text = excluded.path_text,
         has_summary = excluded.has_summary,
         shown_title = excluded.shown_title,
         shown_credits = excluded.shown_credits,
@@ -477,6 +465,7 @@ BEGIN
            import_list_placement.pending_state, import_list_placement.needs_you_reason,
            import_list_placement.reason_pressings,
            import_list_placement.error_detail, import_list_placement.own_date,
+           import_list_placement.upload_position,
            import_list_placement.folder, import_list_placement.has_summary,
            import_list_placement.shown_title, import_list_placement.shown_credits,
            import_list_placement.shown_artists,
@@ -485,7 +474,8 @@ BEGIN
            import_list_placement.separable)
         IS NOT (excluded.root_position, excluded.tab, excluded.pending_state,
                 excluded.needs_you_reason, excluded.reason_pressings,
-                excluded.error_detail, excluded.own_date, excluded.folder,
+                excluded.error_detail, excluded.own_date, excluded.upload_position,
+                excluded.folder,
                 excluded.has_summary, excluded.shown_title, excluded.shown_credits,
                 excluded.shown_artists,
                 excluded.actionable, excluded.import_failed, excluded.draft_valid,

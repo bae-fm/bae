@@ -331,6 +331,22 @@ impl Library {
             .await
             .unwrap();
         assert!(unjudged.is_empty(), "headers saying nothing of combining: {unjudged:?}");
+        let misplaced = self
+            .db
+            .read(|sql| {
+                Ok(sql.query(
+                    "SELECT coven_path_text(p.key) FROM import_list_placement AS p \
+                     WHERE p.unit_entry IS NOT COALESCE(( \
+                         SELECT header.entry FROM import_list_placement AS header \
+                         WHERE header.watched_folder_path = p.watched_folder_path \
+                           AND header.item = 'group' AND header.key = p.group_folder), p.entry)",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?)
+            })
+            .await
+            .unwrap();
+        assert!(misplaced.is_empty(), "rows not sorting under their group: {misplaced:?}");
         exec_batch(
             &self.db,
             "INSERT INTO import_list_search (import_list_search, rank) VALUES ('integrity-check', 1);",
@@ -339,31 +355,19 @@ impl Library {
     }
 
     /// One read of `list` through one window over every item, with nothing
-    /// selected. Found's items read in runs and read sorted must agree.
+    /// selected.
     pub(crate) async fn read(&self, list: &ImportListRequest) -> ImportListRead {
         self.read_selecting(list, Vec::new()).await
     }
 
     /// One read of `list` through one window over every item, with what the
-    /// rows at `selected` hold and offer. Found's items read in runs and read
-    /// sorted must agree.
+    /// rows at `selected` hold and offer.
     pub(crate) async fn read_selecting(
         &self,
         list: &ImportListRequest,
         selected: Vec<crate::CandidateKey>,
     ) -> ImportListRead {
-        let tables = self.tables();
-        let read = tables.read_import_list_for_test(list.clone(), selected).await.unwrap();
-        if let Some((walked, other)) =
-            tables.import_list_read_both_ways(list.clone()).await.unwrap()
-        {
-            assert_eq!(
-                walked, other,
-                "{:?}: the tab's rows in order against its other read",
-                list.view
-            );
-        }
-        read
+        self.tables().read_import_list_for_test(list.clone(), selected).await.unwrap()
     }
 
     /// The window of `limit` items from the item at `offset`, read as a view
@@ -710,52 +714,6 @@ impl ImportTables {
         read: ListRead,
     ) -> Result<ImportListRead, DbError> {
         self.read_import_list_for_test(ImportListRequest::of(read.view), read.selected).await
-    }
-
-    /// Every item a list shows, read from its tab's rows in order — Found's
-    /// in runs — and another way: on Found, its items sorted with each member
-    /// in its header's place. The function returns both reads, and a test
-    /// checks that they agree. The function returns `None` for a list on Done
-    /// or Skipped, because the list reads those rows only in order.
-    pub(crate) async fn import_list_read_both_ways(
-        &self,
-        list: ImportListRequest,
-    ) -> Result<Option<(Vec<String>, Vec<String>)>, DbError> {
-        self.store
-            .read(move |sql| {
-                let items = order::Items::new(list.clone());
-                let everything = bae_store::ListWindow::top(u64::MAX);
-                let keys = || -> Result<Vec<String>, DbError> {
-                    Ok(items
-                        .range(&sql, &everything)?
-                        .into_iter()
-                        .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
-                        .collect())
-                };
-                let other = match list.view.tab {
-                    crate::TriageTab::Pending => items
-                        .query(
-                            &sql,
-                            &format!(
-                                "SELECT i.item, i.key FROM {source} AS i {join} \
-                             WHERE i.tab = 'pending' ORDER BY {terms}",
-                                source = list.items(),
-                                join = order::unit_join("i", "unit"),
-                                terms = order::sorted_terms(list.view.order, "i", "unit"),
-                            ),
-                            &[],
-                            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?)),
-                        )?
-                        .into_iter()
-                        .map(|(item, key)| {
-                            Ok(format!("{:?} {}", order::Item::of(&item)?, hex::encode(key)))
-                        })
-                        .collect::<Result<_, DbError>>()?,
-                    crate::TriageTab::Done | crate::TriageTab::Skipped => return Ok(None),
-                };
-                Ok(Some((keys()?, other)))
-            })
-            .await
     }
 }
 

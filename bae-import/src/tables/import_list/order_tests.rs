@@ -432,9 +432,8 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     assert_eq!(sequence(&lib.read(&list).await), ["group A", "group B", "candidate B/Old"]);
 }
 
-/// Done shows two parts, the uploading releases and the rest, but bae still
-/// reads the key at a position, the count before a key and a release's
-/// position with one statement each.
+/// bae reads the key at a position and the count before a key with one
+/// statement each.
 #[tokio::test]
 async fn positions_in_done_are_read_in_one_statement() {
     let lib = Library::new().await;
@@ -648,12 +647,12 @@ impl ImportTables {
             .await
     }
 
-    /// The plans each part of `list`'s windows is read by, by offset and by
-    /// each seek from a row, for a test that holds every order to its index.
+    /// The plans `list`'s windows are read by, from its top and by each seek
+    /// from a row, for a test that holds every order to its index.
     async fn import_list_window_plans(
         &self,
         list: ImportListRequest,
-    ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
+    ) -> Result<Vec<Vec<String>>, DbError> {
         self.store.read(move |sql| Items::new(list).window_plans(&sql)).await
     }
 
@@ -677,9 +676,9 @@ impl ImportTables {
 }
 
 /// Every tab's window in every order is read off that order's index, in its
-/// order, by its offset and from an item beside it: no sort of the tab's
-/// rows, so a window costs about its offset and limit whatever the tab holds,
-/// and one read from an item beside it about its limit.
+/// order, from its top and from an item beside it: no sort of the tab's
+/// rows, so a window costs about its limit whatever the tab holds. Folding
+/// groups shut or not changes none of that.
 #[tokio::test]
 async fn every_order_reads_its_windows_off_its_index() {
     let lib = Library::new().await;
@@ -692,33 +691,29 @@ async fn every_order_reads_its_windows_off_its_index() {
         (ImportListOrder::PathDescending, "import_list_path_descending"),
     ] {
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
-            let list = ImportListRequest::of(ordered(tab, order));
-            let plans = tables.import_list_window_plans(list.clone()).await.unwrap();
-            // Done's last part is its settled releases, read off the index;
-            // its first, the handful still uploading, is sorted by queue.
-            // Each part is read by its offset, off its order's index, and
-            // from an item beside a window by each seek, which searches an
-            // order index; one holding every term but the key equal may take
-            // any of them, since each holds those terms.
-            let (by_offset, seeks) = plans
-                .last()
-                .expect("a tab reads in at least one part")
-                .split_first()
-                .expect("a part is read by its offset");
-            assert!(
-                by_offset.iter().any(|step| step.contains(index)),
-                "{order:?} {tab:?}: {by_offset:?}"
-            );
-            for plan in std::iter::once(by_offset).chain(seeks) {
+            for folded in [false, true] {
+                let mut list = ImportListRequest::of(ordered(tab, order));
+                if folded {
+                    list = list.folding(lib.group_key("Box"));
+                }
+                let plans = tables.import_list_window_plans(list).await.unwrap();
+                let what = format!("{order:?} {tab:?} folded {folded}");
                 assert!(
-                    plan.iter().any(|step| step.starts_with("SEARCH")
-                        && step.contains("USING INDEX import_list_")),
-                    "{order:?} {tab:?}: {plan:?}"
+                    plans[0].iter().any(|step| step.contains(&format!("{index} "))),
+                    "{what}: {:?}",
+                    plans[0]
                 );
-                assert!(
-                    !plan.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
-                    "{order:?} {tab:?} sorts: {plan:?}"
-                );
+                for plan in &plans {
+                    assert!(
+                        plan.iter().any(|step| step.starts_with("SEARCH")
+                            && step.contains("USING INDEX import_list_")),
+                        "{what}: {plan:?}"
+                    );
+                    assert!(
+                        !plan.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                        "{what} sorts: {plan:?}"
+                    );
+                }
             }
         }
     }
@@ -745,13 +740,13 @@ async fn a_reveal_reads_the_candidate_by_key_then_its_tabs_order_index() {
             plan[first].contains("import_list_placement_by_key (key=?)"),
             "{order:?} reads the candidate by its key first: {plan:?}"
         );
-        // A seek that holds every term up to the folder equal may take any
-        // order's index, since each holds those terms.
+        // A seek that holds the terms a group's rows hold alike equal may
+        // take any order's index whose first terms are those.
         assert!(
             plan.iter().any(|step| step.starts_with("SEARCH")
                 && step.contains("USING INDEX import_list_")
-                && step.contains("_members ")),
-            "{order:?} counts a group's members off an order index: {plan:?}"
+                && step.contains("unit_")),
+            "{order:?} counts the items before it off an order index: {plan:?}"
         );
         assert!(!plan.iter().any(|step| step.contains("TEMP B-TREE")), "{order:?} sorts: {plan:?}");
     }
@@ -793,9 +788,8 @@ fn many_groups(
 }
 
 /// A Found window under folds naming 4,000 groups reads them as one list
-/// subquery off the JSON array, beside the members index, whether the folds
-/// name the groups folded or the groups left open: never a scan of the array
-/// for each row, and no sort.
+/// subquery off the JSON array, whether the folds name the groups folded or
+/// the groups left open: never a scan of the array for each row, and no sort.
 #[tokio::test]
 async fn a_window_reads_four_thousand_folds_as_one_list() {
     let lib = Library::new().await;
@@ -807,15 +801,15 @@ async fn a_window_reads_four_thousand_folds_as_one_list() {
             folds: folds.clone(),
             ..ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::NewestFirst))
         };
-        let plans = tables.import_list_window_plans(list).await.unwrap().concat();
-        let (by_offset, _) = plans.split_first().expect("a part is read by its offset");
+        let plans = tables.import_list_window_plans(list).await.unwrap();
         let kind = match folds {
             ImportListFolds::Only(_) => "only",
             ImportListFolds::AllBut(_) => "all but",
         };
         assert!(
-            by_offset.iter().any(|step| step.contains("import_list_newest_first_members ")),
-            "{kind}: {by_offset:?}"
+            plans[0].iter().any(|step| step.contains("import_list_newest_first ")),
+            "{kind}: {:?}",
+            plans[0]
         );
         for plan in &plans {
             assert!(plan.iter().any(|step| step.contains("LIST SUBQUERY")), "{kind}: {plan:?}");
@@ -824,63 +818,6 @@ async fn a_window_reads_four_thousand_folds_as_one_list() {
                 "{kind} reads the folds for each row: {plan:?}"
             );
             assert!(!plan.iter().any(|step| step.contains("TEMP B-TREE")), "{kind}: {plan:?}");
-        }
-    }
-}
-
-/// Found reads each order in runs off that order's indexes, in its order, by
-/// a window's offset and from an item beside it, folding groups shut or not:
-/// the headers and the rows outside every group, and each open group's
-/// members in their header's place, with no sort and no folded member passed,
-/// so a window costs about its offset and limit however many members are
-/// folded, and one read from an item beside it about its limit.
-#[tokio::test]
-async fn found_reads_its_windows_off_its_runs() {
-    let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(lib.scan("Box/1") + lib.scan("Other/1") + lib.scan("Loose")).await;
-    for (order, index) in [
-        (ImportListOrder::NewestFirst, "import_list_newest_first"),
-        (ImportListOrder::OldestFirst, "import_list_oldest_first"),
-        (ImportListOrder::PathAscending, "import_list_path_ascending"),
-        (ImportListOrder::PathDescending, "import_list_path_descending"),
-    ] {
-        for folded in [false, true] {
-            let mut list = ImportListRequest::of(ordered(TriageTab::Pending, order));
-            if folded {
-                list = list.folding(lib.group_key("Box"));
-            }
-            // Found runs in one part, read by its offset off the three runs'
-            // indexes, and by each seek from its first item, which searches
-            // them, or reaches the row it holds every term up to the folder
-            // and its number equal to by that number.
-            let plans = tables.import_list_window_plans(list.clone()).await.unwrap().concat();
-            let (by_offset, seeks) = plans.split_first().expect("a part is read by its offset");
-            assert!(!seeks.is_empty(), "{order:?} folded {folded}: {plans:?}");
-            for run in ["_unfolded", "_headers", "_members"] {
-                assert!(
-                    by_offset.iter().any(|step| step.contains(&format!("{index}{run} "))),
-                    "{order:?} folded {folded} reads {run}: {by_offset:?}"
-                );
-            }
-            for plan in &plans {
-                assert!(
-                    // The folded groups are one JSON parameter read once as a
-                    // list subquery; no other table is scanned.
-                    !plan
-                        .iter()
-                        .any(|step| step.starts_with("SCAN") && !step.starts_with("SCAN f VIRTUAL")),
-                    "{order:?} folded {folded} scans: {plan:?}"
-                );
-                assert!(
-                    plan.iter().any(|step| step.contains("MERGE")),
-                    "{order:?} folded {folded}: {plan:?}"
-                );
-                assert!(
-                    !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-                    "{order:?} folded {folded} sorts: {plan:?}"
-                );
-            }
         }
     }
 }

@@ -72,7 +72,7 @@ pub(super) fn read_window(
     let rows = window_query(request, window, |items, statement, named| {
         items.query(sql, statement, named, |row| {
             let item: String = row.get("item")?;
-            let ordered = items.led_key(row)?;
+            let ordered = items.key_of(row)?;
             let item = Item::of(&item)
                 .map_err(|error| bae_store::read::column_conversion_error(row, "item", error))?;
             let stored = match item {
@@ -83,42 +83,23 @@ pub(super) fn read_window(
             Ok((stored, ordered))
         })
     })?;
-    Ok(WindowRows { window: window.clone(), rows: rows.unwrap_or_default() })
+    Ok(WindowRows { window: window.clone(), rows })
 }
 
 /// Runs `run` with the list's items, the statement reading the window
-/// `window` of the list `request` shows, and the values the statement binds;
-/// `None` for a window no part of the list has rows for.
-///
-/// The range is the statement's first table. The statement numbers the
-/// range's items in the order the parts of its UNION return them, and reads
-/// each item's header beside it. The statement names the range once: each
-/// further reference to it would expand the range's views again, and a
-/// range over a text filter's views would pass SQLite's limit on the
-/// cursors one statement opens.
+/// `window` of the list `request` shows, and the values the statement binds.
 fn window_query<T>(
     request: &ImportListRequest,
     window: &ListWindow,
     run: impl FnOnce(&Items, &str, &[(&str, &dyn ToSql)]) -> Result<T, DbError>,
-) -> Result<Option<T>, DbError> {
+) -> Result<T, DbError> {
     let items = Items::new(request.clone());
-    let Some(range) = items.range_statement(window)? else {
-        return Ok(None);
-    };
-    let statement = format!(
-        "WITH keyed AS ( \
-             SELECT row_number() OVER () AS n, k.* \
-             FROM ({range}) AS k) \
-         {rows}",
-        range = range.sql(),
-        rows = rows_statement(&range.columns, &items.ends_group("w"), request),
-    );
-    let limit = bae_store::list_windows::sql_bound(range.limit);
-    let range_params = range.params();
-    let mut named: Vec<(&str, &dyn ToSql)> =
-        range_params.iter().map(|(name, value)| (name.as_str(), *value)).collect();
+    let from = items.starting_at("w", window.from.as_ref())?;
+    let statement = rows_statement(&items, &from.condition, request);
+    let limit = bae_store::list_windows::sql_bound(window.limit);
+    let mut named: Vec<(&str, &dyn ToSql)> = from.params().collect();
     named.push((":limit", &limit));
-    run(&items, &statement, &named).map(Some)
+    run(&items, &statement, &named)
 }
 
 /// What one row of the window's statement holds, by its kind.
@@ -303,12 +284,13 @@ impl ShownColumns {
     }
 }
 
-/// The statement's last part: each item of the range, a group's header or a
-/// release's rows, by its key, in the window's order. A group's header reads
-/// its header; a release reads its placement, the keyed rows beside it, the
-/// header of its group and whether it ends its group, as `ends_group`
-/// reads it.
-fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) -> String {
+/// The window's statement: its items in the list's order from the condition
+/// `after` on, at most `:limit`, each a group's header or a release's rows. A
+/// group's header reads its header; a release reads its placement, the keyed
+/// rows beside it, the header of its group and whether it ends its group. The
+/// statement is one SELECT whose ORDER BY terms are result columns, so coven
+/// reruns a full window only for a write at or before its last row.
+fn rows_statement(items: &Items, after: &str, request: &ImportListRequest) -> String {
     use crate::tables::import_state::failure_rows::FAILURE_REASON_COLUMNS;
     let invalid_columns = folder_scans::invalid_columns_sql("c");
     let covers = cover_version_joins(
@@ -326,7 +308,7 @@ fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) 
                 {RUNTIME_FACT_COLUMNS}, \
                 {library_cover} AS library_cover, \
                 {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions}, \
-                w.item AS item, w.part AS part, {header_columns}, \
+                w.item AS item, {header_columns}, \
                 {ends_group} AS ends_group, \
                 {RELEASE_UPLOAD_COUNT_COLUMNS}, \
                 CASE WHEN origin.release_id IS NOT NULL THEN {library_records} END \
@@ -334,8 +316,8 @@ fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) 
                 {library_records_kind} AS library_records_kind, \
                 CASE WHEN link.content_hash IS NOT NULL AND origin.release_id IS NULL \
                      THEN ({link_records}) END AS link_records, \
-                {COVER_VERSION_COLUMNS}, {columns} \
-         FROM keyed AS w \
+                {COVER_VERSION_COLUMNS}, {keys} \
+         FROM {source} \
          LEFT JOIN import_list_placement AS hp \
              ON hp.watched_folder_path = w.watched_folder_path \
             AND hp.item = 'group' AND hp.key = {HEADER_FOLDER} \
@@ -361,7 +343,13 @@ fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) 
              ON storage.release_id = origin.release_id AND storage.queued_count > 0 \
          {covers} \
          {invalid_join} \
-         ORDER BY w.n",
+         WHERE {condition} AND {after} \
+         ORDER BY {ordering} LIMIT :limit",
+        keys = items.key_columns("w"),
+        source = items.from("w"),
+        condition = items.condition("w"),
+        ordering = items.ordering("w"),
+        ends_group = items.ends_group("w"),
         cover = cover_read_columns(),
         storage = ReleaseStorageRows::SQL,
         library_cover = bae_records::records::files::cover_version_sql("origin.release_id"),

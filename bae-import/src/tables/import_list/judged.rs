@@ -155,27 +155,36 @@ impl Fragments<'_> {
         format!("(SELECT * FROM {} WHERE item <> 'group' AND kept)", self.judged())
     }
 
+    /// The test that the row aliased `i` has something the filters keep: a
+    /// release that they keep, and a group's header while its group holds a
+    /// release they keep. `None` while nothing narrows the list, which keeps
+    /// every release and so every header.
+    pub(super) fn holds_kept_sql(&self, i: &str) -> Option<String> {
+        if !self.request.narrows() {
+            return None;
+        }
+        Some(format!(
+            "CASE WHEN {i}.item = 'group' \
+                  THEN EXISTS (SELECT 1 FROM {matching} AS held \
+                               WHERE held.watched_folder_path = {i}.watched_folder_path \
+                                 AND held.group_folder = {i}.key) \
+                  ELSE {kept} END",
+            matching = self.matching(),
+            kept = self.request.kept_sql(i),
+        ))
+    }
+
     /// The list's items, in no order: the releases its filters keep outside
     /// the groups it folds shut, and the header of each group holding a
     /// release its filters keep.
     pub(super) fn items(&self) -> String {
-        // With nothing narrowing the list, every group's header holds a
-        // release the list keeps.
-        if !self.request.narrows() {
-            return format!(
-                "(SELECT j.* FROM {} AS j WHERE j.item = 'group' OR NOT j.folded)",
-                self.judged()
-            );
-        }
+        let kept = match self.holds_kept_sql("j") {
+            Some(test) => format!(" AND {test}"),
+            None => String::new(),
+        };
         format!(
-            "(SELECT j.* FROM {judged} AS j \
-              WHERE CASE WHEN j.item = 'group' \
-                         THEN EXISTS (SELECT 1 FROM {matching} AS m \
-                                      WHERE m.watched_folder_path = j.watched_folder_path \
-                                        AND m.group_folder = j.key) \
-                         ELSE j.kept AND NOT j.folded END)",
-            judged = self.judged(),
-            matching = self.matching(),
+            "(SELECT j.* FROM {} AS j WHERE (j.item = 'group' OR NOT j.folded){kept})",
+            self.judged()
         )
     }
 

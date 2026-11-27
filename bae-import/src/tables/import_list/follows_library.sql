@@ -16,6 +16,20 @@ BEGIN
     SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
 END;
 
+-- Where the first of an imported release's files stands in coven's upload
+-- queue places its Done row among the uploading ones. `release_storage`
+-- holds that place, which its own triggers move as files join and leave the
+-- queue.
+CREATE TRIGGER IF NOT EXISTS import_list_on_upload_position_moved
+AFTER UPDATE OF first_queued_position ON release_storage
+WHEN OLD.first_queued_position IS NOT NEW.first_queued_position
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM local_release_origin AS o
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE o.release_id = NEW.release_id;
+END;
+
 -- A picked artist's name, or the credit name the draft prints for it; and
 -- the name of an artist an imported release's album credits show as, or a
 -- credit name the album prints.

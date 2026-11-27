@@ -100,8 +100,7 @@ async fn a_window_counts_its_headers_from_the_group_counts() {
                                     ))
                                 },
                             )
-                        })?
-                        .expect("the list has rows");
+                        })?;
                     Ok((view, plan))
                 })
                 .collect::<Result<Vec<_>, DbError>>()

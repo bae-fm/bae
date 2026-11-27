@@ -108,9 +108,9 @@ impl Placed {
         Self { own_date: Some(date), unit_date: Some(date), ..self }
     }
 
-    /// Listed under the group at `name`, sorting in its header's place.
+    /// Listed under the group at `name`.
     pub(crate) fn grouped(self, name: &str) -> Self {
-        Self { group_name: Some(name.to_string()), unit_date: None, ..self }
+        Self { group_name: Some(name.to_string()), ..self }
     }
 
     pub(crate) fn shown(self, title: &str, artists: Option<&str>) -> Self {
@@ -169,7 +169,9 @@ impl Library {
                 let rows = sql.query(
                     "SELECT coven_path_text(watched_folder_path), item, coven_path_text(key),
                             root_position, tab, pending_state,
-                            needs_you_reason, group_name, own_date, unit_date, display_path,
+                            needs_you_reason, group_name, own_date,
+                            CASE item WHEN 'group' THEN group_date ELSE own_date END,
+                            iif(folder IS NULL, NULL, path_text),
                             shown_title, shown_artists
                      FROM import_list_placement",
                     [],

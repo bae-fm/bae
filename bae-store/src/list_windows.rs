@@ -133,8 +133,8 @@ enum Side {
 
 /// One statement of a window's read: which rows past the list's own
 /// condition it reads, and the order it reads them in. A seek names the
-/// order's terms by place, so any statement sorting by the same terms — over
-/// other aliases, or by result column — can run it.
+/// order's terms by place, so any statement sorting by the same terms, over
+/// other aliases, can run it.
 #[derive(Debug, Clone)]
 pub struct Seek {
     /// How many of the order's leading terms hold the row's values.
@@ -405,14 +405,6 @@ impl ListOrder {
         }
     }
 
-    /// The condition holding this order's rows to those after another row of
-    /// the same statement, whose value of the order's term `at` the
-    /// expression `value_of(at)` reads: the conditions of the seeks that read
-    /// the rows after that row, any of them.
-    pub fn after_row(&self, value_of: impl Fn(usize) -> String) -> String {
-        self.rows_past(value_of, false)
-    }
-
     /// The condition holding this order's rows to those at or after the row
     /// `row` reads: the conditions of the seeks a window from that row's key
     /// runs, any of them, over the values a subquery of `row` reads. When
@@ -420,26 +412,20 @@ impl ListOrder {
     /// NULL, and the condition holds no row.
     fn page_condition(&self, row: &str) -> String {
         let value_of = |at: usize| format!("(SELECT {} FROM ({row}))", key_column(at));
-        let last = value_of(self.terms.len() - 1);
-        format!("({last} IS NOT NULL AND ({}))", self.rows_past(value_of, true))
-    }
-
-    /// The condition holding this order's rows to those after the row whose
-    /// value of the order's term `at` the expression `value_of(at)` reads,
-    /// and to that row too when `inclusive`: the conditions of the seeks that
-    /// read those rows, any of them.
-    fn rows_past(&self, value_of: impl Fn(usize) -> String, inclusive: bool) -> String {
         let values = self
             .terms
             .iter()
             .enumerate()
             .map(|(at, term)| KeyValue::Read { expression: value_of(at), nullable: term.nullable })
             .collect::<Vec<_>>();
-        self.seeks_from(&values, Side::After, inclusive, false)
+        let rows = self
+            .seeks_from(&values, Side::After, true, false)
             .iter()
             .map(|seek| format!("({})", self.condition(seek)))
             .collect::<Vec<_>>()
-            .join(" OR ")
+            .join(" OR ");
+        let last = value_of(self.terms.len() - 1);
+        format!("({last} IS NOT NULL AND ({rows}))")
     }
 
     /// The ORDER BY clause `seek` reads this order's rows in.
@@ -447,79 +433,11 @@ impl ListOrder {
         Self::ordered(&self.terms[seek.from..], seek.reversed)
     }
 
-    /// The ORDER BY clause `seek` reads a compound statement in whose result
-    /// columns hold this order's terms from column `first`, counted from one.
-    #[cfg(desktop)]
-    pub fn column_ordering(&self, seek: &Seek, first: usize) -> String {
-        (seek.from..self.terms.len())
-            .map(|at| {
-                let column = first + at;
-                if self.terms[at].descending != seek.reversed {
-                    format!("{column} DESC")
-                } else {
-                    column.to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-
-    /// The order's key columns ([`Self::key_columns`]) of a subquery aliased
-    /// `t`, then NULL columns up to `width` of them: what each SELECT of one
-    /// compound statement selects when their orders have different numbers of
-    /// terms.
-    #[cfg(desktop)]
-    pub fn key_columns_padded(&self, t: &str, width: usize) -> String {
-        (0..width)
-            .map(|at| match at < self.terms.len() {
-                true => format!("{t}.{0} AS {0}", key_column(at)),
-                false => format!("NULL AS {}", key_column(at)),
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-
-    /// The order as an ORDER BY clause over the key columns
-    /// ([`Self::key_columns`]) of a subquery aliased `t`; a column keeps its
-    /// expression's collation.
-    #[cfg(desktop)]
-    pub fn key_ordering(&self, t: &str) -> String {
-        self.terms
-            .iter()
-            .enumerate()
-            .map(|(at, term)| {
-                let column = format!("{t}.{}", key_column(at));
-                if term.descending {
-                    format!("{column} DESC")
-                } else {
-                    column
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-
     /// The seeks that together read every row before the row at `key`, each
     /// an index seek: counting what they read counts those rows without
     /// numbering the list from its start.
     pub fn seeks_before(&self, key: &OrderKey) -> Vec<Seek> {
         self.seeks(key, Side::Before, false, true)
-    }
-
-    /// The seeks that together read every row before another row of the
-    /// same statement, whose value of the order's term `at` the expression
-    /// `value_of(at)` reads: [`Self::seeks_before`] with the row's values
-    /// read in SQL, so one statement finds a row and counts the rows before
-    /// it.
-    #[cfg(desktop)]
-    pub fn seeks_before_row(&self, value_of: impl Fn(usize) -> String) -> Vec<Seek> {
-        let values = self
-            .terms
-            .iter()
-            .enumerate()
-            .map(|(at, term)| KeyValue::Read { expression: value_of(at), nullable: term.nullable })
-            .collect::<Vec<_>>();
-        self.seeks_from(&values, Side::Before, false, true)
     }
 
     /// The seeks reading the rows after the row at `key`, then those reading

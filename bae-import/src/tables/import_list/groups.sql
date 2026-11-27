@@ -8,14 +8,21 @@ SELECT watched_folder_path, group_folder FROM import_list_placement WHERE 0;
 CREATE TRIGGER IF NOT EXISTS import_list_regroup_header INSTEAD OF INSERT ON import_list_regroup
 BEGIN
     INSERT INTO import_list_placement
-        (watched_folder_path, item, key, root_position, tab)
-    SELECT NEW.watched_folder_path, 'group', NEW.group_folder, w.position, 'pending'
+        (watched_folder_path, item, key, root_position, tab, path_text)
+    SELECT NEW.watched_folder_path, 'group', NEW.group_folder, w.position, 'pending',
+           coven_path_text(NEW.group_folder)
     FROM watched_import_folders AS w
     WHERE w.path = NEW.watched_folder_path
       AND EXISTS (SELECT 1 FROM import_list_placement AS member
                   WHERE member.watched_folder_path = NEW.watched_folder_path
                     AND member.group_folder = NEW.group_folder AND member.item <> 'group')
     ON CONFLICT (watched_folder_path, item, key) DO NOTHING;
+    -- A header sorts under itself.
+    INSERT INTO import_list_reunit (entry)
+    SELECT header.entry FROM import_list_placement AS header
+    WHERE header.watched_folder_path = NEW.watched_folder_path
+      AND header.item = 'group' AND header.key = NEW.group_folder
+      AND header.unit_entry IS NULL;
     -- A header just placed is told whether its folder reads as one release.
     INSERT INTO import_list_recombine (watched_folder_path, group_folder)
     SELECT NEW.watched_folder_path, NEW.group_folder
@@ -29,16 +36,36 @@ BEGIN
                       WHERE member.watched_folder_path = NEW.watched_folder_path
                         AND member.group_folder = NEW.group_folder AND member.item <> 'group');
     -- The newest member is the first of the group's members newest first,
-    -- read off `import_list_newest_first_members` without passing the rest.
+    -- read off `import_list_by_group` without passing the rest.
     UPDATE import_list_placement
     SET group_date = newest.own_date
     FROM (SELECT member.own_date FROM import_list_placement AS member
           WHERE member.watched_folder_path = NEW.watched_folder_path
             AND member.group_folder = NEW.group_folder AND member.item <> 'group'
-          ORDER BY member.item = 'group' DESC, member.own_date IS NULL, member.own_date DESC
+          ORDER BY member.sort_undated, member.sort_newest
           LIMIT 1) AS newest
     WHERE watched_folder_path = NEW.watched_folder_path AND item = 'group' AND key = NEW.group_folder
       AND group_date IS NOT newest.own_date;
+END;
+
+-- Bring the row the row numbered `entry` sorts under in line with its group:
+-- the group's header, or the row itself in no group. A procedure entry point
+-- that stores nothing, like `import_list_replace`.
+CREATE VIEW IF NOT EXISTS import_list_reunit AS
+SELECT entry FROM import_list_placement WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS import_list_reunit_row INSTEAD OF INSERT ON import_list_reunit
+BEGIN
+    UPDATE import_list_placement
+    SET unit_entry = unit.entry
+    FROM (SELECT COALESCE(
+              (SELECT header.entry FROM import_list_placement AS header
+               WHERE header.watched_folder_path = listed.watched_folder_path
+                 AND header.item = 'group' AND header.key = listed.group_folder),
+              listed.entry) AS entry
+          FROM import_list_placement AS listed WHERE listed.entry = NEW.entry) AS unit
+    WHERE import_list_placement.entry = NEW.entry
+      AND import_list_placement.unit_entry IS NOT unit.entry;
 END;
 
 -- Bring whether the folder of the group `group_folder` under
@@ -181,6 +208,7 @@ BEGIN
                  ELSE NEW.folder END);
     INSERT INTO import_list_regroup (watched_folder_path, group_folder)
     SELECT NEW.watched_folder_path, NEW.group_folder WHERE NEW.group_folder IS NOT NULL;
+    INSERT INTO import_list_reunit (entry) VALUES (NEW.entry);
     INSERT INTO import_list_recombine (watched_folder_path, group_folder)
     SELECT NEW.watched_folder_path, substr(NEW.folder, 1, instr(NEW.folder, X'2F') - 1)
     WHERE instr(NEW.folder, X'2F') > 0;
@@ -228,4 +256,5 @@ BEGIN
     SELECT OLD.watched_folder_path, OLD.group_folder WHERE OLD.group_folder IS NOT NULL
     UNION
     SELECT NEW.watched_folder_path, NEW.group_folder WHERE NEW.group_folder IS NOT NULL;
+    INSERT INTO import_list_reunit (entry) VALUES (NEW.entry);
 END;
