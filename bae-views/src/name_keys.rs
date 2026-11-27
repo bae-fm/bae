@@ -5,6 +5,24 @@
 //! `composer.sql`, `composer_detail.sql`, `storage.sql`, `search.sql`).
 
 #[cfg(test)]
+use bae_store::WriteStatements;
+
+#[cfg(test)]
+sqlive_compose::write!(PlantEarlierAlbumKeys, r#"UPDATE album_listing SET title_sort_key = x'01'"#);
+
+#[cfg(test)]
+sqlive_compose::write!(
+    PlantEarlierArtistKeys,
+    r#"UPDATE artist_listing SET name_sort_key = x'01', sort_name_sort_key = x'01'"#
+);
+
+#[cfg(test)]
+sqlive_compose::write!(
+    PlantEarlierLinkKeys,
+    r#"UPDATE album_artist_link SET artist_sort_key = x'01'"#
+);
+
+#[cfg(test)]
 impl crate::LibraryViews {
     /// Write every stored name key as an earlier build's collation data
     /// wrote it: another key, in the listings and in the album links alike.
@@ -14,12 +32,9 @@ impl crate::LibraryViews {
     pub(crate) async fn plant_keys_of_earlier_data(&self) -> Result<(), bae_store::DbError> {
         self.store
             .call_bulk(|sql| {
-                sql.execute("UPDATE album_listing SET title_sort_key = x'01'", [])?;
-                sql.execute(
-                    "UPDATE artist_listing SET name_sort_key = x'01', sort_name_sort_key = x'01'",
-                    [],
-                )?;
-                sql.execute("UPDATE album_artist_link SET artist_sort_key = x'01'", [])?;
+                sql.run(&PlantEarlierAlbumKeysParams {})?;
+                sql.run(&PlantEarlierArtistKeysParams {})?;
+                sql.run(&PlantEarlierLinkKeysParams {})?;
                 Ok(())
             })
             .await
