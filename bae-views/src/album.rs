@@ -665,16 +665,18 @@ fn top_album_track_statement() -> String {
 }
 
 // The album `album` above its releases: its row, its credits, and the
-// library's rating system for albums with the ratings it shows; no row for an
-// album the library does not hold.
+// library's rating system for albums with the ratings it shows, *Heart*
+// showing those of `heart_minimum` stars or more; no row for an album the
+// library does not hold.
 sqlive_compose::read!(
-    writer AlbumDetailHead(album: String),
+    writer AlbumDetailHead(album: String, heart_minimum: i64),
     r#"
     SELECT album.*, credits.*, ratings.*
     FROM @bae_records::records::fragments::AlbumRow AS album
     JOIN @bae_records::records::fragments::CreditedAlbum AS credits
       ON credits.credited_album_id = :album
-    JOIN @bae_people::people::fragments::AlbumRatingsShown(album: :album) AS ratings ON 1
+    JOIN @bae_people::people::fragments::AlbumRatingsShown(
+             album: :album, heart_minimum: :heart_minimum) AS ratings ON 1
     WHERE album.row_album_id = :album
 "#
 );
@@ -687,7 +689,10 @@ fn find_album_detail_on(
     album_id: &str,
     chosen_release_id: Option<&str>,
 ) -> Result<AlbumDetailRows, DbError> {
-    let head = AlbumDetailHeadParams { album: album_id.to_string() };
+    let head = AlbumDetailHeadParams {
+        album: album_id.to_string(),
+        heart_minimum: bae_people::people::MIN_HEART_STARS as i64,
+    };
     Ok(AlbumDetailRows {
         head: bae_store::statement_optional(sql, &head)?,
         releases: build_album_release_details_on(sql, album_id)?,

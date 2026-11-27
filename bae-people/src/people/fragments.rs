@@ -37,36 +37,41 @@ sqlive_compose::fragment!(
 
 // The library's rating system for albums, as `albums`, with the ratings of the
 // album `album` that the system shows: every rating under *Stars*, those of
-// three stars or more under *Heart* ([`crate::people::is_heart`]), and none
-// under *None*, whose NULL minimum no rating reaches. `mine` is the rating of
-// the person using this device, `others` each other person's, in name then id
-// order, and `has_raters` whether either shows one. SQLite finds the album's
-// ratings through `ratings_album`.
+// `heart_minimum` stars or more under *Heart*
+// ([`crate::people::MIN_HEART_STARS`]), and none under *None*, whose NULL
+// minimum no rating reaches. `mine` is the rating of the person using this
+// device, `others` each other person's, in name then id order, and
+// `has_raters` whether either shows one. SQLite finds the album's ratings
+// through `ratings_album`.
 sqlive_compose::fragment!(
-    AlbumRatingsShown(album: String) {
+    AlbumRatingsShown(album: String, heart_minimum: i64) {
         struct ShownRating { name: String, stars: i64 }
         mine: Option<i64>,
         others: json<Vec<ShownRating>>,
         has_raters: bool,
     },
     r#"
-    WITH shown AS MATERIALIZED (
+    WITH system AS (
+        SELECT library.albums,
+               CASE library.albums WHEN 'stars' THEN 1
+                                   WHEN 'heart' THEN :heart_minimum END AS minimum
+        FROM @crate::people::rating_systems::LibraryRatingSystems AS library
+    ),
+    shown AS MATERIALIZED (
         SELECT system.albums,
                (SELECT rated.stars FROM ratings AS rated
                 WHERE rated.album_id = :album
                   AND rated.person_id = (SELECT own.member FROM coven_members AS own
                                          WHERE own.is_self)
-                  AND rated.stars >= CASE system.albums WHEN 'stars' THEN 1
-                                                        WHEN 'heart' THEN 3 END) AS mine,
+                  AND rated.stars >= system.minimum) AS mine,
                (SELECT json_group_array(json_object('name', rater.name, 'stars', rated.stars)
                                         ORDER BY rater.name, rater.id)
                 FROM ratings AS rated JOIN people AS rater ON rater.id = rated.person_id
                 WHERE rated.album_id = :album
                   AND rated.person_id IS NOT (SELECT own.member FROM coven_members AS own
                                               WHERE own.is_self)
-                  AND rated.stars >= CASE system.albums WHEN 'stars' THEN 1
-                                                        WHEN 'heart' THEN 3 END) AS others
-        FROM @crate::people::rating_systems::LibraryRatingSystems AS system
+                  AND rated.stars >= system.minimum) AS others
+        FROM system
     )
     SELECT shown.albums, shown.mine, shown.others,
            shown.mine IS NOT NULL OR json_array_length(shown.others) > 0 AS has_raters
@@ -99,10 +104,11 @@ impl AlbumRatingsShown {
 // [`AlbumRatingsShown`]'s row, whose plan a test reads.
 #[cfg(test)]
 sqlive_compose::read!(
-    writer AlbumRatingsRead(album: String),
+    writer AlbumRatingsRead(album: String, heart_minimum: i64),
     r#"
     SELECT ratings.*
-    FROM @crate::people::fragments::AlbumRatingsShown(album: :album) AS ratings
+    FROM @crate::people::fragments::AlbumRatingsShown(
+             album: :album, heart_minimum: :heart_minimum) AS ratings
 "#
 );
 

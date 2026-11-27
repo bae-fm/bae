@@ -21,6 +21,7 @@ pub(crate) use profiles::name_this_person_goes_by;
 pub mod rating_systems;
 pub use rating_systems::{
     is_heart, RatedItems, RatingSystem, RatingSystemError, RatingSystems, RatingSystemsSettings,
+    MIN_HEART_STARS,
 };
 
 struct PeopleInner {

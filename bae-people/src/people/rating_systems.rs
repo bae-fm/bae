@@ -143,7 +143,8 @@ sqlive_compose::read!(
 "#
 );
 
-const MIN_HEART_STARS: Stars = Stars::Three;
+/// The fewest stars *Heart* shows as a heart.
+pub const MIN_HEART_STARS: Stars = Stars::Three;
 
 /// Whether *Heart* shows a rating of `stars` as a heart: three stars or
 /// more.
