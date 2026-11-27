@@ -134,49 +134,6 @@ fn relink_credit_name(
     Ok(())
 }
 
-/// The other printed names of the artist `artist_id` shows as (a SQL
-/// expression), in the order of `order_key` (a SQL expression over
-/// `credit_name.name`: the name's sort key), as a JSON array: its own rows and those of the
-/// artists merged into it, read by the artists' shown-as index.
-pub fn credit_names_json_sql(artist_id: &str, order_key: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object('artist_id', credit_name.artist_id, \
-                                              'key', credit_name.name_key, \
-                                              'name', credit_name.name) \
-                                  ORDER BY {order_key}, credit_name.name_key) \
-          {from})",
-        from = credit_names_from_sql(artist_id),
-    )
-}
-
-/// The rows of the other printed names of the artist `artist_id` (an SQL
-/// expression), as `credit_name`: the list's `FROM` and `WHERE` clauses.
-fn credit_names_from_sql(artist_id: &str) -> String {
-    format!(
-        "FROM artist_shown_as shown \
-         JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
-         WHERE shown.shown_artist_id = {artist_id}"
-    )
-}
-
-/// The other printed names [`credit_names_json_sql`] reads into `column`.
-pub fn credit_names_column(row: &Row<'_>, column: &str) -> rusqlite::Result<Vec<ArtistCreditName>> {
-    #[derive(serde::Deserialize)]
-    struct Stored {
-        artist_id: String,
-        key: String,
-        name: String,
-    }
-    let stored: Vec<Stored> = bae_store::read::json_column(row, column)?;
-    Ok(stored
-        .into_iter()
-        .map(|stored| ArtistCreditName {
-            artist_id: stored.artist_id,
-            credit: CreditName { key: stored.key, name: stored.name },
-        })
-        .collect())
-}
-
 // The other printed names of the artist the parent row shows as, those of the
 // artists merged into it among them, in name order in the device's language,
 // ties going by key, as a JSON array.
