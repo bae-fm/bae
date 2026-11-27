@@ -129,19 +129,7 @@ async fn a_row_whose_columns_disagree_is_refused() {
         let columns =
             FailureColumns { category, storage_failure, required_access, size_bytes, limit_bytes };
         let described = format!("{columns:?}");
-        let inserted = db
-            .call(move |sql| {
-                sql.run(&KeepStartFailureParams {
-                    category: columns.category,
-                    storage_failure: columns.storage_failure,
-                    required_access: columns.required_access,
-                    size_bytes: columns.size_bytes,
-                    limit_bytes: columns.limit_bytes,
-                    detail: "detail",
-                })?;
-                Ok(())
-            })
-            .await;
+        let inserted = db.call(move |sql| Ok(columns.keep(sql, "detail")?)).await;
         assert!(inserted.is_err(), "{described} was kept");
     }
 }
