@@ -1402,6 +1402,10 @@ of:
   table of contents reads, and each CUE sheet with no such log beside it, in
   the same folder. A sheet beside a log describes the disc the log already
   hashed, so it isn't hashed again; a disc two files hash alike counts once.
+  bae reads the table of contents of an Exact Audio Copy or XLD log in whatever
+  language the ripper wrote it: it finds the table by the dashed rule under its
+  five column headings, never by their words, and the table's rows end at the
+  first line with no `|`.
   bae hashes the track offsets the way MusicBrainz does; it never reads a
   drive. Carol's box, a CUE sheet per disc, yields two Disc IDs.
 - **Barcodes**, decoded from the bars on the artwork, read from the digits
