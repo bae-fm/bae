@@ -110,28 +110,38 @@ async fn a_class_no_start_fails_in_is_refused() {
 #[tokio::test]
 async fn a_row_whose_columns_disagree_is_refused() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    for columns in [
+    for (category, storage_failure, required_access, size_bytes, limit_bytes) in [
         // A storage failure with no reason.
-        "'storage', NULL, NULL, NULL, NULL",
+        ("storage", None, None, None, None),
         // A reason on a class that isn't storage.
-        "'keyring', 'network', NULL, NULL, NULL",
+        ("keyring", Some("network"), None, None, None),
         // An access failure naming no access.
-        "'storage', 'access_not_granted', NULL, NULL, NULL",
+        ("storage", Some("access_not_granted"), None, None, None),
         // An access on a reason that names none.
-        "'storage', 'network', 'one_drive', NULL, NULL",
+        ("storage", Some("network"), Some("one_drive"), None, None),
         // A size without its limit.
-        "'storage', 'copy_too_large', NULL, 10, NULL",
+        ("storage", Some("copy_too_large"), None, Some(10), None),
         // A size on a class that isn't storage.
-        "'internal', NULL, NULL, 10, 5",
+        ("internal", None, None, Some(10), Some(5)),
         // coven's storage bug as a storage reason: it is kept as internal.
-        "'storage', 'bug', NULL, NULL, NULL",
+        ("storage", Some("bug"), None, None, None),
     ] {
-        let sql = format!(
-            "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
-             required_access, size_bytes, limit_bytes, detail) \
-             VALUES (1, {columns}, 'detail')"
-        );
-        let inserted = db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await;
-        assert!(inserted.is_err(), "{columns} was kept");
+        let columns =
+            FailureColumns { category, storage_failure, required_access, size_bytes, limit_bytes };
+        let described = format!("{columns:?}");
+        let inserted = db
+            .call(move |sql| {
+                sql.run(&KeepStartFailureParams {
+                    category: columns.category,
+                    storage_failure: columns.storage_failure,
+                    required_access: columns.required_access,
+                    size_bytes: columns.size_bytes,
+                    limit_bytes: columns.limit_bytes,
+                    detail: "detail",
+                })?;
+                Ok(())
+            })
+            .await;
+        assert!(inserted.is_err(), "{described} was kept");
     }
 }
