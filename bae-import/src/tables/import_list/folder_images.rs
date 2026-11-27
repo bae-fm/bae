@@ -5,6 +5,7 @@
 use super::*;
 use crate::folder_scanner::FileVersion;
 use crate::{MappingImage, Neighbors};
+use bae_store::statement_row;
 
 /// Which candidate's folder images a lightbox shows, and the file id of the
 /// image the person moved to last.
@@ -38,73 +39,55 @@ pub struct FolderImagesSnapshot {
     pub images: Option<FolderImages>,
 }
 
-/// One row: the folder's images as a JSON array, and the image the lightbox
-/// shows with the file ids before and after it, wrapping around the ends.
-/// The lightbox shows the image `:focus` names while the folder holds it,
-/// else the first.
-fn folder_images_sql() -> String {
-    let image = "json_object('id', i.id, 'name', i.file_name, 'path', hex(i.absolute_path), \
-                 'size', i.size, 'modified_at_ns', i.modified_at_ns)";
-    format!(
-        "
-WITH images AS MATERIALIZED (
-    SELECT f.relative_path AS id, f.file_name, f.absolute_path, f.size, f.modified_at_ns,
-           ROW_NUMBER() OVER (ORDER BY f.position) - 1 AS n, COUNT(*) OVER () AS total
-    FROM scan_candidate_file AS f
-    WHERE f.watched_folder_path =
-              (SELECT watched_folder_path FROM scan_candidate WHERE path = :key LIMIT 1)
-      AND f.candidate_path = :key AND f.role = 'artwork'
-),
-focused AS (SELECT n FROM images ORDER BY id IS :focus DESC, n LIMIT 1)
-SELECT json_group_array(json({image}) ORDER BY i.n),
-       CASE WHEN COUNT(i.n) > 0 THEN json_object(
-           'image', json(MAX(CASE WHEN i.n = f.n THEN {image} END)),
-           'neighbors', CASE WHEN COUNT(i.n) > 1 THEN json_object(
-               'previous', MAX(CASE WHEN i.n = (f.n + i.total - 1) % i.total THEN i.id END),
-               'next', MAX(CASE WHEN i.n = (f.n + 1) % i.total THEN i.id END)) END)
-       END
-FROM images AS i LEFT JOIN focused AS f"
-    )
-}
+// One row: the images of the folder of the candidate `:key` as a JSON array,
+// in the order the scan stored them, and the image the lightbox shows with the
+// file ids before and after it, wrapping around the ends. The lightbox shows
+// the image `:focus` names while the folder holds it, else the first.
+sqlive_compose::read!(
+    LightboxImages(key: crate::CandidateKey, focus: Option<String>) {
+        struct LightboxImage { id: String, name: String, path: hex, size: u64, modified_at_ns: i64 }
+        struct LightboxAround { previous: String, next: String }
+        struct LightboxFocus { image: LightboxImage, neighbors: Option<LightboxAround> }
+        images: json<Vec<LightboxImage>>,
+        focus: json<Option<LightboxFocus>>
+    },
+    r#"
+    WITH images AS MATERIALIZED (
+        SELECT file.relative_path AS id, file.file_name, file.absolute_path, file.size,
+               file.modified_at_ns,
+               ROW_NUMBER() OVER (ORDER BY file.position) - 1 AS n, COUNT(*) OVER () AS total
+        FROM @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key) AS file
+        WHERE file.role = 'artwork'
+    ),
+    focused AS (SELECT n FROM images ORDER BY id IS :focus DESC, n LIMIT 1)
+    SELECT json_group_array(json_object('id', i.id, 'name', i.file_name,
+               'path', hex(i.absolute_path), 'size', i.size,
+               'modified_at_ns', i.modified_at_ns) ORDER BY i.n) AS images,
+           CASE WHEN COUNT(i.n) > 0 THEN json_object(
+               'image', json(MAX(CASE WHEN i.n = f.n THEN json_object(
+                   'id', i.id, 'name', i.file_name, 'path', hex(i.absolute_path),
+                   'size', i.size, 'modified_at_ns', i.modified_at_ns) END)),
+               'neighbors', CASE WHEN COUNT(i.n) > 1 THEN json_object(
+                   'previous',
+                   MAX(CASE WHEN i.n = (f.n + i.total - 1) % i.total THEN i.id END),
+                   'next', MAX(CASE WHEN i.n = (f.n + 1) % i.total THEN i.id END)) END)
+           END AS focus
+    FROM images AS i LEFT JOIN focused AS f
+"#
+);
 
-/// One image as the statement returns it.
-#[derive(serde::Deserialize)]
-struct ImageJson {
-    id: String,
-    name: String,
-    #[serde(deserialize_with = "path_column::from_hex")]
-    path: std::path::PathBuf,
-    size: u64,
-    modified_at_ns: i64,
-}
-
-impl ImageJson {
-    fn image(self) -> MappingImage {
-        MappingImage {
+impl LightboxImage {
+    fn image(self) -> Result<MappingImage, DbError> {
+        Ok(MappingImage {
             file_id: self.id,
             name: self.name,
             file: FileVersion {
-                path: self.path,
+                path: path_column::decode(self.path)?,
                 size: self.size,
                 modified_at_ns: self.modified_at_ns,
             },
-        }
+        })
     }
-}
-
-/// The file ids before and after the shown image, as the statement returns
-/// them.
-#[derive(serde::Deserialize)]
-struct NeighborsJson {
-    previous: String,
-    next: String,
-}
-
-/// The shown image, as the statement returns it.
-#[derive(serde::Deserialize)]
-struct FocusJson {
-    image: ImageJson,
-    neighbors: Option<NeighborsJson>,
 }
 
 /// The folder images `request`'s lightbox shows, as one read.
@@ -112,27 +95,23 @@ fn folder_images_on(
     sql: &impl coven::SqlRead,
     request: &FolderImagesRequest,
 ) -> Result<FolderImages, DbError> {
-    let (images, focus) = sql.query_row(
-        &folder_images_sql(),
-        named_params! { ":key": &request.candidate, ":focus": &request.focus },
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
+    let row = statement_row(
+        sql,
+        &LightboxImagesParams { key: request.candidate.clone(), focus: request.focus.clone() },
     )?;
-    let images: Vec<ImageJson> = serde_json::from_str(&images)
-        .map_err(|error| DbError::unreadable_json("a folder's images", &images, error))?;
-    let focus = focus
-        .map(|json| {
-            serde_json::from_str::<FocusJson>(&json)
-                .map_err(|error| DbError::unreadable_json("a lightbox's image", &json, error))
-        })
-        .transpose()?;
     Ok(FolderImages {
-        images: images.into_iter().map(ImageJson::image).collect(),
-        focus: focus.map(|focus| FolderImageFocus {
-            image: focus.image.image(),
-            neighbors: focus
-                .neighbors
-                .map(|neighbors| Neighbors { previous: neighbors.previous, next: neighbors.next }),
-        }),
+        images: row.images.into_iter().map(LightboxImage::image).collect::<Result<_, _>>()?,
+        focus: row
+            .focus
+            .map(|focus| {
+                Ok::<_, DbError>(FolderImageFocus {
+                    image: focus.image.image()?,
+                    neighbors: focus
+                        .neighbors
+                        .map(|around| Neighbors { previous: around.previous, next: around.next }),
+                })
+            })
+            .transpose()?,
     })
 }
 
