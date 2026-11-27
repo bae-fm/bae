@@ -10,7 +10,7 @@ runs:
     - name: Name the agent-instructions commit
       id: pin
       shell: bash
-      run: echo "rev=ecc30446abdda46bc7194c78b355d53f1b687b7e" >> "$GITHUB_OUTPUT"
+      run: echo "rev=212a4e4c7b34e07d95b7e59618e83cc6f39c4157" >> "$GITHUB_OUTPUT"
     # builds compiles on Linux too, since `builds host setup` builds it on
     # Linux hosts. It goes in a folder of its own outside ~/.local/bin, so
     # scripts/cargo.sh still runs cargo itself on CI.
