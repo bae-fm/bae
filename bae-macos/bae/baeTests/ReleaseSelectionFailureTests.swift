@@ -110,7 +110,7 @@ struct ReleaseSelectionFailureTests {
     )
     func rowOwnsFailureAndRetry() async throws {
         let pressings = PreviewData.searchStateFoundExact.identifiedGroups
-            .flatMap(\.pressings)
+            .flatMap(\.sections).flatMap(\.pressings)
         let pressing = try #require(pressings.first)
         let failure = try await failedSelection(
             pressing: pressing,
