@@ -47,15 +47,17 @@ pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) 
         media: response.media.iter().map(|medium| medium.format.as_deref()),
     });
     let pressing = Pressing {
-        year: super::parse_year(response.date.as_deref()),
-        labels: release_labels(&response.label_info),
-        // MusicBrainz writes an empty barcode for a release it knows has none.
-        barcodes: response
-            .barcode
-            .iter()
-            .filter(|barcode| !barcode.trim().is_empty())
-            .cloned()
-            .collect(),
+        typed: bae_types::pressing::TypedPressing {
+            year: super::parse_year(response.date.as_deref()),
+            labels: release_labels(&response.label_info),
+            // MusicBrainz writes an empty barcode for a release it knows has none.
+            barcodes: response
+                .barcode
+                .iter()
+                .filter(|barcode| !barcode.trim().is_empty())
+                .cloned()
+                .collect(),
+        },
         facts,
     };
     (pressing, media)

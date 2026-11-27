@@ -51,10 +51,12 @@ fn make_release(album_id: &str) -> DbRelease {
         album_id: album_id.to_string(),
         release_name: None,
         pressing: bae_types::pressing::Pressing {
-            year: Some(2024),
-            labels: Vec::new(),
+            typed: bae_types::pressing::TypedPressing {
+                year: Some(2024),
+                labels: Vec::new(),
+                barcodes: Vec::new(),
+            },
             facts: Default::default(),
-            barcodes: Vec::new(),
         },
 
         source_folder_name: None,

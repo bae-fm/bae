@@ -31,8 +31,8 @@ fn the_pressing_is_the_selected_record_s_alone() {
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1980));
-    assert_eq!(parsed.pressing.year, Some(2005));
-    assert_eq!(parsed.pressing.labels[0].name(), Some("Selected Label"));
+    assert_eq!(parsed.pressing.typed.year, Some(2005));
+    assert_eq!(parsed.pressing.typed.labels[0].name(), Some("Selected Label"));
     assert_eq!(
         parsed.pressing.facts.media,
         bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1).media,
@@ -42,14 +42,14 @@ fn the_pressing_is_the_selected_record_s_alone() {
         parsed.pressing.facts.area, None,
         "the linked release fills nothing the selected one leaves out"
     );
-    assert!(parsed.pressing.barcodes.is_empty());
+    assert!(parsed.pressing.typed.barcodes.is_empty());
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
     assert_eq!(crate::release_values::value_labels(&parsed)[1], "1.2.1");
     let detail = payloads.extract().unwrap().detail(&[]);
-    assert_eq!(detail.labels, parsed.pressing.labels);
+    assert_eq!(detail.labels, parsed.pressing.typed.labels);
     assert_eq!(detail.facts, parsed.pressing.facts);
-    assert_eq!(detail.year, parsed.pressing.year);
+    assert_eq!(detail.year, parsed.pressing.typed.year);
 }
 
 /// The year an album first came out is resolved as its year is: its own
@@ -102,7 +102,7 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
     assert_eq!(parsed.album_title, "Master Album");
     assert_eq!(parsed.album_credits[0].credit.name, "Selected Artist");
     assert_eq!(parsed.album_year, Some(1980));
-    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.pressing.typed.year, None);
 }
 
 #[test]
@@ -118,7 +118,7 @@ fn linked_release_album_date_survives_an_unavailable_parent_document() {
     );
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();
     assert_eq!(parsed.album_year, Some(1979));
-    assert_eq!(parsed.pressing.year, Some(2005));
+    assert_eq!(parsed.pressing.typed.year, Some(2005));
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn malformed_group_credit_preserves_selected_tracks_and_valid_supplemental_field
     let parsed = parse(&payloads).unwrap();
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1979));
-    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.pressing.typed.year, None);
     assert_eq!(parsed.album_credits[0].credit.name, "Selected Artist");
     assert_eq!(
         parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
@@ -229,9 +229,9 @@ fn malformed_linked_release_credit_keeps_its_valid_credit_and_fills_no_pressing_
     assert_eq!(parsed.album_year, Some(1979));
     // The linked record is the same pressing on the other catalog; the
     // selected record states none of these, and the linked one fills none.
-    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.pressing.typed.year, None);
     assert_eq!(parsed.pressing.facts.area, None);
-    assert!(parsed.pressing.barcodes.is_empty());
+    assert!(parsed.pressing.typed.barcodes.is_empty());
     assert_eq!(
         parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
         Some("linked-artist")

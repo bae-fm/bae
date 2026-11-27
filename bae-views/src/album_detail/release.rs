@@ -264,7 +264,7 @@ impl ReleaseDetail {
 
         let name = ReleaseName::of(
             release.release_name.as_deref(),
-            release.pressing.year,
+            release.pressing.typed.year,
             &release.pressing.facts.media,
             raw.release_number,
         );
@@ -309,9 +309,9 @@ impl ReleaseDetail {
             move_to_this_device,
             summary,
             name,
-            year: release.pressing.year,
-            distinct_year: release.pressing.year.filter(|year| Some(*year) != ctx.album_year),
-            labels: release.pressing.labels,
+            year: release.pressing.typed.year,
+            distinct_year: release.pressing.typed.year.filter(|year| Some(*year) != ctx.album_year),
+            labels: release.pressing.typed.labels,
             facts: release.pressing.facts,
             total_duration_ms,
             tracks,

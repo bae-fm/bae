@@ -31,9 +31,9 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert_eq!(release.pressing.year, Some(1996));
+    assert_eq!(release.pressing.typed.year, Some(1996));
     assert_eq!(
-        release.pressing.labels,
+        release.pressing.typed.labels,
         vec![
             ReleaseLabel::of(Some("Label A"), Some("AB 100")),
             ReleaseLabel::of(Some("Label B"), Some("CL 719")),
@@ -83,26 +83,28 @@ async fn a_user_edit_overlays_the_picked_release() {
     generate_album_files(&f.temp, &album_dir, &["01 Track One.flac"]);
 
     let edit = ReleaseUserEdit {
-        album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![bae_import::Credited::plain(ArtistAssignment::named(
-            "Artist Edited",
-        ))],
-        album_year: Some(1977),
-        pressing: bae_types::pressing::Pressing {
-            // User typed JP — we expect this to land on the release row.
-            facts: bae_types::pressing::PressingFacts {
-                area: Some(bae_types::pressing::ReleaseArea::Country(
-                    bae_types::pressing::Country::from_code("JP").unwrap(),
-                )),
-                ..Default::default()
-            },
-            ..bae_types::pressing::Pressing::blank()
+        metadata: ReleaseMetadataEdit {
+            album_title: "Edited Title".to_string(),
+            album_artist_assignments: vec![bae_import::Credited::plain(ArtistAssignment::named(
+                "Artist Edited",
+            ))],
+            album_year: Some(1977),
+            pressing: Default::default(),
+            tracks: vec![TrackUserEdit {
+                title: "Edited Track".to_string(),
+                artist_assignments: TrackArtistAssignments::AlbumArtists,
+                file: Some(bae_import::AudioFile::Standalone {
+                    file_id: "01 Track One.flac".into(),
+                }),
+            }],
         },
-        tracks: vec![TrackUserEdit {
-            title: "Edited Track".to_string(),
-            artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: Some(bae_import::AudioFile::Standalone { file_id: "01 Track One.flac".into() }),
-        }],
+        // User typed JP — we expect this to land on the release row.
+        facts: bae_types::pressing::PressingFacts {
+            area: Some(bae_types::pressing::ReleaseArea::Country(
+                bae_types::pressing::Country::from_code("JP").unwrap(),
+            )),
+            ..Default::default()
+        },
     };
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
@@ -131,7 +133,7 @@ async fn a_user_edit_overlays_the_picked_release() {
     );
     // The overlay is the whole pressing block, so the fields it leaves empty
     // are written empty over the seed's.
-    assert!(release.pressing.year.is_none());
+    assert!(release.pressing.typed.year.is_none());
     assert!(release.pressing.facts.media.is_empty());
 
     let album = f.library.records().find_album_by_id(&release.album_id).await.unwrap().unwrap();

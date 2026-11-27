@@ -32,7 +32,7 @@ pub async fn composed_work_db(
         .performs(TRACK_A, WORK_CHILD_A)
         .edit(|rows| {
             let pressing = &mut rows.releases[0].pressing;
-            pressing.year = Some(2026);
+            pressing.typed.year = Some(2026);
             pressing.facts.media = vec![MediaCount { medium: Medium::Cd, count: 1 }];
             rows.track_works[0].id = TRACK_WORK_A.to_string();
         })

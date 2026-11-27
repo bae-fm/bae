@@ -250,18 +250,21 @@ fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
     .expect("tags read");
     let catalog = crate::RawReleaseEdit::from_user_edit(
         crate::ReleaseUserEdit {
-            album_title: "Album Title".into(),
-            album_artist_assignments: Vec::new(),
-            album_year: None,
-            pressing: bae_types::pressing::Pressing::blank(),
-            tracks: ["Catalog One", "Catalog Two", "Catalog Three"]
-                .into_iter()
-                .map(|title| crate::TrackUserEdit {
-                    title: title.into(),
-                    artist_assignments: crate::TrackArtistAssignments::AlbumArtists,
-                    file: None,
-                })
-                .collect(),
+            metadata: crate::ReleaseMetadataEdit {
+                album_title: "Album Title".into(),
+                album_artist_assignments: Vec::new(),
+                album_year: None,
+                pressing: Default::default(),
+                tracks: ["Catalog One", "Catalog Two", "Catalog Three"]
+                    .into_iter()
+                    .map(|title| crate::TrackUserEdit {
+                        title: title.into(),
+                        artist_assignments: crate::TrackArtistAssignments::AlbumArtists,
+                        file: None,
+                    })
+                    .collect(),
+            },
+            facts: Default::default(),
         },
         "catalog-track",
     );

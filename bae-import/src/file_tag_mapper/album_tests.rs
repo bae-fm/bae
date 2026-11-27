@@ -50,11 +50,11 @@ fn track_artist_names(values: &ReleaseValues, index: usize) -> Option<Vec<&str>>
 fn a_file_s_dates_name_the_album_year_and_the_pressing_year() {
     let values = read_commented(&[&[("DATE", "2005"), ("ORIGINALDATE", "1971")]]);
     assert_eq!(values.album_year, Some(1971));
-    assert_eq!(values.pressing.year, Some(2005));
+    assert_eq!(values.pressing.typed.year, Some(2005));
 
     let values = read_commented(&[&[("DATE", "2005")]]);
     assert_eq!(values.album_year, Some(2005));
-    assert_eq!(values.pressing.year, None);
+    assert_eq!(values.pressing.typed.year, None);
 }
 
 /// Files whose dates name the same years agree on them; files that state
@@ -65,11 +65,11 @@ fn files_give_the_years_they_agree_on_else_none() {
     let both: &[(&str, &str)] = &[("DATE", "2005"), ("ORIGINALDATE", "1971")];
     let values = read_commented(&[&[("TITLE", "Undated")], both, both]);
     assert_eq!(values.album_year, Some(1971));
-    assert_eq!(values.pressing.year, Some(2005));
+    assert_eq!(values.pressing.typed.year, Some(2005));
 
     let values = read_commented(&[&[("DATE", "1963")], &[("DATE", "1987")], &[("DATE", "1987")]]);
     assert_eq!(values.album_year, None);
-    assert_eq!(values.pressing.year, None);
+    assert_eq!(values.pressing.typed.year, None);
 }
 
 /// A file naming two artists gives its track two credits, in order.
@@ -255,7 +255,7 @@ fn cue_sheets_give_the_album_like_files() {
     assert_eq!(values.album_title, "Album Title");
     assert_eq!(album_artist_names(&values), ["Artist Name"]);
     assert_eq!(values.album_year, Some(1971));
-    assert_eq!(values.pressing.year, Some(2005));
+    assert_eq!(values.pressing.typed.year, Some(2005));
 
     let disc1 = cue_sheet("Album Alpha", vec![titled_cue_track(1, "One")]);
     let mut disc2 = cue_sheet("Album Alpha", vec![titled_cue_track(1, "Two")]);

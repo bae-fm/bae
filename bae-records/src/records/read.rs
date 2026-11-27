@@ -444,9 +444,11 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
         album_id: row.get("album_id")?,
         release_name: row.get("release_name")?,
         pressing: bae_types::pressing::Pressing {
-            year: row.get("year")?,
-            labels: super::pressing_columns::read_labels(row, "labels")?,
-            barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,
+            typed: bae_types::pressing::TypedPressing {
+                year: row.get("year")?,
+                labels: super::pressing_columns::read_labels(row, "labels")?,
+                barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,
+            },
             facts: super::pressing_columns::read_facts(row, "")?,
         },
         source_folder_name: row.get("source_folder_name")?,

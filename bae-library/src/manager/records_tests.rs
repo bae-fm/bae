@@ -223,12 +223,12 @@ async fn set_records_does_not_touch_metadata_columns() {
         discogs_details: vec![bae_types::pressing::DiscogsDetail::Remastered],
         ..bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1)
     };
-    release.pressing.labels = vec![
+    release.pressing.typed.labels = vec![
         bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
         bae_types::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
     ];
-    release.pressing.barcodes = vec!["1234567890".to_string(), "5012345678900".to_string()];
-    release.pressing.year = Some(1999);
+    release.pressing.typed.barcodes = vec!["1234567890".to_string(), "5012345678900".to_string()];
+    release.pressing.typed.year = Some(1999);
     manager.records.insert_release(&release).await.unwrap();
     manager
         .records
@@ -260,9 +260,9 @@ async fn set_records_does_not_touch_metadata_columns() {
     // Pressing fields untouched.
     let after = manager.records.find_release_by_id(&release.id).await.unwrap().unwrap();
     assert_eq!(after.pressing.facts, release.pressing.facts);
-    assert_eq!(after.pressing.labels, release.pressing.labels);
-    assert_eq!(after.pressing.barcodes, ["1234567890", "5012345678900"]);
-    assert_eq!(after.pressing.year, Some(1999));
+    assert_eq!(after.pressing.typed.labels, release.pressing.typed.labels);
+    assert_eq!(after.pressing.typed.barcodes, ["1234567890", "5012345678900"]);
+    assert_eq!(after.pressing.typed.year, Some(1999));
 
     // Album-level fields untouched (still in the same album, since
     // both old and new identities are in the only release).

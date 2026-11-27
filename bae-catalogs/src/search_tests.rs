@@ -479,10 +479,10 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     let parsed = mb_release(&response).every_medium_values().unwrap();
     let committed = parsed.pressing;
 
-    assert_eq!(detail.year, committed.year);
-    assert_eq!(detail.labels, committed.labels);
+    assert_eq!(detail.year, committed.typed.year);
+    assert_eq!(detail.labels, committed.typed.labels);
     assert_eq!(detail.facts, committed.facts);
-    assert_eq!(detail.barcodes, committed.barcodes);
+    assert_eq!(detail.barcodes, committed.typed.barcodes);
     assert_eq!(detail.facts.status, Some(bae_types::pressing::ReleaseStatus::Promotion));
 }
 

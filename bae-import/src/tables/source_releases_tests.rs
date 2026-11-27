@@ -625,7 +625,7 @@ async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetc
 /// row hangs off it once stored.
 fn barcoded(catalog: LookupCatalog, key: &str, barcode: &str) -> SourceRelease {
     let mut release = SourceRelease::for_test(LookupRef::new(catalog, key));
-    release.metadata.pressing.barcodes = vec![barcode.to_string()];
+    release.metadata.pressing.typed.barcodes = vec![barcode.to_string()];
     release
 }
 

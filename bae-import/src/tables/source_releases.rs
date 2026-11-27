@@ -91,7 +91,7 @@ fn derived_album_year(first_year: Option<i32>, pressing_year: Option<i32>) -> Op
 /// another release.
 fn check_derived_facts(release: &SourceRelease) {
     let metadata = &release.metadata;
-    let derived = derived_album_year(metadata.album.first_year, metadata.pressing.year);
+    let derived = derived_album_year(metadata.album.first_year, metadata.pressing.typed.year);
     assert!(
         metadata.album.year == derived,
         "{:?} states album year {:?}, not its first year or pressing year {derived:?}",
@@ -142,7 +142,7 @@ pub(super) fn replace_source_release_on(
             release.source_group_id,
             metadata.album.title,
             metadata.album.first_year,
-            pressing.year,
+            pressing.typed.year,
             facts.country,
             facts.region,
             facts.status,
@@ -160,7 +160,7 @@ pub(super) fn replace_source_release_on(
             params![catalog, key],
         )?;
     }
-    for (position, label) in pressing.labels.iter().enumerate() {
+    for (position, label) in pressing.typed.labels.iter().enumerate() {
         sql.execute(
             "INSERT INTO source_release_label \
                  (catalog, release_id, position, name, catalog_number, \
@@ -177,7 +177,7 @@ pub(super) fn replace_source_release_on(
             ],
         )?;
     }
-    for (position, barcode) in pressing.barcodes.iter().enumerate() {
+    for (position, barcode) in pressing.typed.barcodes.iter().enumerate() {
         sql.execute(
             "INSERT INTO source_release_barcode (catalog, release_id, position, barcode) \
              VALUES (?, ?, ?, ?)",
@@ -372,8 +372,14 @@ fn stored_release_of(
         })
         .collect::<Result<_, DbError>>()?;
     // The media counts are the mediums' and formats', counted below.
-    let mut pressing =
-        Pressing { year: stored.year, labels, barcodes: stored.barcodes.barcodes, facts };
+    let mut pressing = Pressing {
+        typed: bae_types::pressing::TypedPressing {
+            year: stored.year,
+            labels,
+            barcodes: stored.barcodes.barcodes,
+        },
+        facts,
+    };
     let album_artists = stored
         .album_artists
         .album_artists
@@ -493,7 +499,7 @@ fn stored_release_of(
             album: AlbumMetadata {
                 title: stored.album_title,
                 artists: album_artists,
-                year: derived_album_year(stored.album_first_year, pressing.year),
+                year: derived_album_year(stored.album_first_year, pressing.typed.year),
                 first_year: stored.album_first_year,
             },
             pressing,

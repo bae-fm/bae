@@ -12,8 +12,8 @@ use bae_catalogs::musicbrainz::{
     MbUrlResource, MbWork,
 };
 use bae_import::{
-    ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit, ScanEvent,
-    TrackArtistAssignments, TrackUserEdit,
+    ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseMetadataEdit,
+    ReleaseUserEdit, ScanEvent, TrackArtistAssignments, TrackUserEdit,
 };
 use bae_records::LibraryImageType;
 use bae_types::pressing::ReleaseLabel;

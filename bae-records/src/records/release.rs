@@ -65,18 +65,18 @@ fn update_release_typed_pressing_on(
 ) -> Result<(), IdentityWriteError> {
     tx.execute(
         "UPDATE releases SET year = ? WHERE id = ?",
-        params![release.pressing.year, release.id],
+        params![release.pressing.typed.year, release.id],
     )?;
     super::label_resolution::write_release_labels_on(
         tx,
         &release.id,
-        &release.pressing.labels,
+        &release.pressing.typed.labels,
         pressing,
     )?;
     super::write::replace_release_barcodes(
         tx,
         &release.id,
-        &release.pressing.barcodes,
+        &release.pressing.typed.barcodes,
         pressing.barcode_ids,
     )?;
     Ok(())

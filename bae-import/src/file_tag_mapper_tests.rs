@@ -346,7 +346,7 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(parsed.album_title, "Album Title");
     // One year is the album's; it names no pressing.
     assert_eq!(parsed.album_year, Some(1999));
-    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.pressing.typed.year, None);
     assert!(parsed.pressing.facts.media.is_empty());
 
     assert_eq!(parsed.tracks.len(), 2);
@@ -511,7 +511,7 @@ fn missing_optional_tags_yields_none_and_defaults() {
 
     let parsed = map_tags(&temp, &[f1, f2]).unwrap();
     assert_eq!(parsed.album_year, None);
-    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.pressing.typed.year, None);
     assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1.1.1", "1.1.2"]);
 }
 

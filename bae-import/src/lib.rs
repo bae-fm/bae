@@ -360,7 +360,7 @@ pub use types::{
     LibraryTrack, ListRow, MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit,
     RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError,
     ReleaseEditTrackContext, ReleaseMetadataEdit, ReleaseUserEdit, StandingCredit,
-    TrackArtistAssignments, TrackBinding, TrackUserEdit, TypedPressing,
+    TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

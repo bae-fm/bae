@@ -71,12 +71,6 @@ mod release_metadata_update_input {
         }
     }
 
-    /// The whole edit core validates, over a release whose pressing states
-    /// nothing.
-    fn whole(edit: AutomationReleaseMetadataEdit) -> bae_import::ReleaseUserEdit {
-        edit.into_core().over(Default::default())
-    }
-
     /// No metadata edit replaces what the pressing is.
     #[test]
     fn an_edit_naming_the_pressing_facts_is_refused() {
@@ -88,20 +82,20 @@ mod release_metadata_update_input {
 
     #[test]
     fn an_empty_album_title_fails_the_edit_rule() {
-        let wire = whole(edit("", &["Artist Alpha"]));
+        let wire = edit("", &["Artist Alpha"]).into_core();
         assert_eq!(wire.validate(), Err(bae_import::EditValidationError::EmptyAlbumTitle),);
     }
 
     #[test]
     fn an_artist_less_edit_fails_the_edit_rule() {
-        let wire = whole(edit("Album Alpha", &[]));
+        let wire = edit("Album Alpha", &[]).into_core();
         assert_eq!(wire.validate(), Err(bae_import::EditValidationError::NoAlbumArtist),);
     }
 
     /// An untrimmed title is trimmed, as the desktop editor does, not refused.
     #[test]
     fn an_untrimmed_album_title_normalizes() {
-        let wire = whole(edit("  Album Alpha  ", &["  Artist Alpha  "])).normalized();
+        let wire = edit("  Album Alpha  ", &["  Artist Alpha  "]).into_core().normalized();
         assert_eq!(wire.validate(), Ok(()));
         assert_eq!(wire.album_title, "Album Alpha");
         assert_eq!(
@@ -128,7 +122,10 @@ mod release_metadata_update_input {
             join: None,
         }];
 
-        let round_trip = AutomationReleaseUserEdit::from_core(whole(edit));
+        let round_trip = AutomationReleaseUserEdit::from_core(bae_import::ReleaseUserEdit {
+            metadata: edit.into_core(),
+            facts: Default::default(),
+        });
         let AutomationArtistAssignment::Picked { credit_name: None, artist: round_trip_artist } =
             &round_trip.album_artist_assignments[0].artist
         else {

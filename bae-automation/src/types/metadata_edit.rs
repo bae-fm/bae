@@ -33,7 +33,7 @@ pub struct AutomationReleaseMetadataEdit {
     pub tracks: Vec<AutomationTrackUserEdit>,
 }
 
-/// Mirrors `bae_import::TypedPressing`.
+/// Mirrors `bae_types::pressing::TypedPressing`.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AutomationTypedPressing {

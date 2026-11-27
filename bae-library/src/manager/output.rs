@@ -313,7 +313,7 @@ impl LibraryManager {
     ) -> Result<String, LibraryError> {
         let album = self.records.get_album_for_release(release).await?;
         let album_artists = self.records.get_artists_for_album(&album.id).await?;
-        let labels = &release.pressing.labels;
+        let labels = &release.pressing.typed.labels;
         let tags = crate::save::SaveFolderTags {
             artist: bae_records::credits::library_line(&album_artists).plain_text(),
             album_year: album.year,

@@ -451,12 +451,14 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
     assert_eq!(
         pressing,
         Pressing {
-            year: Some(1971),
-            labels: vec![
-                bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-                bae_types::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
-            ],
-            barcodes: vec!["012345678905".to_string()],
+            typed: bae_types::pressing::TypedPressing {
+                year: Some(1971),
+                labels: vec![
+                    bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+                    bae_types::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+                ],
+                barcodes: vec!["012345678905".to_string()],
+            },
             facts: bae_types::pressing::PressingFacts {
                 area: Some(bae_types::pressing::area("GB")),
                 media: vec![
@@ -622,7 +624,7 @@ fn musicbrainz_no_label_is_no_label() {
         },
     ];
     assert_eq!(
-        pressing(&response).0.labels,
+        pressing(&response).0.typed.labels,
         vec![
             bae_types::pressing::ReleaseLabel::of(None, Some("NONE 1")),
             bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
@@ -631,7 +633,7 @@ fn musicbrainz_no_label_is_no_label() {
 
     response.label_info =
         vec![crate::musicbrainz::MbLabelInfo { label: no_label(), catalog_number: None }];
-    assert!(pressing(&response).0.labels.is_empty());
+    assert!(pressing(&response).0.typed.labels.is_empty());
     // Under the placeholder's id alone, whatever name it is given.
     response.label_info = vec![crate::musicbrainz::MbLabelInfo {
         label: Some(crate::musicbrainz::MbLabel {
@@ -640,5 +642,5 @@ fn musicbrainz_no_label_is_no_label() {
         }),
         catalog_number: None,
     }];
-    assert!(pressing(&response).0.labels.is_empty());
+    assert!(pressing(&response).0.typed.labels.is_empty());
 }

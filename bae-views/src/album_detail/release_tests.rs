@@ -14,7 +14,7 @@ fn detail_of(
     download: Option<bae_transfers::DownloadEntry>,
 ) -> ReleaseDetail {
     let mut raw = detail_raw();
-    raw.release.pressing.year = release_year;
+    raw.release.pressing.typed.year = release_year;
     edit(&mut raw);
     let ctx = ReleaseResolveCtx { cover: None, is_compilation: false, album_year };
     ReleaseDetail::from_raw(

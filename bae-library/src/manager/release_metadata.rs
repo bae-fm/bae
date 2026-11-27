@@ -46,8 +46,10 @@ impl LibraryManager {
         edit: &bae_import::ReleaseMetadataEdit,
     ) -> Result<(), LibraryError> {
         let (_, release, album, existing_tracks) = self.load_release_for_edit(release_id).await?;
-        let edit = edit.clone().over(release.pressing.facts.clone()).normalized();
+        let edit = edit.clone().normalized();
         edit.validate()?;
+        let edit =
+            bae_import::ReleaseUserEdit { metadata: edit, facts: release.pressing.facts.clone() };
         let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
         self.records.update_release_metadata_user_edit(metadata).await?;
         Ok(())
@@ -92,7 +94,7 @@ impl LibraryManager {
     ///
     /// Ungated on purpose: a release reseeded from sparse file tags carries a
     /// blank-but-editable title and artist, which the user fills in the editor.
-    /// A *user's* edit is held to [`bae_import::ReleaseUserEdit::validate`] —
+    /// A *user's* edit is held to [`bae_import::ReleaseMetadataEdit::validate`] —
     /// it arrives through [`Self::apply_release_metadata_user_edit`].
     pub(super) fn release_metadata_rows(
         &self,
@@ -103,10 +105,10 @@ impl LibraryManager {
     ) -> Result<bae_records::ReleaseMetadataRows, LibraryError> {
         use bae_records::{DbAlbumArtist, DbTrackArtist};
 
-        if existing_tracks.len() != edit.tracks.len() {
+        if existing_tracks.len() != edit.metadata.tracks.len() {
             return Err(LibraryError::TrackCountChanged {
                 release_tracks: existing_tracks.len(),
-                edit_tracks: edit.tracks.len(),
+                edit_tracks: edit.metadata.tracks.len(),
             });
         }
 
@@ -124,6 +126,7 @@ impl LibraryManager {
         };
 
         let album_credit_ids: Vec<String> = edit
+            .metadata
             .album_artist_assignments
             .iter()
             .map(|credited| credit_of(&credited.artist))
@@ -136,19 +139,19 @@ impl LibraryManager {
         }
 
         let updated_album = DbAlbum {
-            title: edit.album_title.clone(),
-            year: edit.album_year,
+            title: edit.metadata.album_title.clone(),
+            year: edit.metadata.album_year,
             is_compilation: bae_import::ArtistAssignment::credit_a_compilation(
-                &edit.album_artist_assignments,
+                &edit.metadata.album_artist_assignments,
             ),
             ..album
         };
 
-        let updated_release = DbRelease { pressing: edit.pressing.clone(), ..release };
+        let updated_release = DbRelease { pressing: edit.pressing(), ..release };
 
         let track_updates: Vec<(String, DbTrack)> = existing_tracks
             .iter()
-            .zip(edit.tracks.iter())
+            .zip(edit.metadata.tracks.iter())
             .map(|(existing, t)| {
                 let updated = DbTrack { title: t.title.clone(), ..existing.clone() };
                 (existing.id.clone(), updated)
@@ -157,7 +160,7 @@ impl LibraryManager {
 
         let album_artists: Vec<DbAlbumArtist> = album_credit_ids
             .iter()
-            .zip(&edit.album_artist_assignments)
+            .zip(&edit.metadata.album_artist_assignments)
             .zip(0..)
             .map(|((artist_id, credited), position)| DbAlbumArtist {
                 credit: credited.artist.link_credit(),
@@ -167,7 +170,7 @@ impl LibraryManager {
             .collect();
 
         let mut track_artists: Vec<DbTrackArtist> = Vec::new();
-        for (existing, track) in existing_tracks.iter().zip(edit.tracks.iter()) {
+        for (existing, track) in existing_tracks.iter().zip(edit.metadata.tracks.iter()) {
             let bae_import::TrackArtistAssignments::Explicit(assignments) =
                 &track.artist_assignments
             else {

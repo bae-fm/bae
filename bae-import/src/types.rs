@@ -40,7 +40,6 @@ pub use release_link::ReleaseLink;
 mod release_edit;
 pub use release_edit::{
     AlbumLine, AlbumPick, DraftAlbum, ReleaseMetadataEdit, ReleaseUserEdit, TrackUserEdit,
-    TypedPressing,
 };
 #[cfg(desktop)]
 pub use release_edit::{

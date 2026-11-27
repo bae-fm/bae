@@ -505,7 +505,7 @@ fn a_discogs_release_reaches_its_master_through_the_anchor() {
 
     let parsed = payloads.extract().unwrap().every_medium_values().expect("the documents map");
     assert_eq!(parsed.album_year, Some(1967), "the album year is the master's, not the pressing's");
-    assert_eq!(parsed.pressing.year, Some(1985));
+    assert_eq!(parsed.pressing.typed.year, Some(1985));
 }
 
 /// Fetching a release follows the Wikidata item its MusicBrainz documents
@@ -665,7 +665,7 @@ fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressin
         .any(|record| record.url().starts_with("https://musicbrainz.org/release/")));
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();
     assert_eq!(parsed.album_year, Some(1966));
-    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.pressing.typed.year, None);
     assert_eq!(
         parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
         ["First Track", "Second Track"]

@@ -199,7 +199,13 @@ fn file_tag_release_values(album: TaggedAlbum, tags: Vec<TagTrack>) -> ReleaseVa
         album_title: album.title,
         album_credits: named_credits(&album_artists),
         album_year: album.years.album,
-        pressing: Pressing { year: album.years.pressing, ..Pressing::blank() },
+        pressing: Pressing {
+            typed: bae_types::pressing::TypedPressing {
+                year: album.years.pressing,
+                ..Default::default()
+            },
+            ..Pressing::blank()
+        },
         mediums,
         release_roles: Vec::new(),
         works: Default::default(),

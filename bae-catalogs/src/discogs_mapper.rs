@@ -91,9 +91,11 @@ pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::Rel
 pub(crate) fn pressing(release: &DiscogsRelease) -> (Pressing, StatedMedia) {
     let formats = crate::discogs::formats::read(&release.id, &release.formats);
     let pressing = Pressing {
-        year: release.year.map(|y| y as i32),
-        labels: release.labels.clone(),
-        barcodes: release.barcodes.clone(),
+        typed: bae_types::pressing::TypedPressing {
+            year: release.year.map(|y| y as i32),
+            labels: release.labels.clone(),
+            barcodes: release.barcodes.clone(),
+        },
         facts: PressingFacts {
             area: release.country.as_deref().and_then(|name| area(&release.id, name)),
             media: formats.media.counts(),

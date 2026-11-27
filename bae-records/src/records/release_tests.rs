@@ -335,7 +335,7 @@ async fn set_barcodes(db: &bae_store::Store, barcodes: &[&str]) -> Vec<String> {
 
 /// `RELEASE`'s barcodes as `db` reads the release.
 async fn barcodes_on(db: &crate::Records) -> Vec<String> {
-    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.barcodes
+    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.typed.barcodes
 }
 
 /// A save of a release's barcodes makes them exactly the list it gives, in
@@ -365,7 +365,7 @@ async fn a_barcode_save_replaces_the_list() {
 /// Make `RELEASE`'s labels `labels` on `db`, as an edit writes them.
 async fn set_labels(db: &bae_store::Store, labels: Vec<bae_types::pressing::ReleaseLabel>) {
     let pressing = bae_types::pressing::Pressing {
-        labels: labels.clone(),
+        typed: bae_types::pressing::TypedPressing { labels: labels.clone(), ..Default::default() },
         ..bae_types::pressing::Pressing::blank()
     };
     let parts = crate::PressingParts::new(&coven::UuidIds, db.now_utc(), &pressing);
@@ -383,7 +383,7 @@ async fn set_labels(db: &bae_store::Store, labels: Vec<bae_types::pressing::Rele
 
 /// `RELEASE`'s labels as `db` reads the release.
 async fn labels_on(db: &crate::Records) -> Vec<bae_types::pressing::ReleaseLabel> {
-    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.labels
+    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.typed.labels
 }
 
 /// A save of a release's labels makes them exactly the list it gives, in its

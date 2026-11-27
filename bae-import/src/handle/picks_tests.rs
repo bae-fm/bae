@@ -958,9 +958,9 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
     let both = ["5 012345 678900", "0 12345 67890 5"];
     assert_eq!(pane.draft().unwrap().metadata_draft.pressing.barcodes, both);
     let shaped = pane.draft().unwrap().metadata_draft.shape().expect("the applied draft shapes");
-    assert_eq!(shaped.pressing.barcodes, both);
+    assert_eq!(shaped.pressing().typed.barcodes, both);
     assert_eq!(
-        crate::RawPressingEdit::from_pressing(&shaped.pressing).barcodes,
+        crate::RawPressingEdit::from_pressing(&shaped.pressing()).barcodes,
         both,
         "the editor's rows read both back"
     );

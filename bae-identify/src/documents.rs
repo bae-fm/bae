@@ -111,8 +111,8 @@ impl ReleaseDocument {
         let release = &prepared.release;
         let reading = release.read(audio);
         Self {
-            labels: release.pressing().labels.clone(),
-            barcodes: release.pressing().barcodes.clone(),
+            labels: release.pressing().typed.labels.clone(),
+            barcodes: release.pressing().typed.barcodes.clone(),
             album_first_year: release.metadata.album.first_year,
             source_tracks: bae_catalogs::reading::listing(&reading, audio),
             track_titles: match reading {

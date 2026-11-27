@@ -156,7 +156,7 @@ impl LibraryManager {
     ) -> Result<bae_import::ReleaseEditForm, LibraryError> {
         let release_id = form.release_id.clone();
         let shaped = form.edit.shape()?;
-        shaped.validate()?;
+        shaped.metadata.validate()?;
         let opened = self.load_release_for_edit(&release_id).await?;
         let records = match &form.records {
             Some(records) => records.clone(),
@@ -331,7 +331,10 @@ impl LibraryManager {
                     album_row,
                     release.clone(),
                     existing_tracks,
-                    &shaped.clone().normalized(),
+                    &bae_import::ReleaseUserEdit {
+                        metadata: shaped.metadata.clone().normalized(),
+                        facts: shaped.facts.clone(),
+                    },
                 )?)
             }
         };

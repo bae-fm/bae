@@ -76,7 +76,7 @@ fn the_rows_are_the_drafts_values() {
     let parsed = &assembled.parsed;
     assert_eq!(parsed.album.title, "Album Title");
     assert_eq!(parsed.album.year, Some(1971));
-    assert_eq!(parsed.release.pressing.year, Some(2005));
+    assert_eq!(parsed.release.pressing.typed.year, Some(2005));
     assert_eq!(
         parsed
             .tracks

@@ -45,7 +45,7 @@ pub async fn add_label(
     let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
     let mut release =
         DbRelease::new_test(&album.id, &coven::IdSource::new_id(&coven::UuidIds).to_string());
-    release.pressing.labels = vec![with_ids(label(Some(name), None), musicbrainz, discogs)];
+    release.pressing.typed.labels = vec![with_ids(label(Some(name), None), musicbrainz, discogs)];
     super::test_records(db)
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
         .await
@@ -65,7 +65,7 @@ pub async fn add_label(
 /// Write `RELEASE`'s labels as an edit would.
 pub async fn write(store: &Store, labels: Vec<ReleaseLabel>) -> Result<(), IdentityWriteError> {
     let pressing = bae_types::pressing::Pressing {
-        labels: labels.clone(),
+        typed: bae_types::pressing::TypedPressing { labels: labels.clone(), ..Default::default() },
         ..bae_types::pressing::Pressing::blank()
     };
     let parts = PressingParts::new(&coven::UuidIds, store.now_utc(), &pressing);
@@ -99,7 +99,7 @@ pub async fn stored_label(db: &Store, id: &str) -> LabelRow {
 
 /// The labels `RELEASE` reads with, as the library shows them.
 pub async fn read_labels(records: &Records) -> Vec<ReleaseLabel> {
-    records.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.labels
+    records.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.typed.labels
 }
 
 pub fn ids_of(rows: &[(Option<String>, Option<String>)]) -> Vec<Option<&str>> {

@@ -57,7 +57,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                     bae_import::ArtistAssignment::named("Edited Album Artist"),
                 )],
                 album_year: Some(1984),
-                pressing: bae_import::TypedPressing {
+                pressing: bae_types::pressing::TypedPressing {
                     year: Some(1991),
                     labels: vec![bae_types::pressing::ReleaseLabel::of(
                         Some("Edited Label"),
@@ -99,8 +99,8 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     assert_eq!(manager.records.get_release_records(&release.id).await.unwrap(), vec![identity]);
     assert_eq!(stored_after.release.id, release.id);
     assert_eq!(stored_after.release.album_id, album.id);
-    assert_eq!(stored_after.release.pressing.year, Some(1991));
-    assert_eq!(stored_after.release.pressing.barcodes, ["123456789"]);
+    assert_eq!(stored_after.release.pressing.typed.year, Some(1991));
+    assert_eq!(stored_after.release.pressing.typed.barcodes, ["123456789"]);
     assert_eq!(
         stored_after.release.pressing.facts,
         bae_types::pressing::PressingFacts {

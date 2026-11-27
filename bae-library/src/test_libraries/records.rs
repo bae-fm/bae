@@ -21,7 +21,7 @@ pub fn test_release(album_id: &str) -> DbRelease {
     DbRelease {
         source_folder_name: Some(TEST_RELEASE_FOLDER.to_string()),
         pressing: bae_types::pressing::Pressing {
-            year: Some(2024),
+            typed: bae_types::pressing::TypedPressing { year: Some(2024), ..Default::default() },
             ..bae_types::pressing::Pressing::blank()
         },
         ..DbRelease::new_test(album_id, &coven::IdSource::new_id(&coven::UuidIds).to_string())

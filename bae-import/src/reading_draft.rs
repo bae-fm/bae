@@ -28,19 +28,22 @@ fn credited_list<'a>(credits: impl Iterator<Item = &'a SourceCredit>) -> Vec<Cre
 /// The editable fields, as the library editor's form is seeded with them.
 pub(crate) fn user_edit(values: &ReleaseValues) -> ReleaseUserEdit {
     ReleaseUserEdit {
-        album_title: values.album_title.clone(),
-        album_artist_assignments: album_assignments(values),
-        album_year: values.album_year,
-        pressing: values.pressing.clone(),
-        tracks: values
-            .tracks
-            .iter()
-            .map(|track| TrackUserEdit {
-                title: track.title.clone(),
-                artist_assignments: track_assignments(&track.credits),
-                file: None,
-            })
-            .collect(),
+        metadata: crate::ReleaseMetadataEdit {
+            album_title: values.album_title.clone(),
+            album_artist_assignments: album_assignments(values),
+            album_year: values.album_year,
+            pressing: values.pressing.typed.clone(),
+            tracks: values
+                .tracks
+                .iter()
+                .map(|track| TrackUserEdit {
+                    title: track.title.clone(),
+                    artist_assignments: track_assignments(&track.credits),
+                    file: None,
+                })
+                .collect(),
+        },
+        facts: values.pressing.facts.clone(),
     }
 }
 

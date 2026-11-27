@@ -472,6 +472,7 @@ fn seed_carries_every_album_artist() {
     let edit = seed_for(&response);
 
     let names: Vec<&str> = edit
+        .metadata
         .album_artist_assignments
         .iter()
         .map(|assignment| match assignment {
@@ -495,9 +496,16 @@ fn seed_per_track_artist_override() {
 
     let edit = seed_for(&response);
 
-    assert_eq!(edit.tracks[0].artist_assignments, crate::TrackArtistAssignments::AlbumArtists);
-    assert_eq!(edit.tracks[1].artist_assignments, crate::TrackArtistAssignments::AlbumArtists);
-    let crate::TrackArtistAssignments::Explicit(assignments) = &edit.tracks[2].artist_assignments
+    assert_eq!(
+        edit.metadata.tracks[0].artist_assignments,
+        crate::TrackArtistAssignments::AlbumArtists
+    );
+    assert_eq!(
+        edit.metadata.tracks[1].artist_assignments,
+        crate::TrackArtistAssignments::AlbumArtists
+    );
+    let crate::TrackArtistAssignments::Explicit(assignments) =
+        &edit.metadata.tracks[2].artist_assignments
     else {
         panic!("the guest credit is explicit")
     };

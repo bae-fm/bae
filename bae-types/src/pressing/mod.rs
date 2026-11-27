@@ -302,6 +302,14 @@ impl<'de> serde::Deserialize<'de> for ReleaseLabel {
 /// and what it is. `Pressing::blank()` is "no pressing claim".
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pressing {
+    pub typed: TypedPressing,
+    pub facts: PressingFacts,
+}
+
+/// What of a pressing is text, which a person types: its year, labels and
+/// barcodes. The default is nothing typed.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TypedPressing {
     /// Release-specific year (may differ from album year)
     pub year: Option<i32>,
     /// Every label the pressing is on, in the order its source lists them.
@@ -309,19 +317,13 @@ pub struct Pressing {
     /// Every barcode the pressing is printed with, in the order its source
     /// lists them, each once: a release can carry an EAN and a UPC.
     pub barcodes: Vec<String>,
-    pub facts: PressingFacts,
 }
 
 impl Pressing {
     /// Nothing stated — "user claimed an album, not a specific pressing."
     /// Used when import identity is Approximate.
     pub fn blank() -> Self {
-        Self {
-            year: None,
-            labels: Vec::new(),
-            barcodes: Vec::new(),
-            facts: PressingFacts::default(),
-        }
+        Self { typed: TypedPressing::default(), facts: PressingFacts::default() }
     }
 }
 

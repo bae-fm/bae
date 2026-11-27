@@ -24,19 +24,22 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
             pick: None,
             read_file_tags: false,
             user_edit: Some(ReleaseUserEdit {
-                album_title: "Album Title".to_string(),
-                album_artist_assignments: vec![bae_import::Credited::plain(
-                    ArtistAssignment::named("Artist Name"),
-                )],
-                album_year: None,
-                pressing: bae_types::pressing::Pressing::blank(),
-                tracks: vec![TrackUserEdit {
-                    title: "Track Title".to_string(),
-                    artist_assignments: TrackArtistAssignments::AlbumArtists,
-                    file: Some(bae_import::AudioFile::Standalone {
-                        file_id: "01 Track Title.flac".into(),
-                    }),
-                }],
+                metadata: ReleaseMetadataEdit {
+                    album_title: "Album Title".to_string(),
+                    album_artist_assignments: vec![bae_import::Credited::plain(
+                        ArtistAssignment::named("Artist Name"),
+                    )],
+                    album_year: None,
+                    pressing: Default::default(),
+                    tracks: vec![TrackUserEdit {
+                        title: "Track Title".to_string(),
+                        artist_assignments: TrackArtistAssignments::AlbumArtists,
+                        file: Some(bae_import::AudioFile::Standalone {
+                            file_id: "01 Track Title.flac".into(),
+                        }),
+                    }],
+                },
+                facts: Default::default(),
             }),
         })
         .await

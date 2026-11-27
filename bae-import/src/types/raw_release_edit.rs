@@ -248,14 +248,16 @@ impl RawReleaseEdit {
     ///
     /// Validation: the album title must be non-empty after trimming, the album
     /// must resolve to at least one artist (both via
-    /// [`ReleaseUserEdit::validate`]), and a non-empty year must parse as an
+    /// [`ReleaseMetadataEdit::validate`]), and a non-empty year must parse as an
     /// integer (an empty year is allowed — it's "not set").
     pub fn shape(&self) -> Result<ReleaseUserEdit, EditValidationError> {
-        let edit = ReleaseUserEdit {
+        let album_year = parse_optional_year(&self.album_year)?;
+        let pressing = self.pressing.shape()?;
+        let metadata = ReleaseMetadataEdit {
             album_title: self.album_title.clone(),
             album_artist_assignments: self.album_artist_assignments.clone(),
-            album_year: parse_optional_year(&self.album_year)?,
-            pressing: self.pressing.shape()?,
+            album_year,
+            pressing: pressing.typed,
             tracks: self
                 .tracks
                 .iter()
@@ -267,8 +269,8 @@ impl RawReleaseEdit {
                 .collect(),
         }
         .normalized();
-        edit.validate()?;
-        Ok(edit)
+        metadata.validate()?;
+        Ok(ReleaseUserEdit { metadata, facts: pressing.facts })
     }
 
     /// Seed a raw editor form from a wire [`ReleaseUserEdit`]. Retains artist
@@ -277,6 +279,8 @@ impl RawReleaseEdit {
     /// editor row identities the wire edit lacks: track N becomes
     /// `{track_id_prefix}-{N}`.
     pub fn from_user_edit(edit: ReleaseUserEdit, track_id_prefix: &str) -> Self {
+        let pressing = edit.pressing();
+        let edit = edit.metadata;
         let tracks = edit
             .tracks
             .into_iter()
@@ -288,7 +292,7 @@ impl RawReleaseEdit {
             album_title: edit.album_title,
             album_artist_assignments: edit.album_artist_assignments,
             album_year: edit.album_year.map(|year| year.to_string()).unwrap_or_default(),
-            pressing: RawPressingEdit::from_pressing(&edit.pressing),
+            pressing: RawPressingEdit::from_pressing(&pressing),
             tracks,
         }
     }
@@ -386,17 +390,18 @@ impl RawPressingEdit {
     /// blank and repeated label and barcode rows are dropped, and the year
     /// parses.
     fn shape(&self) -> Result<bae_types::pressing::Pressing, EditValidationError> {
+        let year = parse_optional_year(&self.year)?;
+        let mut barcodes: Vec<String> = Vec::new();
+        for barcode in self.barcodes.iter().filter_map(|row| trim_to_option(row)) {
+            if !barcodes.contains(&barcode) {
+                barcodes.push(barcode);
+            }
+        }
         Ok(bae_types::pressing::Pressing {
-            year: parse_optional_year(&self.year)?,
-            labels: self.stated_labels(),
-            barcodes: {
-                let mut barcodes: Vec<String> = Vec::new();
-                for barcode in self.barcodes.iter().filter_map(|row| trim_to_option(row)) {
-                    if !barcodes.contains(&barcode) {
-                        barcodes.push(barcode);
-                    }
-                }
-                barcodes
+            typed: bae_types::pressing::TypedPressing {
+                year,
+                labels: self.stated_labels(),
+                barcodes,
             },
             facts: self.facts.clone(),
         })
@@ -406,8 +411,9 @@ impl RawPressingEdit {
     /// editor text.
     pub fn from_pressing(pressing: &bae_types::pressing::Pressing) -> Self {
         Self {
-            year: pressing.year.map(|y| y.to_string()).unwrap_or_default(),
+            year: pressing.typed.year.map(|y| y.to_string()).unwrap_or_default(),
             labels: pressing
+                .typed
                 .labels
                 .iter()
                 .map(|label| RawLabelEdit {
@@ -417,7 +423,7 @@ impl RawPressingEdit {
                     discogs_label_id: label.discogs_label_id().map(str::to_string),
                 })
                 .collect(),
-            barcodes: pressing.barcodes.clone(),
+            barcodes: pressing.typed.barcodes.clone(),
             facts: pressing.facts.clone(),
         }
     }

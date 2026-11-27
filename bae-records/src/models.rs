@@ -774,7 +774,7 @@ impl DbRelease {
     /// The year the release shows, given its album's year: its pressing's,
     /// else its album's.
     pub fn shown_year(&self, album_year: Option<i32>) -> Option<i32> {
-        self.pressing.year.or(album_year)
+        self.pressing.typed.year.or(album_year)
     }
 
     #[cfg(any(test, feature = "test-utils"))]

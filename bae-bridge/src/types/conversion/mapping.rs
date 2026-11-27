@@ -70,7 +70,8 @@ impl BridgeCandidateFiles {
 
 impl BridgePressingEdit {
     pub(super) fn from_core(pressing: bae_types::pressing::Pressing) -> Self {
-        let bae_types::pressing::Pressing { year, labels, barcodes, facts } = pressing;
+        let bae_types::pressing::Pressing { typed, facts } = pressing;
+        let bae_types::pressing::TypedPressing { year, labels, barcodes } = typed;
         Self {
             year,
             labels: labels.into_iter().map(BridgeReleaseLabel::from_core).collect(),

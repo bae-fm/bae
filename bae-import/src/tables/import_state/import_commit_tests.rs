@@ -60,9 +60,11 @@ fn test_release(id: &str, album_id: &str, now: time::UtcDateTime) -> DbRelease {
         album_id: album_id.to_string(),
         release_name: None,
         pressing: bae_types::pressing::Pressing {
-            year: Some(2026),
-            labels: Vec::new(),
-            barcodes: Vec::new(),
+            typed: bae_types::pressing::TypedPressing {
+                year: Some(2026),
+                labels: Vec::new(),
+                barcodes: Vec::new(),
+            },
             facts: bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1),
         },
 
@@ -557,7 +559,7 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
     };
     let album = test_album(ALBUM_A, "Album Title A", now);
     let mut release = test_release(RELEASE_A, &album.id, now);
-    release.pressing.labels =
+    release.pressing.typed.labels =
         vec![with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-label"), Some("7190"))];
     let track = test_track(TRACK_A, &release.id, "Track Title A", now);
     let track_files = vec![crate::TrackFile {

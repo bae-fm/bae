@@ -70,6 +70,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
     let mut artists = ArtistRows::new(ids, now);
 
     let album_artist_ids: Vec<String> = edit
+        .metadata
         .album_artist_assignments
         .iter()
         .map(|credited| artists.assigned(&credited.artist))
@@ -79,14 +80,16 @@ pub fn assemble_rows<Binding: TrackBinding>(
     }
     let album = DbAlbum {
         id: keys.album_id.clone(),
-        title: edit.album_title.clone(),
-        year: edit.album_year,
-        is_compilation: ArtistAssignment::credit_a_compilation(&edit.album_artist_assignments),
+        title: edit.metadata.album_title.clone(),
+        year: edit.metadata.album_year,
+        is_compilation: ArtistAssignment::credit_a_compilation(
+            &edit.metadata.album_artist_assignments,
+        ),
         created_at: now,
     };
     let album_artists = album_artist_ids
         .iter()
-        .zip(&edit.album_artist_assignments)
+        .zip(&edit.metadata.album_artist_assignments)
         .zip(0..)
         .map(|((artist_id, credited), position)| DbAlbumArtist {
             credit: credited.artist.link_credit(),
@@ -99,7 +102,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
         id: keys.release_id.clone(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: edit.pressing.clone(),
+        pressing: edit.pressing(),
         // The folder's name and hash are the candidate's, and the loudness is
         // measured from the audio; `run_import` stamps them on.
         source_folder_name: None,
@@ -148,7 +151,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
     let mut track_artists = Vec::new();
     let mut track_artist_roles = Vec::new();
     let mut track_works = Vec::new();
-    for (track, shaped) in draft.tracks.iter().zip(&edit.tracks) {
+    for (track, shaped) in draft.tracks.iter().zip(&edit.metadata.tracks) {
         let row = bae_records::TrackRow {
             id: (keys.track_id)(&track.edit.file),
             release_id: release.id.clone(),

@@ -93,9 +93,9 @@ impl PressingParts {
     ) -> Self {
         let mint = |count: usize| (0..count).map(|_| ids.new_id().to_string()).collect::<Vec<_>>();
         Self {
-            fresh_ids: mint(pressing.labels.len()),
-            label_row_ids: mint(pressing.labels.len()),
-            barcode_ids: mint(pressing.barcodes.len()),
+            fresh_ids: mint(pressing.typed.labels.len()),
+            label_row_ids: mint(pressing.typed.labels.len()),
+            barcode_ids: mint(pressing.typed.barcodes.len()),
             media_ids: mint(pressing.facts.media.len()),
             discogs_detail_ids: mint(pressing.facts.discogs_details.len()),
             now: now.to_rfc3339(),

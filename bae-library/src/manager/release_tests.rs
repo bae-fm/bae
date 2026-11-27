@@ -443,7 +443,7 @@ async fn find_release_detail_returns_some_for_known_id() {
     let manager = test.library.manager();
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.pressing.year = None;
+    release.pressing.typed.year = None;
     release.pressing.facts = Default::default();
     release.release_name = None;
     manager.records.insert_album(&album).await.unwrap();
@@ -697,7 +697,7 @@ async fn find_release_detail_name_uses_year_and_media() {
     let manager = test.library.manager();
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.pressing.year = Some(2024);
+    release.pressing.typed.year = Some(2024);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2);
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
@@ -719,7 +719,7 @@ async fn find_release_detail_name_prefers_release_name() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.release_name = Some("Deluxe Edition".to_string());
-    release.pressing.year = Some(2024);
+    release.pressing.typed.year = Some(2024);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
@@ -737,10 +737,10 @@ async fn find_release_detail_uses_position_for_second_release() {
     let manager = test.library.manager();
     let album = create_test_album();
     let mut release1 = create_test_release(&album.id);
-    release1.pressing.year = None;
+    release1.pressing.typed.year = None;
     release1.pressing.facts = Default::default();
     let mut release2 = create_test_release(&album.id);
-    release2.pressing.year = None;
+    release2.pressing.typed.year = None;
     release2.pressing.facts = Default::default();
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release1).await;

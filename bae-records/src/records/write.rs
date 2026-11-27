@@ -144,7 +144,7 @@ pub fn insert_release_row(
             release.id,
             release.album_id,
             release.release_name,
-            release.pressing.year,
+            release.pressing.typed.year,
             facts.country,
             facts.region,
             facts.status,
@@ -159,10 +159,15 @@ pub fn insert_release_row(
     super::label_resolution::write_release_labels_on(
         conn,
         &release.id,
-        &release.pressing.labels,
+        &release.pressing.typed.labels,
         pressing,
     )?;
-    replace_release_barcodes(conn, &release.id, &release.pressing.barcodes, pressing.barcode_ids)?;
+    replace_release_barcodes(
+        conn,
+        &release.id,
+        &release.pressing.typed.barcodes,
+        pressing.barcode_ids,
+    )?;
     replace_release_media(conn, &release.id, &release.pressing.facts.media, pressing.media_ids)?;
     replace_release_discogs_details(
         conn,

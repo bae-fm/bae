@@ -445,20 +445,23 @@ mirror_struct! {
     fields: { url, max_edge },
 }
 
-mirror_struct! {
-    AutomationPressingEdit = bae_types::pressing::Pressing,
-    from_core: pub(crate) fn,
-    fields: { year, labels, barcodes, facts },
+impl AutomationPressingEdit {
+    pub(crate) fn from_core(pressing: bae_types::pressing::Pressing) -> Self {
+        let bae_types::pressing::TypedPressing { year, labels, barcodes } = pressing.typed;
+        Self { year, labels, barcodes, facts: pressing.facts }
+    }
 }
 
 mirror_struct! {
-    AutomationTypedPressing = bae_import::TypedPressing,
+    AutomationTypedPressing = bae_types::pressing::TypedPressing,
     into_core: pub(crate) fn,
     fields: { year, labels, barcodes },
 }
 
 impl AutomationReleaseUserEdit {
     pub(crate) fn from_core(edit: bae_import::ReleaseUserEdit) -> Self {
+        let pressing = edit.pressing();
+        let edit = edit.metadata;
         Self {
             album_title: edit.album_title,
             album_artist_assignments: edit
@@ -467,7 +470,7 @@ impl AutomationReleaseUserEdit {
                 .map(AutomationCredited::from_core)
                 .collect(),
             album_year: edit.album_year,
-            pressing: AutomationPressingEdit::from_core(edit.pressing),
+            pressing: AutomationPressingEdit::from_core(pressing),
             tracks: edit.tracks.into_iter().map(AutomationTrackUserEdit::from_core).collect(),
         }
     }

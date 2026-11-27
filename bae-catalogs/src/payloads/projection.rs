@@ -63,7 +63,7 @@ impl ReleasePayloads {
             }
             LookupCatalog::Discogs => crate::discogs_mapper::metadata(&self.discogs_anchor()?),
         };
-        let selected_pressing_year = metadata.pressing.year;
+        let selected_pressing_year = metadata.pressing.typed.year;
         // A release's own album date, when present, precedes parent documents.
         let selected_album_year = metadata.album.year;
         let counterpart = match self.release.catalog {
@@ -121,7 +121,7 @@ impl ReleasePayloads {
             .year
             .or(linked_album_year)
             .or(selected_pressing_year)
-            .or(metadata.pressing.year);
+            .or(metadata.pressing.typed.year);
         metadata.album.first_year = metadata.album.first_year.or(linked_first_year);
         Ok(metadata)
     }

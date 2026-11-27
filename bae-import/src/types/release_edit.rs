@@ -3,13 +3,37 @@
 
 use super::*;
 
-/// Every field the edit-metadata sheet may change. Artist choices preserve
-/// whether the person picked a library artist or left a credit; a credit is
-/// resolved against the library when the edit commits.
+/// Every field the edit-metadata sheet may change: what it types, and what
+/// the pressing is.
 ///
 /// Records and provenance are out of scope: the release's records and the
 /// release's metadata provenance are untouched. So is the stored catalog
 /// release, so a later reset can still re-seed from what the source said.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseUserEdit {
+    pub metadata: ReleaseMetadataEdit,
+    /// What the pressing the edit claims is.
+    pub facts: bae_types::pressing::PressingFacts,
+}
+
+impl ReleaseUserEdit {
+    /// The pressing the edit claims: either the whole of a picked release's,
+    /// or [`bae_types::pressing::Pressing::blank()`] filled in with what the
+    /// person knows (file metadata or direct entry).
+    pub fn pressing(&self) -> bae_types::pressing::Pressing {
+        bae_types::pressing::Pressing {
+            typed: self.metadata.pressing.clone(),
+            facts: self.facts.clone(),
+        }
+    }
+}
+
+/// An edit of a release's typed metadata: the album fields, what is typed of
+/// its pressing, and each track's title and artists. Artist choices preserve
+/// whether the person picked a library artist or left a credit; a credit is
+/// resolved against the library when the edit commits. What the pressing is
+/// changes one choice at a time ([`crate::PressingFactEdit`]), so this edit
+/// says nothing of it.
 ///
 /// For a release already in the library, `tracks` MUST have the same length as
 /// the release's existing tracks; that editor cannot add or remove tracks
@@ -20,18 +44,15 @@ use super::*;
 /// is the `album_artists` row at position *n*.
 /// Empty is a validation error: every album has at least one artist.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseUserEdit {
+pub struct ReleaseMetadataEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<Credited>,
     pub album_year: Option<i32>,
-    /// The pressing the edit claims: either the whole of a picked release's,
-    /// or [`bae_types::pressing::Pressing::blank()`] filled in with what the person knows (file
-    /// metadata or direct entry).
-    pub pressing: bae_types::pressing::Pressing,
+    pub pressing: bae_types::pressing::TypedPressing,
     pub tracks: Vec<TrackUserEdit>,
 }
 
-impl ReleaseUserEdit {
+impl ReleaseMetadataEdit {
     /// Trim the album title and every track title, and drop blank artist names.
     /// The normalization the editor's [`RawReleaseEdit::shape`] performs on typed
     /// text, hoisted onto the wire type so MCP, which builds one
@@ -76,42 +97,6 @@ impl ReleaseUserEdit {
             }
         }
         Ok(())
-    }
-}
-
-/// An edit of a library release's typed metadata: the album fields, what is
-/// typed of its pressing, and each track's title and artists. What the
-/// pressing is changes one choice at a time
-/// ([`crate::PressingFactEdit`]), so this edit says nothing of it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseMetadataEdit {
-    pub album_title: String,
-    pub album_artist_assignments: Vec<Credited>,
-    pub album_year: Option<i32>,
-    pub pressing: TypedPressing,
-    pub tracks: Vec<TrackUserEdit>,
-}
-
-/// What a person types of a pressing; the default is nothing typed.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct TypedPressing {
-    pub year: Option<i32>,
-    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
-    /// Every barcode the pressing is printed with, in order.
-    pub barcodes: Vec<String>,
-}
-
-impl ReleaseMetadataEdit {
-    /// The whole edit of a release whose pressing is `facts`.
-    pub fn over(self, facts: bae_types::pressing::PressingFacts) -> ReleaseUserEdit {
-        let TypedPressing { year, labels, barcodes } = self.pressing;
-        ReleaseUserEdit {
-            album_title: self.album_title,
-            album_artist_assignments: self.album_artist_assignments,
-            album_year: self.album_year,
-            pressing: bae_types::pressing::Pressing { year, labels, barcodes, facts },
-            tracks: self.tracks,
-        }
     }
 }
 

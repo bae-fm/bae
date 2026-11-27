@@ -687,7 +687,7 @@ fn release_barcodes_reach_pressing_metadata() {
         Vec::new(),
     );
     assert_eq!(payloads.extract().unwrap().detail(&[]).barcodes, release.barcodes);
-    assert_eq!(metadata(&release).pressing.barcodes, release.barcodes);
+    assert_eq!(metadata(&release).pressing.typed.barcodes, release.barcodes);
 }
 
 #[test]
@@ -705,7 +705,7 @@ fn blank_pressing_fields_are_absent_in_discogs_documents() {
         assert!(pressing.facts.is_empty());
         assert_eq!(media, bae_types::pressing::StatedMedia::Undescribed);
         assert!(release.labels.is_empty());
-        assert!(pressing.labels.is_empty());
+        assert!(pressing.typed.labels.is_empty());
         assert!(release.barcodes.is_empty());
     }
 }
@@ -732,7 +732,7 @@ fn every_label_and_its_catalog_number_is_read() {
         ReleaseLabel::of(Some("Label C"), None),
     ];
     assert_eq!(release.labels, expected);
-    assert_eq!(pressing(&release).0.labels, expected);
+    assert_eq!(pressing(&release).0.typed.labels, expected);
 }
 
 /// A position that is a side letter alone names that side.
@@ -871,7 +871,7 @@ fn discogs_not_on_label_is_no_label() {
         ReleaseLabel::of(Some("Label A"), Some("AB 100")),
     ];
     assert_eq!(release.labels, expected);
-    assert_eq!(pressing(&release).0.labels, expected);
+    assert_eq!(pressing(&release).0.typed.labels, expected);
 
     let only = serde_json::json!({
         "id": 124, "title": "Album",

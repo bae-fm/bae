@@ -49,21 +49,21 @@ fn valid_form() -> RawReleaseEdit {
 #[test]
 fn shapes_distinct_album_and_pressing_years() {
     let shaped = valid_form().shape().expect("valid form shapes");
-    assert_eq!(shaped.album_title, "Album Title");
+    assert_eq!(shaped.metadata.album_title, "Album Title");
     assert_eq!(
-        shaped.album_artist_assignments,
+        shaped.metadata.album_artist_assignments,
         crate::Credited::plain_list(vec![ArtistAssignment::named("Artist One")])
     );
-    assert_eq!(shaped.album_year, Some(1987));
-    assert_eq!(shaped.pressing.year, Some(1999));
+    assert_eq!(shaped.metadata.album_year, Some(1987));
+    assert_eq!(shaped.pressing().typed.year, Some(1999));
     assert_eq!(
-        shaped.pressing.facts.media,
+        shaped.pressing().facts.media,
         bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 2).media
     );
-    assert_eq!(shaped.tracks.len(), 1);
-    assert_eq!(shaped.tracks[0].title, "Track Title");
+    assert_eq!(shaped.metadata.tracks.len(), 1);
+    assert_eq!(shaped.metadata.tracks[0].title, "Track Title");
     assert_eq!(
-        shaped.tracks[0].artist_assignments,
+        shaped.metadata.tracks[0].artist_assignments,
         TrackArtistAssignments::Explicit(vec![crate::Credited::plain(ArtistAssignment::named(
             "Artist Two"
         ))])
@@ -84,7 +84,7 @@ fn trims_new_artist_metadata_without_losing_provider_ids() {
     })];
     let shaped = form.shape().expect("shapes");
     assert_eq!(
-        shaped.album_artist_assignments,
+        shaped.metadata.album_artist_assignments,
         crate::Credited::plain_list(vec![ArtistAssignment::Credit {
             credit: ArtistCredit {
                 credited_as: None,
@@ -102,14 +102,14 @@ fn album_artist_mode_survives_shaping() {
     let mut form = valid_form();
     form.tracks[0].artist_assignments = TrackArtistAssignments::AlbumArtists;
     let shaped = form.shape().expect("shapes");
-    assert_eq!(shaped.tracks[0].artist_assignments, TrackArtistAssignments::AlbumArtists);
+    assert_eq!(shaped.metadata.tracks[0].artist_assignments, TrackArtistAssignments::AlbumArtists);
 }
 
 #[test]
 fn trims_album_title() {
     let mut form = valid_form();
     form.album_title = "  Album Title  ".to_string();
-    assert_eq!(form.shape().expect("shapes").album_title, "Album Title");
+    assert_eq!(form.shape().expect("shapes").metadata.album_title, "Album Title");
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn empty_pressing_fields_map_to_none() {
         facts: Default::default(),
         barcodes: Vec::new(),
     };
-    let pressing = form.shape().expect("shapes").pressing;
+    let pressing = form.shape().expect("shapes").pressing();
     assert_eq!(pressing, bae_types::pressing::Pressing::blank());
 }
 
@@ -130,9 +130,9 @@ fn parses_year_and_trims_pressing_fields() {
     let mut form = valid_form();
     form.pressing.year = "  2001  ".to_string();
     form.pressing.labels[0].name = "  Label  ".to_string();
-    let pressing = form.shape().expect("shapes").pressing;
-    assert_eq!(pressing.year, Some(2001));
-    assert_eq!(pressing.labels[0].name(), Some("Label"));
+    let pressing = form.shape().expect("shapes").pressing();
+    assert_eq!(pressing.typed.year, Some(2001));
+    assert_eq!(pressing.typed.labels[0].name(), Some("Label"));
 }
 
 /// A label row an editor sends keeps the catalog ids of the stated row of
@@ -160,7 +160,7 @@ fn a_label_row_keeps_its_ids_while_it_keeps_its_name() {
     let mut form = valid_form();
     form.pressing.labels = kept;
     assert_eq!(
-        form.shape().expect("shapes").pressing.labels[0],
+        form.shape().expect("shapes").pressing().typed.labels[0],
         bae_types::pressing::ReleaseLabel::of(Some("Harbor"), Some("H 2"))
             .with_ids(Some("mb-harbor".to_string()), None)
     );
@@ -184,7 +184,7 @@ fn every_label_row_shapes_with_its_own_number() {
         row("Label A", "AB 100"),
     ];
     assert_eq!(
-        form.shape().expect("shapes").pressing.labels,
+        form.shape().expect("shapes").pressing().typed.labels,
         vec![
             bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
             bae_types::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
@@ -197,7 +197,7 @@ fn every_label_row_shapes_with_its_own_number() {
 #[test]
 fn chosen_pressing_facts_shape_unchanged() {
     let form = valid_form();
-    let pressing = form.shape().expect("shapes").pressing;
+    let pressing = form.shape().expect("shapes").pressing();
     assert_eq!(pressing.facts, form.pressing.facts);
 }
 
@@ -234,39 +234,41 @@ fn unparseable_year_is_a_validation_error() {
 #[test]
 fn from_user_edit_round_trips_through_shape() {
     let original = ReleaseUserEdit {
-        album_title: "Album Title".to_string(),
-        album_artist_assignments: vec![
-            crate::Credited::plain(ArtistAssignment::picked(existing_artist())),
-            crate::Credited::plain(ArtistAssignment::named("Artist Two")),
-        ],
-        album_year: Some(1987),
-        pressing: bae_types::pressing::Pressing {
-            year: Some(1999),
-            labels: vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-123"))],
-            facts: Default::default(),
-            barcodes: Vec::new(),
+        metadata: ReleaseMetadataEdit {
+            album_title: "Album Title".to_string(),
+            album_artist_assignments: vec![
+                crate::Credited::plain(ArtistAssignment::picked(existing_artist())),
+                crate::Credited::plain(ArtistAssignment::named("Artist Two")),
+            ],
+            album_year: Some(1987),
+            pressing: bae_types::pressing::TypedPressing {
+                year: Some(1999),
+                labels: vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-123"))],
+                barcodes: Vec::new(),
+            },
+            tracks: vec![
+                TrackUserEdit {
+                    title: "Track One".to_string(),
+                    artist_assignments: TrackArtistAssignments::Explicit(vec![
+                        crate::Credited::plain(ArtistAssignment::named("Track Artist")),
+                    ]),
+                    file: Some(AudioFile::Standalone { file_id: "01.flac".to_string() }),
+                },
+                TrackUserEdit {
+                    title: "Track Two".to_string(),
+                    artist_assignments: TrackArtistAssignments::AlbumArtists,
+                    file: None,
+                },
+            ],
         },
-        tracks: vec![
-            TrackUserEdit {
-                title: "Track One".to_string(),
-                artist_assignments: TrackArtistAssignments::Explicit(vec![crate::Credited::plain(
-                    ArtistAssignment::named("Track Artist"),
-                )]),
-                file: Some(AudioFile::Standalone { file_id: "01.flac".to_string() }),
-            },
-            TrackUserEdit {
-                title: "Track Two".to_string(),
-                artist_assignments: TrackArtistAssignments::AlbumArtists,
-                file: None,
-            },
-        ],
+        facts: Default::default(),
     };
 
     let raw = RawReleaseEdit::from_user_edit(original.clone(), "reset-track");
-    assert_eq!(raw.album_artist_assignments, original.album_artist_assignments);
+    assert_eq!(raw.album_artist_assignments, original.metadata.album_artist_assignments);
     assert_eq!(raw.tracks[0].id, "reset-track-0");
     assert_eq!(raw.tracks[1].id, "reset-track-1");
-    assert_eq!(raw.tracks[0].artist_assignments, original.tracks[0].artist_assignments);
+    assert_eq!(raw.tracks[0].artist_assignments, original.metadata.tracks[0].artist_assignments);
     assert_eq!(raw.tracks[1].artist_assignments, TrackArtistAssignments::AlbumArtists);
     assert_eq!(raw.pressing.year, "1999");
     assert_eq!(raw.album_year, "1987");

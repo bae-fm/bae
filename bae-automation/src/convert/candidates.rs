@@ -138,11 +138,14 @@ fn shaped_edit(
     let mut raw = edit.clone();
     raw.tracks = bae_import::mapping_tracks(mapping);
     raw.shape().unwrap_or_else(|_| bae_import::ReleaseUserEdit {
-        album_title: raw.album_title.clone(),
-        album_artist_assignments: Vec::new(),
-        album_year: None,
-        pressing: bae_types::pressing::Pressing::blank(),
-        tracks: Vec::new(),
+        metadata: bae_import::ReleaseMetadataEdit {
+            album_title: raw.album_title.clone(),
+            album_artist_assignments: Vec::new(),
+            album_year: None,
+            pressing: Default::default(),
+            tracks: Vec::new(),
+        },
+        facts: Default::default(),
     })
 }
 

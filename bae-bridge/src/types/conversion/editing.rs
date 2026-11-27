@@ -79,16 +79,24 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    BridgeReleaseUserEdit = bae_import::ReleaseUserEdit,
-    from_core: pub(crate) fn,
-    fields: {
-        album_title,
-        album_artist_assignments: (each BridgeCredited),
-        album_year,
-        pressing: (BridgePressingEdit),
-        tracks: (each BridgeTrackUserEdit),
-    },
+/// Not a `mirror_struct`: the app reads the pressing as one record, which
+/// core keeps as what is typed beside what the pressing is.
+impl BridgeReleaseUserEdit {
+    pub(crate) fn from_core(edit: bae_import::ReleaseUserEdit) -> Self {
+        let pressing = edit.pressing();
+        let metadata = edit.metadata;
+        Self {
+            album_title: metadata.album_title,
+            album_artist_assignments: metadata
+                .album_artist_assignments
+                .into_iter()
+                .map(BridgeCredited::from_core)
+                .collect(),
+            album_year: metadata.album_year,
+            pressing: BridgePressingEdit::from_core(pressing),
+            tracks: metadata.tracks.into_iter().map(BridgeTrackUserEdit::from_core).collect(),
+        }
+    }
 }
 
 /// Not a `mirror_struct`: the editor draws the rows core lays out
