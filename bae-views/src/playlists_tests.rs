@@ -1,36 +1,23 @@
-//! The playlist reads follow their indexes: no statement sorts after
-//! reading.
+//! A playlist's page finds its entries along their index.
 
 use super::*;
 
-/// The plan SQLite chooses for `statement`, one detail line per step.
-async fn plan(store: &Store, statement: String) -> Vec<String> {
-    store
-        .read(move |sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {statement}"),
-                rusqlite::params_from_iter(std::iter::repeat_n(
-                    "id",
-                    statement.matches('?').count(),
-                )),
+#[tokio::test]
+async fn the_page_reads_its_entries_along_their_index() {
+    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let plan = db
+        .read(|sql| {
+            Ok(sql.query(
+                &format!("EXPLAIN QUERY PLAN {}", PlaylistPage::SQL),
+                rusqlite::named_params! { ":playlist": "id" },
                 |row| row.get::<_, String>(3),
-            )
-            .map_err(bae_store::DbError::from)
+            )?)
         })
         .await
-        .unwrap()
-}
-
-#[tokio::test]
-async fn the_entry_reads_follow_their_index_without_a_sort() {
-    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
-    for statement in [playlist_entries_sql()] {
-        let plan = plan(&db, statement.clone()).await;
-        assert!(
-            !plan
-                .iter()
-                .any(|step| step.starts_with("USE TEMP B-TREE FOR") && step.ends_with("ORDER BY")),
-            "{statement} sorts after reading: {plan:?}"
-        );
-    }
+        .unwrap();
+    assert!(
+        !plan.iter().any(|step| step.starts_with("SCAN")
+            && (step.contains("entry") || step.contains("playlist_entries"))),
+        "the page scans playlist entries: {plan:?}"
+    );
 }

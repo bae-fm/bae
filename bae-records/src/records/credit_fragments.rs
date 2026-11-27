@@ -42,6 +42,17 @@ sqlive_compose::fragment!(
 "#
 );
 
+// The credits each track shows ([`TrackCredits`]),
+// for a read that joins them to its tracks.
+sqlive_compose::fragment!(
+    ShownTrackCredits,
+    r#"
+    SELECT credited.id AS track_id,
+           @crate::records::credit_fragments::TrackCredits(parent: credited) AS credits
+    FROM tracks AS credited
+"#
+);
+
 // The names of the artists credited on the work in a writing role, each once
 // as the artist it shows after merges, joined by ", " in credit order; NULL
 // when the work has no artists.

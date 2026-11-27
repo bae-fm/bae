@@ -2,6 +2,66 @@
 
 pub use bae_types::stars::Stars;
 
+use crate::people::{PersonRef, Sharing};
+use bae_records::ImageRef;
+use bae_types::count_label::CountLabel;
+
+/// How many different releases' covers a playlist's picture shows when it
+/// has that many.
+pub const COVER_GRID: usize = 4;
+
+/// The picture a playlist is drawn with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlaylistCover {
+    /// One cover: the first entry's release's when the playlist's entries
+    /// are on fewer than four different releases. `None` draws the
+    /// missing-art tile, as a playlist with no entries or a first release
+    /// with no cover does.
+    Single(Option<ImageRef>),
+    /// The covers of the first four different releases the entries are on,
+    /// in entry order, drawn as a 2×2 square; a release with no cover is
+    /// `None` in its place.
+    Grid([Option<ImageRef>; COVER_GRID]),
+}
+
+/// A playlist as the Playlists view and the Add to playlist menu list it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaylistSummary {
+    pub id: uuid::Uuid,
+    pub name: String,
+    pub sharing: Sharing,
+    pub owner: PersonRef,
+    /// Whether this device's person made it.
+    pub yours: bool,
+    /// "{count} tracks" (`core.library.track_count`).
+    pub track_count: CountLabel,
+    /// The entries' total playing time; zero when there are none.
+    pub total_duration_ms: u64,
+    pub cover: PlaylistCover,
+}
+
+/// One entry of a playlist's page.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaylistEntryRow {
+    pub position_id: uuid::Uuid,
+    pub track_id: String,
+    pub title: String,
+    /// The track's credit line: its own credits, else its album's (§2.3).
+    pub artist_line: bae_types::credits::CreditLine,
+    pub album_id: String,
+    pub album_title: String,
+    pub release_id: String,
+    pub duration_ms: u64,
+    /// The cover of the release the track is on.
+    pub cover: Option<ImageRef>,
+    /// The entry's number in the playlist's order, counted from 1.
+    pub number: u64,
+    /// Whether an entry comes before this one, so it can move up.
+    pub can_move_up: bool,
+    /// Whether an entry comes after this one, so it can move down.
+    pub can_move_down: bool,
+}
+
 /// The stars a stored count names, read in a row closure.
 pub(crate) fn stars_from_sql(value: i64) -> rusqlite::Result<Stars> {
     Stars::from_stored(value).ok_or(rusqlite::Error::IntegralValueOutOfRange(0, value))

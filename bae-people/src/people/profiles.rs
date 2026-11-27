@@ -295,7 +295,7 @@ impl MemberWithProfile {
 }
 
 impl Profile {
-    fn into_profile(self) -> PersonProfile {
+    pub(super) fn into_profile(self) -> PersonProfile {
         PersonProfile {
             id: self.id,
             name: self.name,

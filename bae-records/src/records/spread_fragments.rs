@@ -34,3 +34,11 @@ sqlive_compose::fragment!(
     WHERE held.kind = 'pressing'
 "#
 );
+
+sqlive_compose::fragment!(
+    TrackRow,
+    r#"
+    SELECT track.id AS track_id, track.release_id, track.title, track.duration_ms
+    FROM tracks AS track
+"#
+);

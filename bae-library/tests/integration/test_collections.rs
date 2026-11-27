@@ -538,13 +538,17 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     let views = bae_views::LibraryViews::new(library.store().clone());
     let first = test_uuid("reads-first");
     let second = test_uuid("reads-second");
-    bae_records::test_fixtures::album_with_tracks(
-        library.records(),
-        (&test_uuid("reads-album"), "Reads"),
-        &test_uuid("reads-release"),
-        &[(&first, "First"), (&second, "Second")],
-    )
-    .await;
+    let (album, release) = (test_uuid("reads-album"), test_uuid("reads-release"));
+    let (album_artist, track_artist) = (test_uuid("reads-artist"), test_uuid("reads-guest"));
+    bae_records::test_fixtures::library::RecordsFixture::new()
+        .artist(&album_artist, "Artist Name Album")
+        .artist(&track_artist, "Artist Name Track")
+        .album(&album, "Reads", None, &[&album_artist])
+        .release(&album, &release)
+        .tracks(&release, &[(&first, "First"), (&second, "Second")])
+        .track_credits(&second, &[&track_artist])
+        .write(library.records())
+        .await;
 
     let mut listing = views.subscribe_playlists();
     let none = query_matching(&mut listing, |_| true).await;
@@ -575,6 +579,14 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
         shown.entries.iter().map(|entry| entry.title.as_str()).collect::<Vec<_>>(),
         vec!["Second", "First"]
     );
+    assert_eq!(
+        shown.entries.iter().map(|entry| entry.artist_line.plain_text()).collect::<Vec<_>>(),
+        vec!["Artist Name Track", "Artist Name Album"],
+        "each entry prints its track's own credits, else its album's"
+    );
+    assert!(shown.entries.iter().all(|entry| entry.album_title == "Reads"
+        && entry.album_id == album
+        && entry.release_id == release));
 
     people.edit_playlist(id, "Gathering", Sharing::Household).await.unwrap();
     let renamed = query_matching(&mut listing, |listing| {

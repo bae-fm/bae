@@ -123,7 +123,7 @@ impl People {
     }
 
     pub async fn playlist_entries(&self, id: uuid::Uuid) -> Result<Vec<PlaylistEntry>, DbError> {
-        self.inner.store.read(move |sql| Ok(entries(&sql, id)?)).await
+        self.inner.store.read(move |sql| entries(&sql, id)).await
     }
 
     pub async fn append_playlist_entry(
@@ -291,15 +291,28 @@ fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
     })
 }
 
-/// One playlist's entries, in order; `playlist_entries_position` serves the
-/// lookup and the order.
-pub(super) const PLAYLIST_ENTRIES_SQL: &str = "SELECT position_id, track_id FROM playlist_entries \
-     WHERE playlist_id = ? ORDER BY position";
+// One playlist's entries, in order; `playlist_entries_position` serves the
+// lookup and the order.
+sqlive_compose::read!(
+    EntriesOfPlaylist(playlist: String),
+    r#"
+    SELECT entry.position_id, entry.track_id
+    FROM playlist_entries AS entry
+    WHERE entry.playlist_id = :playlist
+    ORDER BY entry.position
+"#
+);
 
-fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> rusqlite::Result<Vec<PlaylistEntry>> {
-    sql.query(PLAYLIST_ENTRIES_SQL, [playlist.to_string()], |row| {
-        Ok(PlaylistEntry { position_id: uuid_column(row, 0)?, track_id: row.get(1)? })
-    })
+fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> Result<Vec<PlaylistEntry>, DbError> {
+    let statement = EntriesOfPlaylistParams { playlist: playlist.to_string() };
+    bae_store::statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| {
+            let position_id = uuid::Uuid::parse_str(&row.position_id)
+                .map_err(|_error| DbError::unreadable("a playlist entry's id", &row.position_id))?;
+            Ok(PlaylistEntry { position_id, track_id: row.track_id })
+        })
+        .collect()
 }
 
 #[cfg(test)]

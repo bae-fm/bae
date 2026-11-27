@@ -16,6 +16,7 @@ mod initials;
 pub use initials::initials;
 pub(crate) mod joining;
 pub use joining::private_circle_name;
+pub mod playlist_fragments;
 mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
 pub mod rating_systems;

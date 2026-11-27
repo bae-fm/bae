@@ -143,6 +143,27 @@ pub fn credit_line_of_json(json: &str) -> Result<bae_types::credits::CreditLine,
     Ok(crate::credits::library_line(&credits_from_json(json)?))
 }
 
+/// The line a credit list prints, as a field of a read's JSON document that
+/// holds the list as [`super::credit_fragments::TrackCredits`] writes it.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(try_from = "Vec<CreditJson>")]
+pub struct CreditListLine(bae_types::credits::CreditLine);
+
+impl CreditListLine {
+    /// The line the list prints.
+    pub fn into_line(self) -> bae_types::credits::CreditLine {
+        self.0
+    }
+}
+
+impl TryFrom<Vec<CreditJson>> for CreditListLine {
+    type Error = DbError;
+
+    fn try_from(credits: Vec<CreditJson>) -> Result<Self, DbError> {
+        Ok(Self(crate::credits::library_line(&credits_of(credits)?)))
+    }
+}
+
 /// The credits a JSON column of [`super::query::album_credits_json_sql`] or
 /// [`super::query::track_credits_json_sql`] holds, in list order.
 pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbError> {

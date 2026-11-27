@@ -3,43 +3,7 @@
 //! with its entries (§5.3).
 
 use super::*;
-use bae_people::people::Sharing;
-use bae_records::records::files::cover_version_sql;
-use bae_types::count_label::CountLabel;
-
-/// How many different releases' covers a playlist's picture shows when it
-/// has that many.
-const COVER_GRID: usize = 4;
-
-/// The picture a playlist is drawn with.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PlaylistCover {
-    /// One cover: the first entry's release's when the playlist's entries
-    /// are on fewer than four different releases. `None` draws the
-    /// missing-art tile, as a playlist with no entries or a first release
-    /// with no cover does.
-    Single(Option<ImageRef>),
-    /// The covers of the first four different releases the entries are on,
-    /// in entry order, drawn as a 2×2 square; a release with no cover is
-    /// `None` in its place.
-    Grid([Option<ImageRef>; COVER_GRID]),
-}
-
-/// A playlist as the Playlists view and the Add to playlist menu list it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlaylistSummary {
-    pub id: uuid::Uuid,
-    pub name: String,
-    pub sharing: Sharing,
-    pub owner: bae_people::people::PersonRef,
-    /// Whether this device's person made it.
-    pub yours: bool,
-    /// "{count} tracks" (`core.library.track_count`).
-    pub track_count: CountLabel,
-    /// The entries' total playing time; zero when there are none.
-    pub total_duration_ms: u64,
-    pub cover: PlaylistCover,
-}
+pub use bae_people::collections::{PlaylistCover, PlaylistEntryRow, PlaylistSummary};
 
 /// The playlists this device holds, as the views that list them read them.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,28 +23,6 @@ pub struct PlaylistListing {
     pub can_create: bool,
 }
 
-/// One entry of a playlist's page.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlaylistEntryRow {
-    pub position_id: uuid::Uuid,
-    pub track_id: String,
-    pub title: String,
-    /// The track's credit line: its own credits, else its album's (§2.3).
-    pub artist_line: bae_types::credits::CreditLine,
-    pub album_id: String,
-    pub album_title: String,
-    pub release_id: String,
-    pub duration_ms: u64,
-    /// The cover of the release the track is on.
-    pub cover: Option<ImageRef>,
-    /// The entry's number in the playlist's order, counted from 1.
-    pub number: u64,
-    /// Whether an entry comes before this one, so it can move up.
-    pub can_move_up: bool,
-    /// Whether an entry comes after this one, so it can move down.
-    pub can_move_down: bool,
-}
-
 /// A playlist's page: the playlist and its entries in order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaylistDetail {
@@ -91,124 +33,51 @@ pub struct PlaylistDetail {
     pub empty: bool,
 }
 
-/// The playlists, with the columns [`playlist_row`] reads, over `playlists pl`
-/// and its owner's profile, `narrowing` narrowing them, by name in the
-/// device's language, then id. The query also counts each playlist's entries,
-/// adds up their durations, and reads the covers of its first releases
-/// (`cover_grid`, when it has a grid's worth of different releases) and the
-/// cover of its first entry's release.
-pub(crate) fn playlists_sql(narrowing: &str) -> String {
-    format!(
-        "SELECT pl.id, pl.name, pl.audience, pl.person_id, owner.name, {avatar}, \
-                COALESCE(pl.person_id = {own}, 0) AS yours, \
-                (SELECT COUNT(*) FROM playlist_entries AS e \
-                 WHERE e.playlist_id = pl.id) AS track_count, \
-                (SELECT COALESCE(SUM(t.duration_ms), 0) FROM playlist_entries AS e \
-                 JOIN tracks AS t ON t.id = e.track_id \
-                 WHERE e.playlist_id = pl.id) AS total_duration_ms, \
-                (SELECT CASE WHEN COUNT(*) = {COVER_GRID} THEN json_group_array( \
-                        json_object('release_id', release_id, 'cover_version', cover) \
-                        ORDER BY first_position) END \
-                 FROM (SELECT t.release_id AS release_id, {cover} AS cover, \
-                              MIN(e.position) AS first_position \
-                       FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
-                       WHERE e.playlist_id = pl.id GROUP BY t.release_id \
-                       ORDER BY first_position LIMIT {COVER_GRID})) AS cover_grid, \
-                (SELECT json_object('release_id', t.release_id, 'cover_version', {cover}) \
-                 FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
-                 WHERE e.playlist_id = pl.id ORDER BY e.position LIMIT 1) AS first_cover \
-         FROM playlists AS pl JOIN people AS owner ON owner.id = pl.person_id{narrowing} \
-         ORDER BY {name_key}, pl.id",
-        name_key = crate::sort_key_sql("pl.name"),
-        avatar = bae_store::file_version_sql("owner.avatar_id"),
-        own = OWN_MEMBER,
-        cover = cover_version_sql("t.release_id"),
-    )
-}
+// Every playlist this device holds, by name in the device's language, then id,
+// each row beside whether the person can make one; one row with no playlist
+// when there is none. The read reads `name_sort`, so coven reruns it when the
+// device's language changes.
+sqlive_compose::read!(
+    PlaylistList,
+    r#"
+    SELECT viewer.*, playlist.*
+    FROM @bae_people::people::playlist_fragments::OwnProfileExists AS viewer
+    LEFT JOIN @bae_people::people::playlist_fragments::ListedPlaylist AS playlist ON 1
+    JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+    ORDER BY bae_name_key(playlist.playlist_name, sort.language), playlist.playlist_id
+"#
+);
 
-/// This device's member.
-const OWN_MEMBER: &str = "(SELECT member FROM coven_members WHERE is_self AND NOT removed)";
-
-/// One playlist's entries as its page lists them, in order, each with its
-/// number from 1 and whether an entry comes before it and after it.
-pub(crate) fn playlist_entries_sql() -> String {
-    format!(
-        "SELECT e.position_id, e.track_id, t.title, {credits} AS artist_line, \
-                r.album_id, a.title, t.release_id, t.duration_ms, {cover}, \
-                ROW_NUMBER() OVER entries AS number, \
-                LAG(e.position_id) OVER entries IS NOT NULL AS can_move_up, \
-                LEAD(e.position_id) OVER entries IS NOT NULL AS can_move_down \
-         FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
-              JOIN releases AS r ON r.id = t.release_id JOIN albums AS a ON a.id = r.album_id \
-         WHERE e.playlist_id = ?1 WINDOW entries AS (ORDER BY e.position) ORDER BY e.position",
-        credits = track_credits_json_sql("t"),
-        cover = cover_version_sql("t.release_id"),
-    )
-}
-
-/// How many playlists [`playlists_sql`] lists.
-pub(crate) const PLAYLIST_TOTAL_SQL: &str = "SELECT COUNT(*) FROM playlists AS pl \
-     JOIN people AS owner ON owner.id = pl.person_id";
-
-/// Whether the person using this device has a profile.
-pub(crate) const CAN_CREATE_SQL: &str = "SELECT EXISTS (SELECT 1 FROM coven_members AS m \
-     JOIN people AS p ON p.id = m.member WHERE m.is_self AND NOT m.removed)";
-
-/// A cover a playlist's summary names, as [`playlists_sql`] writes it: a
-/// release and its cover's version, NULL for a release with no cover.
-#[derive(serde::Deserialize)]
-struct StoredCover {
-    release_id: String,
-    cover_version: Option<String>,
-}
-
-impl StoredCover {
-    fn image(self) -> Option<ImageRef> {
-        cover_ref(&self.release_id, self.cover_version)
-    }
-}
-
-/// A playlist as [`playlists_sql`] reads it.
-fn playlist_row(row: &Row) -> rusqlite::Result<PlaylistSummary> {
-    let grid: Option<[StoredCover; COVER_GRID]> = bae_store::read::optional_json_column(row, 9)?;
-    let cover = match grid {
-        Some(grid) => PlaylistCover::Grid(grid.map(StoredCover::image)),
-        None => PlaylistCover::Single(
-            bae_store::read::optional_json_column::<StoredCover, _>(row, 10)?
-                .and_then(StoredCover::image),
-        ),
-    };
-    Ok(PlaylistSummary {
-        id: uuid_column(row, 0)?,
-        name: row.get(1)?,
-        sharing: Sharing::of_audience(row.get(2)?),
-        owner: bae_people::people::PersonRef {
-            person: coven::MemberId(uuid_column(row, 3)?),
-            name: row.get(4)?,
-            avatar_version: row.get(5)?,
-        },
-        yours: row.get(6)?,
-        track_count: CountLabel { key: "core.library.track_count".to_string(), count: row.get(7)? },
-        total_duration_ms: row.get(8)?,
-        cover,
-    })
-}
+// The playlist `playlist` with its entries; no row when the library holds no
+// such playlist, or `playlist` names none.
+sqlive_compose::read!(
+    PlaylistPage(playlist: Option<String>),
+    r#"
+    SELECT playlist.*, paged.*
+    FROM @bae_people::people::playlist_fragments::ListedPlaylist AS playlist
+    JOIN @bae_people::people::playlist_fragments::PagedEntries(playlist: :playlist) AS paged
+      ON 1
+    WHERE playlist.playlist_id = :playlist
+"#
+);
 
 fn playlist_listing_on(sql: &SqlReadContext<'_>) -> Result<PlaylistListing, DbError> {
+    let mut can_create = false;
+    let mut listed = Vec::new();
+    for row in bae_store::statement_rows(sql, &PlaylistListParams {})? {
+        can_create = row.viewer.has_profile();
+        if let Some(playlist) = row.playlist {
+            listed.push(playlist.into_summary()?);
+        }
+    }
+    let add_targets: Vec<PlaylistSummary> =
+        listed.iter().filter(|playlist| playlist.yours).cloned().collect();
     Ok(PlaylistListing {
-        listed: sql.query(&playlists_sql(""), [], playlist_row)?,
-        add_targets: sql.query(
-            &playlists_sql(&format!(" WHERE pl.person_id = {OWN_MEMBER}")),
-            [],
-            playlist_row,
-        )?,
-        total: sql.query_row(PLAYLIST_TOTAL_SQL, [], |row| row.get(0))?,
-        add_target_count: sql.query_row(
-            &format!("{PLAYLIST_TOTAL_SQL} WHERE pl.person_id = {OWN_MEMBER}"),
-            [],
-            |row| row.get(0),
-        )?,
-        can_create: sql.query_row(CAN_CREATE_SQL, [], |row| row.get(0))?,
+        total: listed.len() as u64,
+        add_target_count: add_targets.len() as u64,
+        listed,
+        add_targets,
+        can_create,
     })
 }
 
@@ -216,31 +85,14 @@ fn playlist_detail_on(
     sql: &SqlReadContext<'_>,
     id: &Option<String>,
 ) -> Result<Option<PlaylistDetail>, DbError> {
-    let Some(id) = id else {
-        return Ok(None);
-    };
-    let Some(summary) = sql.query(&playlists_sql(" WHERE pl.id = ?1"), [id], playlist_row)?.pop()
-    else {
-        return Ok(None);
-    };
-    let entries = sql.query(&playlist_entries_sql(), [id], |row| {
-        Ok(PlaylistEntryRow {
-            position_id: uuid_column(row, 0)?,
-            track_id: row.get(1)?,
-            title: row.get(2)?,
-            artist_line: credit_line_column(row, "artist_line")?,
-            album_id: row.get(4)?,
-            album_title: row.get(5)?,
-            release_id: row.get(6)?,
-            duration_ms: row.get(7)?,
-            cover: cover_ref(&row.get::<_, String>(6)?, row.get(8)?),
-            number: row.get("number")?,
-            can_move_up: row.get("can_move_up")?,
-            can_move_down: row.get("can_move_down")?,
+    let statement = PlaylistPageParams { playlist: id.clone() };
+    bae_store::statement_optional(sql, &statement)?
+        .map(|row| {
+            let summary = row.playlist.into_summary()?;
+            let empty = summary.track_count.count == 0;
+            Ok(PlaylistDetail { summary, entries: row.paged.into_rows()?, empty })
         })
-    })?;
-    let empty = summary.track_count.count == 0;
-    Ok(Some(PlaylistDetail { summary, entries, empty }))
+        .transpose()
 }
 
 impl LibraryViews {

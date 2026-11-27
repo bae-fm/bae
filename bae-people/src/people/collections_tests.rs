@@ -2,7 +2,8 @@
 //! statement states, read along an index rather than sorted after the read,
 //! and playlists and profiles list by name in the language they are asked in.
 
-use crate::people::collections::{album_ratings_sql, PLAYLIST_ENTRIES_SQL};
+use crate::people::collections::album_ratings_sql;
+use crate::people::collections::EntriesOfPlaylist;
 use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -26,10 +27,19 @@ async fn plan(store: &Store, statement: String) -> Vec<String> {
 #[tokio::test]
 async fn a_playlists_entries_read_in_order_without_a_sort() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let plan = plan(&db, PLAYLIST_ENTRIES_SQL.to_string()).await;
+    let plan = db
+        .read(|sql| {
+            Ok(sql.query(
+                &format!("EXPLAIN QUERY PLAN {}", EntriesOfPlaylist::SQL),
+                rusqlite::named_params! { ":playlist": "id" },
+                |row| row.get::<_, String>(3),
+            )?)
+        })
+        .await
+        .unwrap();
     assert!(
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-        "{PLAYLIST_ENTRIES_SQL} sorts after reading: {plan:?}"
+        "the entries sort after reading: {plan:?}"
     );
 }
 
