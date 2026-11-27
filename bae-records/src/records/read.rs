@@ -196,25 +196,6 @@ pub(super) fn album_year(year: Option<i64>) -> Result<Option<i32>, DbError> {
     .transpose()
 }
 
-/// The line a credit-list JSON column prints, read in a row closure.
-pub fn credit_line_column(
-    row: &Row,
-    column: &str,
-) -> rusqlite::Result<bae_types::credits::CreditLine> {
-    credit_line_of(row, column, &row.get::<_, String>(column)?)
-}
-
-/// The line the credit list `json`, read from `column` of `row`, prints.
-fn credit_line_of(
-    row: &Row,
-    column: &str,
-    json: &str,
-) -> rusqlite::Result<bae_types::credits::CreditLine> {
-    credits_from_json(json)
-        .map(|credits| crate::credits::library_line(&credits))
-        .map_err(|error| column_conversion_error(row, column, error.to_string()))
-}
-
 pub fn find_release_by_id_on(
     sql: &impl bae_store::WriterRead,
     release_id: &str,
