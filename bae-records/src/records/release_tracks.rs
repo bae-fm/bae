@@ -301,24 +301,51 @@ pub(super) fn track_groups_of_json(json: &str) -> Result<Vec<DbTrackGroup>, DbEr
         .collect()
 }
 
-/// The places of the tracks the JSON array `?1` names, in the array's order,
-/// leaving out a track the library does not hold.
-fn track_places_sql() -> String {
-    format!(
-        "WITH wanted AS (SELECT j.key AS ord, j.value AS track_id FROM json_each(?1) j), \
-         {places} \
-         SELECT place.id AS track_id, place.release_id AS release_id, \
-                place.carrier AS carrier, place.side_kind AS side_kind, \
-                place.side_ordinal AS side_ordinal \
-         FROM wanted w \
-         JOIN place ON place.id = w.track_id \
-         ORDER BY w.ord",
-        places = track_places_ctes(
-            MediumsSource::Release,
-            "m.release_id IN (SELECT t.release_id FROM tracks t \
-                              JOIN wanted w ON w.track_id = t.id)"
-        ),
-    )
+// Where each track that the JSON array `:tracks` names sits, in the array's
+// order, leaving out a track the library does not hold. Each side is lettered
+// among all of its release's mediums, so the fragment places every track of
+// the named tracks' releases.
+sqlive_compose::read!(
+    NamedTrackPlaces(tracks: String),
+    r#"
+    SELECT place.*
+    FROM json_each(:tracks) AS wanted
+    JOIN @crate::records::place_fragments::TrackPlaces(
+        mediums: (SELECT medium.id, medium.release_id, medium.position, medium.medium,
+                         medium.side_count
+                  FROM release_mediums AS medium
+                  WHERE medium.release_id IN (
+                      SELECT held.release_id
+                      FROM json_each(:tracks) AS named
+                      JOIN tracks AS held ON held.id = named.value)),
+        places: (SELECT held.id, held.release_id, held.medium_id, held.side, held.track_number,
+                        held.stated_length_ms, held.position
+                 FROM tracks AS held
+                 WHERE held.release_id IN (
+                     SELECT sibling.release_id
+                     FROM json_each(:tracks) AS named
+                     JOIN tracks AS sibling ON sibling.id = named.value))) AS place
+      ON place.track_id = wanted.value
+    ORDER BY wanted.key
+"#
+);
+
+/// Where `place`'s track sits, as playback reads it.
+fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTrackPlace, DbError> {
+    let track = place.track_id;
+    let unreadable =
+        |reason: String| DbError::unreadable(format!("the place of track {track}"), reason);
+    let ordinal = u32::try_from(place.side_ordinal)
+        .map_err(|error| unreadable(format!("side {}: {error}", place.side_ordinal)))?;
+    let carrier = place
+        .carrier
+        .map(|key| {
+            bae_types::pressing::Medium::from_key(&key)
+                .ok_or_else(|| unreadable(format!("unknown medium {key:?}")))
+        })
+        .transpose()?;
+    let on = track_side_of(&place.side_kind, ordinal).map_err(unreadable)?;
+    Ok(DbTrackPlace { track_id: track, release_id: place.release_id, carrier, on })
 }
 
 /// Where each of `track_ids` sits, in their order, each track the library
@@ -327,29 +354,11 @@ pub fn track_places_on(
     sql: &impl coven::SqlRead,
     track_ids: &[String],
 ) -> Result<Vec<DbTrackPlace>, DbError> {
-    Ok(sql.query(
-        &track_places_sql(),
-        params![serde_json::json!(track_ids).to_string()],
-        |row| {
-            let unreadable =
-                |column: &str, reason: String| column_conversion_error(row, column, reason);
-            let kind: String = row.get("side_kind")?;
-            let ordinal: u32 = row.get("side_ordinal")?;
-            let carrier: Option<String> = row.get("carrier")?;
-            Ok(DbTrackPlace {
-                track_id: row.get("track_id")?,
-                release_id: row.get("release_id")?,
-                carrier: carrier
-                    .map(|key| {
-                        bae_types::pressing::Medium::from_key(&key)
-                            .ok_or_else(|| unreadable("carrier", format!("unknown medium {key:?}")))
-                    })
-                    .transpose()?,
-                on: track_side_of(&kind, ordinal)
-                    .map_err(|reason| unreadable("side_kind", reason))?,
-            })
-        },
-    )?)
+    let statement = NamedTrackPlacesParams { tracks: serde_json::json!(track_ids).to_string() };
+    bae_store::statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| track_place_of(row.place))
+        .collect()
 }
 
 /// The heading of each side of the mediums numbered `numbered` (counted from
