@@ -34,10 +34,9 @@ pub use schema::{
 };
 include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 mod store;
-pub use store::{
-    unsent_to_storage, utc_now, StorageSetupSteps, Store, UNMETERED_ONLY, UPLOADS_PAUSED,
-};
+pub use store::{unsent_to_storage, utc_now, StorageSetupSteps, Store};
 mod store_read;
+pub mod upload_flags;
 pub use store_read::StoreRead;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_devices;

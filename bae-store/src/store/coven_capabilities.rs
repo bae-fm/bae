@@ -2,13 +2,6 @@ use crate::store::Store;
 use crate::DbError;
 use coven::SqlReadContext;
 
-/// Whether the person paused uploads, as coven's one row says.
-pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
-
-/// Whether the person has files move only on unmetered networks, as coven's
-/// network row says.
-pub const UNMETERED_ONLY: &str = "SELECT unmetered_only FROM coven_network";
-
 /// What this device holds that the store's storage, `storage`, lacks, from
 /// `queued`, the writes and files coven's queues hold: all of them while
 /// storage is set up. A store with no storage set up has nowhere it uploads
@@ -385,8 +378,10 @@ impl Store {
 
     /// Whether the person paused uploads now.
     pub async fn uploads_paused(&self) -> Result<bool, DbError> {
-        self.read(|sql| sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0)).map_err(DbError::from))
-            .await
+        self.read(|sql| {
+            Ok(crate::statement_row(&sql, &crate::upload_flags::UploadsPausedParams {})?.paused)
+        })
+        .await
     }
 
     /// How far each file this process is sending has got, by file, from

@@ -34,13 +34,11 @@ async fn a_releases_queued_files_are_found_by_its_files() {
     }
 }
 
-/// A stored count or size below zero is no value a writer produces: reading
+/// A stored count below zero is no value a writer produces: reading
 /// one fails naming its column instead of panicking where it is used.
 #[test]
 fn a_negative_upload_count_or_size_is_an_unreadable_column() {
-    use crate::records::queued_uploads::{
-        release_upload_in_row, sending_file_in_row, sending_release_in_row,
-    };
+    use crate::records::queued_uploads::release_upload_in_row;
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     let failure = |error: rusqlite::Error| match error {
         rusqlite::Error::FromSqlConversionFailure(_, _, cause) => cause.to_string(),
@@ -55,25 +53,6 @@ fn a_negative_upload_count_or_size_is_an_unreadable_column() {
         )
         .unwrap_err();
     assert!(failure(upload).starts_with("waiting_files -1"));
-
-    let file = conn
-        .query_row(
-            "SELECT '00000000-0000-0000-0000-000000000001' AS file, 'r' AS release_id, \
-             -5 AS file_size",
-            [],
-            sending_file_in_row,
-        )
-        .unwrap_err();
-    assert!(failure(file).starts_with("file_size -5"));
-
-    let release = conn
-        .query_row(
-            "SELECT 'r' AS release_id, -400 AS bytes_stored, 1000 AS bytes_total",
-            [],
-            sending_release_in_row,
-        )
-        .unwrap_err();
-    assert!(failure(release).starts_with("bytes_stored -400"));
 }
 
 /// The progress of a release's upload from its counts shows what the full

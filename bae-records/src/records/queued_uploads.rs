@@ -4,7 +4,7 @@
 use super::*;
 use crate::release_storage::ReleaseStorageRows;
 use crate::UploadProgress;
-use bae_store::UPLOADS_PAUSED;
+use bae_store::statement_row;
 
 /// How many of the release `?1`'s files wait in this device's upload queue.
 #[cfg(any(test, feature = "test-utils"))]
@@ -198,52 +198,67 @@ pub fn release_upload_on(
         .flatten())
 }
 
-/// Each file this process is sending now and, when it is one of a release's
-/// files, its release and size. One row per upload in flight is read.
-const FILES_SENDING: &str = "SELECT sending.file AS file, f.release_id AS release_id, \
-         CASE WHEN f.id IS NOT NULL THEN coven.size END AS file_size \
-     FROM coven_sending AS sending \
-     LEFT JOIN release_files AS f ON f.file = sending.file \
-     LEFT JOIN coven_files AS coven ON coven.id = sending.file";
+// What this process is sending now, as one row: each file in flight, a
+// cover's or a picture's among them, with the release and size of a release's
+// file; each release with files in flight, found by its files from them, with
+// the bytes of its files stored of its whole size; and whether the person
+// paused uploads. One row per upload in flight is read.
+sqlive_compose::read!(
+    SendingUploads {
+        struct SendingFile {
+            file: coven::FileId,
+            release_id: Option<String>,
+            file_size: Option<u64>
+        }
+        struct SendingRelease { release_id: String, bytes_stored: u64, bytes_total: u64 }
+        files: json<Vec<SendingFile>>,
+        releases: json<Vec<SendingRelease>>,
+        paused: bool
+    },
+    r#"
+    SELECT (SELECT json_group_array(json_object(
+                       'file', sending.file, 'release_id', f.release_id,
+                       'file_size', CASE WHEN f.id IS NOT NULL THEN stored.size END))
+            FROM coven_sending AS sending
+            LEFT JOIN release_files AS f ON f.file = sending.file
+            LEFT JOIN coven_files AS stored ON stored.id = sending.file) AS files,
+           (SELECT json_group_array(json_object(
+                       'release_id', storage.release_id,
+                       'bytes_stored', storage.bytes_stored,
+                       'bytes_total', storage.total_size))
+            FROM @crate::release_storage::ReleaseStorage AS storage
+            WHERE storage.release_id IN (
+                SELECT f.release_id
+                FROM coven_sending AS sending
+                JOIN release_files AS f ON f.file = sending.file)) AS releases,
+           pause.paused AS paused
+    FROM coven_upload_pause AS pause
+"#
+);
 
-/// Each release with files this process is sending now: of its whole size,
-/// the bytes of its files stored. Each release is found by its files from
-/// the files in flight.
-fn releases_sending_bytes() -> String {
-    format!(
-        "SELECT storage.release_id AS release_id, \
-             storage.bytes_stored AS bytes_stored, \
-             storage.total_size AS bytes_total \
-         FROM ({storage}) AS storage \
-         WHERE storage.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
-             JOIN release_files AS f ON f.file = sending.file)",
-        storage = ReleaseStorageRows::SQL,
-    )
-}
-
-/// Each file this process is sending now, a cover's or a picture's among
-/// them, and of a release's file its release and size.
-pub fn sending_files_on(sql: &impl coven::SqlRead) -> Result<Vec<DbSendingFile>, DbError> {
-    Ok(sql.query(FILES_SENDING, [], sending_file_in_row)?)
-}
-
-/// A file [`FILES_SENDING`] read; a size below zero is a column-conversion
-/// error.
-pub(super) fn sending_file_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendingFile> {
-    Ok(DbSendingFile {
-        file: row.get("file")?,
-        release_id: row.get("release_id")?,
-        file_size: bae_store::read::optional_count_column(row, "file_size")?,
-    })
-}
-
-/// A release [`releases_sending_bytes`] read; a byte count below zero is a
-/// column-conversion error.
-pub(super) fn sending_release_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendingRelease> {
-    Ok(DbSendingRelease {
-        release_id: row.get("release_id")?,
-        bytes_stored: bae_store::read::count_column(row, "bytes_stored")?,
-        bytes_total: bae_store::read::count_column(row, "bytes_total")?,
+/// What this process is sending now, as [`SendingUploads`] reads it.
+fn sending_uploads_on(sql: &impl coven::SqlRead) -> Result<DbSendingUploads, DbError> {
+    let row = statement_row(sql, &SendingUploadsParams {})?;
+    Ok(DbSendingUploads {
+        files: row
+            .files
+            .into_iter()
+            .map(|file| DbSendingFile {
+                file: file.file,
+                release_id: file.release_id,
+                file_size: file.file_size,
+            })
+            .collect(),
+        releases: row
+            .releases
+            .into_iter()
+            .map(|release| DbSendingRelease {
+                release_id: release.release_id,
+                bytes_stored: release.bytes_stored,
+                bytes_total: release.bytes_total,
+            })
+            .collect(),
+        paused: row.paused,
     })
 }
 
@@ -294,15 +309,7 @@ impl Records {
     /// stop being sent or the person pauses uploads. How far each file has
     /// got is coven's upload watch.
     pub fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads, DbError> {
-        self.store.subscribe(|sql| {
-            let files = sending_files_on(&sql)?;
-            let releases = sql.query(&releases_sending_bytes(), [], sending_release_in_row)?;
-            Ok(DbSendingUploads {
-                files,
-                releases,
-                paused: sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))?,
-            })
-        })
+        self.store.subscribe(|sql| sending_uploads_on(&sql))
     }
 
     /// Whether a release file's coven file still waits to upload from this

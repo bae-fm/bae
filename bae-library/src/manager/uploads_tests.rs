@@ -379,6 +379,23 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     let files = release_files(manager, &release.id).await;
     let bars = manager.store.read(|sql| bae_views::activity_bars_on(&sql)).await.unwrap();
     assert_eq!(bars.uploads.moving, [bae_views::MovingShare { key: files[0].file, share: 1.0 }]);
+    let read = manager.records.subscribe_sending_uploads().next_inline().await;
+    assert_eq!(
+        read.expect("the query stays open").unwrap(),
+        bae_records::DbSendingUploads {
+            files: vec![bae_records::DbSendingFile {
+                file: files[0].file,
+                release_id: Some(release.id.clone()),
+                file_size: Some(7),
+            }],
+            releases: vec![bae_records::DbSendingRelease {
+                release_id: release.id.clone(),
+                bytes_stored: 0,
+                bytes_total: 7,
+            }],
+            paused: false,
+        }
+    );
     created.await.unwrap();
     resume.send(()).unwrap();
     while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}
