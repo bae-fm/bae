@@ -422,12 +422,11 @@ fn extract_log_toc_sectors_reads_a_table_written_in_any_language() {
     }
 }
 
-/// The table ends at the first blank line after its rows: a line before that
-/// which is no track row is skipped, and one after it is no part of the table.
+/// The table ends at the first blank line after its rows: what follows it is no
+/// part of the table.
 #[test]
 fn extract_log_toc_sectors_ends_the_table_at_the_blank_line_after_its_rows() {
     let log = "1 | 0:00.00 | 1:00.00 | 0 | 99\n\
-         -----------------------------------------------------------\n\
          2 | 1:00.00 | 1:00.00 | 100 | 199\n\
          \n\
          3 | (10/10) Отчёт\n";
@@ -454,8 +453,8 @@ fn extract_log_toc_sectors_parses_headerless_table() {
     assert_eq!(rows, vec![(0, 100), (100, 200)]);
 }
 
-/// A row that does not read, or a gap in the track numbers, fails the log: a
-/// skipped row hashes a disc one track short, to a DiscID that looks valid.
+/// A table line that does not read as a track row, or a gap in the track
+/// numbers, fails the log: a skipped row hashes a disc one track short, to a DiscID that looks valid.
 #[test]
 fn extract_log_toc_sectors_fails_on_a_damaged_row_or_a_gap_in_track_numbers() {
     let toc = |rows: &str| {
@@ -472,13 +471,16 @@ fn extract_log_toc_sectors_fails_on_a_damaged_row_or_a_gap_in_track_numbers() {
     assert_eq!(extract_log_toc_sectors(&whole).unwrap(), Some(vec![(0, 99), (100, 199)]));
 
     // A middle row with an unreadable sector, a last row with an unreadable
-    // sector or a missing cell, and a middle row that is no longer a track
-    // row, which leaves a gap in the track numbers.
+    // sector or a missing cell, and a middle or last line that is no track
+    // row: a damaged number, lost bars, or a rule.
     for damaged in [
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 1O0 | 199\n3 | 2:00.00 | 1:00.00 | 200 | 299",
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 1x9",
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100  199",
         "1 | 0:00.00 | 1:00.00 | 0 | 99\n2  1:00.00  1:00.00  100  199\n3 | 2:00.00 | 1:00.00 | 200 | 299",
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 199\n3O | 2:00.00 | 1:00.00 | 200 | 299",
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 199\n3  2:00.00  1:00.00  200  299",
+        "1 | 0:00.00 | 1:00.00 | 0 | 99\n---------------\n2 | 1:00.00 | 1:00.00 | 100 | 199",
     ] {
         extract_log_toc_sectors(&toc(damaged)).expect_err(damaged);
     }

@@ -77,11 +77,10 @@ fn parse_log_toc_row(line: &str) -> Option<(u32, i32, i32)> {
 /// Extract raw `(start_sector, end_sector)` pairs from an EAC/XLD LOG TOC table.
 /// The rippers write the words around the table in the person's language, so no
 /// word of the log marks the table: it opens at the first track row (see
-/// [`is_log_toc_row`]) and ends at the first blank line after it. Any other
-/// line between the two is skipped.
-/// Every track row must read and the track numbers must run 1, 2, 3 in order:
-/// a row left out would hash a disc one track short, a wrong DiscID that looks
-/// as valid as the right one. `None` when the log holds no track row, which is
+/// [`is_log_toc_row`]) and ends at the first blank line after it.
+/// Every line between the two must read as a track row, and the track numbers
+/// must run 1, 2, 3 in order: a damaged row passed over would hash a disc one
+/// track short, a wrong DiscID that looks as valid as the right one. `None` when the log holds no track row, which is
 /// a log that states no disc.
 /// Row format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
 fn extract_log_toc_sectors(log_content: &str) -> Result<Option<Vec<(i32, i32)>>, DiscIdError> {
@@ -92,7 +91,7 @@ fn extract_log_toc_sectors(log_content: &str) -> Result<Option<Vec<(i32, i32)>>,
         .skip_while(|line| !is_log_toc_row(line))
         .take_while(|line| !line.is_empty());
     let mut track_sectors = Vec::new();
-    for line in table.filter(|line| is_log_toc_row(line)) {
+    for line in table {
         let Some((track_number, start_sector, end_sector)) = parse_log_toc_row(line) else {
             return Err(DiscIdError::RowDoesNotRead { row: line.to_string() });
         };

@@ -1404,10 +1404,11 @@ of:
   the same folder. A sheet beside a log describes the disc the log already
   hashed, so it isn't hashed again; a disc two files hash alike counts once.
   bae reads the table of contents of an Exact Audio Copy or XLD log in whatever
-  language the ripper wrote it, going by no word of the log: a line whose first
-  cell, before a `|`, is a number is a track row, and the table runs from the
-  first track row to the next blank line. bae skips every other line in it,
-  such as the column headings.
+  language the ripper wrote it, going by no word of the log. The table starts
+  at the first line whose first cell, before a `|`, is a number, and runs to
+  the next blank line. bae skips the lines before it, such as the column
+  headings. Every line of the table is a track row: a line there that doesn't
+  read as one makes the table not read.
   bae hashes the track offsets the way MusicBrainz does; it never reads a
   drive. Carol's box, a CUE sheet per disc, yields two Disc IDs.
 - **Barcodes**, decoded from the bars on the artwork, read from the digits
@@ -1428,9 +1429,9 @@ audio file's tags, the Disc ID of a CUE sheet, and, for a library release,
 each file bae reads and its cover. bae leaves an input out when it can't read
 it, such as a file on a drive that fails or a rip log over the size bae reads
 whole; when reading it panics; and when it describes no disc bae can hash: a
-rip log whose table of contents has a track row whose cells don't read, or
-track numbers that don't run 1, 2, 3 in order, or a CUE sheet that bae can't
-lay out as a disc, such as one naming an audio file with no measured length.
+rip log whose table of contents has a line that doesn't read as a track row,
+or track numbers that don't run 1, 2, 3 in order, or a CUE sheet that bae
+can't lay out as a disc, such as one naming an audio file with no measured length.
 bae never uses part of an input it leaves out, since the Disc ID of only the
 rows that read would name another disc: such a rip log gives no Disc ID and
 proves no rip, and such a CUE sheet gives no Disc ID, while its tracks still
