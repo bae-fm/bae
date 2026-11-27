@@ -6,6 +6,7 @@
 
 use super::*;
 use crate::{ContextSource, QueueItem, RepeatMode};
+use bae_records::records::track_display::DisplayedTrack;
 
 // How the queue repeats.
 sqlive_compose::fragment!(
@@ -115,16 +116,15 @@ sqlive_compose::fragment!(
 "#
 );
 
-impl QueueItems {
-    /// The row as the queue screens show it.
-    fn into_item(self) -> Result<QueueItem, DbError> {
-        Ok(QueueItem {
-            entry_id: self.entry,
-            track_id: self.track.track_id().to_owned(),
-            duration_ms: self.track.duration_ms(),
-            display: self.track.into_display()?,
-        })
-    }
+/// The queue row of the entry `entry_id`, which plays `track`, as the queue
+/// screens show it.
+pub(super) fn queue_item(entry_id: String, track: DisplayedTrack) -> Result<QueueItem, DbError> {
+    Ok(QueueItem {
+        entry_id,
+        track_id: track.track_id().to_owned(),
+        duration_ms: track.duration_ms(),
+        display: track.into_display()?,
+    })
 }
 
 // The rows of the session's up-next list, at most `:limit`: the Up Next rows,
@@ -215,7 +215,10 @@ pub fn subscribe_session_up_next(
 
 fn session_up_next_on(sql: &SqlReadContext<'_>, limit: u64) -> Result<Vec<QueueItem>, DbError> {
     let statement = SessionUpNextItemsParams { limit: bae_store::list_windows::sql_bound(limit) };
-    statement_rows(sql, &statement)?.into_iter().map(|row| row.item.into_item()).collect()
+    statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| queue_item(row.item.entry, row.item.track))
+        .collect()
 }
 
 pub(super) fn queue_value_on(
@@ -227,7 +230,7 @@ pub(super) fn queue_value_on(
     let mut manual = Vec::new();
     for row in rows {
         if let Some(item) = row.item {
-            manual.push(item.into_item()?);
+            manual.push(queue_item(item.entry, item.track)?);
         }
         head.get_or_insert((row.head, row.flags));
     }

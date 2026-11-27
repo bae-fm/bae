@@ -6,6 +6,7 @@
 //! The lane has two orders, and SQL fixes which column a statement sorts by,
 //! so each read is one statement for each order, and the request picks one.
 
+use super::queue_reads::queue_item;
 use super::*;
 use crate::{QueueEntryId, QueueItem};
 use bae_store::list_windows::{sql_bound, Keyed, OrderKey, SortValue};
@@ -211,12 +212,7 @@ fn keyed_item(
     entry: i64,
     track: bae_records::records::track_display::DisplayedTrack,
 ) -> Result<Keyed<QueueItem>, DbError> {
-    let item = QueueItem {
-        entry_id: QueueEntryId::Context(entry).to_string(),
-        track_id: track.track_id().to_owned(),
-        duration_ms: track.duration_ms(),
-        display: track.into_display()?,
-    };
+    let item = queue_item(QueueEntryId::Context(entry).to_string(), track)?;
     Ok((item, key_of(place)))
 }
 
