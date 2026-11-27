@@ -77,10 +77,10 @@
 .bae-a-btn-tonal.bae-a-btn-stage { color: var(--on-fill); }
 .bae-a-btn-align-text { align-self: flex-start; margin-left: calc(-1 * var(--space-group)); }
 .bae-a-btn-align-field { align-self: flex-start; margin-left: calc(var(--space-edge) - var(--space-group)); }
-/* Material's disabled button: the words in the screen's text at 38%, a filled or tonal button's fill and an outline in it at 12%, whatever the kind or tone. */
-.bae-a-btn:disabled { cursor: default; color: color-mix(in srgb, var(--text-primary) 38%, transparent); }
-.bae-a-btn-filled:disabled::before, .bae-a-btn-tonal:disabled::before { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
-.bae-a-btn-outlined:disabled::before { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent); }
+/* Material's disabled button: the words in the screen's text at the disabled opacity, a filled or tonal button's fill and an outline in it at the disabled fill's, whatever the kind or tone. */
+.bae-a-btn:disabled { cursor: default; color: color-mix(in srgb, var(--text-primary) calc(var(--opacity-android-disabled) * 100%), transparent); }
+.bae-a-btn-filled:disabled::before, .bae-a-btn-tonal:disabled::before { background: color-mix(in srgb, var(--text-primary) calc(var(--opacity-android-disabled-fill) * 100%), transparent); }
+.bae-a-btn-outlined:disabled::before { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) calc(var(--opacity-android-disabled-fill) * 100%), transparent); }
 
 .bae-a-iconbtn { width: var(--size-android-hit-target); height: var(--size-android-hit-target); flex: none; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 999px; padding: 0; fill: var(--text-primary); cursor: pointer; }
 .bae-a-inlineicon { flex: none; width: var(--icon-android-medium); height: var(--icon-android-medium); display: flex; align-items: center; justify-content: center; }
