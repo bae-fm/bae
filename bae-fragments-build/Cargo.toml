@@ -13,10 +13,8 @@ path = "src/lib.rs"
 [dependencies]
 # The schema the fragments are checked against, as data.
 bae-schema-manifest = { workspace = true }
-# coven's schema as SQL text, which needs no coven runtime.
-coven-schema = { workspace = true }
-# The schema probe, whose test prepares every readable object.
-sqlive-reads = { workspace = true }
+# What the compiler must know of coven, which needs no coven runtime.
+coven-schema = { workspace = true, features = ["compiler"] }
 serde = { workspace = true, features = ["derive"] }
 # The compiler that checks and composes each crate's fragments.
 sqlive-compose = { workspace = true, features = ["compiler"] }

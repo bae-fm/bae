@@ -8,7 +8,6 @@
 //! readable objects, as a library's migration makes it. A crate that a
 //! phone's library holds is checked against the phone's schema too.
 
-mod coven_objects;
 mod domains;
 
 use bae_schema_manifest::{members, migration, ManifestError, Migration};
@@ -86,7 +85,6 @@ fn check_crate(
         .map_err(|error| error.to_string())?;
     let domains = domains::Domains::from_policy(&policy_text)?;
     let members = members(&workspace).map_err(|error| error.to_string())?;
-    let coven = coven_objects::coven_objects();
 
     let mut output = None;
     let mut schema_files: Vec<PathBuf> = Vec::new();
@@ -97,7 +95,7 @@ fn check_crate(
         }
         let migration = migration(&workspace, desktop).map_err(|error| error.to_string())?;
         schema_files.extend(migration.files.iter().cloned());
-        let setup = setup_of(&coven, &migration);
+        let setup = setup_of(&migration);
         // The compiler tells a missing file from another failure by the error's kind.
         let source_reader = |path: &str| read_text(&crate_dir.join(path));
         let compiled = compile_crate(Input {
@@ -160,22 +158,18 @@ fn run() -> Result<(), String> {
     Ok(())
 }
 
-/// The setup the compiler runs: coven's objects, then the migration's SQL.
-fn setup_of(coven: &coven_objects::CovenObjects, migration: &Migration) -> Setup {
-    let mut sql = vec![coven.sql.clone()];
-    sql.extend(migration.sql.iter().cloned());
-    let mut functions = coven.functions.clone();
-    functions.extend(migration.functions.iter().map(|function| Function {
+/// The setup the compiler runs: coven's, then the migration's SQL with the
+/// functions and collations it names.
+fn setup_of(migration: &Migration) -> Setup {
+    let mut setup = coven_schema::compiler_setup();
+    setup.sql.extend(migration.sql.iter().cloned());
+    setup.functions.extend(migration.functions.iter().map(|function| Function {
         name: function.name.clone(),
         arguments: i32::from(function.arguments),
         deterministic: true,
     }));
-    Setup {
-        sql,
-        functions,
-        collations: migration.collations.clone(),
-        writer_only: coven_schema::WRITER_ONLY.iter().map(|name| (*name).to_owned()).collect(),
-    }
+    setup.collations.extend(migration.collations.iter().cloned());
+    setup
 }
 
 /// Each call of the crate that reads a table of a domain whose homes don't hold
