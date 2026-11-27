@@ -6,13 +6,10 @@
 //! the audio they play after that read, so its write runs the statement
 //! again and refuses when the library holds any of it differently.
 
-use super::super::release_sheet_decisions::ReleaseSheetDecisions;
 use super::draft::FormParams;
 use super::*;
 use crate::folder_scanner::CandidateFileEdits;
-use bae_records::records::release_edit_rows::{
-    DbReleaseSaveFacts, EditorRelease, ReleaseSaveRows, ReleaseToEdit, UNEDITED,
-};
+use bae_records::records::release_edit_rows::{DbReleaseSaveFacts, ReleaseToEdit, UNEDITED};
 use bae_store::statement_optional;
 
 // What a save of a form of the release `release` starts from. No row for a
@@ -43,24 +40,6 @@ fn statement_of(form: &ReleaseEditForm) -> Result<SaveInputsParams, DbError> {
     })
 }
 
-/// [`SaveInputs`]'s row.
-struct SaveInputRows {
-    shown: EditorRelease,
-    save: ReleaseSaveRows,
-    decided: ReleaseSheetDecisions,
-}
-
-fn rows_on(
-    sql: &impl bae_store::WriterRead,
-    statement: &SaveInputsParams,
-) -> Result<Option<SaveInputRows>, DbError> {
-    Ok(statement_optional(sql, statement)?.map(|row| SaveInputRows {
-        shown: row.shown,
-        save: row.save,
-        decided: row.decided,
-    }))
-}
-
 /// What a save of a release editor's form starts from.
 pub struct ReleaseSaveInputs {
     /// The seed an editor opening on the release now holds.
@@ -81,9 +60,9 @@ impl ReleaseSaveInputs {
     /// row, or why there are none.
     fn of(
         release_id: &str,
-        rows: Option<SaveInputRows>,
+        row: Option<SaveInputsRow>,
     ) -> Result<Result<Self, ReleaseEditSeedRefusal>, DbError> {
-        let Some(SaveInputRows { shown, save, decided }) = rows else {
+        let Some(SaveInputsRow { shown, save, decided }) = row else {
             return Ok(Err(ReleaseEditSeedRefusal::ReleaseMissing(release_id.to_string())));
         };
         let shown = shown.decoded()?;
@@ -133,8 +112,8 @@ pub fn release_save_inputs_unchanged_on(
     read: &ReleaseSaveInputs,
 ) -> Result<Result<(), bae_records::ReleaseEditRefusal>, DbError> {
     use bae_records::ReleaseEditRefusal as R;
-    let rows = rows_on(sql, &statement_of(form)?)?;
-    match ReleaseSaveInputs::of(&form.release_id, rows)? {
+    let row = statement_optional(sql, &statement_of(form)?)?;
+    match ReleaseSaveInputs::of(&form.release_id, row)? {
         Ok(now) => Ok(if read.unchanged_in(&now) { Ok(()) } else { Err(R::Stale) }),
         Err(ReleaseEditSeedRefusal::ReleaseMissing(_)) => Ok(Err(R::Gone)),
         Err(refusal) => Err(DbError::unreadable(
@@ -153,8 +132,8 @@ impl ImportTables {
         let statement = statement_of(form)?;
         let release_id = form.release_id.clone();
         self.store
-            .read(move |sql| rows_on(&sql, &statement))
-            .process(move |rows| ReleaseSaveInputs::of(&release_id, rows))
+            .read(move |sql| statement_optional(&sql, &statement))
+            .process(move |row| ReleaseSaveInputs::of(&release_id, row))
             .await
     }
 }
