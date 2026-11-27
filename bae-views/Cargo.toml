@@ -5,6 +5,8 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# The crates that depend on this one receive its fragments through this key.
+links = "bae_views_sql"
 
 [lib]
 name = "bae_views"
