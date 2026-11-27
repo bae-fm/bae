@@ -5,15 +5,8 @@ use super::*;
 use crate::{ImportFailure, ImportFailureReason};
 use bae_util::timestamp::StoredTimestamp as _;
 
-/// The diagnostic column read by both the list and the candidate pane.
-pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";
-
-pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> rusqlite::Result<ImportFailureReason> {
-    Ok(ImportFailureReason { detail: row.get("failure_error")? })
-}
-
-#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// The failure the last import of `candidate` left.
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub(super) fn load_failure_on(
     sql: &SqlReadContext<'_>,
     candidate: OneCandidate<'_>,
@@ -21,31 +14,27 @@ pub(super) fn load_failure_on(
     let filter = candidate.filter("failure.content_hash");
     sql.query_row(
         &format!(
-            "SELECT {FAILURE_REASON_COLUMNS}, failure.failed_at \
+            "SELECT failure.error, failure.failed_at \
              FROM import_candidate_failure failure {}",
             filter.clause
         ),
         filter.params().as_slice(),
-        |row| {
-            Ok(ImportFailure {
-                reason: failure_reason_from_row(row)?,
-                failed_at: rfc3339_column(row, "failed_at")?,
-            })
-        },
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )
-    .optional()
-    .map_err(DbError::from)
+    .optional()?
+    .map(|(error, failed_at)| failure_of(error, &failed_at))
+    .transpose()
 }
 
-/// The failure a pane's read selects, as [`super::fragments::Failure`]
-/// names it.
-pub(crate) fn failure_of(failure: super::fragments::Failure) -> Result<ImportFailure, DbError> {
+/// The failure that the columns `error` and `failed_at` of
+/// `import_candidate_failure` hold.
+pub(crate) fn failure_of(error: String, failed_at: &str) -> Result<ImportFailure, DbError> {
     Ok(ImportFailure {
-        reason: ImportFailureReason { detail: failure.failure_error },
-        failed_at: bae_util::timestamp::parse_rfc3339(&failure.failed_at).map_err(|error| {
+        reason: ImportFailureReason { detail: error },
+        failed_at: bae_util::timestamp::parse_rfc3339(failed_at).map_err(|parse_error| {
             DbError::unreadable(
                 "import_candidate_failure.failed_at",
-                format!("{}: {error}", failure.failed_at),
+                format!("{failed_at}: {parse_error}"),
             )
         })?,
     })

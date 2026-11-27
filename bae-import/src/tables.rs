@@ -67,7 +67,6 @@ use bae_catalogs::catalog::Catalog;
 use bae_records::*;
 use bae_store::path_column;
 use bae_store::query::*;
-use bae_store::read::*;
 use bae_store::*;
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{named_params, params, OptionalExtension, Row};

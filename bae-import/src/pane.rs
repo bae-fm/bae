@@ -8,7 +8,7 @@
 //! provider tracklist.
 
 use crate::folder_scanner::CategorizedFiles;
-use crate::types::{CandidateDraft, CandidateTrack, RawReleaseEdit, RawTrackEdit};
+use crate::types::{CandidateDraft, CandidateTrack};
 use crate::ImportError;
 use bae_catalogs::release_values::ReleaseValues;
 
@@ -35,7 +35,7 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft 
         .enumerate()
         .map(|(position, (track, place))| {
             CandidateTrack::unsourced(
-                RawTrackEdit {
+                crate::types::RawTrackEdit {
                     id: candidate_track_id(position),
                     title: String::new(),
                     artist_assignments: crate::TrackArtistAssignments::AlbumArtists,
@@ -100,7 +100,7 @@ pub(crate) fn album_over_draft(values: ReleaseValues, current: &CandidateDraft) 
 /// tracks than the folder has audio units.
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub(crate) fn edit_over_audio(
-    edit: RawReleaseEdit,
+    edit: crate::types::RawReleaseEdit,
     current: &CandidateDraft,
 ) -> Result<CandidateDraft, ImportError> {
     if edit.tracks.len() != current.tracks.len() {
@@ -115,7 +115,7 @@ pub(crate) fn edit_over_audio(
         .zip(&current.tracks)
         .map(|(track, existing)| {
             CandidateTrack::unsourced(
-                RawTrackEdit {
+                crate::types::RawTrackEdit {
                     id: existing.edit.id.clone(),
                     title: track.title,
                     artist_assignments: track.artist_assignments,
@@ -141,7 +141,7 @@ pub(crate) fn edit_over_audio(
 /// test seeds a candidate with. Its tracks are one disc of unstated carrier,
 /// numbered in order.
 #[cfg(test)]
-pub(crate) fn draft_of_edit(edit: RawReleaseEdit) -> CandidateDraft {
+pub(crate) fn draft_of_edit(edit: crate::types::RawReleaseEdit) -> CandidateDraft {
     let mut placer = bae_types::mediums::Placer::default();
     CandidateDraft {
         album_title: edit.album_title,
@@ -155,7 +155,7 @@ pub(crate) fn draft_of_edit(edit: RawReleaseEdit) -> CandidateDraft {
             .enumerate()
             .map(|(position, track)| {
                 CandidateTrack::unsourced(
-                    RawTrackEdit {
+                    crate::types::RawTrackEdit {
                         id: candidate_track_id(position),
                         title: track.title,
                         artist_assignments: track.artist_assignments,

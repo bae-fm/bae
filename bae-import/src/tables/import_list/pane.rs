@@ -151,7 +151,10 @@ impl DraftRows {
             draft: import_state::draft_of(&draft)?,
             draft_blank: flags.draft_blank,
             draft_valid: flags.draft_valid,
-            failure: row.failure.map(import_state::failure_of).transpose()?,
+            failure: row
+                .failure
+                .map(|failure| import_state::failure_of(failure.failure_error, &failure.failed_at))
+                .transpose()?,
             pane_failure: row
                 .pane_failure
                 .map(|failure| {
