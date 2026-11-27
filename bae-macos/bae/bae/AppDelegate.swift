@@ -52,6 +52,10 @@ private func discoverInitialLibraries(
 @Observable
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let runtime: AppRuntime
+    /// The app's one bug reporter, which everything that reports a bug takes
+    /// from here.
+    @ObservationIgnored
+    let bugReports: BugReports
     private(set) var applicationServices: ApplicationServices?
     var appService: AppService?
     var requiredApplicationServices: ApplicationServices {
@@ -182,14 +186,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     init(
         runtime: AppRuntime,
-        makeApplicationServices: () -> ApplicationServices = {
-            ApplicationServices()
+        makeApplicationServices: (BugReports) -> ApplicationServices = {
+            ApplicationServices(bugReports: $0)
         }
     ) {
         self.runtime = runtime
+        let bugReports = BugReports(CoreBugReporter())
+        self.bugReports = bugReports
         applicationServices =
             runtime.startsApplicationServices
-            ? makeApplicationServices()
+            ? makeApplicationServices(bugReports)
             : nil
         super.init()
     }
@@ -299,7 +305,8 @@ extension AppDelegate {
         loadError = nil
         screen = .loading(.opening)
         let progress = LibraryOpenProgress(
-            host: requiredApplicationServices.host
+            host: requiredApplicationServices.host,
+            bugReporter: bugReports
         )
         openProgress = progress
         opener.open(libraryId: libraryId, progress: progress) {
@@ -472,7 +479,10 @@ extension AppDelegate {
                     try await self.close(open)
                     self.screen = .loading(.resetting)
                 }
-                let steps = DeviceResetSteps(host: host)
+                let steps = DeviceResetSteps(
+                    host: host,
+                    bugReporter: self.bugReports
+                )
                 self.resetSteps = steps
                 defer {
                     steps.stop()
@@ -545,7 +555,10 @@ extension AppDelegate {
         showAddLibrarySheet = false
         screen = .loading(.resetting)
         resetSlot.replace {
-            let steps = DeviceResetSteps(host: host)
+            let steps = DeviceResetSteps(
+                host: host,
+                bugReporter: self.bugReports
+            )
             self.resetSteps = steps
             defer {
                 steps.stop()
@@ -588,6 +601,7 @@ extension AppDelegate {
             mediaControlService:
                 requiredApplicationServices.mediaControlService,
             diagnostics: requiredApplicationServices.diagnostics,
+            bugReports: bugReports,
             uiStore: uiStore,
             config: config,
             seed: seed,
@@ -624,7 +638,7 @@ extension AppDelegate {
                     baeAppLogger.error(
                         "The wait for a copy reset of \(libraryId) failed: \(detail)"
                     )
-                    CoreBugReporter()
+                    self.bugReports
                         .report(
                             operation: "AppHandle.copyReset",
                             detail: detail
@@ -640,7 +654,10 @@ extension AppDelegate {
         guard let service = appService else { return }
         prepareForLibraryShutdown()
         screen = .loading(.closing)
-        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
+        let steps = LibraryClosingSteps(
+            host: requiredApplicationServices.host,
+            bugReporter: bugReports
+        )
         closingSteps = steps
         beginLibraryShutdown(service, showing: steps)
     }
@@ -734,7 +751,10 @@ extension AppDelegate {
     /// and end its session. The library is closed whether or not closing it
     /// fails, so the session ends either way.
     private func close(_ service: AppService) async throws {
-        let steps = LibraryClosingSteps(host: requiredApplicationServices.host)
+        let steps = LibraryClosingSteps(
+            host: requiredApplicationServices.host,
+            bugReporter: bugReports
+        )
         closingSteps = steps
         defer {
             closingSteps = nil

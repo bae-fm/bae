@@ -16,13 +16,17 @@ struct LightboxImageLoadTests {
         )
     )
 
-    private func failure(of images: ImageStore) async -> LightboxFailure? {
+    private func failure(
+        of images: ImageStore,
+        reportingTo reporter: RecordingBugReporter = RecordingBugReporter()
+    ) async -> LightboxFailure? {
         let load = LightboxImageLoad()
         await load.load(
             image,
             from: images,
             fitting: 400,
-            displayScale: 2
+            displayScale: 2,
+            bugReporter: reporter
         )
         guard case .failed(let failure) = load.phase else { return nil }
         return failure
@@ -55,6 +59,9 @@ struct LightboxImageLoadTests {
             throw ImageStoreUnavailable()
         })
 
-        #expect(await failure(of: images) == .bug)
+        let reporter = RecordingBugReporter()
+
+        #expect(await failure(of: images, reportingTo: reporter) == .bug)
+        #expect(reporter.operations == ["load a lightbox image"])
     }
 }

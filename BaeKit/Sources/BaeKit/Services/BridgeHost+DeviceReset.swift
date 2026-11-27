@@ -94,8 +94,11 @@ public final class DeviceResetSteps {
     public var setup: BridgeLibrarySetup { following.setup }
     private let following: BootstrapFollowing
 
-    public init(host: BridgeHost) {
-        following = BootstrapFollowing(setup: BridgeLibrarySetup(host: host))
+    public init(host: BridgeHost, bugReporter: any BridgeBugReporter) {
+        following = BootstrapFollowing(
+            setup: BridgeLibrarySetup(host: host),
+            bugReporter: bugReporter
+        )
     }
 
     /// Stop following; the status stays as it last was.

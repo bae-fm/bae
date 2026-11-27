@@ -84,8 +84,12 @@ public final class MembershipStore {
     @ObservationIgnored
     private var shownSubscriptions: [AnyObject]?
 
-    public convenience init(handle: AppHandle) {
+    public convenience init(
+        handle: AppHandle,
+        bugReporter: any BridgeBugReporter
+    ) {
         self.init(
+            bugReporter: bugReporter,
             subscribeMembers: { store in
                 Self.followMembers(handle, store: store)
             },
@@ -135,7 +139,10 @@ public final class MembershipStore {
         )
     }
 
+    private let bugReporter: any BridgeBugReporter
+
     private init(
+        bugReporter: any BridgeBugReporter,
         subscribeMembers:
             @escaping @MainActor (MembershipStore) -> [AnyObject],
         subscribeShown: @escaping @MainActor (MembershipStore) -> [AnyObject],
@@ -153,6 +160,7 @@ public final class MembershipStore {
             ) throws -> @MainActor () -> Void,
         holdFrequentSync: @escaping @MainActor () -> () -> Void
     ) {
+        self.bugReporter = bugReporter
         self.holdFrequentSync = holdFrequentSync
         self.subscribeMembers = subscribeMembers
         self.subscribeShown = subscribeShown
@@ -239,7 +247,10 @@ public final class MembershipStore {
         }
         await Task.untilCancelled()
         stop?()
-        Task { await endAddDevice(pairing, with: end) }
+        let bugReporter = bugReporter
+        Task {
+            await endAddDevice(pairing, with: end, reportingTo: bugReporter)
+        }
     }
 
     /// Have this device sync every few seconds until the calling task is
@@ -380,6 +391,7 @@ extension MembershipStore {
             addDeviceStatus: BridgeAddDeviceStatus? = nil
         ) -> MembershipStore {
             let store = MembershipStore(
+                bugReporter: CoreBugReporter(),
                 subscribeMembers: { _ in [] },
                 subscribeShown: { _ in [] },
                 subscribePerson: { _, memberId, apply in
@@ -477,14 +489,17 @@ public enum AddDeviceFace: Equatable, Sendable {
 /// expires.
 private func endAddDevice(
     _ pairing: String,
-    with end: @Sendable (String) async throws -> Void
+    with end: @Sendable (String) async throws -> Void,
+    reportingTo bugReporter: any BridgeBugReporter
 ) async {
     do { try await end(pairing) }
     catch {
         let detail = "ending the pairing failed: \(String(reflecting: error))"
         logger.error("\(detail)")
-        CoreBugReporter()
-            .report(operation: "MembershipStore.endAddDevice", detail: detail)
+        bugReporter.report(
+            operation: "MembershipStore.endAddDevice",
+            detail: detail
+        )
     }
 }
 

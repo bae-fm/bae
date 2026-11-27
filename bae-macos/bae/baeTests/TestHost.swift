@@ -9,12 +9,35 @@ enum TestHost {
     static func make() -> BridgeHost {
         do {
             return try BridgeHost.withTestKeyring(
-                diagnostics: BaeDiagnostics.disabled(),
+                diagnostics: BaeDiagnostics.disabled(
+                    bugReporter: RecordingBugReporter()
+                ),
                 appDir: BridgeAppDir.temporary()
             )
         }
         catch {
             preconditionFailure("The test host could not start: \(error)")
         }
+    }
+}
+
+// The steps a test follows over its host, when it reads none of the bugs
+// they report.
+
+extension LibraryOpenProgress {
+    convenience init(testHost: BridgeHost) {
+        self.init(host: testHost, bugReporter: RecordingBugReporter())
+    }
+}
+
+extension LibraryClosingSteps {
+    convenience init(testHost: BridgeHost) {
+        self.init(host: testHost, bugReporter: RecordingBugReporter())
+    }
+}
+
+extension LibrarySetupSteps {
+    convenience init(testHost: BridgeHost) {
+        self.init(host: testHost, bugReporter: RecordingBugReporter())
     }
 }

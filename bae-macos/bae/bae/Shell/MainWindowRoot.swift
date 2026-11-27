@@ -44,6 +44,7 @@ struct MainWindowRoot: View {
         .appAppearance()
         .layerEnvironment { [appDelegate, searchFocusRequests] content in
             content.mainWindowEnvironment(
+                bugReports: appDelegate.bugReports,
                 openSettingsWindow: OpenSettingsWindowAction {
                     appDelegate.showSettingsWindow(nil)
                 },
@@ -243,13 +244,16 @@ struct MainWindowRoot: View {
 
 extension View {
     /// What the primary window gives its content beyond the library's
-    /// services: the shell's Settings window and View ▸ Search.
+    /// services: the app's bug reporter, which its views report to with or
+    /// without a library, the shell's Settings window and View ▸ Search.
     fileprivate func mainWindowEnvironment(
+        bugReports: BugReports,
         openSettingsWindow: OpenSettingsWindowAction,
         openStorageManager: OpenStorageManagerAction,
         searchFocusRequests: PassthroughSubject<Void, Never>
     ) -> some View {
         self
+            .environment(bugReports)
             .environment(\.openSettingsWindow, openSettingsWindow)
             .environment(\.openStorageManager, openStorageManager)
             .environment(\.searchFocusRequests, searchFocusRequests)
@@ -268,6 +272,7 @@ extension View {
         /// all from.
         func mainWindowPreviewEnvironment() -> some View {
             self.mainWindowEnvironment(
+                bugReports: BugReports(CoreBugReporter()),
                 openSettingsWindow: OpenSettingsWindowAction {
                     mainWindowPreviewLogger.info(
                         "Settings asked for in a preview"

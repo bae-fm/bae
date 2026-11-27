@@ -302,7 +302,8 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
     ) -> NowPlayingNavigationAction {
         NowPlayingNavigationAction(
             playbackStore: target.playbackStore,
-            uiStore: target.uiStore
+            uiStore: target.uiStore,
+            bugReporter: target.bugReports
         )
     }
 

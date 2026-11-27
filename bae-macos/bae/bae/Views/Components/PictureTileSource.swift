@@ -107,6 +107,7 @@ final class PictureTileSource: @unchecked Sendable {
 
     private let picture: BridgeCoverImageSource
     private let images: ImageStore
+    private let bugReporter: any BridgeBugReporter
     /// Runs on the main actor when the levels arrive.
     private let levelsArrived: @MainActor @Sendable (BridgePictureTiles) -> Void
     /// Runs on the main actor when a tile arrives.
@@ -127,6 +128,7 @@ final class PictureTileSource: @unchecked Sendable {
     init(
         picture: BridgeCoverImageSource,
         images: ImageStore,
+        bugReporter: any BridgeBugReporter,
         levelsArrived:
             @escaping @MainActor @Sendable (BridgePictureTiles) ->
             Void,
@@ -136,6 +138,7 @@ final class PictureTileSource: @unchecked Sendable {
     ) {
         self.picture = picture
         self.images = images
+        self.bugReporter = bugReporter
         self.levelsArrived = levelsArrived
         self.tileArrived = tileArrived
         self.failed = failed
@@ -272,7 +275,13 @@ final class PictureTileSource: @unchecked Sendable {
         logger.warning(
             "No tiles of \(String(describing: self.picture)): \(String(reflecting: error))"
         )
-        await failed(LightboxFailure(of: error, operation: "zoom a picture"))
+        await failed(
+            LightboxFailure(
+                of: error,
+                operation: "zoom a picture",
+                bugReporter: bugReporter
+            )
+        )
     }
 
     private static func name(_ key: PictureTileKey) -> NSString {

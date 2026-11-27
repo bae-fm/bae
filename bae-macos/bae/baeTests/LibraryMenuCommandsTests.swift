@@ -141,7 +141,8 @@ struct LibraryMenuCommandsTests {
             membershipStore: MembershipStore.stub(
                 people: PreviewData.noPeople,
                 selfIsAdmin: selfIsAdmin
-            )
+            ),
+            bugReports: .recording()
         )
     }
 }

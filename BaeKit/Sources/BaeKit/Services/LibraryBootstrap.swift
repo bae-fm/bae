@@ -26,6 +26,7 @@ public final class LibraryBootstrap {
     /// The process's host, which runs each attempt and pulls its steps.
     private let host: BridgeHost
     private let deviceName: String
+    private let bugReporter: any BridgeBugReporter
     private var cancelAttempt: (() -> Void)?
     private var joinControl: BridgeJoinControl?
     /// Whether the join's waiting screen shows. A join control made while it
@@ -33,9 +34,14 @@ public final class LibraryBootstrap {
     private var waitingScreenShown = false
     private var running = false
 
-    public init(host: BridgeHost, deviceName: String) {
+    public init(
+        host: BridgeHost,
+        deviceName: String,
+        bugReporter: any BridgeBugReporter
+    ) {
         self.host = host
         self.deviceName = deviceName
+        self.bugReporter = bugReporter
     }
 
     public func restore(code: String, credentials: BridgeS3Credentials?)
@@ -77,7 +83,10 @@ public final class LibraryBootstrap {
         code: String,
         credentials: BridgeS3Credentials?
     ) async throws -> BridgeBootstrapResult {
-        let progress = LibraryOpenProgress(host: host)
+        let progress = LibraryOpenProgress(
+            host: host,
+            bugReporter: bugReporter
+        )
         openSteps = progress.steps
         defer { openSteps = nil }
         return try await runRestore { setup, cancellation in
@@ -226,7 +235,8 @@ public final class LibraryBootstrap {
         running = true
         cancelAttempt = cancel
         let following = BootstrapFollowing(
-            setup: BridgeLibrarySetup(host: host)
+            setup: BridgeLibrarySetup(host: host),
+            bugReporter: bugReporter
         )
         self.following = following
         defer {

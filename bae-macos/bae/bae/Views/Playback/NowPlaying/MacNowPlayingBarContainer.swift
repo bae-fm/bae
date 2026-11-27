@@ -22,6 +22,8 @@ struct MacNowPlayingBarContainer: View {
     var configStore
     @Environment(CastStore.self)
     var castStore
+    @Environment(BugReports.self)
+    var bugReports
     let onDropToQueue: ([String]) -> Void
 
     var body: some View {
@@ -74,7 +76,7 @@ struct MacNowPlayingBarContainer: View {
                     // Every way playback can fail to store a volume is a bug.
                     let detail = String(reflecting: error)
                     logger.error("setting the volume failed: \(detail)")
-                    CoreBugReporter()
+                    bugReports
                         .report(operation: "set the volume", detail: detail)
                     uiStore.showError(error)
                 }
@@ -87,7 +89,8 @@ struct MacNowPlayingBarContainer: View {
             onNavigateToAlbum: {
                 let action = NowPlayingNavigationAction(
                     playbackStore: playbackStore,
-                    uiStore: uiStore
+                    uiStore: uiStore,
+                    bugReporter: bugReports
                 )
                 if action.isEnabled {
                     action.perform()

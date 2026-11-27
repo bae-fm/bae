@@ -50,9 +50,9 @@ struct AppDelegateTests {
 
         let delegate = AppDelegate(
             runtime: runtime,
-            makeApplicationServices: {
+            makeApplicationServices: { bugReports in
                 serviceConstructionCount += 1
-                return ApplicationServices()
+                return ApplicationServices(bugReports: bugReports)
             }
         )
         delegate.applicationWillFinishLaunching(

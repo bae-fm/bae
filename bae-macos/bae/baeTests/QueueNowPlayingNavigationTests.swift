@@ -43,7 +43,8 @@ struct QueueNowPlayingNavigationTests {
             .environment(Queue.stub())
             .environment(ImageStore.stub())
             .environment(LibraryProjectionStore(library: .stub()))
-            .environment(ui),
+            .environment(ui)
+            .environment(BugReports.recording()),
             size: NSSize(width: 420, height: 720)
         ) { window, host in
             try await SnapshotTestSupport.settle(host)
@@ -122,7 +123,16 @@ struct QueueNowPlayingNavigationTests {
             )
         )
 
-        NowPlayingNavigationAction(playbackStore: store, uiStore: ui).perform()
+        let reporter = RecordingBugReporter()
+
+        NowPlayingNavigationAction(
+            playbackStore: store,
+            uiStore: ui,
+            bugReporter: reporter
+        )
+        .perform()
+
+        #expect(reporter.operations == ["NowPlayingNavigationAction.perform"])
 
         #expect(ui.activeSection != .library)
         #expect(

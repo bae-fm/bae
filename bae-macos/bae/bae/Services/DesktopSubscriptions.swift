@@ -208,7 +208,9 @@ final class DesktopSubscriptions {
             uiStore: uiStore
         )
         let list = appHandle.importList()
-        let importSelection = ImportSelection(operations: .live(list: list))
+        let importSelection = ImportSelection(
+            operations: .live(list: list, bugReporter: bugReporter)
+        )
         self.importSelection = importSelection
         let applySelection = Self.selectionSink(
             importSelection: importSelection,
@@ -283,11 +285,26 @@ final class DesktopSubscriptions {
         precondition(folderScans == nil)
         feeds =
             [
-                outputStore.percents.feed(from: appHandle),
-                outboxStore.fileShares.feedUploads(from: appHandle),
-                downloadStore.fileShares.feedPins(from: appHandle),
-                importStore.previewPosition.feed(from: appHandle),
-                importStore.importPercents.feed(from: appHandle),
+                outputStore.percents.feed(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
+                outboxStore.fileShares.feedUploads(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
+                downloadStore.fileShares.feedPins(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
+                importStore.previewPosition.feed(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
+                importStore.importPercents.feed(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
             ] + downloadStore.feedMovesToThisDevice(from: appHandle)
         let scans = appHandle.subscribeFolderScans()
         importStore.setRaisedScanAlerts = { raised in

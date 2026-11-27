@@ -61,10 +61,11 @@ final class ApplicationServices {
     let updaterController: SPUStandardUpdaterController
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
 
-    init() {
+    init(bugReports: BugReports) {
         diagnostics = BaeDiagnostics.configure(
             source: "macos",
-            edition: baeAppEdition
+            edition: baeAppEdition,
+            bugReporter: bugReports
         )
         host = makeHost(
             diagnostics: diagnostics,
@@ -72,8 +73,15 @@ final class ApplicationServices {
         )
         mediaControlService = MediaControlService()
         deviceName = currentDeviceName()
-        librarySetup = LibrarySetup.live(host: host, deviceName: deviceName)
-        libraryRemovals = LibraryRemovals.live(host: host)
+        librarySetup = LibrarySetup.live(
+            host: host,
+            deviceName: deviceName,
+            bugReporter: bugReports
+        )
+        libraryRemovals = LibraryRemovals.live(
+            host: host,
+            bugReporter: bugReports
+        )
         #if DEBUG
             let updaterController = SPUStandardUpdaterController(
                 startingUpdater: false,

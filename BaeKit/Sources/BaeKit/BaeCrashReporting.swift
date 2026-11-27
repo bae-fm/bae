@@ -92,6 +92,23 @@ public final class CoreBugReporter: BridgeBugReporter, Sendable {
     }
 }
 
+/// The app's one bug reporter, which it makes at its top and hands down:
+/// services take it as they are built, and views read it from the
+/// environment, which holds an object under its type. Each report goes to
+/// `reporter`, the crash reporter in the app and a reporter a test reads in a
+/// test.
+public final class BugReports: BridgeBugReporter, Observable, Sendable {
+    private let reporter: any BridgeBugReporter
+
+    public init(_ reporter: any BridgeBugReporter) {
+        self.reporter = reporter
+    }
+
+    public func report(operation: String, detail: String) {
+        reporter.report(operation: operation, detail: detail)
+    }
+}
+
 /// A bug core reported, as the error Sentry records.
 struct CoreBug: LocalizedError {
     let operation: String

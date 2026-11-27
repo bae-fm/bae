@@ -21,6 +21,8 @@ struct InviteCodeSheet: View {
     private var configStore
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(BugReports.self)
+    private var bugReports
 
     @State
     private var task: Task<Void, Never>?
@@ -65,7 +67,7 @@ struct InviteCodeSheet: View {
             guard missing else { return }
             let detail = "a library with an open invite has no storage location"
             logger.error("\(detail)")
-            CoreBugReporter()
+            bugReports
                 .report(operation: "show an invite", detail: detail)
             uiStore.showError(
                 DisplayError(

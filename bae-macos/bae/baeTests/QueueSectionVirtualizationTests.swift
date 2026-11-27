@@ -42,7 +42,8 @@ struct QueueSectionVirtualizationTests {
                 )
             }
             .coordinateSpace(name: "queuePane")
-            .environment(ImageStore.stub()),
+            .environment(ImageStore.stub())
+            .environment(BugReports.recording()),
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)

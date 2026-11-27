@@ -7,10 +7,10 @@ public final class LibraryOpenProgress: Sendable {
     public let steps: LatestSource<BridgeOpenProgress>
     private let feed: LatestFeed
 
-    public init(host: BridgeHost) {
+    public init(host: BridgeHost, bugReporter: any BridgeBugReporter) {
         opening = BridgeLibraryOpening(host: host)
         let stream = LatestStream<BridgeOpenProgress>.openProgress()
-        feed = stream.feed(from: opening)
+        feed = stream.feed(from: opening, bugReporter: bugReporter)
         steps = stream.only
     }
 }

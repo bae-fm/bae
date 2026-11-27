@@ -110,7 +110,10 @@ struct BootstrapFollowingTests {
     @Test("each state the call says reaches the screen")
     func eachStateReachesTheScreen() async throws {
         let setup = SaidSetup()
-        let following = BootstrapFollowing(setup: setup)
+        let following = BootstrapFollowing(
+            setup: setup,
+            bugReporter: RecordingBugReporter()
+        )
         #expect(following.state == nil)
 
         let connecting = BridgeBootstrapState(

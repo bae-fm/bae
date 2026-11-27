@@ -105,12 +105,27 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         }
     }
 
+    /// `fed(onFailedRead:_:)` for a feed that has no failed reads, whose
+    /// pulled failure is a bug, which goes to `bugReporter`.
+    func fed(
+        bugReporter: any BridgeBugReporter,
+        _ open: () -> KeyedValueStream
+    ) -> LatestFeed {
+        let streamName = "\(Value.self)"
+        return fed(
+            onFailedRead: { error in
+                reportStreamBug(error, stream: streamName, to: bugReporter)
+            },
+            open
+        )
+    }
+
     /// Hold what `open` starts feeding, until the returned feed is
     /// cancelled or dropped, pulling which keys started or stopped holding a
-    /// value for the views watching them. A feed with failed reads hands each
-    /// to `onFailedRead`; a pulled failure of any other feed is a bug.
+    /// value for the views watching them, and handing each pulled failure to
+    /// `onFailedRead`.
     func fed(
-        onFailedRead: (@MainActor @Sendable (any Error) -> Void)? = nil,
+        onFailedRead: @escaping @MainActor @Sendable (any Error) -> Void,
         _ open: () -> KeyedValueStream
     ) -> LatestFeed {
         let stream = open()
@@ -121,15 +136,12 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
             backing = .fed(stream)
         }
         let activity = activity
-        let streamName = "\(Value.self)"
         return LatestFeed(
             stream: stream,
             pulls: ScreenSubscription(
                 stream,
                 onValue: { keys in activity.keysChanged(keys) },
-                onError: onFailedRead ?? { error in
-                    reportStreamBug(error, stream: streamName)
-                }
+                onError: onFailedRead
             ),
             activity: activity
         )
@@ -227,12 +239,15 @@ public final class LatestFeed: Sendable {
 }
 
 /// A pulled failure of a stream whose feed has no failed reads: the bridge
-/// broke its own guarantee, so it is reported to the crash reporter core
-/// reports its bugs to. The pulls go on.
-private func reportStreamBug(_ error: any Error, stream: String) {
+/// broke its own guarantee, so it is reported as a bug. The pulls go on.
+private func reportStreamBug(
+    _ error: any Error,
+    stream: String,
+    to bugReporter: any BridgeBugReporter
+) {
     let detail = "the \(stream) stream answered \(String(reflecting: error))"
     logger.error("\(detail)")
-    CoreBugReporter().report(operation: "KeyedValueStream.next", detail: detail)
+    bugReporter.report(operation: "KeyedValueStream.next", detail: detail)
 }
 
 /// The key a stream that holds one value holds it under.
@@ -330,13 +345,19 @@ extension LatestStream where Value == Double {
     }
 
     /// Fill with the files being sent.
-    public func feedUploads(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedUploadFileShares() }
+    public func feedUploads(
+        from appHandle: AppHandle,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { appHandle.feedUploadFileShares() }
     }
 
     /// Fill with the files being downloaded to keep whole.
-    public func feedPins(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedPinFileShares() }
+    public func feedPins(
+        from appHandle: AppHandle,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { appHandle.feedPinFileShares() }
     }
 }
 
@@ -365,8 +386,11 @@ extension LatestStream where Value == BridgeDownloadTransferProgress {
     }
 
     /// Fill from core.
-    public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedDownloadTransfers() }
+    public func feed(
+        from appHandle: AppHandle,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { appHandle.feedDownloadTransfers() }
     }
 }
 
@@ -405,8 +429,11 @@ extension LatestStream where Value == UInt8 {
 
     #if os(macOS)
         /// Fill from core.
-        public func feed(from appHandle: AppHandle) -> LatestFeed {
-            fed { appHandle.feedExportPercents() }
+        public func feed(
+            from appHandle: AppHandle,
+            bugReporter: any BridgeBugReporter
+        ) -> LatestFeed {
+            fed(bugReporter: bugReporter) { appHandle.feedExportPercents() }
         }
     #endif
 }
@@ -429,8 +456,11 @@ extension LatestStream where Value == UInt32 {
 
     #if os(macOS)
         /// Fill from core.
-        public func feed(from appHandle: AppHandle) -> LatestFeed {
-            fed { appHandle.feedImportPercents() }
+        public func feed(
+            from appHandle: AppHandle,
+            bugReporter: any BridgeBugReporter
+        ) -> LatestFeed {
+            fed(bugReporter: bugReporter) { appHandle.feedImportPercents() }
         }
     #endif
 }
@@ -453,10 +483,11 @@ extension LatestStream where Value == UInt32 {
         }
 
         /// Fill with the next bulk action over `list`'s selection.
-        public func feed(from list: any ImportListProtocol)
-            -> LatestFeed
-        {
-            fed { list.selectionActionProgress() }
+        public func feed(
+            from list: any ImportListProtocol,
+            bugReporter: any BridgeBugReporter
+        ) -> LatestFeed {
+            fed(bugReporter: bugReporter) { list.selectionActionProgress() }
         }
     }
 #endif
@@ -478,8 +509,11 @@ extension LatestStream where Value == BridgeOpenProgress {
     }
 
     /// Fill with the steps of the open `opening` is handed to.
-    public func feed(from opening: BridgeLibraryOpening) -> LatestFeed {
-        fed { opening.feedOpenSteps() }
+    public func feed(
+        from opening: BridgeLibraryOpening,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { opening.feedOpenSteps() }
     }
 }
 
@@ -503,8 +537,11 @@ extension LatestStream where Value == SetupLine {
     }
 
     /// Fill with the steps of the call `setup` is handed to.
-    public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
-        fed { setup.feedSetupSteps() }
+    public func feed(
+        from setup: BridgeLibrarySetup,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { setup.feedSetupSteps() }
     }
 }
 
@@ -526,8 +563,11 @@ extension LatestStream where Value == BridgeBootstrapStep {
 
     /// Fill with the counted steps of the restore, join or reset `setup` is
     /// handed to.
-    public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
-        fed { setup.feedSetupSteps() }
+    public func feed(
+        from setup: BridgeLibrarySetup,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { setup.feedSetupSteps() }
     }
 }
 
@@ -548,8 +588,11 @@ extension LatestStream where Value == BridgeStorageSetupProgress {
     }
 
     /// Fill with the steps of the storage setup `setup` is handed to.
-    public func feed(from setup: BridgeLibrarySetup) -> LatestFeed {
-        fed { setup.feedSetupSteps() }
+    public func feed(
+        from setup: BridgeLibrarySetup,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { setup.feedSetupSteps() }
     }
 }
 
@@ -570,8 +613,11 @@ extension LatestStream where Value == BridgeClosingProgress {
     }
 
     /// Fill with the steps of the close `closing` is handed to.
-    public func feed(from closing: BridgeLibraryClosing) -> LatestFeed {
-        fed { closing.feedClosingSteps() }
+    public func feed(
+        from closing: BridgeLibraryClosing,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { closing.feedClosingSteps() }
     }
 }
 
@@ -598,8 +644,11 @@ extension LatestStream where Value == BridgeTrackPosition {
     }
 
     /// Fill from core.
-    public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedPlaybackPositions() }
+    public func feed(
+        from appHandle: AppHandle,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { appHandle.feedPlaybackPositions() }
     }
 }
 
@@ -620,8 +669,11 @@ extension LatestStream where Value == BridgeTrackBuffered {
     }
 
     /// Fill from core.
-    public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedTrackBuffered() }
+    public func feed(
+        from appHandle: AppHandle,
+        bugReporter: any BridgeBugReporter
+    ) -> LatestFeed {
+        fed(bugReporter: bugReporter) { appHandle.feedTrackBuffered() }
     }
 }
 
@@ -643,8 +695,11 @@ extension LatestStream where Value == BridgePreviewPosition {
 
     #if os(macOS)
         /// Fill from core.
-        public func feed(from appHandle: AppHandle) -> LatestFeed {
-            fed { appHandle.feedPreviewPosition() }
+        public func feed(
+            from appHandle: AppHandle,
+            bugReporter: any BridgeBugReporter
+        ) -> LatestFeed {
+            fed(bugReporter: bugReporter) { appHandle.feedPreviewPosition() }
         }
     #endif
 }

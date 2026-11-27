@@ -64,6 +64,8 @@ struct MacLightbox<Item: LightboxImage>: View {
 
     @Environment(ImageStore.self)
     private var imageStore
+    @Environment(BugReports.self)
+    private var bugReports
     @Environment(\.displayScale)
     private var displayScale
     /// The picture and time of asking whose tiles core could not give, which
@@ -118,7 +120,8 @@ struct MacLightbox<Item: LightboxImage>: View {
                             place.current.image,
                             from: imageStore,
                             fitting: max(geo.size.width, geo.size.height),
-                            displayScale: displayScale
+                            displayScale: displayScale,
+                            bugReporter: bugReports
                         )
                     }
                 }
@@ -215,6 +218,7 @@ struct MacLightbox<Item: LightboxImage>: View {
             fit: nsImage,
             fitAnalysis: analysis,
             images: imageStore,
+            bugReporter: bugReports,
             textReader: load.textReader,
             onFailure: { [request = currentRequest] failure in
                 failedZoom = FailedZoom(request: request, failure: failure)

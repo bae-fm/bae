@@ -53,7 +53,9 @@ public enum BaeHost {
         public static func inTemporaryFolder() -> BridgeHost {
             make {
                 try BridgeHost.withTestKeyring(
-                    diagnostics: BaeDiagnostics.disabled(),
+                    diagnostics: BaeDiagnostics.disabled(
+                        bugReporter: CoreBugReporter()
+                    ),
                     appDir: BridgeAppDir.temporary()
                 )
             }

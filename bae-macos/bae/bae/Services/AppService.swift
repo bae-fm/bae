@@ -77,6 +77,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         appHandle: AppHandle,
         mediaControlService: MediaControlService,
         diagnostics: BridgeDiagnostics,
+        bugReports: BugReports,
         uiStore: UiStore,
         config: BridgeConfig,
         seed: LibrarySessionSeed,
@@ -88,7 +89,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             config: Config(bridge: config)
         )
         let syncStatusStore = SyncStatusStore()
-        let membershipStore = MembershipStore(handle: appHandle)
+        let membershipStore = MembershipStore(
+            handle: appHandle,
+            bugReporter: bugReports
+        )
         let syncActivityStore = SyncActivityStore()
         let downloadStore = DownloadStore()
         let castStore = CastStore()
@@ -104,7 +108,11 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             confirmAdded: { playbackStore.publishQueueItemsAdded($0) }
         )
         let imageStore = ImageStore(handle: appHandle)
-        let sync = Sync(handle: appHandle, host: host)
+        let sync = Sync(
+            handle: appHandle,
+            host: host,
+            bugReporter: bugReports
+        )
         let downloads = Downloads(handle: appHandle)
         let cast = Cast(handle: appHandle)
         let castStart = CastStart(
@@ -129,7 +137,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             showError: { uiStore.showError($0) }
         )
         previewAudio = PreviewAudio(handle: appHandle)
-        releaseEditor = ReleaseEditor(handle: appHandle)
+        releaseEditor = ReleaseEditor(
+            handle: appHandle,
+            bugReporter: bugReports
+        )
         artistEditor = ArtistEditor(handle: appHandle)
         self.importer = importer
         outputs = Outputs(handle: appHandle, host: host)
@@ -166,7 +177,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             outboxStore: outboxStore,
             downloadStore: downloadStore,
             subsonicStore: subsonicStore,
-            uiStore: uiStore
+            uiStore: uiStore,
+            bugReporter: bugReports
         )
         mainAppMenuTarget = MainAppMenuTarget(
             playbackStore: playbackStore,
@@ -175,7 +187,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             uiStore: uiStore,
             library: library,
             playback: playback,
-            membershipStore: membershipStore
+            membershipStore: membershipStore,
+            bugReports: bugReports
         )
         let components = AppServiceComponents(
             playbackStore: playbackStore,
@@ -200,6 +213,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
                 appHandle: appHandle,
                 mediaControlService: mediaControlService,
                 diagnostics: diagnostics,
+                bugReports: bugReports,
                 components: components
             )
     }

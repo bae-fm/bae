@@ -76,9 +76,9 @@ struct LibraryRemovalsClosedLibraryTests {
         let bridge = bridge
         let host = host
         return LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { libraryId, _ in await bridge.unsent(libraryId) },
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { libraryId, _ in
@@ -176,9 +176,9 @@ struct LibraryRemovalsClosedLibraryTests {
     @Test("a removal that fails keeps what was confirmed, for Retry")
     func failedRemovalKeepsWhatWasConfirmed() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
                 return false
@@ -221,9 +221,9 @@ struct LibraryRemovalsClosedLibraryTests {
     @Test("a removal that leaves files behind is not a failed removal")
     func leftoverFilesAreNotAFailure() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
                 return false
@@ -264,9 +264,9 @@ struct LibraryRemovalsClosedLibraryTests {
     func uncountedRemovalWritesItsSteps() async {
         let watched = WatchedRemovals()
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
                 return false
@@ -300,9 +300,9 @@ struct LibraryRemovalsClosedLibraryTests {
     @Test("a count that fails asks again on Retry")
     func failedCountAsksAgain() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { _, _ in
                 throw BridgeError.Diagnostic(category: .database, detail: "x")
             },
@@ -443,9 +443,9 @@ struct LibraryRemovalsUnfinishedTests {
     func retryFinishesAnEarlierRemoval() async throws {
         let bridge = UnfinishedRemovalBridge(failures: 1)
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { _, _ in
                 false
             },
@@ -485,9 +485,9 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("a removal that stopped before the delete shows without Retry")
     func stoppedBeforeTheDelete() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { _, _ in
                 false
             },
@@ -516,9 +516,9 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("nothing shows when no removal was left unfinished")
     func nothingLeft() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: { LibraryOpenProgress(testHost: host) },
+            makeRemovalSteps: { LibraryClosingSteps(testHost: host) },
+            makeFinishingSteps: { LibrarySetupSteps(testHost: host) },
             unsentOfClosed: { _, _ in
                 false
             },

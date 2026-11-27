@@ -196,7 +196,10 @@ extension PreviewData {
     static func previewSync() -> Sync {
         Sync(
             followStorageSetup: {
-                StorageSetupFollowing(host: BaeHost.inTemporaryFolder())
+                StorageSetupFollowing(
+                    host: BaeHost.inTemporaryFolder(),
+                    bugReporter: CoreBugReporter()
+                )
             },
             generateRestoreCode: { restoreCodeShare },
             addDevice: AddDeviceCalls(start: {

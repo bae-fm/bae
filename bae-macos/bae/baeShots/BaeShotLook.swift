@@ -42,8 +42,12 @@ private final class BaeShotDressing: ShotDressing {
         self.suite = suite
         self.defaults = defaults
 
+        // The bugs a shot's views report go to the crash reporter, which no
+        // shot starts.
+        let bugReports = BugReports(CoreBugReporter())
         let timed = view.layerEnvironment {
             $0.environment(\.clockNow, ShotClock.now)
+                .environment(bugReports)
         }
         let titled =
             if case .window(_, .themed) = frame {

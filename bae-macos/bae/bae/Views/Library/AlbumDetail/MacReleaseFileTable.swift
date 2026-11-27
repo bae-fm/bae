@@ -18,6 +18,8 @@ struct MacReleaseFileTable: NSViewRepresentable {
     private var tone
     @Environment(\.accentChoice)
     private var accent
+    @Environment(BugReports.self)
+    private var bugReports
 
     private var appearance: HostedAppearance {
         HostedAppearance(tone: tone, accent: accent)
@@ -27,7 +29,8 @@ struct MacReleaseFileTable: NSViewRepresentable {
         Coordinator(
             order: $order,
             presentationError: $presentationError,
-            appearance: appearance
+            appearance: appearance,
+            bugReporter: bugReports
         )
     }
 
@@ -158,12 +161,15 @@ struct MacReleaseFileTable: NSViewRepresentable {
         private var presentationError: Binding<DisplayError?>
         private var appearance: HostedAppearance
         private var files: [BridgeFile] = []
+        private let bugReporter: any BridgeBugReporter
 
         init(
             order: Binding<BridgeReleaseFileOrder>,
             presentationError: Binding<DisplayError?>,
-            appearance: HostedAppearance
+            appearance: HostedAppearance,
+            bugReporter: any BridgeBugReporter
         ) {
+            self.bugReporter = bugReporter
             self.order = order
             self.presentationError = presentationError
             self.appearance = appearance
@@ -261,7 +267,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
                 logger.reportBug(
                     operation: operation,
                     detail: detail,
-                    to: CoreBugReporter()
+                    to: bugReporter
                 )
             )
             // AppKit can call this during the representable's update.

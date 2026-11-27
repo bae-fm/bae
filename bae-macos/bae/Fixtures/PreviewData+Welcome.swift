@@ -148,7 +148,10 @@ extension PreviewData {
     ) -> LibraryRemovals {
         LibraryRemovals(
             makeOpenProgress: {
-                LibraryOpenProgress(host: BaeHost.inTemporaryFolder())
+                LibraryOpenProgress(
+                    host: BaeHost.inTemporaryFolder(),
+                    bugReporter: CoreBugReporter()
+                )
             },
             makeRemovalSteps: {
                 step.map {
@@ -156,10 +159,17 @@ extension PreviewData {
                         host: BaeHost.inTemporaryFolder(),
                         at: $0
                     )
-                } ?? LibraryClosingSteps(host: BaeHost.inTemporaryFolder())
+                }
+                    ?? LibraryClosingSteps(
+                        host: BaeHost.inTemporaryFolder(),
+                        bugReporter: CoreBugReporter()
+                    )
             },
             makeFinishingSteps: {
-                LibrarySetupSteps(host: BaeHost.inTemporaryFolder())
+                LibrarySetupSteps(
+                    host: BaeHost.inTemporaryFolder(),
+                    bugReporter: CoreBugReporter()
+                )
             },
             unsentOfClosed: { _, _ in throw StubError.notImplemented },
             removeClosed: { _, _, _ in

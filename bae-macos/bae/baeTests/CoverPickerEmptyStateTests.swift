@@ -56,7 +56,7 @@ struct CoverPickerEmptyStateTests {
                 onSelect: { _ in },
                 onDone: {}
             )
-            .layerEnvironment { $0.environment(ImageStore.stub()) }
+            .lightboxLayerEnvironment(ImageStore.stub())
             .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size

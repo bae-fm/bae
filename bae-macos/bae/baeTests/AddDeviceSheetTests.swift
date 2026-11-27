@@ -28,7 +28,12 @@ struct AddDeviceSheetTests {
         let size = NSSize(width: 400, height: 480)
         try await SnapshotTestSupport.withHostedWindow(
             AddDeviceHarness(holder: holder)
-                .environment(MembershipStore(handle: PairingHandle()))
+                .environment(
+                    MembershipStore(
+                        handle: PairingHandle(),
+                        bugReporter: RecordingBugReporter()
+                    )
+                )
                 .environment(Sync()),
             size: size
         ) { _, host in
@@ -51,7 +56,10 @@ struct AddDeviceSheetTests {
         let holder = AddDeviceResultHolder()
         holder.result = .success(Self.adding)
         let handle = PairingHandle()
-        let store = MembershipStore(handle: handle)
+        let store = MembershipStore(
+            handle: handle,
+            bugReporter: RecordingBugReporter()
+        )
         let size = NSSize(width: 400, height: 480)
         try await SnapshotTestSupport.withHostedWindow(
             AddDeviceHarness(holder: holder).environment(store)
@@ -82,7 +90,10 @@ struct AddDeviceSheetTests {
         let holder = AddDeviceResultHolder()
         holder.result = .success(Self.adding)
         let handle = PairingHandle()
-        let store = MembershipStore(handle: handle)
+        let store = MembershipStore(
+            handle: handle,
+            bugReporter: RecordingBugReporter()
+        )
         // The pairings the sheet ended.
         let ended = CallLog<String>()
         let sync = Sync(

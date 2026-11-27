@@ -35,7 +35,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-1",
-            progress: LibraryOpenProgress(host: host)
+            progress: LibraryOpenProgress(testHost: host)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -67,7 +67,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-1",
-            progress: LibraryOpenProgress(host: host)
+            progress: LibraryOpenProgress(testHost: host)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -102,11 +102,11 @@ struct LibrarySessionOpenerTests {
         let second = OutcomeWaiter()
         opener.open(
             libraryId: "parked",
-            progress: LibraryOpenProgress(host: host)
+            progress: LibraryOpenProgress(testHost: host)
         ) { first.record($0) }
         opener.open(
             libraryId: "failing",
-            progress: LibraryOpenProgress(host: host)
+            progress: LibraryOpenProgress(testHost: host)
         ) { second.record($0) }
 
         // The second open runs to completion while the first is parked.
@@ -148,7 +148,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-3",
-            progress: LibraryOpenProgress(host: host)
+            progress: LibraryOpenProgress(testHost: host)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 

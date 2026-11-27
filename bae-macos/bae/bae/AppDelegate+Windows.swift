@@ -91,7 +91,7 @@ extension AppDelegate {
             autosave: .init(
                 name: name,
                 defaults: .standard,
-                bugReporter: CoreBugReporter(),
+                bugReporter: bugReports,
                 showError: { [weak self] error in
                     // Placement happens before AppKit shows the new window.
                     Task { @MainActor in

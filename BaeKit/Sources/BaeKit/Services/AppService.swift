@@ -95,6 +95,9 @@ open class AppService: @unchecked Sendable, Observable {
     /// same sink.
     private nonisolated let diagnostics: BridgeDiagnostics
 
+    /// Where this library's services and views report bugs.
+    private let bugReports: BugReports
+
     /// Drives the platform Now Playing surface and remote-control events, kept
     /// in sync with `playbackStore.nowPlaying`.
     private nonisolated let mediaControlService: MediaControlService
@@ -148,9 +151,11 @@ open class AppService: @unchecked Sendable, Observable {
         appHandle: AppHandle,
         mediaControlService: MediaControlService,
         diagnostics: BridgeDiagnostics,
+        bugReports: BugReports,
         components: AppServiceComponents
     ) {
         self.appHandle = appHandle
+        self.bugReports = bugReports
         membershipStore = components.membershipStore
         self.mediaControlService = mediaControlService
         self.diagnostics = diagnostics
@@ -169,7 +174,8 @@ open class AppService: @unchecked Sendable, Observable {
             outboxStore: components.outboxStore,
             downloadStore: components.downloadStore,
             playbackStore: components.playbackStore,
-            castStore: components.castStore
+            castStore: components.castStore,
+            bugReporter: bugReports
         )
         libraryProjectionStore = LibraryProjectionStore(
             library: components.library
@@ -337,5 +343,6 @@ extension AppService {
             .environment(cast)
             .environment(castStart)
             .environment(castStore)
+            .environment(bugReports)
     }
 }

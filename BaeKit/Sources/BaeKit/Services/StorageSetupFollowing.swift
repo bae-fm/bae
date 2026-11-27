@@ -29,16 +29,25 @@ public final class StorageSetupFollowing {
     private var finishingPulls:
         ScreenSubscription<StorageSetupFinishingSubscription>?
 
-    public convenience init(host: BridgeHost) {
-        self.init(setup: BridgeLibrarySetup(host: host))
+    public convenience init(
+        host: BridgeHost,
+        bugReporter: any BridgeBugReporter
+    ) {
+        self.init(
+            setup: BridgeLibrarySetup(host: host),
+            bugReporter: bugReporter
+        )
     }
 
     /// Follow `setup`, made for this one call.
-    public init(setup: BridgeLibrarySetup) {
+    public init(
+        setup: BridgeLibrarySetup,
+        bugReporter: any BridgeBugReporter
+    ) {
         self.setup = setup
         let stream = LatestStream<BridgeStorageSetupProgress>
             .storageSetupProgress()
-        feed = stream.feed(from: setup)
+        feed = stream.feed(from: setup, bugReporter: bugReporter)
         steps = stream.only
         finishingPulls = ScreenSubscription(
             setup.subscribeStorageFinishing(),
@@ -49,7 +58,7 @@ public final class StorageSetupFollowing {
                 let detail =
                     "a storage setup's finishing answered \(String(reflecting: error))"
                 logger.error("\(detail)")
-                CoreBugReporter()
+                bugReporter
                     .report(
                         operation: "StorageSetupFinishingSubscription.next",
                         detail: detail

@@ -41,7 +41,8 @@ struct QueueRowRemovalTests {
             )
             .frame(maxHeight: .infinity, alignment: .top)
             .coordinateSpace(name: "queuePane")
-            .environment(ImageStore.stub()),
+            .environment(ImageStore.stub())
+            .environment(BugReports.recording()),
             size: NSSize(width: 420, height: 400)
         ) { _, host in
             try await SnapshotTestSupport.settle(host)

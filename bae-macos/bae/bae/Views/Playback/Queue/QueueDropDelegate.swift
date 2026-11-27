@@ -19,6 +19,8 @@ struct QueueDropDelegate: DropDelegate {
     let onInsertTracks: ([String], Int) -> Void
     /// Shows that a drop's items failed to load.
     let onDropFailed: @MainActor (DisplayError) -> Void
+    /// Where a drop's items that fail to load are reported as a bug.
+    let bugReporter: any BridgeBugReporter
 
     func dropEntered(info _: DropInfo) {
         if acceptsExternalDrops {
@@ -37,7 +39,10 @@ struct QueueDropDelegate: DropDelegate {
         }
 
         let insertAt = targetIndex
-        info.loadPlainText(failed: onDropFailed) { collectedIds in
+        info.loadPlainText(
+            bugReporter: bugReporter,
+            failed: onDropFailed
+        ) { collectedIds in
             // Each dropped string as it came: an album drag's payload, which
             // the receiver has core order, or a track's id.
             if !collectedIds.isEmpty {

@@ -106,7 +106,8 @@ struct QueueViewControlsTests {
                     onSetShuffle: { _ in }
                 )
             }
-            .environment(ImageStore.stub()),
+            .environment(ImageStore.stub())
+            .environment(BugReports.recording()),
             size: paneSize
         ) { window, host in
             try await SnapshotTestSupport.settle(host)

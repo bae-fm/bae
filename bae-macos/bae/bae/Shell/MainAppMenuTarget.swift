@@ -12,6 +12,7 @@ final class MainAppMenuTarget {
     let library: Library
     let playback: Playback
     let membershipStore: MembershipStore
+    let bugReports: BugReports
 
     init(
         playbackStore: PlaybackStore,
@@ -20,7 +21,8 @@ final class MainAppMenuTarget {
         uiStore: UiStore,
         library: Library,
         playback: Playback,
-        membershipStore: MembershipStore
+        membershipStore: MembershipStore,
+        bugReports: BugReports
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
@@ -29,5 +31,6 @@ final class MainAppMenuTarget {
         self.library = library
         self.playback = playback
         self.membershipStore = membershipStore
+        self.bugReports = bugReports
     }
 }

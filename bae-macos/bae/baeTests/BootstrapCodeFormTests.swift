@@ -194,7 +194,11 @@ struct BootstrapCodeFormTests {
             entry: entry,
             decodeCode: { _ in info },
             makeBootstrap: {
-                LibraryBootstrap(host: host, deviceName: "Test Mac")
+                LibraryBootstrap(
+                    host: host,
+                    deviceName: "Test Mac",
+                    bugReporter: RecordingBugReporter()
+                )
             },
             unfinishedJoins: { unfinishedJoins },
             unfinishedRestores: { unfinishedRestores },
@@ -343,7 +347,11 @@ struct BootstrapCodeFormTests {
             entry: .restoreOver(libraryId: "library-1"),
             decodeCode: { _ in throw CocoaError(.fileReadCorruptFile) },
             makeBootstrap: {
-                LibraryBootstrap(host: host, deviceName: "Test Mac")
+                LibraryBootstrap(
+                    host: host,
+                    deviceName: "Test Mac",
+                    bugReporter: RecordingBugReporter()
+                )
             },
             unfinishedJoins: { [] },
             unfinishedRestores: { [] },

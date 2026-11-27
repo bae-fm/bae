@@ -10,10 +10,10 @@ public final class LibraryClosingSteps: Sendable {
     /// step and nothing feeds it.
     private let feed: LatestFeed?
 
-    public init(host: BridgeHost) {
+    public init(host: BridgeHost, bugReporter: any BridgeBugReporter) {
         closing = BridgeLibraryClosing(host: host)
         let stream = LatestStream<BridgeClosingProgress>.closingSteps()
-        feed = stream.feed(from: closing)
+        feed = stream.feed(from: closing, bugReporter: bugReporter)
         steps = stream.only
     }
 

@@ -91,9 +91,11 @@ public final class LibrarySetup: Sendable, Observable {
     public func setupSteps() -> LibrarySetupSteps { makeSetupSteps() }
 
     /// The production wiring over the process's host.
-    public static func live(host: BridgeHost, deviceName: String)
-        -> LibrarySetup
-    {
+    public static func live(
+        host: BridgeHost,
+        deviceName: String,
+        bugReporter: any BridgeBugReporter
+    ) -> LibrarySetup {
         LibrarySetup(
             listLibraries: { try await host.listLibraries().libraries },
             libraryStanding: {
@@ -120,9 +122,15 @@ public final class LibrarySetup: Sendable, Observable {
                 try await host.discardUnfinishedInstallation(libraryId: $0)
             },
             makeBootstrap: {
-                LibraryBootstrap(host: host, deviceName: deviceName)
+                LibraryBootstrap(
+                    host: host,
+                    deviceName: deviceName,
+                    bugReporter: bugReporter
+                )
             },
-            makeSetupSteps: { LibrarySetupSteps(host: host) }
+            makeSetupSteps: {
+                LibrarySetupSteps(host: host, bugReporter: bugReporter)
+            }
         )
     }
 
@@ -181,11 +189,15 @@ public final class LibrarySetup: Sendable, Observable {
                 makeBootstrap: {
                     LibraryBootstrap(
                         host: BaeHost.inTemporaryFolder(),
-                        deviceName: "Preview Device"
+                        deviceName: "Preview Device",
+                        bugReporter: CoreBugReporter()
                     )
                 },
                 makeSetupSteps: {
-                    LibrarySetupSteps(host: BaeHost.inTemporaryFolder())
+                    LibrarySetupSteps(
+                        host: BaeHost.inTemporaryFolder(),
+                        bugReporter: CoreBugReporter()
+                    )
                 }
             )
         }

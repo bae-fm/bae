@@ -152,7 +152,10 @@ struct InvitesSubscriptionTests {
     @Test("each pulled list of invites reaches the membership store")
     func pulledInvitesReachTheStore() async throws {
         let handle = FakeAppHandle()
-        let store = MembershipStore(handle: handle)
+        let store = MembershipStore(
+            handle: handle,
+            bugReporter: RecordingBugReporter()
+        )
         store.start()
         store.show()
         #expect(store.inviteEntries.isEmpty)
@@ -169,7 +172,10 @@ struct InvitesSubscriptionTests {
     )
     func refusedInvitesReachTheStore() async throws {
         let handle = FakeAppHandle()
-        let store = MembershipStore(handle: handle)
+        let store = MembershipStore(
+            handle: handle,
+            bugReporter: RecordingBugReporter()
+        )
         store.start()
         store.show()
 
@@ -192,7 +198,10 @@ struct InvitesSubscriptionTests {
     )
     func shownReadsFollowTheScreen() async throws {
         let handle = FakeAppHandle()
-        let store = MembershipStore(handle: handle)
+        let store = MembershipStore(
+            handle: handle,
+            bugReporter: RecordingBugReporter()
+        )
 
         store.start()
         #expect(
@@ -231,7 +240,10 @@ struct InvitesSubscriptionTests {
     )
     func waitingRequestFollowsTheClosedInvites() async throws {
         let handle = FakeAppHandle()
-        let store = MembershipStore(handle: handle)
+        let store = MembershipStore(
+            handle: handle,
+            bugReporter: RecordingBugReporter()
+        )
         store.start()
         store.show()
 
@@ -257,7 +269,10 @@ struct InvitesSubscriptionTests {
     )
     func shownInviteFollowsItsRead() async throws {
         let handle = FakeAppHandle()
-        let store = MembershipStore(handle: handle)
+        let store = MembershipStore(
+            handle: handle,
+            bugReporter: RecordingBugReporter()
+        )
         store.start()
         store.show()
 
@@ -457,8 +472,9 @@ private func makeAppService(
         mediaControlService: MediaControlService(now: { fixedInstant }),
         diagnostics: configureDiagnostics(
             config: .disabled,
-            bugReporter: CoreBugReporter()
+            bugReporter: RecordingBugReporter()
         ),
+        bugReports: .recording(),
         uiStore: uiStore,
         config: testBridgeConfig(),
         seed: emptySeed,

@@ -119,6 +119,8 @@ struct SyncFixButton: View {
     private var sync
     @Environment(\.openURL)
     private var openURL
+    @Environment(BugReports.self)
+    private var bugReports
     #if BAE_OAUTH_PROVIDERS || BAE_CLOUDKIT
         @Environment(CloudSyncSetup.self)
         private var cloudSyncSetup
@@ -237,7 +239,7 @@ struct SyncFixButton: View {
             let detail =
                 "the folder's web address isn't a URL: \(folder.webUrl)"
             logger.error("\(detail)")
-            CoreBugReporter()
+            bugReports
                 .report(
                     operation: "open the folder in the browser",
                     detail: detail

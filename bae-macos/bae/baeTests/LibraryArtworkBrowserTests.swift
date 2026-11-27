@@ -92,7 +92,9 @@ struct LibraryArtworkBrowserTests {
                 onSelect: { _ in },
                 onDismiss: {}
             )
-            .environment(images).frame(width: size.width, height: size.height)
+            .environment(images)
+            .environment(BugReports.recording())
+            .frame(width: size.width, height: size.height)
         }
         try await SnapshotTestSupport.withHostedWindow(
             try view("v1"),
@@ -135,7 +137,7 @@ extension LibraryArtworkBrowserTests {
                     onSelect: calls.onSelect,
                     onDone: calls.onDone
                 )
-                .layerEnvironment { $0.environment(images) }
+                .lightboxLayerEnvironment(images)
                 .modalWindows(modals)
                 .environment(
                     Importer(coverGallery: {

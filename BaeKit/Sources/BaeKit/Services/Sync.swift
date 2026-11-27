@@ -195,12 +195,22 @@ public final class Sync: Sendable, Observable {
         self.nudges = nudges
     }
 
+    /// Makes each storage setup the app follows.
+    private static func following(
+        _ host: BridgeHost,
+        _ bugReporter: any BridgeBugReporter
+    ) -> @MainActor @Sendable () -> StorageSetupFollowing {
+        { StorageSetupFollowing(host: host, bugReporter: bugReporter) }
+    }
+
     /// The production wiring over the open library's handle; a storage
-    /// setup's steps are pulled on `host`'s runtime. It has one closure for
+    /// setup's steps are pulled on `host`'s runtime, and its bugs go to
+    /// `bugReporter`. It has one closure for
     /// each of the handle's calls, so it grows with them.
     public convenience init(
         handle: any AppHandleProtocol,
-        host: BridgeHost
+        host: BridgeHost,
+        bugReporter: any BridgeBugReporter
     ) {
         self.init(
             saveSyncConfig: {
@@ -216,7 +226,7 @@ public final class Sync: Sendable, Observable {
                     cancellation: $2
                 )
             },
-            followStorageSetup: { StorageSetupFollowing(host: host) },
+            followStorageSetup: Self.following(host, bugReporter),
             cancelStorageSetup: { handle.cancelStorageSetup() },
             dismissUndoneStorageSetup: {
                 try await handle.dismissUndoneStorageSetup(operation: $0)

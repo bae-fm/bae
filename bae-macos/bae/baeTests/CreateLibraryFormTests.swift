@@ -29,7 +29,9 @@ struct CreateLibraryFormTests {
             makeBootstrap: {
                 preconditionFailure("a create starts no restore")
             },
-            makeSetupSteps: { LibrarySetupSteps(host: host) }
+            makeSetupSteps: {
+                LibrarySetupSteps(testHost: host)
+            }
         )
         .createForm(onLibraryReady: { _ in })
     }

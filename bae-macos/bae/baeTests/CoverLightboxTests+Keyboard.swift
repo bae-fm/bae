@@ -66,7 +66,7 @@ extension CoverLightboxTests {
                     onDone: {}
                 )
             }
-            .layerEnvironment { $0.environment(images) }
+            .lightboxLayerEnvironment(images)
             .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size

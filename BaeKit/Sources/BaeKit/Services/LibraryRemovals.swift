@@ -272,11 +272,20 @@ public final class LibraryRemovals {
 
 extension LibraryRemovals {
     /// The production wiring over the process's host.
-    public static func live(host: BridgeHost) -> LibraryRemovals {
+    public static func live(
+        host: BridgeHost,
+        bugReporter: any BridgeBugReporter
+    ) -> LibraryRemovals {
         LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: host) },
-            makeRemovalSteps: { LibraryClosingSteps(host: host) },
-            makeFinishingSteps: { LibrarySetupSteps(host: host) },
+            makeOpenProgress: {
+                LibraryOpenProgress(host: host, bugReporter: bugReporter)
+            },
+            makeRemovalSteps: {
+                LibraryClosingSteps(host: host, bugReporter: bugReporter)
+            },
+            makeFinishingSteps: {
+                LibrarySetupSteps(host: host, bugReporter: bugReporter)
+            },
             unsentOfClosed: { libraryId, opening in
                 try await host.unsentBeforeRemoval(
                     libraryId: libraryId,

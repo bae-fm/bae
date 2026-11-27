@@ -20,6 +20,7 @@ struct MacZoomablePicture: NSViewRepresentable {
     /// Live Text's reading of the fitted copy, once there is one.
     let fitAnalysis: ImageAnalysis?
     let images: ImageStore
+    let bugReporter: any BridgeBugReporter
     let textReader: LiveTextReader
     /// Core could not give the picture's tiles, which the lightbox shows.
     let onFailure: (_ failure: LightboxFailure) -> Void
@@ -36,6 +37,7 @@ struct MacZoomablePicture: NSViewRepresentable {
             to: view,
             picture: picture,
             images: images,
+            bugReporter: bugReporter,
             onFailure: onFailure
         )
         update(view, coordinator: context.coordinator)
@@ -80,6 +82,7 @@ struct MacZoomablePicture: NSViewRepresentable {
             to view: ZoomScrollView,
             picture: BridgeCoverImageSource?,
             images: ImageStore,
+            bugReporter: any BridgeBugReporter,
             onFailure: @escaping (_ failure: LightboxFailure) -> Void
         ) {
             self.view = view
@@ -91,6 +94,7 @@ struct MacZoomablePicture: NSViewRepresentable {
             let source = PictureTileSource(
                 picture: picture,
                 images: images,
+                bugReporter: bugReporter,
                 levelsArrived: { [weak self] tiles in
                     self?.view?.levelsArrived(tiles)
                     self?.moved()

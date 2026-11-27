@@ -14,10 +14,10 @@ public final class LibrarySetupSteps: Sendable {
     public let steps: LatestSource<SetupLine>
     private let feed: LatestFeed
 
-    public init(host: BridgeHost) {
+    public init(host: BridgeHost, bugReporter: any BridgeBugReporter) {
         setup = BridgeLibrarySetup(host: host)
         let stream = LatestStream<SetupLine>.setupLines()
-        feed = stream.feed(from: setup)
+        feed = stream.feed(from: setup, bugReporter: bugReporter)
         steps = stream.only
     }
 }

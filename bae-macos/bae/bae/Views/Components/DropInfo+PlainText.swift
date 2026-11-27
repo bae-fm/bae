@@ -9,10 +9,11 @@ extension DropInfo {
     /// Read each plain-text string the drop carries, in no order, and hand
     /// them to `receive` on the main queue once every item has loaded. bae's
     /// own drags carry only text, so an item that fails to load, or loads as
-    /// something else, is a bug: the drop reports it to the crash reporter,
+    /// something else, is a bug: the drop reports it to `bugReporter`,
     /// logs it, hands `failed` the line that says something went wrong, and
     /// writes none of what it carried.
     func loadPlainText(
+        bugReporter: any BridgeBugReporter,
         failed: @escaping @MainActor (DisplayError) -> Void,
         then receive: @escaping @MainActor ([String]) -> Void
     ) {
@@ -49,7 +50,7 @@ extension DropInfo {
                     let detail =
                         "a dropped item did not load as text: \(failures.joined(separator: "; "))"
                     logger.error("\(detail)")
-                    CoreBugReporter()
+                    bugReporter
                         .report(operation: "load a drop's text", detail: detail)
                     failed(
                         DisplayError(

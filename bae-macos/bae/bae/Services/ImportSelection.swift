@@ -44,9 +44,10 @@ struct ImportSelectionOperations: Sendable {
             LatestStream<BridgeSelectionActionProgress>
         ) async throws -> [BridgeSelectionActionFailure]
 
-    static func live(list: any ImportListProtocol)
-        -> ImportSelectionOperations
-    {
+    static func live(
+        list: any ImportListProtocol,
+        bugReporter: any BridgeBugReporter
+    ) -> ImportSelectionOperations {
         ImportSelectionOperations(
             keysBetween: { request, from, to in
                 try await list.keysBetween(request: request, from: from, to: to)
@@ -66,7 +67,10 @@ struct ImportSelectionOperations: Sendable {
             },
             progressStream: { .bulkActionProgress() },
             run: { request, action, selected, progress in
-                let feed = progress.feed(from: list)
+                let feed = progress.feed(
+                    from: list,
+                    bugReporter: bugReporter
+                )
                 defer { feed.cancel() }
                 return try await list.runSelectionAction(
                     request: request,

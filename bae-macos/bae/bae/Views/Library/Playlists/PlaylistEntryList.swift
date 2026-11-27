@@ -24,6 +24,8 @@ struct PlaylistEntryList: View {
 
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(BugReports.self)
+    private var bugReports
 
     @State
     private var drag: PlaylistEntryDrag?
@@ -99,7 +101,8 @@ struct PlaylistEntryList: View {
                 frames: rowFrames,
                 dropping: $dropping,
                 drop: drop,
-                failed: { uiStore.showError($0) }
+                failed: { uiStore.showError($0) },
+                bugReporter: bugReports
             )
         )
         .overlay(alignment: .topLeading) {
@@ -295,6 +298,8 @@ private struct PlaylistDropDelegate: DropDelegate {
     let drop: (_ dropped: [String], _ target: PlaylistDropTarget) -> Void
     /// Shows that a drop's items failed to load.
     let failed: @MainActor (DisplayError) -> Void
+    /// Where a drop's items that fail to load are reported as a bug.
+    let bugReporter: any BridgeBugReporter
 
     /// Where tracks at `y` would go.
     private func target(at y: CGFloat) -> PlaylistDropTarget? {
@@ -321,7 +326,8 @@ private struct PlaylistDropDelegate: DropDelegate {
         let target = target(at: info.location.y)
         dropping = nil
         guard let target else { return false }
-        info.loadPlainText(failed: failed) { dropped in
+        info.loadPlainText(bugReporter: bugReporter, failed: failed) {
+            dropped in
             drop(dropped, target)
         }
         return true

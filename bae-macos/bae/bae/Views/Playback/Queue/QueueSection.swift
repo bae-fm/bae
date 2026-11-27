@@ -69,6 +69,9 @@ struct QueueSection: View {
     /// Sets this lane's shuffle; `nil` on the manual lane, which has none.
     let onSetShuffle: ((Bool) -> Void)?
 
+    @Environment(BugReports.self)
+    private var bugReports
+
     @State
     private var dropInsertIndex: Int?
     /// Rows collapsed before core confirms the removal, so the click responds
@@ -153,6 +156,7 @@ struct QueueSection: View {
                                 dropInsertIndex: $dropInsertIndex,
                                 onInsertTracks: onInsertTracks,
                                 onDropFailed: onDropFailed,
+                                bugReporter: bugReports
                             )
                         )
                 }
@@ -220,6 +224,7 @@ extension QueueSection {
                     dropInsertIndex: $dropInsertIndex,
                     onInsertTracks: onInsertTracks,
                     onDropFailed: onDropFailed,
+                    bugReporter: bugReports
                 )
             )
     }

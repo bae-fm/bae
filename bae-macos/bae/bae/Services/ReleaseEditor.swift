@@ -100,7 +100,10 @@ final class ReleaseEditor: Observable {
         self.catalogApply = catalogApply
     }
 
-    convenience init(handle: any AppHandleProtocol) {
+    convenience init(
+        handle: any AppHandleProtocol,
+        bugReporter: any BridgeBugReporter
+    ) {
         self.init(
             changeCover: {
                 try await handle.changeCover(
@@ -122,7 +125,13 @@ final class ReleaseEditor: Observable {
             setPrimaryRelease: {
                 try await handle.setPrimaryRelease(albumId: $0, releaseId: $1)
             },
-            openReleaseEdit: { try await Self.openEdit(handle, releaseId: $0) },
+            openReleaseEdit: {
+                try await Self.openEdit(
+                    handle,
+                    releaseId: $0,
+                    bugReporter: bugReporter
+                )
+            },
             readReleaseDocument: {
                 try await handle.readReleaseDocument(releaseId: $0, fileId: $1)
             },
@@ -140,12 +149,14 @@ final class ReleaseEditor: Observable {
     /// draft read that follows it, and the commands it takes.
     private static func openEdit(
         _ handle: any AppHandleProtocol,
-        releaseId: String
+        releaseId: String,
+        bugReporter: any BridgeBugReporter
     ) async throws -> OpenedReleaseEdit {
         let form = HeldReleaseEditForm(
             form: try await handle.openReleaseEdit(releaseId: releaseId),
             drafts: handle.subscribeReleaseEditDraft(),
-            handle: handle
+            handle: handle,
+            bugReporter: bugReporter
         )
         try form.showDraft()
         return OpenedReleaseEdit(
@@ -248,15 +259,18 @@ final class HeldReleaseEditForm {
     private var form: BridgeReleaseEditForm
     let drafts: ReleaseEditDraftSubscription
     private let handle: any AppHandleProtocol
+    private let bugReporter: any BridgeBugReporter
 
     init(
         form: BridgeReleaseEditForm,
         drafts: ReleaseEditDraftSubscription,
-        handle: any AppHandleProtocol
+        handle: any AppHandleProtocol,
+        bugReporter: any BridgeBugReporter
     ) {
         self.form = form
         self.drafts = drafts
         self.handle = handle
+        self.bugReporter = bugReporter
     }
 
     /// The values of the form held now.
@@ -290,7 +304,7 @@ final class HeldReleaseEditForm {
                 baeAppLogger.error(
                     "Picking a CUE sheet's place failed: \(detail)"
                 )
-                CoreBugReporter()
+                bugReporter
                     .report(
                         operation: "pick a CUE sheet's place",
                         detail: detail

@@ -24,6 +24,8 @@ struct MacPinField: View {
 
     @Environment(\.isEnabled)
     private var isEnabled
+    @Environment(BugReports.self)
+    private var bugReports
     /// Whether the field's editor has the keyboard.
     @State
     private var focused = false
@@ -47,7 +49,8 @@ struct MacPinField: View {
                     text: $value,
                     focused: $focused,
                     digits: digits,
-                    focusesOnAppear: focusesOnAppear
+                    focusesOnAppear: focusesOnAppear,
+                    bugReporter: bugReports
                 )
             }
             if let error {
@@ -99,6 +102,7 @@ private struct PinEditor: NSViewRepresentable {
     var focused: Bool
     let digits: Int
     let focusesOnAppear: Bool
+    let bugReporter: any BridgeBugReporter
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -166,7 +170,7 @@ private struct PinEditor: NSViewRepresentable {
                 let detail =
                     "a PIN edit came from \(String(describing: notification.object))"
                 logger.error("\(detail)")
-                CoreBugReporter()
+                parent.bugReporter
                     .report(operation: "edit a PIN", detail: detail)
                 return
             }

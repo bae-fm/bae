@@ -65,6 +65,8 @@ private struct QueueTabContainer: View {
     private var queue
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(BugReports.self)
+    private var bugReports
 
     @State
     private var rowHover: QueueRowHover
@@ -83,7 +85,8 @@ private struct QueueTabContainer: View {
     var body: some View {
         let navigation = NowPlayingNavigationAction(
             playbackStore: playbackStore,
-            uiStore: uiStore
+            uiStore: uiStore,
+            bugReporter: bugReports
         )
         let onGoToNowPlaying: (() -> Void)? =
             navigation.isEnabled ? { navigation.perform() } : nil

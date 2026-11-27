@@ -26,10 +26,13 @@ public final class BootstrapFollowing {
     private var states: ScreenSubscription<SetupStatesSubscription>?
 
     /// Follow `setup`, made for this one call.
-    public init(setup: BridgeLibrarySetup) {
+    public init(
+        setup: BridgeLibrarySetup,
+        bugReporter: any BridgeBugReporter
+    ) {
         self.setup = setup
         let stream = LatestStream<BridgeBootstrapStep>.bootstrapSteps()
-        feed = stream.feed(from: setup)
+        feed = stream.feed(from: setup, bugReporter: bugReporter)
         steps = stream.only
         states = ScreenSubscription(
             setup.subscribeStates(),
@@ -40,7 +43,7 @@ public final class BootstrapFollowing {
                 let detail =
                     "a setup's states answered \(String(reflecting: error))"
                 logger.error("\(detail)")
-                CoreBugReporter()
+                bugReporter
                     .report(
                         operation: "SetupStatesSubscription.next",
                         detail: detail

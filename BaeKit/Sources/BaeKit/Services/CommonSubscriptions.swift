@@ -10,6 +10,7 @@ final class CommonSubscriptions {
     private let downloadStore: DownloadStore
     private let playbackStore: PlaybackStore
     private let castStore: CastStore
+    private let bugReporter: any BridgeBugReporter
     private var playbackValues: ScreenSubscription<PlaybackValuesSubscription>?
     private var playbackTimeline:
         ScreenSubscription<PlaybackTimelineSubscription>?
@@ -31,7 +32,8 @@ final class CommonSubscriptions {
         outboxStore: OutboxStore,
         downloadStore: DownloadStore,
         playbackStore: PlaybackStore,
-        castStore: CastStore
+        castStore: CastStore,
+        bugReporter: any BridgeBugReporter
     ) {
         self.appHandle = appHandle
         self.configStore = configStore
@@ -41,6 +43,7 @@ final class CommonSubscriptions {
         self.downloadStore = downloadStore
         self.playbackStore = playbackStore
         self.castStore = castStore
+        self.bugReporter = bugReporter
     }
 
     func start(
@@ -96,14 +99,31 @@ final class CommonSubscriptions {
             },
             onError: onError
         )
+        startFeeds(onError: onError)
+        startSync()
+    }
+
+    /// The fast streams core writes, telling `onError` each failed read of
+    /// the ones that have failed reads.
+    private func startFeeds(
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
         feeds =
             outboxStore.feedTransfers(from: appHandle, onError: onError) + [
                 syncActivityStore.feedBars(from: appHandle),
-                downloadStore.releaseProgress.feed(from: appHandle),
-                playbackStore.trackPositions.feed(from: appHandle),
-                playbackStore.trackBuffered.feed(from: appHandle),
+                downloadStore.releaseProgress.feed(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
+                playbackStore.trackPositions.feed(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
+                playbackStore.trackBuffered.feed(
+                    from: appHandle,
+                    bugReporter: bugReporter
+                ),
             ]
-        startSync()
     }
 
     /// What sync is doing and what it waits on, for the status line and the

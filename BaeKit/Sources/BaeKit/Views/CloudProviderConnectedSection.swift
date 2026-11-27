@@ -46,6 +46,8 @@ public struct OpenFolderInBrowserRow: View {
 
     @Environment(\.openURL)
     private var openURL
+    @Environment(BugReports.self)
+    private var bugReports
     /// Why the folder's page didn't open, until the next try.
     @State
     private var openFailure: DisplayError?
@@ -68,7 +70,7 @@ public struct OpenFolderInBrowserRow: View {
             let detail =
                 "the folder's web address isn't a URL: \(folder.webUrl)"
             logger.error("\(detail)")
-            CoreBugReporter()
+            bugReports
                 .report(
                     operation: "open the folder in the browser",
                     detail: detail

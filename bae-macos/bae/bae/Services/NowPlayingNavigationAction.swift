@@ -10,6 +10,7 @@ private let logger = Logger.bae("NowPlayingNavigationAction")
 struct NowPlayingNavigationAction {
     let playbackStore: PlaybackStore
     let uiStore: UiStore
+    let bugReporter: any BridgeBugReporter
 
     /// Enabled while a track loads, plays or is paused and the library
     /// holds it; a removed track has no album to reveal.
@@ -47,7 +48,7 @@ struct NowPlayingNavigationAction {
         let detail =
             "Go to Now Playing ran with no library track in \(String(describing: playbackStore.nowPlaying))"
         logger.error("\(detail)")
-        CoreBugReporter()
+        bugReporter
             .report(
                 operation: "NowPlayingNavigationAction.perform",
                 detail: detail

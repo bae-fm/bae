@@ -22,7 +22,8 @@ struct BaeApp: App {
         // every later launch step. The host and the keychain hold it from here.
         let diagnostics = BaeDiagnostics.configure(
             source: "ios",
-            edition: appEdition
+            edition: appEdition,
+            bugReporter: CoreBugReporter()
         )
         launch = Self.launch(diagnostics: diagnostics)
     }

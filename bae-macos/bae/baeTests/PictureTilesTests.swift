@@ -123,6 +123,7 @@ struct PictureTilesTests {
                 )
             ),
             images: images,
+            bugReporter: RecordingBugReporter(),
             levelsArrived: { _ in },
             tileArrived: { _ in },
             failed: { _ in }
@@ -160,6 +161,7 @@ struct PictureTilesTests {
                 )
             ),
             images: images,
+            bugReporter: RecordingBugReporter(),
             levelsArrived: { _ in },
             tileArrived: { arrived.keys.append($0) },
             failed: { _ in }

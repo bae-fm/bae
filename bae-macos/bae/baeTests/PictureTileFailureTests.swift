@@ -27,6 +27,7 @@ struct PictureTileFailureTests {
                 )
             ),
             images: images,
+            bugReporter: RecordingBugReporter(),
             levelsArrived: { _ in },
             tileArrived: { _ in },
             failed: { _ in shown.increment() }
@@ -58,6 +59,7 @@ struct PictureTileFailureTests {
                 images: ImageStore(fetchPictureTile: { _, _, _, _ in
                     throw error
                 }),
+                bugReporter: RecordingBugReporter(),
                 levelsArrived: { _ in },
                 tileArrived: { _ in },
                 failed: { failure in
@@ -102,6 +104,7 @@ struct PictureTileFailureTests {
                 )
             ),
             images: images,
+            bugReporter: RecordingBugReporter(),
             levelsArrived: { _ in },
             tileArrived: { _ in },
             failed: { _ in }
@@ -144,6 +147,7 @@ struct PictureTileFailureTests {
                 )
             ),
             images: images,
+            bugReporter: RecordingBugReporter(),
             levelsArrived: { _ in arrived.increment() },
             tileArrived: { _ in },
             failed: { _ in shown.increment() }

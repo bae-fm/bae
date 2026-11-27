@@ -48,7 +48,7 @@ struct CoverPickerTests {
                 onSelect: { recorder.select($0) },
                 onDone: {}
             )
-            .layerEnvironment { $0.environment(images) }
+            .lightboxLayerEnvironment(images)
             .modalWindows(modals)
             .environment(
                 Importer(coverGallery: { .fixed(gallery(of: release)) })

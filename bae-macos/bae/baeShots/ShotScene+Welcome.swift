@@ -627,7 +627,8 @@ extension ShotScene {
             makeBootstrap: {
                 LibraryBootstrap(
                     host: BaeHost.inTemporaryFolder(),
-                    deviceName: "Preview Device"
+                    deviceName: "Preview Device",
+                    bugReporter: CoreBugReporter()
                 )
             },
             unfinishedJoins: { [] },
@@ -781,7 +782,8 @@ private final class CountedReads {
             makeBootstrap: {
                 LibraryBootstrap(
                     host: BaeHost.inTemporaryFolder(),
-                    deviceName: "Preview Device"
+                    deviceName: "Preview Device",
+                    bugReporter: CoreBugReporter()
                 )
             },
             makeSetupSteps: { base.setupSteps() }

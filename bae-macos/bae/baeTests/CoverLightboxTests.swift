@@ -51,7 +51,7 @@ struct CoverLightboxTests {
                     onDone: { dismissed = true }
                 )
             }
-            .layerEnvironment { $0.environment(images) }
+            .lightboxLayerEnvironment(images)
             .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size
@@ -145,7 +145,7 @@ struct CoverLightboxTests {
                     onDone: {}
                 )
             }
-            .layerEnvironment { $0.environment(images) }
+            .lightboxLayerEnvironment(images)
             .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size
@@ -230,7 +230,7 @@ struct CoverLightboxTests {
                 onSelect: { _ in },
                 onDismiss: {}
             )
-            .layerEnvironment { $0.environment(images) }
+            .lightboxLayerEnvironment(images)
             .modalWindows(modals)
             .frame(width: size.width, height: size.height),
             size: size

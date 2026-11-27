@@ -11,21 +11,24 @@ public enum BaeDiagnostics {
     /// log) rather than let telemetry setup block a launch.
     public static func configure(
         source: String,
-        edition: AppEdition
+        edition: AppEdition,
+        bugReporter: any BridgeBugReporter
     ) -> BridgeDiagnostics {
         configureDiagnostics(
             config: bridgeConfig(source: source, edition: edition),
-            bugReporter: CoreBugReporter()
+            bugReporter: bugReporter
         )
     }
 
     #if DEBUG
         /// A sink that ships no telemetry, for shots and tests. The bugs
-        /// core finds still go to the crash reporter.
-        public static func disabled() -> BridgeDiagnostics {
+        /// core finds go to `bugReporter`.
+        public static func disabled(
+            bugReporter: any BridgeBugReporter
+        ) -> BridgeDiagnostics {
             configureDiagnostics(
                 config: .disabled,
-                bugReporter: CoreBugReporter()
+                bugReporter: bugReporter
             )
         }
     #endif

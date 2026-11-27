@@ -38,38 +38,40 @@ final class LightboxImageLoad {
     private var generation = 0
 
     /// Load `image` from `images`, decoded to fit `points` on its longer
-    /// side, then read it for Live Text. Replaces any load before it.
+    /// side, then read it for Live Text. Replaces any load before it. A
+    /// failure that is a bug goes to `bugReporter`.
     func load(
         _ image: ImageContent,
         from images: ImageStore,
         fitting points: CGFloat,
-        displayScale: CGFloat
+        displayScale: CGFloat,
+        bugReporter: any BridgeBugReporter
     ) async {
         let current = restart(showing: image)
-        guard
-            let decoded = await decode(
-                image,
-                from: images,
-                fitting: points,
-                displayScale: displayScale,
-                for: current
-            )
-        else { return }
-        phase = .decoded(decoded)
+        let outcome = await decode(
+            image,
+            from: images,
+            fitting: points,
+            displayScale: displayScale,
+            bugReporter: bugReporter
+        )
+        guard let outcome, isCurrent(current) else { return }
+        phase = outcome
+        guard case .decoded(let decoded) = outcome else { return }
         let analysis = await readText(of: decoded)
         guard isCurrent(current) else { return }
         phase = .analysed(decoded, analysis)
     }
 
-    /// `image` as the store decodes it to fit `points`, for load `current`:
-    /// nil once the load failed, was replaced or was cancelled.
+    /// `image` as the store decodes it to fit `points`: decoded, or failed
+    /// with why, and nil once the load was cancelled.
     private func decode(
         _ image: ImageContent,
         from images: ImageStore,
         fitting points: CGFloat,
         displayScale: CGFloat,
-        for current: Int
-    ) async -> DecodedImage? {
+        bugReporter: any BridgeBugReporter
+    ) async -> Phase? {
         do {
             guard
                 let decoded = try await images.image(
@@ -81,10 +83,9 @@ final class LightboxImageLoad {
                 logger.warning(
                     "No bytes for lightbox image \(image.description)"
                 )
-                fail(current, .noBytes)
-                return nil
+                return .failed(.noBytes)
             }
-            return isCurrent(current) ? decoded : nil
+            return .decoded(decoded)
         }
         catch is CancellationError {
             return nil
@@ -95,18 +96,19 @@ final class LightboxImageLoad {
             logger.warning(
                 "Lightbox image \(image.description) did not decode"
             )
-            fail(current, .undecodable)
-            return nil
+            return .failed(.undecodable)
         }
         catch {
             logger.warning(
                 "Failed to load lightbox image \(image.description): \(error)"
             )
-            fail(
-                current,
-                LightboxFailure(of: error, operation: "load a lightbox image")
+            return .failed(
+                LightboxFailure(
+                    of: error,
+                    operation: "load a lightbox image",
+                    bugReporter: bugReporter
+                )
             )
-            return nil
         }
     }
 
@@ -130,11 +132,6 @@ final class LightboxImageLoad {
         return generation
     }
 
-    private func fail(_ load: Int, _ failure: LightboxFailure) {
-        guard isCurrent(load) else { return }
-        phase = .failed(failure)
-    }
-
     private func isCurrent(_ load: Int) -> Bool {
         load == generation && !Task.isCancelled
     }
@@ -148,13 +145,17 @@ struct LightboxFailure: Equatable {
 
     /// Why `operation` failed with `error`: a failure core reported, whose
     /// error says whether trying again can help, or else a bug in the app,
-    /// which goes to the bug report and offers no Retry.
-    init(of error: any Error, operation: String) {
+    /// which goes to `bugReporter` and offers no Retry.
+    init(
+        of error: any Error,
+        operation: String,
+        bugReporter: any BridgeBugReporter
+    ) {
         guard error is BridgeError else {
             logger.reportBug(
                 operation: operation,
                 detail: String(reflecting: error),
-                to: CoreBugReporter()
+                to: bugReporter
             )
             self = .bug
             return

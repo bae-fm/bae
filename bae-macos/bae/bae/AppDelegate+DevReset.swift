@@ -8,7 +8,10 @@
         /// nothing after it runs.
         func runDevReset(profilePath: String) {
             let services = requiredApplicationServices
-            let steps = LibrarySetupSteps(host: services.host)
+            let steps = LibrarySetupSteps(
+                host: services.host,
+                bugReporter: bugReports
+            )
             setupSteps = steps
             screen = .loading(.settingUp)
             Task {
