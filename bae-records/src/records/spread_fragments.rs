@@ -21,7 +21,7 @@ sqlive_compose::fragment!(
 sqlive_compose::fragment!(
     ReleaseFileRow,
     r#"
-    SELECT file.id AS file_id, file.release_id, file.file AS stored_file
+    SELECT file.release_id, file.file AS stored_file
     FROM release_files AS file
 "#
 );
