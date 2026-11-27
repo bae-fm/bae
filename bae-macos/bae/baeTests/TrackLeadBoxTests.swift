@@ -49,10 +49,11 @@ struct TrackLeadBoxTests {
                     tree.nodes.first { $0.description == name }
                 }
             #expect(glyphs.count == 3)
-            // The three symbols are three sizes: a box they all share is the
-            // lead's, not a glyph's.
+            // A box all three share is the lead's, not a glyph's. Two glyphs
+            // can measure the same: Play and Pause are half a point apart in
+            // width, which a display's pixel grid can round away.
             let boxes = Set(glyphs.map { "\($0.width) by \($0.height)" })
-            #expect(boxes.count == 3)
+            #expect(boxes.count > 1)
         }
     }
 }
