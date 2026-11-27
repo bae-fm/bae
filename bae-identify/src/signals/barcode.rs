@@ -13,8 +13,8 @@ pub enum BarcodeSignal {
     Scanning { codes: Vec<SourcedValue> },
     /// Finished; empty `codes` means the sources were read and held none.
     Settled { codes: Vec<SourcedValue> },
-    /// Artwork OCR failed before barcode extraction finished.
-    Failed { failure: InternalFailure, codes: Vec<SourcedValue> },
+    /// The extraction failed whole, so it read no code.
+    Failed { failure: InternalFailure },
     /// No barcode source was read: no CUE `CATALOG`, and no artwork read.
     Absent,
 }
@@ -22,10 +22,8 @@ pub enum BarcodeSignal {
 impl BarcodeSignal {
     pub fn codes(&self) -> &[SourcedValue] {
         match self {
-            BarcodeSignal::Scanning { codes }
-            | BarcodeSignal::Settled { codes }
-            | BarcodeSignal::Failed { codes, .. } => codes,
-            BarcodeSignal::Absent => &[],
+            BarcodeSignal::Scanning { codes } | BarcodeSignal::Settled { codes } => codes,
+            BarcodeSignal::Failed { .. } | BarcodeSignal::Absent => &[],
         }
     }
 }

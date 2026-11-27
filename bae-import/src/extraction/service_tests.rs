@@ -592,12 +592,12 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         signals.disc_id
     );
     assert!(
-        matches!(&signals.barcode, BarcodeSignal::Failed { failure: f, codes } if *f == failure && codes.is_empty()),
+        matches!(&signals.barcode, BarcodeSignal::Failed { failure: f } if *f == failure),
         "the barcode failed with the abort's detail, got {:?}",
         signals.barcode
     );
     assert!(
-        matches!(&signals.text, TextSignal::Failed { failure: f, .. } if *f == failure),
+        matches!(&signals.text, TextSignal::Failed { failure: f } if *f == failure),
         "the text failed with the abort's detail, got {:?}",
         signals.text
     );

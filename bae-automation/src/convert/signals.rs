@@ -35,10 +35,9 @@ impl AutomationBarcodeSignal {
             BarcodeSignal::Settled { codes } => {
                 Self::Settled { codes: SourcedValue::values(&codes) }
             }
-            BarcodeSignal::Failed { failure, codes } => Self::Failed {
-                failure: AutomationInternalFailure::from_core(failure),
-                codes: SourcedValue::values(&codes),
-            },
+            BarcodeSignal::Failed { failure } => {
+                Self::Failed { failure: AutomationInternalFailure::from_core(failure) }
+            }
             BarcodeSignal::Absent => Self::Absent,
         }
     }
@@ -51,7 +50,7 @@ mirror_enum! {
     variants: {
         Scanning { catalogs, free_text },
         Settled { catalogs, free_text },
-        Failed { failure: (AutomationInternalFailure), catalogs, free_text },
+        Failed { failure: (AutomationInternalFailure) },
     },
 }
 

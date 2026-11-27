@@ -353,12 +353,8 @@ fn an_aborted_extraction_ends_the_run_as_an_error() {
         pane: PaneSignals {
             origin: bae_catalogs::AudioOrigin::default(),
             disc_id: DiscIdSignal::Failed { failure: failure.clone() },
-            barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: vec![] },
-            text: TextSignal::Failed {
-                failure: failure.clone(),
-                catalogs: vec![],
-                free_text: vec![],
-            },
+            barcode: BarcodeSignal::Failed { failure: failure.clone() },
+            text: TextSignal::Failed { failure: failure.clone() },
             isrcs: Vec::new(),
             track_titles: Vec::new(),
         },
@@ -400,7 +396,7 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
                     source_file: None,
                 }],
             },
-            BarcodeSignal::Failed { failure: failure.clone(), codes: vec![] },
+            BarcodeSignal::Failed { failure: failure.clone() },
             &[],
         ),
     );

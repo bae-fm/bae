@@ -236,7 +236,7 @@ pub struct AutomationAudioOrigin {
 pub enum AutomationBarcodeSignal {
     Scanning { codes: Vec<String> },
     Settled { codes: Vec<String> },
-    Failed { failure: AutomationInternalFailure, codes: Vec<String> },
+    Failed { failure: AutomationInternalFailure },
     Absent,
 }
 
@@ -246,7 +246,7 @@ pub enum AutomationBarcodeSignal {
 pub enum AutomationTextSignal {
     Scanning { catalogs: Vec<String>, free_text: Vec<String> },
     Settled { catalogs: Vec<String>, free_text: Vec<String> },
-    Failed { failure: AutomationInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
+    Failed { failure: AutomationInternalFailure },
 }
 
 /// Mirrors bae-library's `identify::signals::Signals`.

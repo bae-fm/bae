@@ -212,9 +212,8 @@ pub(super) fn store_signals(
 
 fn free_text(text: &TextSignal) -> &[String] {
     match text {
-        TextSignal::Scanning { free_text, .. }
-        | TextSignal::Settled { free_text, .. }
-        | TextSignal::Failed { free_text, .. } => free_text,
+        TextSignal::Scanning { free_text, .. } | TextSignal::Settled { free_text, .. } => free_text,
+        TextSignal::Failed { .. } => &[],
     }
 }
 
@@ -379,9 +378,7 @@ impl StoredPaneSignals {
             "scanning" => BarcodeSignal::Scanning { codes },
             "settled" => BarcodeSignal::Settled { codes },
             "absent" => BarcodeSignal::Absent,
-            "failed" => {
-                BarcodeSignal::Failed { failure: failure_of(barcode_failure, "barcode")?, codes }
-            }
+            "failed" => BarcodeSignal::Failed { failure: failure_of(barcode_failure, "barcode")? },
             other => {
                 return Err(DbError::unreadable("import_candidate_signals.barcode_state", other))
             }
@@ -391,11 +388,7 @@ impl StoredPaneSignals {
         let text = match text_state.as_str() {
             "scanning" => TextSignal::Scanning { catalogs, free_text },
             "settled" => TextSignal::Settled { catalogs, free_text },
-            "failed" => TextSignal::Failed {
-                failure: failure_of(text_failure, "text signal")?,
-                catalogs,
-                free_text,
-            },
+            "failed" => TextSignal::Failed { failure: failure_of(text_failure, "text signal")? },
             other => return Err(DbError::unreadable("import_candidate_signals.text_state", other)),
         };
         Ok(PaneSignals {

@@ -66,12 +66,9 @@ async fn every_settled_signal_shape_round_trips() {
             },
             BarcodeSignal::Failed {
                 failure: InternalFailure { detail: "the artwork did not read".to_string() },
-                codes: vec![SourcedValue::new("0123456789012".to_string())],
             },
             TextSignal::Failed {
                 failure: InternalFailure { detail: "the artwork did not read".to_string() },
-                catalogs: vec!["CAT-2".to_string()],
-                free_text: vec!["Some Line".to_string()],
             },
         ),
         (

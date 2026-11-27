@@ -8,26 +8,37 @@ use bae_catalogs::InternalFailure;
 /// order; final once `Settled`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TextSignal {
-    Scanning { catalogs: Vec<String>, free_text: Vec<String> },
-    Settled { catalogs: Vec<String>, free_text: Vec<String> },
-    Failed { failure: InternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
+    Scanning {
+        catalogs: Vec<String>,
+        free_text: Vec<String>,
+    },
+    Settled {
+        catalogs: Vec<String>,
+        free_text: Vec<String>,
+    },
+    /// The extraction failed whole, so it read no text.
+    Failed {
+        failure: InternalFailure,
+    },
 }
 
 impl TextSignal {
     pub fn catalogs(&self) -> &[String] {
         match self {
-            TextSignal::Scanning { catalogs, .. }
-            | TextSignal::Settled { catalogs, .. }
-            | TextSignal::Failed { catalogs, .. } => catalogs,
+            TextSignal::Scanning { catalogs, .. } | TextSignal::Settled { catalogs, .. } => {
+                catalogs
+            }
+            TextSignal::Failed { .. } => &[],
         }
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     pub fn free_text(&self) -> &[String] {
         match self {
-            TextSignal::Scanning { free_text, .. }
-            | TextSignal::Settled { free_text, .. }
-            | TextSignal::Failed { free_text, .. } => free_text,
+            TextSignal::Scanning { free_text, .. } | TextSignal::Settled { free_text, .. } => {
+                free_text
+            }
+            TextSignal::Failed { .. } => &[],
         }
     }
 }

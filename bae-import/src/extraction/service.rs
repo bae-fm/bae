@@ -526,12 +526,8 @@ fn emit_aborted_signals(
                 pane: PaneSignals {
                     origin: AudioOrigin::default(),
                     disc_id,
-                    barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: Vec::new() },
-                    text: TextSignal::Failed {
-                        failure: failure.clone(),
-                        catalogs: Vec::new(),
-                        free_text: Vec::new(),
-                    },
+                    barcode: BarcodeSignal::Failed { failure: failure.clone() },
+                    text: TextSignal::Failed { failure: failure.clone() },
                     isrcs: Vec::new(),
                     track_titles: Vec::new(),
                 },
