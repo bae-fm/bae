@@ -187,6 +187,15 @@ pub(super) fn credits_of(credits: Vec<CreditJson>) -> Result<Vec<LibraryCredit>,
         .collect()
 }
 
+/// An album's year as its column holds it, `None` for an album that states
+/// none.
+pub(super) fn album_year(year: Option<i64>) -> Result<Option<i32>, DbError> {
+    year.map(|year| {
+        i32::try_from(year).map_err(|_error| DbError::unreadable("an album's year", year))
+    })
+    .transpose()
+}
+
 /// The line a credit-list JSON column prints, read in a row closure.
 pub fn credit_line_column(
     row: &Row,

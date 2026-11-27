@@ -154,11 +154,7 @@ impl ReleaseAlbumFacts {
 
     /// The album's year, if it states one.
     pub fn year(&self) -> Result<Option<i32>, DbError> {
-        self.year
-            .map(|year| {
-                i32::try_from(year).map_err(|_error| DbError::unreadable("an album's year", year))
-            })
-            .transpose()
+        album_year(self.year)
     }
 }
 

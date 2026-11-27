@@ -4,6 +4,7 @@
 //! fragments, so no other crate reads a records table.
 
 use super::query::AlbumSummaryRow;
+use super::read::album_year;
 use super::release_records::{library_status_from, StoredAlbumMatch};
 use crate::LibraryStatus;
 use bae_store::DbError;
@@ -148,12 +149,7 @@ impl AlbumSummary {
             self.primary_release.as_ref().ok_or_else(|| missing("the primary release"))?;
         let primary_release_id = primary_release_id.release_id.clone();
         let credits = self.credits.as_ref().ok_or_else(|| missing("the credits"))?.credits.clone();
-        let year = self
-            .year
-            .map(|year| {
-                i32::try_from(year).map_err(|_error| DbError::unreadable("an album's year", year))
-            })
-            .transpose()?;
+        let year = album_year(self.year)?;
         Ok(AlbumSummaryRow {
             id: self.summary_album_id,
             title: self.title,
@@ -203,12 +199,7 @@ sqlive_compose::fragment!(
 impl AlbumRow {
     /// The album the row holds.
     pub fn into_album(self) -> Result<crate::DbAlbum, DbError> {
-        let year = self
-            .year
-            .map(|year| {
-                i32::try_from(year).map_err(|_error| DbError::unreadable("an album's year", year))
-            })
-            .transpose()?;
+        let year = album_year(self.year)?;
         let created_at = bae_util::timestamp::parse_rfc3339(&self.created_at)
             .map_err(|_unparsed| DbError::unreadable("an album's created_at", &self.created_at))?;
         Ok(crate::DbAlbum {
