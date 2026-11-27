@@ -236,33 +236,15 @@ pub fn get_releases_for_album_on(
     .map_err(DbError::from)
 }
 
-/// Every catalog's description of the release `release` (an SQL expression
-/// naming its id), in the order surfaces list catalogs, as a JSON array for
-/// [`records_column`] that is empty for a release no catalog describes.
-pub fn release_records_json_sql(release: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-                 'catalog', rr.catalog, 'key', rr.key, 'kind', rr.kind, \
-                 'album_key', rr.album_key) \
-                 ORDER BY bae_catalog_rank(rr.catalog), rr.catalog) \
-          FROM release_records rr WHERE rr.release_id = {release})"
-    )
-}
-
-/// The release's records as [`release_records_json_sql`] read them into
-/// `column`.
-pub fn records_column(
-    row: &Row,
-    column: &str,
-) -> rusqlite::Result<Vec<bae_catalogs::records::ReleaseRecord>> {
-    let records: Vec<StoredRecord> = bae_store::read::json_column(row, column)?;
-    records
-        .into_iter()
-        .map(|record| {
-            record_of(record).map_err(|reason| column_conversion_error(row, column, reason))
-        })
-        .collect()
-}
+// One release's catalog records.
+sqlive_compose::read!(
+    writer OneReleaseRecords(release: String),
+    r#"
+    SELECT listed.*
+    FROM @crate::records::fragments::ReleaseRecords AS listed
+    WHERE listed.records_release_id = :release
+"#
+);
 
 /// The release's records as the document `json` of
 /// [`crate::records::fragments::ReleaseRecords`] holds them.
@@ -278,19 +260,20 @@ pub fn records_of_json(json: &str) -> Result<Vec<bae_catalogs::records::ReleaseR
 }
 
 /// Every catalog's description of a release, in the order surfaces list
-/// catalogs.
+/// catalogs: none for a release the library does not hold.
 pub fn get_release_records_on(
     sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
-    Ok(sql.query_row(
-        &format!("SELECT {} AS records", release_records_json_sql("?1")),
-        params![release_id],
-        |row| records_column(row, "records"),
-    )?)
+    let statement = OneReleaseRecordsParams { release: release_id.to_owned() };
+    match bae_store::statement_optional(sql, &statement)? {
+        Some(row) => records_of_json(row.listed.records_json()),
+        None => Ok(Vec::new()),
+    }
 }
 
-/// One record as [`release_records_json_sql`] writes it into its array.
+/// One record as [`ReleaseRecords`](super::fragments::ReleaseRecords) writes
+/// it into its array.
 #[derive(serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 enum StoredRecord {

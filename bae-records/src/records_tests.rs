@@ -62,8 +62,11 @@ async fn release_records_are_read_in_catalog_order() {
     .await
     .unwrap();
 
+    let counter = db.track_work_for_test().await.unwrap();
     let records =
-        db.read(|sql| crate::records::read::get_release_records_on(&sql, RELEASE_A)).await.unwrap();
+        crate::test_fixtures::test_records(&db).get_release_records(RELEASE_A).await.unwrap();
+    assert_eq!(counter.take().app_read_statements, 1);
+    drop(counter);
     assert_eq!(
         records.iter().map(|record| record.catalog()).collect::<Vec<_>>(),
         [
@@ -76,10 +79,7 @@ async fn release_records_are_read_in_catalog_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN SELECT {}",
-                    crate::records::read::release_records_json_sql("?1")
-                ),
+                &format!("EXPLAIN QUERY PLAN {}", crate::records::read::OneReleaseRecords::SQL),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
             )
@@ -88,9 +88,9 @@ async fn release_records_are_read_in_catalog_order() {
         .await
         .unwrap();
     assert!(
-        plan.iter().any(
-            |step| step.starts_with("SEARCH rr USING INDEX") && step.contains("(release_id=?)")
-        ),
+        plan.iter()
+            .any(|step| step.starts_with("SEARCH record USING INDEX")
+                && step.contains("(release_id=?)")),
         "the read finds the release's records by its index: {plan:?}"
     );
 }
