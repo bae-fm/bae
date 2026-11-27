@@ -33,8 +33,7 @@ sqlive_compose::fragment!(
                place.side_kind, place.side_ordinal,
                COALESCE(@crate::records::credit_fragments::TrackOwnCredits(parent: track), '[]')
                    AS own_credits,
-               COALESCE(@crate::records::credit_fragments::TrackCredits(parent: track), '[]')
-                   AS shown_credits,
+               @crate::records::credit_fragments::TrackCredits(parent: track) AS shown_credits,
                (SELECT json_group_array(json_object(
                            'work_id', work.id, 'title', work.title, 'composer_names',
                            @crate::records::credit_fragments::WorkComposerNames(parent: work))
