@@ -319,8 +319,19 @@ pub(super) async fn try_pin_directly(
     release_id: &str,
 ) -> Result<bae_transfers::Finished, LibraryError> {
     let entry = manager.started_pin_entry_for_test(release_id).await;
-    let files = release_files(manager, release_id).await;
-    manager.pin_release_files_with_progress(release_id, &files, entry, |_| {}).await
+    let plan = pin_plan(manager, release_id).await;
+    manager.pin_release_files_with_progress(release_id, &plan, entry, |_| {}).await
+}
+
+/// The plan of a pin of the release, as the download worker reads it.
+pub(super) async fn pin_plan(
+    manager: &LibraryManager,
+    release_id: &str,
+) -> crate::storage::transfer::PinPlan {
+    let files = manager.find_files_to_pin(release_id).await.unwrap();
+    crate::storage::transfer::ReleaseTransfer::new(manager.clone(), release_id.to_string())
+        .start(files)
+        .unwrap()
 }
 
 /// Wait for every file of a release being pinned to be kept whole on this

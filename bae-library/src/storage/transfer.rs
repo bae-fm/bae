@@ -75,13 +75,14 @@ impl LibraryManager {
     {
         let files = self.find_files_to_pin(&release_id).await?;
         let transfer = ReleaseTransfer::new(self.clone(), release_id.clone());
-        let (files, initial) = transfer.start(files).inspect_err(|error| transfer.fail(error))?;
+        let plan = transfer.start(files).inspect_err(|error| transfer.fail(error))?;
+        let initial = plan.initial.clone();
         let library_manager = self.clone();
         let pinned_release_id = release_id.clone();
-        let file_count = u32::try_from(files.len()).expect("a release's files fit a u32");
+        let file_count = u32::try_from(plan.files.len()).expect("a release's files fit a u32");
         let (progress, running) = spawn_transfer(transfer, file_count, move |tx| async move {
             library_manager
-                .pin_release_files_with_progress(&pinned_release_id, &files, entry, |progress| {
+                .pin_release_files_with_progress(&pinned_release_id, &plan, entry, |progress| {
                     send_progress(&tx, TransferProgress::Progress { progress })
                 })
                 .await
@@ -107,6 +108,14 @@ impl LibraryManager {
     }
 }
 
+/// What a pin that passed its preconditions works from.
+pub(crate) struct PinPlan {
+    /// The release's files, which the pin keeps together.
+    pub(crate) files: Vec<DbFile>,
+    /// The progress the pin starts from: none of the bytes of its files.
+    pub(crate) initial: DownloadTransferProgress,
+}
+
 /// One pin in flight: which release, and the library it is recorded
 /// against.
 ///
@@ -128,12 +137,8 @@ impl ReleaseTransfer {
     }
 
     /// Guard the transfer's preconditions over the release's `files`, `None`
-    /// when the library holds no such release; returns the files it pins and
-    /// the progress it starts from.
-    pub(crate) fn start(
-        &self,
-        files: Option<Vec<DbFile>>,
-    ) -> Result<(Vec<DbFile>, DownloadTransferProgress), LibraryError> {
+    /// when the library holds no such release; returns the pin they plan.
+    pub(crate) fn start(&self, files: Option<Vec<DbFile>>) -> Result<PinPlan, LibraryError> {
         let files = files.ok_or_else(|| {
             LibraryError::release_missing(&self.release_id, crate::manager::ReleaseWork::Transfer)
         })?;
@@ -142,7 +147,7 @@ impl ReleaseTransfer {
         }
         // coven's `prepare_pin` refuses a file that is not in the cloud.
         let total = total_bytes(&self.release_id, &files)?;
-        Ok((files, DownloadTransferProgress::new(&self.release_id, 0, total)?))
+        Ok(PinPlan { initial: DownloadTransferProgress::new(&self.release_id, 0, total)?, files })
     }
 
     pub(crate) fn complete(&self, file_count: u32) {
