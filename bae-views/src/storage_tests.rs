@@ -408,37 +408,6 @@ async fn a_search_window_from_a_key_holds_its_rows_across_a_printed_name() {
 }
 
 #[tokio::test]
-async fn the_download_queue_seeks_its_windows_through_its_key() {
-    let (db, _tmp) = library().await;
-    let order = bae_transfers::tables::queue_order();
-    let key = key_at(
-        &db,
-        &order,
-        bae_transfers::tables::queue_window_rows_on::<bae_transfers::DownloadRequest>,
-        150,
-    )
-    .await;
-    assert_seeks_search(
-        &db,
-        "downloads",
-        &order,
-        key,
-        |seek| {
-            bae_transfers::tables::queue_rows_sql::<bae_transfers::DownloadRequest>(
-                Some(&order),
-                &format!(
-                    "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",
-                    order.condition(seek),
-                    order.ordering(seek)
-                ),
-            )
-        },
-        Vec::new(),
-    )
-    .await;
-}
-
-#[tokio::test]
 async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
     let (db, _tmp) = aggregate_db(crate::TEST_SCHEMA).await;
     let sort = StorageSortCriterion {

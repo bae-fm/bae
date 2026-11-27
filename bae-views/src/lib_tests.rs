@@ -683,16 +683,18 @@ mod window_cost {
         records.insert_files_for_test(files).await.unwrap();
     }
 
-    /// What the download queue's windows cost to read.
+    /// What the downloads list's reads cost.
     async fn measure_downloads(db: &Store, n: u64) {
-        measure(
+        measure_reads(
             db,
             "downloads",
             "queued",
             n,
-            bae_transfers::tables::queue_order(),
-            bae_transfers::tables::queue_window_rows_on::<bae_transfers::DownloadRequest>,
-            bae_transfers::tables::queue_rows_before_on::<bae_transfers::DownloadRequest>,
+            bae_transfers::download_list::download_key_at_on,
+            |sql, window| {
+                Ok(bae_transfers::download_list::download_window_on(sql, window)?.rows.len())
+            },
+            bae_transfers::download_list::downloads_before_on,
         )
         .await;
     }

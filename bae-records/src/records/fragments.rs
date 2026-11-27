@@ -138,6 +138,21 @@ sqlive_compose::fragment!(
 "#);
 
 sqlive_compose::fragment!(
+    AlbumTitle,
+    r#"
+    SELECT titled.id AS album_id, titled.title
+    FROM albums AS titled
+"#
+);
+
+impl AlbumTitle {
+    /// The album's title.
+    pub fn into_title(self) -> String {
+        self.title
+    }
+}
+
+sqlive_compose::fragment!(
     LibraryAlbum,
     r#"
     SELECT album.id AS album_id, album.title,

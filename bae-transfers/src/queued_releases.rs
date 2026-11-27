@@ -3,6 +3,8 @@
 //! queued, active or failed, in order, and whether the queue is paused. The
 //! task and its progress live here, since neither outlives the process.
 
+pub mod download_list;
+mod rows;
 pub mod tables;
 
 use crate::download_snapshot::DownloadRequest;
@@ -344,68 +346,6 @@ where
         self.store.subscribe(|sql| tables::release_queue_on::<Extra>(&sql))
     }
 
-    /// Follow one window of the queue's entries, the entries from one on in
-    /// the order the person queued them, each joined with its release. Coven
-    /// reruns the query only when a write changes a row at or before the
-    /// window's last row.
-    pub fn subscribe_window(
-        &self,
-        initial: bae_store::ListWindow,
-    ) -> coven::ReconfigurableLiveQuery<
-        bae_store::ListWindow,
-        bae_store::WindowRead<crate::release_queue::ReleaseQueueRow<Extra, ()>>,
-        bae_store::DbError,
-    > {
-        self.store.subscribe_list_window(initial, tables::queue_order(), move |sql, seek, limit| {
-            tables::queue_window_rows_on::<Extra>(sql, &tables::queue_order(), seek, limit)
-        })
-    }
-
-    /// Follow how many entries the queue holds. The count runs as a separate
-    /// query from the windows' rows.
-    pub fn subscribe_row_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
-        self.store.subscribe(|sql| tables::release_queue_row_count_on::<Extra>(&sql))
-    }
-
-    /// Follow how many entries come before the row at `initial`, a count
-    /// over index ranges; the caller changes the key on the same query.
-    pub fn subscribe_position(
-        &self,
-        initial: bae_store::list_windows::OrderKey,
-    ) -> coven::ReconfigurableLiveQuery<bae_store::list_windows::OrderKey, u64, bae_store::DbError>
-    {
-        let order = tables::queue_order();
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            tables::queue_rows_before_on::<Extra>(&sql, &order, key)
-        })
-    }
-
-    /// The key of the entry at `position`, or of the last one when the queue
-    /// ends before it; `None` for an empty queue.
-    pub async fn key_at(
-        &self,
-        position: u64,
-    ) -> Result<Option<bae_store::list_windows::OrderKey>, DbError> {
-        self.store
-            .read(move |sql| {
-                let order = tables::queue_order();
-                bae_store::list_windows::key_at(&order, position, &mut |seek, limit| {
-                    tables::queue_window_rows_on::<Extra>(&sql, &order, seek, limit)
-                })
-            })
-            .await
-    }
-
-    /// How many entries are in each phase now, and whether it is paused.
-    pub async fn counts(&self) -> Result<ReleaseQueueCounts, DbError> {
-        self.store.read(|sql| tables::release_queue_counts_on::<Extra>(&sql)).await
-    }
-
-    /// Follow how many entries are in each phase, and whether it is paused.
-    pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts, bae_store::DbError> {
-        self.store.subscribe(|sql| tables::release_queue_counts_on::<Extra>(&sql))
-    }
-
     fn register(&self, release_id: &str, abort: tokio::task::AbortHandle, progress: Progress) {
         *self.shared.running.lock().unwrap() =
             Some(Running { release_id: release_id.to_string(), abort, progress });
@@ -638,6 +578,62 @@ impl<Progress> QueuedReleases<DownloadRequest, Progress>
 where
     Progress: Clone + PartialEq + Send + Sync + 'static,
 {
+    /// Follow one window of the downloads list, the entries from one on in
+    /// the order the person queued them, each beside its release. Coven
+    /// reruns the query only when a write changes a row at or before the
+    /// window's last row.
+    pub fn subscribe_window(
+        &self,
+        initial: bae_store::ListWindow,
+    ) -> coven::ReconfigurableLiveQuery<
+        bae_store::ListWindow,
+        bae_store::WindowRead<crate::DownloadRow>,
+        bae_store::DbError,
+    > {
+        self.store.subscribe_reconfigurable(initial, |window, sql| {
+            download_list::download_window_on(&sql, window)
+        })
+    }
+
+    /// Follow how many entries the downloads list has, apart from its
+    /// windows' rows.
+    pub fn subscribe_row_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
+        self.store.subscribe(|sql| download_list::download_list_length_on(&sql))
+    }
+
+    /// Follow how many entries come before the entry at `initial`; the
+    /// caller changes the key on the same query.
+    pub fn subscribe_position(
+        &self,
+        initial: bae_store::list_windows::OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<bae_store::list_windows::OrderKey, u64, bae_store::DbError>
+    {
+        self.store.subscribe_reconfigurable(initial, |key, sql| {
+            download_list::downloads_before_on(&sql, key)
+        })
+    }
+
+    /// The key of the entry at `position`, or of the last one when the list
+    /// ends before it; `None` for an empty list.
+    pub async fn key_at(
+        &self,
+        position: u64,
+    ) -> Result<Option<bae_store::list_windows::OrderKey>, bae_store::DbError> {
+        self.store.read(move |sql| download_list::download_key_at_on(&sql, position)).await
+    }
+
+    /// How many downloads are in each phase now, and whether the queue is
+    /// paused.
+    pub async fn counts(&self) -> Result<ReleaseQueueCounts, DbError> {
+        self.store.read(|sql| rows::download_counts_on(&sql)).await
+    }
+
+    /// Follow how many downloads are in each phase, and whether the queue is
+    /// paused.
+    pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts, bae_store::DbError> {
+        self.store.subscribe(|sql| rows::download_counts_on(&sql))
+    }
+
     /// Queue to pin, in the order given, each of `release_ids` not wholly
     /// pinned on this device, in one write that decides which: the write
     /// skips one waiting, downloading or pinned, queues again, in its place,

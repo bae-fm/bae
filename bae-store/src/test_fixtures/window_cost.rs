@@ -102,41 +102,75 @@ pub async fn measure<R: Send + 'static>(
         + 'static,
 ) {
     let order = std::sync::Arc::new(order);
+    let key_of_row = {
+        let (order, rows) = (order.clone(), rows.clone());
+        move |sql: &SqlReadContext<'_>, position| {
+            key_at(&order, position, &mut |seek, limit| rows(sql, &order, seek, limit))
+        }
+    };
+    let window_rows = {
+        let (order, rows) = (order.clone(), rows.clone());
+        move |sql: &SqlReadContext<'_>, window: &ListWindow| {
+            let read =
+                read_range(&order, window, &mut |seek, limit| rows(sql, &order, seek, limit))?;
+            Ok(read.rows.len())
+        }
+    };
+    let rows_before = move |sql: &SqlReadContext<'_>, key: &OrderKey| count(sql, &order, key);
+    measure_reads(db, list, name, n, key_of_row, window_rows, rows_before).await;
+}
+
+/// [`measure`] for a list given by its reads: `key_at` the key of the row at
+/// a position, `window` how many rows a window holds, and `count` how many
+/// come before a key.
+pub async fn measure_reads(
+    db: &Store,
+    list: &str,
+    name: &str,
+    n: u64,
+    key_at: impl Fn(&SqlReadContext<'_>, u64) -> Result<Option<OrderKey>, DbError>
+        + Clone
+        + Send
+        + Sync
+        + 'static,
+    window: impl Fn(&SqlReadContext<'_>, &ListWindow) -> Result<usize, DbError>
+        + Clone
+        + Send
+        + Sync
+        + 'static,
+    count: impl Fn(&SqlReadContext<'_>, &OrderKey) -> Result<u64, DbError>
+        + Clone
+        + Send
+        + Sync
+        + 'static,
+) {
     for (at, position) in offsets(n) {
         let key = {
-            let (order, rows) = (order.clone(), rows.clone());
+            let key_at = key_at.clone();
             db.read(move |sql| {
-                Ok(key_at(&order, position, &mut |seek, limit| rows(&sql, &order, seek, limit))?
-                    .expect("the list has a row at the position"))
+                Ok(key_at(&sql, position)?.expect("the list has a row at the position"))
             })
             .await
             .unwrap()
         };
-        let window = ListWindow { from: Some(key.clone()), limit: LIMIT };
+        let from_key = ListWindow { from: Some(key.clone()), limit: LIMIT };
         let scroll = {
-            let (order, rows, window) = (order.clone(), rows.clone(), window.clone());
-            median(db, move |sql| {
-                let read =
-                    read_range(&order, &window, &mut |seek, limit| rows(sql, &order, seek, limit))?;
-                Ok(read.rows.len())
-            })
-            .await
+            let window = window.clone();
+            median(db, move |sql| window(sql, &from_key)).await
         };
         report(list, name, "scroll", at, position, n, scroll);
         let jump = {
-            let (order, rows) = (order.clone(), rows.clone());
+            let (key_at, window) = (key_at.clone(), window.clone());
             median(db, move |sql| {
-                let mut read = |seek: &Seek, limit| rows(sql, &order, seek, limit);
-                let key = key_at(&order, position, &mut read)?.expect("a row at the position");
-                let window = ListWindow { from: Some(key), limit: LIMIT };
-                Ok(read_range(&order, &window, &mut read)?.rows.len())
+                let key = key_at(sql, position)?.expect("a row at the position");
+                window(sql, &ListWindow { from: Some(key), limit: LIMIT })
             })
             .await
         };
         report(list, name, "jump", at, position, n, jump);
         if at != "top" {
-            let (order, count, key) = (order.clone(), count.clone(), key);
-            let place = median(db, move |sql| Ok(count(sql, &order, &key)? as usize)).await;
+            let count = count.clone();
+            let place = median(db, move |sql| Ok(count(sql, &key)? as usize)).await;
             report(list, name, "position", at, position, n, place);
         }
     }

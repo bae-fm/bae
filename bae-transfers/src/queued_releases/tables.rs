@@ -3,20 +3,21 @@
 //! is paused (`release_queues`), as functions over coven's SQL contexts. The
 //! queue owners ([`crate::QueuedReleases`]) are the only writers; the panes,
 //! the detail views and the sync activity read the same tables through live
-//! queries.
+//! queries, whose statements are in `rows` and
+//! [`download_list`](super::download_list).
 //!
 //! Its tables are `tables.sql`.
 
+use super::rows;
+use crate::download_entry::DownloadKind;
 use crate::download_snapshot::DownloadRequest;
 use crate::output_snapshot::{OutputKind, OutputRequest};
 #[cfg(any(desktop, test, feature = "test-utils"))]
+use crate::release_queue::ReleaseQueueRow;
+#[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::release_queue::ReleaseQueueSnapshot;
-use crate::release_queue::{
-    QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
-    ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState,
-};
+use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_records::release_storage::ReleaseStorageRows;
-use bae_store::list_windows::{Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::column_conversion_error;
 use bae_store::DbError;
 use coven::{CovenWrite, SqlReadContext};
@@ -40,6 +41,13 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     fn values(&self) -> Result<Vec<Value>, DbError>;
     /// The payload from a row read with [`Self::COLUMNS`] from column `at`.
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self>;
+    /// How many entries the queue holds in each phase, and what holds it
+    /// back.
+    fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError>;
+    /// Every entry of the queue, in the order queued, each beside its
+    /// release.
+    #[cfg(any(desktop, test, feature = "test-utils"))]
+    fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError>;
     /// What cancelling `release_id`'s entry does in the write that takes it
     /// out of the queue, before it goes.
     fn cancelling_in(_sql: &CovenWrite<'_>, _release_id: &str) -> Result<(), DbError> {
@@ -67,17 +75,19 @@ impl QueuedPayload for DownloadRequest {
     }
 
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
-        let kind: String = row.get(at)?;
-        match (kind.as_str(), bae_store::path_column::get_optional(row, at + 1)?) {
-            ("pin", None) => Ok(Self::Pin),
-            #[cfg(desktop)]
-            ("move_to_this_device", Some(target_dir)) => Ok(Self::MoveToThisDevice { target_dir }),
-            (kind, target_dir) => Err(column_conversion_error(
-                row,
-                at,
-                format!("download kind {kind:?} with folder {target_dir:?}"),
-            )),
-        }
+        download_request(row.get(at)?, bae_store::path_column::get_optional(row, at + 1)?)
+            .map_err(|problem| column_conversion_error(row, at, problem))
+    }
+
+    fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
+        rows::download_counts_on(sql)
+    }
+
+    #[cfg(any(desktop, test, feature = "test-utils"))]
+    fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError> {
+        let every = bae_store::ListWindow::top(u64::MAX);
+        let read = super::download_list::download_window_on(sql, &every)?;
+        Ok(read.rows.into_iter().map(|(row, _key)| row).collect())
     }
 
     /// Cancelling a pin removes what it downloaded: the release's files
@@ -139,39 +149,73 @@ impl QueuedPayload for OutputRequest {
     }
 
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
-        let target_dir = bae_store::path_column::get(row, at)?;
         let kind: String = row.get(at + 1)?;
-        let preset: Option<String> = row.get(at + 2)?;
-        let filename_pattern: Option<String> = row.get(at + 3)?;
-        let folder_pattern: Option<String> = row.get(at + 4)?;
-        let extras: Option<String> = row.get(at + 5)?;
-        let kind = match (kind.as_str(), preset, filename_pattern, folder_pattern, extras) {
-            ("export", None, None, None, None) => OutputKind::Export,
-            ("save", Some(preset), Some(filename_pattern), Some(folder_pattern), Some(extras)) => {
-                OutputKind::Save {
-                    preset: serde_json::from_str(&preset)
-                        .map_err(|error| column_conversion_error(row, at + 2, error))?,
-                    filename_pattern: serde_json::from_str(&filename_pattern)
-                        .map_err(|error| column_conversion_error(row, at + 3, error))?,
-                    folder_pattern: serde_json::from_str(&folder_pattern)
-                        .map_err(|error| column_conversion_error(row, at + 4, error))?,
-                    extras: serde_json::from_str(&extras)
-                        .map_err(|error| column_conversion_error(row, at + 5, error))?,
-                }
-            }
-            (kind, preset, filename_pattern, folder_pattern, extras) => {
-                return Err(column_conversion_error(
-                    row,
-                    at + 1,
-                    format!(
-                        "output kind {kind:?} with preset {preset:?}, filename pattern \
-                         {filename_pattern:?}, folder pattern {folder_pattern:?} and extras {extras:?}"
-                    ),
-                ))
-            }
-        };
-        Ok(OutputRequest { target_dir, kind })
+        output_request(
+            bae_store::path_column::get(row, at)?,
+            &kind,
+            [row.get(at + 2)?, row.get(at + 3)?, row.get(at + 4)?, row.get(at + 5)?],
+        )
+        .map_err(|problem| column_conversion_error(row, at + 1, problem))
     }
+
+    fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
+        rows::output_counts_on(sql)
+    }
+
+    #[cfg(any(desktop, test, feature = "test-utils"))]
+    fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError> {
+        rows::output_rows_on(sql)
+    }
+}
+
+/// What a download does, from its stored `kind` and folder, or what of them
+/// no writer here stores together.
+pub(super) fn download_request(
+    kind: DownloadKind,
+    target_dir: Option<std::path::PathBuf>,
+) -> Result<DownloadRequest, String> {
+    match (kind, target_dir) {
+        (DownloadKind::Pin, None) => Ok(DownloadRequest::Pin),
+        #[cfg(desktop)]
+        (DownloadKind::MoveToThisDevice, Some(target_dir)) => {
+            Ok(DownloadRequest::MoveToThisDevice { target_dir })
+        }
+        (kind, target_dir) => Err(format!("download kind {kind:?} with folder {target_dir:?}")),
+    }
+}
+
+/// What an output writes and where, from its stored folder, `kind`, and the
+/// preset, filename pattern, folder pattern and extras a save stores, in that
+/// order.
+pub(super) fn output_request(
+    target_dir: std::path::PathBuf,
+    kind: &str,
+    save: [Option<String>; 4],
+) -> Result<OutputRequest, String> {
+    let refused =
+        |what: &str, json: &str, error: serde_json::Error| format!("save {what} {json}: {error}");
+    let kind = match (kind, save) {
+        ("export", [None, None, None, None]) => OutputKind::Export,
+        ("save", [Some(preset), Some(filename_pattern), Some(folder_pattern), Some(extras)]) => {
+            OutputKind::Save {
+                preset: serde_json::from_str(&preset)
+                    .map_err(|error| refused("preset", &preset, error))?,
+                filename_pattern: serde_json::from_str(&filename_pattern)
+                    .map_err(|error| refused("filename pattern", &filename_pattern, error))?,
+                folder_pattern: serde_json::from_str(&folder_pattern)
+                    .map_err(|error| refused("folder pattern", &folder_pattern, error))?,
+                extras: serde_json::from_str(&extras)
+                    .map_err(|error| refused("extras", &extras, error))?,
+            }
+        }
+        (kind, [preset, filename_pattern, folder_pattern, extras]) => {
+            return Err(format!(
+                "output kind {kind:?} with preset {preset:?}, filename pattern \
+                 {filename_pattern:?}, folder pattern {folder_pattern:?} and extras {extras:?}"
+            ))
+        }
+    };
+    Ok(OutputRequest { target_dir, kind })
 }
 
 /// `release_id, created_at` and the payload's columns, each prefixed by
@@ -194,127 +238,11 @@ fn entry_from_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQu
     })
 }
 
-/// An entry's phase from its `state` and `error` columns at `at`.
-fn phase_from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<ReleaseQueueState<()>> {
-    let state: String = row.get(at)?;
-    let error: Option<String> = row.get(at + 1)?;
-    match (state.as_str(), error) {
-        ("queued", None) => Ok(ReleaseQueueState::Queued),
-        ("active", None) => Ok(ReleaseQueueState::Active { progress: () }),
-        ("failed", Some(error)) => Ok(ReleaseQueueState::Failed { error }),
-        (state, error) => Err(column_conversion_error(
-            row,
-            at,
-            format!("queue state {state:?} with error {error:?}"),
-        )),
-    }
-}
-
-/// A queue's entries beside their releases as the library holds them, the
-/// ones `tail` picks: a `WHERE`, `ORDER BY` or `LIMIT` over the queue `q`;
-/// and each entry's key in `keyed`'s order when one is given.
-pub fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: &str) -> String {
-    format!(
-        "SELECT {columns}, q.state, q.error, r.id IS NOT NULL, a.title, \
-            q.file_count, q.total_size{keys} \
-         FROM {table} q \
-         LEFT JOIN releases r ON r.id = q.release_id \
-         LEFT JOIN albums a ON a.id = r.album_id \
-         {tail}",
-        columns = entry_columns::<P>("q."),
-        keys = keyed.map_or_else(String::new, |order| format!(", {}", order.key_columns())),
-        table = P::TABLE,
-    )
-}
-
-/// The rows [`queue_rows_sql`] reads for `tail`, bound to `params`.
-#[cfg(any(desktop, test, feature = "test-utils"))]
-fn queue_rows_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
-    tail: &str,
-    params: impl rusqlite::Params,
-) -> Result<Vec<ReleaseQueueRow<P, ()>>, DbError> {
-    Ok(sql.query(&queue_rows_sql::<P>(None, tail), params, queue_row::<P>)?)
-}
-
-/// One entry as [`queue_rows_sql`] reads it.
-fn queue_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQueueRow<P, ()>> {
-    let at = 2 + P::COLUMNS.len();
-    let entry = entry_from_row::<P>(row)?;
-    let held: bool = row.get(at + 2)?;
-    let release = if held { Some(QueuedRelease { title: row.get(at + 3)? }) } else { None };
-    Ok(ReleaseQueueRow {
-        op: ReleaseQueueOp {
-            release_id: entry.release_id,
-            created_at: entry.created_at,
-            file_count: bae_store::read::count_column(row, "file_count")?,
-            total_size: bae_store::read::count_column(row, "total_size")?,
-            payload: entry.payload,
-            state: phase_from_row(row, at)?,
-        },
-        release,
-    })
-}
-
-/// A queue's order: the order queued.
-pub fn queue_order() -> ListOrder {
-    ListOrder::new(vec![SortTerm::ascending("q.position")])
-}
-
-/// The queue's entries `seek` reads in `order`, at most `limit`, each with
-/// its key.
-pub fn queue_window_rows_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<ReleaseQueueRow<P, ()>>>, DbError> {
-    let statement = queue_rows_sql::<P>(
-        Some(order),
-        &format!(
-            "WHERE {} ORDER BY {} {}",
-            order.condition(seek),
-            order.ordering(seek),
-            seek.limit_clause(),
-        ),
-    );
-    Ok(seek.bound(limit, |params| {
-        sql.query(&statement, params, |row| Ok((queue_row::<P>(row)?, order.key_of(row)?)))
-    })?)
-}
-
-/// How many entries the queue holds.
-pub(crate) fn release_queue_row_count_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
-) -> Result<u64, DbError> {
-    Ok(sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?)
-}
-
-/// How many entries of the queue come before the row at `key`.
-pub fn queue_rows_before_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
-    order: &ListOrder,
-    key: &OrderKey,
-) -> Result<u64, DbError> {
-    bae_store::list_windows::rows_before_on(
-        sql,
-        &format!("FROM {} q", P::TABLE),
-        None,
-        &[],
-        order,
-        key,
-    )
-}
-
-fn paused_on(sql: &SqlReadContext<'_>, queue: &str) -> rusqlite::Result<bool> {
-    sql.query_row("SELECT paused FROM release_queues WHERE queue = ?", [queue], |row| row.get(0))
-}
-
 #[cfg(any(desktop, test, feature = "test-utils"))]
 pub(crate) fn release_queue_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
-    let rows = queue_rows_on::<P>(sql, "ORDER BY q.position", [])?;
+    let rows = P::rows_on(sql)?;
     let counts = release_queue_counts_on::<P>(sql)?;
     let paused = counts.paused();
     Ok(ReleaseQueueSnapshot { rows, total: counts.total, paused })
@@ -326,28 +254,11 @@ pub(crate) fn network_usable_on(sql: &SqlReadContext<'_>) -> Result<Option<bool>
     Ok(sql.query_row("SELECT (SELECT usable FROM coven_network)", [], |row| row.get(0))?)
 }
 
+/// How many entries the queue holds in each phase, and what holds it back.
 pub fn release_queue_counts_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueCounts, DbError> {
-    let (queued, active, failed, has_entries, has_failures): (u32, u32, u32, bool, bool) = sql
-        .query_row(
-            &format!(
-                "SELECT COALESCE(SUM(state = 'queued'), 0), COALESCE(SUM(state = 'active'), 0), \
-                        COALESCE(SUM(state = 'failed'), 0), COUNT(*) > 0, \
-                        COALESCE(SUM(state = 'failed'), 0) > 0 \
-                 FROM {}",
-                P::TABLE
-            ),
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
-        )?;
-    let network_usable = if P::NEEDS_NETWORK { network_usable_on(sql)? } else { None };
-    Ok(ReleaseQueueCounts {
-        total: ReleaseQueueProgress { queued, active, failed },
-        has_entries,
-        has_failures,
-        wait: QueueWait::of(paused_on(sql, P::QUEUE)?, network_usable),
-    })
+    P::counts_on(sql)
 }
 
 /// `release_id`'s entries in the download and export queues.
@@ -357,9 +268,8 @@ pub fn release_queue_entries_on(
     release_id: &str,
 ) -> Result<crate::release_queue::ReleaseQueueEntries, DbError> {
     Ok(crate::release_queue::ReleaseQueueEntries {
-        download: queue_rows_on::<DownloadRequest>(sql, "WHERE q.release_id = ?1", [release_id])?
-            .pop(),
-        output: queue_rows_on::<OutputRequest>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
+        download: rows::download_of_release_on(sql, release_id)?,
+        output: rows::output_of_release_on(sql, release_id)?,
     })
 }
 

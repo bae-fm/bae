@@ -390,92 +390,25 @@ async fn opening_keeps_the_download_queue_and_its_pause() {
     );
 }
 
-/// The worker's lookups use the table's keys, and the pane's read joins
-/// each row to its release by key.
+/// The worker's lookups use the table's keys.
 #[tokio::test]
-async fn the_queue_reads_are_planned_on_their_keys() {
+async fn the_queue_lookups_are_planned_on_their_keys() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let plan = |sql_text: String| {
-        let db = db.clone();
-        async move {
-            db.call(move |sql| {
-                Ok(sql.query(&format!("EXPLAIN QUERY PLAN {sql_text}"), [], |row| {
-                    row.get::<_, String>(3)
-                })?)
-            })
-            .await
-            .unwrap()
-            .join("\n")
-        }
-    };
-    let by_release =
-        plan("SELECT state FROM download_queue WHERE release_id = 'r'".to_string()).await;
+    let plan: Vec<String> = db
+        .call(|sql| {
+            Ok(sql.query(
+                "EXPLAIN QUERY PLAN SELECT state FROM download_queue WHERE release_id = 'r'",
+                [],
+                |row| row.get(3),
+            )?)
+        })
+        .await
+        .unwrap();
+    let plan = plan.join("\n");
     assert!(
-        by_release.contains("USING INDEX sqlite_autoindex_download_queue_1 (release_id=?)"),
-        "{by_release}"
+        plan.contains("USING INDEX sqlite_autoindex_download_queue_1 (release_id=?)"),
+        "{plan}"
     );
-    let pane = plan(crate::queued_releases::tables::queue_rows_sql::<DownloadRequest>(
-        None,
-        "ORDER BY q.position LIMIT 100 OFFSET 0",
-    ))
-    .await;
-    assert!(pane.contains("SEARCH r USING INDEX sqlite_autoindex_releases_1 (id=?)"), "{pane}");
-    assert!(!pane.contains("TEMP B-TREE"), "{pane}");
-}
-
-/// A pane's window holds its limit of entries from its key on, in the order
-/// the person queued them, each with its key; a separate query counts the
-/// queue's entries, `key_at` returns the key of the entry at a position, and
-/// a key's position is the number of entries before it.
-#[tokio::test]
-async fn a_window_reads_its_entries_and_the_queue_length_its_own() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let releases: Vec<String> =
-        (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
-    enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
-    let downloads = crate::Downloads::new(db.clone());
-    let second = downloads.key_at(1).await.unwrap().expect("a row at 1");
-    let fourth = downloads.key_at(3).await.unwrap().expect("a row at 3");
-    let mut live =
-        downloads.subscribe_window(bae_store::ListWindow { from: Some(second.clone()), limit: 2 });
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    let shown: Vec<String> =
-        read.rows.iter().map(|(row, _key)| row.op.release_id.clone()).collect();
-    assert_eq!(shown, releases[1..3].to_vec());
-    assert_eq!(read.rows[0].1, second);
-    assert_ne!(read.rows[1].1, fourth, "the window ends before the fourth entry");
-    let count = downloads.subscribe_row_count().next_inline().await.expect("open").unwrap();
-    assert_eq!(count, 5);
-    let before =
-        downloads.subscribe_position(second).next_inline().await.expect("open").result.unwrap();
-    assert_eq!(before, 1);
-    let past_the_end = downloads.key_at(99).await.unwrap();
-    assert_eq!(past_the_end, downloads.key_at(4).await.unwrap());
-}
-
-/// An entry queued after a window's last row reruns the length and a window
-/// that reads to the queue's end, and not a window its limit cut short.
-#[tokio::test]
-async fn an_entry_after_a_full_window_reruns_the_length_alone() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let releases: Vec<String> =
-        (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
-    enqueue_releases(&db, releases[..4].iter().map(|id| download(id)).collect()).await.unwrap();
-    let downloads = crate::Downloads::new(db.clone());
-    let second = downloads.key_at(1).await.unwrap().expect("a row at 1");
-    let mut windows =
-        [bae_store::ListWindow::top(2), bae_store::ListWindow { from: Some(second), limit: 50 }]
-            .map(|window| downloads.subscribe_window(window));
-    let mut length = downloads.subscribe_row_count();
-    for window in &mut windows {
-        window.next_inline().await.expect("the query stays open").result.unwrap();
-    }
-    length.next_inline().await.expect("open").unwrap();
-
-    enqueue_releases(&db, vec![download(&releases[4])]).await.unwrap();
-    assert!(!windows[0].is_marked_for_rerun());
-    assert!(windows[1].is_marked_for_rerun());
-    assert!(length.is_marked_for_rerun());
 }
 
 /// The download batch's rows, each a release and its kind, in kind order.

@@ -23,7 +23,7 @@ pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
     OutputProgress, OutputRequest, OutputRow, OutputSnapshot, OutputState,
 };
-pub use queued_releases::tables;
+pub use queued_releases::{download_list, tables};
 pub use queued_releases::{ActiveEntry, Finished, QueuedPayload, QueuedReleases, RunningOp};
 #[cfg(desktop)]
 pub use release_queue::ReleaseQueueEntries;
