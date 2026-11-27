@@ -192,16 +192,16 @@ CREATE INDEX IF NOT EXISTS import_list_path_descending ON import_list_placement 
     WHERE unit_entry = entry;
 
 CREATE INDEX IF NOT EXISTS import_list_newest_first_under ON import_list_placement (
-    unit_entry, sort_member, sort_undated, sort_newest, path_text, key);
+    unit_entry, sort_member, sort_undated, sort_newest, path_text, key, entry);
 
 CREATE INDEX IF NOT EXISTS import_list_oldest_first_under ON import_list_placement (
-    unit_entry, sort_member, sort_undated, sort_oldest, path_text, key);
+    unit_entry, sort_member, sort_undated, sort_oldest, path_text, key, entry);
 
 CREATE INDEX IF NOT EXISTS import_list_path_ascending_under ON import_list_placement (
-    unit_entry, sort_member, path_text, key);
+    unit_entry, sort_member, path_text, key, entry);
 
 CREATE INDEX IF NOT EXISTS import_list_path_descending_under ON import_list_placement (
-    unit_entry, sort_header, path_text, key);
+    unit_entry, sort_header, path_text, key, entry);
 
 -- A group's members, its newest first: what dates the group.
 CREATE INDEX IF NOT EXISTS import_list_by_group ON import_list_placement (

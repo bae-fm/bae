@@ -118,13 +118,16 @@ async fn a_window_counts_its_headers_from_the_group_counts() {
             _ => "(watched_folder_path=? AND group_folder=? AND pending_entry=?)",
         };
         assert!(step.contains(by_key), "{view:?}: the group counts are read by key: {step}");
-        let in_subquery: Vec<&String> = plan
+        // The steps that read a table; the sum's ORDER BY sorts what the one
+        // read finds.
+        let reads: Vec<&String> = plan
             .iter()
             .filter(|(_, parent, _)| parent == subquery)
             .map(|(_, _, step)| step)
+            .filter(|step| !step.starts_with("USE TEMP B-TREE FOR sum"))
             .collect();
         assert_eq!(
-            in_subquery,
+            reads,
             [step],
             "{view:?}: the header's count reads the group counts alone: {plan:#?}"
         );

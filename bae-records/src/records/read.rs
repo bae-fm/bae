@@ -268,11 +268,10 @@ pub fn get_files_for_release_on(
 pub fn release_records_json_sql(release: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
-                 'catalog', ordered.catalog, 'key', ordered.key, 'kind', ordered.kind, \
-                 'album_key', ordered.album_key)) \
-          FROM (SELECT rr.catalog, rr.key, rr.kind, rr.album_key FROM release_records rr \
-                WHERE rr.release_id = {release} ORDER BY bae_catalog_rank(rr.catalog)) \
-              AS ordered)"
+                 'catalog', rr.catalog, 'key', rr.key, 'kind', rr.kind, \
+                 'album_key', rr.album_key) \
+                 ORDER BY bae_catalog_rank(rr.catalog), rr.catalog) \
+          FROM release_records rr WHERE rr.release_id = {release})"
     )
 }
 

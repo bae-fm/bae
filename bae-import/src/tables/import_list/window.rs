@@ -143,7 +143,8 @@ fn header_columns(request: &ImportListRequest) -> String {
             matching = request.matching(),
         ),
         false => format!(
-            "SELECT COALESCE(SUM(gc.count), 0) FROM import_list_group_count AS gc \
+            "SELECT COALESCE(SUM(gc.count ORDER BY gc.pending_entry), 0) \
+             FROM import_list_group_count AS gc \
              WHERE gc.watched_folder_path = w.watched_folder_path \
                AND gc.group_folder = {HEADER_FOLDER} AND {kept}",
             kept = request.entry_sql("gc").unwrap_or_else(|| "1".to_string()),
@@ -322,9 +323,7 @@ fn rows_statement(items: &Items, after: &str, request: &ImportListRequest) -> St
              ON hp.watched_folder_path = w.watched_folder_path \
             AND hp.item = 'group' AND hp.key = {HEADER_FOLDER} \
          LEFT JOIN import_list_placement AS p \
-             ON w.item <> 'group' \
-            AND p.watched_folder_path = w.watched_folder_path \
-            AND p.key = w.key AND p.item <> 'group' \
+             ON p.entry = w.entry AND w.item <> 'group' \
          LEFT JOIN scan_candidate AS c \
              ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
          LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \

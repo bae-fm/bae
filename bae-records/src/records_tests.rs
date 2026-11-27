@@ -88,12 +88,10 @@ async fn release_records_are_read_in_catalog_order() {
         .await
         .unwrap();
     assert!(
-        plan.iter().any(|step| step.contains("USING INDEX idx_release_records_release_order")),
-        "the read walks the index: {plan:?}"
-    );
-    assert!(
-        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-        "the read sorts after reading: {plan:?}"
+        plan.iter().any(
+            |step| step.starts_with("SEARCH rr USING INDEX") && step.contains("(release_id=?)")
+        ),
+        "the read finds the release's records by its index: {plan:?}"
     );
 }
 

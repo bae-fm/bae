@@ -60,7 +60,7 @@ const NEWEST_FIRST: OrderTerms = OrderTerms {
         "path_text",
         "entry",
     ],
-    within: &["sort_member", "sort_undated", "sort_newest", "path_text", "key"],
+    within: &["sort_member", "sort_undated", "sort_newest", "path_text", "key", "entry"],
     descending: false,
 };
 
@@ -75,7 +75,7 @@ const OLDEST_FIRST: OrderTerms = OrderTerms {
         "path_text",
         "entry",
     ],
-    within: &["sort_member", "sort_undated", "sort_oldest", "path_text", "key"],
+    within: &["sort_member", "sort_undated", "sort_oldest", "path_text", "key", "entry"],
     descending: false,
 };
 
@@ -88,7 +88,7 @@ const PATH_ASCENDING: OrderTerms = OrderTerms {
         "path_text",
         "entry",
     ],
-    within: &["sort_member", "path_text", "key"],
+    within: &["sort_member", "path_text", "key", "entry"],
     descending: false,
 };
 
@@ -101,7 +101,7 @@ const PATH_DESCENDING: OrderTerms = OrderTerms {
         "path_text",
         "entry",
     ],
-    within: &["sort_header", "path_text", "key"],
+    within: &["sort_header", "path_text", "key", "entry"],
     descending: true,
 };
 
