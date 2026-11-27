@@ -21,8 +21,9 @@ impl LibraryManager {
         &self,
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
+        let file = self.release_file_ref(file_id).await?;
         let lease = bae_store::lease_one(&self.files).await;
-        Ok(self.records.read_release_file(file_id, &lease).await?)
+        Ok(self.records.read_release_file(file.id(), &lease).await?)
     }
 
     /// A library image's file as this device sees it, for tests that check
@@ -99,7 +100,7 @@ impl LibraryManager {
     /// Read through the same local-or-attached source used for playback.
     pub(crate) async fn read_release_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
         let lease = bae_store::lease_one(&self.files).await;
-        Ok(self.records.read_release_file(&file.id, &lease).await?)
+        Ok(self.records.read_release_file(file.file, &lease).await?)
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the

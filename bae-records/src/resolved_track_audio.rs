@@ -29,6 +29,8 @@ pub enum TrackAudioError {
 pub struct ResolvedTrackAudioSegment {
     pub role: DbAudioSegmentRole,
     pub file_id: String,
+    /// The coven file the release file's row references, which opens it.
+    pub file: coven::FileId,
     pub file_size: u64,
     /// The container its backing file's bytes are in: what a serve of the
     /// whole file names as its type.

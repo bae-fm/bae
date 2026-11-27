@@ -25,6 +25,7 @@ fn track(
         segments: vec![ResolvedTrackAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: "file".to_string(),
+            file: coven::FileId(uuid::Uuid::nil()),
             file_size: 1_000_000,
             container,
             span,

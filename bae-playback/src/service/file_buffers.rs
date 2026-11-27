@@ -239,7 +239,7 @@ pub(super) async fn prepare_track_for_playback(
             None => {
                 let buffer = create_sparse_buffer(segment.file_size);
                 file_buffers.cached.insert(segment.file_id.clone(), buffer.clone());
-                fresh.push((segment.file_id.clone(), buffer.clone()));
+                fresh.push((segment.file, buffer.clone()));
                 buffer
             }
         };
@@ -254,11 +254,11 @@ pub(super) async fn prepare_track_for_playback(
     );
     let decode = prepared.decode_from(start);
     let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
-    for (file_id, buffer) in fresh {
+    for (file, buffer) in fresh {
         let reader = Box::new(bae_track_audio::data_source::CovenFileReader::for_playback(
             file_buffers.runtime.clone(),
             records.clone(),
-            file_id,
+            file,
             file_buffers.arbiter.clone(),
             decode.first_read_byte(buffer.id()),
             is_ape,

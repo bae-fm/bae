@@ -52,7 +52,7 @@ impl LibraryDocuments {
         for file in files.iter().copied() {
             let name = &file.original_filename;
             let coven = |error: DbError| LibraryDocumentError::Coven { name: name.clone(), error };
-            let stream = records.open_release_file(&file.id, lease).await.map_err(coven)?;
+            let stream = records.open_release_file(file.file, lease).await.map_err(coven)?;
             let size = stream.plaintext_size();
             check_document_size(name, size)
                 .map_err(|error| LibraryDocumentError::Refused { name: name.clone(), error })?;

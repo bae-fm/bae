@@ -59,7 +59,8 @@ impl SourceStream {
         Self { buffer: StopOnDrop(buffer), fill }
     }
 
-    /// Start streaming the release file `file_id`, of the stored size
+    /// Start streaming the release file that references the coven file
+    /// `file`, of the stored size
     /// `size`, start to finish for `work` nobody listens to while it reads
     /// (a save, a loudness pass): coven reads it from wherever it has it, in
     /// a place of `lease`, with prefetches on `runtime`. A failed read, or a
@@ -68,24 +69,19 @@ impl SourceStream {
     pub fn of_release_file(
         runtime: tokio::runtime::Handle,
         records: bae_records::Records,
-        file_id: String,
+        file: coven::FileId,
         size: u64,
         diagnostics: bae_diagnostics::Diagnostics,
         lease: FileLease,
         work: &'static str,
     ) -> Self {
-        let reader = crate::data_source::CovenFileReader::new(
-            runtime,
-            records,
-            file_id.clone(),
-            diagnostics,
-            lease,
-        );
+        let reader =
+            crate::data_source::CovenFileReader::new(runtime, records, file, diagnostics, lease);
         Self::start(
             Box::new(reader),
             size,
             Box::new(move |error| {
-                tracing::warn!("{work}: streaming release file {file_id} failed: {error}");
+                tracing::warn!("{work}: streaming coven file {file} failed: {error}");
             }),
         )
     }

@@ -725,9 +725,9 @@ where
 /// Measure the loudness of a library release's tracks, whose formats are
 /// `audio_formats` and whose segments are among `audio_segments`, as
 /// [`measure_loudness`] measures an import's, with as many tracks at once as
-/// there are cores. coven reads each file the segments name, of the size
-/// `file_sizes` gives, from wherever it has it; a file `file_sizes` doesn't
-/// name leaves its tracks unmeasured. No row shows the pass's percent.
+/// there are cores. coven reads each file the segments name among `release_files`
+/// from wherever it has it; a file `release_files` doesn't hold leaves its
+/// tracks unmeasured. No row shows the pass's percent.
 pub(crate) async fn measure_library_tracks(
     records: &bae_records::Records,
     files: &coven::FileBudget,
@@ -735,9 +735,11 @@ pub(crate) async fn measure_library_tracks(
     audio_formats: &mut [bae_records::DbAudioFormat],
     audio_segments: &[bae_records::DbAudioSegment],
     tracks: &[&bae_records::DbTrack],
-    file_sizes: &HashMap<String, u64>,
+    release_files: &[bae_records::DbFile],
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<LoudnessResult, crate::ImportError> {
+    let by_id: HashMap<&str, &bae_records::DbFile> =
+        release_files.iter().map(|file| (file.id.as_str(), file)).collect();
     let parallelism = std::thread::available_parallelism().unwrap_or_else(|error| {
         warn!("could not read the available parallelism ({error}); measuring one track at a time");
         NonZeroUsize::MIN
@@ -748,13 +750,14 @@ pub(crate) async fn measure_library_tracks(
         audio_formats,
         audio_segments,
         tracks,
-        |file_id| file_sizes.contains_key(file_id),
+        |file_id| by_id.contains_key(file_id),
         |file_id: String, lease: coven::FileLease| {
+            let file = by_id[file_id.as_str()];
             let stream = SourceStream::of_release_file(
                 runtime.clone(),
                 records.clone(),
-                file_id.clone(),
-                file_sizes[&file_id],
+                file.file,
+                file.file_size,
                 diagnostics.clone(),
                 lease,
                 "loudness",

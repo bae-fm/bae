@@ -4,49 +4,48 @@
 use super::*;
 
 impl LibraryManager {
-    /// A reader of `file_id`'s stored audio start to finish, for work nobody
+    /// A reader of the coven file `file`'s stored audio start to finish, for work nobody
     /// listens to while it reads. Its fill opens the file's stream in one
     /// place of `lease`.
     pub fn create_audio_reader(
         &self,
-        file_id: &str,
+        file: coven::FileId,
         lease: coven::FileLease,
     ) -> Box<dyn bae_track_audio::data_source::AudioDataReader> {
         Box::new(bae_track_audio::data_source::CovenFileReader::new(
             self.runtime_handle.clone(),
             self.records.clone(),
-            file_id.to_string(),
+            file,
             self.diagnostics.clone(),
             lease,
         ))
     }
 
-    /// `file_id`'s bytes, `size` long, read into a buffer from the start. bae
-    /// logs a failed read with `file_id`. The read holds one place of the
+    /// The coven file `file`'s bytes, `size` long, read into a buffer from the
+    /// start. bae logs a failed read with `file`. The read holds one place of the
     /// budget of open files until the caller drops the buffer.
     pub async fn open_release_file_stream(
         &self,
-        file_id: &str,
+        file: coven::FileId,
         size: u64,
     ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
-        self.start_release_file_stream(file_id, size, bae_store::lease_one(&self.files).await)
+        self.start_release_file_stream(file, size, bae_store::lease_one(&self.files).await)
     }
 
     /// Starts the stream that [`Self::open_release_file_stream`] returns, in
     /// a place of `lease`.
     fn start_release_file_stream(
         &self,
-        file_id: &str,
+        file: coven::FileId,
         size: u64,
         lease: coven::FileLease,
     ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
         let buffer = bae_audio::sparse_buffer::create_sparse_buffer(size);
-        let reader = self.create_audio_reader(file_id, lease);
-        let file_id = file_id.to_string();
+        let reader = self.create_audio_reader(file, lease);
         reader.start_reading(
             buffer.clone(),
             Box::new(move |error| {
-                tracing::warn!(file_id, %error, "reading release file failed");
+                tracing::warn!(%file, %error, "reading release file failed");
             }),
         );
         buffer
@@ -80,11 +79,7 @@ impl LibraryManager {
             streams
                 .entry(segment.file_id.clone())
                 .or_insert_with(|| {
-                    self.start_release_file_stream(
-                        &segment.file_id,
-                        segment.file_size,
-                        lease.clone(),
-                    )
+                    self.start_release_file_stream(segment.file, segment.file_size, lease.clone())
                 })
                 .clone()
         });

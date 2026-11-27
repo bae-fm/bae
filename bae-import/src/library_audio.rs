@@ -53,8 +53,8 @@ pub(crate) struct LibraryImages {
     /// The searches run one after the other.
     lease: coven::FileLease,
     runtime: tokio::runtime::Handle,
-    /// The release file each image path names.
-    file_ids: HashMap<PathBuf, String>,
+    /// The coven file of the release file each image path names.
+    files: HashMap<PathBuf, coven::FileId>,
 }
 
 impl LibraryImages {
@@ -62,9 +62,9 @@ impl LibraryImages {
         records: Records,
         lease: coven::FileLease,
         runtime: tokio::runtime::Handle,
-        file_ids: HashMap<PathBuf, String>,
+        files: HashMap<PathBuf, coven::FileId>,
     ) -> Self {
-        Self { records, lease, runtime, file_ids }
+        Self { records, lease, runtime, files }
     }
 }
 
@@ -73,7 +73,7 @@ impl CueImageOpener for LibraryImages {
         &self,
         image: &CueAnalyzedAudioFile,
     ) -> Result<[Box<dyn ReadableFile>; bae_audio::SEEK_LANDING_PLACES], ImportError> {
-        let file_id = self.file_ids.get(&image.path).ok_or_else(|| ImportError::Internal {
+        let file = *self.files.get(&image.path).ok_or_else(|| ImportError::Internal {
             detail: format!(
                 "a CUE sheet's audio at {} is none of the release's files",
                 image.path.display()
@@ -81,7 +81,7 @@ impl CueImageOpener for LibraryImages {
         })?;
         // The stream keeps the lease's one place until it drops, and both
         // openings of the search read through it.
-        let stream = self.runtime.block_on(self.records.open_release_file(file_id, &self.lease))?;
+        let stream = self.runtime.block_on(self.records.open_release_file(file, &self.lease))?;
         let stream = Arc::new(stream);
         Ok([
             Box::new(StreamFile::new(&stream, self.runtime.clone())),

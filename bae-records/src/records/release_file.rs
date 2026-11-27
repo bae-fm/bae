@@ -3,25 +3,25 @@
 use super::*;
 
 impl Records {
-    /// The release file `id`'s stream, which holds one place of `lease` until
-    /// it drops.
+    /// The stream of the release file whose row references the coven file
+    /// `file`, which holds one place of `lease` until it drops.
     pub async fn open_release_file(
         &self,
-        id: &str,
+        file: coven::FileId,
         lease: &coven::FileLease,
     ) -> Result<bae_store::FileStream, DbError> {
-        let row = self.find_file_by_id(id).await?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
-        let file = self.store.file_ref(row.file).await?;
+        let file = self.store.file_ref(file).await?;
         Ok(self.store.open_file_stream(&file, lease).await?)
     }
 
-    /// The release file `id`'s bytes, read in one place of `lease`.
+    /// The bytes of the release file whose row references the coven file
+    /// `file`, read in one place of `lease`.
     pub async fn read_release_file(
         &self,
-        id: &str,
+        file: coven::FileId,
         lease: &coven::FileLease,
     ) -> Result<Vec<u8>, DbError> {
-        let stream = self.open_release_file(id, lease).await?;
+        let stream = self.open_release_file(file, lease).await?;
         Ok(stream.read_at(0, stream.plaintext_size()).await?)
     }
 }

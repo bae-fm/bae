@@ -6,7 +6,7 @@ use super::*;
 use crate::resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError};
 
 // The segments of the audio format, in segment order, as a JSON array: each
-// with the size and container of the release file it names and its scrub
+// with the coven file, size and container of the release file it names and its scrub
 // points' blob, empty for a segment that stores none. A release file's `file`
 // always names a record in `coven_files` (coven 17.2), so the size is NULL
 // only when no release file has the segment's id.
@@ -15,6 +15,7 @@ sqlive_compose::fragment!(
         struct StoredSegment {
             role: String,
             file_id: String,
+            file: Option<coven::FileId>,
             file_size: Option<u64>,
             container: Option<String>,
             start_sample: u64,
@@ -27,7 +28,8 @@ sqlive_compose::fragment!(
     },
     r#"
     SELECT json_group_array(json_object(
-               'role', segment.role, 'file_id', segment.file_id, 'file_size', stored.size,
+               'role', segment.role, 'file_id', segment.file_id, 'file', file.file,
+               'file_size', stored.size,
                'container', file.source_audio_container,
                'start_sample', segment.start_sample, 'end_sample', segment.end_sample,
                'start_byte', segment.start_byte, 'end_byte', segment.end_byte,
@@ -299,9 +301,9 @@ impl TrackAudio {
             .segments
             .into_iter()
             .map(|segment| {
-                let file_size = segment
-                    .file_size
-                    .ok_or_else(|| TrackAudioError::FileNotFound(segment.file_id.clone()))?;
+                let (Some(file), Some(file_size)) = (segment.file, segment.file_size) else {
+                    return Err(TrackAudioError::FileNotFound(segment.file_id));
+                };
                 let container = segment
                     .container
                     .as_deref()
@@ -320,6 +322,7 @@ impl TrackAudio {
                 Ok(ResolvedTrackAudioSegment {
                     role,
                     file_id: segment.file_id,
+                    file,
                     file_size,
                     container,
                     span: crate::SegmentSpan {

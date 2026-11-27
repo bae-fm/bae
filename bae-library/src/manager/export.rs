@@ -60,7 +60,7 @@ impl LibraryManager {
         lease: &coven::FileLease,
     ) -> Result<(), LibraryError> {
         let relative = bae_records::stored_name::file_path(&file.original_filename).local_path();
-        let stream = self.records.open_release_file(&file.id, lease).await?;
+        let stream = self.records.open_release_file(file.file, lease).await?;
         let size = stream.plaintext_size();
 
         let file_path = staging_dir.join(&relative);

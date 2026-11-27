@@ -130,7 +130,7 @@ pub async fn rebound_sheet_audio(
             records.clone(),
             bae_store::lease_one(budget).await,
             runtime.clone(),
-            file_ids.clone(),
+            files.iter().map(|file| (PathBuf::from(&file.original_filename), file.file)).collect(),
         );
         let file_ids = file_ids.clone();
         diagnostics
@@ -176,8 +176,6 @@ pub async fn rebound_sheet_audio(
         formats.push(built.audio_formats[moved_count + index].clone());
         measured.push(&new.db_track);
     }
-    let file_sizes: HashMap<String, u64> =
-        files.iter().map(|file| (file.id.clone(), file.file_size)).collect();
     let loudness = crate::loudness::measure_library_tracks(
         records,
         budget,
@@ -185,7 +183,7 @@ pub async fn rebound_sheet_audio(
         &mut formats,
         &segments,
         &measured,
-        &file_sizes,
+        &files,
         diagnostics,
     )
     .await?;

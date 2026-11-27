@@ -66,7 +66,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
                 devices
                     .b()
                     .records()
-                    .read_release_file(&file.id, &bae_util::test_files::lease())
+                    .read_release_file(file.file, &bae_util::test_files::lease())
                     .await
                     .unwrap(),
                 expected
@@ -105,7 +105,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         assert_eq!(
             manager
                 .records
-                .read_release_file(&file.id, &bae_util::test_files::lease())
+                .read_release_file(file.file, &bae_util::test_files::lease())
                 .await
                 .unwrap(),
             expected
@@ -123,8 +123,11 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     for file in &files {
         assert!(!devices.b().records().find_file_by_id(&file.id).await.unwrap().unwrap().stored);
         assert!(devices.b().manager().file_local_path(&file.id).await.unwrap().is_none());
-        let read =
-            devices.b().records().read_release_file(&file.id, &bae_util::test_files::lease()).await;
+        let read = devices
+            .b()
+            .records()
+            .read_release_file(file.file, &bae_util::test_files::lease())
+            .await;
         assert!(
             matches!(
                 &read,
@@ -521,7 +524,7 @@ async fn unpinning_a_local_release_leaves_its_files_here() {
     let file = release_files(manager, &release.id).await.remove(0);
     assert!(!file.stored);
     assert_eq!(
-        manager.records.read_release_file(&file.id, &bae_util::test_files::lease()).await.unwrap(),
+        manager.records.read_release_file(file.file, &bae_util::test_files::lease()).await.unwrap(),
         b"local audio"
     );
 }
@@ -848,7 +851,7 @@ async fn a_move_to_this_device_of_a_local_release_fails_with_covens_refusal() {
     assert!(error.contains("is not in the cloud"), "coven's refusal says why: {error}");
     let file = release_files(manager, &release.id).await.remove(0);
     assert_eq!(
-        manager.records.read_release_file(&file.id, &bae_util::test_files::lease()).await.unwrap(),
+        manager.records.read_release_file(file.file, &bae_util::test_files::lease()).await.unwrap(),
         b"local audio"
     );
 }

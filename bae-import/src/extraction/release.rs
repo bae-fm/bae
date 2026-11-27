@@ -155,7 +155,7 @@ pub(crate) enum LibraryImageFile {
     /// The release's cover.
     Cover(coven::FileRef),
     /// An image among the release's files.
-    ReleaseFile { id: String, name: String },
+    ReleaseFile { file: coven::FileId, name: String },
 }
 
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
@@ -177,10 +177,7 @@ pub(crate) async fn resolve_release_artwork(
     for file in files.iter().filter(|file| file.content_type.is_image()) {
         images.push((
             PathBuf::from(&file.original_filename),
-            LibraryImageFile::ReleaseFile {
-                id: file.id.clone(),
-                name: file.original_filename.clone(),
-            },
+            LibraryImageFile::ReleaseFile { file: file.file, name: file.original_filename.clone() },
         ));
     }
     Ok(images)
@@ -199,8 +196,8 @@ pub(crate) async fn read_library_image(
         LibraryImageFile::Cover(file) => {
             store.read_file(file, &lease).await.map_err(ReleaseArtworkError::CoverRead)
         }
-        LibraryImageFile::ReleaseFile { id, name } => records
-            .read_release_file(id, &lease)
+        LibraryImageFile::ReleaseFile { file, name } => records
+            .read_release_file(*file, &lease)
             .await
             .map_err(|error| ReleaseArtworkError::ImageRead { name: name.clone(), error }),
     }

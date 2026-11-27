@@ -243,13 +243,13 @@ fn report_fill_failure(on_error: FillErrorHandler, error: Arc<TrackReadError>) {
     on_error(error);
 }
 
-/// Preserve the actionable storage failure when opening or reading release
-/// file `file_id` from `records`: when the file is only on another device,
+/// Preserve the actionable storage failure when opening or reading the coven
+/// file `file` through `records`: when the file is only on another device,
 /// report the device that coven's read error names, with its name and state
 /// from coven's registration of it.
 async fn read_error_for_file_read(
     records: &bae_records::Records,
-    file_id: &str,
+    file: coven::FileId,
     error: bae_store::DbError,
 ) -> TrackReadError {
     let bae_store::DbError::FileRead(read_error) = error else {
@@ -263,7 +263,7 @@ async fn read_error_for_file_read(
             match records.other_device(device).await {
                 Ok(device) => TrackReadError::OnOtherDevice(device),
                 Err(error) => TrackReadError::internal(format!(
-                    "release file {file_id} is on device {device:?} only, which bae couldn't name: {error}"
+                    "coven file {file} is on device {device:?} only, which bae couldn't name: {error}"
                 )),
             }
         }
@@ -281,7 +281,8 @@ pub struct CovenFileReader {
     /// The runtime the fill's window prefetches run on.
     runtime: tokio::runtime::Handle,
     records: bae_records::Records,
-    file_id: String,
+    /// The coven file the release file's row references.
+    file: coven::FileId,
     /// How playback reads the file, for a reader playback started; `None`
     /// for one that reads it start to finish with nobody waiting to hear it.
     playback: Option<PlaybackRead>,
@@ -311,27 +312,27 @@ struct PlaybackRead {
 }
 
 impl CovenFileReader {
-    /// A reader of `file_id` start to finish, for work nobody listens to
+    /// A reader of `file` start to finish, for work nobody listens to
     /// while it reads — a save, a transcode, a decode for import. The fill
     /// opens the file's stream in one place of `lease`.
     pub fn new(
         runtime: tokio::runtime::Handle,
         records: bae_records::Records,
-        file_id: String,
+        file: coven::FileId,
         diagnostics: Diagnostics,
         lease: FileLease,
     ) -> Self {
-        Self { runtime, records, file_id, playback: None, diagnostics, lease }
+        Self { runtime, records, file, playback: None, diagnostics, lease }
     }
 
-    /// A reader of `file_id` for playback: its fetches gated by `arbiter`,
+    /// A reader of `file` for playback: its fetches gated by `arbiter`,
     /// with the window at `prefetch_byte` and, when `prefetch_file_end`, the
     /// file's last window fetched up front. The fill opens the file's stream
     /// in one place of `lease`.
     pub fn for_playback(
         runtime: tokio::runtime::Handle,
         records: bae_records::Records,
-        file_id: String,
+        file: coven::FileId,
         arbiter: Arc<FetchArbiter>,
         prefetch_byte: Option<u64>,
         prefetch_file_end: bool,
@@ -339,7 +340,7 @@ impl CovenFileReader {
         lease: FileLease,
     ) -> Self {
         let playback = PlaybackRead { arbiter, prefetch_byte, prefetch_file_end };
-        Self { runtime, records, file_id, playback: Some(playback), diagnostics, lease }
+        Self { runtime, records, file, playback: Some(playback), diagnostics, lease }
     }
 }
 
@@ -375,7 +376,7 @@ impl AudioDataReader for CovenFileReader {
         let CovenFileReader {
             runtime: prefetch_runtime,
             records,
-            file_id,
+            file,
             playback,
             diagnostics,
             lease,
@@ -386,11 +387,11 @@ impl AudioDataReader for CovenFileReader {
 
         spawn_fill(diagnostics, &buffer, on_error, async move {
             let buffer = fill_buffer;
-            let stream = match records.open_release_file(&file_id, &lease).await {
+            let stream = match records.open_release_file(file, &lease).await {
                 Ok(stream) => Arc::new(stream),
                 Err(error) => {
                     return Err(FillFailure::Open(
-                        read_error_for_file_read(&records, &file_id, error).await,
+                        read_error_for_file_read(&records, file, error).await,
                     ))
                 }
             };
@@ -450,7 +451,6 @@ impl AudioDataReader for CovenFileReader {
                     let playback = playback.as_ref();
                     let fetched = &fetched;
                     let records = &records;
-                    let file_id = &file_id;
                     async move {
                         debug!(
                             "fetch start buffer={buffer_id} off={src_off} len={len} {}ms",
@@ -466,7 +466,7 @@ impl AudioDataReader for CovenFileReader {
                                     "fetch failed buffer={buffer_id} {kind} off={src_off} len={len} waited={}ms error={e}",
                                     fetch_started.elapsed().as_millis(),
                                 );
-                                return Err(read_error_for_file_read(records, file_id, e.into()).await);
+                                return Err(read_error_for_file_read(records, file, e.into()).await);
                             }
                         };
                         let total = fetched.fetch_add(data.len() as u64, Ordering::Relaxed)

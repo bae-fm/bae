@@ -66,26 +66,26 @@ impl LibraryManager {
     /// fails loudly with that read's error.
     fn open_save_source(
         &self,
-        file_id: &str,
-        file_size: u64,
+        (file, size): (coven::FileId, u64),
         lease: &coven::FileLease,
     ) -> SourceStream {
         SourceStream::of_release_file(
             self.runtime_handle.clone(),
             self.records.clone(),
-            file_id.to_string(),
-            file_size,
+            file,
+            size,
             self.diagnostics.clone(),
             lease.clone(),
             "save",
         )
     }
 
-    /// The size of every release file `plans` read, by id, for opening them
-    /// as the save reaches the tracks reading them.
-    fn save_source_sizes<'a>(
+    /// The coven file and size of every release file `plans` read, by the
+    /// release file's id, for opening them as the save reaches the tracks
+    /// reading them.
+    fn save_sources<'a>(
         plans: impl IntoIterator<Item = &'a SaveTrackPlan>,
-    ) -> HashMap<String, u64> {
+    ) -> HashMap<String, (coven::FileId, u64)> {
         plans
             .into_iter()
             .flat_map(|plan| {
@@ -94,7 +94,7 @@ impl LibraryManager {
                     .iter()
                     .chain(plan.window.next.iter().flat_map(|next| next.segments.iter()))
             })
-            .map(|segment| (segment.file_id.clone(), segment.file_size))
+            .map(|segment| (segment.file_id.clone(), (segment.file, segment.file_size)))
             .collect()
     }
 
@@ -141,7 +141,7 @@ impl LibraryManager {
             SaveWindow { next: read.next, is_first_track: read.is_first },
             extras.loudness_tags,
         );
-        let sources = Self::save_source_sizes([&plan]);
+        let sources = Self::save_sources([&plan]);
         SaveService::save_tracks(
             vec![(plan, output_path.to_path_buf())],
             cover,
@@ -150,7 +150,7 @@ impl LibraryManager {
             NonZeroUsize::MIN,
             crate::save::ExistingOutput::Replace,
             |file_id: &String, lease: &coven::FileLease| {
-                self.open_save_source(file_id, sources[file_id], lease)
+                self.open_save_source(sources[file_id], lease)
             },
             Arc::new(|| {}),
             self.bugs(),
@@ -195,7 +195,7 @@ impl LibraryManager {
             saves.push((plan, output_path));
         }
 
-        let sources = Self::save_source_sizes(saves.iter().map(|(plan, _)| plan));
+        let sources = Self::save_sources(saves.iter().map(|(plan, _)| plan));
         let saved = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let on_saved = {
             let manager = self.clone();
@@ -221,7 +221,7 @@ impl LibraryManager {
             parallelism,
             crate::save::ExistingOutput::Refuse,
             |file_id: &String, lease: &coven::FileLease| {
-                self.open_save_source(file_id, sources[file_id], lease)
+                self.open_save_source(sources[file_id], lease)
             },
             on_saved,
             self.bugs(),

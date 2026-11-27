@@ -527,7 +527,6 @@ impl AppServices {
     delegate_lib!(records, get_numbered_tracks_for_release => get_numbered_tracks_for_release(release_id: &str) -> Vec<bae_records::DbNumberedTrack>);
     delegate_lib!(records, get_numbered_track => get_numbered_track(track_id: &str) -> Option<bae_records::DbNumberedTrack>);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<bae_records::DbFile>, bae_library::LibraryError>);
-    delegate_lib!(records, get_file_by_id => find_file_by_id(file_id: &str) -> Option<bae_records::DbFile>);
     delegate_lib!(records, get_cover_content_type => cover_content_type(release_id: &str) -> Option<bae_util::content_type::ContentType>);
     delegate_lib!(records, get_artist_image => find_artist_image(artist_id: &str) -> Option<bae_records::DbArtistImage>);
     delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_records::ImageRef>, bae_library::LibraryError>);
@@ -815,14 +814,14 @@ impl AppServices {
 
     delegate_async!(playback, playback_save_state => save_state() -> ());
 
-    /// `file_id`'s bytes, `size` long, read into a buffer from the start;
+    /// The coven file `file`'s bytes, `size` long, read into a buffer from the start;
     /// see [`LibraryManager::open_release_file_stream`].
     pub async fn open_release_file_stream(
         &self,
-        file_id: &str,
+        file: coven::FileId,
         size: u64,
     ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
-        self.inner.manager.open_release_file_stream(file_id, size).await
+        self.inner.manager.open_release_file_stream(file, size).await
     }
 
     /// `audio`'s stream, open for one decode start to finish; see

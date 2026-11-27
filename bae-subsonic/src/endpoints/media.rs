@@ -100,16 +100,10 @@ async fn stream_file(
     headers: &HeaderMap,
 ) -> Result<Response, SubError> {
     let services = &state.services;
-    let file = services
-        .get_file_by_id(&segment.file_id)
-        .await
-        .map_err(lib_err)?
-        .ok_or_else(SubError::not_found)?;
-
-    let total = file.file_size;
+    let total = segment.file_size;
     let content_type = segment.container.http_mime();
 
-    let buffer = services.open_release_file_stream(&segment.file_id, total).await;
+    let buffer = services.open_release_file_stream(segment.file, total).await;
 
     match parse_range(headers, total) {
         Some((start, end_inclusive)) => {
