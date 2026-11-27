@@ -1,6 +1,30 @@
 //! What the folder scans offer other reads: the entries at a set of keys, and
 //! the candidate pane's files.
 
+// The image a folder that failed validation leads with: the first of its
+// images by the name the scan stored in `blank_cover_file`, as a JSON array of
+// its path in hex, its size and its modification time; JSON null for a row
+// with none.
+sqlive_compose::fragment!(
+    LeadingImage on scan_candidate { leading_image: String },
+    r#"
+    SELECT COALESCE((
+        SELECT json_array(hex(image.absolute_path), image.size, image.modified_at_ns)
+        FROM scan_skipped_file AS image
+        WHERE @parent.kind = 'invalid'
+          AND image.watched_folder_path = @parent.watched_folder_path
+          AND image.candidate_path = @parent.path
+          AND image.position = (
+              SELECT MIN(named.position)
+              FROM scan_skipped_file AS named
+              WHERE named.watched_folder_path = @parent.watched_folder_path
+                AND named.candidate_path = @parent.path
+                AND named.role = 'artwork'
+                AND named.relative_path = @parent.blank_cover_file)), 'null')
+        AS leading_image
+"#
+);
+
 sqlive_compose::fragment!(
     ScanItems with keys(candidate_key BLOB) {
         watched_folder_path: Vec<u8>,
@@ -24,10 +48,7 @@ sqlive_compose::fragment!(
         invalid_shared_name: Option<String>,
         invalid_damaged_audio: Option<i64>,
         invalid_album_title: Option<String>,
-        invalid_credits: Option<String>,
-        invalid_cover_path: Option<Vec<u8>>,
-        invalid_cover_size: Option<i64>,
-        invalid_cover_modified: Option<i64>
+        invalid_credits: Option<String>
     },
     r#"
     SELECT candidate.watched_folder_path, candidate.path, candidate.generation,
@@ -104,21 +125,12 @@ sqlive_compose::fragment!(
         candidate.invalid_shared_name AS invalid_shared_name,
         candidate.invalid_damaged_audio AS invalid_damaged_audio, invalid_tags.album_title
         AS invalid_album_title, invalid_tags.credits AS invalid_credits,
-        invalid_cover.absolute_path AS invalid_cover_path, invalid_cover.size AS
-        invalid_cover_size, invalid_cover.modified_at_ns AS invalid_cover_modified
+        @crate::tables::folder_scans::fragments::LeadingImage(parent: candidate)
+            AS invalid_cover
     FROM keys
     JOIN scan_candidate AS candidate ON candidate.path = keys.candidate_key
     LEFT JOIN scan_skipped_tags AS invalid_tags ON invalid_tags.watched_folder_path =
         candidate.watched_folder_path AND invalid_tags.candidate_path = candidate.path
-        LEFT JOIN scan_skipped_file AS invalid_cover ON candidate.kind = 'invalid' AND
-            invalid_cover.watched_folder_path = candidate.watched_folder_path AND
-            invalid_cover.candidate_path = candidate.path AND invalid_cover.position =(
-        SELECT MIN(image.position)
-        FROM scan_skipped_file AS image
-        WHERE image.watched_folder_path = candidate.watched_folder_path AND
-            image.candidate_path = candidate.path AND image.role = 'artwork' AND
-            image.relative_path = candidate.blank_cover_file
-    )
 "#);
 
 sqlive_compose::fragment!(

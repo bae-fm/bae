@@ -178,10 +178,7 @@ fn invalid_columns(invalid: InvalidDocument) -> Result<InvalidColumns, DbError> 
         invalid.separable != 0,
         (invalid.reason, invalid.shared_name, invalid.damaged_audio),
         invalid.tags,
-        invalid
-            .cover
-            .map(|(hex, size, modified)| Ok::<_, DbError>((path(&hex)?, size, modified)))
-            .transpose()?,
+        invalid.cover,
     )
 }
 

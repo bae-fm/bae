@@ -10,6 +10,29 @@ use crate::triage::InvalidRow;
 use crate::CandidateKey;
 use crate::{InvalidCandidateDetail, MappingFile, MappingImage, MappingRole};
 
+/// An image as [`super::fragments::LeadingImage`] gives it: its path in hex,
+/// its size and its modification time.
+pub(crate) type StoredImage = (String, i64, i64);
+
+/// The value of the JSON a statement gave as `what`, where it gave any.
+fn stored_json<T: serde::de::DeserializeOwned>(
+    what: &str,
+    json: Option<String>,
+) -> Result<Option<T>, DbError> {
+    json.map(|json| {
+        serde_json::from_str(&json).map_err(|error| DbError::unreadable_json(what, json, error))
+    })
+    .transpose()
+}
+
+/// The image a statement's [`super::fragments::LeadingImage`] gives.
+fn leading_image(
+    spread: Option<&super::fragments::LeadingImage>,
+) -> Result<Option<StoredImage>, DbError> {
+    let json = spread.map(|spread| spread.leading_image.clone());
+    Ok(stored_json::<Option<StoredImage>>("a skipped folder's image", json)?.flatten())
+}
+
 /// A folder that failed validation, as its scan row stores it.
 #[derive(Clone, PartialEq)]
 pub(crate) struct InvalidColumns {
@@ -23,15 +46,21 @@ pub(crate) struct InvalidColumns {
 impl InvalidColumns {
     /// The columns of a folder that failed validation: its folder, whether a
     /// grouping reads it, why it failed, the album title and stored credits
-    /// its tags give it, and the image it leads with, as its path, size and
-    /// modification time.
+    /// its tags give it, and the image it leads with.
     pub(crate) fn new(
         folder: PathBuf,
         separable: bool,
         reason: (String, Option<String>, Option<i64>),
         tags: Option<(String, Option<String>)>,
-        cover: Option<(PathBuf, i64, i64)>,
+        cover: Option<StoredImage>,
     ) -> Result<Self, DbError> {
+        let cover = cover
+            .map(|(hex, size, modified)| {
+                let bytes = hex::decode(&hex)
+                    .map_err(|_error| DbError::unreadable("a stored path", hex))?;
+                Ok::<_, DbError>((path_column::decode(bytes)?, size, modified))
+            })
+            .transpose()?;
         let tags = tags
             .map(|(album_title, credits)| {
                 let artist = crate::tables::stored_credits::line_of(credits.as_deref()).map_err(
@@ -55,24 +84,7 @@ impl InvalidColumns {
         let Some(reason) = scan.invalid_reason.clone() else {
             return Ok(None);
         };
-        let cover = match &scan.invalid_cover_path {
-            Some(path) => {
-                let stored = |value: Option<i64>, what: &str| {
-                    value.ok_or_else(|| {
-                        DbError::unreadable(
-                            format!("the {what} of a folder's first image"),
-                            None::<i64>,
-                        )
-                    })
-                };
-                Some((
-                    path_column::decode(path.clone())?,
-                    stored(scan.invalid_cover_size, "size")?,
-                    stored(scan.invalid_cover_modified, "modification time")?,
-                ))
-            }
-            None => None,
-        };
+        let cover = leading_image(scan.invalid_cover.as_ref())?;
         let tags = scan
             .invalid_album_title
             .clone()
@@ -162,25 +174,8 @@ pub(crate) fn load_invalid_row(
     let reason = scan.listed_invalid_reason.ok_or_else(|| {
         DbError::unreadable(format!("the reason folder {key} failed validation"), None::<String>)
     })?;
-    let tags = scan
-        .listed_invalid_tags
-        .map(|json| {
-            serde_json::from_str::<(String, Option<String>)>(&json)
-                .map_err(|error| DbError::unreadable_json("a skipped folder's tags", json, error))
-        })
-        .transpose()?;
-    let cover = scan
-        .listed_invalid_cover
-        .map(|json| {
-            let (path, size, modified) = serde_json::from_str::<(String, i64, i64)>(&json)
-                .map_err(|error| {
-                    DbError::unreadable_json("a skipped folder's image", json, error)
-                })?;
-            let bytes =
-                hex::decode(&path).map_err(|_error| DbError::unreadable("a stored path", path))?;
-            Ok::<_, DbError>((path_column::decode(bytes)?, size, modified))
-        })
-        .transpose()?;
+    let tags = stored_json("a skipped folder's tags", scan.listed_invalid_tags)?;
+    let cover = leading_image(scan.listed_invalid_cover.as_ref())?;
     let columns = InvalidColumns::new(
         path_column::decode(scan.listed_folder)?,
         scan.listed_grouping_key.is_some(),

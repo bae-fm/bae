@@ -2,15 +2,12 @@
 //! row, with what a folder that failed validation shows, and the versions of
 //! the files a chosen cover reads.
 
-// Each release's scan row. `listed_invalid_tags` and `listed_invalid_cover`
-// are the album title and credits its tags give a folder that failed
-// validation, and the image it leads with: the first of its images by the
-// name the scan stored in `blank_cover_file`, as a JSON array of the path in
-// hex, the size and the modification time.
+// Each release's scan row. `listed_invalid_tags` are the album title and
+// credits its tags give a folder that failed validation, as a JSON array, and
+// `listed_invalid_cover` is the image it leads with (`LeadingImage`).
 sqlive_compose::fragment!(
     ListedScan {
-        listed_invalid_tags: Option<String>,
-        listed_invalid_cover: Option<String>
+        listed_invalid_tags: Option<String>
     },
     r#"
     SELECT scan.watched_folder_path AS listed_root, scan.path AS listed_key,
@@ -23,18 +20,8 @@ sqlive_compose::fragment!(
          FROM scan_skipped_tags AS tags
          WHERE tags.watched_folder_path = scan.watched_folder_path
            AND tags.candidate_path = scan.path) AS listed_invalid_tags,
-        (SELECT json_array(hex(image.absolute_path), image.size, image.modified_at_ns)
-         FROM scan_skipped_file AS image
-         WHERE scan.kind = 'invalid'
-           AND image.watched_folder_path = scan.watched_folder_path
-           AND image.candidate_path = scan.path
-           AND image.position = (
-               SELECT MIN(named.position)
-               FROM scan_skipped_file AS named
-               WHERE named.watched_folder_path = scan.watched_folder_path
-                 AND named.candidate_path = scan.path
-                 AND named.role = 'artwork'
-                 AND named.relative_path = scan.blank_cover_file)) AS listed_invalid_cover
+        @crate::tables::folder_scans::fragments::LeadingImage(parent: scan)
+            AS listed_invalid_cover
     FROM scan_candidate AS scan
 "#
 );
