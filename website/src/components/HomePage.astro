@@ -248,9 +248,9 @@ const macUrl = macFullUrl ?? href('/guide/installation');
   /* No-JS fallback: static "home." keeps the sentence intact.
      JS adds .cyc-on to the h2, which hides the fallback and shows the cycling unit. */
   .endcta h2 .cyc{display:none;white-space:nowrap;}
-  .endcta h2.cyc-on .cyc{display:inline;}
+  /* The cycling word takes a line of its own, so the headline keeps one line count for every word. */
+  .endcta h2.cyc-on .cyc{display:block;}
   .endcta h2.cyc-on .cyc-fallback{display:none;}
-  .endcta h2.cyc-break .cyc{display:block;}
 
   /* Animated word: inline-block clipped box whose width we tween so the period
      (sibling .cyc-dot) keeps hugging it with no horizontal snap. */
@@ -287,12 +287,6 @@ const macUrl = macFullUrl ?? href('/guide/installation');
     white-space:nowrap;pointer-events:none;
   }
 
-  /* Narrow screens: drop the cycling word onto its own line so the headline
-     keeps a constant line count. Otherwise the long word wraps and the short
-     one does not, shifting everything below on each swap. */
-  @media (max-width:860px){
-    .endcta h2.cyc-on .cyc{display:block;}
-  }
 
   /* reduced motion: one calm cross-fade only -- no caret blink, no transforms,
      no scramble/flip/shuffle; JS pins the pool to the cross-fade. */
@@ -649,9 +643,7 @@ const macUrl = macFullUrl ?? href('/guide/installation');
       var sizer=document.createElement('span'); sizer.className='cyc-sizer'; sizer.setAttribute('aria-hidden','true'); h2.appendChild(sizer);
       var widths={};
       function measure(){ for(var i=0;i<WORDS.length;i++){ sizer.textContent=WORDS[i].text; widths[WORDS[i].text]=sizer.getBoundingClientRect().width; } }
-      // one layout for every word: when the longest word doesn't fit on the prefix's line, every word goes on a line of its own
-      function placeLine(){ var widest=0; for(var k in widths) widest=Math.max(widest,widths[k]); sizer.textContent=h2.firstChild.textContent+'.'; var prefix=sizer.getBoundingClientRect().width; h2.classList.toggle('cyc-break', prefix+widest>h2.clientWidth); }
-      measure(); placeLine();
+      measure();
 
       var idx=0, last=-1, running=false;
       var timers=[];                                       // every pending timer/interval lives here
@@ -718,8 +710,8 @@ const macUrl = macFullUrl ?? href('/guide/installation');
         if(document.hidden){ stop(); }
         else { clearTimers(); settle(WORDS[idx]); start(); } // resume: re-settle the current word, no partial frame left over
       });
-      addEventListener('resize',function(){ measure(); placeLine(); if(running) setWidth(WORDS[idx].text); });
-      if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ measure(); placeLine(); setWidth(WORDS[idx].text); });
+      addEventListener('resize',function(){ measure(); if(running) setWidth(WORDS[idx].text); });
+      if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ measure(); setWidth(WORDS[idx].text); });
 
       if(!document.hidden) start();
     })();
