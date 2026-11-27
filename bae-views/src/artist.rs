@@ -5,8 +5,7 @@
 use super::*;
 use crate::album::AlbumAppearanceRow;
 use crate::album_detail::{AlbumAppearance, ArtistDetail};
-use crate::list_sort::term;
-use crate::list_sort::ListSort;
+use crate::list_sort::{key, key_values, ListSort};
 use bae_records::records::files::ArtistImageVersion;
 use bae_store::list_windows::{sql_bound, SortValue};
 use bae_store::{statement_optional, statement_row, statement_rows};
@@ -430,25 +429,6 @@ sqlive_compose::read!(
 "#
 );
 
-/// The key of a row with the value `sorts` for each criterion, the name key
-/// `name` and the id `id`.
-fn artist_key(sorts: [SortValue; 2], name: Vec<u8>, id: String) -> OrderKey {
-    let mut values = Vec::from(sorts);
-    values.extend([SortValue::Blob(name), SortValue::Text(id)]);
-    OrderKey::new(values)
-}
-
-/// The values `key` holds, as the statements bind them: each criterion's, the
-/// name key's and the id.
-fn artist_key_values(key: &OrderKey) -> Result<([SortValue; 2], SortValue, String), DbError> {
-    match key.values() {
-        [sort_1, sort_2, name, SortValue::Text(id)] => {
-            Ok(([sort_1.clone(), sort_2.clone()], name.clone(), id.clone()))
-        }
-        values => Err(DbError::unreadable("a artist list key", values)),
-    }
-}
-
 /// The artist list's `window` under `sort`, each row with its key.
 pub(crate) fn artist_window_on(
     sql: &SqlReadContext<'_>,
@@ -458,7 +438,7 @@ pub(crate) fn artist_window_on(
     let (mut key_1, mut key_2, mut key_name, mut key_id) =
         (SortValue::Null, SortValue::Null, SortValue::Null, None);
     if let Some(from) = &window.from {
-        let ([sort_1, sort_2], name, id) = artist_key_values(from)?;
+        let ([sort_1, sort_2], name, id) = key_values(from)?;
         (key_1, key_2, key_name, key_id) = (sort_1, sort_2, name, Some(id));
     }
     // A window from the top starts after no row. One from a key starts at the
@@ -477,8 +457,8 @@ pub(crate) fn artist_window_on(
     let rows = statement_rows(sql, &statement)?
         .into_iter()
         .map(|row| {
-            let key = artist_key(
-                [term(row.order_1, row.order_2), term(row.order_3, row.order_4)],
+            let key = key(
+                [sort.term(0, row.order_1, row.order_2), sort.term(1, row.order_3, row.order_4)],
                 row.order_name,
                 row.order_id,
             );
@@ -511,7 +491,7 @@ pub(crate) fn artists_before_on(
     sort: &ListSort<2>,
     key: &OrderKey,
 ) -> Result<u64, DbError> {
-    let ([key_1, key_2], key_name, id) = artist_key_values(key)?;
+    let ([key_1, key_2], key_name, id) = key_values(key)?;
     let statement = ArtistsBeforeParams {
         field_1: sort.field(0),
         field_2: sort.field(1),
@@ -539,8 +519,8 @@ pub(crate) fn artist_key_at_on(
         index: sql_bound(position),
     };
     Ok(statement_optional(sql, &statement)?.map(|row| {
-        artist_key(
-            [term(row.order_1, row.order_2), term(row.order_3, row.order_4)],
+        key(
+            [sort.term(0, row.order_1, row.order_2), sort.term(1, row.order_3, row.order_4)],
             row.order_name,
             row.order_id,
         )

@@ -5,8 +5,7 @@
 
 use super::*;
 use crate::album_detail::{WorkChild, WorkDetail, WorkReleaseSummary};
-use crate::list_sort::term;
-use crate::list_sort::ListSort;
+use crate::list_sort::{key, key_values, ListSort};
 use bae_records::records::browse_fragments::{WorkReleaseRow, WorkSummary};
 use bae_records::records::files::ArtistImageVersion;
 use bae_records::records::files::CoverVersion;
@@ -503,25 +502,6 @@ sqlive_compose::read!(
 "#
 );
 
-/// The key of a row with the value `sorts` for each criterion, the name key
-/// `name` and the id `id`.
-fn composer_key(sorts: [SortValue; 3], name: Vec<u8>, id: String) -> OrderKey {
-    let mut values = Vec::from(sorts);
-    values.extend([SortValue::Blob(name), SortValue::Text(id)]);
-    OrderKey::new(values)
-}
-
-/// The values `key` holds, as the statements bind them: each criterion's, the
-/// name key's and the id.
-fn composer_key_values(key: &OrderKey) -> Result<([SortValue; 3], SortValue, String), DbError> {
-    match key.values() {
-        [sort_1, sort_2, sort_3, name, SortValue::Text(id)] => {
-            Ok(([sort_1.clone(), sort_2.clone(), sort_3.clone()], name.clone(), id.clone()))
-        }
-        values => Err(DbError::unreadable("a composer list key", values)),
-    }
-}
-
 /// The composer list's `window` under `sort`, each row with its key.
 pub(crate) fn composer_window_on(
     sql: &SqlReadContext<'_>,
@@ -531,7 +511,7 @@ pub(crate) fn composer_window_on(
     let (mut key_1, mut key_2, mut key_3, mut key_name, mut key_id) =
         (SortValue::Null, SortValue::Null, SortValue::Null, SortValue::Null, None);
     if let Some(from) = &window.from {
-        let ([sort_1, sort_2, sort_3], name, id) = composer_key_values(from)?;
+        let ([sort_1, sort_2, sort_3], name, id) = key_values(from)?;
         (key_1, key_2, key_3, key_name, key_id) = (sort_1, sort_2, sort_3, name, Some(id));
     }
     // A window from the top starts after no row. One from a key starts at the
@@ -553,11 +533,11 @@ pub(crate) fn composer_window_on(
     let rows = statement_rows(sql, &statement)?
         .into_iter()
         .map(|row| {
-            let key = composer_key(
+            let key = key(
                 [
-                    term(row.order_1, row.order_2),
-                    term(row.order_3, row.order_4),
-                    term(row.order_5, row.order_6),
+                    sort.term(0, row.order_1, row.order_2),
+                    sort.term(1, row.order_3, row.order_4),
+                    sort.term(2, row.order_5, row.order_6),
                 ],
                 row.order_name,
                 row.order_id,
@@ -593,7 +573,7 @@ pub(crate) fn composers_before_on(
     sort: &ListSort<3>,
     key: &OrderKey,
 ) -> Result<u64, DbError> {
-    let ([key_1, key_2, key_3], key_name, id) = composer_key_values(key)?;
+    let ([key_1, key_2, key_3], key_name, id) = key_values(key)?;
     let statement = ComposersBeforeParams {
         field_1: sort.field(0),
         field_2: sort.field(1),
@@ -626,11 +606,11 @@ pub(crate) fn composer_key_at_on(
         index: sql_bound(position),
     };
     Ok(statement_optional(sql, &statement)?.map(|row| {
-        composer_key(
+        key(
             [
-                term(row.order_1, row.order_2),
-                term(row.order_3, row.order_4),
-                term(row.order_5, row.order_6),
+                sort.term(0, row.order_1, row.order_2),
+                sort.term(1, row.order_3, row.order_4),
+                sort.term(2, row.order_5, row.order_6),
             ],
             row.order_name,
             row.order_id,
