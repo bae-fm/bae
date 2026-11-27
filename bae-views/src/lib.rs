@@ -88,7 +88,7 @@ use bae_store::read::*;
 use bae_store::*;
 use bae_util::search_text::search_pattern;
 use coven::SqlReadContext;
-use rusqlite::{params, OptionalExtension, Row};
+use rusqlite::{params, OptionalExtension};
 use std::collections::BTreeSet;
 use time::UtcDateTime;
 
