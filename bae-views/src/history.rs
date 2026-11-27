@@ -33,7 +33,7 @@ pub struct HistoryRow {
 pub type HistoryFilter = Option<coven::MemberId>;
 
 /// A person whose plays History's menu offers to show.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct HistoryPerson {
     pub person: coven::MemberId,
     pub name: String,
@@ -109,8 +109,7 @@ sqlive_compose::read!(
 sqlive_compose::read!(
     HistoryTotals(person: Option<coven::MemberId>) {
         plays: u64,
-        struct MenuPerson { person: coven::MemberId, name: String, chosen: bool }
-        people: json<Vec<MenuPerson>>,
+        people: json<Vec<crate::history::HistoryPerson>>,
         shown_name: Option<String>
     },
     r#"
@@ -303,16 +302,7 @@ fn history_count_on(
         },
         None => HistoryShown::Everyone,
     };
-    let people = totals
-        .people
-        .into_iter()
-        .map(|listed| HistoryPerson {
-            person: listed.person,
-            name: listed.name,
-            chosen: listed.chosen,
-        })
-        .collect();
-    Ok(HistoryCount { plays: totals.plays, people, shown })
+    Ok(HistoryCount { plays: totals.plays, people: totals.people, shown })
 }
 
 /// How many plays History shows under `filter` before the play at `key`.
