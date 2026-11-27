@@ -4,10 +4,12 @@
 // the sheep before the word, which follows the page's direction; `pair`, the
 // sheep over the word, which `bob` floats and `glow` lights; `sheep`, the
 // sheep alone. `size` is the sheep's width. The float and the glow are the
-// design system's own styles.
+// design system's own styles, and the word's width and the gap beside it are
+// the fractions of the sheep's width in the design system's forms.json.
 import '../../../design/system/components/src/35-logo.css';
 import sheepUrl from '../../../design/system/assets/Logos/bae-sheep.svg?url';
 import wordSvg from '../../../design/system/assets/Logos/bae-word.svg?raw';
+import forms from '../../../design/system/assets/Logos/forms.json';
 
 interface Props {
   kind: 'inline' | 'pair' | 'sheep';
@@ -18,10 +20,14 @@ interface Props {
 
 const { kind, size, bob = false, glow = false } = Astro.props;
 
-// The word's drawing is 1556 by 736; it takes the text colour around it.
-const WORD_ASPECT = 1556 / 736;
+// The word takes its proportion from its drawing's viewBox, and the text
+// colour around it.
+const wordBox = wordSvg.match(/viewBox="([^"]+)"/)?.[1].split(' ').map(Number);
+if (!wordBox) throw new Error('bae-word.svg has no viewBox');
+const WORD_ASPECT = wordBox[2] / wordBox[3];
+const form = kind === 'inline' ? forms.inline : forms.pair;
 const wordMask = `url("data:image/svg+xml;base64,${Buffer.from(wordSvg).toString('base64')}") center / contain no-repeat`;
-const wordWidth = Math.round(size * (kind === 'inline' ? 0.8 : 0.52));
+const wordWidth = Math.round(size * form.word);
 const wordStyle = `width:${wordWidth}px;height:${Math.round(wordWidth / WORD_ASPECT)}px;background:currentColor;-webkit-mask:${wordMask};mask:${wordMask}`;
 const sheepStyle = 'display:block;height:auto;object-fit:contain';
 ---
@@ -29,13 +35,13 @@ const sheepStyle = 'display:block;height:auto;object-fit:contain';
   <img src={sheepUrl} alt="bae" width={size} style={sheepStyle} decoding="async" />
 )}
 {kind === 'inline' && (
-  <div style={`display:flex;align-items:center;gap:${Math.round(size * 0.12)}px`}>
+  <div style={`display:flex;align-items:center;gap:${Math.round(size * form.gap)}px`}>
     <img src={sheepUrl} alt="" width={size} style={sheepStyle} decoding="async" />
     <div role="img" aria-label="bae" style={wordStyle}></div>
   </div>
 )}
 {kind === 'pair' && (
-  <div style={`display:flex;flex-direction:column;align-items:center;gap:${Math.round(size * 0.06)}px`}>
+  <div style={`display:flex;flex-direction:column;align-items:center;gap:${Math.round(size * form.gap)}px`}>
     {glow ? (
       <div style="position:relative;isolation:isolate">
         <div class="bae-logo-glow"></div>

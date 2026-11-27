@@ -9,8 +9,9 @@ format reads: the namespace and the components, in the order groups.json lists
 them. groups.json is the design system's table of contents: its groups in
 order, each with the components it holds directly and its subgroups, each
 with theirs. Each preview's @dsCard group names its component's group there. The drawings
-from assets/Logos go in as data URIs, and each drawing of assets/Symbols as its
-viewBox and paths, so the bundle needs no files beside it.
+from assets/Logos go in as data URIs with the size of each one's viewBox,
+along with assets/Logos/forms.json, and each drawing of assets/Symbols goes in
+as its viewBox and paths, so the bundle needs no files beside it.
 The style sheet's parts, also one per area, are joined in file-name order, which
 is the order of the cascade.
 
@@ -53,6 +54,14 @@ def symbol(path):
     return {"viewBox": root.get("viewBox"), "paths": paths}
 
 
+def box(path):
+    """The width and height of a drawing's viewBox."""
+    view = ElementTree.parse(path).getroot().get("viewBox")
+    if view is None:
+        sys.exit(f"{path.name} has no viewBox")
+    return [float(n) for n in view.split()[2:]]
+
+
 components = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path(__file__).with_name("components")
 sources = sorted((components / "src").glob("*.js"))
 if not sources:
@@ -68,6 +77,8 @@ body = fill(body, "/* board artwork */ {}", pictures)
 symbols = components.parent / "assets" / "Symbols"
 body = fill(body, "/* assets/Symbols */ {}", {path.stem: symbol(path) for path in sorted(symbols.glob("*.svg"))})
 body = re.sub(r"@@([\w.-]+)@@", lambda m: base64.b64encode((logos / m.group(1)).read_bytes()).decode(), body)
+body = fill(body, "/* the size of each drawing in assets/Logos */ {}", {path.name: box(path) for path in sorted(logos.glob("*.svg"))})
+body = fill(body, "/* assets/Logos/forms.json */ {}", json.loads((logos / "forms.json").read_text()))
 exports = body[body.rindex("window.Bae = Object.assign(window.Bae || {}, {"):]
 names = re.findall(r"(\w+): \1\b", exports)
 if not names:

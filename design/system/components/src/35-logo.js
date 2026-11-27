@@ -4,7 +4,11 @@
   var SHEEP_URI = 'data:image/svg+xml;base64,@@bae-sheep.svg@@';
   var SMALL_URI = { 16: 'data:image/svg+xml;base64,@@bae-favicon-16.svg@@', 32: 'data:image/svg+xml;base64,@@bae-favicon-32.svg@@' };
   var WORD_URI = 'data:image/svg+xml;base64,@@bae-word.svg@@';
-  var WORD_ASPECT = 1556 / 736, SHEEP_ASPECT = 545 / 584;
+  // Each drawing's width and height in assets/Logos, from its viewBox, which build-bundle.py puts here.
+  var LOGO_BOX = /* the size of each drawing in assets/Logos */ {};
+  var WORD_ASPECT = LOGO_BOX['bae-word.svg'][0] / LOGO_BOX['bae-word.svg'][1], SHEEP_ASPECT = LOGO_BOX['bae-sheep.svg'][1] / LOGO_BOX['bae-sheep.svg'][0];
+  // How the pair and the inline form lay the word out beside the sheep (assets/Logos/forms.json, which the website's logo reads too): the word's width and the gap between the two, each a fraction of the sheep's width.
+  var FORMS = /* assets/Logos/forms.json */ {};
   var ICON_TILE = '#FFD6E7';
   // `height` sets the slot's height, which the sheep fits inside; otherwise the drawing's own proportion sets it.
   function Sheep(props) {
@@ -30,9 +34,9 @@
     if (props.glow) sheep = h('div', { style: { position: 'relative', isolation: 'isolate' } }, h('div', { className: 'bae-logo-glow' }), h('div', { className: 'bae-logo-pool' }), sheep);
     if (kind === 'small') return h(SmallSheep, { size: size, alt: 'bae' });
     if (kind === 'sheep') return h(Sheep, { size: size, alt: 'bae' });
-    if (kind === 'word') return h(Word, { width: size * 0.52 });
-    if (kind === 'inline') return h('div', { style: { display: 'flex', alignItems: 'center', gap: Math.round(size * 0.12) } }, h(Sheep, { size: size }), h(Word, { width: size * 0.8 }));
-    return h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(size * 0.06) } }, sheep, h('div', { className: cx(props.glow && 'bae-word-lift', props.bob && 'bae-word-bob') }, h(Word, { width: size * 0.52 })));
+    if (kind === 'word') return h(Word, { width: size * FORMS.pair.word });
+    if (kind === 'inline') return h('div', { style: { display: 'flex', alignItems: 'center', gap: Math.round(size * FORMS.inline.gap) } }, h(Sheep, { size: size }), h(Word, { width: size * FORMS.inline.word }));
+    return h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(size * FORMS.pair.gap) } }, sheep, h('div', { className: cx(props.glow && 'bae-word-lift', props.bob && 'bae-word-bob') }, h(Word, { width: size * FORMS.pair.word })));
   }
   // An app icon as each platform shows it. macOS, iOS and Android put the sheep on the pale pink tile; Windows and Linux show the sheep with no tile. Android's `mask` is the launcher's shape: circle, squircle or rounded.
   // On Android the sheep is 84% of the tile and 2% right of centre: one icon serves every launcher's crop, and its left earcup sticks out further than its right side, so centring its box looks off in a circle.
