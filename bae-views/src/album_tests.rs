@@ -139,8 +139,8 @@ async fn album_window_reads_only_the_primary_releases_cover() {
 }
 
 /// A window's request changes on the same live query, each value naming the
-/// window it answers; a write inside its range wakes it, and a row whose sort
-/// values move it out of the range leaves it.
+/// window it answers; a write inside its range wakes it, one outside it does
+/// not, and a row whose sort values move it out of the range leaves it.
 #[tokio::test]
 async fn album_window_subscription_moves_in_place_and_follows_its_range() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
@@ -197,7 +197,8 @@ async fn album_window_subscription_moves_in_place_and_follows_its_range() {
     assert_eq!(covered.rows[0].0.album.cover_version.as_deref(), Some(cover_in_range.as_str()));
 
     // A title that sorts the album above the window's start takes it out of
-    // the range: the window delivers none.
+    // the range: the window delivers none, and the album's edits after that
+    // are outside it.
     records.rename_album_for_test(OTHER_ALBUM_ID, "Album Earlier Title").await.unwrap();
     let left = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
@@ -206,6 +207,11 @@ async fn album_window_subscription_moves_in_place_and_follows_its_range() {
         .result
         .unwrap();
     assert!(left.rows.is_empty());
+    records.rename_album_for_test(OTHER_ALBUM_ID, "Album Earlier Title Again").await.unwrap();
+    assert!(
+        !live.is_marked_for_rerun(),
+        "an edit to an album that left the range does not rerun the window"
+    );
 
     // The top of the list holds it again, first.
     requests.set(top(50)).unwrap();
