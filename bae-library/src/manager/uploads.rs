@@ -245,6 +245,31 @@ impl UploadBatchFailure {
     }
 }
 
+// The release `release`'s whole size, and the files its failed move names and
+// its move waits for the original of, as its storage row holds them.
+#[cfg(test)]
+coven::read!(
+    writer StoredSizeAndMove(release: String) { total_size: u64 },
+    r#"
+    SELECT stored.total_size, stored.failed_move_file, stored.missing_original_file
+    FROM @bae_records::release_storage::ReleaseStorageCounts AS stored
+    WHERE stored.release_id = :release
+"#
+);
+
+// How many moves the release `release`'s queued files wait under.
+#[cfg(test)]
+coven::read!(
+    writer MovesOfRelease(release: String) { moves: i64 },
+    r#"
+    SELECT COUNT(DISTINCT upload.move) AS moves
+    FROM coven_uploads AS upload
+    JOIN @bae_records::records::spread_fragments::ReleaseFileRow AS file
+        ON file.stored_file = upload.file
+    WHERE file.release_id = :release
+"#
+);
+
 #[cfg(test)]
 #[path = "uploads_tests.rs"]
 mod tests;

@@ -198,7 +198,9 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         .await;
         let listed = laptop
             .store()
-            .read_rows(crate::test_reads::OperationsOfKindParams { kind: "RenameStore".into() })
+            .read_rows(crate::manager::people::OperationsOfKindParams {
+                kind: "RenameStore".into(),
+            })
             .await
             .unwrap();
         assert!(listed.is_empty(), "{listed:?}");

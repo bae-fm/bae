@@ -493,7 +493,7 @@ async fn renaming_an_album_renames_its_releases_listing_rows() {
         .await
         .unwrap();
     let renamed: Vec<bool> = db
-        .read_rows(crate::test_reads::ListingTitleKeyIsParams {
+        .read_rows(crate::storage::ListingTitleKeyIsParams {
             album: bae_records::test_fixtures::album_listing::ALBUM_ONE.into(),
             title: "Album Title Renamed".into(),
         })
@@ -566,7 +566,7 @@ async fn counting_refreshes(
 
 /// The album `release`'s listing row names, None while it has none.
 async fn listed_album(db: &Store, release: &str) -> Option<String> {
-    db.read_row(crate::test_reads::ListedAlbumParams { release: release.into() })
+    db.read_row(crate::storage::ListedAlbumParams { release: release.into() })
         .await
         .unwrap()
         .album_id
@@ -670,10 +670,8 @@ async fn a_release_moving_refreshes_its_listing_once() {
 
 /// `release`'s listing row's media columns.
 async fn listed_media(db: &Store, release: &str) -> (bool, Option<String>) {
-    let media = db
-        .read_row(crate::test_reads::ListedMediaParams { release: release.into() })
-        .await
-        .unwrap();
+    let media =
+        db.read_row(crate::storage::ListedMediaParams { release: release.into() }).await.unwrap();
     (media.media_empty, media.media_key)
 }
 
@@ -784,7 +782,7 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     let sole = one.sole.expect("the list holds one of the asked releases");
     assert_eq!(sole.release_id, RELEASE_EARLY);
     let title = db
-        .read_row(crate::test_reads::AlbumTitleOfReleaseParams { release: RELEASE_EARLY.into() })
+        .read_row(crate::storage::AlbumTitleOfReleaseParams { release: RELEASE_EARLY.into() })
         .await
         .unwrap()
         .title;

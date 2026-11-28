@@ -3,8 +3,10 @@
 //! plan of their read.
 
 use super::*;
+use crate::storage_totals::{
+    StoredTotalsAllParams, StoredTotalsLocalParams, StoredTotalsRemoteParams,
+};
 use crate::sync_activity::tests::{queue_upload, run_on_library_with_storage};
-use crate::test_reads::{StoredTotalsAllParams, StoredTotalsLocalParams, StoredTotalsRemoteParams};
 use bae_records::test_fixtures::storage_listing::{
     insert_file, write_library, RELEASE_EARLY, RELEASE_LATE,
 };

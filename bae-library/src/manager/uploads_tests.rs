@@ -19,7 +19,7 @@ pub(super) async fn stored_move_files(
 ) -> (Option<String>, Option<String>) {
     let stored = manager
         .store
-        .read_row(crate::test_reads::StoredSizeAndMoveParams { release: release_id.into() })
+        .read_row(crate::manager::uploads::StoredSizeAndMoveParams { release: release_id.into() })
         .await
         .unwrap();
     (stored.failed_move_file, stored.missing_original_file)
@@ -710,7 +710,7 @@ async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
     for id in &ids[..4] {
         moves += manager
             .store
-            .read_row(crate::test_reads::MovesOfReleaseParams { release: id.clone() })
+            .read_row(crate::manager::uploads::MovesOfReleaseParams { release: id.clone() })
             .await
             .unwrap()
             .moves;

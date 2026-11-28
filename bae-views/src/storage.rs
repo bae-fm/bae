@@ -377,6 +377,54 @@ coven::fragment!(
 "#
 );
 
+// The title of the album that holds the release `release`.
+#[cfg(test)]
+coven::read!(
+    writer AlbumTitleOfRelease(release: String),
+    r#"
+    SELECT album.title
+    FROM @bae_records::records::fragments::ReleaseAlbum AS release
+    JOIN @bae_records::records::fragments::AlbumTitle AS album
+        ON album.album_id = release.album_id
+    WHERE release.release_id = :release
+"#
+);
+
+// For each of the album `album`'s release listing rows, whether its title key
+// is the key of `title` in the language this device orders names in.
+#[cfg(test)]
+coven::read!(
+    writer ListingTitleKeyIs(album: String, title: String) { current: bool },
+    r#"
+    SELECT listing.album_title_sort_key = bae_name_key(:title, sort.language) AS current
+    FROM release_listing AS listing
+    JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+    WHERE listing.album_id = :album
+"#
+);
+
+// The album the release `release`'s listing row names, none while it has no
+// row.
+#[cfg(test)]
+coven::read!(
+    writer ListedAlbum(release: String) { album_id: Option<String> },
+    r#"
+    SELECT (SELECT listing.album_id FROM release_listing AS listing
+            WHERE listing.release_id = :release) AS album_id
+"#
+);
+
+// The release `release`'s listing row's media columns.
+#[cfg(test)]
+coven::read!(
+    writer ListedMedia(release: String) { media_empty: bool },
+    r#"
+    SELECT listing.media_empty, listing.media_key
+    FROM release_listing AS listing
+    WHERE listing.release_id = :release
+"#
+);
+
 #[cfg(test)]
 #[path = "storage_tests.rs"]
 mod tests;

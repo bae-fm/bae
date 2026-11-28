@@ -59,7 +59,7 @@ mod stored_title_keys {
     /// their title's in the device's language, and how many entries there
     /// are of each.
     async fn stale_keys(db: &Store) -> [i64; 4] {
-        let keys = db.read_row(crate::test_reads::StaleSearchKeysParams {}).await.unwrap();
+        let keys = db.read_row(crate::search::StaleSearchKeysParams {}).await.unwrap();
         [keys.stale_tracks, keys.tracks, keys.stale_works, keys.works]
     }
 
@@ -118,7 +118,7 @@ mod stored_title_keys {
             devices.resume().await;
             devices
                 .settle("the later title", async |_, db| {
-                    db.read_row(crate::test_reads::WorkTitleParams { work: WORK_Z.into() })
+                    db.read_row(crate::search::WorkTitleParams { work: WORK_Z.into() })
                         .await
                         .unwrap()
                         .title

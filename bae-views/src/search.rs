@@ -51,6 +51,46 @@ pub type LiveLibrarySearch =
 /// surfaces no longer each pass their own limit into `search_library`.
 pub const SEARCH_RESULT_LIMIT: usize = 50;
 
+// The title of the work `work`.
+#[cfg(test)]
+coven::read!(
+    writer WorkTitle(work: String),
+    r#"
+    SELECT work.title
+    FROM @bae_records::records::browse_fragments::WorkSummary AS work
+    WHERE work.work_id = :work
+"#
+);
+
+// How many track and work search entries hold a title key other than their
+// title's in the language this device orders names in, and how many entries
+// there are of each.
+#[cfg(test)]
+coven::read!(
+    writer StaleSearchKeys {
+        stale_tracks: i64,
+        tracks: i64,
+        stale_works: i64,
+        works: i64,
+    },
+    r#"
+    SELECT (SELECT COUNT(*) FROM track_search_entry AS entry
+            JOIN @bae_records::records::spread_fragments::TrackRow AS track
+                ON track.track_id = entry.track_id
+            JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+            WHERE entry.title_sort_key IS NOT bae_name_key(track.title, sort.language))
+               AS stale_tracks,
+           (SELECT COUNT(*) FROM track_search_entry AS entry) AS tracks,
+           (SELECT COUNT(*) FROM work_search_entry AS entry
+            JOIN @bae_records::records::browse_fragments::WorkSummary AS work
+                ON work.work_id = entry.work_id
+            JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
+            WHERE entry.title_sort_key IS NOT bae_name_key(work.title, sort.language))
+               AS stale_works,
+           (SELECT COUNT(*) FROM work_search_entry AS entry) AS works
+"#
+);
+
 #[cfg(test)]
 #[path = "search_tests.rs"]
 mod tests;

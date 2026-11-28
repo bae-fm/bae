@@ -668,7 +668,7 @@ pub(super) async fn inspector_rows_until(
 pub(super) async fn all_files_kept(manager: &LibraryManager, release_id: &str) -> bool {
     manager
         .store
-        .read_row(crate::test_reads::UnpinnedFilesParams { release: release_id.into() })
+        .read_row(crate::manager::UnpinnedFilesParams { release: release_id.into() })
         .await
         .unwrap()
         .unpinned

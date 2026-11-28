@@ -218,7 +218,7 @@ async fn pins_and_moves_to_this_device_are_counted_apart() {
 async fn release_size(manager: &LibraryManager, release: &str) -> u64 {
     manager
         .store
-        .read_row(crate::test_reads::StoredSizeAndMoveParams { release: release.into() })
+        .read_row(crate::manager::uploads::StoredSizeAndMoveParams { release: release.into() })
         .await
         .unwrap()
         .total_size

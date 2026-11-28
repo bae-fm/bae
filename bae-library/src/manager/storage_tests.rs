@@ -61,7 +61,7 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 async fn queue_storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .store
-        .read_rows(crate::test_reads::QueueDisagreementsParams {})
+        .read_rows(crate::manager::storage::QueueDisagreementsParams {})
         .await
         .unwrap()
         .into_iter()
@@ -74,7 +74,7 @@ async fn queue_storage_disagreements(manager: &LibraryManager) -> Vec<String> {
 async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
     manager
         .store
-        .read_rows(crate::test_reads::ProbedUploadingReleasesParams {})
+        .read_rows(crate::manager::storage::ProbedUploadingReleasesParams {})
         .await
         .unwrap()
         .into_iter()

@@ -49,6 +49,37 @@ pub(crate) fn storage_totals_of(rows: Vec<StoredTotals>) -> Result<(u64, u64), D
         .ok_or_else(|| DbError::unreadable("the stored totals", None::<String>))
 }
 
+// How many releases each storage filter keeps, and their size: every release,
+// those this device holds, and those only the cloud holds.
+#[cfg(test)]
+coven::read!(
+    writer StoredTotalsAll { releases: u64, size: u64 },
+    r#"
+    SELECT COUNT(*) AS releases, COALESCE(SUM(kept.total_size), 0) AS size
+    FROM @bae_records::release_storage::ReleaseStorage AS kept
+"#
+);
+
+#[cfg(test)]
+coven::read!(
+    writer StoredTotalsLocal { releases: u64, size: u64 },
+    r#"
+    SELECT COUNT(*) AS releases, COALESCE(SUM(kept.total_size), 0) AS size
+    FROM @bae_records::release_storage::ReleaseStorage AS kept
+    WHERE kept.stored = 0
+"#
+);
+
+#[cfg(test)]
+coven::read!(
+    writer StoredTotalsRemote { releases: u64, size: u64 },
+    r#"
+    SELECT COUNT(*) AS releases, COALESCE(SUM(kept.total_size), 0) AS size
+    FROM @bae_records::release_storage::ReleaseStorage AS kept
+    WHERE kept.stored = 1
+"#
+);
+
 #[cfg(test)]
 #[path = "storage_totals_tests.rs"]
 mod tests;

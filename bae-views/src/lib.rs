@@ -46,7 +46,6 @@ mod storage_browse;
 pub mod storage_inspector;
 mod storage_totals;
 mod sync_activity;
-mod test_reads;
 mod uploads;
 
 #[cfg(any(test, feature = "test-utils"))]

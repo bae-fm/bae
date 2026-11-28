@@ -198,6 +198,17 @@ pub(super) fn device_cut_off(
     }
 }
 
+// The kinds of the operations coven lists of the kind `kind`.
+#[cfg(test)]
+coven::read!(
+    writer OperationsOfKind(kind: String),
+    r#"
+    SELECT operation.kind
+    FROM coven_operations AS operation
+    WHERE operation.kind = :kind
+"#
+);
+
 #[cfg(test)]
 #[path = "people_tests.rs"]
 mod tests;

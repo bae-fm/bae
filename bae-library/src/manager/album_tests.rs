@@ -200,7 +200,7 @@ async fn coven_files_of(manager: &LibraryManager, release_ids: &[&str]) -> Vec<S
     for release in release_ids {
         let rows = manager
             .store
-            .read_rows(crate::test_reads::CovenFilesOfReleaseParams {
+            .read_rows(crate::manager::album::CovenFilesOfReleaseParams {
                 release: release.to_string(),
             })
             .await

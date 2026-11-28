@@ -79,9 +79,9 @@ async fn the_storage_manager_and_links_follow_the_albums_language() {
     let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     retitle(&db, ["Öl", "Zebra", "Åke"]).await;
     test_records(&db).set_sort_language("sv").await.unwrap();
-    let by_title = db.read_rows(crate::test_reads::ListingAlbumsByTitleParams {}).await.unwrap();
+    let by_title = db.read_rows(crate::name_keys::ListingAlbumsByTitleParams {}).await.unwrap();
     let linked = db
-        .read_rows(crate::test_reads::ArtistLinkAlbumsByTitleParams {
+        .read_rows(crate::name_keys::ArtistLinkAlbumsByTitleParams {
             artist: "4309b580-a6bf-455e-92ea-ec58ee7129e7".into(),
         })
         .await
@@ -106,7 +106,7 @@ async fn keys_written_with_other_collation_data_are_written_again_when_a_library
 
     records.settle_name_keys().await.unwrap();
 
-    let keys = db.read_row(crate::test_reads::KeysOtherThanUndeterminedParams {}).await.unwrap();
+    let keys = db.read_row(crate::name_keys::KeysOtherThanUndeterminedParams {}).await.unwrap();
     assert_eq!(keys.stale_titles, 0, "every title key is the current data's");
     assert_eq!(keys.stale_names, 0, "every artist name key is the current data's");
     assert_eq!(keys.stale_links, 0, "every album link's artist key is the current data's");

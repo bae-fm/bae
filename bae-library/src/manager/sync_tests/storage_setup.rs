@@ -153,7 +153,7 @@ async fn a_dropped_setup_call_cancels_its_setup() {
     status_until(&test, |status| status.storage_setup.is_none()).await;
     let outcomes: Vec<_> = manager
         .store
-        .read_rows(crate::test_reads::StorageSetupOutcomesParams {})
+        .read_rows(crate::manager::sync::StorageSetupOutcomesParams {})
         .await
         .unwrap()
         .into_iter()

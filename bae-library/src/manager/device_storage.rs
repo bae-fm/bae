@@ -178,6 +178,16 @@ impl LibraryManager {
     }
 }
 
+// The bytes of the catalog image cache's rows.
+#[cfg(all(test, desktop))]
+coven::read!(
+    writer CachedImageTotal { bytes: u64 },
+    r#"
+    SELECT COALESCE(SUM(image.bytes), 0) AS bytes
+    FROM @bae_catalogs::remote_image::cached_rows::CachedImageBytes AS image
+"#
+);
+
 #[cfg(test)]
 #[path = "device_storage_tests.rs"]
 mod tests;

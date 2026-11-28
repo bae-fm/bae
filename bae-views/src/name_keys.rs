@@ -38,6 +38,64 @@ impl crate::LibraryViews {
     }
 }
 
+// The albums of the release listing in title key order.
+#[cfg(test)]
+coven::read!(
+    writer ListingAlbumsByTitle,
+    r#"
+    SELECT listing.album_id
+    FROM release_listing AS listing
+    ORDER BY listing.album_title_sort_key
+"#
+);
+
+// The albums linked to the artist `artist`, in title key order.
+#[cfg(test)]
+coven::read!(
+    writer ArtistLinkAlbumsByTitle(artist: String),
+    r#"
+    SELECT link.album_id
+    FROM album_artist_link AS link
+    WHERE link.artist_id = :artist
+    ORDER BY link.title_sort_key
+"#
+);
+
+// How many album listing rows, artist listing rows and album artist links hold
+// a key other than their name's key with no language, and the version of the
+// collation data the device's keys were written with.
+#[cfg(test)]
+coven::read!(
+    writer KeysOtherThanUndetermined {
+        stale_titles: i64,
+        stale_names: i64,
+        stale_links: i64,
+        data_version: u32,
+    },
+    r#"
+    SELECT (SELECT COUNT(*) FROM album_listing AS listing
+            JOIN @bae_records::records::fragments::AlbumTitle AS album
+                ON album.album_id = listing.album_id
+            WHERE listing.title_sort_key IS NOT bae_name_key(album.title, 'und'))
+               AS stale_titles,
+           (SELECT COUNT(*) FROM artist_listing AS listing
+            JOIN @bae_records::records::spread_fragments::ArtistRow AS artist
+                ON artist.artist_id = listing.artist_id
+            WHERE listing.name_sort_key IS NOT bae_name_key(artist.name, 'und')
+               OR listing.sort_name_sort_key
+                  IS NOT bae_name_key(COALESCE(artist.sort_name, artist.name), 'und'))
+               AS stale_names,
+           (SELECT COUNT(*) FROM album_artist_link AS link
+            JOIN @bae_records::records::spread_fragments::ArtistRow AS artist
+                ON artist.artist_id = link.artist_id
+            WHERE link.artist_sort_key
+                  IS NOT bae_name_key(COALESCE(artist.sort_name, artist.name), 'und'))
+               AS stale_links,
+           sort.data_version
+    FROM @bae_records::records::name_sort::NameSortDataVersion AS sort
+"#
+);
+
 #[cfg(test)]
 #[path = "name_keys_tests.rs"]
 mod tests;

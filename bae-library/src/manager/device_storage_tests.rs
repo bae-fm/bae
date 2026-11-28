@@ -100,7 +100,12 @@ async fn next_until(
 /// The bytes of the catalog image cache's rows.
 #[cfg(desktop)]
 async fn image_bytes(manager: &LibraryManager) -> u64 {
-    manager.store.read_row(crate::test_reads::CachedImageTotalParams {}).await.unwrap().bytes
+    manager
+        .store
+        .read_row(crate::manager::device_storage::CachedImageTotalParams {})
+        .await
+        .unwrap()
+        .bytes
 }
 
 /// A release pinned beside a track played from the cloud and a catalog

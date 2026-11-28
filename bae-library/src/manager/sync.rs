@@ -395,6 +395,17 @@ impl Drop for CancelSetupOnDrop<'_> {
     }
 }
 
+// The outcome of each storage setup coven lists.
+#[cfg(test)]
+coven::read!(
+    writer StorageSetupOutcomes { outcome: Option<coven::StorageSetupOutcome> },
+    r#"
+    SELECT operation.outcome
+    FROM coven_operations AS operation
+    WHERE operation.kind = 'StorageSetup'
+"#
+);
+
 #[cfg(test)]
 #[path = "sync_tests.rs"]
 mod tests;

@@ -11,7 +11,7 @@ use crate::manager::tests::*;
 async fn storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .store
-        .read_rows(crate::test_reads::PinDisagreementsParams {})
+        .read_rows(crate::manager::pin::PinDisagreementsParams {})
         .await
         .unwrap()
         .into_iter()
@@ -24,7 +24,7 @@ async fn storage_disagreements(manager: &LibraryManager) -> Vec<String> {
 async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
     manager
         .store
-        .read_rows(crate::test_reads::ProbedPinnedReleasesParams {})
+        .read_rows(crate::manager::pin::ProbedPinnedReleasesParams {})
         .await
         .unwrap()
         .into_iter()
@@ -178,7 +178,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
 /// against the first place coven's queue holds for its files.
 async fn storage_row(store: &bae_store::Store, release: &str) -> Vec<String> {
     store
-        .read_rows(crate::test_reads::StorageRowTextParams { release: release.into() })
+        .read_rows(crate::manager::pin::StorageRowTextParams { release: release.into() })
         .await
         .unwrap()
         .into_iter()

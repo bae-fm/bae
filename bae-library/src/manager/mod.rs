@@ -902,6 +902,18 @@ coven::read!(
 "#
 );
 
+// How many of the release `release`'s files coven lists no pin for.
+#[cfg(test)]
+coven::read!(
+    writer UnpinnedFiles(release: String) { unpinned: i64 },
+    r#"
+    SELECT COUNT(*) AS unpinned
+    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
+    WHERE file.release_id = :release
+      AND NOT EXISTS (SELECT 1 FROM coven_pins AS pin WHERE pin.file = file.stored_file)
+"#
+);
+
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;

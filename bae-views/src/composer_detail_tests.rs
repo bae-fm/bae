@@ -216,7 +216,7 @@ fn the_page_keeps_its_order_as_titles_and_credits_change() {
         devices.resume().await;
         devices
             .settle("the later title", async |_, db| {
-                db.read_row(crate::test_reads::WorkTitleParams { work: ALPHA_PARENT.into() })
+                db.read_row(crate::search::WorkTitleParams { work: ALPHA_PARENT.into() })
                     .await
                     .unwrap()
                     .title
