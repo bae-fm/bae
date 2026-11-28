@@ -39,24 +39,29 @@ sqlive_compose::fragment!(
 
 // Each audio format's segments as a song outside bae reads them, in order:
 // each one's role, first and end sample, and its file's name, size and
-// container, none for a file the library doesn't hold.
+// container, no file for one the library doesn't hold.
 sqlive_compose::fragment!(
     ServedSegments on audio_formats {
+        struct ServedSegmentFile {
+            name: String,
+            size: u64,
+            container: Option<String>,
+        }
         struct ServedSegment {
             role: String,
             start_sample: u64,
             end_sample: Option<u64>,
-            name: Option<String>,
-            size: Option<u64>,
-            container: Option<String>,
+            file: Option<ServedSegmentFile>,
         }
         segments: json<Vec<ServedSegment>>
     },
     r#"
     SELECT json_group_array(json_object(
                'role', segment.role, 'start_sample', segment.start_sample,
-               'end_sample', segment.end_sample, 'name', file.original_filename,
-               'size', stored.size, 'container', file.source_audio_container)
+               'end_sample', segment.end_sample,
+               'file', json(CASE WHEN stored.id IS NOT NULL THEN json_object(
+                   'name', file.original_filename, 'size', stored.size,
+                   'container', file.source_audio_container) END))
                ORDER BY segment.segment_index) AS segments
     FROM audio_format_segments AS segment
     LEFT JOIN release_files AS file ON file.id = segment.file_id
@@ -285,14 +290,14 @@ impl ServedTrack {
         let whole_file = match whole {
             None => None,
             Some((segment, _role)) => {
-                let (Some(name), Some(size), Some(container)) =
-                    (&segment.name, segment.size, &segment.container)
-                else {
-                    return Err(unreadable("whole file"));
-                };
+                let file = segment.file.as_ref().ok_or_else(|| unreadable("whole file"))?;
+                let container = file
+                    .container
+                    .as_deref()
+                    .ok_or_else(|| unreadable("whole file's container"))?;
                 Some(DbServedFile {
-                    name: name.clone(),
-                    size,
+                    name: file.name.clone(),
+                    size: file.size,
                     container: bae_util::audio_container::AudioContainer::from_name(container),
                 })
             }
