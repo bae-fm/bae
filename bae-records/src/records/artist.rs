@@ -18,10 +18,9 @@ coven::read!(
 coven::read!(
     writer OneArtist(artist: String),
     r#"
-    SELECT artist.id, artist.name, artist.sort_name, artist.discogs_artist_id,
-           artist.musicbrainz_artist_id, artist.created_at
-    FROM artists AS artist
-    WHERE artist.id = :artist
+    SELECT artist.*
+    FROM @crate::records::browse_fragments::ArtistRecord AS artist
+    WHERE artist.artist_id = :artist
 "#
 );
 
@@ -80,20 +79,6 @@ impl Records {
         let statement = OneArtistParams { artist: artist_id };
         let row =
             self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
-        row.map(|row| {
-            let created_at =
-                bae_util::timestamp::parse_rfc3339(&row.created_at).map_err(|_unparsed| {
-                    DbError::unreadable(format!("artist {} created_at", row.id), &row.created_at)
-                })?;
-            Ok(DbArtist {
-                id: row.id,
-                name: row.name,
-                sort_name: row.sort_name,
-                discogs_artist_id: row.discogs_artist_id,
-                musicbrainz_artist_id: row.musicbrainz_artist_id,
-                created_at,
-            })
-        })
-        .transpose()
+        row.map(|row| row.artist.into_artist()).transpose()
     }
 }

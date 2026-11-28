@@ -1,11 +1,5 @@
 use super::*;
 
-/// The id of the artist `artist_id` (an SQL expression) shows as: the survivor
-/// of its merges, or itself (`artist_shown_as`).
-pub fn shown_artist_id(artist_id: &str) -> String {
-    format!("(SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = {artist_id})")
-}
-
 /// Owned SQL columns; JSON decoding runs after the read connection is released.
 #[derive(Clone, PartialEq)]
 pub struct AlbumSummaryRow {

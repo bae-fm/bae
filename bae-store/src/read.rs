@@ -28,18 +28,6 @@ pub fn column_conversion_error<I: rusqlite::RowIndex>(
     }
 }
 
-/// Read column `column` (its name or index) of `row` as the JSON text of a
-/// `T`, surfacing text that isn't one as a column-conversion error.
-pub fn json_column<T, I>(row: &Row, column: I) -> rusqlite::Result<T>
-where
-    T: serde::de::DeserializeOwned,
-    I: rusqlite::RowIndex + Copy,
-{
-    let text: String = row.get(column)?;
-    serde_json::from_str(&text)
-        .map_err(|error| column_conversion_error(row, column, format!("{text:?}: {error}")))
-}
-
 /// Read a named rfc3339 timestamp column, surfacing a malformed value as a
 /// column-conversion error rather than panicking on the parse.
 pub fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<UtcDateTime> {

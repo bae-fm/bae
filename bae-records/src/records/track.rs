@@ -44,8 +44,8 @@ coven::read!(
     writer OneTrack(track: String),
     r#"
     SELECT held.*
-    FROM @crate::records::read::TrackColumns AS held
-    WHERE held.columns_track_id = :track
+    FROM @crate::records::browse_fragments::TrackRecord AS held
+    WHERE held.track_id = :track
 "#
 );
 
@@ -104,8 +104,8 @@ coven::read!(
     writer TracksOfRelease(release: String),
     r#"
     SELECT held.*
-    FROM @crate::records::read::TrackColumns AS held
-    JOIN tracks AS ordered ON ordered.id = held.columns_track_id
+    FROM @crate::records::browse_fragments::TrackRecord AS held
+    JOIN tracks AS ordered ON ordered.id = held.track_id
     WHERE ordered.release_id = :release
     ORDER BY ordered.position, ordered.id
 "#

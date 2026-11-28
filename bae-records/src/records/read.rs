@@ -1,41 +1,11 @@
 use super::*;
 
-// An album's own columns.
-coven::fragment!(
-    AlbumColumns { year: Option<i32>, is_compilation: bool },
-    r#"
-    SELECT album.id AS album_id, album.title, album.year, album.is_compilation,
-           album.created_at AS album_created_at
-    FROM albums AS album
-"#
-);
-
-impl AlbumColumns {
-    /// The album these columns hold.
-    pub(super) fn into_album(self) -> Result<DbAlbum, DbError> {
-        let created_at =
-            bae_util::timestamp::parse_rfc3339(&self.album_created_at).map_err(|_unparsed| {
-                DbError::unreadable(
-                    format!("album {} created_at", self.album_id),
-                    &self.album_created_at,
-                )
-            })?;
-        Ok(DbAlbum {
-            id: self.album_id,
-            title: self.title,
-            year: self.year,
-            is_compilation: self.is_compilation,
-            created_at,
-        })
-    }
-}
-
 // The album `album`; no row when the library holds no such album.
 coven::read!(
     writer OneAlbum(album: String),
     r#"
     SELECT album.*
-    FROM @crate::records::read::AlbumColumns AS album
+    FROM @crate::records::browse_fragments::AlbumRecord AS album
     WHERE album.album_id = :album
 "#
 );
@@ -278,46 +248,6 @@ pub fn get_releases_for_album_on(
 ) -> Result<Vec<DbRelease>, DbError> {
     let statement = ReleasesOfAlbumParams { album: album_id.to_owned() };
     bae_store::statement_rows(sql, &statement)?.iter().map(|row| row.held.release()).collect()
-}
-
-// A track's own columns.
-coven::fragment!(
-    TrackColumns {
-        side: std::num::NonZeroU8,
-        track_number: std::num::NonZeroU32,
-        duration_ms: u64,
-        stated_length_ms: Option<u64>,
-    },
-    r#"
-    SELECT track.id AS columns_track_id, track.release_id AS track_release_id,
-           track.title AS track_title, track.medium_id, track.side, track.track_number,
-           track.duration_ms, track.stated_length_ms, track.created_at AS track_created_at
-    FROM tracks AS track
-"#
-);
-
-impl TrackColumns {
-    /// The track these columns hold.
-    pub(super) fn into_track(self) -> Result<DbTrack, DbError> {
-        let created_at =
-            bae_util::timestamp::parse_rfc3339(&self.track_created_at).map_err(|_unparsed| {
-                DbError::unreadable(
-                    format!("track {} created_at", self.columns_track_id),
-                    &self.track_created_at,
-                )
-            })?;
-        Ok(DbTrack {
-            id: self.columns_track_id,
-            release_id: self.track_release_id,
-            title: self.track_title,
-            medium_id: self.medium_id,
-            side: self.side,
-            track_number: self.track_number,
-            duration_ms: self.duration_ms,
-            stated_length_ms: self.stated_length_ms,
-            created_at,
-        })
-    }
 }
 
 // One release's catalog records.
