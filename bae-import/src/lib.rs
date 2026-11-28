@@ -287,12 +287,13 @@ pub use folder_scanner::{
 pub(crate) use folder_state_commit::{FolderStateCommit, FolderStateCommitGuard};
 #[cfg(desktop)]
 pub use grouping::GroupingBlock;
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use handle::ImportCandidateSnapshot;
 #[cfg(desktop)]
 pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
-    CandidateStanding, DocumentRefusal, GroupedSearchResults, ImportCandidateSnapshot,
-    ImportServiceHandle, ImportStart,
+    CandidateStanding, DocumentRefusal, GroupedSearchResults, ImportServiceHandle, ImportStart,
 };
 #[cfg(desktop)]
 pub use identification::IdentificationHandle;

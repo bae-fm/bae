@@ -1,4 +1,4 @@
-use crate::folder_scanner::{FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey};
+use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
 use crate::types::{ImportCommand, ImportProgress};
 use crate::watched_folder::WatchedFolder;
 use bae_util::worker_thread::WorkerThread;
@@ -39,6 +39,7 @@ mod watch;
 pub use commit::CandidateStanding;
 pub use import::ImportStart;
 pub(crate) use picks::{external_metadata_with_cover, CoverFetchFailure};
+#[cfg(any(test, feature = "test-utils"))]
 pub use runtime::ImportCandidateSnapshot;
 pub use search::GroupedSearchResults;
 pub(crate) use verdict_write::VerdictWrite;

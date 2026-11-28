@@ -106,7 +106,7 @@ pub struct ListedFolder {
 
 /// The library status of each release a verdict offers or sets aside, with
 /// the catalog that names it.
-pub struct VerdictStatuses(Vec<(String, LibraryStatus)>);
+pub struct VerdictStatuses(Vec<(bae_catalogs::catalog::Catalog, LibraryStatus)>);
 
 impl VerdictStatuses {
     /// The status of each of `checks`, in their order, found by catalog and
@@ -118,7 +118,7 @@ impl VerdictStatuses {
                 self.0
                     .iter()
                     .find(|(source, status)| {
-                        source == check.source.as_str() && status.release_id == check.release_id
+                        *source == check.source && status.release_id == check.release_id
                     })
                     .map(|(_, status)| status.clone())
                     .ok_or_else(|| {
@@ -150,11 +150,14 @@ impl VerdictStatuses {
         entries
             .into_iter()
             .map(|entry| {
+                let source = entry.source.parse().map_err(|error: String| {
+                    DbError::unreadable("the catalog of a verdict's library status", error)
+                })?;
                 let status = bae_records::records::fragments::library_status_of_columns(
                     entry.release_id,
                     &entry.albums.to_string(),
                 )?;
-                Ok((entry.source, status))
+                Ok((source, status))
             })
             .collect::<Result<_, DbError>>()
             .map(Self)

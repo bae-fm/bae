@@ -4,6 +4,7 @@
 //! claimed import's queued status is published at once.
 
 use super::*;
+use crate::folder_scanner::FolderCandidate;
 use crate::identification::tests::*;
 use crate::tests::import::TestImport;
 use crate::PendingStanding;

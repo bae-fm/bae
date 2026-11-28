@@ -124,10 +124,11 @@ impl ImportServiceHandle {
 
 /// One candidate by key, with its runtime joined: the read behind every
 /// "what is this key right now" question.
+#[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone)]
 pub enum ImportCandidateSnapshot {
     Folder {
-        candidate: FolderCandidate,
+        candidate: crate::folder_scanner::FolderCandidate,
         /// `None` when nothing is running for this key.
         runtime: Option<CandidateRuntimeSnapshot>,
         actionable: bool,
