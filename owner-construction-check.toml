@@ -1037,6 +1037,198 @@ homes = [
     "bae-views/src/",
 ]
 
+# SQL text: a statement written as a string and run on the library or any
+# other SQLite connection. Only bae-store runs one: every other crate runs
+# the statements its build generated (read!, write!, fragment!) through
+# bae-store's contexts, which take no text, and a statement type is never
+# written by hand, since generated ones reach a crate only through
+# include!. The method gate can't see a call's receiver, so the HTTP
+# client's methods of the same names are allowed by item below.
+[[capabilities]]
+name = "SQL text"
+homes = ["bae-store/src/"]
+tests = true
+gates = [
+    { kind = "SQL text call", methods = [
+        "execute",
+        "execute_batch",
+        "query",
+        "query_row",
+        "query_map",
+        "query_and_then",
+        "query_one",
+        "query_compiled",
+        "prepare",
+        "prepare_cached",
+        "pragma",
+        "pragma_query",
+        "pragma_query_value",
+        "pragma_update",
+        "pragma_update_and_check",
+    ] },
+    { kind = "coven SQL context", paths = [
+        "coven::CovenWrite",
+        "coven::SqlReadContext",
+        "coven::BulkSqlContext",
+        "coven::CommitSql",
+        "coven::JoiningWrite",
+        "coven::MemberWrite",
+        "coven::SqlContext",
+        "coven::SqlRead",
+        "coven::SqlWrite",
+    ] },
+    { kind = "hand-made statement", paths = [
+        "coven::Statement",
+        "coven::Read",
+        "coven::Write",
+        "coven::WriteReturning",
+        "sqlive_compose::Statement",
+        "sqlive_compose::Read",
+        "sqlive_compose::Write",
+        "sqlive_compose::WriteReturning",
+    ] },
+]
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/discogs/client.rs"
+item = "DiscogsClient::send"
+gate = "SQL text call"
+count = 1
+reason = "sends an HTTP request through the client's `execute`"
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/discogs/client.rs"
+item = "DiscogsClient::validate_token"
+gate = "SQL text call"
+count = 1
+reason = "adds the URL's query parameters with the request builder's `query`"
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/discogs/client.rs"
+item = "DiscogsClient::search_with_params_inner"
+gate = "SQL text call"
+count = 1
+reason = "adds the URL's query parameters with the request builder's `query`"
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/musicbrainz/mod.rs"
+item = "MusicBrainz::send"
+gate = "SQL text call"
+count = 1
+reason = "sends an HTTP request through the client's `execute`"
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/musicbrainz/mod.rs"
+item = "MusicBrainz::search_recordings_once"
+gate = "SQL text call"
+count = 1
+reason = "adds the URL's query parameters with the request builder's `query`"
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/musicbrainz/mod.rs"
+item = "MusicBrainz::search_releases_with_params_once"
+gate = "SQL text call"
+count = 1
+reason = "adds the URL's query parameters with the request builder's `query`"
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/remote_image/fetch.rs"
+item = "send_artwork_request"
+gate = "SQL text call"
+count = 1
+reason = "sends an HTTP request through the client's `execute`"
+
+[[capabilities.allowed]]
+path = "bae-catalogs/src/wikidata/mod.rs"
+item = "Wikidata::get"
+gate = "SQL text call"
+count = 1
+reason = "sends an HTTP request through the client's `execute`"
+
+[[capabilities.allowed]]
+path = "bae-import/src/release_reads.rs"
+item = "ReleaseReads::release"
+gate = "SQL text call"
+count = 1
+reason = "calls `ReleaseReads::prepare`, which prepares a catalog release"
+
+[[capabilities.allowed]]
+path = "bae-import/src/release_reads.rs"
+item = "ReleaseReads::disc_id_release"
+gate = "SQL text call"
+count = 1
+reason = "calls `ReleaseReads::prepare`, which prepares a catalog release"
+
+[[capabilities.allowed]]
+path = "bae-import/src/release_reads.rs"
+item = "ReleaseReads::partners"
+gate = "SQL text call"
+count = 1
+reason = "calls `ReleaseReads::prepare`, which prepares a catalog release"
+
+[[capabilities.allowed]]
+path = "bae-playback/src/tables/queue_tests.rs"
+item = "plain_library"
+gate = "SQL text call"
+count = 1
+reason = "the playback queue benchmark's own SQLite file, which is no library connection"
+
+[[capabilities.allowed]]
+path = "bae-playback/src/tables/queue_tests.rs"
+item = "plain_statement"
+gate = "SQL text call"
+count = 4
+reason = "the playback queue benchmark's own SQLite file, which is no library connection"
+
+[[capabilities.allowed]]
+path = "bae-playback/src/tables/queue_tests.rs"
+item = "plain_fill"
+gate = "SQL text call"
+count = 6
+reason = "the playback queue benchmark's own SQLite file, which is no library connection"
+
+[[capabilities.allowed]]
+path = "bae-playback/src/tables/queue_tests.rs"
+item = "plain_query"
+gate = "SQL text call"
+count = 1
+reason = "the playback queue benchmark's own SQLite file, which is no library connection"
+
+[[capabilities.allowed]]
+path = "bae-playback/src/tables/queue_tests.rs"
+item = "playback_queue_bench_library_play"
+gate = "SQL text call"
+count = 1
+reason = "the playback queue benchmark's own SQLite file, which is no library connection"
+
+[[capabilities.allowed]]
+path = "bae-playback/src/tables_tests.rs"
+item = "refuses"
+gate = "hand-made statement"
+count = 1
+reason = "bounds the generated write it runs; no type implements the trait here"
+
+[[capabilities.allowed]]
+path = "bae-records/src/records/write.rs"
+item = "replace_release_list"
+gate = "hand-made statement"
+count = 1
+reason = "bounds the generated write it runs; no type implements the trait here"
+
+[[capabilities.allowed]]
+path = "bae-util/src/http.rs"
+item = "Http::execute"
+gate = "SQL text call"
+count = 1
+reason = "sends an HTTP request through reqwest's `execute`"
+
+[[capabilities.allowed]]
+path = "bae-util/src/http_tests.rs"
+item = "a_test_transport_holds_a_request_as_long_as_its_host_does"
+gate = "SQL text call"
+count = 1
+reason = "sends an HTTP request through the client's `execute`"
+
 # The bridge's async exports run on their owner's runtime: each is declared
 # here to call one of these runs, which the typed lint checks in the types.
 [async_exports]
