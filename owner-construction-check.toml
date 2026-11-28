@@ -1176,6 +1176,7 @@ homes = [
     "bae-playback/src/tables/queue.sql",
     "bae-playback/src/tables/queue_fill.rs",
     "bae-playback/src/tables/queue_order.rs",
+    "bae-playback/src/tables/queue_steps.rs",
     "bae-playback/src/tables/queue_reads.rs",
     "bae-playback/src/tables/queue_upcoming.rs",
     "bae-playback/src/tables/resume.rs",

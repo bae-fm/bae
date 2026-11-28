@@ -1,11 +1,12 @@
-//! The places of the queue's lanes: moving an entry within its lane, which
-//! shifts the places between where it left and where it lands, and a context
-//! lane's cursor with them.
+//! The places of the queue's lanes, read and changed in each order a lane has:
+//! the highest place, an entry's place, and moving an entry within its lane,
+//! which shifts the places between where it left and where it lands, and a
+//! context lane's cursor with them.
 
-use super::queue::{locate_on, queue_row_on, row_key};
+use super::queue::{locate_on, queue_row_on, row_key, QueueRow};
 use super::*;
 use crate::{QueueEntryId, QueueLane};
-use bae_store::WriteStatements;
+use bae_store::{statement_optional, statement_row, WriteStatements, WriterRead};
 
 /// An order a lane's rows have places in: Up Next's one order, or one of the
 /// context lane's two.
@@ -17,34 +18,54 @@ pub(super) enum LaneOrder {
 }
 
 impl LaneOrder {
-    fn lane(self) -> QueueLane {
-        match self {
-            Self::UpNext => QueueLane::Manual,
-            Self::Ordered | Self::Shuffled => QueueLane::Context,
+    /// The order `lane`'s rows read in: Up Next's, or the context lane's
+    /// shuffled one when `shuffled` says so and its own otherwise.
+    pub(super) fn of(lane: QueueLane, shuffled: bool) -> Self {
+        match (lane, shuffled) {
+            (QueueLane::Manual, _) => Self::UpNext,
+            (QueueLane::Context, false) => Self::Ordered,
+            (QueueLane::Context, true) => Self::Shuffled,
         }
     }
 
-    /// The column of the lane's table that holds a row's place in the order.
-    fn column(self) -> &'static str {
-        match self {
-            Self::UpNext => "position",
-            Self::Ordered => "ordered",
-            Self::Shuffled => "shuffled",
-        }
+    /// The highest place in the order, `None` when its lane is empty.
+    pub(super) fn top_on(self, sql: &impl WriterRead) -> Result<Option<i64>, DbError> {
+        Ok(match self {
+            Self::UpNext => statement_row(sql, &UpNextTopParams {})?.top,
+            Self::Ordered => statement_row(sql, &OrderedTopParams {})?.top,
+            Self::Shuffled => statement_row(sql, &ShuffledTopParams {})?.top,
+        })
     }
 
-    /// The queue row's column of the playing row's place in the order; none
-    /// for Up Next, which has no playing row.
-    fn cursor_column(self) -> Option<&'static str> {
+    /// The row `entry`'s place in the order and its track; none when the lane
+    /// holds no such row.
+    pub(super) fn entry_on(
+        self,
+        sql: &impl WriterRead,
+        entry: i64,
+    ) -> Result<Option<(i64, String)>, DbError> {
+        Ok(match self {
+            Self::UpNext => statement_optional(sql, &UpNextEntryPlaceParams { entry })?
+                .map(|row| (row.place, row.track_id)),
+            Self::Ordered => statement_optional(sql, &OrderedEntryPlaceParams { entry })?
+                .map(|row| (row.place, row.track_id)),
+            Self::Shuffled => statement_optional(sql, &ShuffledEntryPlaceParams { entry })?
+                .map(|row| (row.place, row.track_id)),
+        })
+    }
+
+    /// The playing row's place in the order, as `queue` holds it; Up Next has
+    /// no playing row.
+    fn cursor(self, queue: &QueueRow) -> Option<Option<i64>> {
         match self {
             Self::UpNext => None,
-            Self::Ordered => Some("ordered_cursor"),
-            Self::Shuffled => Some("shuffled_cursor"),
+            Self::Ordered => Some(queue.ordered_cursor),
+            Self::Shuffled => Some(queue.shuffled_cursor),
         }
     }
 
     /// Move the rows at places `low..=high` up by `lift`.
-    fn lift_on(self, sql: &CovenWrite<'_>, lift: i64, low: i64, high: i64) -> rusqlite::Result<()> {
+    fn lift_on(self, sql: &CovenWrite<'_>, lift: i64, low: i64, high: i64) -> Result<(), DbError> {
         match self {
             Self::UpNext => sql.run(&LiftUpNextParams { lift, low, high })?,
             Self::Ordered => sql.run(&LiftOrderedParams { lift, low, high })?,
@@ -61,7 +82,7 @@ impl LaneOrder {
         lift: i64,
         delta: i64,
         from: i64,
-    ) -> rusqlite::Result<()> {
+    ) -> Result<(), DbError> {
         match self {
             Self::UpNext => sql.run(&LowerUpNextParams { lift, delta, from })?,
             Self::Ordered => sql.run(&LowerOrderedParams { lift, delta, from })?,
@@ -71,7 +92,7 @@ impl LaneOrder {
     }
 
     /// Put the row `entry` at `place`.
-    fn park_on(self, sql: &CovenWrite<'_>, entry: i64, place: i64) -> rusqlite::Result<()> {
+    fn park_on(self, sql: &CovenWrite<'_>, entry: i64, place: i64) -> Result<(), DbError> {
         match self {
             Self::UpNext => sql.run(&PlaceInUpNextParams { entry, place })?,
             Self::Ordered => sql.run(&PlaceInOrderedParams { entry, place })?,
@@ -81,7 +102,7 @@ impl LaneOrder {
     }
 
     /// Put the order's cursor at `place`; Up Next has no cursor to put.
-    fn move_cursor_on(self, sql: &CovenWrite<'_>, place: i64) -> rusqlite::Result<()> {
+    fn move_cursor_on(self, sql: &CovenWrite<'_>, place: i64) -> Result<(), DbError> {
         match self {
             Self::UpNext => {}
             Self::Ordered => {
@@ -165,11 +186,62 @@ coven::write!(
     r#"UPDATE playback_queue SET shuffled_cursor = :place"#
 );
 
-/// The highest place in `order`, `None` when its lane is empty.
-pub(super) fn lane_top_on(sql: &CovenWrite<'_>, order: LaneOrder) -> rusqlite::Result<Option<i64>> {
-    let (table, column) = (order.lane().table(), order.column());
-    sql.query_row(&format!("SELECT max({column}) FROM {table}"), [], |row| row.get(0))
-}
+// The highest place in each order, NULL when its lane is empty.
+coven::read!(
+    writer UpNextTop { top: Option<i64> },
+    r#"SELECT max(manual.position) AS top FROM playback_manual AS manual"#
+);
+
+coven::read!(
+    writer OrderedTop { top: Option<i64> },
+    r#"SELECT max(lane.ordered) AS top FROM playback_context AS lane"#
+);
+
+coven::read!(
+    writer ShuffledTop { top: Option<i64> },
+    r#"SELECT max(lane.shuffled) AS top FROM playback_context AS lane"#
+);
+
+// The row `entry`'s place in each order, and its track.
+coven::read!(
+    writer UpNextEntryPlace(entry: i64),
+    r#"
+    SELECT manual.position AS place, manual.track_id
+    FROM playback_manual AS manual
+    WHERE manual.entry = :entry
+"#
+);
+
+coven::read!(
+    writer OrderedEntryPlace(entry: i64),
+    r#"
+    SELECT lane.ordered AS place, lane.track_id
+    FROM playback_context AS lane
+    WHERE lane.entry = :entry
+"#
+);
+
+coven::read!(
+    writer ShuffledEntryPlace(entry: i64),
+    r#"
+    SELECT lane.shuffled AS place, lane.track_id
+    FROM playback_context AS lane
+    WHERE lane.entry = :entry
+"#
+);
+
+// The entry at `offset`, counted from 0, among Up Next's rows other than
+// `moved`.
+coven::read!(
+    writer UpNextEntryAt(moved: i64, offset: i64),
+    r#"
+    SELECT manual.entry
+    FROM playback_manual AS manual
+    WHERE manual.entry <> :moved
+    ORDER BY manual.position
+    LIMIT 1 OFFSET :offset
+"#
+);
 
 /// Move the rows at places `low..=high` of `order` by `delta`. Places are
 /// unique in a lane at every statement, so the rows first go above every place
@@ -181,11 +253,11 @@ pub(super) fn shift_on(
     low: i64,
     high: i64,
     delta: i64,
-) -> rusqlite::Result<()> {
+) -> Result<(), DbError> {
     if low > high {
         return Ok(());
     }
-    let Some(top) = lane_top_on(sql, order)? else {
+    let Some(top) = order.top_on(sql)? else {
         return Ok(());
     };
     let lift = top - low + delta.abs() + 1;
@@ -239,14 +311,10 @@ fn entry_after_place_on(
     // The context lane's rows as the screens show them start after its
     // playing track; Up Next shows every row.
     match lane {
-        QueueLane::Manual => Ok(sql
-            .query_row(
-                "SELECT entry FROM playback_manual WHERE entry <> ?1 \
-                 ORDER BY position LIMIT 1 OFFSET ?2",
-                params![entry, offset],
-                |row| row.get(0),
-            )
-            .optional()?),
+        QueueLane::Manual => {
+            Ok(statement_optional(sql, &UpNextEntryAtParams { moved: entry, offset })?
+                .map(|row| row.entry))
+        }
         QueueLane::Context => {
             super::queue_upcoming::upcoming_entry_at_on(sql, shuffled, entry, offset)
         }
@@ -261,16 +329,16 @@ fn move_entry_on(
     order: LaneOrder,
     entry: i64,
     before: Option<i64>,
-) -> rusqlite::Result<()> {
-    let (table, column) = (order.lane().table(), order.column());
-    let place_of = |entry: i64| {
-        sql.query_row(&format!("SELECT {column} FROM {table} WHERE entry = ?"), [entry], |row| {
-            row.get::<_, i64>(0)
-        })
+) -> Result<(), DbError> {
+    let place_of = |entry: i64| -> Result<i64, DbError> {
+        let (place, _) = order
+            .entry_on(sql, entry)?
+            .ok_or_else(|| DbError::unreadable("the place of a queue entry being moved", entry))?;
+        Ok(place)
     };
     let from = place_of(entry)?;
     let to = before.map(place_of).transpose()?;
-    let top = lane_top_on(sql, order)?.expect("the lane holds the entry being moved");
+    let top = order.top_on(sql)?.expect("the lane holds the entry being moved");
     let park = |place: i64| order.park_on(sql, entry, place);
     // Where the entry lands, and how a cursor between the two places moves.
     let (landing, cursor_shift): (i64, Option<(i64, i64, i64)>) = match to {
@@ -292,11 +360,9 @@ fn move_entry_on(
             (to - 1, Some((from + 1, to - 1, -1)))
         }
     };
-    if let Some(cursor_column) = order.cursor_column() {
-        let cursor: i64 =
-            sql.query_row(&format!("SELECT {cursor_column} FROM playback_queue"), [], |row| {
-                row.get(0)
-            })?;
+    if let Some(cursor) = order.cursor(&queue_row_on(sql)?) {
+        let cursor = cursor
+            .ok_or_else(|| DbError::unreadable("the cursor of a lane holding entries", "NULL"))?;
         let moved_cursor = if cursor == from {
             landing
         } else {

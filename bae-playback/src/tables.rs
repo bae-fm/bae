@@ -13,6 +13,7 @@ mod queue;
 mod queue_fill;
 mod queue_order;
 pub mod queue_reads;
+mod queue_steps;
 mod queue_upcoming;
 pub mod resume;
 mod timeline;
@@ -62,5 +63,4 @@ pub mod window_cost;
 
 use bae_store::*;
 use coven::{CovenWrite, SqlReadContext};
-use rusqlite::{params, OptionalExtension, Row};
 use tracing::warn;

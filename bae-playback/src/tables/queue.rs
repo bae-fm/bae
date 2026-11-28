@@ -9,45 +9,19 @@
 //! included, are `queue.sql`.
 
 use super::queue_fill::{fill_on, ContextFill, ContextFilled};
-use super::queue_order::{lane_top_on, reorder_on, shift_on, LaneOrder};
+use super::queue_order::{reorder_on, shift_on, LaneOrder};
+use super::queue_steps;
 use super::*;
 use crate::{QueueEntry, QueueEntryId, QueueLane, RepeatMode};
-use bae_store::WriteStatements;
+use bae_store::{statement_optional, statement_row, WriteStatements, WriterRead};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 
-/// The table holding each lane's rows and how the lane orders them.
 impl QueueLane {
-    pub(super) fn table(self) -> &'static str {
-        match self {
-            QueueLane::Manual => "playback_manual",
-            QueueLane::Context => "playback_context",
-        }
-    }
-
-    /// The column the lane's rows are in order by: Up Next's `position`, or
-    /// the context lane's place in the order it reads in.
-    fn order_column(self, shuffled: bool) -> &'static str {
-        match self {
-            QueueLane::Manual => "position",
-            QueueLane::Context => context_order_column(shuffled),
-        }
-    }
-
     fn entry_id(self, entry: i64) -> QueueEntryId {
         match self {
             QueueLane::Manual => QueueEntryId::Manual(entry),
             QueueLane::Context => QueueEntryId::Context(entry),
         }
-    }
-}
-
-/// The column the context lane reads in: its own order, or the shuffled one
-/// while shuffle is on.
-pub(super) fn context_order_column(shuffled: bool) -> &'static str {
-    if shuffled {
-        "shuffled"
-    } else {
-        "ordered"
     }
 }
 
@@ -214,6 +188,44 @@ coven::write!(
 "#
 );
 
+// How many of the JSON array `tracks`' ids the library holds, an id named
+// twice counted twice.
+coven::read!(
+    writer HeldTrackCount(tracks: String) { held: i64 },
+    r#"
+    SELECT count(*) AS held
+    FROM @bae_records::records::track_list::GivenTracks(tracks: :tracks) AS listed
+"#
+);
+
+// Up Next's lowest place, NULL when it is empty.
+coven::read!(
+    writer UpNextBottom { bottom: Option<i64> },
+    r#"SELECT min(manual.position) AS bottom FROM playback_manual AS manual"#
+);
+
+// The place of Up Next's entry at `offset`, counted from 0.
+coven::read!(
+    writer UpNextPositionAt(offset: i64),
+    r#"
+    SELECT manual.position
+    FROM playback_manual AS manual
+    ORDER BY manual.position
+    LIMIT 1 OFFSET :offset
+"#
+);
+
+// Up Next's first entry.
+coven::read!(
+    writer UpNextFront,
+    r#"
+    SELECT manual.entry, manual.track_id, manual.position
+    FROM playback_manual AS manual
+    ORDER BY manual.position
+    LIMIT 1
+"#
+);
+
 /// Empty the queue and the resume row unless the resume row is kept: what
 /// starting playback with a library does when it will not resume what it
 /// played. A library with nothing to resume opens with an empty queue, and
@@ -224,8 +236,7 @@ coven::write!(
 pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), DbError> {
     store
         .call_bulk(move |sql| {
-            let stored =
-                sql.query_row("SELECT 1 FROM playback_state", [], |_| Ok(())).optional()?.is_some();
+            let stored = super::resume::resume_stored_on(sql)?;
             super::now::reset_playback_now_on(sql, resume && stored)?;
             super::timeline::reset_playback_timeline_on(sql)?;
             if resume && stored {
@@ -274,7 +285,7 @@ impl PlaybackQueueTables {
     pub async fn clear_context(&self) -> Result<bool, DbError> {
         self.store
             .call_bulk(|sql| {
-                if queue_row_on(sql)?.cursor.is_none() {
+                if queue_row_on(sql)?.cursor().is_none() {
                     return Ok(false);
                 }
                 clear_context_on(sql)?;
@@ -403,7 +414,7 @@ impl PlaybackQueueTables {
     pub async fn context_order(&self) -> Result<Vec<String>, DbError> {
         self.store
             .read(|sql| {
-                let column = queue_row_on(&sql)?.order_column();
+                let column = if queue_row_on(&sql)?.shuffled { "shuffled" } else { "ordered" };
                 Ok(sql.query(
                     &format!("SELECT track_id FROM playback_context ORDER BY {column}"),
                     [],
@@ -414,45 +425,54 @@ impl PlaybackQueueTables {
     }
 }
 
+// The `playback_queue` row's columns the lane changes read.
+coven::read!(
+    writer QueueState { shuffled: bool },
+    r#"
+    SELECT queue.ordered_cursor, queue.shuffled_cursor, queue.shuffled, queue.next_entry
+    FROM playback_queue AS queue
+"#
+);
+
 /// The `playback_queue` row's columns the lane changes read.
 pub(super) struct QueueRow {
-    /// The playing row's place in the order the lane reads in.
-    cursor: Option<i64>,
+    /// The playing row's place in the context lane's own order.
+    pub(super) ordered_cursor: Option<i64>,
+    /// The playing row's place in the shuffled order.
+    pub(super) shuffled_cursor: Option<i64>,
     pub(super) shuffled: bool,
     pub(super) next_entry: i64,
 }
 
 impl QueueRow {
-    /// The context lane's column the lane reads in.
-    fn order_column(&self) -> &'static str {
-        context_order_column(self.shuffled)
+    /// The playing row's place in the order the lane reads in.
+    fn cursor(&self) -> Option<i64> {
+        if self.shuffled {
+            self.shuffled_cursor
+        } else {
+            self.ordered_cursor
+        }
     }
 }
 
-pub(super) fn queue_row_on(sql: &impl bae_store::WriterRead) -> rusqlite::Result<QueueRow> {
-    sql.query_row(
-        "SELECT CASE shuffled WHEN 1 THEN shuffled_cursor ELSE ordered_cursor END AS cursor, \
-                shuffled, next_entry \
-         FROM playback_queue",
-        [],
-        |row| {
-            Ok(QueueRow {
-                cursor: row.get("cursor")?,
-                shuffled: row.get("shuffled")?,
-                next_entry: row.get("next_entry")?,
-            })
-        },
-    )
+pub(super) fn queue_row_on(sql: &impl WriterRead) -> Result<QueueRow, DbError> {
+    let row = statement_row(sql, &QueueStateParams {})?;
+    Ok(QueueRow {
+        ordered_cursor: row.ordered_cursor,
+        shuffled_cursor: row.shuffled_cursor,
+        shuffled: row.shuffled,
+        next_entry: row.next_entry,
+    })
 }
 
 /// Make the context row `entry` the playing one, in both of the lane's orders.
-fn set_cursor_on(sql: &CovenWrite<'_>, entry: i64) -> rusqlite::Result<()> {
+fn set_cursor_on(sql: &CovenWrite<'_>, entry: i64) -> Result<(), DbError> {
     sql.run(&PlayContextEntryParams { entry })?;
     Ok(())
 }
 
 /// Empty the context lane and clear what it played from, in the same write.
-fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
+fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> Result<(), DbError> {
     sql.run(&ClearContextLaneParams {})?;
     sql.run(&ClearEmptiedContextSourceParams {})?;
     Ok(())
@@ -468,45 +488,22 @@ pub(super) struct Located {
 pub(super) fn locate_on(
     sql: &CovenWrite<'_>,
     id: QueueEntryId,
-) -> rusqlite::Result<Option<Located>> {
+) -> Result<Option<Located>, DbError> {
     let (lane, entry) = row_key(&id);
-    let column = lane.order_column(queue_row_on(sql)?.shuffled);
-    sql.query_row(
-        &format!(
-            "SELECT {column} AS position, track_id FROM {table} WHERE entry = ?",
-            table = lane.table()
-        ),
-        [entry],
-        |row| {
-            Ok(Located {
-                lane,
-                position: row.get("position")?,
-                entry: QueueEntry { id, track_id: row.get("track_id")? },
-            })
-        },
-    )
-    .optional()
-}
-
-/// A row of `lane` read with its `entry`, `track_id` and `position`.
-fn entry_from_row(lane: QueueLane, row: &Row<'_>) -> rusqlite::Result<(QueueEntry, i64)> {
-    Ok((
-        QueueEntry { id: lane.entry_id(row.get("entry")?), track_id: row.get("track_id")? },
-        row.get("position")?,
-    ))
-}
-
-/// A context row read with its `entry`, `track_id` and `position`.
-pub(super) fn context_from_row(row: &Row<'_>) -> rusqlite::Result<(QueueEntry, i64)> {
-    entry_from_row(QueueLane::Context, row)
+    let order = LaneOrder::of(lane, queue_row_on(sql)?.shuffled);
+    Ok(order.entry_on(sql, entry)?.map(|(position, track_id)| Located {
+        lane,
+        position,
+        entry: QueueEntry { id, track_id },
+    }))
 }
 
 /// Give every row of the context lane a new place in the shuffled order, above
 /// every place it holds, in random order, and answer the highest place the
 /// lane held before. With `keep_through`, a place in the lane's own order, the
 /// rows up to it keep their order and come first.
-fn place_shuffled_on(sql: &CovenWrite<'_>, keep_through: Option<i64>) -> rusqlite::Result<i64> {
-    let top = lane_top_on(sql, LaneOrder::Shuffled)?.unwrap_or(0);
+fn place_shuffled_on(sql: &CovenWrite<'_>, keep_through: Option<i64>) -> Result<i64, DbError> {
+    let top = LaneOrder::Shuffled.top_on(sql)?.unwrap_or(0);
     match keep_through {
         Some(cursor) => sql.run(&ShuffleLaneAfterParams { top, cursor })?,
         None => sql.run(&ShuffleWholeLaneParams { top })?,
@@ -520,29 +517,19 @@ fn add_manual_on(
     place: ManualPlace,
 ) -> Result<usize, DbError> {
     let track_ids = tracks.ids_json();
-    let count: i64 = sql.query_row(
-        "SELECT count(*) FROM json_each(?) j JOIN tracks t ON t.id = j.value",
-        [&track_ids],
-        |row| row.get(0),
-    )?;
+    let count = statement_row(sql, &HeldTrackCountParams { tracks: track_ids.clone() })?.held;
     if count == 0 {
         return Ok(0);
     }
-    let bottom: Option<i64> =
-        sql.query_row("SELECT min(position) FROM playback_manual", [], |row| row.get(0))?;
-    let top = lane_top_on(sql, LaneOrder::UpNext)?;
+    let bottom = statement_row(sql, &UpNextBottomParams {})?.bottom;
+    let top = LaneOrder::UpNext.top_on(sql)?;
     let end = top.map_or(1, |top| top + 1);
     let start = match place {
         ManualPlace::End => end,
         ManualPlace::Front => bottom.map_or(1, |bottom| bottom - count),
         ManualPlace::At(index) => {
-            let at: Option<i64> = sql
-                .query_row(
-                    "SELECT position FROM playback_manual ORDER BY position LIMIT 1 OFFSET ?",
-                    [index as i64],
-                    |row| row.get(0),
-                )
-                .optional()?;
+            let at = statement_optional(sql, &UpNextPositionAtParams { offset: index as i64 })?
+                .map(|row| row.position);
             match at {
                 Some(at) => {
                     shift_on(sql, LaneOrder::UpNext, at, end - 1, count)?;
@@ -571,7 +558,7 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
         return Ok(());
     }
     // With nothing playing the mode is all there is to change.
-    let Some(cursor) = row.cursor else {
+    let Some(cursor) = row.cursor() else {
         sql.run(&SetShuffleParams { shuffled: on })?;
         return Ok(());
     };
@@ -587,39 +574,22 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
 }
 
 fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
-    let manual_front = sql
-        .query_row(
-            "SELECT entry, track_id, position FROM playback_manual ORDER BY position LIMIT 1",
-            [],
-            |row| entry_from_row(QueueLane::Manual, row),
-        )
-        .optional()?;
-    if let Some((entry, position)) = manual_front {
-        sql.run(&DeleteUpNextAtParams { position })?;
-        return Ok(Some(entry));
+    if let Some(front) = statement_optional(sql, &UpNextFrontParams {})? {
+        sql.run(&DeleteUpNextAtParams { position: front.position })?;
+        let id = QueueLane::Manual.entry_id(front.entry);
+        return Ok(Some(QueueEntry { id, track_id: front.track_id }));
     }
     let row = queue_row_on(sql)?;
-    let next = sql
-        .query_row(
-            &format!(
-                "SELECT entry, track_id, {column} AS position FROM playback_context \
-                 WHERE {column} > ?1 ORDER BY {column} LIMIT 1",
-                column = row.order_column()
-            ),
-            [row.cursor],
-            context_from_row,
-        )
-        .optional()?;
-    let Some((entry, _)) = next else {
+    let Some(next) = queue_steps::after_on(sql, row.shuffled, row.cursor())? else {
         return Ok(None);
     };
-    set_cursor_on(sql, row_key(&entry.id).1)?;
-    Ok(Some(entry))
+    set_cursor_on(sql, row_key(&next.id).1)?;
+    Ok(Some(next))
 }
 
 fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
     let row = queue_row_on(sql)?;
-    if row.cursor.is_none() {
+    if row.cursor().is_none() {
         return Ok(None);
     }
     if row.shuffled {
@@ -627,15 +597,8 @@ fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
         // lane's own order is as it was.
         place_shuffled_on(sql, None)?;
     }
-    let (first, _) = sql.query_row(
-        &format!(
-            "SELECT entry, track_id, {column} AS position FROM playback_context \
-             ORDER BY {column} LIMIT 1",
-            column = row.order_column()
-        ),
-        [],
-        context_from_row,
-    )?;
+    let first = queue_steps::first_on(sql, row.shuffled)?
+        .ok_or_else(|| DbError::unreadable("the first entry of a playing context lane", "none"))?;
     set_cursor_on(sql, row_key(&first.id).1)?;
     Ok(Some(first))
 }
@@ -645,37 +608,20 @@ fn step_back_on(
     current: Option<QueueEntryId>,
 ) -> Result<Option<QueueEntry>, DbError> {
     let row = queue_row_on(sql)?;
-    let Some(cursor) = row.cursor else {
+    let Some(cursor) = row.cursor() else {
         return Ok(None);
     };
-    let column = row.order_column();
-    let at_cursor: Option<i64> = sql
-        .query_row(
-            &format!("SELECT entry FROM playback_context WHERE {column} = ?"),
-            [cursor],
-            |row| row.get(0),
-        )
-        .optional()?;
+    let at_cursor = queue_steps::at_on(sql, row.shuffled, cursor)?.map(|entry| entry.id);
     let playing_cursor = matches!(
         (current, at_cursor),
-        (Some(QueueEntryId::Context(current)), Some(at_cursor)) if current == at_cursor
+        (Some(QueueEntryId::Context(current)), Some(QueueEntryId::Context(at_cursor)))
+            if current == at_cursor
     );
-    let comparison = if playing_cursor { "<" } else { "<=" };
-    let target = sql
-        .query_row(
-            &format!(
-                "SELECT entry, track_id, {column} AS position FROM playback_context \
-                 WHERE {column} {comparison} ? ORDER BY {column} DESC LIMIT 1"
-            ),
-            [cursor],
-            context_from_row,
-        )
-        .optional()?;
-    let Some((entry, _)) = target else {
+    let Some(target) = queue_steps::before_on(sql, row.shuffled, cursor, !playing_cursor)? else {
         return Ok(None);
     };
-    set_cursor_on(sql, row_key(&entry.id).1)?;
-    Ok(Some(entry))
+    set_cursor_on(sql, row_key(&target.id).1)?;
+    Ok(Some(target))
 }
 
 pub(crate) fn repeat_column(mode: RepeatMode) -> &'static str {

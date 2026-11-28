@@ -3,10 +3,12 @@
 //! write replaces the whole queue with them, shuffled when the play asks for
 //! it or the queue's shuffle mode is on.
 
-use super::queue::{context_from_row, queue_row_on, ClearContextLaneParams, ClearUpNextParams};
+use super::queue::{queue_row_on, ClearContextLaneParams, ClearUpNextParams};
+use super::queue_steps;
 use super::*;
 use crate::{ContextSource, QueueEntry};
 use bae_store::WriteStatements;
+use bae_store::{statement_optional, statement_row, statement_rows};
 
 /// What a play fills the context lane with.
 #[derive(Debug, Clone)]
@@ -235,6 +237,138 @@ coven::write!(
 "#
 );
 
+// The release that holds the track `track`.
+coven::read!(
+    writer ReleaseOfTrack(track: String),
+    r#"
+    SELECT track.release_id
+    FROM @bae_records::records::spread_fragments::TrackRow AS track
+    WHERE track.track_id = :track
+"#
+);
+
+// Whether the release `release` holds any track.
+coven::read!(
+    writer ReleaseHasTracks(release: String) { has_tracks: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track
+                   WHERE track.release_id = :release) AS has_tracks
+"#
+);
+
+// Whether the release `release` holds the track `track`.
+coven::read!(
+    writer TrackOnRelease(track: String, release: String) { on_release: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track
+                   WHERE track.track_id = :track AND track.release_id = :release)
+               AS on_release
+"#
+);
+
+// The releases of the JSON array `releases` that hold a track, in the array's
+// order.
+coven::read!(
+    writer PlayableReleases(releases: String) { release_id: String },
+    r#"
+    SELECT given.value AS release_id
+    FROM json_each(:releases) AS given
+    WHERE given.value IS NOT NULL
+      AND EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track
+                  WHERE track.release_id = given.value)
+    ORDER BY given.key
+"#
+);
+
+// The releases of the JSON array `releases` that hold no track, in the array's
+// order.
+coven::read!(
+    writer TracklessReleases(releases: String) { release_id: String },
+    r#"
+    SELECT given.value AS release_id
+    FROM json_each(:releases) AS given
+    WHERE given.value IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track
+                      WHERE track.release_id = given.value)
+    ORDER BY given.key
+"#
+);
+
+// The tracks of the JSON array `tracks` the library lacks, in the array's
+// order.
+coven::read!(
+    writer MissingTracks(tracks: String) { track_id: String },
+    r#"
+    SELECT given.value AS track_id
+    FROM json_each(:tracks) AS given
+    WHERE given.value IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track
+                      WHERE track.track_id = given.value)
+    ORDER BY given.key
+"#
+);
+
+// Whether the library holds the track `track`.
+coven::read!(
+    writer TrackHeld(track: String) { held: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track
+                   WHERE track.track_id = :track) AS held
+"#
+);
+
+// Whether the library holds any track of the JSON array `tracks`.
+coven::read!(
+    writer AnyTrackHeld(tracks: String) { held: bool },
+    r#"
+    SELECT EXISTS (SELECT 1
+                   FROM @bae_records::records::track_list::GivenTracks(tracks: :tracks) AS listed)
+               AS held
+"#
+);
+
+// How many of the JSON array `tracks`' ids up to the index `index` the
+// library holds.
+coven::read!(
+    writer HeldThrough(tracks: String, index: i64) { held: i64 },
+    r#"
+    SELECT count(*) AS held
+    FROM json_each(:tracks) AS given
+    JOIN @bae_records::records::spread_fragments::TrackRow AS track
+        ON track.track_id = given.value
+    WHERE given.key <= :index
+"#
+);
+
+// Whether the library holds any track.
+coven::read!(
+    writer LibraryHasTracks { has_tracks: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM @bae_records::records::spread_fragments::TrackRow AS track)
+               AS has_tracks
+"#
+);
+
+// The place in the lane's own order of the row a shuffled lane plays first.
+coven::read!(
+    writer FirstShuffledOrdered,
+    r#"
+    SELECT lane.ordered
+    FROM playback_context AS lane
+    WHERE lane.shuffled = 1
+"#
+);
+
+// The place in the lane's own order of the track `track`'s row.
+coven::read!(
+    writer OrderedOfTrack(track: String),
+    r#"
+    SELECT lane.ordered
+    FROM playback_context AS lane
+    WHERE lane.track_id = :track
+"#
+);
+
 /// The lane row a fill plays first.
 enum FillCursor {
     First,
@@ -263,11 +397,9 @@ pub(super) fn fill_on(
 ) -> Result<ContextFilled, DbError> {
     let (source, rows, whole_shuffled, start, left_out) = match fill {
         ContextFill::ReleaseOfTrack(track_id) => {
-            let release_id: Option<String> = sql
-                .query_row("SELECT release_id FROM tracks WHERE id = ?", [&track_id], |row| {
-                    row.get(0)
-                })
-                .optional()?;
+            let release_id =
+                statement_optional(sql, &ReleaseOfTrackParams { track: track_id.clone() })?
+                    .map(|row| row.release_id);
             let Some(release_id) = release_id else {
                 return Ok(ContextFilled::StartMissing);
             };
@@ -280,11 +412,9 @@ pub(super) fn fill_on(
             )
         }
         ContextFill::Release { release_id, start } => {
-            let has_tracks: bool = sql.query_row(
-                "SELECT EXISTS (SELECT 1 FROM tracks WHERE release_id = ?)",
-                [&release_id],
-                |row| row.get(0),
-            )?;
+            let has_tracks =
+                statement_row(sql, &ReleaseHasTracksParams { release: release_id.clone() })?
+                    .has_tracks;
             if !has_tracks {
                 return Ok(ContextFilled::NoTracks);
             }
@@ -292,11 +422,11 @@ pub(super) fn fill_on(
                 ReleaseStart::First => (false, FillCursor::First),
                 ReleaseStart::Shuffled => (true, FillCursor::First),
                 ReleaseStart::Track(track_id) => {
-                    let on_release: bool = sql.query_row(
-                        "SELECT EXISTS (SELECT 1 FROM tracks WHERE id = ? AND release_id = ?)",
-                        [&track_id, &release_id],
-                        |row| row.get(0),
-                    )?;
+                    let statement = TrackOnReleaseParams {
+                        track: track_id.clone(),
+                        release: release_id.clone(),
+                    };
+                    let on_release = statement_row(sql, &statement)?.on_release;
                     if !on_release {
                         return Ok(ContextFilled::StartMissing);
                     }
@@ -314,20 +444,16 @@ pub(super) fn fill_on(
         ContextFill::Releases(release_ids) => {
             let release_ids = serde_json::to_string(&release_ids)
                 .expect("serializing a Vec<String> to JSON cannot fail");
-            let playable: Vec<String> = sql.query(
-                "SELECT j.value FROM json_each(?) j \
-                 WHERE EXISTS (SELECT 1 FROM tracks WHERE release_id = j.value) \
-                 ORDER BY j.key",
-                [&release_ids],
-                |row| row.get(0),
-            )?;
-            let left_out: Vec<String> = sql.query(
-                "SELECT j.value FROM json_each(?) j \
-                 WHERE NOT EXISTS (SELECT 1 FROM tracks WHERE release_id = j.value) \
-                 ORDER BY j.key",
-                [&release_ids],
-                |row| row.get(0),
-            )?;
+            let playable: Vec<String> =
+                statement_rows(sql, &PlayableReleasesParams { releases: release_ids.clone() })?
+                    .into_iter()
+                    .map(|row| row.release_id)
+                    .collect();
+            let left_out: Vec<String> =
+                statement_rows(sql, &TracklessReleasesParams { releases: release_ids })?
+                    .into_iter()
+                    .map(|row| row.release_id)
+                    .collect();
             if playable.is_empty() {
                 return Ok(ContextFilled::NoTracks);
             }
@@ -347,13 +473,12 @@ pub(super) fn fill_on(
             // the tracks the library holds, in the order their release lists
             // them, and names none.
             let left_out = match &tracks {
-                bae_records::TrackList::Given(_) => sql.query(
-                    "SELECT j.value FROM json_each(?) j \
-                     WHERE NOT EXISTS (SELECT 1 FROM tracks WHERE id = j.value) \
-                     ORDER BY j.key",
-                    [tracks.ids_json()],
-                    |row| row.get::<_, String>(0),
-                )?,
+                bae_records::TrackList::Given(_) => {
+                    statement_rows(sql, &MissingTracksParams { tracks: tracks.ids_json() })?
+                        .into_iter()
+                        .map(|row| row.track_id)
+                        .collect()
+                }
                 bae_records::TrackList::Picked(_) => Vec::new(),
             };
             let track_ids = tracks.ordered_leaving_out_missing_picks(sql)?;
@@ -365,23 +490,16 @@ pub(super) fn fill_on(
                     let Some(start_track) = track_ids.get(index) else {
                         return Ok(ContextFilled::StartMissing);
                     };
-                    let start_held: bool = sql.query_row(
-                        "SELECT EXISTS (SELECT 1 FROM tracks WHERE id = ?)",
-                        [start_track],
-                        |row| row.get(0),
-                    )?;
+                    let start_held =
+                        statement_row(sql, &TrackHeldParams { track: start_track.clone() })?.held;
                     if !start_held {
                         return Ok(ContextFilled::StartMissing);
                     }
                 }
                 TracksStart::Shuffled => {
-                    let any_held: bool = sql.query_row(
-                        "SELECT EXISTS (SELECT 1 FROM json_each(?1) j \
-                         JOIN tracks t ON t.id = j.value)",
-                        [serde_json::to_string(&track_ids)
-                            .expect("serializing a Vec<String> to JSON cannot fail")],
-                        |row| row.get(0),
-                    )?;
+                    let tracks = serde_json::to_string(&track_ids)
+                        .expect("serializing a Vec<String> to JSON cannot fail");
+                    let any_held = statement_row(sql, &AnyTrackHeldParams { tracks })?.held;
                     if !any_held {
                         return Ok(ContextFilled::NoTracks);
                     }
@@ -394,12 +512,9 @@ pub(super) fn fill_on(
             let (whole_shuffled, cursor) = match start {
                 TracksStart::Shuffled => (true, FillCursor::First),
                 TracksStart::Index(index) => {
-                    let position: i64 = sql.query_row(
-                        "SELECT count(*) FROM json_each(?1) j JOIN tracks t ON t.id = j.value \
-                         WHERE j.key <= ?2",
-                        params![&track_ids, index as i64],
-                        |row| row.get(0),
-                    )?;
+                    let statement =
+                        HeldThroughParams { tracks: track_ids.clone(), index: index as i64 };
+                    let position = statement_row(sql, &statement)?.held;
                     (false, FillCursor::Position(position))
                 }
             };
@@ -412,8 +527,7 @@ pub(super) fn fill_on(
             )
         }
         ContextFill::LibraryShuffled => {
-            let has_tracks: bool =
-                sql.query_row("SELECT EXISTS (SELECT 1 FROM tracks)", [], |row| row.get(0))?;
+            let has_tracks = statement_row(sql, &LibraryHasTracksParams {})?.has_tracks;
             if !has_tracks {
                 return Ok(ContextFilled::NoTracks);
             }
@@ -452,19 +566,14 @@ pub(super) fn fill_on(
     };
     // The row played first: a shuffled lane's first row, else the start's.
     let (ordered_cursor, shuffled_cursor): (i64, i64) = if shuffled {
-        let ordered =
-            sql.query_row("SELECT ordered FROM playback_context WHERE shuffled = 1", [], |row| {
-                row.get(0)
-            })?;
+        let ordered = statement_row(sql, &FirstShuffledOrderedParams {})?.ordered;
         (ordered, 1)
     } else {
         let ordered = match start {
             FillCursor::First => 1,
-            FillCursor::Track(track_id) => sql.query_row(
-                "SELECT ordered FROM playback_context WHERE track_id = ?",
-                [track_id],
-                |row| row.get(0),
-            )?,
+            FillCursor::Track(track) => {
+                statement_row(sql, &OrderedOfTrackParams { track })?.ordered
+            }
             FillCursor::Position(position) => position,
         };
         (ordered, ordered)
@@ -478,10 +587,8 @@ pub(super) fn fill_on(
         shuffled_cursor,
         next_entry: base + track_count as i64,
     })?;
-    let (current, _) = sql.query_row(
-        "SELECT entry, track_id, shuffled AS position FROM playback_context WHERE shuffled = ?",
-        [shuffled_cursor],
-        context_from_row,
-    )?;
+    let current = queue_steps::at_on(sql, true, shuffled_cursor)?.ok_or_else(|| {
+        DbError::unreadable("the playing entry of a filled lane", shuffled_cursor)
+    })?;
     Ok(ContextFilled::Playing { current, track_count, left_out })
 }
