@@ -25,7 +25,6 @@ pub mod live_query;
 pub mod live_results;
 pub mod path_column;
 pub mod query;
-pub mod read;
 mod read_statement;
 pub use read_statement::{
     at_most_one, exactly_one, statement_optional, statement_row, statement_rows, WriterRead,
