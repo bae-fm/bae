@@ -1356,9 +1356,8 @@ The pane reads its one candidate's rows by the candidate's
 key, and every read of one candidate's state, draft or preparation finds the
 candidate by its key or its content hash, so how long one takes does not grow
 with how many candidates the queue holds.
-The pane is one concern, which one live query reads with two composed
-statements in one snapshot, because SQLite refuses to prepare it as one
-statement. One reads the candidate as the scan, the list and its state hold
+The pane shows two concerns, which one live query reads with one composed
+statement each, in one snapshot. One reads the candidate as the scan, the list and its state hold
 it, and the other what an import files under, which is the draft the candidate
 holds or the release this device imported from it. bae makes the pane's value
 from the rows of both, and a write to what either statement reads runs both
