@@ -6,7 +6,6 @@
 use bae_diagnostics::UiError;
 use bae_store::{DbError, Store};
 use coven::SqlReadContext;
-use rusqlite::OptionalExtension;
 
 mod copy_reset_notice;
 pub mod fragments;

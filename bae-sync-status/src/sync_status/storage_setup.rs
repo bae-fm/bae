@@ -98,6 +98,31 @@ coven::read!(
 "#
 );
 
+// How the storage setup `operation` ended; no row when it is no setup or it
+// left the list.
+coven::read!(
+    writer SetupOutcome(operation: i64) {
+        outcome: Option<coven::StorageSetupOutcome>,
+    },
+    r#"
+    SELECT setup.outcome
+    FROM coven_operations AS setup
+    WHERE setup.operation = :operation AND setup.kind = 'StorageSetup'
+"#
+);
+
+// Every storage setup that ended, with how.
+coven::read!(
+    writer EndedSetups {
+        outcome: Option<coven::StorageSetupOutcome>,
+    },
+    r#"
+    SELECT setup.operation, setup.outcome
+    FROM coven_operations AS setup
+    WHERE setup.kind = 'StorageSetup' AND setup.outcome IS NOT NULL
+"#
+);
+
 impl StorageSetup {
     /// Where this device's storage setup stands: running while any setup
     /// runs, or else the newest setup that ended undone, or `None`.
@@ -165,15 +190,11 @@ impl SyncStatus {
         let acknowledged = self
             .store
             .call(move |sql| {
-                let outcome = sql
-                    .query_row(
-                        "SELECT outcome FROM coven_operations \
-                         WHERE operation = ?1 AND kind = 'StorageSetup'",
-                        [operation.0],
-                        |row| row.get::<_, Option<coven::StorageSetupOutcome>>(0),
-                    )
-                    .optional()?;
-                match outcome.map(SetupRow::of) {
+                let outcome = bae_store::statement_optional(
+                    sql,
+                    &SetupOutcomeParams { operation: operation.0 },
+                )?;
+                match outcome.map(|row| SetupRow::of(row.outcome)) {
                     Some(SetupRow::Undone(_)) => {
                         sql.acknowledge_operation(operation)?;
                         Ok(true)
@@ -191,25 +212,15 @@ impl SyncStatus {
     async fn acknowledge_ended(&self, which: Ended) -> Result<(), DbError> {
         self.store
             .call(move |sql| {
-                let ended = sql.query(
-                    "SELECT operation, outcome FROM coven_operations \
-                     WHERE kind = 'StorageSetup' AND outcome IS NOT NULL",
-                    [],
-                    |row| {
-                        Ok((
-                            coven::OperationId(row.get(0)?),
-                            row.get::<_, Option<coven::StorageSetupOutcome>>(1)?,
-                        ))
-                    },
-                )?;
-                for (operation, outcome) in ended {
-                    let acknowledged = match (which, SetupRow::of(outcome)) {
+                let ended = bae_store::statement_rows(sql, &EndedSetupsParams {})?;
+                for setup in ended {
+                    let acknowledged = match (which, SetupRow::of(setup.outcome)) {
                         (_, SetupRow::Running) => false,
                         (Ended::All, _) | (Ended::Settled, SetupRow::Settled) => true,
                         (Ended::Settled, SetupRow::Undone(_)) => false,
                     };
                     if acknowledged {
-                        sql.acknowledge_operation(operation)?;
+                        sql.acknowledge_operation(coven::OperationId(setup.operation))?;
                     }
                 }
                 Ok(())
